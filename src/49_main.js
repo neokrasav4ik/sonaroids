@@ -116,8 +116,9 @@ function sPlay(){
   shake=Math.max(0,shake-DT); flash=Math.max(0,flash-DT); livesT=Math.max(0,livesT-DT);
   field(DT,g.slow>0?0.5:1);
   text(String(g.score).padStart(6,'0'),LW/2,topY(),P.text,'center');                // at the top only the score (agreed 24 Sep)
-  // the menu button: in the top corner on the free hand's side, kept clear of the very corner and the camera island
-  iconButton('pause',freeSide()==='left'?SAFE.l+Math.max(12,Math.round(LW*0.035)):LW-SAFE.r-Math.max(12,Math.round(LW*0.035))-(BH-3),SAFE.t+Math.max(10,Math.round(LH*0.05))); say(L('menu_a'));
+  // the menu button: in the top corner on the free hand's side
+  // v0.11: further into the corner — the camera island sits in the middle of the side, so the top of the safe margin is free
+  iconButton('pause',freeSide()==='left'?Math.round(SAFE.l*0.5)+10:LW-Math.round(SAFE.r*0.5)-10-(BH-3),SAFE.t+7); say(L('menu_a'));
   if(flash>0){ lx.globalAlpha=Math.min(0.35,flash); R(P.hit,0,0,LW,LH); lx.globalAlpha=1; }
   if(g.state==='over') endGame();
 }

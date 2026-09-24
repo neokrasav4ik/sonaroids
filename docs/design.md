@@ -44,9 +44,9 @@ Later launches: steps 5–6 and straight into the game. **Before every new game*
 - **Rocks split:** large → two medium → two small. 20 / 50 / 100 points, as in the original. — agreed
 - **Points by height:** the middle of the screen ×3, then ×2, the edges ×1. **Not shown on screen.** — agreed
 - **Streak:** every 5 hits in a row add +1 to the multiplier, up to ×4; getting hit resets it. — agreed
-- **Power-ups** — you have to fly into them: shield (one hit, up to 15 s; shown as a ring of dots around the ship), triple shot (10 s), slow motion (6 s) — only once the game has sped up (~70 s). One every 12–18 s. — agreed
-- **One difficulty that grows with time:** calmer for the first 15 s but with more rocks from the start than the skeleton had; then rocks get faster — 2× by 2.5 min, 2.5× by 5.5 min, slowly more after — and more frequent still (pace to the power 1.25). — v0.9 — agreed
-- **Levels** count base points (before the height and streak multipliers, which reach ×12): a level every 5000. The large saucer from level 3, the small aiming one from level 5. The maintainer asked for saucers earlier: with the bot (v0.9) the first saucer comes at ~0.8 min and a middling bot lasts ~5 min; live games are shorter so far, ~3 min. — agreed 24 Sep
+- **Power-ups** — you have to fly into them: shield (one hit, up to 15 s; shown as a ring of dots around the ship), triple shot (10 s), slow motion (6 s) — only once the game has sped up (~110 s). One every 12–18 s. — agreed
+- **One difficulty that grows with time:** calm but not empty for the first 15 s, then a smooth rise: rocks per second 0.74 at the start → 1.1 at 2 min → 1.35 at 3 min → 1.6 at 5 min (speed ×1.7 by 3 min, ×2.2 by 7 min, frequency = pace to the power 1.125). — v0.13 — agreed
+- **Levels** count base points (before the height and streak multipliers, which reach ×12): a level every 5000. The large saucer from level 2 (~30 s), the small aiming one from level 4 (~1 min); v0.13. The maintainer asked for saucers earlier: with the bot (v0.9) the first saucer comes at ~0.8 min and a middling bot lasts ~5 min; live games are shorter so far, ~3 min. — agreed 24 Sep
 - **3 lives**, shown only at the moment of a hit — tiny ships above the ship. — trying
 - **"Is the probe heard"** is decided by how loud the probe itself is, not by signal-to-noise: a noisy room must not send the player to "turn up the volume". — agreed 24 Sep
 - **Flying saucer**, as in the original: shoots at the ship; you dodge by height. Large — 200 points, small aiming one — 1000. — agreed

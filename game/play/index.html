@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='0.12';
+var VERSION='0.13';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -241,19 +241,20 @@ if(typeof module!=='undefined') module.exports=Tune;
    - the ship fires by itself; rocks split large → 2 medium → 2 small, 20 / 50 / 100 points;
    - points × height: the middle of the screen ×3, then ×2, the edges ×1 (not shown); × streak: +1 for every 5 hits in a row, a hit resets it;
    - power-ups to fly into: shield (one hit), triple shot (10 s), slow motion (6 s);
-   - one difficulty that grows: the first 15 s calm (but with more rocks than the skeleton), then rocks get faster — 2× by 2.5 min,
-     2.5× by 5.5 min, slowly more after — and more frequent still (pace^1.25); slow motion only from pace 1.4 (~70 s);
+   - one difficulty that grows smoothly: the first 15 s calm but not empty, then rocks get faster — 1.7× by 3 min, 2.2× by 7 min,
+     slowly more after — and more frequent still (pace^1.125); slow motion only from pace 1.4 (~110 s);
    - levels count base points (before the multipliers, which can reach ×12): a level every 5000;
-   - saucers: a large one from level 3 (shoots at random, 200 points), a small aiming one from level 5 (1000 points); 3 lives.
+   - saucers: a large one from level 2 (shoots at random, 200 points), a small aiming one from level 4 (1000 points); 3 lives.
    With the bot player (tests/bot.js) that gives: a game of 5–8 min, the first saucer at ~1.1 min, small ones from ~1.9 min. ── */
 var Core=(function(){
   var DT=1/60, FH=180, MARGIN=FH*0.08, SHIP_X=34;
   var FOLLOW=0.30952;                       // 1 − exp(−(1/60)/0.045): the ship follows the palm with a 45 ms lag (literal, see above)
   var R_SIZE=[13.5,8.1,4.3], PTS=[20,50,100], FIRE=0.17, BULLET_V=190, LIVES=3, INV=1.4;
+  var UFO_BIG_LV=2, UFO_SMALL_LV=4;          // saucers: large from level 2, small aiming from level 4 (v0.13: earlier, was 3 and 5)
   var STREAK_MAX=4;                        // the streak adds up to ×4 (after 15 hits in a row)
-  /* tuning, set with a bot player (tests/bot.js): a rock every SPAWN s at pace 1, and pace^1.25 times as often later (more rocks, not just faster ones); pieces fly off at SPLIT_VX × the parent's speed
+  /* tuning, set with a bot player (tests/bot.js): a rock every SPAWN s at pace 1, and pace^1.125 times as often later (more rocks, not just faster ones); pieces fly off at SPLIT_VX × the parent's speed
      and SPLIT_VY up or down; a new level every LEVEL base points (points before the height and streak multipliers) */
-  var TUNE={SPAWN:[1.2,2.0],SPLIT_VX:[0.85,1.15],SPLIT_VY:[8,18],HIT_R:0.8,LEVEL:5000,SLOW_FROM:1.4};
+  var TUNE={SPAWN:[1.0,1.7],SPLIT_VX:[0.85,1.15],SPLIT_VY:[8,18],HIT_R:0.8,LEVEL:5000,SLOW_FROM:1.4};
   var UFO={big:{hw:7,hh:3,pts:200,fire:1.4,v:70},small:{hw:5,hh:2,pts:1000,fire:1.1,v:85}};
   function rng(seed){ var a=seed>>>0; return function(){ a=(a+0x6D2B79F5)>>>0; var t=a; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
   function create(seed,FW){
@@ -262,8 +263,9 @@ var Core=(function(){
       fireT:0.3,spawnT:0.6,pickT:9,ufoT:-1,nextId:1,events:[],gone:[],fx:[]};
   }
   function rnd(g,a,b){ return a+g.rand()*(b-a); }
-  /* how much faster everything is: 1 for the first 15 s, 2 at 2.5 min, 2.5 at 5.5 min, then +0.1 a minute up to 3.2 (v0.9: calm part 30 → 15 s) */
-  function pace(t){ if(t<15) return 1; if(t<150) return 1+(t-15)/135; if(t<330) return 2+0.5*(t-150)/180; return Math.min(3.2,2.5+(t-330)/600); }
+  /* how much faster everything is: 1 for the first 15 s, 1.7 at 3 min, 2.2 at 7 min, then +0.1 a minute up to 3 (v0.13: smoother —
+     "first empty, then crowded"; v0.9: calm part 30 → 15 s) */
+  function pace(t){ if(t<15) return 1; if(t<180) return 1+0.7*(t-15)/165; if(t<420) return 1.7+0.5*(t-180)/240; return Math.min(3,2.2+(t-420)/600); }
   function heightMult(y){ var f=y/FH-0.5; if(f<0) f=-f; return f<0.15?3:f<0.3?2:1; }
   function spawnRock(g,sz,x,y,vx,vy){ g.rocks.push({id:g.nextId++,sz:sz,r:R_SIZE[sz],x:x,y:y,vx:vx,vy:vy}); }
   function spawn(g,m){ var sz=g.rand()<0.55?0:(g.rand()<0.6?1:2), r=R_SIZE[sz];
@@ -289,11 +291,11 @@ var Core=(function(){
     g.fireT-=DT; if(g.fireT<=0){ g.fireT+=FIRE; var bx=s.x+14; g.bullets.push({x:bx,y:s.y,vx:BULLET_V,vy:0});
       if(s.triple>0){ g.bullets.push({x:bx,y:s.y,vx:185,vy:-38}); g.bullets.push({x:bx,y:s.y,vx:185,vy:38}); } g.events.push('fire'); }
     // what comes in
-    g.spawnT-=wdt; if(g.spawnT<=0){ spawn(g,m); g.spawnT=rnd(g,TUNE.SPAWN[0],TUNE.SPAWN[1])/(m*Math.sqrt(Math.sqrt(m))); }   // m^1.25 via sqrt: exact on every engine, unlike pow
+    g.spawnT-=wdt; if(g.spawnT<=0){ spawn(g,m); g.spawnT=rnd(g,TUNE.SPAWN[0],TUNE.SPAWN[1])/(m*Math.sqrt(Math.sqrt(Math.sqrt(m)))); }   // m^1.125 via sqrt: exact on every engine, unlike pow
     g.pickT-=DT; if(g.pickT<=0){ g.pickT=rnd(g,12,18); var k=g.rand(), slowOk=m>=TUNE.SLOW_FROM;                                  // slow motion only once things have sped up
       g.picks.push({type:slowOk?(k<0.34?'shield':k<0.67?'triple':'slow'):(k<0.5?'shield':'triple'),x:g.FW+6,y:rnd(g,FH*0.15,FH*0.85)}); }
-    if(g.level>=3&&g.ufoT<0&&!u) g.ufoT=rnd(g,2,5);
-    if(g.ufoT>0&&!u){ g.ufoT-=wdt; if(g.ufoT<=0){ var kind=(g.level>=5&&g.rand()<0.5)?'small':'big';
+    if(g.level>=UFO_BIG_LV&&g.ufoT<0&&!u) g.ufoT=rnd(g,2,5);
+    if(g.ufoT>0&&!u){ g.ufoT-=wdt; if(g.ufoT<=0){ var kind=(g.level>=UFO_SMALL_LV&&g.rand()<0.5)?'small':'big';
       u=g.ufo={id:g.nextId++,kind:kind,x:g.FW+10,y:rnd(g,FH*0.2,FH*0.8),ty:FH/2,tyT:0,fire:1.2}; g.events.push('ufo'); } }
     // movement
     for(i=0;i<g.bullets.length;i++){ b=g.bullets[i]; b.x+=b.vx*DT; b.y+=b.vy*DT; }
@@ -326,7 +328,7 @@ var Core=(function(){
   }
   /* a whole game from a palm trajectory (one value per step, −1 = no palm): what the server will run */
   function replay(seed,FW,hands){ var g=create(seed,FW); for(var i=0;i<hands.length&&g.state==='play';i++) step(g,hands[i]<0?null:hands[i]); return g; }
-  return {TUNE:TUNE,SHIP_X:SHIP_X,create:create,step:step,replay:replay,pace:pace,heightMult:heightMult,DT:DT,FH:FH,MARGIN:MARGIN,UFO:UFO,R_SIZE:R_SIZE};
+  return {TUNE:TUNE,SHIP_X:SHIP_X,UFO_BIG_LV:UFO_BIG_LV,UFO_SMALL_LV:UFO_SMALL_LV,create:create,step:step,replay:replay,pace:pace,heightMult:heightMult,DT:DT,FH:FH,MARGIN:MARGIN,UFO:UFO,R_SIZE:R_SIZE};
 })();
 if(typeof module!=='undefined') module.exports=Core;
 /* ── SONAR: speaker probe, microphone, echo processing. Moved over from the lab (04_audio_engine, 06_side_pick, 07_calibration)
@@ -770,7 +772,7 @@ var UFO_SMALL=[
  '.1122222211.',
  '123333333321',
  '.11111111111'];
-var ICON={shield:['.1111.','1....1','1.11.1','1.11.1','1....1','.1111.'], triple:['1.....','11..1.','111.11','111.11','11..1.','1.....'], slow:['111111','.1..1.','..11..','..11..','.1..1.','111111']};
+var ICON={shield:['.1111.','1....1','1.11.1','1.11.1','1....1','.1111.'], triple:['.....11','...11..','.11....','1111111','.11....','...11..','.....11'],   /* three diverging shots (v0.13) */ slow:['111111','.1..1.','..11..','..11..','.1..1.','111111']};
 var MINI=['11...','12221','11...'];                                  // a life: a tiny ship
 function blit(map,cols,x,y){ for(var r=0;r<map.length;r++) for(var c=0;c<map[r].length;c++){ var ch=map[r][c]; if(ch==='.') continue;
   lx.fillStyle=cols[+ch-1]; lx.fillRect(Math.round(x+c),Math.round(y+r),1,1); } }

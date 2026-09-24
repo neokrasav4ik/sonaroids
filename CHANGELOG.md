@@ -5,6 +5,7 @@ Bump it with every upload.
 
 | version | date | what changed |
 |---|---|---|
+| 0.13 | 24 Sep 2026 | Smoother difficulty ("first empty, then crowded"): about 20% more rocks at the start, then slower growth — rocks per second 0.74 → 1.1 at 2 min → 1.35 at 3 min → 1.6 at 5 min (was 0.62 → 1.5 at 2.5 min → 2 at 5.5 min). Slow motion power-up from ~110 s. Saucers earlier: the large one from level 2 (~30 s), the small aiming one from level 4 (~1 min). The triple-shot power-up shows three diverging shots. |
 | 0.12 | 24 Sep 2026 | Less work for the phone (it warmed up): the game is drawn on a small canvas and scaled by the browser, soft light on a half-resolution layer from ready-made sprites, the first-launch table drawn once, at most 60 frames a second in flight and 30 elsewhere. Buttons act when the finger lifts ("logs" needed two taps). Pause menu: "exit to menu". |
 | 0.11 | 24 Sep 2026 | Sonar: the fast part is pulled back to the absolute one faster the further it has drifted (fast wide waving made the ship stick to an edge); the same change in the lab. The menu button moved further into the top corner. |
 | 0.10 | 24 Sep 2026 | Getting ready is calmer: 2 s before listening to the empty room, "the room is quiet" stays 1.5 s, 2.5 s before catching the range, and waving must go on at least 5 s before the range counts (the ring fills over those 5 s). The service worker skips the browser cache, so a new upload reaches the phone on the next launch. |

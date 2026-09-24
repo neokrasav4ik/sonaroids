@@ -4,7 +4,7 @@ A tiny retro space game for phones that you steer with one hand — **without to
 
 The phone lies flat on the table. It plays an inaudible ultrasonic tone (18–20 kHz) through its own speaker and listens to the echo with its own microphone. The height of your palm next to the phone, 5–15 cm above the table, becomes the height of your ship. The ship fires on its own; you only choose where to be.
 
-**Status:** the sonar control works (see `lab/`); the game itself is being built. Style and onboarding are agreed — see `docs/design.md` and the prototype at `game/proto/`.
+**Status:** early version at [sonaroids.app/play](https://sonaroids.app/play/): the whole path from the first launch to a game works, with test rocks; the real rules come next. The sonar control comes from `lab/`. Design: `docs/design.md`.
 
 - Web app: [sonaroids.app](https://sonaroids.app) — iPhone (add to Home Screen) and Android (Chrome). An Android APK wrapper will follow.
 - Target size: the whole game under 100 KB. Graphics, sound and font are generated in code.
@@ -12,13 +12,31 @@ The phone lies flat on the table. It plays an inaudible ultrasonic tone (18–20
 
 ## Repository
 
-| folder | what's inside |
+| path | what's inside |
 |---|---|
-| `game/` | the game (static site, published to sonaroids.app). For now: a landing page and the style prototype. |
-| `lab/` | the sonar lab: the working test app `lab/app/sonar_lab3.html`, its sources and offline test benches. Notes in Russian. |
+| `src/` | the game's source, in numbered parts. `build.py` joins them into one file, `game/play/index.html`. |
+| `game/` | the published site (sonaroids.app): landing page, `play/` — the game (built file, icons, manifest, service worker), `proto/` — the style prototype, `font.js`. |
 | `font/` | the game's own 5×7 pixel font (Latin and Cyrillic): `font5x7.txt` is the drawing, `make_font.py` packs it into `game/font.js`. |
+| `tests/` | the game's checks, `sh tests/run.sh`. |
+| `lab/` | the sonar lab: the working test app `lab/app/sonar_lab3.html`, its sources and offline test benches. Notes in Russian. |
 | `docs/` | design document (`design.md`; Russian original in `docs/ru/`). |
 | `server/` | *(later)* leaderboard server. |
+
+### The game's code (`src/`)
+
+| part | what it does |
+|---|---|
+| `00_head.html`, `99_end.html` | the page around the script |
+| `10_worklet.js`, `11_dsp.js` | microphone frames and the echo processing (DSP2) — moved over from the lab unchanged |
+| `12_tune.js` | wave tuning: fits the screen to the player's palm range (pure, tested in Node) |
+| `13_core.js` | the flight itself, deterministic: fixed 60 Hz steps, seeded RNG, no transcendental functions — so the server can replay a game |
+| `20_sonar.js` | speakers and microphone: probes, side check, auto level, getting ready; `Sonar.simulate()` feeds synthetic frames in tests |
+| `21_log.js` | setup and game logs (WAV + JSON), readable by the lab's tools |
+| `22_sfx.js` | event sounds, all below 6 kHz |
+| `30_lang_en.js`, `31_lang_ru.js` | UI strings |
+| `40_gfx.js`, `41_sprites.js`, `42_guide.js`, `49_main.js` | drawing, first-launch pictures, screens and the game loop |
+
+Edit the parts, then `python3 build.py` (and `python3 font/make_font.py` after changing the font). CI refuses a build that doesn't match its sources.
 
 ## How the sonar works, in short
 
@@ -31,10 +49,11 @@ Details, measurements and what didn't work: `lab/HANDOVER.md` (Russian).
 ## Running the checks
 
 ```
-cd lab
-python3 build.py --check     # the lab app matches its sources
-sh tools/run_all.sh          # offline test benches (Node 18+, Python 3)
+sh tests/run.sh              # the game: build matches src/, font, core determinism, tuning, strings, screens, the whole flow
+cd lab && sh tools/run_all.sh   # the sonar lab
 ```
+
+Node 18+ and Python 3. The screen and flow checks run the game in headless Chromium with a synthetic microphone and need Playwright; without it they are skipped (as on GitHub Actions).
 
 ## License
 

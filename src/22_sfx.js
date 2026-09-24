@@ -1,0 +1,38 @@
+/* ── SOUNDS: event sounds only, synthesised in the spirit of old consoles. Everything goes through three low-pass filters
+   at 6 kHz, so no harmonic can reach the probe band (18–20 kHz). No music. ── */
+var Sfx=(function(){
+  var ctx=null, bus=null, noise=null, on=true;
+  try{ on=localStorage.getItem('sonaroids_sfx')!=='0'; }catch(e){}
+  function setup(){
+    ctx=Sonar.ctx(); if(!ctx||bus) return;
+    bus=ctx.createGain(); bus.gain.value=1.1;
+    var comp=ctx.createDynamicsCompressor(); comp.threshold.value=-20; comp.knee.value=6; comp.ratio.value=6; comp.attack.value=0.002; comp.release.value=0.12;
+    var lim=ctx.createDynamicsCompressor(); lim.threshold.value=-3; lim.knee.value=0; lim.ratio.value=20; lim.attack.value=0.001; lim.release.value=0.06;
+    var f=[ctx.createBiquadFilter(),ctx.createBiquadFilter(),ctx.createBiquadFilter()];
+    f.forEach(function(q){ q.type='lowpass'; q.frequency.value=6000; q.Q.value=0.7; });
+    bus.connect(comp); comp.connect(lim); lim.connect(f[0]); f[0].connect(f[1]); f[1].connect(f[2]); f[2].connect(ctx.destination);
+    var len=Math.floor(ctx.sampleRate*0.8); noise=ctx.createBuffer(1,len,ctx.sampleRate);
+    var d=noise.getChannelData(0); for(var i=0;i<len;i++) d[i]=Math.random()*2-1;
+  }
+  function play(kind){
+    if(!on) return; setup(); if(!bus) return;
+    var t=ctx.currentTime;
+    function tone(f1,f2,dur,type,vol,at){ var o=ctx.createOscillator(), g=ctx.createGain(), s=t+(at||0); o.type=type||'square';
+      o.frequency.setValueAtTime(f1,s); if(f2) o.frequency.exponentialRampToValueAtTime(f2,s+dur);
+      g.gain.setValueAtTime(0,s); g.gain.linearRampToValueAtTime(vol,s+0.004); g.gain.setValueAtTime(vol,s+dur*0.6); g.gain.exponentialRampToValueAtTime(0.0001,s+dur);
+      o.connect(g); g.connect(bus); o.start(s); o.stop(s+dur+0.02); }
+    function crash(dur,freq,vol,at){ var src=ctx.createBufferSource(), bp=ctx.createBiquadFilter(), g=ctx.createGain(), s=t+(at||0);
+      src.buffer=noise; bp.type='bandpass'; bp.frequency.value=freq; bp.Q.value=0.8;
+      g.gain.setValueAtTime(vol,s); g.gain.exponentialRampToValueAtTime(0.0001,s+dur);
+      src.connect(bp); bp.connect(g); g.connect(bus); src.start(s); src.stop(s+dur+0.02); }
+    if(kind==='fire') tone(1400,700,0.05,'square',0.07);
+    else if(kind==='break'){ crash(0.22,900,0.55); tone(320,90,0.18,'triangle',0.35); }
+    else if(kind==='hit'){ crash(0.4,1800,0.9); tone(900,160,0.32,'square',0.5); }
+    else if(kind==='over'){ tone(880,110,0.9,'square',0.5); crash(0.7,1200,0.6); }
+    else if(kind==='start'){ tone(880,null,0.09,'square',0.45); tone(1320,null,0.14,'square',0.45,0.1); }
+    else if(kind==='tick'){ tone(1200,null,0.07,'square',0.3); }
+    else if(kind==='ok'){ [1047,1319,1568].forEach(function(f,i){ tone(f,null,0.08,'square',0.35,i*0.08); }); }
+    else if(kind==='tap'){ tone(1000,700,0.06,'square',0.25); }
+  }
+  return {play:play,on:function(){ return on; },toggle:function(){ on=!on; try{ localStorage.setItem('sonaroids_sfx',on?'1':'0'); }catch(e){} return on; }};
+})();

@@ -86,7 +86,7 @@ Prototype: `game/proto/` — the ship follows your finger.
 
 1. ~~Choose style, ×3 display, pixel size and onboarding look~~ — "Dusk", ×3 hidden, medium pixels, "volume" onboarding.
 2. ~~Repository foundation: docs, lab, landing page, publishing to sonaroids.app~~ — live since 24 Sep; our own 5×7 pixel font is done.
-3. Game skeleton: first-launch screens, mechanics from the lab, rendering, sound, own font.
+3. Game skeleton: first-launch screens, mechanics from the lab, rendering, sound, own font — built 24 Sep (`src/`, sonaroids.app/play), to be checked on phones.
 4. Game rules: rocks, splitting, points, streak, power-ups, saucer, levels.
 5. Leaderboards: server, game verification, tables, daily challenge.
 6. Android: mechanics check on different phones, then the APK.

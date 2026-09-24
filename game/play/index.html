@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='0.13';
+var VERSION='0.14';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -340,7 +340,7 @@ var Sonar=(function(){
   var N=512, F_LO=18300, F_HI=20500, fs=0, kLo, kHi, kc;
   var ctx=null, stream=null, node=null, an=null, gSL, gSR, gL, gR, booted=false;
   var PROBE_G=0.25, PROBE_SNR=null, chan='right', active=false, lastSeq=-1, gaps=0, collector=null, last=null, lost=false;
-  var listeners=[], lastFrameAt=0, simIv=null, simStalled=false;
+  var listeners=[], peak=0, lastFrameAt=0, simIv=null, simStalled=false;
   var PHYS_CAL={k:1.17,o:100-1.17*110,s:0.9};   // mm of palm height per mm of echo range, and per unit of the fast (phase) part — from the lab
   function sleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
   function makeProbe(parity){
@@ -391,6 +391,7 @@ var Sonar=(function(){
   /* every microphone frame goes through here: echo processing, then logs */
   function onFrame(e){
     var m=e.data, gap=(lastSeq>=0&&m.s!==lastSeq+1); lastSeq=m.s; if(gap) gaps++; lastFrameAt=performance.now();
+    var pk=0; for(var j=0;j<m.f.length;j++){ var av=m.f[j]<0?-m.f[j]:m.f[j]; if(av>pk) pk=av; } peak=Math.max(pk,peak*0.99);   // loudness of the microphone, ~1 s memory
     if(collector){ collector.arr.push(m.f); if(collector.arr.length>=collector.n){ var c=collector; collector=null; c.done(c.arr); } }
     var r=null; if(active){ r=DSP2.frame(m.f); if(r) last=r; if(DSP2.info().lost) lost=true; }
     for(var i=0;i<listeners.length;i++) listeners[i](m.f,r,gap);
@@ -480,6 +481,9 @@ var Sonar=(function(){
     listen:function(f){ listeners.push(f); },
     state:function(){ return last; }, lost:function(){ return lost; }, clearLost:function(){ lost=false; },
     shift:function(d){ DSP2.shift(d); },
+    peak:function(){ return peak; },
+    /* what the browser really gave for the microphone: on Android the echo/noise/gain processing may stay on despite our request */
+    micSettings:function(){ try{ var t=stream&&stream.getAudioTracks()[0]; if(!t) return null; var s=t.getSettings(), o={}; ['autoGainControl','echoCancellation','noiseSuppression','sampleRate','channelCount','latency','deviceId'].forEach(function(k){ if(s[k]!==undefined) o[k]=k==='deviceId'?String(s[k]).slice(0,8):s[k]; }); o.label=t.label; return o; }catch(e){ return null; } },
     info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,probe_level:PROBE_LVL,f_lo:F_LO,cal:PHYS_CAL,gaps:gaps,booted:booted}; },
     chan:function(){ return chan; }, ctx:function(){ return ctx; }};
 })();
@@ -489,17 +493,19 @@ var Sonar=(function(){
    with what the processing saw (dsp), what the game did (render: one row per core step) and events. ── */
 var Logs=(function(){
   /* event names stay Russian: the lab's analysis tools look for them ('подстройка', 'рука есть', ...) */
-  var N=512, SCALE=4, SLOG_SEC=120, GLOG_SEC=150, S=null, G=null;
-  function pcmPut(L,fr,at){ for(var i=0;i<N;i++){ var v=Math.round(fr[i]*32767*SCALE); if(v>32767){ v=32767; L.clip++; } else if(v<-32768){ v=-32768; L.clip++; } L.pcm[(at+i)%L.pcm.length]=v; } }
+  /* 16-bit samples, full scale = 1/scale of the input: 4 for a quiet microphone (iPhone), 1 for a loud one (OnePlus 15: the log clipped, v0.14) */
+  var N=512, SLOG_SEC=120, GLOG_SEC=150, S=null, G=null;
+  function pickScale(){ return Sonar.peak()<0.015?4:1; }
+  function pcmPut(L,fr,at){ var SC=L.scale; for(var i=0;i<N;i++){ var v=Math.round(fr[i]*32767*SC); if(v>32767){ v=32767; L.clip++; } else if(v<-32768){ v=-32768; L.clip++; } L.pcm[(at+i)%L.pcm.length]=v; } }
   function dspRow(f,r,full){ var a=[f,r.present?1:0,+r.height.toFixed(1),+r.abs.toFixed(1),+r.range.toFixed(1),+r.fast.toFixed(1),+r.E.toFixed(1),+r.resE.toFixed(1)];
     if(full) a.push(r.floor===null||r.floor===undefined?null:+r.floor.toFixed(1),+(r.Em||0).toFixed(1)); return a; }
   function setupStart(meta){ var I=Sonar.info(), cap=SLOG_SEC*I.fs;
     if(!S||S.pcm.length!==cap) S={pcm:new Int16Array(cap)};
-    S.on=true; S.f=0; S.clip=0; S.gaps=0; S.dsp=[]; S.ev=[]; S.pres=null; S.meta0=meta; ev('старт: подготовка'); }
+    S.on=true; S.scale=pickScale(); S.f=0; S.clip=0; S.gaps=0; S.dsp=[]; S.ev=[]; S.pres=null; S.meta0=meta; ev('старт: подготовка'); }
   function ev(k,x){ if(!S||!S.on) return; S.ev.push(x===undefined?[S.f,k]:[S.f,k,x]); }
   function gameStart(meta){ var I=Sonar.info(), cap=GLOG_SEC*I.fs;
     if(!G||G.pcm.length!==cap) G={pcm:new Int16Array(cap)};
-    G.on=true; G.f=0; G.clip=0; G.gaps=0; G.dsp=[]; G.ren=[]; G.ev=[]; G.meta0=meta; }
+    G.on=true; G.scale=S?(S.clip>0?1:S.scale):pickScale(); G.f=0; G.clip=0; G.gaps=0; G.dsp=[]; G.ren=[]; G.ev=[]; G.meta0=meta; }
   function gameStop(){ if(G) G.on=false; }
   /* microphone frame (from Sonar.listen) */
   function frame(fr,r,gap){
@@ -528,16 +534,16 @@ var Logs=(function(){
     s4('data'); u32(dataLen); for(i=0;i<n;i++){ v.setInt16(p,pcm[i],true); p+=2; }
     return new Blob([buf],{type:'audio/wav'});
   }
-  function base(kind){ var I=Sonar.info();
+  function base(kind,L){ var I=Sonar.info();
     return {kind:kind,fs:I.fs,N:N,kLo:I.kLo,kHi:I.kHi,probe:{bins:'all',channel:I.chan,phase:'pi*q^2/M',peak:0.9,gain:I.probe_gain,snr_db:I.probe_snr,level_db:I.probe_level,f_lo:I.f_lo,loop:true},
-      pcm:{bits:16,full_scale:1/SCALE},app:'sonaroids',version:typeof VERSION!=='undefined'?VERSION:null,ended:new Date().toISOString(),ua:navigator.userAgent}; }
-  function setupBlob(){ if(!S||!S.f) return null; var inf=DSP2.info(), m=base('setup-log');
+      pcm:{bits:16,full_scale:1/L.scale},mic:Sonar.micSettings(),mic_peak:+Sonar.peak().toFixed(4),app:'sonaroids',version:typeof VERSION!=='undefined'?VERSION:null,ended:new Date().toISOString(),ua:navigator.userAgent}; }
+  function setupBlob(){ if(!S||!S.f) return null; var inf=DSP2.info(), m=base('setup-log',S);
     m.v=1; m.first_frame=0; m.frames=S.f; m.clipped=S.clip; m.gaps=S.gaps; m.setup=S.meta0; m.cal_now=inf.cal; m.dsp_info={d0:inf.d0,prom:inf.prom,mm:inf.mm};
     m.columns={dsp:['frame','present','height_mm','abs_mm','range_mm','fast_mm','motion_db','echo_db','empty_floor_db','motion_smooth_db'],events:['frame','event','data']};
     return wav(S.pcm.slice(0,S.f*N),m,{dsp:S.dsp,render:[],events:S.ev}); }
   function gameBlob(){ if(!G||!G.f) return null; var cap=G.pcm.length, total=G.f*N, n=Math.min(total,cap), start=total-n, i;
     var pcm=new Int16Array(n); for(i=0;i<n;i++) pcm[i]=G.pcm[(start+i)%cap];
-    var f0=Math.floor(start/N), m=base('game-log');
+    var f0=Math.floor(start/N), m=base('game-log',G);
     m.v=6; m.first_frame=f0; m.frames=G.f-f0; m.clipped=G.clip; m.gaps=G.gaps; m.game=G.meta0;
     m.columns={dsp:['frame','present','height_mm','abs_mm','range_mm','fast_mm','motion_db','echo_db'],
       render:['frame','core_step','hand_0_1_or_-1','ship_y_over_FH','lives','score'],events:['frame','event','data']};
@@ -558,11 +564,11 @@ var Logs=(function(){
 /* ── SOUNDS: event sounds only, synthesised in the spirit of old consoles. Everything goes through three low-pass filters
    at 6 kHz, so no harmonic can reach the probe band (18–20 kHz). No music. ── */
 var Sfx=(function(){
-  var ctx=null, bus=null, noise=null, on=true;
+  var ctx=null, bus=null, noise=null, on=true, vol=1;
   try{ on=localStorage.getItem('sonaroids_sfx')!=='0'; }catch(e){}
   function setup(){
     var c=Sonar.ctx(); if(c!==ctx){ ctx=c; bus=null; } if(!ctx||bus) return;              // a new audio context after the microphone was re-opened: rebuild
-    bus=ctx.createGain(); bus.gain.value=1.1;
+    bus=ctx.createGain(); bus.gain.value=1.1*vol;
     var comp=ctx.createDynamicsCompressor(); comp.threshold.value=-20; comp.knee.value=6; comp.ratio.value=6; comp.attack.value=0.002; comp.release.value=0.12;
     var lim=ctx.createDynamicsCompressor(); lim.threshold.value=-3; lim.knee.value=0; lim.ratio.value=20; lim.attack.value=0.001; lim.release.value=0.06;
     var f=[ctx.createBiquadFilter(),ctx.createBiquadFilter(),ctx.createBiquadFilter()];
@@ -597,7 +603,10 @@ var Sfx=(function(){
     else if(kind==='ufo_fire'){ tone(900,300,0.1,'sawtooth',0.18); }
     else if(kind==='ufo_die'){ crash(0.6,700,0.9); tone(600,80,0.5,'square',0.45); }
   }
-  return {play:play,on:function(){ return on; },toggle:function(){ on=!on; try{ localStorage.setItem('sonaroids_sfx',on?'1':'0'); }catch(e){} return on; }};
+  /* the game's own sounds must not flood the microphone: on the OnePlus 15 (24 Sep) they reached it ~50 dB louder than on iPhone,
+     far above the probe, and the ship drifted. When the microphone gets near its limit, the sounds are turned down step by step */
+  function duck(){ if(vol<=0.05) return false; vol=Math.max(0.05,vol*0.7); if(bus) bus.gain.setTargetAtTime(1.1*vol,ctx.currentTime,0.05); return true; }
+  return {duck:duck,level:function(){ return vol; },play:play,on:function(){ return on; },toggle:function(){ on=!on; try{ localStorage.setItem('sonaroids_sfx',on?'1':'0'); }catch(e){} return on; }};
 })();
 /* ── UI strings, English. All caps: the game's pixel font is drawn in capitals on screen. ── */
 var STR={};
@@ -910,7 +919,7 @@ var PAUSE=2, WAVE_PAUSE=2.5, STEPS=['lang','sound','phone','mic','away','wave'];
 var scr=null, scrT=0, clock=0, onboarding=false, direct=false, booted=false, errKind=null;
 var handSaved=store.get('sonaroids_hand',''), acoustic=false;
 var prep=null, T=null, caught=false, g=null, acc=0, countT=0, overT=0, shake=0, flash=0, rockSpr={}, best=+store.get('sonaroids_best','0')||0;
-var lastHand=null, shipY=null, sayLast='', pausedFrom=null, livesT=0;
+var lastHand=null, shipY=null, sayLast='', pausedFrom=null, livesT=0, duckT=0;
 function go(s){ scr=s; scrT=0; BTN=[]; }
 
 /* which side the charging port (and so the playing hand) is on: the phone's rotation until the sonar has checked it by sound */
@@ -1014,6 +1023,7 @@ function sPlay(){
   while(acc>=Core.DT&&n<5){ acc-=Core.DT; n++; var h=handFrac(); Core.step(g,h); Logs.step(g,h); react(); if(g.state!=='play') break; }
   if(n===5) acc=0;
   shake=Math.max(0,shake-DT); flash=Math.max(0,flash-DT); livesT=Math.max(0,livesT-DT);
+  duckT-=DT; if(duckT<=0&&Sonar.peak()>0.3){ duckT=0.5; if(Sfx.duck()) Logs.gameEv('sounds down',+Sfx.level().toFixed(2)); }   // own sounds too loud in the microphone
   field(DT,g.slow>0?0.5:1);
   text(String(g.score).padStart(6,'0'),LW/2,topY(),P.text,'center');                // at the top only the score (agreed 24 Sep)
   // the menu button: in the top corner on the free hand's side

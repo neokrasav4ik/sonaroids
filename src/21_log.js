@@ -4,17 +4,19 @@
    with what the processing saw (dsp), what the game did (render: one row per core step) and events. ── */
 var Logs=(function(){
   /* event names stay Russian: the lab's analysis tools look for them ('подстройка', 'рука есть', ...) */
-  var N=512, SCALE=4, SLOG_SEC=120, GLOG_SEC=150, S=null, G=null;
-  function pcmPut(L,fr,at){ for(var i=0;i<N;i++){ var v=Math.round(fr[i]*32767*SCALE); if(v>32767){ v=32767; L.clip++; } else if(v<-32768){ v=-32768; L.clip++; } L.pcm[(at+i)%L.pcm.length]=v; } }
+  /* 16-bit samples, full scale = 1/scale of the input: 4 for a quiet microphone (iPhone), 1 for a loud one (OnePlus 15: the log clipped, v0.14) */
+  var N=512, SLOG_SEC=120, GLOG_SEC=150, S=null, G=null;
+  function pickScale(){ return Sonar.peak()<0.015?4:1; }
+  function pcmPut(L,fr,at){ var SC=L.scale; for(var i=0;i<N;i++){ var v=Math.round(fr[i]*32767*SC); if(v>32767){ v=32767; L.clip++; } else if(v<-32768){ v=-32768; L.clip++; } L.pcm[(at+i)%L.pcm.length]=v; } }
   function dspRow(f,r,full){ var a=[f,r.present?1:0,+r.height.toFixed(1),+r.abs.toFixed(1),+r.range.toFixed(1),+r.fast.toFixed(1),+r.E.toFixed(1),+r.resE.toFixed(1)];
     if(full) a.push(r.floor===null||r.floor===undefined?null:+r.floor.toFixed(1),+(r.Em||0).toFixed(1)); return a; }
   function setupStart(meta){ var I=Sonar.info(), cap=SLOG_SEC*I.fs;
     if(!S||S.pcm.length!==cap) S={pcm:new Int16Array(cap)};
-    S.on=true; S.f=0; S.clip=0; S.gaps=0; S.dsp=[]; S.ev=[]; S.pres=null; S.meta0=meta; ev('старт: подготовка'); }
+    S.on=true; S.scale=pickScale(); S.f=0; S.clip=0; S.gaps=0; S.dsp=[]; S.ev=[]; S.pres=null; S.meta0=meta; ev('старт: подготовка'); }
   function ev(k,x){ if(!S||!S.on) return; S.ev.push(x===undefined?[S.f,k]:[S.f,k,x]); }
   function gameStart(meta){ var I=Sonar.info(), cap=GLOG_SEC*I.fs;
     if(!G||G.pcm.length!==cap) G={pcm:new Int16Array(cap)};
-    G.on=true; G.f=0; G.clip=0; G.gaps=0; G.dsp=[]; G.ren=[]; G.ev=[]; G.meta0=meta; }
+    G.on=true; G.scale=S?(S.clip>0?1:S.scale):pickScale(); G.f=0; G.clip=0; G.gaps=0; G.dsp=[]; G.ren=[]; G.ev=[]; G.meta0=meta; }
   function gameStop(){ if(G) G.on=false; }
   /* microphone frame (from Sonar.listen) */
   function frame(fr,r,gap){
@@ -43,16 +45,16 @@ var Logs=(function(){
     s4('data'); u32(dataLen); for(i=0;i<n;i++){ v.setInt16(p,pcm[i],true); p+=2; }
     return new Blob([buf],{type:'audio/wav'});
   }
-  function base(kind){ var I=Sonar.info();
+  function base(kind,L){ var I=Sonar.info();
     return {kind:kind,fs:I.fs,N:N,kLo:I.kLo,kHi:I.kHi,probe:{bins:'all',channel:I.chan,phase:'pi*q^2/M',peak:0.9,gain:I.probe_gain,snr_db:I.probe_snr,level_db:I.probe_level,f_lo:I.f_lo,loop:true},
-      pcm:{bits:16,full_scale:1/SCALE},app:'sonaroids',version:typeof VERSION!=='undefined'?VERSION:null,ended:new Date().toISOString(),ua:navigator.userAgent}; }
-  function setupBlob(){ if(!S||!S.f) return null; var inf=DSP2.info(), m=base('setup-log');
+      pcm:{bits:16,full_scale:1/L.scale},mic:Sonar.micSettings(),mic_peak:+Sonar.peak().toFixed(4),app:'sonaroids',version:typeof VERSION!=='undefined'?VERSION:null,ended:new Date().toISOString(),ua:navigator.userAgent}; }
+  function setupBlob(){ if(!S||!S.f) return null; var inf=DSP2.info(), m=base('setup-log',S);
     m.v=1; m.first_frame=0; m.frames=S.f; m.clipped=S.clip; m.gaps=S.gaps; m.setup=S.meta0; m.cal_now=inf.cal; m.dsp_info={d0:inf.d0,prom:inf.prom,mm:inf.mm};
     m.columns={dsp:['frame','present','height_mm','abs_mm','range_mm','fast_mm','motion_db','echo_db','empty_floor_db','motion_smooth_db'],events:['frame','event','data']};
     return wav(S.pcm.slice(0,S.f*N),m,{dsp:S.dsp,render:[],events:S.ev}); }
   function gameBlob(){ if(!G||!G.f) return null; var cap=G.pcm.length, total=G.f*N, n=Math.min(total,cap), start=total-n, i;
     var pcm=new Int16Array(n); for(i=0;i<n;i++) pcm[i]=G.pcm[(start+i)%cap];
-    var f0=Math.floor(start/N), m=base('game-log');
+    var f0=Math.floor(start/N), m=base('game-log',G);
     m.v=6; m.first_frame=f0; m.frames=G.f-f0; m.clipped=G.clip; m.gaps=G.gaps; m.game=G.meta0;
     m.columns={dsp:['frame','present','height_mm','abs_mm','range_mm','fast_mm','motion_db','echo_db'],
       render:['frame','core_step','hand_0_1_or_-1','ship_y_over_FH','lives','score'],events:['frame','event','data']};

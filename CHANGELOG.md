@@ -5,6 +5,7 @@ Bump it with every upload.
 
 | version | date | what changed |
 |---|---|---|
+| 0.14 | 24 Sep 2026 | Android (OnePlus 15, Chrome): the game's own sounds reached the microphone ~50 dB louder than on iPhone — now they are turned down automatically when the microphone nears its limit. Logs no longer clip on loud microphones (full scale chosen per device) and record what the browser really did with the microphone (gain/echo/noise processing). |
 | 0.13 | 24 Sep 2026 | Smoother difficulty ("first empty, then crowded"): about 20% more rocks at the start, then slower growth — rocks per second 0.74 → 1.1 at 2 min → 1.35 at 3 min → 1.6 at 5 min (was 0.62 → 1.5 at 2.5 min → 2 at 5.5 min). Slow motion power-up from ~110 s. Saucers earlier: the large one from level 2 (~30 s), the small aiming one from level 4 (~1 min). The triple-shot power-up shows three diverging shots. |
 | 0.12 | 24 Sep 2026 | Less work for the phone (it warmed up): the game is drawn on a small canvas and scaled by the browser, soft light on a half-resolution layer from ready-made sprites, the first-launch table drawn once, at most 60 frames a second in flight and 30 elsewhere. Buttons act when the finger lifts ("logs" needed two taps). Pause menu: "exit to menu". |
 | 0.11 | 24 Sep 2026 | Sonar: the fast part is pulled back to the absolute one faster the further it has drifted (fast wide waving made the ship stick to an edge); the same change in the lab. The menu button moved further into the top corner. |

@@ -7,7 +7,7 @@ var Sonar=(function(){
   var N=512, F_LO=18300, F_HI=20500, fs=0, kLo, kHi, kc;
   var ctx=null, stream=null, node=null, an=null, gSL, gSR, gL, gR, booted=false;
   var PROBE_G=0.25, PROBE_SNR=null, chan='right', active=false, lastSeq=-1, gaps=0, collector=null, last=null, lost=false;
-  var listeners=[], lastFrameAt=0, simIv=null, simStalled=false;
+  var listeners=[], peak=0, lastFrameAt=0, simIv=null, simStalled=false;
   var PHYS_CAL={k:1.17,o:100-1.17*110,s:0.9};   // mm of palm height per mm of echo range, and per unit of the fast (phase) part — from the lab
   function sleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
   function makeProbe(parity){
@@ -58,6 +58,7 @@ var Sonar=(function(){
   /* every microphone frame goes through here: echo processing, then logs */
   function onFrame(e){
     var m=e.data, gap=(lastSeq>=0&&m.s!==lastSeq+1); lastSeq=m.s; if(gap) gaps++; lastFrameAt=performance.now();
+    var pk=0; for(var j=0;j<m.f.length;j++){ var av=m.f[j]<0?-m.f[j]:m.f[j]; if(av>pk) pk=av; } peak=Math.max(pk,peak*0.99);   // loudness of the microphone, ~1 s memory
     if(collector){ collector.arr.push(m.f); if(collector.arr.length>=collector.n){ var c=collector; collector=null; c.done(c.arr); } }
     var r=null; if(active){ r=DSP2.frame(m.f); if(r) last=r; if(DSP2.info().lost) lost=true; }
     for(var i=0;i<listeners.length;i++) listeners[i](m.f,r,gap);
@@ -147,6 +148,9 @@ var Sonar=(function(){
     listen:function(f){ listeners.push(f); },
     state:function(){ return last; }, lost:function(){ return lost; }, clearLost:function(){ lost=false; },
     shift:function(d){ DSP2.shift(d); },
+    peak:function(){ return peak; },
+    /* what the browser really gave for the microphone: on Android the echo/noise/gain processing may stay on despite our request */
+    micSettings:function(){ try{ var t=stream&&stream.getAudioTracks()[0]; if(!t) return null; var s=t.getSettings(), o={}; ['autoGainControl','echoCancellation','noiseSuppression','sampleRate','channelCount','latency','deviceId'].forEach(function(k){ if(s[k]!==undefined) o[k]=k==='deviceId'?String(s[k]).slice(0,8):s[k]; }); o.label=t.label; return o; }catch(e){ return null; } },
     info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,probe_level:PROBE_LVL,f_lo:F_LO,cal:PHYS_CAL,gaps:gaps,booted:booted}; },
     chan:function(){ return chan; }, ctx:function(){ return ctx; }};
 })();

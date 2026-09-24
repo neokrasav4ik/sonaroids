@@ -1,11 +1,11 @@
 /* ── SOUNDS: event sounds only, synthesised in the spirit of old consoles. Everything goes through three low-pass filters
    at 6 kHz, so no harmonic can reach the probe band (18–20 kHz). No music. ── */
 var Sfx=(function(){
-  var ctx=null, bus=null, noise=null, on=true;
+  var ctx=null, bus=null, noise=null, on=true, vol=1;
   try{ on=localStorage.getItem('sonaroids_sfx')!=='0'; }catch(e){}
   function setup(){
     var c=Sonar.ctx(); if(c!==ctx){ ctx=c; bus=null; } if(!ctx||bus) return;              // a new audio context after the microphone was re-opened: rebuild
-    bus=ctx.createGain(); bus.gain.value=1.1;
+    bus=ctx.createGain(); bus.gain.value=1.1*vol;
     var comp=ctx.createDynamicsCompressor(); comp.threshold.value=-20; comp.knee.value=6; comp.ratio.value=6; comp.attack.value=0.002; comp.release.value=0.12;
     var lim=ctx.createDynamicsCompressor(); lim.threshold.value=-3; lim.knee.value=0; lim.ratio.value=20; lim.attack.value=0.001; lim.release.value=0.06;
     var f=[ctx.createBiquadFilter(),ctx.createBiquadFilter(),ctx.createBiquadFilter()];
@@ -40,5 +40,8 @@ var Sfx=(function(){
     else if(kind==='ufo_fire'){ tone(900,300,0.1,'sawtooth',0.18); }
     else if(kind==='ufo_die'){ crash(0.6,700,0.9); tone(600,80,0.5,'square',0.45); }
   }
-  return {play:play,on:function(){ return on; },toggle:function(){ on=!on; try{ localStorage.setItem('sonaroids_sfx',on?'1':'0'); }catch(e){} return on; }};
+  /* the game's own sounds must not flood the microphone: on the OnePlus 15 (24 Sep) they reached it ~50 dB louder than on iPhone,
+     far above the probe, and the ship drifted. When the microphone gets near its limit, the sounds are turned down step by step */
+  function duck(){ if(vol<=0.05) return false; vol=Math.max(0.05,vol*0.7); if(bus) bus.gain.setTargetAtTime(1.1*vol,ctx.currentTime,0.05); return true; }
+  return {duck:duck,level:function(){ return vol; },play:play,on:function(){ return on; },toggle:function(){ on=!on; try{ localStorage.setItem('sonaroids_sfx',on?'1':'0'); }catch(e){} return on; }};
 })();

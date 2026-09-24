@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Сонар: астероиды</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Сонар">
+<meta name="theme-color" content="#04070A">
+<link rel="apple-touch-icon" href="data:image/png;base64,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">
+
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  /* Всё приложение — в альбомной ориентации и в один экран: размеры в rem, а rem растёт с высотой экрана
+     (390 px по высоте → 14 px). Если на маленьком телефоне что-то не влезает, fitScreen() ещё чуть уменьшает шрифт. */
+  :root{--bg:#0F151A;--ink:#E7EDE9;--soft:#8A9B96;--hair:#253139;--hot:#D9743F;--cool:#3F92AB;--ok:#6FAE7E;--bad:#C4503A}
+  *{box-sizing:border-box;-webkit-touch-callout:none}
+  html{font-size:clamp(10px,3.6vh,17px)}
+  html,body{margin:0;padding:0;position:fixed;inset:0;overflow:hidden;overscroll-behavior:none;touch-action:manipulation;
+    -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
+  body{background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans",system-ui,-apple-system,sans-serif;font-size:1rem;line-height:1.38}
+  .screen{position:fixed;inset:0;display:flex;overflow:hidden;
+    padding:max(.8rem,env(safe-area-inset-top)) max(1rem,env(safe-area-inset-right)) max(.8rem,env(safe-area-inset-bottom)) max(1rem,env(safe-area-inset-left))}
+  .hidden{display:none!important}
+  h1{font-size:1.45rem;font-weight:600;margin:0 0 .45rem;line-height:1.15}
+  p{margin:0 0 .6rem;color:var(--soft);font-size:.9rem;max-width:46ch}
+  .small{font-size:.76rem}
+  button{font-family:inherit;font-size:1rem;font-weight:500;color:var(--bg);background:var(--ink);touch-action:manipulation;
+    border:0;border-radius:2px;padding:.72em 1em;width:100%;cursor:pointer;margin:0;line-height:1.2}
+  button.big{font-size:1.15rem;padding:.85em 1em}
+  button.ghost{background:transparent;color:var(--ink);border:1px solid var(--hair)}
+  button:disabled{opacity:.35}
+  /* две колонки: слева текст, справа кнопки */
+  .two{margin:auto;width:100%;max-width:62rem;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:2.2rem;align-items:center}
+  .col{display:flex;flex-direction:column;gap:.5rem;min-width:0}
+  .row{display:flex;gap:.5rem} .row>*{flex:1;min-width:0}
+  .two .btns{order:-1} body.hand-left .two .btns{order:1}
+  body.hand-left #cal{flex-direction:row-reverse}
+  body.hand-left .menu .col:first-child{order:3}
+  .note{border-left:3px solid var(--hot);padding:.45rem .7rem;font-size:.8rem;color:var(--soft);margin:.2rem 0 .6rem;max-width:46ch}
+  .note b{color:var(--ink);font-weight:600}
+  .err{border-left:3px solid var(--bad);padding:.45rem .7rem;font-size:.8rem;color:var(--soft);margin-top:.4rem}
+  .kv{display:flex;justify-content:space-between;font-size:.84rem;padding:.2rem 0;border-bottom:1px solid var(--hair)}
+  .kv b{font-family:"IBM Plex Mono",monospace;font-weight:500}
+  .good{color:var(--ok)} .bad{color:var(--bad)}
+  .cap{font-size:.72rem;color:var(--soft);letter-spacing:.04em;margin:0}
+  .mono{font-family:"IBM Plex Mono",monospace}
+  /* поворот: в портретной ориентации поверх всего — просьба повернуть */
+  #portrait{display:none;position:fixed;inset:0;z-index:50;background:var(--bg);align-items:center;justify-content:center;text-align:center;padding:2rem}
+  #portrait h1{font-size:1.4rem} #portrait p{margin:0 auto;font-size:1rem}
+  @media (orientation:portrait){ #portrait{display:flex} }
+  /* запись по метке: две шкалы по краям */
+  #rec{flex-direction:row;align-items:stretch;gap:.8rem}
+  .track{width:4.4rem;position:relative;border-right:1px solid var(--hair)}
+  .track.r{border-right:0;border-left:1px solid var(--hair)}
+  .track .lab{position:absolute;font-family:"IBM Plex Mono",monospace;font-size:.68rem;color:var(--soft);transform:translateY(-50%)}
+  .track.l .lab{left:2px} .track.r .lab{right:2px}
+  .track .tick{position:absolute;width:10px;height:1px;background:var(--hair)}
+  .track.l .tick{right:0} .track.r .tick{left:0}
+  .mark{position:absolute;width:2.8rem;height:1rem;border-radius:.5rem;background:var(--hot);transform:translateY(-50%);transition:opacity .2s}
+  .track.l .mark{right:-8px} .track.r .mark{left:-8px;background:var(--cool)}
+  #center{flex:1;display:flex;flex-direction:column;justify-content:center;text-align:center}
+  #say{font-size:1.7rem;font-weight:600;line-height:1.2}
+  #sub{color:var(--soft);font-size:1rem;margin-top:.5rem}
+  #clock{font-family:"IBM Plex Mono",monospace;font-size:.85rem;color:var(--soft);margin-top:.7rem}
+  /* подготовка */
+  #cal{flex-direction:row;gap:1.2rem}
+  #calStep{font-size:.85rem;color:var(--soft);letter-spacing:.04em;min-height:1em;margin-bottom:.2rem}
+  #calT{font-size:1.9rem;margin-bottom:.4rem}
+  #calS{font-size:1.1rem;line-height:1.35;color:var(--ink);max-width:32ch}
+  #calBig{font-family:"IBM Plex Mono",monospace;font-size:1.3rem;min-height:1.3em;margin:.2rem 0}
+  #calDiag{font-family:"IBM Plex Mono",monospace;font-size:.72rem;color:var(--soft);min-height:1.2em;max-width:48ch}
+  #calBar{width:3.6rem;position:relative;border:1px solid var(--hair);flex:none}
+  #calDot{position:absolute;left:.45rem;right:.45rem;height:1rem;border-radius:.5rem;background:var(--hot);transform:translateY(50%);bottom:0;opacity:.2}
+  /* игра */
+  #game{padding:0;background:#04070A}
+  #gc{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+  .gbtn{position:absolute;width:auto;margin:0}
+  #gMenu{top:calc(max(.6rem,env(safe-area-inset-top)) + 2.6rem);left:calc(max(.7rem,env(safe-area-inset-left)) + 1.8rem);padding:.8em 1.3em;font-size:.95rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
+  /* кнопки — со стороны свободной руки: рука у правого края (так у пользователя) — кнопки слева; у левого — справа (body.hand-left) */
+  #gStart,#gAgain{bottom:calc(max(.9rem,env(safe-area-inset-bottom)) + 1.2rem)}
+  #gSave{bottom:calc(max(.9rem,env(safe-area-inset-bottom)) + 1.2rem + 3.6rem)}
+  #gStart,#gAgain,#gSave{left:calc(max(.7rem,env(safe-area-inset-left)) + 1.8rem)}
+  body.hand-left #gMenu,body.hand-left #gStart,body.hand-left #gAgain,body.hand-left #gSave{left:auto;right:calc(max(.7rem,env(safe-area-inset-right)) + 1.8rem)}
+  #gStart{padding:.9em 2.4em;font-size:1.05rem}
+  #gAgain{padding:.8em 1.8em}
+  #gSave{padding:.8em 1.2em;font-size:.88rem;background:rgba(4,7,10,.7)}
+  /* меню игры: три колонки в один экран */
+  #gPanel{position:absolute;inset:0;background:rgba(4,7,10,.9);display:flex;overflow:hidden;
+    padding:max(.8rem,env(safe-area-inset-top)) max(1rem,env(safe-area-inset-right)) max(.8rem,env(safe-area-inset-bottom)) max(1rem,env(safe-area-inset-left))}
+  .menu{margin:auto;width:100%;max-width:62rem;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.3rem;align-items:start}
+  .menu .col{gap:.42rem}
+  .menu button{font-size:.86rem;padding:.62em .6em}
+  .menu .ptitle{font-family:"Press Start 2P",monospace;font-size:.78rem;color:var(--ink);margin:0 0 .2rem}
+  .seg{display:flex;border:1px solid var(--hair);border-radius:2px;overflow:hidden}
+  .seg button{border-radius:0;background:transparent;color:var(--soft);font-size:.8rem;padding:.62em .2em;border:0;border-right:1px solid var(--hair);font-weight:400}
+  .seg button:last-child{border-right:0}
+  .seg button.sel{background:var(--ink);color:var(--bg)}
+  .ctl label{display:flex;justify-content:space-between;font-size:.76rem;color:var(--soft)}
+  .ctl label b{font-family:"IBM Plex Mono",monospace;color:var(--ink);font-weight:500}
+  input[type=range]{width:100%;margin:.15rem 0 0;accent-color:var(--hot);touch-action:pan-x}
+</style>
+</head>
+<body>
+
+<div id="portrait"><div>
+  <h1>Поверни телефон горизонтально</h1>
+  <p>Поворачивай, пока держишь его в руке, — лёжа плашмя телефон ориентацию не меняет. Потом положи экраном вверх.</p>
+</div></div>
+
+<div class="screen" id="home"><div class="two">
+  <div class="col">
+    <h1>Сонар: астероиды</h1>
+    <p>Корабль летит между астероидами. Его высота — твоя ладонь сбоку от лежащего телефона, у короткого края с микрофоном.</p>
+    <p>Настраивать ничего не нужно: пару секунд приложение слушает пустую комнату — руку в это время убери. Перед стартом помаши ладонью вверх-вниз в рабочем диапазоне — примерно 5–15 см над столом, — и корабль подстроится под твой размах.</p>
+    <div id="a2hs" class="note hidden"><b>На весь экран:</b> в Safari «Поделиться» → «На экран „Домой“» и запускай с иконки.</div>
+    <div class="err hidden" id="err"></div>
+  </div>
+  <div class="col btns">
+    <button id="goGame" class="big">Играть</button>
+    <button id="goRec" class="ghost">Запись для меня</button>
+    <p class="small" style="margin:-.15rem 0 .2rem">16 секунд по метке — присылаешь WAV, я проверяю механику на твоём сигнале.</p>
+    <button id="silentT" class="ghost" style="font-size:.84rem">Беззвучный режим телефона: …</button>
+    <p id="silentP" class="small" style="margin:-.15rem 0 .2rem"></p>
+    <button id="reload1" class="ghost">Перезагрузить приложение</button>
+  </div>
+</div></div>
+
+<div class="screen hidden" id="orient"><div class="two">
+  <div class="col">
+    <h1>Положи телефон</h1>
+    <p>Экраном вверх, на стол или другую твёрдую опору. Рука будет сбоку от короткого края — там, где микрофон.</p>
+  </div>
+  <div class="col btns">
+    <button id="orientOk" class="big">Лежит, дальше</button>
+    <button id="orientBack" class="ghost">Назад</button>
+  </div>
+</div></div>
+
+<div class="screen hidden" id="rec">
+  <div class="track l" id="trL"><div class="mark" id="mkL"></div></div>
+  <div id="center"><div id="say"></div><div id="sub"></div><div id="clock"></div></div>
+  <div class="track r" id="trR"><div class="mark" id="mkR"></div></div>
+</div>
+
+<div class="screen hidden" id="recDone"><div class="two">
+  <div class="col">
+    <h1>Запись готова</h1>
+    <div id="stats"></div>
+  </div>
+  <div class="col btns">
+    <p>Сохрани файл и загрузи в чат. Если чат не примет WAV — запакуй в zip.</p>
+    <button id="save" class="big">Сохранить файл</button>
+    <button id="share" class="ghost hidden">Поделиться…</button>
+    <div class="row"><button id="recAgain" class="ghost">Записать заново</button><button id="toHome" class="ghost">В начало</button></div>
+    <textarea id="meta" class="hidden" readonly></textarea>
+  </div>
+</div></div>
+
+<div class="screen hidden" id="cal">
+  <div class="two" style="flex:1">
+    <div class="col" style="gap:.2rem">
+      <div id="calStep"></div>
+      <h1 id="calT">Готовлюсь</h1>
+      <p id="calS"></p>
+      <div id="calBig">—</div>
+      <div id="calDiag"></div>
+      <i id="calFill" class="hidden"></i>
+    </div>
+    <div class="col btns">
+      <button id="calGo" class="big">…</button>
+      <button id="reload2" class="ghost">Перезагрузить</button>
+      <button id="calLogS" class="ghost hidden" style="font-size:.86rem">Сохранить журнал настройки</button>
+    </div>
+  </div>
+  <div id="calBar"><div id="calDot"></div></div>
+</div>
+
+<div class="screen hidden" id="game">
+  <canvas id="gc"></canvas>
+  <button id="gMenu" class="gbtn">Меню</button>
+  <button id="gStart" class="gbtn hidden">Старт</button>
+  <button id="gAgain" class="gbtn hidden">Ещё раз</button>
+  <button id="gSave" class="gbtn ghost hidden">Сохранить журнал</button>
+  <div id="gPanel" class="hidden"><div class="menu">
+    <div class="col">
+      <div class="ptitle">ПАУЗА</div>
+      <button id="gResume" class="big">Продолжить</button>
+      <div class="seg"><button class="sel" data-gd="easy">Легко</button><button data-gd="normal">Средне</button><button data-gd="hard">Сложно</button></div>
+      <div class="ctl"><label for="gSpan">Ход ладони на весь экран <b id="gSpanv">10 см</b></label>
+        <input type="range" id="gSpan" min="50" max="150" step="5" value="100"></div>
+      <button id="gAutoF" class="ghost">Подбирать по взмахам: да</button>
+      <p class="small" style="margin:0">Перед «Старт» помаши ладонью примерно в 5–15 см над столом — корабль подстроится под размах.</p>
+    </div>
+    <div class="col">
+      <p class="cap">ЗВУК И ЭКРАН</p>
+      <button id="gSfx" class="ghost">Звуки: вкл</button>
+      <div class="ctl"><label for="gVol">Громкость звуков <b id="gVolv">90%</b></label>
+        <input type="range" id="gVol" min="10" max="100" step="5" value="90"></div>
+      <button id="gDiagT" class="ghost">Диагностика на экране: выкл</button>
+      <button id="gRecal" class="ghost">Заново послушать комнату</button>
+    </div>
+    <div class="col">
+      <p class="cap">ЖУРНАЛЫ ДЛЯ РАЗБОРА</p>
+      <button id="gLogT" class="ghost">Журнал партии: вкл</button>
+      <div class="row"><button id="gLogS" class="ghost">Сохранить партию</button><button id="sLogS" class="ghost">Сохранить настройку</button></div>
+      <div id="gLogI" class="small" style="color:var(--soft);min-height:2.4em"></div>
+      <div class="row"><button id="gHome" class="ghost">В начало</button><button id="reload3" class="ghost">Перезагрузить</button></div>
+    </div>
+  </div></div>
+</div>
+
+<script>
+var WORKLET=`
+class Cap extends AudioWorkletProcessor{
+  constructor(){ super(); this.buf=new Float32Array(512); this.n=0; this.seq=0; }
+  process(inputs){
+    const x=inputs[0]&&inputs[0][0];
+    const len=x?x.length:128;
+    for(let i=0;i<len;i++){ this.buf[this.n++]=x?x[i]:0;
+      if(this.n===512){ const o=this.buf; this.port.postMessage({f:o,s:this.seq++},[o.buffer]);
+        this.buf=new Float32Array(512); this.n=0; } }
+    return true; }
+}
+registerProcessor('cap',Cap);
+`;
+/* ── ОБРАБОТКА v2: быстрое смещение по фазе + абсолютная высота по центру эха, слитые вместе ── */
+var DSP2=(function(){
+  var N=512,C=343,fs,kLo,kHi,kc,ks,M,Pr,Pi,lam,mm,T,gA,gB,G,cosT,sinT;
+  var d0,dref,boot,bootN=30,prevH,hist,L=4,prom,noProbe,bgAcc,bgN,bgR,bgI,BG_N=40;
+  var Es,hold,present,refr,Q_FLOOR=-28,T_ON=-16,T_INT=-30,HOLD_S=1.5,tauE=0.15,REFR_S=0.7,TAU_BG=2.0,TAU=1.5;
+  var eAvg=0,TE=3,ePres=0,why='',rngBuf=[],xBuf=[],centered=false,autoC=false,presN=0,x,fast,cal={k:0.75,o:1,s:0.8},eHold=null,lowN=0,resS=-99,resFloor=null,upN=0,warm=0,absBuf=[],ABS_MED=15,DEADB=5,dirS=null,lostN=0,lost=false;
+  function init(sampleRate,parity){
+    fs=sampleRate; var df=fs/N; kLo=Math.ceil(18300/df); kHi=Math.floor(20500/df); kc=Math.floor((kLo+kHi)/2);
+    ks=[]; for(var k=kLo;k<=kHi;k++) if(parity===undefined||parity==='all'||k%2===parity) ks.push(k);
+    M=ks.length; T=(parity===0||parity===1)?N/2:N;
+    lam=C/(kc*df)*1000; mm=C/fs/2*1000; gA=Math.round(30/mm); gB=Math.round(300/mm); G=gB-gA;
+    Pr=new Float64Array(M); Pi=new Float64Array(M);
+    for(var q=0;q<M;q++){ var ph=Math.PI*q*q/M; Pr[q]=Math.cos(ph); Pi[q]=Math.sin(ph); }
+    cosT=new Float64Array(M*N); sinT=new Float64Array(M*N);
+    for(q=0;q<M;q++){ var w=-2*Math.PI*ks[q]/N; for(var n=0;n<N;n++){ cosT[q*N+n]=Math.cos(w*n); sinT[q*N+n]=Math.sin(w*n); } }
+    d0=null; dref=null; boot=[]; prevH=null; hist=[]; prom=null; noProbe=false;
+    bgAcc=null; bgN=0; bgR=null; bgI=null; Es=-80; hold=0; present=false; refr=0; x=null; fast=0; eHold=null; ePres=0; why=""; rngBuf=[]; xBuf=[]; centered=false; presN=0; lowN=0; resS=-99; resFloor=null; upN=0; warm=0; absBuf=[]; dirS=null; lostN=0; lost=false;
+  }
+  function bandSpec(fr){
+    var Hr=new Float64Array(M),Hi=new Float64Array(M),q,n;
+    for(q=0;q<M;q++){ var sr=0,si=0,o=q*N; for(n=0;n<N;n++){ sr+=fr[n]*cosT[o+n]; si+=fr[n]*sinT[o+n]; }
+      Hr[q]=sr*Pr[q]+si*Pi[q]; Hi[q]=si*Pr[q]-sr*Pi[q]; }
+    return [Hr,Hi];
+  }
+  function tap(H,n){ var sr=0,si=0; for(var q=0;q<M;q++){ var a=2*Math.PI*(ks[q]-kc)*n/N, c=Math.cos(a), s=Math.sin(a);
+    sr+=H[0][q]*c-H[1][q]*s; si+=H[0][q]*s+H[1][q]*c; } return [sr/N,si/N]; }
+  function frame(fr){
+    var H=bandSpec(fr),i,n;
+    if(d0===null){                                     // первые кадры: слышен ли зонд, где прямой сигнал
+      var mags=new Float64Array(T); for(n=0;n<T;n++){ var v=tap(H,n); mags[n]=v[0]*v[0]+v[1]*v[1]; }
+      boot.push(mags);
+      if(boot.length>=bootN){ var s=new Float64Array(T),b=0,bv=0;
+        boot.forEach(function(m){ for(var j=0;j<T;j++) s[j]+=m[j]; });
+        for(n=0;n<T;n++) if(s[n]>bv){ bv=s[n]; b=n; }
+        var srt=Array.prototype.slice.call(s).sort(function(p,q){return p-q;}); prom=10*Math.log10(bv/(srt[T>>1]||1e-30));
+        if(prom<12){ noProbe=true; boot=[]; return null; }
+        noProbe=false; d0=b; dref=bv/boot.length; }
+      return null;
+    }
+    var h=[new Float64Array(G),new Float64Array(G)];
+    for(i=0;i<G;i++){ var v2=tap(H,(d0+gA+i)%T); h[0][i]=v2[0]; h[1][i]=v2[1]; }
+    // прямой сигнал пропал на 20 дБ и больше целую секунду — звук ушёл в другое устройство
+    var vd=tap(H,d0), pd=vd[0]*vd[0]+vd[1]*vd[1]; dirS=(dirS===null)?pd:dirS+0.1*(pd-dirS);
+    if(dirS<dref*0.01){ if(++lostN>fs/N) lost=true; } else lostN=0;
+    if(!prevH){ prevH=h; return null; }
+    var h2=[new Float64Array(G),new Float64Array(G)];
+    for(i=0;i<G;i++){ h2[0][i]=0.5*(h[0][i]+prevH[0][i]); h2[1][i]=0.5*(h[1][i]+prevH[1][i]); }
+    prevH=h;
+    if(bgR===null){                                    // фон пустой комнаты
+      if(!bgAcc) bgAcc=[new Float64Array(G),new Float64Array(G)];
+      for(i=0;i<G;i++){ bgAcc[0][i]+=h2[0][i]; bgAcc[1][i]+=h2[1][i]; }
+      if(++bgN>=BG_N){ bgR=new Float64Array(G); bgI=new Float64Array(G); for(i=0;i<G;i++){ bgR[i]=bgAcc[0][i]/bgN; bgI[i]=bgAcc[1][i]/bgN; } }
+      hist.push(h2); if(hist.length>L+2) hist.shift();
+      return null;
+    }
+    hist.push(h2); if(hist.length>L+2) hist.shift();
+    if(hist.length<L+2) return null;
+    // быстрое: скорость вращения фазы по всей полосе
+    var a1=hist[L+1],b1=hist[1],a0=hist[L],b0=hist[0],rr=0,ri=0,e=0;
+    for(i=0;i<G;i++){ var g1r=a1[0][i]-b1[0][i],g1i=a1[1][i]-b1[1][i],g0r=a0[0][i]-b0[0][i],g0i=a0[1][i]-b0[1][i];
+      rr+=g1r*g0r+g1i*g0i; ri+=g1i*g0r-g1r*g0i; e+=g1r*g1r+g1i*g1i; }
+    var E=10*Math.log10(e/dref+1e-30), vel=-Math.atan2(ri,rr)*lam/(4*Math.PI);
+    // медленное: центр тяжести эха относительно пустой комнаты
+    var sw=0,sx=0; for(i=0;i<G;i++){ var dr=h2[0][i]-bgR[i],di=h2[1][i]-bgI[i],p=dr*dr+di*di; sw+=p; sx+=p*(gA+i); }
+    var range=sx/(sw||1e-30)*mm, abs=cal.k*range+cal.o;
+    var fpsF=fs/N, aE=1-Math.exp(-1/(tauE*fpsF)); Es+=aE*(E-Es);
+    var resE=10*Math.log10(sw/dref+1e-30); resS+=0.2*(resE-resS);
+    // появление — только по движению: дрейф фона так не выглядит
+    if(Es>T_ON&&refr===0) hold=Math.max(hold,Math.round(HOLD_S*fpsF));
+    var moving=hold>0; if(hold>0) hold--;
+    var was=present;
+    if(!present){
+      // уровень пустой комнаты учится только на тихих кадрах: если ладонь уже рядом и шевелится при старте,
+      // он не выучит её эхо как «пустоту» (иначе потом неподвижная рука не видна — «видна рывками»)
+      if(Es<Q_FLOOR){ if(resFloor===null) resFloor=resS;
+        warm++;
+        var tf=warm<fpsF?0.15:1.0;                                // первую секунду уровень пустой комнаты только учится
+        resFloor+=(1-Math.exp(-1/(tf*fpsF)))*(resS-resFloor); }
+      if(resFloor!==null&&warm>=fpsF&&resS>resFloor+15) upN++; else upN=0;   // вход по резкому росту эха над пустой комнатой
+      if(refr===0&&(moving||upN>=4)){ present=true; eHold=resS; ePres=resS; lowN=0; why=moving?'движение':'эхо'; upN=0; }
+    }
+    else {
+      // остаётся, пока её эхо заметно выше пустой комнаты — даже неподвижная и в «тихой» позе.
+      // Уходит, когда эхо опустилось почти до пустоты. Сравнивать с пиком нельзя: эхо сильно зависит от позы ладони.
+      // Второй признак ухода: эхо упало на 18 дБ ниже своего уровня с рукой (поза меняет эхо лишь на ~10 дБ) и близко к пустоте.
+      if(resS>ePres-6) ePres+=(1-Math.exp(-1/fpsF))*(resS-ePres);
+      var lowF=resFloor!==null&&resS<resFloor+10, lowD=resS<ePres-18&&(resFloor===null||resS<resFloor+15);
+      if(lowF||lowD) lowN++; else lowN=0;
+      if(lowN>=Math.round(0.3*fpsF)){ present=false; refr=Math.round(REFR_S*fpsF); hold=0; why=lowF?'уход: эхо у пустоты':'уход: эхо упало'; }
+    }
+    if(refr>0) refr--;
+    var started=present&&!was;
+    if(!present){ var aB=1-Math.exp(-1/(TAU_BG*fpsF));      // без руки фон тихо обновляется
+      for(i=0;i<G;i++){ bgR[i]+=aB*(h2[0][i]-bgR[i]); bgI[i]+=aB*(h2[1][i]-bgI[i]); } }
+    if(E>T_INT) fast+=vel;                                   // сырое смещение — для калибровки
+    absBuf.push(abs); if(absBuf.length>ABS_MED) absBuf.shift();
+    var absM=absBuf.length>2?absBuf.slice().sort(function(p,q){return p-q;})[absBuf.length>>1]:abs;
+    if(started||x===null){ x=abs; eAvg=0; }
+    if(present){ if(E>T_INT) x+=cal.s*vel;
+      // абсолютная часть — ограничитель ухода. С 24.09 тянет по СРЕДНЕМУ расхождению за 3 с, а не по мгновенному:
+      // у краёв (особенно внизу, у стола) абсолютная часть сжата и раньше тянула корабль к середине — «ладонь на столе, а корабль не внизу»
+      eAvg+=(1-Math.exp(-1/(TE*fpsF)))*((absM-x)-eAvg);
+      var ex=Math.abs(eAvg)>DEADB?eAvg-(eAvg>0?DEADB:-DEADB):0, dx=(1-Math.exp(-1/(TAU*fpsF)))*ex;
+      x+=dx; eAvg-=dx; }
+    // память последней секунды с рукой — для центровки; первая центровка сама, через 0,8 с после появления руки
+    if(present){ rngBuf.push(range); xBuf.push(x); if(rngBuf.length>Math.round(fpsF)){ rngBuf.shift(); xBuf.shift(); } presN++; }
+    else { rngBuf=[]; xBuf=[]; presN=0; }
+    if(autoC&&!centered&&presN>=Math.round(0.8*fpsF)) recenter();
+    return {present:present,started:started,height:x,abs:abs,range:range,fast:fast,E:E,resE:resS,floor:resFloor,Em:Es,why:why};
+  }
+  /* центровка: середина поля (100) — там, где ладонь была последнюю секунду. Сдвигает и абсолютную часть (o), и итог (x) —
+     движение не теряется, корабль лишь переезжает так, чтобы среднее положение ладони пришлось на середину */
+  function med(a){ var b=a.slice().sort(function(p,q){return p-q;}); return b[b.length>>1]; }
+  function recenter(){
+    if(rngBuf.length<30) return null;
+    var r0=med(rngBuf), xm=med(xBuf), oOld=cal.o, i;
+    cal.o=100-cal.k*r0; for(i=0;i<absBuf.length;i++) absBuf[i]+=cal.o-oOld;
+    x+=100-xm; for(i=0;i<xBuf.length;i++) xBuf[i]+=100-xm;
+    centered=true; return {r0:+r0.toFixed(1),o:+cal.o.toFixed(1),shift:+(100-xm).toFixed(1)};
+  }
+  /* сдвиг всей шкалы высот на d мм — и абсолютной части, и итога: так игра подстраивает середину по взмахам ладони */
+  function shift(d){ var i; cal.o+=d; for(i=0;i<absBuf.length;i++) absBuf[i]+=d; if(x!==null) x+=d; for(i=0;i<xBuf.length;i++) xBuf[i]+=d; centered=true; }
+  return {init:init,frame:frame,recenter:recenter,shift:shift,
+    setCal:function(c){ cal.k=c.k; cal.o=c.o; cal.s=c.s; },
+    set:function(k,v){ if(k==='tint') T_INT=v; if(k==='tau') TAU=v; if(k==='absmed') ABS_MED=Math.max(1,Math.round(v)); if(k==='deadband') DEADB=Math.max(0,v); if(k==='autocenter') autoC=!!v; },
+    info:function(){ return {d0:d0,prom:prom,noProbe:noProbe,lost:lost,ready:bgR!==null,mm:mm,centered:centered,cal:{k:cal.k,o:cal.o,s:cal.s}}; }};
+})();
+/* ── ИГРА: логика отдельно от рисования, чтобы её можно было проверить на записи ── */
+var Game=(function(){
+  var DIFF={easy:{v0:0.20,acc:0.006,rMin:0.028,rMax:0.06,sp0:1.4,spMin:0.55,pairLvl:5,hitS:0.55,hitR:0.7,lives:5},
+            normal:{v0:0.26,acc:0.009,rMin:0.032,rMax:0.08,sp0:1.2,spMin:0.42,pairLvl:4,hitS:0.62,hitR:0.75,lives:3},
+            hard:{v0:0.32,acc:0.012,rMin:0.035,rMax:0.10,sp0:1.05,spMin:0.32,pairLvl:3,hitS:0.75,hitR:0.8,lives:3}};
+  function rng(seed){ var s=seed||Math.floor(Math.random()*1e9); return function(){ s=(s*1664525+1013904223)>>>0; return s/4294967296; }; }
+  function create(W,H,seed){
+    var g={W:W,H:H,rand:rng(seed),t:0,state:'wait',ship:{x:W*0.18,y:H/2,r:Math.max(9,H*0.035)},
+      rocks:[],parts:[],stars:[],countT:0,overT:0,diff:DIFF.easy,score:0,best:0,lives:3,inv:0,spawnT:0.8,speed:0,handT:0,awayT:0,flash:0,level:1,events:[]};
+    for(var i=0;i<90;i++) g.stars.push({x:g.rand()*W,y:g.rand()*H,z:0.2+0.8*g.rand()});
+    return g;
+  }
+  function resize(g,W,H){ var fx=W/g.W, fy=H/g.H; g.W=W; g.H=H; g.ship.x=W*0.18; g.ship.y*=fy; g.ship.r=Math.max(9,H*0.035);
+    g.stars.forEach(function(s){ s.x*=fx; s.y*=fy; }); g.rocks.forEach(function(r){ r.x*=fx; r.y*=fy; }); }
+  function begin(g){ g.state='count'; g.countT=3; g.rocks=[]; g.parts=[]; g.score=0; g.lives=g.diff.lives; g.pending='count'; }   // событие отдаётся в следующем кадре
+  function start(g){ var D=g.diff; g.overT=0; g.state='play'; g.score=0; g.lives=D.lives; g.inv=1.2; g.rocks=[]; g.parts=[]; g.speed=g.W*D.v0; g.spawnT=0.8; g.level=1; g.events.push('start'); }
+  function spawn(g){
+    var D=g.diff, r=g.H*(D.rMin+(D.rMax-D.rMin)*g.rand()), y=r+g.rand()*(g.H-2*r), n=9+Math.floor(g.rand()*4), v=[];
+    for(var i=0;i<n;i++){ var a=i/n*Math.PI*2, k=0.72+0.4*g.rand(); v.push([Math.cos(a)*r*k,Math.sin(a)*r*k]); }
+    g.rocks.push({x:g.W+r+4,y:y,r:r,v:v,vx:-g.speed*(0.8+0.45*g.rand()),vy:(g.rand()-0.5)*g.H*0.06,rot:0,vr:(g.rand()-0.5)*2.2});
+  }
+  function boom(g,x,y,n,sp){ for(var i=0;i<n;i++){ var a=g.rand()*Math.PI*2, s=sp*(0.3+g.rand()); g.parts.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:0.5+0.6*g.rand(),a:a}); } }
+  /* hand: 0…1 снизу вверх, или null — руки нет */
+  function update(g,dt,hand){
+    dt=Math.min(dt,0.05); g.t+=dt; g.events=[]; if(g.pending){ g.events.push(g.pending); g.pending=null; }
+    var scroll=(g.state==='play')?g.speed:g.W*0.05;
+    g.stars.forEach(function(s){ s.x-=scroll*0.35*s.z*dt; if(s.x<0){ s.x+=g.W; s.y=g.rand()*g.H; } });
+    var m=g.H*0.08;
+    if(hand!==null){ var ty=g.H-m-hand*(g.H-2*m); g.ship.y+=(ty-g.ship.y)*(1-Math.exp(-dt/0.045)); }
+    if(hand!==null){ g.handT+=dt; g.awayT=0; } else { g.awayT+=dt; g.handT=0; }
+    if(g.state==='wait'){ /* ждёт кнопку «Старт» — корабль уже ходит за ладонью */ }
+    else if(g.state==='count'){ g.countT-=dt; if(g.countT<=0) start(g); }
+    else if(g.state==='over'){ g.overT+=dt; /* ждёт кнопку «Ещё раз» */ }
+    else if(g.state==='play'){
+      g.speed+=g.W*g.diff.acc*dt;                                    // медленно разгоняется
+      var lvl=1+Math.floor(g.score/500); if(lvl>g.level){ g.level=lvl; g.events.push('level'); }
+      g.spawnT-=dt; if(g.spawnT<=0){ var D=g.diff; spawn(g); if(g.level>=D.pairLvl&&g.rand()<0.35) spawn(g); g.spawnT=Math.max(D.spMin,D.sp0-0.07*g.level)*(0.7+0.6*g.rand()); }
+      g.score+=dt*g.speed*0.1; if(g.inv>0) g.inv-=dt; if(g.flash>0) g.flash-=dt;
+      for(var i=g.rocks.length-1;i>=0;i--){ var r=g.rocks[i]; r.x+=r.vx*dt; r.y+=r.vy*dt; r.rot+=r.vr*dt;
+        if(r.y<r.r||r.y>g.H-r.r) r.vy=-r.vy;
+        if(r.x<-r.r-10){ g.rocks.splice(i,1); continue; }
+        var dx=r.x-g.ship.x, dy=r.y-g.ship.y, rr=g.ship.r*g.diff.hitS+r.r*g.diff.hitR;
+        if(g.inv<=0&&dx*dx+dy*dy<rr*rr){ g.lives--; g.inv=1.6; g.flash=0.3; boom(g,r.x,r.y,18,g.H*0.5); g.rocks.splice(i,1); g.events.push('hit');
+          if(g.lives<=0){ g.state='over'; g.overT=0; g.best=Math.max(g.best,Math.floor(g.score)); boom(g,g.ship.x,g.ship.y,40,g.H*0.7); g.events.push('over'); } }
+      }
+    }
+    for(var j=g.parts.length-1;j>=0;j--){ var p=g.parts[j]; p.x+=p.vx*dt; p.y+=p.vy*dt; p.life-=dt; if(p.life<=0) g.parts.splice(j,1); }
+    return g;
+  }
+  return {create:create,update:update,resize:resize,start:start,begin:begin,DIFF:DIFF,setDiff:function(g,k){ g.diff=DIFF[k]||DIFF.easy; }};
+})();
+(function(){
+"use strict";
+if(typeof document==='undefined') return;
+var el=function(i){ return document.getElementById(i); };
+var N=512,fs,kLo,kHi,kc;
+var ctx,stream,node,an,gSL,gSR,gL,gR,booted=false, F_LO=18300, PROBE_G=0.25, PROBE_SNR=null;
+var mode=null,lastSeq=-1,gaps=0,collector=null;
+function sleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
+function show(id){ ['home','orient','rec','recDone','cal','game'].forEach(function(s){ el(s).classList.toggle('hidden',s!==id); }); fitScreen(); }
+/* всё в один экран: если видимый экран (или открытое меню игры) не влезает по высоте или ширине — уменьшаю базовый шрифт, пока не влезет */
+function fitScreen(){ try{
+  var root=document.documentElement; root.style.fontSize='';
+  var s=el('gPanel')&&!el('gPanel').classList.contains('hidden')&&!el('game').classList.contains('hidden')?el('gPanel'):document.querySelector('.screen:not(.hidden)');
+  if(!s||s.id==='game') return;
+  var f=parseFloat(getComputedStyle(root).fontSize), n=0;
+  while((s.scrollHeight>s.clientHeight+1||s.scrollWidth>s.clientWidth+1)&&f>8&&n++<40){ f-=0.5; root.style.fontSize=f+'px'; }
+}catch(e){} }
+
+/* ── звук: микрофон в воркле́т, три зонда, голос ── */
+function makeProbe(parity){                   // parity: 'all' | 0 (чётные) | 1 (нечётные)
+  var ks=[],k,n,q;
+  for(k=kLo;k<=kHi;k++) if(parity==='all'||k%2===parity) ks.push(k);
+  var M=ks.length, x=new Float64Array(N), mx=0;
+  for(n=0;n<N;n++){ var s=0; for(q=0;q<M;q++) s+=Math.cos(2*Math.PI*ks[q]*n/N+Math.PI*q*q/M); x[n]=s; if(Math.abs(s)>mx) mx=Math.abs(s); }
+  var buf=ctx.createBuffer(1,N,fs),d=buf.getChannelData(0); for(n=0;n<N;n++) d[n]=x[n]/mx*0.9;
+  return buf;
+}
+function loopSrc(buf){ var s=ctx.createBufferSource(); s.buffer=buf; s.loop=true; return s; }
+/* ── звуковая сессия и микрофон.
+   Обычный режим — как было и работало. Экспериментальный — «запись и воспроизведение»: по устройству iOS
+   такая сессия работает и в беззвучном режиме, но может увести звук в разговорный динамик.
+   Если iOS откажет — возвращаюсь к обычному, а не падаю. ── */
+var audioNote='';
+function audioMode(){ try{ return localStorage.getItem('sonar_audio_mode')||'auto'; }catch(e){ return 'auto'; } }
+function openMic(){
+  var want=(audioMode()==='silent'&&navigator.audioSession)?'play-and-record':'auto';
+  function attempt(t){ try{ if(navigator.audioSession) navigator.audioSession.type=t; }catch(e){}
+    return navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:1}}); }
+  return attempt(want).catch(function(err){
+    if(want==='auto') throw err;
+    audioNote='Режим для беззвучного iOS не принял — включил обычный.';
+    return attempt('auto'); });
+}
+function boot(){
+  if(booted) return Promise.resolve();
+
+  var AC=window.AudioContext||window.webkitAudioContext;
+  if(!AC) return Promise.reject(new Error('нет Web Audio'));
+  if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)) return Promise.reject(new Error('нет микрофона: нужна вкладка по https'));
+  return openMic()
+  .then(function(s){ stream=s; ctx=new AC(); if(ctx.state==='suspended') ctx.resume();
+    if(!ctx.audioWorklet) throw new Error('нет AudioWorklet');
+    return ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([WORKLET],{type:'application/javascript'}))); })
+  .then(function(){
+    fs=ctx.sampleRate; var df=fs/N; kLo=Math.ceil(F_LO/df); kHi=Math.floor(20500/df); kc=Math.floor((kLo+kHi)/2);
+    var mg=ctx.createChannelMerger(2);
+    var sS=loopSrc(makeProbe('all')), sL=loopSrc(makeProbe(0)), sR=loopSrc(makeProbe(1));
+    gSL=ctx.createGain(); gSR=ctx.createGain(); gL=ctx.createGain(); gR=ctx.createGain();
+    [gSL,gSR,gL,gR].forEach(function(g){ g.gain.value=0; });
+    sS.connect(gSL); sS.connect(gSR); sL.connect(gL); sR.connect(gR);
+    gSL.connect(mg,0,0); gL.connect(mg,0,0); gSR.connect(mg,0,1); gR.connect(mg,0,1);
+    mg.connect(ctx.destination);
+    sS.start(); sL.start(); sR.start();
+    var src=ctx.createMediaStreamSource(stream);
+    an=ctx.createAnalyser(); an.fftSize=2048; src.connect(an);
+    node=new AudioWorkletNode(ctx,'cap',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1]});
+    src.connect(node); var mute=ctx.createGain(); mute.gain.value=0; node.connect(mute); mute.connect(ctx.destination);
+    node.port.onmessage=onFrame;
+    booted=true;
+  });
+}
+function setProbe(w){                          // 'off' | 'dual' | 'single-left' | 'single-right'
+  var t=ctx.currentTime;
+  gSL.gain.setTargetAtTime(w==='single-left'?PROBE_G:0,t,0.02);
+  gSR.gain.setTargetAtTime(w==='single-right'?PROBE_G:0,t,0.02);
+  gL.gain.setTargetAtTime(w==='dual'?0.25:0,t,0.02);
+  gR.gain.setTargetAtTime(w==='dual'?0.25:0,t,0.02);
+}
+function collect(n){ return new Promise(function(r){ collector={n:n,arr:[],done:r}; }); }
+
+/* ── единая точка входа кадров: и запись, и игра видят ровно одно и то же ── */
+var rec={on:false,frames:[],gaps:0};
+function onFrame(e){
+  var m=e.data;
+  var gap=(lastSeq>=0&&m.s!==lastSeq+1); lastSeq=m.s; if(gap) gaps++;
+  if(collector){ collector.arr.push(m.f); if(collector.arr.length>=collector.n){ var c=collector; collector=null; c.done(c.arr); } }
+  if(mode==='rec'&&rec.on){ if(gap) rec.gaps++; rec.frames.push(m.f); }
+  else if(mode==='cal'||mode==='game'){ absS.fpsN++; if(gap){ absS.gaps++; }
+    var r2=DSP2.frame(m.f); if(r2){ absS.st=r2; if(mode==='cal'&&calSink) calSink(r2); }
+    if(mode==='game'&&LOG&&LOG.on) logFrame(m.f,r2,gap);
+    if(SLOG&&SLOG.on) slogFrame(m.f,r2,gap); }
+}
+var absS={st:null,fpsN:0,fpsC:0,gaps:0}, calSink=null;
+setInterval(function(){ absS.fpsC=absS.fpsN; absS.fpsN=0; },1000);
+
+/* ── сигнал/шум в полосе зонда: 8 периодов подряд → зонд ровно в каждой 8-й линии спектра, шум — во всех ── */
+/* отношение сигнал/шум в полосе: 8 периодов подряд → зонд ровно в каждой 8-й линии, шум — во всех */
+function probeSNR(frames,fs,fLo,fHi){
+  var N8=frames.length*512, x=new Float64Array(N8), i, j;
+  for(i=0;i<frames.length;i++) for(j=0;j<512;j++) x[i*512+j]=frames[i][j];
+  var P=frames.length, df=fs/N8, b0=Math.floor(fLo/df), b1=Math.ceil(fHi/df), sig=0, nz=0, nl=0, nn=0;
+  for(var b=b0;b<=b1;b++){
+    var w=2*Math.PI*b/N8, c=1, s=0, cw=Math.cos(w), sw=Math.sin(w), re=0, im=0;
+    for(i=0;i<N8;i++){ re+=x[i]*c; im-=x[i]*s; var t=c*cw-s*sw; s=s*cw+c*sw; c=t; }
+    var p=re*re+im*im, r=b%P;
+    if(r===0){ sig+=p; nl++; } else if(r>=2&&r<=P-2){ nz+=p; nn++; }
+  }
+  var noisePerBin=nz/(nn||1), probe=sig-noisePerBin*nl, noiseBand=noisePerBin*(b1-b0+1);
+  return 10*Math.log10(Math.max(probe,1e-30)/Math.max(noiseBand,1e-30));
+}
+
+/* ── автоуровень: убавляю свой зонд до минимума с запасом — громкость в комнате почти не зависит от громкости телефона ── */
+var SNR_TARGET=48, G_MIN=0.015, G_MAX=0.3;
+function measureSNR(){ return sleep(350).then(function(){ return collect(8); }).then(function(fr){ return probeSNR(fr,fs,F_LO,20450); }); }
+function autoLevel(){
+  var tries=0;
+  function step(){ return measureSNR().then(function(s){
+    PROBE_SNR=s; tries++;
+    var raw=PROBE_G*Math.pow(10,(SNR_TARGET-s)/20), want=Math.max(G_MIN,Math.min(G_MAX,raw));
+    var tooQuiet=raw>G_MAX*1.01&&s<SNR_TARGET-6;                 // нужно больше, чем можем дать
+    if(tries>=3||Math.abs(20*Math.log10(want/PROBE_G))<1) return {snr:s,g:PROBE_G,atMax:tooQuiet};
+    PROBE_G=want; setProbe('single-'+chan); return step(); }); }
+  return step();
+}
+/* ── слышен ли каждый из двух зондов: пик прямого сигнала над остальной характеристикой ── */
+function promSub(frames,parity){
+  var ks=[],k,q,n; for(k=kLo;k<=kHi;k++) if(parity==='all'||k%2===parity) ks.push(k);
+  var M=ks.length, T=(parity==='all')?N:N/2, acc=new Float64Array(T);
+  frames.forEach(function(fr){
+    var Hr=new Float64Array(M),Hi=new Float64Array(M);
+    for(q=0;q<M;q++){ var sr=0,si=0,w=-2*Math.PI*ks[q]/N; for(n=0;n<N;n++){ var a=w*n; sr+=fr[n]*Math.cos(a); si+=fr[n]*Math.sin(a); }
+      var ph=Math.PI*q*q/M,pr=Math.cos(ph),pi=Math.sin(ph); Hr[q]=sr*pr+si*pi; Hi[q]=si*pr-sr*pi; }
+    for(n=0;n<T;n++){ var tr=0,ti=0; for(q=0;q<M;q++){ var a2=2*Math.PI*(ks[q]-kc)*n/N,c=Math.cos(a2),s=Math.sin(a2);
+      tr+=Hr[q]*c-Hi[q]*s; ti+=Hr[q]*s+Hi[q]*c; } acc[n]+=tr*tr+ti*ti; }
+  });
+  var srt=Array.prototype.slice.call(acc).sort(function(a,b){return a-b;});
+  return 10*Math.log10(srt[T-1]/(srt[T>>1]||1e-30));
+}
+
+/* ── запись для меня: одна рука сбоку у микрофона, долгое неподвижное удержание ── */
+function sn(t,t0){ return 100+50*Math.sin(2*Math.PI*(t-t0)/6); }
+var SCRIPT=[
+  {t:0,  k:'empty', say:'Убери руку',              sub:'Ничего рядом с телефоном. Снимаю пустую комнату.', H:function(){return null;}, d:'—'},
+  {t:3,  k:'place', say:'Ладонь сбоку на 10 см',   sub:'У края с микрофоном, ладонью вниз, напротив метки.', H:function(){return 100;}, d:'100'},
+  {t:5,  k:'move',  say:'Веди за меткой',          sub:'Плавно вверх-вниз.', H:function(t){return sn(t,5);}, d:'100+50*sin(2pi(t-5)/6)'},
+  {t:11, k:'hold',  say:'Замри',                   sub:'Три секунды неподвижно на 10 см.', H:function(){return 100;}, d:'100'},
+  {t:14, k:'away',  say:'Убери руку',              sub:'Совсем.', H:function(){return null;}, d:'—'},
+  {t:16, k:'end'}
+];
+var trackH=0;
+function yOf(v){ return (1-(v-30)/(170-30))*trackH; }
+function buildTracks(){
+  var mine=(chan==='left')?'trL':'trR', other=(chan==='left')?'trR':'trL';
+  el(other).style.visibility='hidden'; el(mine).style.visibility='visible';
+  var tr=el(mine); trackH=tr.getBoundingClientRect().height||300;
+  Array.prototype.slice.call(tr.querySelectorAll('.lab,.tick')).forEach(function(x){ x.remove(); });
+  [50,100,150].forEach(function(v){
+    var l=document.createElement('div'); l.className='lab'; l.textContent=(v/10)+' см'; l.style.top=yOf(v)+'px'; tr.appendChild(l);
+    var k=document.createElement('div'); k.className='tick'; k.style.top=yOf(v)+'px'; tr.appendChild(k); });
+}
+var recMeta=null, blob=null, fname='';
+function runRec(){
+  show('rec'); el('mkL').style.opacity=0; el('mkR').style.opacity=0;
+  el('say').textContent='Выбираю сторону'; el('sub').textContent='Рука убрана.'; el('clock').textContent='';
+  mode=null; rec={on:false,frames:[],gaps:0};
+  var prom;
+  pickChannel().then(function(){ return autoLevel(); }).then(function(){
+    buildTracks(); mode='rec';
+    el('sub').textContent='Рука будет '+(chan==='left'?'слева':'справа')+' от телефона.';
+    return sleep(400).then(function(){ return collect(10); });
+  }).then(function(fr){
+    prom=promSub(fr,'all');
+    if(prom<15){
+      el('say').textContent='Зонда не слышно';
+      el('sub').textContent='Прибавь громкость, выключи беззвучный, отключи наушники, открой динамики. Сейчас '+prom.toFixed(0)+' дБ, нужно 15.';
+      setProbe('off'); mode=null; return sleep(7000).then(function(){ show('home'); });
+    }
+    var mk=(chan==='left')?'mkL':'mkR', marks={}, t0=performance.now(), cur=-1;
+    rec.on=true;
+    return new Promise(function(done){
+      (function tick(){
+        var t=(performance.now()-t0)/1000,i;
+        for(i=SCRIPT.length-1;i>=0;i--) if(t>=SCRIPT[i].t) break;
+        if(i!==cur){ cur=i; var s=SCRIPT[i]; if(s.k==='end'){ done(marks); return; }
+          marks[s.k]=rec.frames.length*N; el('say').textContent=s.say; el('sub').textContent=s.sub; }
+        var h=SCRIPT[cur].H(t); el(mk).style.opacity=h===null?0:1; if(h!==null) el(mk).style.top=yOf(h)+'px';
+        el('clock').textContent=t.toFixed(1)+' / 16 с'; requestAnimationFrame(tick);
+      })();
+    }).then(function(marks){
+      rec.on=false; setProbe('off'); mode=null;
+      var n=rec.frames.length*N, all=new Float32Array(n);
+      rec.frames.forEach(function(f,j){ all.set(f,j*N); });
+      var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
+      var so=(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0);
+      recMeta={v:4,kind:'single-landscape',fs:fs,N:N,kLo:kLo,kHi:kHi,
+        probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
+        prom_db:prom,samples:n,gaps:rec.gaps,peak:pk,orientation:{angle:so,w:window.innerWidth,h:window.innerHeight},
+        script:SCRIPT.filter(function(s){return s.k!=='end';}).map(function(s){ return {k:s.k,t:s.t,H:s.d}; }),
+        marks:marks,units:'target height in mm above the table',ua:navigator.userAgent,date:new Date().toISOString()};
+      blob=wav(all,recMeta);
+      var d=new Date(), z=function(x){ return (x<10?'0':'')+x; };
+      fname='sonar1h_'+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+'.wav';
+      showDone(pk,prom);
+    });
+  });
+}
+
+function wav(samples,meta){
+  var txt=unescape(encodeURIComponent(JSON.stringify(meta))); if(txt.length%2) txt+=' ';
+  var infoLen=4+8+txt.length, dataLen=samples.length*4, total=12+(8+18)+(8+4)+(8+infoLen)+(8+dataLen);
+  var b=new ArrayBuffer(total), v=new DataView(b), p=0;
+  function s4(x){ for(var i=0;i<4;i++) v.setUint8(p++,x.charCodeAt(i)); }
+  function u32(x){ v.setUint32(p,x,true); p+=4; } function u16(x){ v.setUint16(p,x,true); p+=2; }
+  s4('RIFF'); u32(total-8); s4('WAVE');
+  s4('fmt '); u32(18); u16(3); u16(1); u32(fs); u32(fs*4); u16(4); u16(32); u16(0);
+  s4('fact'); u32(4); u32(samples.length);
+  s4('LIST'); u32(infoLen); s4('INFO'); s4('ICMT'); u32(txt.length);
+  for(var i=0;i<txt.length;i++) v.setUint8(p++,txt.charCodeAt(i));
+  s4('data'); u32(dataLen); for(i=0;i<samples.length;i++){ v.setFloat32(p,samples[i],true); p+=4; }
+  return new Blob([b],{type:'audio/wav'});
+}
+function showDone(pk,pr){
+  show('recDone');
+  var st=el('stats'); st.innerHTML='';
+  function kv(k,v,c){ var r=document.createElement('div'); r.className='kv'; r.innerHTML='<span>'+k+'</span><b class="'+(c||'')+'">'+v+'</b>'; st.appendChild(r); }
+  kv('длительность',(recMeta.samples/fs).toFixed(1)+' с');
+  kv('разрывов потока',recMeta.gaps,recMeta.gaps===0?'good':'bad');
+  kv('сторона руки',chan==='left'?'слева':'справа');
+  kv('зонд слышен',pr.toFixed(0)+' дБ',pr>=15?'good':'bad');
+  kv('пик входа',pk.toFixed(3),(pk>0.002&&pk<0.98)?'good':'bad');
+  kv('размер',(blob.size/1048576).toFixed(1)+' МБ');
+  el('meta').value=JSON.stringify(recMeta); fitScreen();
+  el('share').classList.add('hidden');
+  if(navigator.canShare){ try{ var f=new File([blob],fname,{type:'audio/wav'}); if(navigator.canShare({files:[f]})) el('share').classList.remove('hidden'); }catch(e){} }
+}
+
+/* ── сторона руки: динамик, чей зонд громче у микрофона ── */
+var chan='right';                                     // до выбора стороны считаю, что рука справа (как у пользователя)
+/* кнопки — со стороны свободной руки. Сторона руки запоминается, чтобы и главный экран сразу открывался правильно */
+function handSide(){ try{ localStorage.setItem('sonar_hand',chan); }catch(e){} if(document.body&&document.body.classList) document.body.classList.toggle('hand-left',chan==='left'); }
+try{ var hs=localStorage.getItem('sonar_hand'); if(hs==='left'||hs==='right'){ chan=hs; } }catch(e){}
+if(document.body&&document.body.classList) document.body.classList.toggle('hand-left',chan==='left');
+function bandLevel(){ var b=new Float32Array(an.frequencyBinCount); an.getFloatFrequencyData(b);
+  var bw=fs/2048,s=0; for(var i=Math.ceil(F_LO/bw);i<=Math.floor(20500/bw);i++) s+=Math.pow(10,b[i]/10); return s; }
+function pickChannel(){
+  function meas(w){ setProbe(w); return sleep(350).then(function(){ var v=[],i=0; return new Promise(function(r){
+    var iv=setInterval(function(){ v.push(bandLevel()); if(++i>=10){ clearInterval(iv); v.sort(function(a,b){return a-b;}); r(v[5]); } },20); }); }); }
+  return meas('single-left').then(function(Lv){ return meas('single-right').then(function(Rv){
+    chan=(Lv>=Rv)?'left':'right'; setProbe('single-'+chan); handSide(); }); });
+}
+/* ── ПОДГОТОВКА БЕЗ КАЛИБРОВКИ (с 24.09): сторона, громкость зонда и пустая комната — сами, за пару секунд.
+   Высота — в миллиметрах по физике сонара: быстрая часть даёт ход ладони почти без настройки (≈0,9 мм на единицу),
+   абсолютная — 1,17 мм на мм дальности (среднее по всем записям пользователя). Середину поля игра ставит сама:
+   там, где ладонь держится первую секунду после появления и во время отсчёта перед каждой партией.
+   Пошаговая калибровка «низко — высоко — покачай» убрана: по ней чувствительность менялась от раза к разу в 1,7 раза. ── */
+var PHYS_CAL={k:1.17,o:100-1.17*110,s:0.9}, curCal=PHYS_CAL, calLive=false;
+function median(a){ var b=a.slice().sort(function(x,y){return x-y;}); return b.length?b[b.length>>1]:NaN; }
+function side(){ return chan==='left'?'слева':'справа'; }
+function waitReady(){ return new Promise(function(r){ (function chk(){ var i=DSP2.info(); if(i.noProbe) return r('noprobe'); if(i.ready) return r('ok'); setTimeout(chk,60); })(); }); }
+var CS={step:'quick',busy:false,rs:null};
+function calText(step,title,sub,btn){ el('calStep').textContent=step; el('calT').textContent=title; el('calS').textContent=sub;
+  el('calGo').textContent=btn||'Ещё раз'; el('calGo').disabled=!!CS.busy; fitScreen(); }
+var NOPROBE='Выключи беззвучный режим, прибавь громкость, отключи наушники и Bluetooth, открой динамики. Потом «Ещё раз».';
+function quickStart(){
+  show('cal'); CS={step:'quick',busy:true,rs:null}; el('calFill').style.width='0%'; el('calBig').textContent='…';
+  calText('Готовлюсь','Убери руку','Пару секунд слушаю пустую комнату и подбираю громкость зонда.','…'); mode=null;
+  if(!calLive){ calLive=true; calLoop(); }
+  pickChannel().then(function(){ return autoLevel(); }).then(function(L){
+    if(L.snr<30){ setProbe('off'); CS.busy=false; calText('Готовлюсь','Зонда почти не слышно',NOPROBE); return null; }
+    DSP2.init(fs,'all'); DSP2.setCal(curCal); DSP2.set('autocenter',1); mode='cal'; slogStart('подготовка'); return waitReady(); }).then(function(st){
+    if(st===null||st===undefined) return;
+    if(st==='noprobe'){ CS.busy=false; setProbe('off'); calText('Готовлюсь','Зонда не слышно',NOPROBE); return; }
+    el('calS').textContent='Комната готова. Сейчас начнём.';
+    return sleep(1200).then(function(){ CS.busy=false; startGame(); }); });
+}
+/* живая полоска справа: сырая дальность до ладони */
+function calLoop(){
+  requestAnimationFrame(calLoop);
+  if(el('cal').classList.contains('hidden')) return;
+  var st=absS.st, H=el('calBar').getBoundingClientRect().height||200, frac=null;
+  function pos(f){ return Math.max(0,Math.min(1,f))*H; }
+  if(st&&st.present){ CS.rs=(CS.rs===null)?st.range:CS.rs+0.12*(st.range-CS.rs); frac=(CS.rs-20)/260; } else CS.rs=null;
+  el('calDot').style.opacity=frac===null?0.2:1; if(frac!==null) el('calDot').style.bottom=pos(frac)+'px';
+  el('calDiag').textContent=(mode==='cal')?diagText(st):'';
+  el('calLogS').classList.toggle('hidden',!(SLOG&&SLOG.f>0));
+}
+
+/* ── кнопки ── */
+var nextFlow='game';
+function fail(e){ show('home'); el('err').classList.remove('hidden'); el('err').textContent='Не вышло: '+((e&&e.message)||e); fitScreen(); }
+/* без масштабирования Safari: ни щипка, ни двойного тапа (на кнопках двойной тап уже снят через touch-action) */
+(function(){ function stop(e){ e.preventDefault(); }
+  ['gesturestart','gesturechange','gestureend'].forEach(function(t){ document.addEventListener(t,stop,{passive:false}); });
+  document.addEventListener('touchmove',function(e){ if(e.touches&&e.touches.length>1) e.preventDefault(); },{passive:false});
+  var lastT=0; document.addEventListener('touchend',function(e){ var t=Date.now(), tg=e.target;
+    if(t-lastT<350&&!(tg&&tg.closest&&tg.closest('button,input,a'))) e.preventDefault(); lastT=t; },{passive:false});
+  document.addEventListener('dblclick',stop,{passive:false});
+  window.addEventListener('resize',function(){ setTimeout(fitScreen,60); });
+  window.addEventListener('orientationchange',function(){ setTimeout(fitScreen,250); });
+})();
+function goFlow(flow){ if(flow==='rec') runRec(); else quickStart(); }
+function viaOrient(flow){ nextFlow=flow; if(window.innerWidth<window.innerHeight) show('orient'); else goFlow(flow); }
+function silentLabel(){ var on=audioMode()==='silent';
+  el('silentT').textContent='Беззвучный режим телефона: '+(on?'пробую работать (эксперимент)':'не поддерживается (обычный)');
+  el('silentP').textContent=on?'Если зонд не слышно или звук ушёл в разговорный динамик — выключи эту кнопку.'
+    :'В обычном режиме переключатель беззвучного режима глушит зонд. Можно попробовать экспериментальный.'; }
+silentLabel();
+el('silentT').addEventListener('click',function(){ try{ localStorage.setItem('sonar_audio_mode',audioMode()==='silent'?'auto':'silent'); }catch(e){} location.reload(); });
+el('goGame').addEventListener('click',function(){ boot().then(function(){ viaOrient('game'); }).catch(fail); });
+el('goRec').addEventListener('click',function(){ boot().then(function(){ viaOrient('rec'); }).catch(fail); });
+el('orientOk').addEventListener('click',function(){ goFlow(nextFlow); });
+el('orientBack').addEventListener('click',function(){ show('home'); });
+el('recAgain').addEventListener('click',function(){ viaOrient('rec'); });
+el('toHome').addEventListener('click',function(){ show('home'); });
+el('save').addEventListener('click',function(){ var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; document.body.appendChild(a); a.click(); setTimeout(function(){ a.remove(); },1000); });
+el('share').addEventListener('click',function(){ navigator.share({files:[new File([blob],fname,{type:'audio/wav'})],title:fname}).catch(function(){}); });
+el('calGo').addEventListener('click',function(){ if(!CS.busy) quickStart(); });
+function seg(attr,fn){ Array.prototype.forEach.call(document.querySelectorAll('['+attr+']'),function(b){
+  b.addEventListener('click',function(){ Array.prototype.forEach.call(document.querySelectorAll('['+attr+']'),function(x){ x.classList.toggle('sel',x===b); }); fn(b.getAttribute(attr)); }); }); }
+document.addEventListener('visibilitychange',function(){ if(!ctx) return;
+  if(document.hidden) setProbe('off'); else if(mode==='cal'||mode==='game'||mode==='rec') setProbe('single-'+chan); });
+
+
+/* ── ЖУРНАЛ ПАРТИИ: звук + что видела обработка + что происходило в игре ── */
+var LOG=null, logOn=true, LOG_SEC=150, LOG_SCALE=4;          // 16 бит, полная шкала = 1/4 входа
+function logStart(){
+  if(!logOn){ LOG=null; return; }
+  var cap=LOG_SEC*fs;
+  if(!LOG||!LOG.pcm||LOG.pcm.length!==cap) LOG={pcm:new Int16Array(cap)};
+  LOG.on=true; LOG.f=0; LOG.clip=0; LOG.gaps=0; LOG.dsp=[]; LOG.ren=[]; LOG.ev=[]; LOG.t0=performance.now();
+  LOG.meta0={cal:curCal,cal_now:DSP2.info().cal,autocenter:true,tune:'waves',asym:ASYM,field_auto:gAutoField,field_mm:gSpan,diff:gDiff,span:gSpan,sfx:{on:gSfxOn,vol:sfxVol},chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,f_lo:F_LO,
+    W:Math.round(G?G.W:0),H:Math.round(G?G.H:0),prom:DSP2.info().prom,started:new Date().toISOString()};
+}
+function logFrame(fr,r,gap){
+  var L=LOG, cap=L.pcm.length, base=(L.f*N)%cap, i, v;
+  if(gap) L.gaps++;
+  for(i=0;i<N;i++){ v=Math.round(fr[i]*32767*LOG_SCALE); if(v>32767){ v=32767; L.clip++; } else if(v<-32768){ v=-32768; L.clip++; } L.pcm[(base+i)%cap]=v; }
+  if(r) L.dsp.push([L.f,r.present?1:0,+r.height.toFixed(1),+r.abs.toFixed(1),+r.range.toFixed(1),+r.fast.toFixed(1),+r.E.toFixed(1),+r.resE.toFixed(1)]);
+  L.f++;
+  if(L.dsp.length>LOG_SEC*100) L.dsp.splice(0,L.dsp.length-LOG_SEC*95);
+}
+var STC={wait:0,play:1,pause:2,over:3};
+function logRender(hand){
+  var L=LOG; if(!L||!L.on||!G) return;
+  var rocks=G.rocks.map(function(q){ return [+(q.x/G.H).toFixed(3),+(q.y/G.H).toFixed(3),+(q.r/G.H).toFixed(3)]; });
+  L.ren.push([L.f,Math.round(performance.now()-L.t0),hand===null?-1:+hand.toFixed(3),+(G.ship.y/G.H).toFixed(3),STC[G.state],G.lives,Math.floor(G.score),G.level,rocks]);
+  G.events.forEach(function(k){ L.ev.push([L.f,k,+(G.ship.y/G.H).toFixed(3)]); });
+  if(L.ren.length>LOG_SEC*70) L.ren.splice(0,L.ren.length-LOG_SEC*62);
+}
+function logStop(){ if(LOG) LOG.on=false; }
+function logInfo(){
+  if(!LOG||!LOG.f) return 'Журнала пока нет — сыграй партию.';
+  var sec=Math.min(LOG.f*N/fs,LOG_SEC); return 'Записано '+sec.toFixed(0)+' с партии'+(LOG.f*N/fs>LOG_SEC?' (последние '+LOG_SEC+' с)':'')+'.';
+}
+function logBlob(){
+  var L=LOG, cap=L.pcm.length, total=L.f*N, n=Math.min(total,cap), start=total-n, i;
+  var pcm=new Int16Array(n); for(i=0;i<n;i++) pcm[i]=L.pcm[(start+i)%cap];
+  var f0=Math.floor(start/N);
+  var meta={v:5,kind:'game-log',fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:0.25,loop:true},
+    pcm:{bits:16,full_scale:1/LOG_SCALE},first_frame:f0,frames:L.f-f0,clipped:L.clip,gaps:L.gaps,game:L.meta0,
+    ended:new Date().toISOString(),ua:navigator.userAgent,
+    columns:{dsp:['frame','present','height_mm','abs_mm','range_mm','fast_mm','motion_db','echo_db'],
+             render:['frame','t_ms','hand_0_1_or_-1','ship_y_over_H','state 0wait 1play 2pause 3over','lives','score','level','rocks [x/H,y/H,r/H]'],
+             events:['frame','event','ship_y_over_H']}};
+  var glog={dsp:L.dsp.filter(function(a){return a[0]>=f0;}),render:L.ren.filter(function(a){return a[0]>=f0;}),events:L.ev.filter(function(a){return a[0]>=f0;})};
+  return glogWav(pcm,meta,glog);
+}
+/* WAV: PCM16 моно + метаданные JSON в LIST/INFO/ICMT + кусок glog с JSON — общий для журнала партии и журнала настройки */
+function glogWav(pcm,meta,glog){
+  var n=pcm.length, i;
+  var mtxt=unescape(encodeURIComponent(JSON.stringify(meta))); if(mtxt.length%2) mtxt+=' ';
+  var gtxt=unescape(encodeURIComponent(JSON.stringify(glog))); if(gtxt.length%2) gtxt+=' ';
+  var infoLen=4+8+mtxt.length, dataLen=n*2, total2=12+(8+16)+(8+infoLen)+(8+gtxt.length)+(8+dataLen);
+  var buf=new ArrayBuffer(total2), v=new DataView(buf), p=0;
+  function s4(x){ for(var k=0;k<4;k++) v.setUint8(p++,x.charCodeAt(k)); } function u32(x){ v.setUint32(p,x,true); p+=4; } function u16(x){ v.setUint16(p,x,true); p+=2; }
+  s4('RIFF'); u32(total2-8); s4('WAVE');
+  s4('fmt '); u32(16); u16(1); u16(1); u32(fs); u32(fs*2); u16(2); u16(16);
+  s4('LIST'); u32(infoLen); s4('INFO'); s4('ICMT'); u32(mtxt.length); for(i=0;i<mtxt.length;i++) v.setUint8(p++,mtxt.charCodeAt(i));
+  s4('glog'); u32(gtxt.length); for(i=0;i<gtxt.length;i++) v.setUint8(p++,gtxt.charCodeAt(i));
+  s4('data'); u32(dataLen); for(i=0;i<n;i++){ v.setInt16(p,pcm[i],true); p+=2; }
+  return new Blob([buf],{type:'audio/wav'});
+}
+function logSave(){
+  if(!LOG||!LOG.f){ el('gLogI').textContent=logInfo(); return; }
+  shareWav(logBlob(),'sonar_game_');
+}
+function shareWav(b,prefix){
+  var d=new Date(), z=function(x){ return (x<10?'0':'')+x; };
+  var name=prefix+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+'.wav';
+  var f=null; try{ f=new File([b],name,{type:'audio/wav'}); }catch(e){}
+  if(f&&navigator.canShare&&navigator.canShare({files:[f]})){ navigator.share({files:[f],title:name}).catch(function(){}); return; }
+  var a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=name; document.body.appendChild(a); a.click(); setTimeout(function(){ a.remove(); },1000);
+}
+
+/* ── ЖУРНАЛ НАСТРОЙКИ: от запуска обработки (пустая комната) через шаги калибровки и ожидание «Старта» — до 120 с.
+   Нужен для разбора старта: как учились фон и уровень пустой комнаты, когда рука появлялась и пропадала и почему. ── */
+var SLOG=null, SLOG_SEC=120;
+function slogStart(kind){
+  var cap=SLOG_SEC*fs;
+  if(!SLOG||!SLOG.pcm||SLOG.pcm.length!==cap) SLOG={pcm:new Int16Array(cap)};
+  var S=SLOG; S.on=true; S.f=0; S.clip=0; S.gaps=0; S.dsp=[]; S.ev=[]; S.pres=null; S.kind=kind;
+  S.meta0={kind:kind,cal:curCal,autocenter:true,tune:'waves',asym:ASYM,field_auto:gAutoField,field_mm:gSpan,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,f_lo:F_LO,prom:null,started:new Date().toISOString()};
+  slogEv('старт: '+kind);
+}
+function slogEv(k,x){ var S=SLOG; if(!S||!S.on) return; S.ev.push(x===undefined?[S.f,k]:[S.f,k,x]); }
+function slogFrame(fr,r,gap){
+  var S=SLOG, i, v;
+  if(S.f*N>=S.pcm.length){ S.on=false; return; }                              // 120 с — хватит на настройку и начало игры
+  if(gap) S.gaps++;
+  for(i=0;i<N;i++){ v=Math.round(fr[i]*32767*LOG_SCALE); if(v>32767){ v=32767; S.clip++; } else if(v<-32768){ v=-32768; S.clip++; } S.pcm[S.f*N+i]=v; }
+  if(r){ S.dsp.push([S.f,r.present?1:0,+r.height.toFixed(1),+r.abs.toFixed(1),+r.range.toFixed(1),+r.fast.toFixed(1),+r.E.toFixed(1),+r.resE.toFixed(1),
+      r.floor===null||r.floor===undefined?null:+r.floor.toFixed(1),+(r.Em||0).toFixed(1)]);
+    if(S.pres!==null&&r.present!==S.pres) slogEv(r.present?'рука есть: '+r.why:'рука ушла: '+r.why);
+    S.pres=r.present; }
+  S.f++;
+}
+function slogInfo(){ if(!SLOG||!SLOG.f) return 'Журнала настройки пока нет.'; return 'Журнал настройки: '+(SLOG.f*N/fs).toFixed(0)+' с'+(SLOG.on?', пишется':'')+'.'; }
+function slogBlob(){
+  var S=SLOG, n=S.f*N, pcm=S.pcm.slice(0,n), inf=DSP2.info();
+  var meta={v:1,kind:'setup-log',fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
+    pcm:{bits:16,full_scale:1/LOG_SCALE},first_frame:0,frames:S.f,clipped:S.clip,gaps:S.gaps,setup:S.meta0,cal_now:DSP2.info().cal,
+    dsp_info:{d0:inf.d0,prom:inf.prom,mm:inf.mm},ended:new Date().toISOString(),ua:navigator.userAgent,
+    columns:{dsp:['frame','present','height_mm','abs_mm','range_mm','fast_mm','motion_db','echo_db','empty_floor_db','motion_smooth_db'],
+             events:['frame','event','data']}};
+  return glogWav(pcm,meta,{dsp:S.dsp,render:[],events:S.ev});
+}
+function slogSave(){ if(!SLOG||!SLOG.f) return; shareWav(slogBlob(),'sonar_setup_'); }
+/* строка диагностики: что сейчас видит обработка — в калибровке всегда, в игре по переключателю в меню */
+function diagText(st){
+  if(!st) return 'обработка готовится…';
+  var fl=(st.floor===null||st.floor===undefined)?null:st.floor, em=(st.Em===undefined)?null:st.Em;
+  return 'рука: '+(st.present?'видна':'нет')+(st.why?' ('+st.why+')':'')+' · эхо '+(fl===null?'— (пустота не выучена)':((st.resE-fl>=0?'+':'')+(st.resE-fl).toFixed(0)+' дБ над пустой'))+
+    ' · движение '+(em===null?'—':em.toFixed(0)+' дБ');
+}
+var gDiagOn=false;
+
+/* ── запуск с домашнего экрана и попытка полного экрана там, где браузер это умеет ── */
+(function(){ var st=(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||window.navigator.standalone===true;
+  if(/iPhone|iPad|iPod/.test(navigator.userAgent)&&!st) el('a2hs').classList.remove('hidden'); })();
+function tryFullscreen(){ var d=document.documentElement, f=d.requestFullscreen||d.webkitRequestFullscreen;
+  if(f){ try{ var p=f.call(d); if(p&&p.catch) p.catch(function(){}); }catch(e){} } }
+el('goGame').addEventListener('click',tryFullscreen);
+
+/* ── АСТЕРОИДЫ: цикл, рисование, звуки, меню ── */
+var probeLost=false, G=null, gCtx=null, gDpr=1, gLast=0, gOn=false, gMenuOpen=false, gSpan=100, gDiff='easy', gTick=0, gSfxOn=true, gBest=0, sfxOut=null, gFont='"Press Start 2P", "IBM Plex Mono", monospace';
+function bestKey(){ return 'sonar_asteroids_best_'+gDiff; }
+function loadBest(){ try{ gBest=parseInt(localStorage.getItem(bestKey())||'0',10)||0; }catch(e){ gBest=0; } if(G) G.best=gBest; }
+loadBest();
+var gSafe={t:0,r:0,b:0,l:0};
+function safeInsets(){ var d=document.createElement('div');
+  d.style.cssText='position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)';
+  document.body.appendChild(d); var cs=getComputedStyle(d);
+  var r={t:parseFloat(cs.paddingTop)||0,r:parseFloat(cs.paddingRight)||0,b:parseFloat(cs.paddingBottom)||0,l:parseFloat(cs.paddingLeft)||0}; d.remove(); return r; }
+function gSize(){
+  try{ gSafe=safeInsets(); }catch(e){}
+  var cv=el('gc'), r=cv.getBoundingClientRect(); gDpr=Math.min(2,window.devicePixelRatio||1);
+  cv.width=Math.max(100,Math.round(r.width*gDpr)); cv.height=Math.max(100,Math.round(r.height*gDpr));
+  gCtx=cv.getContext('2d');
+  var W=cv.width/gDpr, H=cv.height/gDpr;
+  if(!G){ G=Game.create(W,H); Game.setDiff(G,gDiff); G.best=gBest; } else Game.resize(G,W,H);
+}
+function startGame(){ probeLost=false;
+  mode='game'; show('game'); gMenuOpen=false; el('gPanel').classList.add('hidden');
+  setTimeout(function(){ gSize(); if(!gOn){ gOn=true; gLast=performance.now(); requestAnimationFrame(gLoop); } },30);
+}
+window.addEventListener('resize',function(){ if(mode==='game') setTimeout(gSize,100); });
+/* ── АВТОПОДСТРОЙКА ПО ВЗМАХАМ: пока ждём «Старт» (и «Ещё раз»), ладонью машут в рабочем диапазоне вместе с кораблём.
+   Берутся последние 6 с высот с рукой; 5-й и 95-й процентили ложатся на 10% и 90% экрана, ход на весь экран — в пределах 5–15 см. Подстраивается плавно, шагами по 0,25 с;
+   с отсчёта до конца партии всё заморожено. Если ладонью не машут (размах меньше 3 см) — подтягивается только середина. ── */
+var AT={buf:[],t:0,acc:0,span:null,ok:false}, gAutoField=true;
+/* Экран не линеен по высоте: по всем шести записям с меткой ладонь в нижней половине хода (5–10 см) двигает итог
+   на ~0,85 мм за мм, а в верхней (10–15 см) — на ~1,45: у стола сонар «видит» движение слабее. Поэтому ниже середины
+   экран растянут в ASYM раз — чтобы опустить корабль до низа, не нужно тянуться ладонью сквозь стол. */
+var ASYM=1.7;
+function fracOf(h){ var FL=2*gSpan/(1+ASYM), FU=2*ASYM*gSpan/(1+ASYM); return Math.max(0,Math.min(1,h<100?0.5+(h-100)/FL:0.5+(h-100)/FU)); }
+function tunePick(buf){                                   // чистая функция: по высотам — середина, размах, годится ли
+  if(buf.length<60) return null;
+  var h=buf.map(function(q){return q.h;}).sort(function(a,b){return a-b;}), p=function(f){ return h[Math.min(h.length-1,Math.floor(f*(h.length-1)))]; };
+  var lo=p(0.05), hi=p(0.95), dur=buf[buf.length-1].t-buf[0].t;
+  return {mid:(lo+hi)/2, med:p(0.5), span:hi-lo, lo:lo, hi:hi, dur:dur, wave:dur>=1.5&&hi-lo>=30};
+}
+function autoTune(dt){
+  var waiting=G&&(G.state==='wait'||G.state==='over'), st=absS.st;
+  if(!waiting){ AT.buf=[]; AT.ok=false; AT.span=null; return; }
+  AT.t+=dt; if(st&&st.present) AT.buf.push({t:AT.t,h:st.height});
+  while(AT.buf.length&&AT.buf[0].t<AT.t-6) AT.buf.shift();
+  AT.acc+=dt; if(AT.acc<0.25) return; AT.acc=0;
+  var r=tunePick(AT.buf); if(!r){ AT.ok=false; return; }
+  // помаханный диапазон ложится на 10–90% экрана: запас с обеих сторон, чтобы поправить ещё ниже или выше, не упираясь в стол.
+  // Стол как «низ экрана» пользователь отверг: у стола сонар подлагивает, а скорректировать ниже уже некуда. Рабочий диапазон — 5–15 см
+  var a=0.35, B=0.10, TP=0.90, f0=gSpan;
+  if(r.wave&&gAutoField){ var F=r.span/((0.5-B)*2/(1+ASYM)+(TP-0.5)*2*ASYM/(1+ASYM)); F=Math.max(50,Math.min(150,F)); gSpan+=(F-gSpan)*a; }
+  var cen=r.wave?r.lo+(0.5-B)*2*gSpan/(1+ASYM):r.med, d=(cen-100)*-a;   // тянем середину на треть за шаг
+  if(Math.abs(d)>0.2){ DSP2.shift(d); AT.buf.forEach(function(q){ q.h+=d; }); }
+  AT.ok=r.wave; AT.span=r.span;
+  if(Math.abs(d)>0.2||Math.abs(gSpan-f0)>0.2) slogEv('подстройка',{d:+d.toFixed(1),field:+gSpan.toFixed(1),span:+r.span.toFixed(0),wave:r.wave});
+}
+function handFrac(){
+  var st=absS.st; if(!st||!st.present) return null;
+  return fracOf(st.height);
+}
+/* звуки: громкие и яркие — но через три фильтра, чтобы ни одна гармоника не попала в полосу зонда */
+var sfxIn=null, sfxVol=0.9, sfxNoise=null;
+function sfxBus(){
+  if(sfxIn) return;
+  sfxIn=ctx.createGain(); sfxIn.gain.value=1.4*sfxVol;
+  var comp=ctx.createDynamicsCompressor(); comp.threshold.value=-20; comp.knee.value=6; comp.ratio.value=6; comp.attack.value=0.002; comp.release.value=0.12;
+  var lim=ctx.createDynamicsCompressor(); lim.threshold.value=-3; lim.knee.value=0; lim.ratio.value=20; lim.attack.value=0.001; lim.release.value=0.06;
+  var f1=ctx.createBiquadFilter(), f2=ctx.createBiquadFilter(), f3=ctx.createBiquadFilter();
+  [f1,f2,f3].forEach(function(f){ f.type='lowpass'; f.frequency.value=6000; f.Q.value=0.7; });
+  sfxIn.connect(comp); comp.connect(lim); lim.connect(f1); f1.connect(f2); f2.connect(f3); f3.connect(ctx.destination);
+  var len=Math.floor(ctx.sampleRate*0.8); sfxNoise=ctx.createBuffer(1,len,ctx.sampleRate);
+  var d=sfxNoise.getChannelData(0); for(var i=0;i<len;i++) d[i]=Math.random()*2-1;
+}
+function sfx(kind){
+  if(!gSfxOn||!ctx) return;
+  sfxBus();
+  var t=ctx.currentTime;
+  function tone(f1,f2,dur,type,vol,at){ var o=ctx.createOscillator(), g=ctx.createGain(), s=t+(at||0); o.type=type||'square';
+    o.frequency.setValueAtTime(f1,s); if(f2) o.frequency.exponentialRampToValueAtTime(f2,s+dur);
+    g.gain.setValueAtTime(0,s); g.gain.linearRampToValueAtTime(vol,s+0.004); g.gain.setValueAtTime(vol,s+dur*0.6); g.gain.exponentialRampToValueAtTime(0.0001,s+dur);
+    o.connect(g); g.connect(sfxIn); o.start(s); o.stop(s+dur+0.02); }
+  function crash(dur,freq,vol,at){ var src=ctx.createBufferSource(), bp=ctx.createBiquadFilter(), g=ctx.createGain(), s=t+(at||0);
+    src.buffer=sfxNoise; bp.type='bandpass'; bp.frequency.value=freq; bp.Q.value=0.8;
+    g.gain.setValueAtTime(vol,s); g.gain.exponentialRampToValueAtTime(0.0001,s+dur);
+    src.connect(bp); bp.connect(g); g.connect(sfxIn); src.start(s); src.stop(s+dur+0.02); }
+  if(kind==='start'){ tone(880,null,0.09,'square',0.5); tone(1320,null,0.14,'square',0.5,0.1); }
+  else if(kind==='hit'){ crash(0.4,1800,0.9); tone(900,160,0.32,'square',0.5); }
+  else if(kind==='level'){ [1047,1319,1568].forEach(function(f,i){ tone(f,null,0.08,'square',0.45,i*0.08); }); }
+  else if(kind==='over'){ tone(880,110,0.9,'square',0.5); crash(0.7,1200,0.6); }
+  else if(kind==='pause'){ tone(1000,700,0.12,'square',0.35); }
+  else if(kind==='resume'){ tone(700,1000,0.12,'square',0.35); }
+  else if(kind==='tick'){ tone(1200,null,0.07,'square',0.35); }
+}
+el('gVol').addEventListener('input',function(){ sfxVol=parseInt(this.value,10)/100; el('gVolv').textContent=this.value+'%';
+  if(sfxIn) sfxIn.gain.setTargetAtTime(1.4*sfxVol,ctx.currentTime,0.02); sfx('pause'); });
+function gLoop(now){
+  if(mode!=='game'){ gOn=false; return; }
+  requestAnimationFrame(gLoop);
+  var dt=(now-gLast)/1000; gLast=now; if(!G||!gCtx) return;
+  if(!probeLost&&DSP2.info().lost){ probeLost=true; setProbe('off'); }
+  if(!gMenuOpen){ var hf=handFrac(); Game.update(G,dt,hf); G.events.forEach(sfx);
+    if(G.events.indexOf('count')>=0){ logStart(); gTick=4; slogEv('отсчёт',{field:+gSpan.toFixed(1),auto:gAutoField}); spanLabel(); try{ localStorage.setItem('sonar_field_mm',String(Math.round(gSpan))); }catch(e){} }
+    autoTune(dt);
+    if(G.state==='count'){ var n=Math.ceil(G.countT); if(n<gTick){ gTick=n; sfx('tick'); } }
+    logRender(hf);
+    if(G.events.indexOf('over')>=0) logStop();
+    if(G.events.indexOf('over')>=0&&G.best>gBest){ gBest=G.best; try{ localStorage.setItem(bestKey(),String(gBest)); }catch(e){} } }
+  draw();
+  el('gStart').classList.toggle('hidden',!(G.state==='wait'&&!gMenuOpen));
+  el('gAgain').classList.toggle('hidden',!(G.state==='over'&&!gMenuOpen&&G.overT>0.8));
+  el('gSave').classList.toggle('hidden',!(G.state==='over'&&LOG&&LOG.f>0&&!gMenuOpen&&G.overT>0.8));
+}
+function poly(c,x,y,v,rot){ c.beginPath(); var cs=Math.cos(rot), sn=Math.sin(rot);
+  v.forEach(function(p,i){ var px=x+p[0]*cs-p[1]*sn, py=y+p[0]*sn+p[1]*cs; if(i) c.lineTo(px,py); else c.moveTo(px,py); }); c.closePath(); }
+function ship(c,x,y,r,t,thrust){
+  c.save(); c.translate(x,y);
+  if(thrust){ var f=r*(0.9+0.5*Math.sin(t*38)+0.3*Math.sin(t*23)); c.strokeStyle='#F2B35A'; c.beginPath(); c.moveTo(-r*0.7,-r*0.3); c.lineTo(-r*0.7-f,0); c.lineTo(-r*0.7,r*0.3); c.stroke(); }
+  c.strokeStyle='#D9743F'; c.shadowColor='#D9743F'; c.shadowBlur=10;
+  c.beginPath(); c.moveTo(r*1.2,0); c.lineTo(-r*0.8,-r*0.75); c.lineTo(-r*0.45,0); c.lineTo(-r*0.8,r*0.75); c.closePath(); c.stroke();
+  c.restore();
+}
+function draw(){
+  var c=gCtx, W=G.W, H=G.H; c.setTransform(gDpr,0,0,gDpr,0,0);
+  c.fillStyle='#04070A'; c.fillRect(0,0,W,H);
+  G.stars.forEach(function(s){ var a=0.25+0.6*s.z; c.fillStyle='rgba(200,215,210,'+a.toFixed(2)+')'; c.fillRect(s.x,s.y,s.z*1.8,s.z*1.8); });
+  c.lineWidth=1.6; c.lineJoin='round';
+  c.strokeStyle='#CFD8D4'; c.shadowColor='#9FB3AE'; c.shadowBlur=6;
+  G.rocks.forEach(function(r){ poly(c,r.x,r.y,r.v,r.rot); c.stroke(); });
+  c.shadowBlur=0;
+  G.parts.forEach(function(p){ var a=Math.max(0,Math.min(1,p.life*1.4)); c.strokeStyle='rgba(242,179,90,'+a.toFixed(2)+')';
+    c.beginPath(); c.moveTo(p.x,p.y); c.lineTo(p.x-p.vx*0.03,p.y-p.vy*0.03); c.stroke(); });
+  var hasHand=handFrac()!==null, blink=G.inv>0&&Math.floor(G.t*12)%2===0;
+  if(G.state!=='over'&&!blink) ship(c,G.ship.x,G.ship.y,G.ship.r,G.t,G.state==='play');
+  if(G.flash>0){ c.fillStyle='rgba(196,80,58,'+(G.flash*1.2).toFixed(2)+')'; c.fillRect(0,0,W,H); }
+  // индикатор руки у края — внутри безопасной зоны
+  var m=H*0.08, hf=handFrac(), ix=(chan==='left')?Math.max(16,gSafe.l+12)-3:W-Math.max(16,gSafe.r+12); c.fillStyle='rgba(37,49,57,.9)'; c.fillRect(ix,m,3,H-2*m);
+  if(hf!==null){ c.fillStyle='#D9743F'; c.fillRect(ix-3,H-m-hf*(H-2*m)-4,9,8); }
+  if(AT.ok&&(G.state==='wait'||G.state==='over')){ var r2=tunePick(AT.buf); if(r2){ c.fillStyle='#6FAE7E';     // пойманный диапазон — две зелёные отметки у индикатора
+    [r2.lo,r2.hi].forEach(function(v){ var f=fracOf(v); c.fillRect(ix-7,H-m-f*(H-2*m)-1,17,2); }); } }
+  // счёт, рекорд, уровень и жизни — одним блоком по центру сверху
+  var fs=Math.max(11,Math.round(H*0.04)), top=Math.max(gSafe.t,H*0.03)+6, sc=String(Math.floor(G.score)).padStart(5,'0');
+  c.textBaseline='top'; c.textAlign='center'; c.font=fs+'px '+gFont; c.fillStyle='#E7EDE9'; c.fillText(sc,W/2,top);
+  var sw=c.measureText(sc).width;
+  for(var i=0;i<G.lives;i++){ c.save(); c.translate(W/2+sw/2+fs*1.3+i*fs*1.5,top+fs*0.5); c.strokeStyle='#D9743F'; c.lineWidth=1.2;
+    c.beginPath(); c.moveTo(fs*0.55,0); c.lineTo(-fs*0.4,-fs*0.35); c.lineTo(-fs*0.2,0); c.lineTo(-fs*0.4,fs*0.35); c.closePath(); c.stroke(); c.restore(); }
+  if(LOG&&LOG.on&&(G.state==='play'||G.state==='count')){ c.fillStyle='rgba(196,80,58,'+(0.5+0.4*Math.sin(G.t*4)).toFixed(2)+')';
+    c.beginPath(); c.arc(W/2-sw/2-fs*1.1,top+fs*0.5,fs*0.28,0,Math.PI*2); c.fill(); }
+  var fs2=Math.max(9,Math.round(fs*0.62)); c.font=fs2+'px '+gFont; c.fillStyle='#8A9B96';
+  c.fillText('РЕКОРД '+String(Math.max(gBest,G.best)).padStart(5,'0')+(G.state==='play'&&G.level>1?'   УР '+G.level:''),W/2,top+fs*1.45);
+  // надписи состояний
+  function center(big,small){ c.textAlign='center'; c.textBaseline='middle';
+    c.font=Math.round(H*0.06)+'px '+gFont; c.fillStyle='#E7EDE9'; c.fillText(big,W/2,H*0.42);
+    if(small){ c.font=Math.max(9,Math.round(H*0.028))+'px '+gFont; c.fillStyle='#8A9B96';
+      small.split('\n').forEach(function(line,j){ c.fillText(line,W/2,H*0.55+j*H*0.06); }); } }
+  if(probeLost) center('НЕТ ЗОНДА','звук ушёл в другое устройство — наушники или Bluetooth?\nотключи их и нажми «Меню» → «Перезагрузить»');
+  else if(G.state==='wait') center(hasHand?'ГОТОВ?':'АСТЕРОИДЫ',!hasHand?'поставь ладонь '+side()+' от телефона':
+      (AT.ok?'диапазон '+(AT.span/10).toFixed(1).replace('.',',')+' см пойман\nможно жать «Старт»':'помаши ладонью вверх-вниз, примерно 5–15 см над столом —\nкорабль подстроится под твой размах'));
+  else if(G.state==='count') center(String(Math.max(1,Math.ceil(G.countT))),'приготовься');
+  else if(G.state==='over') center('ИГРА ОКОНЧЕНА','Счёт '+Math.floor(G.score)+'   рекорд '+Math.max(gBest,G.best)+'\n'+(AT.ok?'диапазон '+(AT.span/10).toFixed(1).replace('.',',')+' см пойман':'помаши ладонью — подстрою заново'));
+  if(gDiagOn){ c.textAlign='left'; c.textBaseline='bottom'; c.font='11px "IBM Plex Mono", monospace'; c.fillStyle='#8A9B96';
+    c.fillText(diagText(absS.st),Math.max(10,gSafe.l+8),H-Math.max(6,gSafe.b+4)); }
+}
+el('gMenu').addEventListener('click',function(){ gMenuOpen=true; el('gPanel').classList.remove('hidden'); el('gLogI').textContent=logInfo()+' '+slogInfo(); spanLabel(); fitScreen(); });
+el('gSave').addEventListener('click',function(ev){ ev.stopPropagation(); logSave(); });
+el('gLogS').addEventListener('click',function(){ logSave(); });
+el('sLogS').addEventListener('click',function(){ slogSave(); });
+el('calLogS').addEventListener('click',function(){ slogSave(); });
+el('gDiagT').addEventListener('click',function(){ gDiagOn=!gDiagOn; this.textContent='Диагностика на экране: '+(gDiagOn?'вкл':'выкл'); });
+el('gLogT').addEventListener('click',function(){ logOn=!logOn; this.textContent='Журнал партии: '+(logOn?'вкл':'выкл'); if(!logOn) logStop(); });
+el('gResume').addEventListener('click',function(){ gMenuOpen=false; el('gPanel').classList.add('hidden'); gLast=performance.now(); fitScreen(); });
+/* поле экрана — сколько миллиметров хода ладони на весь экран; запоминается */
+function spanLabel(){ var v=Math.round(gSpan/5)*5; el('gSpanv').textContent=(v/10).toFixed(v%10?1:0).replace('.',',')+' см';
+  el('gSpan').value=String(v); el('gAutoF').textContent='Подбирать по взмахам: '+(gAutoField?'да':'нет, вручную'); }
+try{ var sv=parseInt(localStorage.getItem('sonar_field_mm')||'',10); if(sv>=50&&sv<=150) gSpan=sv; gAutoField=localStorage.getItem('sonar_field_auto')!=='0'; }catch(e){}
+spanLabel();
+el('gSpan').addEventListener('input',function(){ gSpan=parseInt(this.value,10); gAutoField=false; spanLabel();     // тронул ползунок — дальше ход ладони только вручную
+  try{ localStorage.setItem('sonar_field_mm',String(gSpan)); localStorage.setItem('sonar_field_auto','0'); }catch(e){} });
+el('gAutoF').addEventListener('click',function(){ gAutoField=!gAutoField; spanLabel(); try{ localStorage.setItem('sonar_field_auto',gAutoField?'1':'0'); }catch(e){} });
+seg('data-gd',function(v){ gDiff=v; if(G){ Game.setDiff(G,v); G.state='wait'; G.rocks=[]; G.parts=[]; G.score=0; } loadBest(); });
+el('gSfx').addEventListener('click',function(){ gSfxOn=!gSfxOn; this.textContent='Звуки: '+(gSfxOn?'вкл':'выкл'); });
+el('gRecal').addEventListener('click',function(){ gMenuOpen=false; el('gPanel').classList.add('hidden'); quickStart(); });
+el('gStart').addEventListener('click',function(ev){ ev.stopPropagation(); if(G&&G.state==='wait') Game.begin(G); });
+el('gAgain').addEventListener('click',function(ev){ ev.stopPropagation(); if(G&&G.state==='over') Game.begin(G); });
+['reload1','reload2','reload3'].forEach(function(id){ el(id).addEventListener('click',function(){ location.reload(); }); });
+el('gHome').addEventListener('click',function(){ gMenuOpen=false; el('gPanel').classList.add('hidden'); mode=null; setProbe('off'); show('home'); });
+})();
+</script>
+</body>
+</html>

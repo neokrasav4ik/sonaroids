@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Стили Sonaroids</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  :root{color-scheme:dark;--bg:#0A0F24;--ink:#E9ECFF;--soft:#8E95C7;--line:#2B335E}
+  html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);touch-action:none;overscroll-behavior:none;
+    -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
+  #app{position:fixed;inset:0}
+  #cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;image-rendering:pixelated}
+  #ui{position:absolute;left:calc(env(safe-area-inset-left,0px) + 8px);top:calc(env(safe-area-inset-top,0px) + 8px);display:grid;grid-template-columns:repeat(2,auto);gap:5px;z-index:2}
+  #ui button{font:8px/1.3 "Press Start 2P",ui-monospace,Menlo,monospace;letter-spacing:.02em;color:var(--ink);background:rgba(0,0,0,.45);
+    border:2px solid var(--line);padding:6px 7px;text-align:left;cursor:pointer;min-width:112px;border-radius:0;touch-action:manipulation}
+  #ui button b{display:block;font-weight:400;color:var(--soft);font-size:6px;margin-bottom:4px;letter-spacing:.08em}
+  #ui.min{grid-template-columns:auto}
+  #ui button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+  #ui.min button:not(#bHide){display:none}
+  @media (orientation:portrait){ #rot{display:flex!important} }
+  #rot{display:none;position:fixed;inset:0;z-index:5;background:var(--bg);color:var(--ink);align-items:center;justify-content:center;text-align:center;
+    font:11px/1.8 "Press Start 2P",ui-monospace,monospace;padding:24px}
+</style>
+
+<div id="app">
+  <canvas id="cv" aria-label="Прототип игры Sonaroids: корабль летит за пальцем"></canvas>
+  <div id="ui">
+                <button id="bScreen"><b>ЭКРАН</b><span></span></button>
+    <button id="bHide"><b>ПАНЕЛЬ</b><span>СКРЫТЬ</span></button>
+  </div>
+  <div id="rot">ПОВЕРНИ ТЕЛЕФОН<br>ГОРИЗОНТАЛЬНО</div>
+</div>
+
+<script>
+(function(){
+"use strict";
+/* ── ТРИ СТИЛЯ: палитры по 10–12 цветов. Всё рисуется кодом — ни одной картинки ── */
+var STYLES=[
+ {name:'ПОЛНОЧЬ', bg:'#0A0F24', neb:['#141B3C','#1F2458','#173A57'], stars:['#3B4478','#8A93D1','#E6EAFF'],
+  rock:['#1A1D38','#343A69','#565C94','#8B90C4','#C9CCEC'], rockLine:null,
+  ship:['#7A2A12','#C2451E','#FF8A3D','#FFD1A6'], flame:['#FF4D6D','#FFB347','#FFF3B0'], bullet:'#7DF9FF', glowB:'125,249,255',
+  ufo:['#1E5F3A','#3FBF6E','#7CFF9B','#D6FFE0'], ebullet:'#FF4D6D', pick:'#FFD84D', glowP:'255,216,77', text:'#E9ECFF', soft:'#8E95C7', line:'#2B335E', band:'#FFD84D', hit:'#FF4D6D', hand:['#7E5A55','#C8927E','#F0C3A8']},
+ {name:'СУМЕРКИ', bg:'#1B1A2E', neb:['#2A2440','#3C2B4F','#4A2F4A'], stars:['#5A4C6E','#B89BB2','#FFE9D6'],
+  rock:['#2A2233','#4C3E57','#7A6380','#B08FA5','#EBCBD0'], rockLine:null,
+  ship:['#1F5E52','#2F8F7C','#7FE0C8','#E9FFF8'], flame:['#FF7A7A','#FFB86B','#FFF1C9'], bullet:'#FFB86B', glowB:'255,184,107',
+  ufo:['#4B2F80','#7B55C7','#B48CFF','#EADFFF'], ebullet:'#FF7A7A', pick:'#FFE66D', glowP:'255,230,109', text:'#FFF3EA', soft:'#C9A9B6', line:'#4A3A57', band:'#7FE0C8', hit:'#FF7A7A', hand:['#6E4D57','#C99A94','#F3CDBF']},
+ {name:'КОНТУР', bg:'#06110F', neb:['#0B1C18','#0F2620','#0B1C18'], stars:['#1D3A33','#3F6F63','#9EF0D2'],
+  rock:['#06110F','#0E221D','#12302A','#1A4239','#9EF0D2'], rockLine:'#9EF0D2',
+  ship:['#3A4A46','#9FB3AD','#F2F7F5','#FFFFFF'], flame:['#FF6B5A','#FF9F7A','#FFE3D6'], bullet:'#FF6B5A', glowB:'255,107,90',
+  ufo:['#5A1F1A','#B23A2E','#FF6B5A','#FFD6CF'], ebullet:'#FFD166', pick:'#FFD166', glowP:'255,209,102', text:'#D9F2EA', soft:'#5E8C80', line:'#1D3A33', band:'#9EF0D2', hit:'#FF6B5A', hand:['#12302A','#3F6F63','#9EF0D2']}
+];
+var PIXN=['КРУПНО','СРЕДНЕ','МЕЛКО'], PIXH=[160,215,280];
+var X3N=['НЕ ПОКАЗЫВАТЬ','ПОЛОСА','ВСПЛЫВАШКИ'];
+var SCRN=['ИГРА','ИНСТРУКЦИЯ'];
+var st={s:1,pix:1,x3:0,scr:1};   // решено: стиль «Сумерки», очки по высоте не показывать
+try{ var sv=JSON.parse(localStorage.getItem('sonaroids_styles4')||'{}'); if(sv.scr===0||sv.scr===1) st.scr=sv.scr; }catch(e){}
+function save(){ try{ localStorage.setItem('sonaroids_styles4',JSON.stringify({pix:st.pix,scr:st.scr})); }catch(e){} }
+var P=STYLES[st.s];
+
+/* ── холсты: игра в низком разрешении (целые пиксели), свет и надписи — поверх в полном ── */
+var cv=document.getElementById('cv'), cx=cv.getContext('2d');
+var lc=document.createElement('canvas'), lx=lc.getContext('2d');
+var DPR=1, W=0, H=0, S=1, LW=320, LH=180;
+function resize(){
+  DPR=Math.min(3,window.devicePixelRatio||1);
+  var w=Math.max(200,window.innerWidth), h=Math.max(150,window.innerHeight);
+  cv.width=Math.round(w*DPR); cv.height=Math.round(h*DPR); W=cv.width; H=cv.height;
+  S=Math.max(1,Math.round(H/PIXH[st.pix])); LH=Math.floor(H/S); LW=Math.floor(W/S);
+  lc.width=LW; lc.height=LH; lx.imageSmoothingEnabled=false; cx.imageSmoothingEnabled=false;
+  makeNebula(); makeStars(); ship.x=Math.round(LW*0.2);
+}
+
+/* ── упорядоченное смешение (Байер 4×4) — туманности и переходы тонов без плавных градиентов ── */
+var BAY=[0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5];
+function bay(x,y){ return (BAY[(y&3)*4+(x&3)]+0.5)/16; }
+function hex(c){ return [parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)]; }
+function rnd(a,b){ return a+Math.random()*(b-a); }
+
+/* туманность: шум значений, раскрашенный тремя тонами через смешение */
+var nebC=null, nebX=0;
+function noise2(){ var g=[],N=16,i; for(i=0;i<N*N;i++) g.push(Math.random());
+  return function(x,y){ var xi=Math.floor(x),yi=Math.floor(y),fx=x-xi,fy=y-yi; function v(a,b){ return g[((a%N+N)%N)+((b%N+N)%N)*N]; }
+    var sx=fx*fx*(3-2*fx), sy=fy*fy*(3-2*fy); return (v(xi,yi)*(1-sx)+v(xi+1,yi)*sx)*(1-sy)+(v(xi,yi+1)*(1-sx)+v(xi+1,yi+1)*sx)*sy; }; }
+function makeNebula(){
+  var w=LW*2, h=LH; nebC=document.createElement('canvas'); nebC.width=w; nebC.height=h;
+  var c=nebC.getContext('2d'), im=c.createImageData(w,h), n1=noise2(), n2=noise2(), cols=P.neb.map(hex), bg=hex(P.bg);
+  for(var y=0;y<h;y++) for(var x=0;x<w;x++){
+    var u=x/w*6, v=y/h*3.2, a=n1(u,v)*0.65+n2(u*2.1,v*2.1)*0.35, t=(a-0.42)*2.6, d=bay(x,y), idx=-1;
+    if(t>0.75+ (d-0.5)*0.25) idx=2; else if(t>0.35+(d-0.5)*0.3) idx=1; else if(t>0.02+(d-0.5)*0.35) idx=0;
+    var col=idx<0?bg:cols[idx], o=(y*w+x)*4; im.data[o]=col[0]; im.data[o+1]=col[1]; im.data[o+2]=col[2]; im.data[o+3]=255; }
+  c.putImageData(im,0,0);
+}
+var stars=[];
+function makeStars(){ stars=[]; for(var i=0;i<Math.round(LW*LH/420);i++){ var z=Math.random(); stars.push({x:Math.random()*LW,y:Math.random()*LH,z:z,tw:Math.random()*6}); } }
+
+/* ── камни: для каждого — 16 кадров поворота, пиксели с объёмом (свет сверху-слева), кратеры, контур ── */
+function makeRock(r){
+  var n=9+Math.floor(Math.random()*4), pts=[], i, f;
+  for(i=0;i<n;i++) pts.push({a:i/n*Math.PI*2+rnd(-0.15,0.15), r:r*rnd(0.72,1.0)});
+  var cr=[]; for(i=0;i<2+Math.floor(r/6);i++) cr.push({a:rnd(0,6.28),d:rnd(0.1,0.55)*r,r:rnd(0.12,0.26)*r});
+  var size=Math.ceil(r*2)+3, frames=[], ramp=P.rock.map(hex), line=P.rockLine?hex(P.rockLine):null;
+  for(f=0;f<16;f++){
+    var rot=f/16*Math.PI*2, cvs=document.createElement('canvas'); cvs.width=size; cvs.height=size;
+    var c=cvs.getContext('2d'), im=c.createImageData(size,size), cxr=size/2, cyr=size/2, inside=new Uint8Array(size*size);
+    var poly=pts.map(function(p){ return [cxr+Math.cos(p.a+rot)*p.r, cyr+Math.sin(p.a+rot)*p.r]; });
+    for(var y=0;y<size;y++) for(var x=0;x<size;x++){ var px=x+0.5,py=y+0.5,ins=false;
+      for(var a=0,b=poly.length-1;a<poly.length;b=a++){ var xa=poly[a][0],ya=poly[a][1],xb=poly[b][0],yb=poly[b][1];
+        if(((ya>py)!==(yb>py))&&(px<(xb-xa)*(py-ya)/(yb-ya)+xa)) ins=!ins; }
+      inside[y*size+x]=ins?1:0; }
+    for(y=0;y<size;y++) for(x=0;x<size;x++){ if(!inside[y*size+x]) continue;
+      var dx=(x+0.5-cxr)/r, dy=(y+0.5-cyr)/r, d=Math.min(1,Math.sqrt(dx*dx+dy*dy));
+      var lum=0.55+(-dx*0.62-dy*0.78)*0.55*d+(1-d)*0.18;           // свет сверху-слева, объём к краю
+      for(var k=0;k<cr.length;k++){ var ca=cr[k].a+rot, ccx=cxr+Math.cos(ca)*cr[k].d, ccy=cyr+Math.sin(ca)*cr[k].d, q=Math.hypot(x+0.5-ccx,y+0.5-ccy)/cr[k].r;
+        if(q<1){ var inner=( (x+0.5-ccx)*0.62+(y+0.5-ccy)*0.78 )/cr[k].r; lum+= q<0.8? -0.22+inner*0.18 : 0.08; } }
+      var edge=!inside[y*size+x-1]||!inside[y*size+x+1]||!inside[(y-1)*size+x]||!inside[(y+1)*size+x];
+      var idx, o=(y*size+x)*4, col;
+      if(line){ col=edge?line:(lum+ (bay(x,y)-0.5)*0.35>0.72?ramp[3]:ramp[1]); }           // стиль «контур»: светлая линия и тёмная заливка
+      else { idx=Math.max(1,Math.min(4,Math.floor(lum*4+(bay(x,y)-0.5)*0.9+0.5))); if(edge) idx=Math.max(0,Math.min(idx,1)); col=ramp[idx]; }
+      im.data[o]=col[0]; im.data[o+1]=col[1]; im.data[o+2]=col[2]; im.data[o+3]=255; }
+    c.putImageData(im,0,0); frames.push(cvs); }
+  return {frames:frames,size:size};
+}
+
+/* ── спрайты по строкам: цифра — номер цвета в палитре корабля/тарелки ── */
+var SHIP_MAP=[
+ '....11..........',
+ '....1221........',
+ '.....12221......',
+ '..1112233321....',
+ '.122223333332111',
+ '.123333333333333',
+ '.122223333332111',
+ '..1112233321....',
+ '.....12221......',
+ '....1221........',
+ '....11..........'];
+var UFO_MAP=[
+ '.....1111.....',
+ '....134431....',
+ '..1122222211..',
+ '.123333333321.',
+ '12222222222221',
+ '.111111111111.'];
+var ICON={shield:['.1111.','1....1','1.11.1','1.11.1','1....1','.1111.'], triple:['1.....','11..1.','111.11','111.11','11..1.','1.....'], slow:['111111','.1..1.','..11..','..11..','.1..1.','111111']};
+function blit(map,cols,x,y,flipX){ for(var r=0;r<map.length;r++) for(var c=0;c<map[r].length;c++){ var ch=map[r][c]; if(ch==='.') continue;
+  lx.fillStyle=cols[+ch-1]; lx.fillRect(Math.round(x+(flipX?map[r].length-1-c:c)),Math.round(y+r),1,1); } }
+
+/* ── игра (упрощённая, для показа стиля): автострельба, раскол камней, подарки, тарелка, серия, очки по высоте ── */
+var ship={x:60,y:90,ty:90,shield:0,triple:0,inv:0}, rocks=[], bullets=[], ebul=[], parts=[], pops=[], picks=[], ufo=null;
+var score=0, combo=0, best=0, t=0, spawnT=0, fireT=0, pickT=6, ufoT=14, slowT=0, shake=0, flash=0, lastTouch=-99, touching=false;
+var R_SIZES=[0.075,0.045,0.024];                                 // доли высоты экрана: большой, средний, мелкий
+var PTS=[20,50,100];                                             // очки, как в автомате 1979 года
+function heightMult(y){ var f=Math.abs(y/LH-0.5); return f<0.15?3:f<0.3?2:1; }
+function spawnRock(sz,x,y,vx,vy){ var r=Math.max(3,Math.round(LH*R_SIZES[sz])); var g=makeRock(r);
+  rocks.push({x:x,y:y,vx:vx,vy:vy,r:r,sz:sz,g:g,rot:Math.random()*16,vr:rnd(-5,5)}); }
+function spawnFromRight(){ var sz=Math.random()<0.55?0:(Math.random()<0.6?1:2), r=LH*R_SIZES[sz];
+  spawnRock(sz,LW+r+2,rnd(r+4,LH-r-4),-rnd(18,30)*(LH/180),rnd(-6,6)*(LH/180)); }
+function burst(x,y,n,cols,sp){ for(var i=0;i<n;i++){ var a=Math.random()*6.28, v=rnd(0.3,1)*sp; parts.push({x:x,y:y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:rnd(0.4,0.9),max:0.9,cols:cols}); } }
+function pop(x,y,txt,col){ pops.push({x:x,y:y,txt:txt,col:col,life:1}); }
+
+function update(dt){
+  t+=dt; var k=LH/180, sdt=slowT>0?dt*0.5:dt; if(slowT>0) slowT-=dt;
+  // автопилот, пока не трогают экран: целится в ближайший камень, уворачивается от близких
+  if(t-lastTouch>4){ var tgt=null,bd=1e9; rocks.forEach(function(r){ if(r.x>ship.x+10&&r.x-ship.x<bd){ bd=r.x-ship.x; tgt=r; } });
+    var ay=tgt?tgt.y:LH/2+Math.sin(t*0.7)*LH*0.3;
+    rocks.forEach(function(r){ var dx=r.x-ship.x; if(dx>-4&&dx<24*k&&Math.abs(r.y-ship.y)<r.r+8*k) ay=ship.y+(ship.y>r.y?1:-1)*30*k; });
+    ship.ty=Math.max(LH*0.08,Math.min(LH*0.92,ay)); }
+  ship.y+=(ship.ty-ship.y)*(1-Math.exp(-dt/0.06));
+  if(ship.inv>0) ship.inv-=dt; if(ship.shield>0) ship.shield-=dt; if(ship.triple>0) ship.triple-=dt;
+  // стрельба
+  fireT-=dt; if(fireT<=0){ fireT=0.17; var by=ship.y, bx=ship.x+14;
+    bullets.push({x:bx,y:by,vx:190*k,vy:0}); if(ship.triple>0){ bullets.push({x:bx,y:by,vx:185*k,vy:-38*k}); bullets.push({x:bx,y:by,vx:185*k,vy:38*k}); } }
+  // появление
+  spawnT-=sdt; if(spawnT<=0){ spawnFromRight(); spawnT=rnd(0.9,1.6); }
+  pickT-=dt; if(pickT<=0){ pickT=rnd(9,14); var types=['shield','triple','slow']; picks.push({x:LW+6,y:rnd(LH*0.15,LH*0.85),type:types[Math.floor(Math.random()*3)],t:0}); }
+  ufoT-=dt; if(ufoT<=0&&!ufo){ ufo={x:LW+10,y:rnd(LH*0.2,LH*0.8),vy:0,fire:1.2,hp:3,t:0}; ufoT=rnd(22,30); }
+  // движение
+  bullets.forEach(function(b){ b.x+=b.vx*dt; b.y+=b.vy*dt; }); bullets=bullets.filter(function(b){ return b.x<LW+8&&b.y>-4&&b.y<LH+4&&!b.dead; });
+  rocks.forEach(function(r){ r.x+=r.vx*sdt; r.y+=r.vy*sdt; r.rot=(r.rot+r.vr*sdt+16)%16; if(r.y<r.r&&r.vy<0||r.y>LH-r.r&&r.vy>0) r.vy=-r.vy; });
+  picks.forEach(function(p){ p.x-=24*k*sdt; p.t+=dt; }); picks=picks.filter(function(p){ return p.x>-10&&!p.dead; });
+  if(ufo){ ufo.t+=dt; ufo.x+=( ufo.x>LW*0.72? -30*k : -6*k)*sdt; ufo.y+=(Math.sin(ufo.t*1.3)*LH*0.25+LH/2-ufo.y)*dt*0.8;
+    ufo.fire-=sdt; if(ufo.fire<=0){ ufo.fire=1.4; var a=Math.atan2(ship.y-ufo.y,ship.x-ufo.x); ebul.push({x:ufo.x,y:ufo.y,vx:Math.cos(a)*70*k,vy:Math.sin(a)*70*k}); }
+    if(ufo.x<-20) ufo=null; }
+  ebul.forEach(function(b){ b.x+=b.vx*sdt; b.y+=b.vy*sdt; }); ebul=ebul.filter(function(b){ return b.x>-4&&b.x<LW+4&&b.y>-4&&b.y<LH+4&&!b.dead; });
+  // попадания
+  bullets.forEach(function(b){ if(b.dead) return;
+    for(var i=0;i<rocks.length;i++){ var r=rocks[i]; if(r.dead) continue; if((b.x-r.x)*(b.x-r.x)+(b.y-r.y)*(b.y-r.y)<(r.r+1)*(r.r+1)){ b.dead=true; r.dead=true; kill(r); break; } }
+    if(!b.dead&&ufo&&Math.abs(b.x-ufo.x)<8&&Math.abs(b.y-ufo.y)<5){ b.dead=true; ufo.hp--; burst(b.x,b.y,6,P.ufo,40*k);
+      if(ufo.hp<=0){ var m=heightMult(ship.y); combo++; var cm=1+Math.floor(combo/5); var g=1000*m*cm; score+=g;
+        burst(ufo.x,ufo.y,40,P.ufo,90*k); shake=0.35; if(st.x3===2) pop(ufo.x,ufo.y-8,'+'+g,P.pick); ufo=null; } } });
+  rocks=rocks.filter(function(r){ return !r.dead&&r.x>-r.r-6; });
+  // столкновения с кораблём
+  rocks.forEach(function(r){ if(r.dead) return; var dx=r.x-ship.x-3, dy=r.y-ship.y; if(dx*dx+dy*dy<(r.r+4*k)*(r.r+4*k)){ r.dead=true; kill(r,true); hurt(); } });
+  ebul.forEach(function(b){ if(Math.abs(b.x-ship.x-3)<6*k&&Math.abs(b.y-ship.y)<5*k){ b.dead=true; hurt(); } });
+  picks.forEach(function(p){ if(Math.abs(p.x-ship.x-3)<9*k&&Math.abs(p.y-ship.y)<9*k){ p.dead=true; take(p.type); } });
+  rocks=rocks.filter(function(r){ return !r.dead; });
+  parts.forEach(function(p){ p.x+=p.vx*dt; p.y+=p.vy*dt; p.vx*=0.985; p.vy*=0.985; p.life-=dt; }); parts=parts.filter(function(p){ return p.life>0; });
+  pops.forEach(function(p){ p.y-=14*k*dt; p.life-=dt*0.9; }); pops=pops.filter(function(p){ return p.life>0; });
+  stars.forEach(function(s){ s.x-=(4+s.z*s.z*30)*k*sdt; if(s.x<0){ s.x+=LW; s.y=Math.random()*LH; } });
+  nebX=(nebX+3*k*sdt)%LW;
+  if(shake>0) shake-=dt; if(flash>0) flash-=dt;
+}
+function kill(r,byShip){
+  var k=LH/180; burst(r.x,r.y,8+r.r,P.rock.slice(2).concat([P.flame[1]]),50*k);
+  if(r.sz<2){ for(var i=0;i<2;i++) spawnRock(r.sz+1,r.x,r.y,r.vx*rnd(0.9,1.3),(i?-1:1)*rnd(12,26)*k); }
+  if(byShip) return;
+  combo++; var m=heightMult(ship.y), cm=1+Math.floor(combo/5), g=PTS[r.sz]*m*cm; score+=g; best=Math.max(best,score);
+  if(st.x3===2) pop(r.x,r.y-r.r-3,'+'+g+(m>1?' ×'+m:''),m===3?P.band:m===2?P.text:P.soft);
+  shake=Math.max(shake,0.08+r.r*0.004);
+}
+function hurt(){ if(ship.inv>0) return; if(ship.shield>0){ ship.shield=0; burst(ship.x+6,ship.y,20,[P.pick,P.text],60*LH/180); ship.inv=0.6; return; }
+  combo=0; ship.inv=1.4; flash=0.25; shake=0.4; burst(ship.x+6,ship.y,26,P.ship.concat(P.flame),70*LH/180); pop(ship.x+10,ship.y-12,'УДАР',P.hit); }
+function take(type){ if(type==='shield') ship.shield=12; if(type==='triple') ship.triple=10; if(type==='slow') slowT=6;
+  pop(ship.x+10,ship.y-12,type==='shield'?'ЩИТ':type==='triple'?'ТРОЙНОЙ':'ЗАМЕДЛЕНИЕ',P.pick); burst(ship.x+6,ship.y,14,[P.pick,P.text],50*LH/180); }
+
+/* ── рисование: низкое разрешение → увеличение без сглаживания → свет и надписи ── */
+var lights=[];
+function light(x,y,rad,rgb,a){ lights.push([x,y,rad,rgb,a]); }
+function draw(){
+  lights=[];
+  var k=LH/180;
+  lx.fillStyle=P.bg; lx.fillRect(0,0,LW,LH);
+  lx.drawImage(nebC,-Math.floor(nebX),0); lx.drawImage(nebC,LW*2-Math.floor(nebX),0);
+  stars.forEach(function(s){ var i=s.z<0.5?0:s.z<0.85?1:2; if(i===2&&Math.sin(t*3+s.tw)>0.6) i=1; lx.fillStyle=P.stars[i]; lx.fillRect(Math.round(s.x),Math.round(s.y),1,1); });
+  if(st.scr>=1){ drawGuide(); return; }
+  if(st.x3===1){ var y0=Math.round(LH*0.35), y1=Math.round(LH*0.65); lx.fillStyle=P.band;                      // полоса ×3: редкие точки смешения
+    for(var y=y0;y<y1;y++) for(var x=(y&1);x<LW;x+=6) if(bay(x,y)<0.35) lx.fillRect(x,y,1,1); lx.globalAlpha=1; }
+  picks.forEach(function(p){ var yy=p.y+Math.sin(p.t*3)*2; lx.fillStyle=P.pick; lx.fillRect(Math.round(p.x)-5,Math.round(yy)-5,11,11);
+    lx.fillStyle=P.bg; lx.fillRect(Math.round(p.x)-4,Math.round(yy)-4,9,9); blit(ICON[p.type],[P.pick],p.x-3,yy-3); light(p.x,yy,14*k,P.glowP,0.35); });
+  rocks.forEach(function(r){ var fr=r.g.frames[Math.floor(r.rot)%16]; lx.drawImage(fr,Math.round(r.x-r.g.size/2),Math.round(r.y-r.g.size/2)); });
+  if(ufo){ blit(UFO_MAP,P.ufo,ufo.x-7,ufo.y-3); if(Math.floor(t*6)%2) { lx.fillStyle=P.ufo[3]; lx.fillRect(Math.round(ufo.x)-4,Math.round(ufo.y)+1,1,1); lx.fillRect(Math.round(ufo.x)+3,Math.round(ufo.y)+1,1,1); }
+    light(ufo.x,ufo.y,22*k,hex(P.ufo[2]).join(','),0.35); }
+  ebul.forEach(function(b){ lx.fillStyle=P.ebullet; lx.fillRect(Math.round(b.x)-1,Math.round(b.y)-1,2,2); light(b.x,b.y,7*k,hex(P.ebullet).join(','),0.5); });
+  bullets.forEach(function(b){ lx.fillStyle=P.bullet; lx.fillRect(Math.round(b.x)-2,Math.round(b.y),4,1); light(b.x,b.y,6*k,P.glowB,0.45); });
+  // корабль: пламя, корпус, щит
+  var blink=ship.inv>0&&Math.floor(t*14)%2===0, m=heightMult(ship.y);
+  if(!blink){ var fl=Math.floor(t*20)%3, sx=Math.round(ship.x), sy=Math.round(ship.y);
+    lx.fillStyle=P.flame[0]; lx.fillRect(sx-3-fl,sy-1,3+fl,3); lx.fillStyle=P.flame[1]; lx.fillRect(sx-2-(fl>>1),sy,2+(fl>>1),1); lx.fillStyle=P.flame[2]; lx.fillRect(sx-1,sy,1,1);
+    blit(SHIP_MAP,P.ship,sx,sy-5);
+    light(ship.x-2,ship.y,(st.x3===2?6+m*3:9)*k,hex(P.flame[1]).join(','),st.x3===2?0.25+m*0.12:0.4);
+    if(ship.shield>0){ lx.fillStyle=P.pick; for(var a=0;a<28;a++){ var an=a/28*6.28+t*2; if(a%2) continue; lx.fillRect(Math.round(ship.x+7+Math.cos(an)*11),Math.round(ship.y+Math.sin(an)*9),1,1); }
+      light(ship.x+7,ship.y,16*k,P.glowP,0.25); } }
+  parts.forEach(function(p){ var f=p.life/p.max, c=p.cols[Math.min(p.cols.length-1,Math.floor((1-f)*p.cols.length))]; lx.fillStyle=c; lx.fillRect(Math.round(p.x),Math.round(p.y),1,1); if(f>0.6) light(p.x,p.y,3*k,hex(c).join(','),0.2); });
+}
+/* ── ИНСТРУКЦИИ: три варианта вида одной и той же последовательности первого запуска ──
+   язык → положи телефон разъёмом к руке → убери руку (пауза, потом слушаю) → помаши 5–15 см (пауза, потом ловлю размах).
+   После каждой команды — кольцо паузы: человек успевает понять и приготовиться, и только потом игра начинает слушать. */
+var GT=0, STEPS=[['lang',3.2],['sound',5.4],['phone',4.8],['away',4.4],['wave',6.8]], LOOP=24.6, PAUSE=1.5;
+var GV=null;                                               // что надписать поверх: заголовок, подпись, метки, кольцо, кнопки
+function gstep(){ var t=GT%LOOP,a=0,i; for(i=0;i<STEPS.length;i++){ if(t<a+STEPS[i][1]) return {i:i,id:STEPS[i][0],t:t-a,d:STEPS[i][1]}; a+=STEPS[i][1]; } return {i:0,id:'lang',t:0,d:1}; }
+function R(c,x,y,w,h){ lx.fillStyle=c; lx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h)); }
+function dots(x,y0,y1,c){ for(var y=Math.round(Math.min(y0,y1));y<=Math.max(y0,y1);y+=2) R(c,x,y,1,1); }
+function polyFill(pts,c){ lx.fillStyle=c; var y0=Math.floor(Math.min.apply(null,pts.map(function(p){return p[1];}))), y1=Math.ceil(Math.max.apply(null,pts.map(function(p){return p[1];})));
+  for(var y=y0;y<=y1;y++){ var xs=[], yy=y+0.5; for(var a=0,b=pts.length-1;a<pts.length;b=a++){ var A=pts[a],B=pts[b]; if((A[1]>yy)!==(B[1]>yy)) xs.push(A[0]+(yy-A[1])*(B[0]-A[0])/(B[1]-A[1])); }
+    xs.sort(function(p,q){return p-q;}); for(var i=0;i+1<xs.length;i+=2){ var xa=Math.round(xs[i]), xb=Math.round(xs[i+1]); if(xb>xa) lx.fillRect(xa,y,xb-xa,1); } } }
+function ease(x){ x=Math.max(0,Math.min(1,x)); return x*x*(3-2*x); }
+function waveH(t){ return 0.5+0.5*Math.sin(t*2.4-Math.PI/2); }  // 0 — 5 см, 1 — 15 см
+
+/* ── пиктограммы ── */
+function phoneTop(cx0,cy0,w,h,blink,shipF){             // телефон сверху, лёжа горизонтально; разъём — справа
+  var x=Math.round(cx0-w/2), y=Math.round(cy0-h/2);
+  R(P.rock[0],x-1,y-1,w+2,h+2); R(P.rock[2],x,y,w,h); R(P.rock[3],x+1,y,w-2,1);
+  R(P.bg,x+4,y+3,w-8,h-6); R(P.rock[1],x+4,y+3,w-8,1);
+  R(P.rock[1],x+2,Math.round(cy0)-2,1,4);                              // камера у левого края
+  R(blink?P.pick:P.rock[3],x+w,Math.round(cy0)-3,2,6);                 // разъём
+  if(shipF!==undefined){ var sy=y+4+Math.round((1-shipF)*(h-11)); R(P.ship[2],x+8,sy+1,4,2); R(P.ship[3],x+11,sy+1,2,1); R(P.flame[1],x+6,sy+1,2,1); }
+}
+function handTop(x,y){                                     // ладонь сверху, пальцы к телефону (влево)
+  var H0=P.hand[0],H1=P.hand[1],H2=P.hand[2];
+  R(H1,x+1,y,6,2); R(H1,x,y+3,7,2); R(H1,x+1,y+6,6,2); R(H1,x+3,y+9,4,2);
+  R(H2,x+1,y,6,1); R(H2,x,y+3,7,1); R(H2,x+1,y+6,6,1); R(H2,x+3,y+9,4,1);
+  R(H1,x+6,y,9,11); R(H2,x+6,y,9,1); R(H0,x+6,y+10,9,1);
+  R(H1,x+8,y+11,4,3); R(H0,x+8,y+13,4,1);
+  R(H1,x+15,y+2,12,7); R(H0,x+15,y+8,12,1); R(H2,x+15,y+2,12,1);
+}
+function phoneSide(x,y,w){ R(P.rock[1],x,y-4,w,4); R(P.rock[3],x+1,y-4,w-2,1); R(P.rock[0],x,y-1,w,1); }
+function arcs(x,y,n,t,col,dir,maxR){ for(var i=0;i<n;i++){ var rr=((t*26+i*maxR/n)%maxR); for(var a=-1.1;a<=0.35;a+=0.1){
+  var px=x+Math.cos(a)*rr*dir, py=y+Math.sin(a)*rr*1.15; if(py<y) R(col,px,py,1,1); } } }
+function frame(x,y,w,h,c){ R(c,x,y,w,1); R(c,x,y+h-1,w,1); R(c,x,y,1,h); R(c,x+w-1,y,1,h); }
+function check(x,y,c){ R(c,x,y+2,1,1); R(c,x+1,y+3,1,1); R(c,x+2,y+2,1,1); R(c,x+3,y+1,1,1); R(c,x+4,y,1,1); }
+
+/* ── общий первый экран: язык ── */
+function gLang(s){
+  var bw=Math.round(LW*0.2), bh=Math.round(LH*0.13), gap=Math.round(LW*0.04), y=Math.round(LH*0.52), x1=Math.round(LW/2-gap/2-bw), x2=Math.round(LW/2+gap/2);
+  var sel=Math.floor(s.t/1.1)%2;
+  [x1,x2].forEach(function(x,i){ R(P.bg,x,y,bw,bh); frame(x,y,bw,bh,i===sel?P.band:P.line); if(i===sel) frame(x+2,y+2,bw-4,bh-4,P.line); });
+  GV.title='SONAROIDS'; GV.titleCol=P.band; GV.sub='';
+  GV.labels.push({x:x1+bw/2,y:y+bh/2-3,t:'ENGLISH',c:sel===0?P.text:P.soft,a:'center',big:false});
+  GV.labels.push({x:x2+bw/2,y:y+bh/2-3,t:'РУССКИЙ',c:sel===1?P.text:P.soft,a:'center',big:false});
+}
+/* кнопка «дальше» — со стороны свободной руки (слева) */
+function gNext(s){ var bw=Math.round(LW*0.17), bh=Math.round(LH*0.12), x=Math.round(LW*0.05), y=Math.round(LH*0.72);
+  var on=Math.floor(s.t*2)%2===0; R(on?P.ship[1]:P.bg,x,y,bw,bh); frame(x,y,bw,bh,P.ship[2]);
+  GV.labels.push({x:x+bw/2,y:y+bh/2-3,t:'ДАЛЬШЕ',c:on?P.bg:P.ship[2],a:'center'}); }
+/* кольцо паузы и прослушивания — рисуется поверх, в полном разрешении */
+function gRing(x,y,s,kind){ var p=s.t/PAUSE, r;
+  if(s.t<PAUSE) r={x:x,y:y,p:p,st:'wait'}; else if(kind==='away'&&s.t<s.d-0.9) r={x:x,y:y,p:(s.t-PAUSE)/(s.d-0.9-PAUSE),st:'listen'};
+  else if(kind==='wave'&&s.t<s.d-1.3) r={x:x,y:y,p:(s.t-PAUSE)/(s.d-1.3-PAUSE),st:'catch'}; else r={x:x,y:y,p:1,st:'ok'};
+  GV.ring=r; return r; }
+
+/* ── ИНСТРУКЦИЯ «ОБЪЁМ» (выбрана): стол в изометрии, телефон лежит горизонтально, ладонь парит у короткого края с разъёмом.
+   Масштаб честный: телефон 15×7 см, ладонь 8,5 см шириной, пальцы 6,5–8,5 см, высота 5–15 см. Рука приходит от игрока
+   (снизу слева), пальцы смотрят от себя — поперёк телефона, ладонью вниз. ── */
+/* косоугольная проекция «спереди-слева, сверху»: длинная сторона телефона — по горизонтали экрана, ближе к игроку — вниз и чуть вправо.
+   Так рука, которая идёт от игрока, уходит вправо-вниз и не заслоняет телефон */
+function iso(X,Y,Z,o){ return [o[0]+X+0.42*Y, o[1]+0.62*Y-Z]; }
+function unIso(sx,sy,o){ var Y=(sy-o[1])/0.62; return [sx-o[0]-0.42*Y, Y]; }
+function polyA(pts,c,al){ if(al===undefined||al>=1){ polyFill(pts,c); return; } if(al<=0) return;
+  lx.fillStyle=c; var y0=Math.floor(Math.min.apply(null,pts.map(function(p){return p[1];}))), y1=Math.ceil(Math.max.apply(null,pts.map(function(p){return p[1];})));
+  for(var y=y0;y<=y1;y++){ var xs=[], yy=y+0.5; for(var a=0,b=pts.length-1;a<pts.length;b=a++){ var A=pts[a],B=pts[b]; if((A[1]>yy)!==(B[1]>yy)) xs.push(A[0]+(yy-A[1])*(B[0]-A[0])/(B[1]-A[1])); }
+    xs.sort(function(p,q){return p-q;}); for(var i=0;i+1<xs.length;i+=2) for(var x=Math.round(xs[i]);x<Math.round(xs[i+1]);x++) if(bay(x,y)<al) lx.fillRect(x,y,1,1); } }
+/* брусок: видны верх, передняя грань (+Y, к игроку) и левая (−X) */
+function box(x0,x1,y0,y1,z0,z1,o,cT,cX,cY,al){
+  polyA([iso(x0,y0,z0,o),iso(x0,y1,z0,o),iso(x0,y1,z1,o),iso(x0,y0,z1,o)],cX,al);
+  polyA([iso(x0,y1,z0,o),iso(x1,y1,z0,o),iso(x1,y1,z1,o),iso(x0,y1,z1,o)],cY,al);
+  polyA([iso(x0,y0,z1,o),iso(x1,y0,z1,o),iso(x1,y1,z1,o),iso(x0,y1,z1,o)],cT,al); }
+function handIso(Xa,Yb,hz,o,cm,al){                     // Xa — край ладони со стороны телефона, Yb — запястье, hz — высота верха ладони
+  var HS={t:P.hand[1],h:P.hand[2],x:P.hand[0],y:'#9A7274'}, w=8.5*cm, Xb=Xa+w, Ya=Yb-10*cm, th=2.4*cm;
+  var L=[7.4,8.4,7.9,6.3], fw=w/4;
+  for(var i=0;i<4;i++){ var fx0=Xa+i*fw+0.35*cm, fx1=Xa+(i+1)*fw-0.35*cm;           // пальцы: указательный — у телефона
+    box(fx0,fx1,Ya-L[i]*cm,Ya,hz-1.9*cm,hz-0.35*cm,o,HS.t,HS.x,HS.y,al);
+    var tip=iso((fx0+fx1)/2,Ya-L[i]*cm+0.9*cm,hz-0.35*cm,o); if(al>0.5) R(HS.h,tip[0]-1,tip[1],2,1);
+    var kn=iso((fx0+fx1)/2,Ya+0.6*cm,hz,o); }
+  box(Xa,Xb,Ya,Yb,hz-th,hz,o,HS.t,HS.x,HS.y,al);                                         // ладонь
+  box(Xa-4.6*cm,Xa+0.2*cm,Ya+4.2*cm,Ya+6.4*cm,hz-2.7*cm,hz-0.9*cm,o,HS.t,HS.x,HS.y,al);   // большой палец — к телефону
+  for(i=0;i<4;i++){ var k2=iso(Xa+(i+0.5)*fw,Ya+0.7*cm,hz,o); if(al>0.5) R(HS.x,k2[0]-1,k2[1],2,1); }   // костяшки
+  var e0=iso(Xa+0.5*cm,Ya+0.3*cm,hz,o), e1=iso(Xb-0.5*cm,Ya+0.3*cm,hz,o); if(al>0.5) for(var q=0;q<=1;q+=0.05) R(HS.h,e0[0]+(e1[0]-e0[0])*q,e0[1]+(e1[1]-e0[1])*q,1,1);
+  box(Xa+0.8*cm,Xb-0.8*cm,Yb,Yb+11*cm,hz-3.2*cm,hz-0.2*cm,o,HS.t,HS.x,HS.y,al);          // предплечье — к игроку,
+  box(Xa+0.8*cm,Xb-0.8*cm,Yb+11*cm,Yb+17*cm,hz-3.4*cm,hz-0.4*cm,o,HS.t,HS.x,HS.y,al*0.55); // дальше растворяется
+}
+/* телефон нарочно крупнее настоящего (в 1,6 раза): на его экране должно быть видно, что там происходит */
+var PSC=1.6;
+function phoneIso(o,U,cm,portOn){
+  var X0=-7.5*cm*PSC,X1=7.5*cm*PSC,Y0=-3.6*cm*PSC,Y1=3.6*cm*PSC,Zp=1.0*cm;
+  box(X0,X1,Y0,Y1,0,Zp,o,P.rock[2],P.rock[1],P.rock[0]);
+  polyFill([iso(X0+0.5*cm,Y0+0.45*cm,Zp,o),iso(X1-0.5*cm,Y0+0.45*cm,Zp,o),iso(X1-0.5*cm,Y1-0.45*cm,Zp,o),iso(X0+0.5*cm,Y1-0.45*cm,Zp,o)],P.bg);
+  for(var g=0;g<2;g++){ var a0=iso(X0+(2.2+g*1.3)*cm,Y1-0.8*cm,Zp,o), a1=iso(X0+(3.6+g*1.3)*cm,Y0+0.8*cm,Zp,o);            // блик на стекле
+    for(var q=0;q<=1;q+=0.06) if(bay(Math.round(a0[0]+(a1[0]-a0[0])*q),Math.round(a0[1]+(a1[1]-a0[1])*q))<0.5) R(P.neb[1],a0[0]+(a1[0]-a0[0])*q,a0[1]+(a1[1]-a0[1])*q,1,1); }
+  // разъём на правом торце: торец отсюда не виден, поэтому светится кромка над ним
+  var pa=iso(X1,-0.9*cm,Zp,o), pb=iso(X1,0.9*cm,Zp,o), port=iso(X1,0,Zp,o); for(var q=0;q<=1;q+=0.1) R(portOn?P.pick:P.rock[3],pa[0]+(pb[0]-pa[0])*q,pa[1]+(pb[1]-pa[1])*q,1,1);
+  return {X0:X0,X1:X1,Y0:Y0,Y1:Y1,Zp:Zp,port:port};
+}
+/* что на экране нарисованного телефона: звёзды, пара камней, корабль на той же высоте, что ладонь (выше по экрану — от себя) */
+function phoneGame(ph,o,cm,f){
+  var m=0.9*cm, x0=ph.X0+m, x1=ph.X1-m, y0=ph.Y0+m, y1=ph.Y1-m, W0=x1-x0, H0=y1-y0;
+  function at(u,v){ return iso(x0+u*W0,y0+v*H0,ph.Zp,o); }
+  for(var i=0;i<14;i++){ var u=((i*0.137+GT*0.05*(1+i%3))%1), v=(i*0.311)%1; var p=at(1-u,v); R(i%3?P.stars[1]:P.stars[2],p[0],p[1],1,1); }
+  [[0.62,0.3,3],[0.83,0.68,2],[0.45,0.8,2]].forEach(function(r,j){ var u=(((r[0]-GT*0.04*(j+1))%1)+1)%1*0.9+0.08, p=at(u,r[1]);
+    R(P.rock[3],p[0]-1,p[1]-1,r[2],r[2]); R(P.rock[2],p[0],p[1],r[2]-1,r[2]-1); });
+  var sp=at(0.12,0.12+(1-f)*0.76); blit(SHIP_MAP,P.ship,Math.round(sp[0])-2,Math.round(sp[1])-5);
+  for(var b=0;b<3;b++){ var bu=((GT*0.9+b/3)%1)*0.7+0.22, bp=at(bu,0.12+(1-f)*0.76); R(P.bullet,bp[0],bp[1],3,1); }
+}
+function gB(s){
+  var U=LH/150, cm=LH*0.024, o=[LW*0.43,LH*0.16+23.6*LH*0.024];            // сцена поднята к верху экрана
+  // стол: большая плоскость уходит за края экрана
+  var TX0=-24*cm, TX=34*cm, TY0=-15*cm, TY1=19*cm; polyFill([iso(TX0,TY0,0,o),iso(TX,TY0,0,o),iso(TX,TY1,0,o),iso(TX0,TY1,0,o)],P.neb[1]);   // стол — доска с краями, не на весь экран
+  for(var yy=0;yy<LH;yy+=3) for(var xx=(yy%6?2:0);xx<LW;xx+=4){ var q0=unIso(xx,yy,o); if(q0[0]>TX0&&q0[0]<TX&&q0[1]>TY0&&q0[1]<TY1) R(P.neb[2],xx,yy,1,1); }
+  var ph=phoneIso(o,U,cm,s.id==='phone'&&Math.floor(GT*3)%2===0);
+  // ладонь: у короткого края с разъёмом, в 3 см от телефона; от шага зависит, где она
+  var HSC=0.85, hw=8.5*cm*HSC, Xa=ph.X1+1.2*cm, Yb=5*cm, f=0.5, al=1, Z5=5*cm, Z15=15*cm;   // ладонь чуть меньше настоящей, у самого края телефона
+  if(s.id==='wave'&&s.t>PAUSE) f=waveH(s.t-PAUSE);
+  var hz=Z5+(Z15-Z5)*f+2.4*cm*HSC, dy=0;
+  if(s.id==='phone') dy=(1-ease(s.t/1.8))*28*cm;
+  if(s.id==='away'&&s.t>PAUSE){ var q=ease((s.t-PAUSE)/0.8); dy=q*30*cm; hz+=q*8*cm; al=1-q; }
+  if(s.id==='lang') al=0;
+  // тень ладони на столе: чем выше рука, тем она бледнее
+  if(al>0.1){ var sc=[Xa+hw/2,Yb-8*cm*HSC+dy], dens=Math.max(0.15,0.8-(hz/cm)*0.035)*al;
+    for(var y2=0;y2<LH;y2++) for(var x2=0;x2<LW;x2++){ var q1=unIso(x2,y2,o), X2=q1[0], Y2=q1[1];
+      var ex=(X2-sc[0])/(5.2*cm*HSC), ey=(Y2-sc[1])/(11*cm*HSC); if(ex*ex+ey*ey<1&&bay(x2,y2)<dens) R(P.neb[0],x2,y2,1,1); } }
+  // волны зонда от края с разъёмом — по столу
+  if((s.id==='away'||s.id==='wave')&&s.t>PAUSE+0.3) for(var i=0;i<3;i++){ var rr=((GT*6+i*4.5)%13.5)*cm+1*cm;
+    for(var a=-1.4;a<=1.4;a+=0.05){ var pp=iso(ph.X1+Math.cos(a)*rr,Math.sin(a)*rr,0,o); R(P.bullet,pp[0],pp[1],1,1); } }
+  // линейка высоты рядом с ладонью, со стороны игрока
+  if(s.id==='wave'){ var rX=Xa+hw+9*cm, rY=Yb-9*cm, b0=iso(rX,rY,0,o), b5=iso(rX,rY,Z5,o), b15=iso(rX,rY,Z15,o);
+    dots(b0[0],b0[1],b15[1],P.soft); R(P.soft,b5[0]-3,b5[1],7,1); R(P.soft,b15[0]-3,b15[1],7,1);
+    GV.labels.push({x:b15[0]+6,y:b15[1]-3,t:'15 СМ',c:P.soft}); GV.labels.push({x:b5[0]+6,y:b5[1]-3,t:'5 СМ',c:P.soft}); }
+  // пунктир от ладони до её тени
+  if(al>0.5&&s.id!=='phone'){ var d0=iso(Xa+hw,Yb,0,o), d1=iso(Xa+hw,Yb,hz-2.4*cm*HSC,o); dots(d0[0],d1[1],d0[1],P.soft); }
+  if(al>0) handIso(Xa,Yb+dy,hz,o,cm*HSC,al);
+  // корабль на экране телефона: вверх по экрану — от себя
+  phoneGame(ph,o,cm,s.id==='lang'?0.5:f);
+  if(s.id==='phone'){ GV.labels.push({x:ph.port[0]+6,y:ph.port[1]+8,t:'← РАЗЪЁМ',c:P.pick}); gNext(s); GV.title='ПОЛОЖИ ТЕЛЕФОН'; GV.sub='ЭКРАНОМ ВВЕРХ, РАЗЪЁМОМ К РУКЕ, КОТОРОЙ ИГРАЕШЬ'; return; }
+  if(s.id==='away'){ var r=gRing(LW*0.13,LH*0.42,s,'away'); GV.title='УБЕРИ РУКУ'; GV.sub=r.st==='ok'?'КОМНАТА ТИХАЯ':'СЛУШАЮ ПУСТУЮ КОМНАТУ'; return; }
+  var r2=gRing(LW*0.13,LH*0.42,s,'wave'); GV.title='ПОМАШИ ЛАДОНЬЮ'; GV.sub=r2.st==='ok'?'РАЗМАХ ПОЙМАН':'ВВЕРХ-ВНИЗ, 5–15 СМ НАД СТОЛОМ';
+}
+
+/* звук: беззвучный режим выключить, громкость ЗВОНКА (рингтона, не медиа) — 30–70%. Зонд — это звук; в беззвучном режиме iOS его глушит */
+var BELL=['...1...','..111..','.11111.','.11111.','.11111.','.11111.','1111111','.......','...1...'];
+function bigBlit(map,col,x,y,k){ for(var r=0;r<map.length;r++) for(var c=0;c<map[r].length;c++) if(map[r][c]!=='.') R(col,x+c*k,y+r*k,k,k); }
+function gSound(s){                                        // две простые команды подряд: беззвучный — выключить; громкость звонка — 30–70%
+  var k=Math.max(3,Math.round(LH/55)), cy=Math.round(LH*0.5), part2=s.t>2.7, t=part2?s.t-2.7:s.t;
+  if(!part2){ var on=t>1.3, sx=Math.round(LW/2-7*k), sy=cy-5*k;
+    R(P.rock[1],sx-k,sy-k,5*k,11*k); R(P.bg,sx,sy,3*k,9*k);
+    if(!on){ R('#FF8A3D',sx,sy+5*k,3*k,4*k); R(P.text,sx,sy+1*k,3*k,3*k); } else R(P.text,sx,sy,3*k,4*k);
+    bigBlit(BELL,on?P.text:P.soft,sx+6*k,cy-5*k,k); if(!on) for(var i=0;i<10;i++) R(P.hit,sx+5*k+i*k,cy-5*k+i*k,k,k);
+    GV.title='ОТКЛЮЧИ БЕЗЗВУЧНЫЙ РЕЖИМ'; GV.sub=''; }
+  else { var x2=Math.round(LW/2-12*k); bigBlit(BELL,P.text,x2,cy-5*k,k);
+    var lvl=Math.min(5,Math.floor(t*3)+1), bx=x2+9*k;
+    for(var j=0;j<10;j++){ var h=Math.round((3+j*1.1)*k*0.6), xb=bx+j*Math.round(k*1.6), yb=cy+3*k-h;
+      if(j>=2&&j<=6) R(P.band,xb-1,yb-1,Math.round(k)+2,h+2); R(j<lvl?P.text:P.line,xb,yb,Math.round(k),h); }
+    GV.title='УСТАНОВИ ГРОМКОСТЬ ЗВОНКА (РИНГТОНА) НА 30–70%'; GV.sub=''; }
+  gNext(s);
+}
+function drawGuide(){
+  GV={title:'',sub:'',labels:[],ring:null,titleCol:null}; var s=gstep(); GV.step=s;
+  if(s.id==='lang'){ gLang(s); return; } if(s.id==='sound'){ gSound(s); return; } gB(s);
+}
+
+function guideHud(big,sm,top){
+  if(!GV) return; var g=GV;
+  txt(g.title,W/2,top,big,g.titleCol||P.text,'center'); if(g.sub) txt(g.sub,W/2,top+big*1.6,sm,P.text,'center');
+  g.labels.forEach(function(L){ txt(L.t,L.x*S,L.y*S,sm,L.c,L.a||'left'); });
+  if(g.ring){ var r=g.ring, x0=r.x*S, y0=r.y*S, rr=11*S, col=r.st==='wait'?P.soft:r.st==='ok'?P.band:P.bullet;
+    cx.lineWidth=2*S; cx.strokeStyle=P.line; cx.beginPath(); cx.arc(x0,y0,rr,0,Math.PI*2); cx.stroke();
+    cx.strokeStyle=col; cx.beginPath(); cx.arc(x0,y0,rr,-Math.PI/2,-Math.PI/2+Math.min(1,r.p)*Math.PI*2); cx.stroke();
+    if(r.st==='ok'){ cx.fillStyle=P.band; var u=S*2; [[-3,0],[-2,1],[-1,2],[0,1],[1,0],[2,-1],[3,-2]].forEach(function(q){ cx.fillRect(x0+q[0]*u-u/2,y0+q[1]*u-u/2,u,u); }); }
+    txt(r.st==='wait'?'ПРИГОТОВЬСЯ':r.st==='listen'?'СЛУШАЮ':r.st==='catch'?'ЛОВЛЮ РАЗМАХ':'ГОТОВО',x0,y0+rr+sm*0.9,sm,col,'center'); }
+  // шаги внизу: четыре квадрата
+  var n=STEPS.length, q=6*S, gap=6*S, x=W/2-(n*q+(n-1)*gap)/2, y=H-q*3;
+  for(var i=0;i<n;i++){ cx.fillStyle=i===g.step.i?P.band:P.line; cx.fillRect(x+i*(q+gap),y,q,q); }
+}
+
+function drawHand(x,y,k){ // ладонь вниз, вид сбоку; пальцы смотрят влево, к краю телефона с микрофоном
+  var q=Math.max(1,Math.round(k)), H0=P.hand[0], H1=P.hand[1], H2=P.hand[2];
+  function R(c,a,b,w,h){ lx.fillStyle=c; lx.fillRect(x+a*q,y+b*q,w*q,h*q); }
+  R(H1,14,-3,20,7); R(H0,14,3,20,1);                         // предплечье
+  R(H1,2,-3,13,6); R(H2,3,-3,11,1); R(H0,2,3,13,1);          // ладонь
+  R(H1,-9,-2,12,4); R(H2,-9,-2,11,1); R(H0,-9,2,12,1);        // пальцы
+  R(H0,-5,-1,1,2); R(H0,-1,-1,1,2);                           // складки между фалангами
+  R(H1,2,3,6,2); R(H0,2,5,6,1);                               // большой палец снизу
+  R(H0,-10,-1,1,3); }
+
+function present(){
+  var ox=0, oy=0; if(shake>0){ ox=Math.round(rnd(-1,1)*shake*6)*S; oy=Math.round(rnd(-1,1)*shake*6)*S; }
+  cx.globalCompositeOperation='source-over'; cx.fillStyle=P.bg; cx.fillRect(0,0,W,H);
+  cx.drawImage(lc,0,0,LW,LH,ox,oy,LW*S,LH*S);
+  // свет — мягкие ореолы в полном разрешении поверх пикселей
+  cx.globalCompositeOperation='lighter';
+  lights.forEach(function(L){ var x=L[0]*S+ox, y=L[1]*S+oy, r=L[2]*S, g=cx.createRadialGradient(x,y,0,x,y,r);
+    g.addColorStop(0,'rgba('+L[3]+','+L[4]+')'); g.addColorStop(1,'rgba('+L[3]+',0)'); cx.fillStyle=g; cx.fillRect(x-r,y-r,2*r,2*r); });
+  cx.globalCompositeOperation='source-over';
+  if(flash>0){ cx.fillStyle=P.hit; cx.globalAlpha=Math.min(0.35,flash); cx.fillRect(0,0,W,H); cx.globalAlpha=1; }
+  hud();
+}
+/* надписи шрифтом с сеткой 8×8: размер кратен 8 игровым пикселям — буквы попадают в ту же сетку */
+function txt(s,x,y,px,col,align){ cx.font=px+'px "Press Start 2P", ui-monospace, monospace'; cx.textAlign=align||'left'; cx.textBaseline='top'; cx.fillStyle=col; cx.fillText(s,Math.round(x),Math.round(y)); }
+function hud(){
+  var big=8*S, sm=Math.max(8,8*Math.round(S/2)), gs=Math.max(16,8*Math.round(S*0.8)), top=Math.round(Math.max(8*S,H*0.04));   // gs — подсказки, крупнее служебных надписей
+  if(st.scr>=1){ guideHud(big,gs,top); return; }
+  txt(String(score).padStart(6,'0'),W/2,top,big,P.text,'center');
+  var m=heightMult(ship.y), cm=1+Math.floor(combo/5), line2='СЕРИЯ '+combo+(cm>1?'  ×'+cm:'');
+  txt(line2,W/2,top+big*1.6,sm,combo>=5?P.pick:P.soft,'center');
+  if(st.x3!==0) txt('ВЫСОТА',W-10*S,top+big*1.6,sm,P.soft,'right');
+  if(st.x3!==0){ txt('×'+m,W-10*S-(window.innerWidth<700?0:0),top,big,m===3?P.band:m===2?P.text:P.soft,'right'); }
+  if(ship.shield>0) txt('ЩИТ',W-10*S,top+big*2.7,sm,P.pick,'right');
+  pops.forEach(function(p){ cx.globalAlpha=Math.min(1,p.life*1.6); txt(p.txt,p.x*S,p.y*S,sm,p.col,'center'); cx.globalAlpha=1; });
+  if(t-lastTouch>4&&t<600) txt('ВЕДИ ПАЛЬЦЕМ ВВЕРХ-ВНИЗ — ТАК БУДЕТ ЛАДОНЬ',W/2,H-gs*2.4,gs,P.soft,'center');
+}
+
+/* ── управление пальцем: вертикаль = высота ладони ── */
+function setTarget(e){ var r=cv.getBoundingClientRect(); ship.ty=Math.max(LH*0.08,Math.min(LH*0.92,(e.clientY-r.top)/r.height*LH)); lastTouch=t; }
+cv.addEventListener('pointerdown',function(e){ touching=true; setTarget(e); try{ cv.setPointerCapture(e.pointerId); }catch(_){} });
+cv.addEventListener('pointermove',function(e){ if(touching||e.pointerType==='mouse') setTarget(e); });
+cv.addEventListener('pointerup',function(){ touching=false; }); cv.addEventListener('pointercancel',function(){ touching=false; });
+['gesturestart','gesturechange'].forEach(function(n){ document.addEventListener(n,function(e){ e.preventDefault(); },{passive:false}); });
+document.addEventListener('touchmove',function(e){ if(e.touches.length>1) e.preventDefault(); },{passive:false});
+
+/* ── переключатели слева (под свободную левую руку) ── */
+var el=function(i){ return document.getElementById(i); };
+function labels(){ el('bScreen').querySelector('span').textContent=SCRN[st.scr];
+  document.documentElement.style.setProperty('--bg',P.bg); document.documentElement.style.setProperty('--ink',P.text);
+  document.documentElement.style.setProperty('--soft',P.soft); document.documentElement.style.setProperty('--line',P.line); }
+function restyle(){ P=STYLES[st.s]; rocks.forEach(function(r){ r.g=makeRock(r.r); }); makeNebula(); labels(); save(); }
+el('bScreen').onclick=function(){ st.scr=(st.scr+1)%2; GT=0; labels(); save(); };
+el('bHide').onclick=function(){ var u=el('ui'); u.classList.toggle('min'); this.querySelector('span').textContent=u.classList.contains('min')?'ПОКАЗАТЬ':'СКРЫТЬ'; };
+window.addEventListener('resize',function(){ resize(); labels(); });
+
+var last=performance.now(), reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function loop(now){ var dt=Math.min(0.05,(now-last)/1000); last=now;
+  if(st.scr>=1){ GT+=dt; t+=dt; stars.forEach(function(s){ s.x-=(2+s.z*10)*dt*(LH/180); if(s.x<0) s.x+=LW; }); }
+  else update(reduce?dt*0.6:dt);
+  draw(); present(); requestAnimationFrame(loop); }
+resize(); restyle();
+for(var i=0;i<5;i++) spawnFromRight(), rocks[rocks.length-1].x=LW*rnd(0.4,1.0);
+(document.fonts&&document.fonts.load?document.fonts.load('16px "Press Start 2P"'):Promise.resolve()).catch(function(){}).then(function(){ requestAnimationFrame(loop); });
+})();
+</script>
+
+</html>

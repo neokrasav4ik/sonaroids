@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sonaroids</title>
+<meta name="description" content="A tiny retro space game you steer with your palm, without touching the screen. The phone lies on the table and reads your hand's movement with ultrasound.">
+<meta name="theme-color" content="#1B1A2E">
+<style>
+  html,body{margin:0;height:100%;background:#1B1A2E;overflow:hidden}
+  canvas{position:fixed;left:0;top:0;image-rendering:pixelated;image-rendering:crisp-edges}
+  #glow{pointer-events:none;mix-blend-mode:screen}
+  /* the real text stays in the page for screen readers and search engines; what you see is drawn on the canvas */
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .hit{position:fixed;display:block;color:transparent;background:none;border:0;padding:0;margin:0;cursor:pointer;font-size:1px;outline:none;-webkit-tap-highlight-color:transparent}
+</style>
+</head>
+<body>
+<canvas id="px" aria-hidden="true"></canvas>
+<canvas id="glow" aria-hidden="true"></canvas>
+<div class="sr"><h1>Sonaroids</h1><p id="t1"></p><p id="t2"></p><p id="t3"></p></div>
+<a class="hit" data-k="proto" href="proto/"></a>
+<a class="hit" data-k="lab" href="lab/sonar_lab3.html"></a>
+<a class="hit" data-k="code" href="https://github.com/neokrasav4ik/sonaroids"></a>
+<button class="hit" data-k="lang"></button>
+<script src="font.js"></script>
+<script>
+(function(){
+  var TXT={
+    en:{t1:'Steer a spaceship with your palm, without touching the screen.',
+        t2:'The phone lies on the table and reads your hand’s movement with ultrasound.',
+        t3:'COMING SOON', proto:'STYLE PROTOTYPE', lab:'SONAR LAB', code:'SOURCE CODE', lang:'РУС'},
+    ru:{t1:'Веди корабль ладонью, не касаясь экрана.',
+        t2:'Телефон лежит на столе и считывает движения руки ультразвуком.',
+        t3:'СКОРО', proto:'ПРОТОТИП СТИЛЯ', lab:'ЛАБА СОНАРА', code:'ИСХОДНЫЙ КОД', lang:'ENG'}};
+  var COL={bg:'#1B1A2E',star:['#4A3F5E','#B89BB2','#FFE9D6'],mint:'#7FE0C8',ink:'#FFF3EA',apricot:'#FFB86B',line:'#5A4870',hot:'#7FE0C8'};
+  var lang='en';
+  try{ lang=localStorage.getItem('sonaroids_lang')||((navigator.language||'').toLowerCase().indexOf('ru')===0?'ru':'en'); }catch(e){}
+  var px=document.getElementById('px'), cx=px.getContext('2d'), gl=document.getElementById('glow'), gx=gl.getContext('2d');
+  var hits=[].slice.call(document.querySelectorAll('.hit')), hot=null;
+  hits.forEach(function(h){ var k=h.getAttribute('data-k');
+    h.addEventListener('pointerenter',function(){ hot=k; }); h.addEventListener('pointerleave',function(){ if(hot===k) hot=null; });
+    h.addEventListener('focus',function(){ hot=k; }); h.addEventListener('blur',function(){ if(hot===k) hot=null; }); });
+  document.querySelector('[data-k=lang]').onclick=function(){ lang=lang==='en'?'ru':'en'; try{ localStorage.setItem('sonaroids_lang',lang); }catch(e){} setText(); layout(); };
+  function setText(){ var T=TXT[lang]; document.documentElement.lang=lang;
+    ['t1','t2','t3'].forEach(function(k){ document.getElementById(k).textContent=T[k]; });
+    hits.forEach(function(h){ var k=h.getAttribute('data-k'); h.textContent=T[k]; h.setAttribute('aria-label',k==='lang'?(lang==='en'?'Русский':'English'):T[k]); }); }
+
+  // whole pixels, each an integer number of device pixels: about 1.3 CSS px on a phone, at most 2.25 on a big screen
+  var W,H,P,dpr,stars=[],L={};
+  function size(){ dpr=window.devicePixelRatio||1; var wd=Math.round(innerWidth*dpr), hd=Math.round(innerHeight*dpr);
+    var pc=Math.min(2.25,Math.max(1.25,Math.min(innerWidth,innerHeight)/290)); P=Math.max(1,Math.round(pc*dpr));
+    W=Math.ceil(wd/P); H=Math.ceil(hd/P); px.width=W; px.height=H;
+    var cw=W*P/dpr+'px', ch=H*P/dpr+'px'; px.style.width=gl.style.width=cw; px.style.height=gl.style.height=ch;
+    gl.width=W*P; gl.height=H*P;
+    stars=[]; for(var i=0;i<W*H/120;i++) stars.push([Math.random()*W,Math.random()*H,Math.random()]);
+    layout(); }
+  function place(k,x,y,w,h){ L[k]={x:x,y:y,w:w,h:h}; var el=document.querySelector('[data-k='+k+']'), s=P/dpr;
+    el.style.left=x*s+'px'; el.style.top=y*s+'px'; el.style.width=w*s+'px'; el.style.height=h*s+'px'; }
+  function layout(){ var T=TXT[lang]; L={};
+    var ts=Math.min(4,Math.max(2,Math.floor(Math.min((W-16)/52,H/45)))), tw=PF.width('SONAROIDS',ts), mw=Math.min(W-16,230);
+    var p1=PF.wrap(T.t1,mw,1), p2=PF.wrap(T.t2,mw,1);
+    var btn=['proto','lab','code'].map(function(k){ return {k:k,w:PF.width(T[k])+12,h:PF.CAP+10}; });
+    // buttons in one row if they fit, otherwise one per line
+    var rowW=btn.reduce(function(a,b){ return a+b.w; },0)+6*(btn.length-1), oneRow=rowW<=W-16;
+    var bh=oneRow?btn[0].h:btn.length*(btn[0].h+5)-5;
+    var hTot=7*ts+20+(p1.length+p2.length)*10+6+14+PF.CAP+14+bh;
+    var y=Math.max(18,Math.round((H-hTot)/2));
+    L.title={x:Math.round((W-tw)/2),y:y,s:ts}; y+=7*ts+20;
+    L.lines=[]; p1.concat(['']).concat(p2).forEach(function(s){ if(s) L.lines.push({s:s,x:Math.round((W-PF.width(s))/2),y:y}); y+=s?10:6; });
+    y+=14; L.soon={x:Math.round((W-PF.width(T.t3))/2),y:y}; y+=PF.CAP+14;
+    var bx=Math.round((W-(oneRow?rowW:Math.max.apply(0,btn.map(function(b){ return b.w; }))))/2);
+    btn.forEach(function(b){ var x=oneRow?bx:Math.round((W-b.w)/2); place(b.k,x,y,b.w,b.h); if(oneRow) bx+=b.w+6; else y+=b.h+5; });
+    var lw=PF.width(T.lang)+10; place('lang',W-lw-6,6,lw,PF.CAP+8);
+    drawGlow(); }
+  function drawGlow(){ gx.clearRect(0,0,gl.width,gl.height); var t=L.title, s=t.s*P;
+    // soft light behind the title, at full resolution (the game uses the same trick for shots and explosions)
+    // only the shadow is drawn: the letters themselves go far off-canvas and the shadow is shifted back
+    var OFF=20000; gx.save(); gx.shadowColor='rgba(127,224,200,.6)'; gx.shadowOffsetX=OFF; gx.fillStyle='#000'; gx.scale(P,P);
+    [[2.5*s,2],[0.8*s,1]].forEach(function(b){ gx.shadowBlur=b[0]; for(var i=0;i<b[1];i++) PF.draw(gx,'SONAROIDS',t.x-OFF/P,t.y,t.s); }); gx.restore(); }
+  function box(k,label,col){ var b=L[k], c=hot===k?COL.hot:COL.line;
+    cx.fillStyle=COL.bg; cx.fillRect(b.x,b.y,b.w,b.h); cx.fillStyle=c;
+    cx.fillRect(b.x,b.y,b.w,1); cx.fillRect(b.x,b.y+b.h-1,b.w,1); cx.fillRect(b.x,b.y,1,b.h); cx.fillRect(b.x+b.w-1,b.y,1,b.h);
+    PF.draw(cx,label,b.x+Math.round((b.w-PF.width(label))/2),b.y+Math.round((b.h-PF.CAP)/2),1,hot===k?COL.hot:col); }
+  function text(s,x,y,sc,col){ cx.fillStyle=COL.bg; for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++) if(dx||dy) PF.draw(cx,s,x+dx,y+dy,sc); PF.draw(cx,s,x,y,sc,col); }
+  var still=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function draw(){ var T=TXT[lang];
+    cx.fillStyle=COL.bg; cx.fillRect(0,0,W,H);
+    stars.forEach(function(s){ if(!still){ s[0]-=0.04+s[2]*s[2]*0.3; if(s[0]<0){ s[0]+=W; s[1]=Math.random()*H; } }
+      cx.fillStyle=COL.star[s[2]<0.6?0:s[2]<0.92?1:2]; cx.fillRect(Math.floor(s[0]),Math.floor(s[1]),1,1); });
+    var t=L.title; text('SONAROIDS',t.x,t.y,t.s,COL.mint);
+    L.lines.forEach(function(l){ text(l.s,l.x,l.y,1,COL.ink); });
+    text(T.t3,L.soon.x,L.soon.y,1,COL.apricot);
+    ['proto','lab','code'].forEach(function(k){ box(k,T[k],COL.ink); }); box('lang',T.lang,'#C9A9B6');
+    requestAnimationFrame(draw); }
+  setText(); size(); addEventListener('resize',size); requestAnimationFrame(draw);
+})();
+</script>
+</body>
+</html>

@@ -50,13 +50,13 @@ var Logs=(function(){
     return {kind:kind,fs:I.fs,N:N,kLo:I.kLo,kHi:I.kHi,probe:{bins:'all',channel:I.chan,phase:'pi*q^2/M',peak:0.9,gain:I.probe_gain,snr_db:I.probe_snr,level_db:I.probe_level,f_lo:I.f_lo,loop:true},
       pcm:{bits:16,full_scale:1/L.scale},mic:Sonar.micSettings(),mic_peak:+Sonar.peak().toFixed(4),app:'sonaroids',version:typeof VERSION!=='undefined'?VERSION:null,ended:new Date().toISOString(),ua:navigator.userAgent}; }
   function setupBlob(){ if(!S||!S.f) return null; var inf=DSP2.info(), m=base('setup-log',S);
-    m.v=1; m.first_frame=0; m.frames=S.f; m.clipped=S.clip; m.gaps=S.gaps; m.setup=S.meta0; m.cal_now=inf.cal; m.dsp_info={d0:inf.d0,prom:inf.prom,mm:inf.mm};
+    m.v=1; m.first_frame=0; m.frames=S.f; m.clipped=S.clip; m.gaps=S.gaps; m.setup=S.meta0; m.cal_now=inf.cal; m.dsp_info={d0:inf.d0,prom:inf.prom,mm:inf.mm,eq:inf.eq,eq_db:inf.eq_db,relocks:inf.relocks,drops:inf.drops};
     m.columns={dsp:['frame','present','height_mm','abs_mm','range_mm','fast_mm','motion_db','echo_db','empty_floor_db','motion_smooth_db'],events:['frame','event','data']};
     return wav(S.pcm.slice(0,S.f*N),m,{dsp:S.dsp,render:[],events:S.ev}); }
   function gameBlob(){ if(!G||!G.f) return null; var cap=G.pcm.length, total=G.f*N, n=Math.min(total,cap), start=total-n, i;
     var pcm=new Int16Array(n); for(i=0;i<n;i++) pcm[i]=G.pcm[(start+i)%cap];
     var f0=Math.floor(start/N), m=base('game-log',G);
-    m.v=6; m.first_frame=f0; m.frames=G.f-f0; m.clipped=G.clip; m.gaps=G.gaps; m.game=G.meta0;
+    m.v=6; m.first_frame=f0; m.frames=G.f-f0; m.clipped=G.clip; m.gaps=G.gaps; m.game=G.meta0; var gi=DSP2.info(); m.dsp_info={d0:gi.d0,prom:gi.prom,eq:gi.eq,eq_db:gi.eq_db,relocks:gi.relocks,drops:gi.drops};
     m.columns={dsp:['frame','present','height_mm','abs_mm','range_mm','fast_mm','motion_db','echo_db'],
       render:['frame','core_step','hand_0_1_or_-1','ship_y_over_FH','lives','score'],events:['frame','event','data']};
     return wav(pcm,m,{dsp:G.dsp.filter(function(a){return a[0]>=f0;}),render:G.ren.filter(function(a){return a[0]>=f0;}),events:G.ev.filter(function(a){return a[0]>=f0;})}); }

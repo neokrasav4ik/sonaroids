@@ -3,7 +3,7 @@ var DSP2=(function(){
   var N=512,C=343,fs,kLo,kHi,kc,ks,M,Pr,Pi,lam,mm,T,gA,gB,G,cosT,sinT;
   var d0,dref,boot,bootN=30,prevH,hist,L=4,prom,noProbe,bgAcc,bgN,bgR,bgI,BG_N=40;
   var Es,hold,present,refr,Q_FLOOR=-28,T_ON=-16,T_INT=-30,HOLD_S=1.5,tauE=0.15,REFR_S=0.7,TAU_BG=2.0,TAU=1.5;
-  var gN=null,drops=0,moveN=0,scanWait=0,relocks=0,eAvg=0,TE=3,E_FAST=12,ePres=0,why='',rngBuf=[],xBuf=[],centered=false,autoC=false,presN=0,x,fast,cal={k:0.75,o:1,s:0.8},eHold=null,lowN=0,resS=-99,resFloor=null,upN=0,warm=0,absBuf=[],ABS_MED=15,DEADB=5,dirS=null,lostN=0,lost=false;
+  var eqW=null,eqDb=0,EQ_ON=16,EQ_MAX=10,gN=null,drops=0,moveN=0,scanWait=0,relocks=0,eAvg=0,TE=3,E_FAST=12,ePres=0,why='',rngBuf=[],xBuf=[],centered=false,autoC=false,presN=0,x,fast,cal={k:0.75,o:1,s:0.8},eHold=null,lowN=0,resS=-99,resFloor=null,upN=0,warm=0,absBuf=[],ABS_MED=15,DEADB=5,dirS=null,lostN=0,lost=false;
   function init(sampleRate,parity){
     fs=sampleRate; var df=fs/N; kLo=Math.ceil(18300/df); kHi=Math.floor(20500/df); kc=Math.floor((kLo+kHi)/2);
     ks=[]; for(var k=kLo;k<=kHi;k++) if(parity===undefined||parity==='all'||k%2===parity) ks.push(k);
@@ -13,7 +13,7 @@ var DSP2=(function(){
     for(var q=0;q<M;q++){ var ph=Math.PI*q*q/M; Pr[q]=Math.cos(ph); Pi[q]=Math.sin(ph); }
     cosT=new Float64Array(M*N); sinT=new Float64Array(M*N);
     for(q=0;q<M;q++){ var w=-2*Math.PI*ks[q]/N; for(var n=0;n<N;n++){ cosT[q*N+n]=Math.cos(w*n); sinT[q*N+n]=Math.sin(w*n); } }
-    d0=null; dref=null; gN=null; drops=0; moveN=0; scanWait=0; relocks=0; boot=[]; prevH=null; hist=[]; prom=null; noProbe=false;
+    d0=null; dref=null; eqW=null; eqDb=0; gN=null; drops=0; moveN=0; scanWait=0; relocks=0; boot=[]; prevH=null; hist=[]; prom=null; noProbe=false;
     bgAcc=null; bgN=0; bgR=null; bgI=null; Es=-80; hold=0; present=false; refr=0; x=null; fast=0; eHold=null; ePres=0; why=""; rngBuf=[]; xBuf=[]; centered=false; presN=0; lowN=0; resS=-99; resFloor=null; upN=0; warm=0; absBuf=[]; dirS=null; lostN=0; lost=false;
   }
   function bandSpec(fr){
@@ -30,10 +30,19 @@ var DSP2=(function(){
     var zr=0; for(var zi=0;zi<fr.length;zi++){ if(fr[zi]===0){ if(++zr>=48) break; } else zr=0; }
     if(zr>=48&&d0!==null){ prevH=null; hist=[]; drops++; return null; }
     var H=bandSpec(fr),i,n;
+    if(eqW) for(i=0;i<M;i++){ H[0][i]*=eqW[i]; H[1][i]*=eqW[i]; }
     if(d0===null){                                     // первые кадры: слышен ли зонд, где прямой сигнал
-      var mags=new Float64Array(T); for(n=0;n<T;n++){ var v=tap(H,n); mags[n]=v[0]*v[0]+v[1]*v[1]; }
-      boot.push(mags);
+      boot.push(H);
       if(boot.length>=bootN){ var s=new Float64Array(T),b=0,bv=0;
+        // с 25.09: выравнивание полосы. На OnePlus и Redmi зонд у микрофона к 20 кГц слабее на 20–33 дБ (на iPhone перепад ~11 дБ):
+        // верхняя половина полосы почти пропадала, отклик расплывался. Если перепад по тонам больше 16 дБ — каждый тон делится
+        // на свой уровень (не больше чем в 10 раз). Записи с меткой OnePlus: против метки 81 → 12 мм (23:40), 201 → 21 (22:28), рука видна дольше
+        var pw=new Float64Array(M),pmx=0,pmn=1e300; boot.forEach(function(h){ for(var q=0;q<M;q++) pw[q]+=h[0][q]*h[0][q]+h[1][q]*h[1][q]; });
+        for(var q=0;q<M;q++){ pmx=Math.max(pmx,pw[q]); pmn=Math.min(pmn,pw[q]); }
+        eqW=null; eqDb=10*Math.log10(pmx/(pmn||1e-30));
+        if(eqDb>EQ_ON){ eqW=new Float64Array(M); for(q=0;q<M;q++) eqW[q]=Math.min(EQ_MAX,Math.sqrt(pmx/(pw[q]||1e-30)));
+          boot.forEach(function(h){ for(var q2=0;q2<M;q2++){ h[0][q2]*=eqW[q2]; h[1][q2]*=eqW[q2]; } }); }
+        boot=boot.map(function(h){ var m=new Float64Array(T); for(var j=0;j<T;j++){ var v=tap(h,j); m[j]=v[0]*v[0]+v[1]*v[1]; } return m; });
         boot.forEach(function(m){ for(var j=0;j<T;j++) s[j]+=m[j]; });
         for(n=0;n<T;n++) if(s[n]>bv){ bv=s[n]; b=n; }
         var srt=Array.prototype.slice.call(s).sort(function(p,q){return p-q;}); prom=10*Math.log10(bv/(srt[T>>1]||1e-30));
@@ -142,5 +151,5 @@ var DSP2=(function(){
   return {init:init,frame:frame,recenter:recenter,shift:shift,
     setCal:function(c){ cal.k=c.k; cal.o=c.o; cal.s=c.s; },
     set:function(k,v){ if(k==='tint') T_INT=v; if(k==='tau') TAU=v; if(k==='absmed') ABS_MED=Math.max(1,Math.round(v)); if(k==='deadband') DEADB=Math.max(0,v); if(k==='autocenter') autoC=!!v; },
-    info:function(){ return {relocks:relocks,drops:drops,d0:d0,prom:prom,noProbe:noProbe,lost:lost,ready:bgR!==null,mm:mm,centered:centered,cal:{k:cal.k,o:cal.o,s:cal.s}}; }};
+    info:function(){ return {eq_db:eqDb,eq:!!eqW,relocks:relocks,drops:drops,d0:d0,prom:prom,noProbe:noProbe,lost:lost,ready:bgR!==null,mm:mm,centered:centered,cal:{k:cal.k,o:cal.o,s:cal.s}}; }};
 })();

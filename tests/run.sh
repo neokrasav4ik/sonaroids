@@ -9,6 +9,7 @@ echo; echo "== DSP2 is the lab's ==";              node tests/test_same_dsp.js
 echo; echo "== flight core: deterministic ==";     node tests/test_core.js
 echo; echo "== game rules and difficulty (bot) ==";  node tests/test_rules.js
 echo; echo "== wave tuning on a synthetic palm =="; node tests/test_tune.js
+echo; echo "== band equalizer (Android) ==";           node tests/test_eq.js
 echo; echo "== is the probe heard: muted vs noisy =="; node tests/test_quiet.js
 echo; echo "== strings and font ==";               node tests/test_text.js
 echo; echo "== screens fit, all sizes (Chromium) =="; node tests/screens.js

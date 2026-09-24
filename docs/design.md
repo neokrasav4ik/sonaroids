@@ -16,7 +16,8 @@ Marks: **agreed** — decided; **trying** — to be decided live on the prototyp
 ## 2. Platforms
 
 - Web app at sonaroids.app: iPhone from the Home Screen icon, Android in Chrome. Updates itself on the next launch. — agreed
-- Android APK — a thin wrapper around the site. First the mechanics are checked on 2–3 different Android phones with the lab's test recording: speakers and microphones differ, and not all of them handle 18–20 kHz. — agreed
+- **Works best on iPhone; on Android it depends on the phone** (speaker and microphone at 18–20 kHz). Said so in the README and on the landing page. — agreed 25 Sep
+- Android APK — a thin wrapper around the site, postponed: first the mechanics have to work well on Android phones (see below). — agreed
 - No native iPhone app.
 - **Android, first tries on 24 Sep (OnePlus 15 and Redmi, Chrome):** on the OnePlus control is poor already while getting ready. From the logs: the palm's echo relative to the direct signal is ~12 dB weaker than on iPhone (the palm flickers in and out), the fast and absolute parts hardly agree, and after loud game sounds the direct signal lost its steadiness in one game (−20 dB). The microphone does come without processing (the 0.14 log shows it). The Redmi is better, but the palm has to be held further to the side. Next: the lab's labelled recording on both phones, to measure against a known path. — open
   - Labelled recordings on the OnePlus (24 Sep, 22:27 hand as on iPhone, 22:28 hand further out): the cause is not the microphone but the speaker→microphone path, whose gain drifts 2–3 dB within seconds, while the tail of the direct sound near the phone is strong (−27 dB vs −55 on iPhone). The empty room then looked 20 dB "louder" than it is and the palm sank into it. Since 0.17 the echo is measured against the direct sound's own level and phase (learned only in a quiet empty room): shape agreement 0.73 → 0.99 and −0.05 → 0.93, iPhone unchanged. A still palm is still seen poorly on the OnePlus (its echo is only ~10 dB over the empty room) — next OnePlus logs will tell. — in progress
@@ -98,7 +99,7 @@ Prototype: `game/proto/` — the ship follows your finger.
 3. Game skeleton: first-launch screens, mechanics from the lab, rendering, sound, own font — built 24 Sep (`src/`, sonaroids.app/play), to be checked on phones.
 4. Game rules: rocks, splitting, points, streak, power-ups, saucer, levels — built 24 Sep, difficulty tuned with a bot (`tests/bot.js`), to be checked by playing.
 5. Leaderboards: server, game verification, tables, daily challenge.
-6. Android: mechanics check on different phones, then the APK.
+6. Android (postponed 25 Sep): mechanics on phones with a weak 18–20 kHz path, then the APK.
 
 ## 9. Open questions
 

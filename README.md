@@ -4,9 +4,11 @@ A tiny retro space game for phones that you steer with one hand — **without to
 
 The phone lies flat on the table. It plays an inaudible ultrasonic tone (18–20 kHz) through its own speaker and listens to the echo with its own microphone. The height of your palm next to the phone, 5–15 cm above the table, becomes the height of your ship. The ship fires on its own; you only choose where to be.
 
-**Status:** early version at [sonaroids.app/play](https://sonaroids.app/play/): the whole path from the first launch to a game works, with test rocks; the real rules come next. The sonar control comes from `lab/`. Design: `docs/design.md`.
+**Status:** early version at [sonaroids.app/play](https://sonaroids.app/play/): first-launch guide, calibration, the full game (splitting rocks, points by height, power-ups, saucers, growing difficulty), pause menu and logs. The sonar control comes from `lab/`. Design: `docs/design.md`, changes: `CHANGELOG.md`.
 
-- Web app: [sonaroids.app](https://sonaroids.app) — iPhone (add to Home Screen) and Android (Chrome). An Android APK wrapper will follow.
+**Phones.** It works best on **iPhone** (add it to the Home Screen). On **Android** (Chrome) it depends on the phone's speaker and microphone: many phones pass the 18–20 kHz band poorly, and control can be noticeably worse or not work at all. Tried so far: OnePlus 15 — poor; Redmi — the palm is heard only at the front-camera end, and not precisely. Details in `docs/design.md`, section 2.
+
+- Web app: [sonaroids.app](https://sonaroids.app). An Android APK wrapper is postponed until the mechanics work well on Android.
 - Target size: the whole game under 100 KB. Graphics, sound and font are generated in code.
 - Shared leaderboards: all-time and daily challenge.
 

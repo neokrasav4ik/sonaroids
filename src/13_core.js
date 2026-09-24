@@ -22,9 +22,10 @@ var Core=(function(){
   var TUNE={SPAWN:[1.0,1.7],SPLIT_VX:[0.85,1.15],SPLIT_VY:[8,18],HIT_R:0.8,LEVEL:5000,SLOW_FROM:1.4};
   var UFO={big:{hw:7,hh:3,pts:200,fire:1.4,v:70},small:{hw:5,hh:2,pts:1000,fire:1.1,v:85}};
   function rng(seed){ var a=seed>>>0; return function(){ a=(a+0x6D2B79F5)>>>0; var t=a; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
-  function create(seed,FW){
+  /* y0 — where the ship starts (field units): at the palm, so the first frames of flight do not jerk it from the middle (v0.16) */
+  function create(seed,FW,y0){
     return {seed:seed>>>0,FW:FW||380,FH:FH,rand:rng(seed),n:0,t:0,state:'play',score:0,lives:LIVES,level:1,combo:0,
-      base:0,ship:{x:SHIP_X,y:FH/2,inv:0,shield:0,triple:0},rocks:[],bullets:[],picks:[],ebullets:[],ufo:null,slow:0,
+      base:0,ship:{x:SHIP_X,y:(y0===undefined||y0===null)?FH/2:y0,inv:0,shield:0,triple:0},rocks:[],bullets:[],picks:[],ebullets:[],ufo:null,slow:0,
       fireT:0.3,spawnT:0.6,pickT:9,ufoT:-1,nextId:1,events:[],gone:[],fx:[]};
   }
   function rnd(g,a,b){ return a+g.rand()*(b-a); }
@@ -92,7 +93,7 @@ var Core=(function(){
     return g;
   }
   /* a whole game from a palm trajectory (one value per step, −1 = no palm): what the server will run */
-  function replay(seed,FW,hands){ var g=create(seed,FW); for(var i=0;i<hands.length&&g.state==='play';i++) step(g,hands[i]<0?null:hands[i]); return g; }
+  function replay(seed,FW,hands,y0){ var g=create(seed,FW,y0); for(var i=0;i<hands.length&&g.state==='play';i++) step(g,hands[i]<0?null:hands[i]); return g; }
   return {TUNE:TUNE,SHIP_X:SHIP_X,UFO_BIG_LV:UFO_BIG_LV,UFO_SMALL_LV:UFO_SMALL_LV,create:create,step:step,replay:replay,pace:pace,heightMult:heightMult,DT:DT,FH:FH,MARGIN:MARGIN,UFO:UFO,R_SIZE:R_SIZE};
 })();
 if(typeof module!=='undefined') module.exports=Core;

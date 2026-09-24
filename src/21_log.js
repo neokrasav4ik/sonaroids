@@ -12,6 +12,7 @@ var Logs=(function(){
     if(full) a.push(r.floor===null||r.floor===undefined?null:+r.floor.toFixed(1),+(r.Em||0).toFixed(1)); return a; }
   function setupStart(meta){ var I=Sonar.info(), cap=SLOG_SEC*I.fs;
     if(!S||S.pcm.length!==cap) S={pcm:new Int16Array(cap)};
+    if(!G||G.pcm.length!==GLOG_SEC*I.fs) G={pcm:new Int16Array(GLOG_SEC*I.fs)};   // the game log's 14 MB now, not at the start of the flight (a hitch there, v0.16)
     S.on=true; S.scale=pickScale(); S.f=0; S.clip=0; S.gaps=0; S.dsp=[]; S.ev=[]; S.pres=null; S.meta0=meta; ev('старт: подготовка'); }
   function ev(k,x){ if(!S||!S.on) return; S.ev.push(x===undefined?[S.f,k]:[S.f,k,x]); }
   function gameStart(meta){ var I=Sonar.info(), cap=GLOG_SEC*I.fs;

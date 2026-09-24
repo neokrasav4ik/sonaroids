@@ -6,7 +6,8 @@ var store={get:function(k,d){ try{ var v=localStorage.getItem(k); return v===nul
            set:function(k,v){ try{ localStorage.setItem(k,String(v)); }catch(e){} }};
 var lang=store.get('sonaroids_lang',((navigator.language||'').toLowerCase().indexOf('ru')===0?'ru':'en')); if(!STR[lang]) lang='en';
 function L(k){ return STR[lang][k]||k; }
-var PAUSE=2, WAVE_PAUSE=2.5, STEPS=['lang','sound','phone','mic','away','wave'];
+var PAUSE=3.5, AWAY_T0=0.6, AWAY_T1=2.8, WAVE_PAUSE=2.5,           // v0.16: more time to take the hand away, and the drawn hand leaves slower (0.6–2.8 s)
+ STEPS=['lang','sound','phone','mic','away','wave'];
 var scr=null, scrT=0, clock=0, onboarding=false, direct=false, booted=false, errKind=null;
 var handSaved=store.get('sonaroids_hand',''), acoustic=false;
 var prep=null, T=null, caught=false, g=null, acc=0, countT=0, overT=0, shake=0, flash=0, rockSpr={}, best=+store.get('sonaroids_best','0')||0;
@@ -51,7 +52,7 @@ function sTitle(){ sky(DT,0.4); var y=Math.round(LH*0.3), cx0=freeSide()==='left
   text(L('version')+' '+VERSION,freeSide()==='left'?LW-SAFE.r-8:SAFE.l+8,LH-SAFE.b-12,P.soft,freeSide()==='left'?'right':'left');   // for telling uploads apart
   var sy=Math.round(LH*0.62+Math.sin(clock*1.3)*LH*0.08); drawShip(cx0-40,sy,clock,false);
   for(var i=0;i<3;i++){ var bx=cx0-20+((clock*90+i*40)%120); R(P.bullet,bx,sy,4,1); light(bx,sy,6*K,P.glowB,0.45); }
-  column([['play',L('play'),'primary'],['howto',L('howto')],['lang',L('lang')],['sfx',L(Sfx.on()?'sfx_on':'sfx_off')]],Math.round(LH*0.47));
+  column([['play',L('play'),'primary'],['recal',L('recal')],['howto',L('howto')],['lang',L('lang')],['sfx',L(Sfx.on()?'sfx_on':'sfx_off')]],Math.round(LH*0.47));
   say('Sonaroids. '+L('play')); }
 function sSound(){ sky(DT,0.3); titles(L(direct?'volume_direct':'volume'),L('volume_s')); soundVolume(scrT); nextBtn('next',L('next')); stepSquares('sound'); }
 function sPhone(){ sky(DT,0.3); var m=handSide()==='left';
@@ -60,7 +61,7 @@ function sPhone(){ sky(DT,0.3); var m=handSide()==='left';
 function sMic(){ sky(DT,0.3); var m=handSide()==='left';
   picture(function(){ return scene('away',scrT,0.5,0,true,clock); },m); titles(L('mic_t'),L('mic_s'));
   var w=btnW([L('allow')]); button('allow',L('allow'),sideX(w),Math.round(LH*0.64),w,BH,'primary',Math.floor(scrT*2)%2===0); stepSquares('mic'); }
-function sAway(){ sky(DT,0.3); var m=handSide()==='left', aw=Math.min(1,Math.max(0,(scrT-0.3)/0.8));
+function sAway(){ sky(DT,0.3); var m=handSide()==='left', aw=Math.min(1,Math.max(0,(scrT-AWAY_T0)/(AWAY_T1-AWAY_T0)));
   picture(function(){ return scene('away',scrT,0.5,aw,scrT>PAUSE,clock); },m);
   var st=scrT<PAUSE?'wait':(prep&&prep.res&&prep.res.ok)?'ok':'listen';
   titles(L('away_t'),st==='ok'?L('away_ok'):L('away_s'));
@@ -69,7 +70,7 @@ function sAway(){ sky(DT,0.3); var m=handSide()==='left', aw=Math.min(1,Math.max
   if(prep&&prep.res){ if(prep.res.ok){ if(scrT-prep.doneT>1.5) toWave(); }       // «the room is quiet» stays for 1.5 s
     else { direct=true; onboarding=false; go('sound'); } }
   stepSquares('away'); }
-function sWave(){ sky(DT,0.3); var m=handSide()==='left', f=handFrac(), live=f!==null;
+function sWave(){ sky(DT,0.3); poolFill(1); var m=handSide()==='left', f=handFrac(), live=f!==null;
   if(scrT>=WAVE_PAUSE){ var e=Tune.step(T,DT,Sonar.state(),true,Sonar.shift); if(e) Logs.ev('подстройка',e); }
   if(T.ok&&!caught){ caught=true; Sfx.play('ok'); store.set('sonaroids_seen','1'); }
   picture(function(){ return scene('wave',scrT,live?f:waveH(scrT),0,scrT>WAVE_PAUSE,clock); },m);
@@ -82,10 +83,16 @@ function sWave(){ sky(DT,0.3); var m=handSide()==='left', f=handFrac(), live=f!=
 /* the flight field: rocks, bullets, ship. The core counts in field units (180 high); fx() and K turn them into game pixels.
    The field starts right of the safe area, so the ship is never under the camera island (24 Sep) */
 function fx(x){ return x*K+SAFE.l; }
+/* rock pictures: 6 per size, drawn ahead of time (a few per frame on the calm screens) — drawing one mid-flight took a frame (v0.16) */
+var POOL_N=6, pool={K:0,list:[[],[],[]]};
+function poolFill(budget){ if(pool.K!==K){ pool={K:K,list:[[],[],[]]}; } for(var n=0;n<budget;n++){ var sz=[0,1,2].filter(function(i){ return pool.list[i].length<POOL_N; })[0]; if(sz===undefined) return;
+  pool.list[sz].push(makeRock(Math.max(3,Math.round(Core.R_SIZE[sz]*K)))); } }
+function rockFromPool(r){ poolFill(0); var l=pool.list[r.sz]; if(!l||!l.length) return makeRock(Math.max(3,Math.round(r.r*K)));
+  var b=l[r.id%l.length]; return {frames:b.frames,size:b.size,rot:(r.id*5)%16,vr:((r.id*7)%11-5)}; }
 function field(dt,speed){ sky(dt,speed);
   if(!g) return;
   if(g.state!=='play'){ g.bullets=[]; g.ebullets=[]; g.rocks.forEach(function(r){ r.x+=r.vx*dt; r.y+=r.vy*dt; }); if(g.ufo) g.ufo.x-=6*dt; }   // after the game: things drift on, for the look only
-  g.rocks.forEach(function(r){ var sp=rockSpr[r.id]; if(!sp){ sp=rockSpr[r.id]=makeRock(Math.max(3,Math.round(r.r*K))); }
+  g.rocks.forEach(function(r){ var sp=rockSpr[r.id]; if(!sp){ sp=rockSpr[r.id]=rockFromPool(r); }
     sp.rot=(sp.rot+sp.vr*dt+16)%16; var fr=sp.frames[Math.floor(sp.rot)%16]; lx.drawImage(fr,Math.round(fx(r.x)-sp.size/2),Math.round(r.y*K-sp.size/2)); });
   g.picks.forEach(function(p){ var x=Math.round(fx(p.x)), y=Math.round(p.y*K+Math.sin(clock*3)*2);
     R(P.pick,x-5,y-5,11,11); R(P.bg,x-4,y-4,9,9); blit(ICON[p.type],[P.pick],x-3,y-3); light(x,y,14*K,P.glowP,0.35); });
@@ -102,7 +109,7 @@ function field(dt,speed){ sky(dt,speed);
     if(livesT>0){ for(var i=0;i<g.lives;i++) blit(MINI,[P.ship[1],P.ship[2]],sx-2+i*7,sy-14); } }   // lives: shown only for a moment after a hit
   drawParts(dt);
 }
-function sCount(){ countT-=DT; var f=handFrac(); if(f!==null) lastHand=f;
+function sCount(){ countT-=DT; poolFill(2); var f=handFrac(); if(f!==null) lastHand=f;
   var ty=(Core.FH-Core.MARGIN-(lastHand===null?0.5:lastHand)*(Core.FH-2*Core.MARGIN))*K; shipY=shipY===null?ty:shipY+(ty-shipY)*0.3;
   sky(DT,0.6); drawShip(fx(Core.SHIP_X),shipY,clock,false);
   var n=Math.max(1,Math.ceil(countT)), cx0=Math.round(LW/2), cy0=Math.round(LH/2);
@@ -163,8 +170,9 @@ function startCount(){ if(resumeAfterPrep&&g&&g.state==='play'){ resumeAfterPrep
   resumeAfterPrep=false; countT=3; shipY=null; lastHand=handFrac(); Logs.ev('отсчёт',{field:+T.field.toFixed(1),auto:T.auto}); store.set('sonaroids_field',Math.round(T.field)); go('count'); }
 function startGame(){
   var seed=0; try{ var a=new Uint32Array(1); crypto.getRandomValues(a); seed=a[0]; }catch(e){ seed=Math.floor(Math.random()*4294967296); }
-  g=Core.create(seed,Core.FH*(LW-SAFE.l)/LH); acc=0; rockSpr={}; parts=[]; livesT=0; var I=Sonar.info();
-  Logs.gameStart({core:'rules-1',seed:seed,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:'frozen',asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
+  var y0=shipY===null?null:+(shipY/K).toFixed(3);
+  g=Core.create(seed,Core.FH*(LW-SAFE.l)/LH,y0); acc=0; rockSpr={}; parts=[]; livesT=0; var I=Sonar.info();
+  Logs.gameStart({core:'rules-1',seed:seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:'frozen',asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
     chan:I.chan,probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,started:new Date().toISOString(),app:'sonaroids'});
   Sfx.play('start'); go('play');
 }
@@ -175,10 +183,12 @@ var ACT={
   allow:function(){ boot(toAway); },
   play:function(){ onboarding=false; direct=false; ensure(toAway); },
   howto:function(){ onboarding=true; direct=false; go('sound'); },
+  /* a deep recalibration: forget the saved palm range, close the microphone and start from "put the phone down" */
+  recal:function(){ onboarding=false; direct=false; store.set('sonaroids_field','100'); Sonar.restart(); booted=false; acoustic=false; go('phone'); },
   lang:function(){ lang=lang==='en'?'ru':'en'; store.set('sonaroids_lang',lang); },
   sfx:function(){ Sfx.toggle(); },
   start:function(){ ensure(startCount); },
-  again:function(){ ensure(toWave); },                 // before every game: wave the palm again, the screen fits your range anew
+  again:function(){ ensure(toAway); },                 // before every game: the empty room anew, then wave (v0.16: things drift over a game)
   menu:function(){ go('title'); },
   logs:function(){ Logs.share(); },
   retry:function(){ Sonar.clearLost(); ensure(toAway); },

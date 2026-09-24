@@ -5,6 +5,7 @@ Bump it with every upload.
 
 | version | date | what changed |
 |---|---|---|
+| 0.16 | 24 Sep 2026 | Every new game starts from the empty room again ("take your hand away"), then wave. More time to take the hand away (3.5 s before listening) and the drawn hand leaves slower. "Recalibrate" under "Play": forgets the saved palm range, re-opens the microphone and starts from "put the phone down". Smoother start of flight: the ship starts where the palm is (it used to jump from the middle), rock pictures are drawn ahead of time, and the game log's memory is taken before the flight, not at its start. |
 | 0.15 | 24 Sep 2026 | Logs from Android phones use the full 16-bit range (they still clipped in 0.14). No change in play. |
 | 0.14 | 24 Sep 2026 | Android (OnePlus 15, Chrome): the game's own sounds reached the microphone ~50 dB louder than on iPhone — now they are turned down automatically when the microphone nears its limit. Logs no longer clip on loud microphones (full scale chosen per device) and record what the browser really did with the microphone (gain/echo/noise processing). |
 | 0.13 | 24 Sep 2026 | Smoother difficulty ("first empty, then crowded"): about 20% more rocks at the start, then slower growth — rocks per second 0.74 → 1.1 at 2 min → 1.35 at 3 min → 1.6 at 5 min (was 0.62 → 1.5 at 2.5 min → 2 at 5.5 min). Slow motion power-up from ~110 s. Saucers earlier: the large one from level 2 (~30 s), the small aiming one from level 4 (~1 min). The triple-shot power-up shows three diverging shots. |

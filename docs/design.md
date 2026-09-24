@@ -37,7 +37,7 @@ Each screen is a picture and one or two lines. A command appears, a pause ring f
 6. **"Wave your palm, 5–15 cm above the table"** — the ship follows the hand right away while the game fits the screen to your range. Tutorial and first "wow" at once. — agreed
 7. The game.
 
-Later launches: steps 5–6 and straight into the game. **Before every new game** ("Again") the wave step comes again: the screen is fitted to the range anew; only a range of 5 cm or more counts as waving, and the waving must go on for at least 5 s — the ring fills over that time (v0.10). No tuning on the game-over screen: on 24 Sep an idle wiggle after a game shrank the field from 118 to 66 mm and the ship got twitchy. — agreed 24 Sep
+Later launches: steps 5–6 and straight into the game. **Before every new game** ("Again") "take your hand away" (the empty room anew, v0.16) and the wave step come again: the screen is fitted to the range anew; only a range of 5 cm or more counts as waving, and the waving must go on for at least 5 s — the ring fills over that time (v0.10). No tuning on the game-over screen: on 24 Sep an idle wiggle after a game shrank the field from 118 to 66 mm and the ship got twitchy. — agreed 24 Sep
 
 ## 4. The game
 

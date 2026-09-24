@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='0.14';
+var VERSION='0.15';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -495,7 +495,7 @@ var Logs=(function(){
   /* event names stay Russian: the lab's analysis tools look for them ('подстройка', 'рука есть', ...) */
   /* 16-bit samples, full scale = 1/scale of the input: 4 for a quiet microphone (iPhone), 1 for a loud one (OnePlus 15: the log clipped, v0.14) */
   var N=512, SLOG_SEC=120, GLOG_SEC=150, S=null, G=null;
-  function pickScale(){ return Sonar.peak()<0.015?4:1; }
+  function pickScale(){ return /iPhone|iPad|iPod/.test(navigator.userAgent)?4:1; }   // by microphone loudness alone it still clipped on the OnePlus (v0.14)
   function pcmPut(L,fr,at){ var SC=L.scale; for(var i=0;i<N;i++){ var v=Math.round(fr[i]*32767*SC); if(v>32767){ v=32767; L.clip++; } else if(v<-32768){ v=-32768; L.clip++; } L.pcm[(at+i)%L.pcm.length]=v; } }
   function dspRow(f,r,full){ var a=[f,r.present?1:0,+r.height.toFixed(1),+r.abs.toFixed(1),+r.range.toFixed(1),+r.fast.toFixed(1),+r.E.toFixed(1),+r.resE.toFixed(1)];
     if(full) a.push(r.floor===null||r.floor===undefined?null:+r.floor.toFixed(1),+(r.Em||0).toFixed(1)); return a; }

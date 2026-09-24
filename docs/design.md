@@ -18,6 +18,7 @@ Marks: **agreed** — decided; **trying** — to be decided live on the prototyp
 - Web app at sonaroids.app: iPhone from the Home Screen icon, Android in Chrome. Updates itself on the next launch. — agreed
 - Android APK — a thin wrapper around the site. First the mechanics are checked on 2–3 different Android phones with the lab's test recording: speakers and microphones differ, and not all of them handle 18–20 kHz. — agreed
 - No native iPhone app.
+- **Android, first tries on 24 Sep (OnePlus 15 and Redmi, Chrome):** on the OnePlus control is poor already while getting ready. From the logs: the palm's echo relative to the direct signal is ~12 dB weaker than on iPhone (the palm flickers in and out), the fast and absolute parts hardly agree, and after loud game sounds the direct signal lost its steadiness in one game (−20 dB). The microphone does come without processing (the 0.14 log shows it). The Redmi is better, but the palm has to be held further to the side. Next: the lab's labelled recording on both phones, to measure against a known path. — open
 
 ## 3. First screens
 

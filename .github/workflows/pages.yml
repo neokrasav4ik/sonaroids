@@ -35,6 +35,9 @@ jobs:
           python3 build.py --check
           sh tools/run_all.sh
 
+      - name: Game checks
+        run: sh tests/run.sh
+
       - name: Assemble the site
         run: |
           mkdir -p _site/lab

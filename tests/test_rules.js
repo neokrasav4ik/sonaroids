@@ -30,10 +30,13 @@ check('no saucer before level 3; a large one after', none&&seen==='big', 'seen '
 g.level=5; g.ufo=null; g.ufoT=0.01; const kinds={}; for(let k=0;k<40;k++){ g.ufo=null; g.ufoT=0.01; g.lives=3; Core.step(g,0.5); if(g.ufo) kinds[g.ufo.kind]=1; }
 check('from level 5 small saucers too', kinds.small&&kinds.big, Object.keys(kinds).join(','));
 // the pace
-check('pace: 1 for 30 s, 2 at 3 min, 2.5 at 6 min', Core.pace(20)===1&&Core.pace(180)===2&&Core.pace(360)===2.5);
+check('pace: 1 for 15 s, 2 at 2.5 min, 2.5 at 5.5 min', Core.pace(10)===1&&Core.pace(150)===2&&Core.pace(330)===2.5);
+// slow motion is not given while the game is still calm
+{ const g=Core.create(3,380); const types=new Set(); for(let i=0;i<60*60;i++){ Core.step(g,0.5); g.lives=3; g.picks.forEach(p=>{ if(!p.seen){ p.seen=1; types.add(Core.pace(g.t)<Core.TUNE.SLOW_FROM?p.type:'later'); } }); }
+  check('no slow motion before the pace reaches 1.4', !types.has('slow'), [...types].join(',')); }
 // difficulty with the bot (deterministic seeds)
 const runs=[]; for(let i=0;i<12;i++) runs.push(bot(1000+i,0.6)); const med=a=>a.sort((p,q)=>p-q)[a.length>>1];
 const life=med(runs.map(r=>r.t))/60, ufo=med(runs.map(r=>r.firstUfo).filter(x=>x!==null))/60;
-check('a middling bot lives 4–12 min', life>4&&life<12, life.toFixed(1)+' min');
+check('a middling bot lives 3–10 min', life>3&&life<10, life.toFixed(1)+' min');
 check('the first saucer comes in the first 2 min', ufo<2, ufo.toFixed(1)+' min');
 const ok=res.every(Boolean); console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;

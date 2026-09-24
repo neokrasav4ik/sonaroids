@@ -36,6 +36,8 @@ The phone lies flat on the table. It plays an inaudible ultrasonic tone (18–20
 | `30_lang_en.js`, `31_lang_ru.js` | UI strings |
 | `40_gfx.js`, `41_sprites.js`, `42_guide.js`, `49_main.js` | drawing, first-launch pictures, screens and the game loop |
 
+The game's version is in `VERSION` (shown on the title screen and written into the logs); `CHANGELOG.md` lists what each version changed. Bump it with every upload.
+
 Edit the parts, then `python3 build.py` (and `python3 font/make_font.py` after changing the font). CI refuses a build that doesn't match its sources.
 
 ## How the sonar works, in short

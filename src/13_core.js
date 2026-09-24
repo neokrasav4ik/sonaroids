@@ -6,8 +6,8 @@
    - the ship fires by itself; rocks split large → 2 medium → 2 small, 20 / 50 / 100 points;
    - points × height: the middle of the screen ×3, then ×2, the edges ×1 (not shown); × streak: +1 for every 5 hits in a row, a hit resets it;
    - power-ups to fly into: shield (one hit), triple shot (10 s), slow motion (6 s);
-   - one difficulty that grows: the first 30 s calm, then rocks get faster and more frequent — about 2× by minute 3,
-     2.5× by minute 6, slowly more after;
+   - one difficulty that grows: the first 15 s calm (but with more rocks than the skeleton), then rocks get faster — 2× by 2.5 min,
+     2.5× by 5.5 min, slowly more after — and more frequent still (pace^1.25); slow motion only from pace 1.4 (~70 s);
    - levels count base points (before the multipliers, which can reach ×12): a level every 5000;
    - saucers: a large one from level 3 (shoots at random, 200 points), a small aiming one from level 5 (1000 points); 3 lives.
    With the bot player (tests/bot.js) that gives: a game of 5–8 min, the first saucer at ~1.1 min, small ones from ~1.9 min. ── */
@@ -16,9 +16,9 @@ var Core=(function(){
   var FOLLOW=0.30952;                       // 1 − exp(−(1/60)/0.045): the ship follows the palm with a 45 ms lag (literal, see above)
   var R_SIZE=[13.5,8.1,4.3], PTS=[20,50,100], FIRE=0.17, BULLET_V=190, LIVES=3, INV=1.4;
   var STREAK_MAX=4;                        // the streak adds up to ×4 (after 15 hits in a row)
-  /* tuning, set with a bot player (tests/bot.js): a rock every SPAWN s at pace 1; pieces fly off at SPLIT_VX × the parent's speed
+  /* tuning, set with a bot player (tests/bot.js): a rock every SPAWN s at pace 1, and pace^1.25 times as often later (more rocks, not just faster ones); pieces fly off at SPLIT_VX × the parent's speed
      and SPLIT_VY up or down; a new level every LEVEL base points (points before the height and streak multipliers) */
-  var TUNE={SPAWN:[1.6,2.6],SPLIT_VX:[0.85,1.15],SPLIT_VY:[8,18],HIT_R:0.8,LEVEL:5000};
+  var TUNE={SPAWN:[1.2,2.0],SPLIT_VX:[0.85,1.15],SPLIT_VY:[8,18],HIT_R:0.8,LEVEL:5000,SLOW_FROM:1.4};
   var UFO={big:{hw:7,hh:3,pts:200,fire:1.4,v:70},small:{hw:5,hh:2,pts:1000,fire:1.1,v:85}};
   function rng(seed){ var a=seed>>>0; return function(){ a=(a+0x6D2B79F5)>>>0; var t=a; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
   function create(seed,FW){
@@ -27,8 +27,8 @@ var Core=(function(){
       fireT:0.3,spawnT:0.6,pickT:9,ufoT:-1,nextId:1,events:[],gone:[],fx:[]};
   }
   function rnd(g,a,b){ return a+g.rand()*(b-a); }
-  /* how much faster and more frequent everything is: 1 for the first 30 s, 2 at 3 min, 2.5 at 6 min, then +0.1 a minute up to 3.2 */
-  function pace(t){ if(t<30) return 1; if(t<180) return 1+(t-30)/150; if(t<360) return 2+0.5*(t-180)/180; return Math.min(3.2,2.5+(t-360)/600); }
+  /* how much faster everything is: 1 for the first 15 s, 2 at 2.5 min, 2.5 at 5.5 min, then +0.1 a minute up to 3.2 (v0.9: calm part 30 → 15 s) */
+  function pace(t){ if(t<15) return 1; if(t<150) return 1+(t-15)/135; if(t<330) return 2+0.5*(t-150)/180; return Math.min(3.2,2.5+(t-330)/600); }
   function heightMult(y){ var f=y/FH-0.5; if(f<0) f=-f; return f<0.15?3:f<0.3?2:1; }
   function spawnRock(g,sz,x,y,vx,vy){ g.rocks.push({id:g.nextId++,sz:sz,r:R_SIZE[sz],x:x,y:y,vx:vx,vy:vy}); }
   function spawn(g,m){ var sz=g.rand()<0.55?0:(g.rand()<0.6?1:2), r=R_SIZE[sz];
@@ -54,8 +54,9 @@ var Core=(function(){
     g.fireT-=DT; if(g.fireT<=0){ g.fireT+=FIRE; var bx=s.x+14; g.bullets.push({x:bx,y:s.y,vx:BULLET_V,vy:0});
       if(s.triple>0){ g.bullets.push({x:bx,y:s.y,vx:185,vy:-38}); g.bullets.push({x:bx,y:s.y,vx:185,vy:38}); } g.events.push('fire'); }
     // what comes in
-    g.spawnT-=wdt; if(g.spawnT<=0){ spawn(g,m); g.spawnT=rnd(g,TUNE.SPAWN[0],TUNE.SPAWN[1])/m; }
-    g.pickT-=DT; if(g.pickT<=0){ g.pickT=rnd(g,12,18); var k=g.rand(); g.picks.push({type:k<0.34?'shield':k<0.67?'triple':'slow',x:g.FW+6,y:rnd(g,FH*0.15,FH*0.85)}); }
+    g.spawnT-=wdt; if(g.spawnT<=0){ spawn(g,m); g.spawnT=rnd(g,TUNE.SPAWN[0],TUNE.SPAWN[1])/(m*Math.sqrt(Math.sqrt(m))); }   // m^1.25 via sqrt: exact on every engine, unlike pow
+    g.pickT-=DT; if(g.pickT<=0){ g.pickT=rnd(g,12,18); var k=g.rand(), slowOk=m>=TUNE.SLOW_FROM;                                  // slow motion only once things have sped up
+      g.picks.push({type:slowOk?(k<0.34?'shield':k<0.67?'triple':'slow'):(k<0.5?'shield':'triple'),x:g.FW+6,y:rnd(g,FH*0.15,FH*0.85)}); }
     if(g.level>=3&&g.ufoT<0&&!u) g.ufoT=rnd(g,2,5);
     if(g.ufoT>0&&!u){ g.ufoT-=wdt; if(g.ufoT<=0){ var kind=(g.level>=5&&g.rand()<0.5)?'small':'big';
       u=g.ufo={id:g.nextId++,kind:kind,x:g.FW+10,y:rnd(g,FH*0.2,FH*0.8),ty:FH/2,tyT:0,fire:1.2}; g.events.push('ufo'); } }

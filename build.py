@@ -5,13 +5,21 @@
   python3 build.py --check   build and compare with game/play/index.html (CI); fails if they differ
   python3 build.py --icons   also draw the home-screen icons game/play/icon-*.png (needs Pillow; the icons are committed)
 
-The parts are joined in name order. game/font.js (made by font/make_font.py) goes in right after the <script> tag.
+The parts are joined in name order. game/font.js (made by font/make_font.py) goes in right after the <script> tag,
+then `var VERSION='…'` from the VERSION file; the same version names the service worker's cache (game/play/sw.js).
 The modules (DSP2, Tune, Core, Sonar, Logs, Sfx, STR) are plain top-level objects; 40_gfx … 49_main share one closure.
 """
 import os, re, sys, subprocess, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, 'src')
 OUT = os.path.join(HERE, 'game', 'play', 'index.html')
+
+def version():
+    return open(os.path.join(HERE, 'VERSION'), encoding='utf-8').read().strip()
+
+def sw_source():
+    p = os.path.join(HERE, 'game', 'play', 'sw.js'); s = open(p, encoding='utf-8').read()
+    return p, re.sub(r"const V = '[^']*';", "const V = 'sonaroids-%s';" % version(), s)
 
 def build():
     parts = sorted(f for f in os.listdir(SRC) if re.match(r'^\d\d_.*\.(js|html)$', f))
@@ -22,6 +30,7 @@ def build():
         out.append(s)
         if f.startswith('00_'):
             out.append(font)
+            out.append("var VERSION='%s';\n" % version())
     return ''.join(out), parts
 
 def check_js(html):
@@ -62,9 +71,12 @@ if __name__ == '__main__':
     print('syntax:', 'ok' if ok else 'ERROR\n' + err)
     if '--check' in sys.argv:
         same = os.path.exists(OUT) and open(OUT, encoding='utf-8').read() == html
-        print('game/play/index.html matches src/:', same)
+        swp, sws = sw_source(); same_sw = open(swp, encoding='utf-8').read() == sws
+        print('game/play/index.html matches src/:', same, '| version', version(), '| service worker has it:', same_sw)
+        same = same and same_sw
         sys.exit(0 if same and ok else 1)
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     open(OUT, 'w', encoding='utf-8').write(html)
-    print('written', os.path.relpath(OUT, HERE), round(len(html.encode()) / 1024), 'KB')
+    swp, sws = sw_source(); open(swp, 'w', encoding='utf-8').write(sws)
+    print('written', os.path.relpath(OUT, HERE), round(len(html.encode()) / 1024), 'KB, version', version())
     sys.exit(0 if ok else 1)

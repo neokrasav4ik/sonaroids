@@ -4,7 +4,7 @@ var Sfx=(function(){
   var ctx=null, bus=null, noise=null, on=true;
   try{ on=localStorage.getItem('sonaroids_sfx')!=='0'; }catch(e){}
   function setup(){
-    ctx=Sonar.ctx(); if(!ctx||bus) return;
+    var c=Sonar.ctx(); if(c!==ctx){ ctx=c; bus=null; } if(!ctx||bus) return;              // a new audio context after the microphone was re-opened: rebuild
     bus=ctx.createGain(); bus.gain.value=1.1;
     var comp=ctx.createDynamicsCompressor(); comp.threshold.value=-20; comp.knee.value=6; comp.ratio.value=6; comp.attack.value=0.002; comp.release.value=0.12;
     var lim=ctx.createDynamicsCompressor(); lim.threshold.value=-3; lim.knee.value=0; lim.ratio.value=20; lim.attack.value=0.001; lim.release.value=0.06;

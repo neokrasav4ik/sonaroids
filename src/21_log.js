@@ -45,7 +45,7 @@ var Logs=(function(){
   }
   function base(kind){ var I=Sonar.info();
     return {kind:kind,fs:I.fs,N:N,kLo:I.kLo,kHi:I.kHi,probe:{bins:'all',channel:I.chan,phase:'pi*q^2/M',peak:0.9,gain:I.probe_gain,snr_db:I.probe_snr,level_db:I.probe_level,f_lo:I.f_lo,loop:true},
-      pcm:{bits:16,full_scale:1/SCALE},app:'sonaroids',ended:new Date().toISOString(),ua:navigator.userAgent}; }
+      pcm:{bits:16,full_scale:1/SCALE},app:'sonaroids',version:typeof VERSION!=='undefined'?VERSION:null,ended:new Date().toISOString(),ua:navigator.userAgent}; }
   function setupBlob(){ if(!S||!S.f) return null; var inf=DSP2.info(), m=base('setup-log');
     m.v=1; m.first_frame=0; m.frames=S.f; m.clipped=S.clip; m.gaps=S.gaps; m.setup=S.meta0; m.cal_now=inf.cal; m.dsp_info={d0:inf.d0,prom:inf.prom,mm:inf.mm};
     m.columns={dsp:['frame','present','height_mm','abs_mm','range_mm','fast_mm','motion_db','echo_db','empty_floor_db','motion_smooth_db'],events:['frame','event','data']};

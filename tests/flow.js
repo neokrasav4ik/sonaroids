@@ -19,8 +19,8 @@ const SCEN=`function(t){ if(t<7) return null; if(t<8) return 100; if(t<16) retur
   const shot=async n=>p.screenshot({path:path.join(OUT,n+'.png')});
   await shot('01_title');
   await p.evaluate(()=>__sonaroids.act.play()); t0=Date.now();
-  let again=null, seen2=[], last2=null, caughtAt=null, startAt=null, range=null, follow=[], shots={};
-  while(T()<40){
+  let logs={setup:null,game:null}, pausedOk=false, healthyAfter=null, again=null, seen2=[], last2=null, caughtAt=null, startAt=null, range=null, follow=[], shots={};
+  while(T()<70){
     await p.waitForTimeout(100);
     const s=await p.evaluate(()=>{ const s=__sonaroids.state(), st=Sonar.state(); return {scr:s.scr,caught:s.caught,
       ok:s.prep&&s.prep.res&&s.prep.res.ok, T:s.T?{field:s.T.field,last:s.T.last}:null,
@@ -36,16 +36,19 @@ const SCEN=`function(t){ if(t<7) return null; if(t<8) return 100; if(t<16) retur
       if(T()>22&&!shots.stage){ shots.stage=1; await p.evaluate(()=>{ const g=__sonaroids.state().g; g.level=5; g.ufoT=0.01; g.ship.shield=10;   // show everything at once
         g.picks.push({type:'triple',x:g.FW*0.6,y:60},{type:'slow',x:g.FW*0.8,y:120}); }); }
       if(T()>26&&!shots.play){ shots.play=1; await shot('05_play'); } }
-    if(s.scr==='play'&&T()>30){ await p.evaluate(()=>{ const g=__sonaroids.state().g; g.lives=1; g.ship.inv=0; g.state='play';
-      g.rocks.push({id:9999,sz:0,r:13.5,x:g.ship.x+3,y:g.ship.y,vx:0,vy:0}); }); }
+    if(s.scr==='play'&&T()>30&&!shots.paused){ shots.paused=1; await p.evaluate(()=>__sonaroids.act.pause()); await p.waitForTimeout(300);   // the menu button in flight
+      await shot('06a_paused'); pausedOk=await p.evaluate(()=>__sonaroids.scr()==='paused'&&__sonaroids.btn().some(b=>b.id==='quit'));
+      await p.evaluate(()=>__sonaroids.act.quit()); }
     if(s.scr==='over'&&!shots.over){ shots.over=1; await p.waitForTimeout(1200); await shot('06_over');
-      // a second game: menu → play, with the palm still moving next to the phone (24 Sep: this start said "too quiet")
-      await p.evaluate(()=>__sonaroids.act.menu()); await p.waitForTimeout(200); await p.evaluate(()=>__sonaroids.act.play()); again=T(); }
+      logs=await p.evaluate(async()=>{ const f=async b=>b?Array.from(new Uint8Array(await b.arrayBuffer())):null; return {setup:await f(Logs.setupBlob()),game:await f(Logs.gameBlob())}; });
+      // a second game after the app was in the background (iOS takes the microphone away: no frames), with the palm still moving
+      // next to the phone (24 Sep: this start said "too quiet"): "again" must re-open the microphone and get ready again
+      await p.evaluate(()=>Sonar.simStall(true)); await p.waitForTimeout(1000); healthyAfter=await p.evaluate(()=>Sonar.healthy());
+      await p.evaluate(()=>__sonaroids.act.again()); again=T(); }
     if(again!==null&&s.scr!==last2){ seen2.push(s.scr); last2=s.scr; }
     if(again!==null&&(s.scr==='wave'||s.scr==='sound'||T()-again>12)) break;
   }
-  // logs back through the lab tools
-  const logs=await p.evaluate(async()=>{ const f=async b=>b?Array.from(new Uint8Array(await b.arrayBuffer())):null; return {setup:await f(Logs.setupBlob()),game:await f(Logs.gameBlob())}; });
+  // logs back through the lab tools (taken at game over, before the second game)
   const sp=path.join(OUT,'flow_setup.wav'), gp=path.join(OUT,'flow_game.wav');
   if(logs.setup) fs.writeFileSync(sp,Buffer.from(logs.setup)); if(logs.game) fs.writeFileSync(gp,Buffer.from(logs.game));
   await b.close();
@@ -56,11 +59,12 @@ const SCEN=`function(t){ if(t<7) return null; if(t<8) return 100; if(t<16) retur
   const m=rep.match(/дальность \|Δ\| медиана ([\d.]+) мм/);   // the echo range as the page saw it vs the replay: the log carries everything needed
   console.log('screens:',seen.join(' → '));
   console.log(`range caught at ${caughtAt===null?'never':caughtAt.toFixed(1)+' s'}; at START the waved range sits at ${range?(range[0]*100).toFixed(0)+'–'+(range[1]*100).toFixed(0)+'% of the screen, field '+range[2].toFixed(0)+' mm':'?'} (want ~10–90%)`);
-  console.log(`second game after game over: ${seen2.join(' → ')} (want → wave)`);
+  console.log(`microphone gone while in the background noticed: ${healthyAfter===false?'yes':'NO'}; “again” then: ${seen2.join(' → ')} (want → away → wave)`);
   console.log(`flight: ship follows the palm, correlation ${corr.toFixed(3)} over ${follow.length} samples`);
   console.log(`logs: setup ${logs.setup?(logs.setup.length/1024).toFixed(0)+' KB':'none'}, game ${logs.game?(logs.game.length/1024).toFixed(0)+' KB':'none'}; lab replay of the setup log: echo range differs from the page by ${m?m[1]:'?'} mm (median)`);
   if(errors.length) console.log('page errors:',errors.join(' | '));
   const need=['title','away','wave','count','play','over'], got=need.every(n=>seen.some(s=>s.startsWith(n+'@')));
-  const ok=got&&seen2[seen2.length-1]==='wave'&&caughtAt!==null&&range&&range[0]>0.05&&range[0]<0.16&&range[1]>0.84&&range[1]<0.95&&corr>0.95&&logs.setup&&logs.game&&m&&+m[1]<0.5&&!errors.length;
+  console.log(`menu in flight → pause with “end the game”: ${pausedOk?'yes':'NO'}`);
+  const ok=pausedOk&&healthyAfter===false&&seen2.includes('away')&&seen2[seen2.length-1]==='wave'&&got&&caughtAt!==null&&range&&range[0]>0.05&&range[0]<0.16&&range[1]>0.84&&range[1]<0.95&&corr>0.95&&logs.setup&&logs.game&&m&&+m[1]<0.5&&!errors.length;
   console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;
 })();

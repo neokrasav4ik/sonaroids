@@ -7,7 +7,7 @@ var Sonar=(function(){
   var N=512, F_LO=18300, F_HI=20500, fs=0, kLo, kHi, kc;
   var ctx=null, stream=null, node=null, an=null, gSL, gSR, gL, gR, booted=false;
   var PROBE_G=0.25, PROBE_SNR=null, chan='right', active=false, lastSeq=-1, gaps=0, collector=null, last=null, lost=false;
-  var listeners=[];
+  var listeners=[], lastFrameAt=0, simIv=null, simStalled=false;
   var PHYS_CAL={k:1.17,o:100-1.17*110,s:0.9};   // mm of palm height per mm of echo range, and per unit of the fast (phase) part — from the lab
   function sleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
   function makeProbe(parity){
@@ -57,7 +57,7 @@ var Sonar=(function(){
   function collect(n){ return new Promise(function(r){ collector={n:n,arr:[],done:r}; }); }
   /* every microphone frame goes through here: echo processing, then logs */
   function onFrame(e){
-    var m=e.data, gap=(lastSeq>=0&&m.s!==lastSeq+1); lastSeq=m.s; if(gap) gaps++;
+    var m=e.data, gap=(lastSeq>=0&&m.s!==lastSeq+1); lastSeq=m.s; if(gap) gaps++; lastFrameAt=performance.now();
     if(collector){ collector.arr.push(m.f); if(collector.arr.length>=collector.n){ var c=collector; collector=null; c.done(c.arr); } }
     var r=null; if(active){ r=DSP2.frame(m.f); if(r) last=r; if(DSP2.info().lost) lost=true; }
     for(var i=0;i<listeners.length;i++) listeners[i](m.f,r,gap);
@@ -120,12 +120,30 @@ var Sonar=(function(){
      the side is given, everything after that (auto level, echo processing, logs) is the real code */
   var sim=null;
   function simulate(o){ sim=o; fs=o.fs||48000; var df=fs/N; kLo=Math.ceil(F_LO/df); kHi=Math.floor(F_HI/df); kc=Math.floor((kLo+kHi)/2); }
-  function simBoot(){ if(booted) return Promise.resolve(); booted=true; var i=0, t0=performance.now();
-    setInterval(function(){ var due=Math.floor((performance.now()-t0)/1000*fs/N); while(i<due){ onFrame({data:{f:sim.source(i),s:i}}); i++; } },10);
+  function simBoot(){ if(booted) return Promise.resolve(); booted=true; var i=0, t0=performance.now(); lastSeq=-1;
+    simIv=setInterval(function(){ var due=Math.floor((performance.now()-t0)/1000*fs/N); if(simStalled){ i=due; return; } while(i<due){ onFrame({data:{f:sim.source(i),s:i}}); i++; } },10);
     return Promise.resolve(); }
   function pause(){ if(ctx){ setProbe('off'); } }
-  function resume(){ if(ctx&&active){ if(ctx.state==='suspended') ctx.resume(); setProbe('single-'+chan); } }
-  return {boot:boot,prepare:prepare,simulate:simulate,setProbe:setProbe,pause:pause,resume:resume,probeSNR:probeSNR,
+  function resume(){ if(ctx&&active){ if(ctx.state!=='running') ctx.resume().catch(function(){}); setProbe('single-'+chan); } }
+  /* Is the microphone still with us? When the app goes to the background iOS takes the microphone away (the island's mic light goes out)
+     and does not give it back by itself (24 Sep). Signs: the track has ended or is muted, the audio context is not running,
+     or no frames for half a second. Then the game has to ask for the microphone again — from a tap. */
+  function healthy(){
+    if(!booted) return false;
+    if(sim) return !simStalled&&performance.now()-lastFrameAt<600;
+    var tr=stream?stream.getAudioTracks():[];
+    if(!tr.length||tr.some(function(t){ return t.readyState!=='live'||t.muted; })) return false;
+    return ctx&&ctx.state==='running'&&performance.now()-lastFrameAt<600;
+  }
+  /* drop everything and start over: the next boot() (from a tap) asks for the microphone again */
+  function restart(){
+    try{ if(stream) stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
+    try{ if(node){ node.port.onmessage=null; node.disconnect(); } }catch(e){}
+    try{ if(ctx) ctx.close(); }catch(e){}
+    if(simIv){ clearInterval(simIv); simIv=null; } simStalled=false;     // in simulation a re-opened microphone works again
+    ctx=null; stream=null; node=null; an=null; booted=false; active=false; collector=null; lastSeq=-1; last=null; lost=false; lastFrameAt=0;
+  }
+  return {boot:boot,prepare:prepare,simulate:simulate,healthy:healthy,restart:restart,simStall:function(v){ simStalled=!!v; },setProbe:setProbe,pause:pause,resume:resume,probeSNR:probeSNR,
     listen:function(f){ listeners.push(f); },
     state:function(){ return last; }, lost:function(){ return lost; }, clearLost:function(){ lost=false; },
     shift:function(d){ DSP2.shift(d); },

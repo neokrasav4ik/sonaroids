@@ -75,6 +75,10 @@ function text(s,x,y,col,align,sc,noRim){ sc=sc||1; var w=PF.width(s,sc); x=Math.
 /* a block of lines wrapped to maxW, centred on cx; returns the y after the block */
 function para(s,cx0,y,maxW,col){ PF.wrap(s,maxW,1).forEach(function(l){ text(l,cx0,y,col,'center'); y+=10; }); return y; }
 var BTN=[];                                                         // buttons of the current frame: hit areas in game pixels
+var BH=22;                                                          // button height in game pixels (17 → 20 in v0.6 → 22 in v0.9)
+/* a small icon button: three bars (menu) in a frame; the hit area is larger than the drawing */
+function iconButton(id,x,y){ var s=BH-3; R(P.bg,x,y,s,s); frame(x,y,s,s,P.line); for(var i=0;i<3;i++) R(P.soft,x+4,y+5+i*3,s-8,1);
+  BTN.push({id:id,x:x-4,y:y-4,w:s+8,h:s+8}); }
 function button(id,label,x,y,w,h,kind,on){
   var hot=kind==='primary', blink=hot&&on;
   R(hot?(blink?P.ship[2]:P.ship[1]):P.bg,x,y,w,h); frame(x,y,w,h,hot?P.ship[2]:P.line);

@@ -4,7 +4,7 @@
 let chromium; try{ ({chromium}=require('playwright')); }catch(e){ console.log('playwright not installed — skipped'); process.exit(0); }
 const fs=require('fs'), path=require('path'); const ROOT=path.join(__dirname,'..'), OUT=path.join(__dirname,'out','screens'); fs.mkdirSync(OUT,{recursive:true});
 const SIZES=[[568,320],[667,375],[740,360],[844,390],[932,430],[1024,768],[1366,1024]];
-const SCREENS=['lang','title','sound','phone','mic','wave','count','paused','over','lost','nomic'];
+const SCREENS=['lang','title','sound','phone','mic','wave','count','play','pause-play','over','lost','nomic'];
 (async()=>{
   const b=await chromium.launch(); const bad=[]; const errors=[]; let n=0;
   for(const [w,h] of SIZES) for(const lang of ['en','ru']) for(const hand of ['right','left']){
@@ -14,9 +14,15 @@ const SCREENS=['lang','title','sound','phone','mic','wave','count','paused','ove
     await p.goto('file://'+path.join(ROOT,'game','play','index.html')); await p.waitForTimeout(300);
     await p.evaluate(()=>__sonaroids.fake());
     for(const s of SCREENS){
-      await p.evaluate(s=>__sonaroids.go(s),s); await p.waitForTimeout(s==='over'?1000:s==='phone'?1300:150); n++;
+      await p.evaluate(s=>{ const g=__sonaroids.state().g;
+        if(s==='play'){ g.state='play'; g.lives=3; g.rocks=[]; g.ship.inv=99; __sonaroids.go('play'); }
+        else if(s==='pause-play'){ __sonaroids.act.pause(); }
+        else { if(s==='over') g.state='over'; __sonaroids.go(s); } },s);
+      await p.waitForTimeout(s==='over'?1000:s==='phone'?1300:150); n++;
       const r=await p.evaluate(()=>({btn:__sonaroids.btn(),S:__sonaroids.S()}));
       const {LW,LH}=r.S;
+      if(s==='play'&&!r.btn.some(q=>q.id==='pause')) bad.push(`${w}x${h} ${lang} ${hand}: no menu button in flight`);
+      if(s==='pause-play'&&!(r.btn.some(q=>q.id==='resume')&&r.btn.some(q=>q.id==='quit'))) bad.push(`${w}x${h} ${lang} ${hand}: pause lacks resume/end`);
       r.btn.forEach((q,i)=>{ if(q.x<0||q.y<0||q.x+q.w>LW||q.y+q.h>LH) bad.push(`${w}x${h} ${lang} ${hand} ${s}: button ${q.id} off screen`);
         r.btn.forEach((o,j)=>{ if(j>i&&q.x<o.x+o.w&&o.x<q.x+q.w&&q.y<o.y+o.h&&o.y<q.y+q.h) bad.push(`${w}x${h} ${lang} ${hand} ${s}: ${q.id} overlaps ${o.id}`); }); });
       if(w===844&&hand==='right'||w===844&&s==='phone') await p.screenshot({path:path.join(OUT,`${lang}_${hand}_${s}.png`)});

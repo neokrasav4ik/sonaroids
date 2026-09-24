@@ -1,5 +1,5 @@
 /* ── SCREENS AND THE GAME LOOP ──
-   First launch: language → sound (silent mode, ringer volume) → put the phone down → microphone → take your hand away → wave → game.
+   First launch: language → sound volume → put the phone down → microphone → take your hand away → wave → game.
    Later launches: title → take your hand away → wave → game. After each command a pause ring fills (1.5 s),
    and only then the game starts listening. Buttons sit on the free hand's side. */
 var store={get:function(k,d){ try{ var v=localStorage.getItem(k); return v===null?d:v; }catch(e){ return d; } },
@@ -52,8 +52,7 @@ function sTitle(){ sky(DT,0.4); var y=Math.round(LH*0.3), cx0=freeSide()==='left
   for(var i=0;i<3;i++){ var bx=cx0-20+((clock*90+i*40)%120); R(P.bullet,bx,sy,4,1); light(bx,sy,6*K,P.glowB,0.45); }
   column([['play',L('play'),'primary'],['howto',L('howto')],['lang',L('lang')],['sfx',L(Sfx.on()?'sfx_on':'sfx_off')]],Math.round(LH*0.5));
   say('Sonaroids. '+L('play')); }
-function sSound(part){ sky(DT,0.3); titles(part===1?L(direct?'silent_direct':'silent'):L('ringer'));
-  if(part===1) soundSilent(scrT); else soundRinger(scrT); nextBtn('next',L('next')); stepSquares('sound'); }
+function sSound(){ sky(DT,0.3); titles(L(direct?'volume_direct':'volume'),L('volume_s')); soundVolume(scrT); nextBtn('next',L('next')); stepSquares('sound'); }
 function sPhone(){ sky(DT,0.3); var m=handSide()==='left';
   picture(function(){ return scene('phone',scrT,0.5,0,false,clock); },m); titles(L('phone_t'),L('phone_s'));
   if(scrT>1.2) nextBtn('next',L('next')); stepSquares('phone'); }
@@ -67,7 +66,7 @@ function sAway(){ sky(DT,0.3); var m=handSide()==='left', aw=Math.min(1,Math.max
   ringUI(st==='wait'?scrT/PAUSE:st==='ok'?1:Math.min(0.95,(scrT-PAUSE)/3.2),st);
   if(scrT>=PAUSE&&!prep) startPrepare();
   if(prep&&prep.res){ if(prep.res.ok){ if(scrT-prep.doneT>0.8){ T=Tune.create(+store.get('sonaroids_field','100')||100,true); caught=false; go('wave'); } }
-    else { direct=true; onboarding=false; go('sound1'); } }
+    else { direct=true; onboarding=false; go('sound'); } }
   stepSquares('away'); }
 function sWave(){ sky(DT,0.3); var m=handSide()==='left', f=handFrac(), live=f!==null;
   if(scrT>=PAUSE){ var e=Tune.step(T,DT,Sonar.state(),true,Sonar.shift); if(e) Logs.ev('подстройка',e); }
@@ -79,20 +78,23 @@ function sWave(){ sky(DT,0.3); var m=handSide()==='left', f=handFrac(), live=f!=
   if(caught){ var w=btnW([L('start')]); button('start',L('start'),sideX(w),Math.round(LH*0.72),w,17,'primary',Math.floor(scrT*2)%2===0); }
   stepSquares('wave'); }
 /* the flight field: rocks, bullets, ship. The core counts in field units (180 high); K turns them into game pixels */
+/* the flight field: rocks, bullets, ship. The core counts in field units (180 high); fx() and K turn them into game pixels.
+   The field starts right of the safe area, so the ship is never under the camera island (24 Sep) */
+function fx(x){ return x*K+SAFE.l; }
 function field(dt,speed){ sky(dt,speed);
   if(!g) return;
   if(g.state!=='play'){ g.bullets=[]; g.ebullets=[]; g.rocks.forEach(function(r){ r.x+=r.vx*dt; r.y+=r.vy*dt; }); if(g.ufo) g.ufo.x-=6*dt; }   // after the game: things drift on, for the look only
   g.rocks.forEach(function(r){ var sp=rockSpr[r.id]; if(!sp){ sp=rockSpr[r.id]=makeRock(Math.max(3,Math.round(r.r*K))); }
-    sp.rot=(sp.rot+sp.vr*dt+16)%16; var fr=sp.frames[Math.floor(sp.rot)%16]; lx.drawImage(fr,Math.round(r.x*K-sp.size/2),Math.round(r.y*K-sp.size/2)); });
-  g.picks.forEach(function(p){ var x=Math.round(p.x*K), y=Math.round(p.y*K+Math.sin(clock*3)*2);
+    sp.rot=(sp.rot+sp.vr*dt+16)%16; var fr=sp.frames[Math.floor(sp.rot)%16]; lx.drawImage(fr,Math.round(fx(r.x)-sp.size/2),Math.round(r.y*K-sp.size/2)); });
+  g.picks.forEach(function(p){ var x=Math.round(fx(p.x)), y=Math.round(p.y*K+Math.sin(clock*3)*2);
     R(P.pick,x-5,y-5,11,11); R(P.bg,x-4,y-4,9,9); blit(ICON[p.type],[P.pick],x-3,y-3); light(x,y,14*K,P.glowP,0.35); });
-  if(g.ufo){ var u=g.ufo, big=u.kind==='big', ux=Math.round(u.x*K), uy=Math.round(u.y*K);
+  if(g.ufo){ var u=g.ufo, big=u.kind==='big', ux=Math.round(fx(u.x)), uy=Math.round(u.y*K);
     blit(big?UFO_BIG:UFO_SMALL,P.ufo,ux-(big?9:6),uy-(big?4:2));
     if(Math.floor(clock*6)%2){ R(P.ufo[3],ux-(big?5:3),uy+1,1,1); R(P.ufo[3],ux+(big?4:2),uy+1,1,1); }
     light(ux,uy,(big?22:16)*K,hex(P.ufo[2]).join(','),0.35); }
-  g.ebullets.forEach(function(b){ R(P.ebullet,b.x*K-1,b.y*K-1,2,2); light(b.x*K,b.y*K,7*K,hex(P.ebullet).join(','),0.5); });
-  g.bullets.forEach(function(b){ R(P.bullet,b.x*K-2,b.y*K,4,1); light(b.x*K,b.y*K,6*K,P.glowB,0.45); });
-  if(g.state==='play'){ var sx=g.ship.x*K, sy=g.ship.y*K;
+  g.ebullets.forEach(function(b){ R(P.ebullet,fx(b.x)-1,b.y*K-1,2,2); light(fx(b.x),b.y*K,7*K,hex(P.ebullet).join(','),0.5); });
+  g.bullets.forEach(function(b){ R(P.bullet,fx(b.x)-2,b.y*K,4,1); light(fx(b.x),b.y*K,6*K,P.glowB,0.45); });
+  if(g.state==='play'){ var sx=fx(g.ship.x), sy=g.ship.y*K;
     drawShip(sx,sy,clock,g.ship.inv>0&&Math.floor(clock*14)%2===0);
     if(g.ship.shield>0&&(g.ship.shield>3||Math.floor(clock*8)%2)){                 // the shield: a ring of dots, blinking in its last 3 s
       for(var a=0;a<28;a+=2){ var an=a/28*6.283+clock*2; R(P.pick,sx+7+Math.cos(an)*11,sy+Math.sin(an)*9,1,1); } light(sx+7,sy,16*K,P.glowP,0.25); }
@@ -101,7 +103,7 @@ function field(dt,speed){ sky(dt,speed);
 }
 function sCount(){ countT-=DT; var f=handFrac(); if(f!==null) lastHand=f;
   var ty=(Core.FH-Core.MARGIN-(lastHand===null?0.5:lastHand)*(Core.FH-2*Core.MARGIN))*K; shipY=shipY===null?ty:shipY+(ty-shipY)*0.3;
-  sky(DT,0.6); drawShip(30*K,shipY,clock,false);
+  sky(DT,0.6); drawShip(fx(Core.SHIP_X),shipY,clock,false);
   var n=Math.max(1,Math.ceil(countT)), cx0=Math.round(LW/2), cy0=Math.round(LH/2);
   ring(cx0,cy0,13,1-(countT-Math.floor(countT)),P.band); text(String(n),cx0,cy0-3,P.text,'center'); say(String(n));
   if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.play('tick');
@@ -118,10 +120,10 @@ function sPlay(){
 }
 function react(){ g.events.forEach(function(k){
   if(k==='fire'){ if(Math.random()<0.5) Sfx.play('fire'); } else if(k!=='crash') Sfx.play(k); });
-  (g.gone||[]).forEach(function(r){ burst(r.x*K,r.y*K,8+Math.round(r.r*K),P.rock.slice(2).concat([P.flame[1]]),50*K); delete rockSpr[r.id]; shake=Math.max(shake,0.08+r.r*0.004); });
-  (g.fx||[]).forEach(function(f){ if(f.ufo){ burst(f.x*K,f.y*K,40,P.ufo,90*K); shake=0.35; } else if(f.pick) burst(f.x*K,f.y*K,14,[P.pick,P.text],50*K); });
-  if(g.events.indexOf('shield')>=0) burst(g.ship.x*K+6,g.ship.y*K,20,[P.pick,P.text],60*K);
-  if(g.events.indexOf('hit')>=0||g.events.indexOf('over')>=0){ flash=0.25; shake=0.4; livesT=1.8; burst(g.ship.x*K+6,g.ship.y*K,26,P.ship.concat(P.flame),70*K); }
+  (g.gone||[]).forEach(function(r){ burst(fx(r.x),r.y*K,8+Math.round(r.r*K),P.rock.slice(2).concat([P.flame[1]]),50*K); delete rockSpr[r.id]; shake=Math.max(shake,0.08+r.r*0.004); });
+  (g.fx||[]).forEach(function(f){ if(f.ufo){ burst(fx(f.x),f.y*K,40,P.ufo,90*K); shake=0.35; } else if(f.pick) burst(fx(f.x),f.y*K,14,[P.pick,P.text],50*K); });
+  if(g.events.indexOf('shield')>=0) burst(fx(g.ship.x)+6,g.ship.y*K,20,[P.pick,P.text],60*K);
+  if(g.events.indexOf('hit')>=0||g.events.indexOf('over')>=0){ flash=0.25; shake=0.4; livesT=1.8; burst(fx(g.ship.x)+6,g.ship.y*K,26,P.ship.concat(P.flame),70*K); }
 }
 function sOver(){ overT+=DT; var e=Tune.step(T,DT,Sonar.state(),true,Sonar.shift); if(e) Logs.ev('подстройка',e);
   if(T.ok) caught=true;
@@ -151,18 +153,18 @@ function pauseGame(){ if(scr==='play'||scr==='count'||scr==='count-resume'){ pau
 function startCount(){ countT=3; shipY=null; lastHand=handFrac(); Logs.ev('отсчёт',{field:+T.field.toFixed(1),auto:T.auto}); store.set('sonaroids_field',Math.round(T.field)); go('count'); }
 function startGame(){
   var seed=0; try{ var a=new Uint32Array(1); crypto.getRandomValues(a); seed=a[0]; }catch(e){ seed=Math.floor(Math.random()*4294967296); }
-  g=Core.create(seed,Core.FH*LW/LH); acc=0; rockSpr={}; parts=[]; livesT=0; var I=Sonar.info();
+  g=Core.create(seed,Core.FH*(LW-SAFE.l)/LH); acc=0; rockSpr={}; parts=[]; livesT=0; var I=Sonar.info();
   Logs.gameStart({core:'rules-1',seed:seed,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:'frozen',asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
     chan:I.chan,probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,started:new Date().toISOString(),app:'sonaroids'});
   Sfx.play('start'); go('play');
 }
 var ACT={
-  en:function(){ lang='en'; store.set('sonaroids_lang','en'); go('sound1'); },
-  ru:function(){ lang='ru'; store.set('sonaroids_lang','ru'); go('sound1'); },
-  next:function(){ if(scr==='sound1') go('sound2'); else if(scr==='sound2'){ if(direct) (booted?toAway():go('mic')); else go('phone'); } else if(scr==='phone') go(booted?'away':'mic'); },
+  en:function(){ lang='en'; store.set('sonaroids_lang','en'); go('sound'); },
+  ru:function(){ lang='ru'; store.set('sonaroids_lang','ru'); go('sound'); },
+  next:function(){ if(scr==='sound'){ if(direct) (booted?toAway():go('mic')); else go('phone'); } else if(scr==='phone') go(booted?'away':'mic'); },
   allow:function(){ boot(toAway); },
   play:function(){ onboarding=false; direct=false; if(booted) toAway(); else boot(toAway); },
-  howto:function(){ onboarding=true; direct=false; go('sound1'); },
+  howto:function(){ onboarding=true; direct=false; go('sound'); },
   lang:function(){ lang=lang==='en'?'ru':'en'; store.set('sonaroids_lang',lang); },
   sfx:function(){ Sfx.toggle(); },
   start:startCount, again:startCount,
@@ -198,7 +200,7 @@ function loop(now){
   if(booted&&Sonar.lost()&&(scr==='wave'||scr==='count'||scr==='play'||scr==='over')){ if(g&&g.state==='play') Logs.gameStop(); go('lost'); }
   switch(scr){
     case 'lang': sLang(); break; case 'title': sTitle(); break;
-    case 'sound1': sSound(1); break; case 'sound2': sSound(2); break;
+    case 'sound': sSound(); break;
     case 'phone': sPhone(); break; case 'mic': sMic(); break; case 'away': sAway(); break; case 'wave': sWave(); break;
     case 'count': sCount(); break; case 'count-resume': sCountResume(); break; case 'play': sPlay(); break; case 'over': sOver(); break;
     case 'paused': sPaused(); break; case 'lost': sLost(); break; case 'nomic': sNomic(); break;
@@ -213,5 +215,5 @@ requestAnimationFrame(loop);
 window.__sonaroids={go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR}; },
   setBooted:function(v){ booted=v; },
   fake:function(){ booted=true; prep={res:{ok:true},doneT:-9}; T=Tune.create(100,true); T.ok=true; caught=true;          // a stand-in state for layout checks
-    g=Core.create(1,Core.FH*LW/LH); for(var i=0;i<300;i++) Core.step(g,0.5); g.state='over'; },state:function(){ return {scr:scr,g:g,T:T,caught:caught,prep:prep,lang:lang}; }};
+    g=Core.create(1,Core.FH*(LW-SAFE.l)/LH); for(var i=0;i<300;i++) Core.step(g,0.5); g.state='over'; },state:function(){ return {scr:scr,g:g,T:T,caught:caught,prep:prep,lang:lang}; }};
 })();

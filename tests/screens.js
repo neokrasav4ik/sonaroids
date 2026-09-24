@@ -4,7 +4,7 @@
 let chromium; try{ ({chromium}=require('playwright')); }catch(e){ console.log('playwright not installed — skipped'); process.exit(0); }
 const fs=require('fs'), path=require('path'); const ROOT=path.join(__dirname,'..'), OUT=path.join(__dirname,'out','screens'); fs.mkdirSync(OUT,{recursive:true});
 const SIZES=[[568,320],[667,375],[740,360],[844,390],[932,430],[1024,768],[1366,1024]];
-const SCREENS=['lang','title','sound1','sound2','phone','mic','wave','count','paused','over','lost','nomic'];
+const SCREENS=['lang','title','sound','phone','mic','wave','count','paused','over','lost','nomic'];
 (async()=>{
   const b=await chromium.launch(); const bad=[]; const errors=[]; let n=0;
   for(const [w,h] of SIZES) for(const lang of ['en','ru']) for(const hand of ['right','left']){

@@ -12,7 +12,7 @@
    - saucers: a large one from level 3 (shoots at random, 200 points), a small aiming one from level 5 (1000 points); 3 lives.
    With the bot player (tests/bot.js) that gives: a game of 5–8 min, the first saucer at ~1.1 min, small ones from ~1.9 min. ── */
 var Core=(function(){
-  var DT=1/60, FH=180, MARGIN=FH*0.08, SHIP_X=30;
+  var DT=1/60, FH=180, MARGIN=FH*0.08, SHIP_X=34;
   var FOLLOW=0.30952;                       // 1 − exp(−(1/60)/0.045): the ship follows the palm with a 45 ms lag (literal, see above)
   var R_SIZE=[13.5,8.1,4.3], PTS=[20,50,100], FIRE=0.17, BULLET_V=190, LIVES=3, INV=1.4;
   var STREAK_MAX=4;                        // the streak adds up to ×4 (after 15 hits in a row)
@@ -90,6 +90,6 @@ var Core=(function(){
   }
   /* a whole game from a palm trajectory (one value per step, −1 = no palm): what the server will run */
   function replay(seed,FW,hands){ var g=create(seed,FW); for(var i=0;i<hands.length&&g.state==='play';i++) step(g,hands[i]<0?null:hands[i]); return g; }
-  return {TUNE:TUNE,create:create,step:step,replay:replay,pace:pace,heightMult:heightMult,DT:DT,FH:FH,MARGIN:MARGIN,UFO:UFO,R_SIZE:R_SIZE};
+  return {TUNE:TUNE,SHIP_X:SHIP_X,create:create,step:step,replay:replay,pace:pace,heightMult:heightMult,DT:DT,FH:FH,MARGIN:MARGIN,UFO:UFO,R_SIZE:R_SIZE};
 })();
 if(typeof module!=='undefined') module.exports=Core;

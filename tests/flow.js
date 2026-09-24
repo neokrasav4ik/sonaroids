@@ -19,7 +19,7 @@ const SCEN=`function(t){ if(t<7) return null; if(t<8) return 100; if(t<16) retur
   const shot=async n=>p.screenshot({path:path.join(OUT,n+'.png')});
   await shot('01_title');
   await p.evaluate(()=>__sonaroids.act.play()); t0=Date.now();
-  let caughtAt=null, startAt=null, range=null, follow=[], shots={};
+  let again=null, seen2=[], last2=null, caughtAt=null, startAt=null, range=null, follow=[], shots={};
   while(T()<40){
     await p.waitForTimeout(100);
     const s=await p.evaluate(()=>{ const s=__sonaroids.state(), st=Sonar.state(); return {scr:s.scr,caught:s.caught,
@@ -38,7 +38,11 @@ const SCEN=`function(t){ if(t<7) return null; if(t<8) return 100; if(t<16) retur
       if(T()>26&&!shots.play){ shots.play=1; await shot('05_play'); } }
     if(s.scr==='play'&&T()>30){ await p.evaluate(()=>{ const g=__sonaroids.state().g; g.lives=1; g.ship.inv=0; g.state='play';
       g.rocks.push({id:9999,sz:0,r:13.5,x:g.ship.x+3,y:g.ship.y,vx:0,vy:0}); }); }
-    if(s.scr==='over'&&!shots.over){ shots.over=1; await p.waitForTimeout(1200); await shot('06_over'); break; }
+    if(s.scr==='over'&&!shots.over){ shots.over=1; await p.waitForTimeout(1200); await shot('06_over');
+      // a second game: menu → play, with the palm still moving next to the phone (24 Sep: this start said "too quiet")
+      await p.evaluate(()=>__sonaroids.act.menu()); await p.waitForTimeout(200); await p.evaluate(()=>__sonaroids.act.play()); again=T(); }
+    if(again!==null&&s.scr!==last2){ seen2.push(s.scr); last2=s.scr; }
+    if(again!==null&&(s.scr==='wave'||s.scr==='sound'||T()-again>12)) break;
   }
   // logs back through the lab tools
   const logs=await p.evaluate(async()=>{ const f=async b=>b?Array.from(new Uint8Array(await b.arrayBuffer())):null; return {setup:await f(Logs.setupBlob()),game:await f(Logs.gameBlob())}; });
@@ -52,10 +56,11 @@ const SCEN=`function(t){ if(t<7) return null; if(t<8) return 100; if(t<16) retur
   const m=rep.match(/дальность \|Δ\| медиана ([\d.]+) мм/);   // the echo range as the page saw it vs the replay: the log carries everything needed
   console.log('screens:',seen.join(' → '));
   console.log(`range caught at ${caughtAt===null?'never':caughtAt.toFixed(1)+' s'}; at START the waved range sits at ${range?(range[0]*100).toFixed(0)+'–'+(range[1]*100).toFixed(0)+'% of the screen, field '+range[2].toFixed(0)+' mm':'?'} (want ~10–90%)`);
+  console.log(`second game after game over: ${seen2.join(' → ')} (want → wave)`);
   console.log(`flight: ship follows the palm, correlation ${corr.toFixed(3)} over ${follow.length} samples`);
   console.log(`logs: setup ${logs.setup?(logs.setup.length/1024).toFixed(0)+' KB':'none'}, game ${logs.game?(logs.game.length/1024).toFixed(0)+' KB':'none'}; lab replay of the setup log: echo range differs from the page by ${m?m[1]:'?'} mm (median)`);
   if(errors.length) console.log('page errors:',errors.join(' | '));
   const need=['title','away','wave','count','play','over'], got=need.every(n=>seen.some(s=>s.startsWith(n+'@')));
-  const ok=got&&caughtAt!==null&&range&&range[0]>0.05&&range[0]<0.16&&range[1]>0.84&&range[1]<0.95&&corr>0.95&&logs.setup&&logs.game&&m&&+m[1]<0.5&&!errors.length;
+  const ok=got&&seen2[seen2.length-1]==='wave'&&caughtAt!==null&&range&&range[0]>0.05&&range[0]<0.16&&range[1]>0.84&&range[1]<0.95&&corr>0.95&&logs.setup&&logs.game&&m&&+m[1]<0.5&&!errors.length;
   console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;
 })();

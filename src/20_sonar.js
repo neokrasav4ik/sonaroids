@@ -108,9 +108,10 @@ var Sonar=(function(){
     active=false; last=null; lost=false; PROBE_G=0.25;
     onStage&&onStage('side');
     return pickChannel().then(function(){ onStage&&onStage('level'); return autoLevel(); }).then(function(L){
-      // "barely heard": the probe itself is ~19 dB quieter than on a phone with sound on (silent mode, volume at zero),
-      // or so drowned in noise that the echo cannot be read. A noisy room with a normal probe goes on (24 Sep: 33 dB SNR worked fine)
-      if(PROBE_LVL<QUIET_LVL||L.snr<18){ setProbe('off'); return {ok:false,why:'quiet',snr:L.snr,level:PROBE_LVL}; }
+      // "barely heard": the probe itself is ~19 dB quieter than on a phone with sound on (the media volume at zero; on iPhone the silent switch
+      // does not mute it). Not by signal-to-noise: a noisy room (24 Sep: 33 dB worked fine) and a palm moving nearby (its echo counts as "noise";
+      // 24 Sep: after a game over the next start said "too quiet") both lower it. A probe too weak to read is caught by DSP2 ('noprobe')
+      if(PROBE_LVL<QUIET_LVL){ setProbe('off'); return {ok:false,why:'quiet',snr:L.snr,level:PROBE_LVL}; }
       DSP2.init(fs,'all'); DSP2.setCal(PHYS_CAL); DSP2.set('autocenter',1); active=true; onStage&&onStage('room');
       return waitReady().then(function(st){ if(st==='noprobe'){ active=false; setProbe('off'); return {ok:false,why:'noprobe'}; } return {ok:true,snr:L.snr}; });
     });

@@ -27,11 +27,9 @@ Rejected: "diagram" (top and side views) and "in-game" (a height rail at the scr
 Each screen is a picture and one or two lines. A command appears, a pause ring fills (about 1.5 s), and only then the game starts listening.
 
 1. **Language:** ENGLISH / РУССКИЙ. Only on first launch; later in the menu. — agreed
-2. **Sound — two plain commands in a row**, one picture each: — agreed
-   - "Turn off silent mode" — the ring/silent switch on the side of the phone: the orange stripe disappears, the bell is no longer crossed out;
-   - "Set the ringer volume to 30–70%" — a bell and a 10-step volume scale with the 3–7 range highlighted.
-   If the probe is not heard at the "take your hand away" step, the first command becomes more direct: "Your phone is in silent mode — turn it off."
-   On the maintainer's iPhone the probe follows the ringer volume, not the media volume; to be verified on the game skeleton. Shown on first launch and whenever the probe check finds the probe barely audible. The auto-level adjusts the exact probe level, hence the wide range.
+2. **Sound — one command:** "Set the volume to 30–70%", with "with the volume buttons" under it. A speaker and a 10-step scale with 3–7 lit. — agreed 24 Sep
+   Checked on the maintainer's iPhone on 24 Sep: the probe follows the **media** volume (the one the side buttons change while the game plays); silent mode does **not** mute it, media volume at zero does. So the "turn off silent mode" and "ringer volume" screens are gone.
+   If the probe is not heard at the "take your hand away" step, the command becomes more direct: "The volume is too low — turn it up to 30–70%". "Not heard" is decided by how loud the probe itself is, not by signal-to-noise. The auto-level adjusts the exact probe level, hence the wide range.
 3. **Put the phone down:** screen up, charging port towards the hand you'll play with. The microphone is next to the port, so the phone actually decides the side; the app verifies it acoustically. Buttons move to the free-hand side. — agreed
 4. **Microphone permission** — the system prompt, preceded by one line saying why.
 5. **"Take your hand away"** — 2 seconds: probe level and the empty room.
@@ -50,7 +48,7 @@ Later launches: steps 5–6 and straight into the game.
 - **One difficulty that grows with time:** calm for the first 30 s, then rocks get faster and more frequent — about 2× by minute 3, 2.5× by minute 6, slowly more after. — agreed
 - **Levels** count base points (before the height and streak multipliers, which reach ×12): a level every 5000. The large saucer from level 3, the small aiming one from level 5. The maintainer asked for saucers earlier: with the bot the first saucer comes at ~1.1 min, small ones at ~1.9 min, a game lasts 5–8 min. — agreed 24 Sep
 - **3 lives**, shown only at the moment of a hit — tiny ships above the ship. — trying
-- **"Is the probe heard"** is decided by how loud the probe itself is, not by signal-to-noise: a noisy room must not send the player to "turn off silent mode". — agreed 24 Sep
+- **"Is the probe heard"** is decided by how loud the probe itself is, not by signal-to-noise: a noisy room must not send the player to "turn up the volume". — agreed 24 Sep
 - **Flying saucer**, as in the original: shoots at the ship; you dodge by height. Large — 200 points, small aiming one — 1000. — agreed
 - **No breaks:** a game runs continuously, 5–10 minutes on average. The arm doesn't get tired with the elbow on an armrest. — agreed
 

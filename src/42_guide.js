@@ -75,14 +75,11 @@ function scene(id,t,f,away,waves,T){
   if(id==='phone') labels.push({x:ph.port[0]+6,y:ph.port[1]+8,t:'← '+L('port'),c:P.pick,arrow:true});
   return labels;
 }
-/* sound pictures: the ring/silent switch with the bell, and the ringer volume scale with 3–7 lit */
-var BELL=['...1...','..111..','.11111.','.11111.','.11111.','.11111.','1111111','.......','...1...'];
-function soundSilent(t){ var k=Math.max(3,Math.round(LH/55)), cy=Math.round(LH*0.5), on=(t%3.2)>1.3, sx=Math.round(LW/2-7*k), sy=cy-5*k;
-  R(P.rock[1],sx-k,sy-k,5*k,11*k); R(P.bg,sx,sy,3*k,9*k);
-  if(!on){ R('#FF8A3D',sx,sy+5*k,3*k,4*k); R(P.text,sx,sy+1*k,3*k,3*k); } else R(P.text,sx,sy,3*k,4*k);
-  bigBlit(BELL,on?P.text:P.soft,sx+6*k,cy-5*k,k); if(!on) for(var i=0;i<10;i++) R(P.hit,sx+5*k+i*k,cy-5*k+i*k,k,k); }
-function soundRinger(t){ var k=Math.max(3,Math.round(LH/55)), cy=Math.round(LH*0.5), x2=Math.round(LW/2-12*k); bigBlit(BELL,P.text,x2,cy-5*k,k);
-  var lvl=Math.min(5,Math.floor((t%3)*3)+1), bx=x2+9*k;
+/* sound picture: a speaker and the volume scale with 3–7 lit. On the maintainer's iPhone (24 Sep) the probe follows the media volume —
+   the one the side buttons change while the game plays; the silent switch does not mute it */
+var SPEAKER=['...11....','..111..1.','11111...1','11111.1.1','11111...1','..111..1.','...11....'];
+function soundVolume(t){ var k=Math.max(3,Math.round(LH/55)), cy=Math.round(LH*0.5), x2=Math.round(LW/2-13*k); bigBlit(SPEAKER,P.text,x2,cy-4*k,k);
+  var lvl=Math.min(5,Math.floor((t%3)*3)+1), bx=x2+11*k;
   for(var j=0;j<10;j++){ var h=Math.round((3+j*1.1)*k*0.6), xb=bx+j*Math.round(k*1.6), yb=cy+3*k-h;
     if(j>=2&&j<=6) R(P.band,xb-1,yb-1,Math.round(k)+2,h+2); R(j<lvl?P.text:P.line,xb,yb,Math.round(k),h); } }
 /* draw a picture function into the side canvas and copy it onto the screen, mirrored when the port is on the left */

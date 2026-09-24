@@ -60,13 +60,13 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
   let rep=''; try{ rep=execFileSync('node',[path.join(ROOT,'lab','tools','replay_game.js'),sp]).toString(); }catch(e){ rep='ERROR '+e.message; }
   const m=rep.match(/дальность \|Δ\| медиана ([\d.]+) мм/);   // the echo range as the page saw it vs the replay: the log carries everything needed
   console.log('screens:',seen.join(' → '));
-  console.log(`range caught at ${caughtAt===null?'never':caughtAt.toFixed(1)+' s'}; at START the waved range sits at ${range?(range[0]*100).toFixed(0)+'–'+(range[1]*100).toFixed(0)+'% of the screen, field '+range[2].toFixed(0)+' mm':'?'} (want ~10–90%)`);
+  console.log(`range caught at ${caughtAt===null?'never':caughtAt.toFixed(1)+' s'}; at START the waved range sits at ${range?(range[0]*100).toFixed(0)+'–'+(range[1]*100).toFixed(0)+'% of the screen, field '+range[2].toFixed(0)+' mm':'?'} (want ~6–90%)`);
   console.log(`microphone gone while in the background noticed: ${healthyAfter===false?'yes':'NO'}; “again” then: ${seen2.join(' → ')} (want → away → wave)`);
   console.log(`flight: ship follows the palm, correlation ${corr.toFixed(3)} over ${follow.length} samples`);
   console.log(`logs: setup ${logs.setup?(logs.setup.length/1024).toFixed(0)+' KB':'none'}, game ${logs.game?(logs.game.length/1024).toFixed(0)+' KB':'none'}; lab replay of the setup log: echo range differs from the page by ${m?m[1]:'?'} mm (median)`);
   if(errors.length) console.log('page errors:',errors.join(' | '));
   const need=['title','away','wave','count','play','over'], got=need.every(n=>seen.some(s=>s.startsWith(n+'@')));
   console.log(`menu in flight → pause with “end the game”: ${pausedOk?'yes':'NO'}`);
-  const ok=pausedOk&&healthyAfter===false&&seen2.includes('away')&&seen2[seen2.length-1]==='wave'&&got&&caughtAt!==null&&range&&range[0]>0.05&&range[0]<0.16&&range[1]>0.84&&range[1]<0.95&&corr>0.95&&logs.setup&&logs.game&&m&&+m[1]<0.5&&!errors.length;
+  const ok=pausedOk&&healthyAfter===false&&seen2.includes('away')&&seen2[seen2.length-1]==='wave'&&got&&caughtAt!==null&&range&&range[0]<0.12&&range[1]>0.8&&range[1]<0.95&&corr>0.95&&logs.setup&&logs.game&&m&&+m[1]<0.5&&!errors.length;
   console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;
 })();

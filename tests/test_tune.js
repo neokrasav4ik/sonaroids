@@ -9,8 +9,8 @@ const T=Tune.create(100,true); let st=null, n=0, ev=0;
 for(let i=0;i<Math.round(12*48000/512);i++){ const r=DSP2.frame(src(i)); if(r) st=r; const t=(i+1)*512/48000;
   if(t>=5){ const e=Tune.step(T,512/48000,st,true,d=>DSP2.shift(d)); if(e) ev++; } }
 const r=T.last, lo=Tune.fracOf(T,r.lo), hi=Tune.fracOf(T,r.hi);
-console.log(`after 7 s of waving: range ${(lo*100).toFixed(0)}–${(hi*100).toFixed(0)}% of the screen (want ~10–90), field ${T.field.toFixed(0)} mm, ${ev} tuning steps, caught: ${T.ok}`);
-const ok=T.ok&&lo>0.06&&lo<0.14&&hi>0.86&&hi<0.94&&T.field>95&&T.field<130; console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;
+console.log(`after 7 s of waving: range ${(lo*100).toFixed(0)}–${(hi*100).toFixed(0)}% of the screen (want ~6–90), field ${T.field.toFixed(0)} mm, ${ev} tuning steps, caught: ${T.ok}`);
+const ok=T.ok&&lo>0.02&&lo<0.10&&hi>0.86&&hi<0.94&&T.field>95&&T.field<130; console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;
 /* a small wiggle (±2 cm, as when the hand just rests after a game) must not count as waving and must not shrink the field:
    24 Sep a wiggle after a game shrank it from 118 to 66 mm and the ship got twitchy */
 { const src2=make(t=>t<4?null:100+20*Math.sin(2*Math.PI*t/1.5));

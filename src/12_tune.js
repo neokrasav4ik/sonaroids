@@ -5,6 +5,7 @@
    Pure module: no DOM, tested in Node. ── */
 var Tune=(function(){
   var ASYM=1.7, WIN=6, STEP=0.25, A=0.35, B=0.10, TP=0.90, F_MIN=50, F_MAX=150;
+  var WAVE_DUR=5;        // s: waving must go on this long before the range counts as caught (v0.10: was 1.5 s — too quick to get oriented)
   var WAVE_MIN=50;       // mm: a range counts as waved from 5 cm (was 3 cm; 24 Sep a small wiggle after a game shrank the field to 66 mm and the ship got twitchy)
   function create(field,auto){ return {buf:[],t:0,acc:0,span:null,ok:false,field:field||100,auto:auto!==false,last:null}; }
   /* screen fraction from the bottom (0…1) for a palm height in mm; 100 mm is the middle */
@@ -13,7 +14,7 @@ var Tune=(function(){
     if(buf.length<60) return null;
     var h=buf.map(function(q){return q.h;}).sort(function(a,b){return a-b;}), p=function(f){ return h[Math.min(h.length-1,Math.floor(f*(h.length-1)))]; };
     var lo=p(0.05), hi=p(0.95), dur=buf[buf.length-1].t-buf[0].t;
-    return {mid:(lo+hi)/2, med:p(0.5), span:hi-lo, lo:lo, hi:hi, dur:dur, wave:dur>=1.5&&hi-lo>=WAVE_MIN};
+    return {mid:(lo+hi)/2, med:p(0.5), span:hi-lo, lo:lo, hi:hi, dur:dur, wave:dur>=WAVE_DUR&&hi-lo>=WAVE_MIN};
   }
   /* one game frame. active: is tuning on (waiting for the start); st: the latest DSP2 result; shift(d): shifts DSP2's height scale.
      Returns an event for the setup log, or null */

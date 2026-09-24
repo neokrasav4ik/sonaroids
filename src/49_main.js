@@ -6,7 +6,7 @@ var store={get:function(k,d){ try{ var v=localStorage.getItem(k); return v===nul
            set:function(k,v){ try{ localStorage.setItem(k,String(v)); }catch(e){} }};
 var lang=store.get('sonaroids_lang',((navigator.language||'').toLowerCase().indexOf('ru')===0?'ru':'en')); if(!STR[lang]) lang='en';
 function L(k){ return STR[lang][k]||k; }
-var PAUSE=1.5, STEPS=['lang','sound','phone','mic','away','wave'];
+var PAUSE=2, WAVE_PAUSE=2.5, STEPS=['lang','sound','phone','mic','away','wave'];
 var scr=null, scrT=0, clock=0, onboarding=false, direct=false, booted=false, errKind=null;
 var handSaved=store.get('sonaroids_hand',''), acoustic=false;
 var prep=null, T=null, caught=false, g=null, acc=0, countT=0, overT=0, shake=0, flash=0, rockSpr={}, best=+store.get('sonaroids_best','0')||0;
@@ -66,16 +66,16 @@ function sAway(){ sky(DT,0.3); var m=handSide()==='left', aw=Math.min(1,Math.max
   titles(L('away_t'),st==='ok'?L('away_ok'):L('away_s'));
   ringUI(st==='wait'?scrT/PAUSE:st==='ok'?1:Math.min(0.95,(scrT-PAUSE)/3.2),st);
   if(scrT>=PAUSE&&!prep) startPrepare();
-  if(prep&&prep.res){ if(prep.res.ok){ if(scrT-prep.doneT>0.8) toWave(); }
+  if(prep&&prep.res){ if(prep.res.ok){ if(scrT-prep.doneT>1.5) toWave(); }       // «the room is quiet» stays for 1.5 s
     else { direct=true; onboarding=false; go('sound'); } }
   stepSquares('away'); }
 function sWave(){ sky(DT,0.3); var m=handSide()==='left', f=handFrac(), live=f!==null;
-  if(scrT>=PAUSE){ var e=Tune.step(T,DT,Sonar.state(),true,Sonar.shift); if(e) Logs.ev('подстройка',e); }
+  if(scrT>=WAVE_PAUSE){ var e=Tune.step(T,DT,Sonar.state(),true,Sonar.shift); if(e) Logs.ev('подстройка',e); }
   if(T.ok&&!caught){ caught=true; Sfx.play('ok'); store.set('sonaroids_seen','1'); }
-  picture(function(){ return scene('wave',scrT,live?f:waveH(scrT),0,scrT>PAUSE,clock); },m);
-  var st=scrT<PAUSE?'wait':caught?'ok':'catch', dur=T.buf.length?T.buf[T.buf.length-1].t-T.buf[0].t:0;
+  picture(function(){ return scene('wave',scrT,live?f:waveH(scrT),0,scrT>WAVE_PAUSE,clock); },m);
+  var st=scrT<WAVE_PAUSE?'wait':caught?'ok':'catch', dur=T.buf.length?T.buf[T.buf.length-1].t-T.buf[0].t:0;
   titles(L('wave_t'),caught?L('wave_ok'):L('wave_s'));
-  ringUI(st==='wait'?scrT/PAUSE:st==='ok'?1:Math.min(0.95,dur/2.5),st);
+  ringUI(st==='wait'?scrT/WAVE_PAUSE:st==='ok'?1:Math.min(0.95,dur/5.2),st);
   if(caught){ var w=btnW([L('start')]); button('start',L('start'),sideX(w),Math.round(LH*0.64),w,BH,'primary',Math.floor(scrT*2)%2===0); }
   stepSquares('wave'); }
 /* the flight field: rocks, bullets, ship. The core counts in field units (180 high); K turns them into game pixels */
@@ -219,7 +219,7 @@ function loop(now){
   present(scr==='play'?shake:0);
 }
 resize();
-if('serviceWorker' in navigator&&location.protocol==='https:') navigator.serviceWorker.register('sw.js').catch(function(){});   // works offline, updates on the next launch
+if('serviceWorker' in navigator&&location.protocol==='https:') navigator.serviceWorker.register('sw.js').then(function(r){ r.update(); }).catch(function(){});   // works offline; checks for a new version on every launch
 if(store.get('sonaroids_seen','')!=='1'){ onboarding=true; go('lang'); } else go('title');
 requestAnimationFrame(loop);
 /* test hooks: headless tests drive the screens through these (harmless in the game) */

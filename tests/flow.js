@@ -7,8 +7,8 @@ let chromium; try{ ({chromium}=require('playwright')); }catch(e){ console.log('p
 const fs=require('fs'), path=require('path'), {execFileSync}=require('child_process');
 const ROOT=path.join(__dirname,'..'), OUT=path.join(__dirname,'out'); fs.mkdirSync(OUT,{recursive:true});
 const SRC=fs.readFileSync(path.join(__dirname,'sim_source.js'),'utf8');
-// the palm: away 0–7 s (empty room), 100 mm 7–8, waving 100±50 mm with a 2 s period 8–16, then slow 100±40 mm (5 s period) in flight
-const SCEN=`function(t){ if(t<7) return null; if(t<8) return 100; if(t<16) return 100+50*Math.sin(2*Math.PI*(t-8)/2); return 100+40*Math.sin(2*Math.PI*(t-16)/5); }`;
+// the palm: away 0–8 s (empty room), 100 mm 8–9, waving 100±50 mm with a 2 s period 9–20, then slow 100±40 mm (5 s period) in flight
+const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) return 100+50*Math.sin(2*Math.PI*(t-9)/2); return 100+40*Math.sin(2*Math.PI*(t-20)/5); }`;
 (async()=>{
   const b=await chromium.launch(); const ctx=await b.newContext({viewport:{width:844,height:390},deviceScaleFactor:2});
   await ctx.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_lang','en'); ${SRC}; window.makeSimSource=makeSimSource; window.__scen=${SCEN};`);
@@ -20,7 +20,7 @@ const SCEN=`function(t){ if(t<7) return null; if(t<8) return 100; if(t<16) retur
   await shot('01_title');
   await p.evaluate(()=>__sonaroids.act.play()); t0=Date.now();
   let logs={setup:null,game:null}, pausedOk=false, healthyAfter=null, again=null, seen2=[], last2=null, caughtAt=null, startAt=null, range=null, follow=[], shots={};
-  while(T()<70){
+  while(T()<95){
     await p.waitForTimeout(100);
     const s=await p.evaluate(()=>{ const s=__sonaroids.state(), st=Sonar.state(); return {scr:s.scr,caught:s.caught,
       ok:s.prep&&s.prep.res&&s.prep.res.ok, T:s.T?{field:s.T.field,last:s.T.last}:null,
@@ -28,15 +28,15 @@ const SCEN=`function(t){ if(t<7) return null; if(t<8) return 100; if(t<16) retur
     if(s.scr!==last){ seen.push(s.scr+'@'+T().toFixed(1)); last=s.scr; }
     if(s.scr==='away'&&T()>3&&!shots.away){ shots.away=1; await shot('02_away'); }
     if(s.scr==='wave'&&s.caught&&!caughtAt){ caughtAt=T(); }
-    if(s.scr==='wave'&&T()>=13.5&&!startAt){ await shot('03_wave'); const r=s.T.last;
+    if(s.scr==='wave'&&s.caught&&T()>=16.5&&!startAt){ await shot('03_wave'); const r=s.T.last;
       range=await p.evaluate(r=>{ const S=__sonaroids.state(); return [Tune.fracOf(S.T,r.lo),Tune.fracOf(S.T,r.hi),S.T.field]; },r);
       startAt=T(); await p.evaluate(()=>__sonaroids.act.start()); }
     if(s.scr==='count'&&!shots.count&&T()-startAt>1){ shots.count=1; await shot('04_count'); }
     if(s.scr==='play'){ if(s.hand!==null&&s.ship!==null) follow.push([s.hand,s.ship]);
-      if(T()>22&&!shots.stage){ shots.stage=1; await p.evaluate(()=>{ const g=__sonaroids.state().g; g.level=5; g.ufoT=0.01; g.ship.shield=10;   // show everything at once
+      if(T()>25&&!shots.stage){ shots.stage=1; await p.evaluate(()=>{ const g=__sonaroids.state().g; g.level=5; g.ufoT=0.01; g.ship.shield=10;   // show everything at once
         g.picks.push({type:'triple',x:g.FW*0.6,y:60},{type:'slow',x:g.FW*0.8,y:120}); }); }
-      if(T()>26&&!shots.play){ shots.play=1; await shot('05_play'); } }
-    if(s.scr==='play'&&T()>30&&!shots.paused){ shots.paused=1; await p.evaluate(()=>__sonaroids.act.pause()); await p.waitForTimeout(300);   // the menu button in flight
+      if(T()>29&&!shots.play){ shots.play=1; await shot('05_play'); } }
+    if(s.scr==='play'&&T()>33&&!shots.paused){ shots.paused=1; await p.evaluate(()=>__sonaroids.act.pause()); await p.waitForTimeout(300);   // the menu button in flight
       await shot('06a_paused'); pausedOk=await p.evaluate(()=>__sonaroids.scr()==='paused'&&__sonaroids.btn().some(b=>b.id==='quit'));
       await p.evaluate(()=>__sonaroids.act.quit()); }
     if(s.scr==='over'&&!shots.over){ shots.over=1; await p.waitForTimeout(1200); await shot('06_over');

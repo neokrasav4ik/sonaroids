@@ -10,7 +10,7 @@ var PAUSE=1.5, STEPS=['lang','sound','phone','mic','away','wave'];
 var scr=null, scrT=0, clock=0, onboarding=false, direct=false, booted=false, errKind=null;
 var handSaved=store.get('sonaroids_hand',''), acoustic=false;
 var prep=null, T=null, caught=false, g=null, acc=0, countT=0, overT=0, shake=0, flash=0, rockSpr={}, best=+store.get('sonaroids_best','0')||0;
-var lastHand=null, shipY=null, sayLast='', pausedFrom=null;
+var lastHand=null, shipY=null, sayLast='', pausedFrom=null, livesT=0;
 function go(s){ scr=s; scrT=0; BTN=[]; }
 
 /* which side the charging port (and so the playing hand) is on: the phone's rotation until the sonar has checked it by sound */
@@ -81,11 +81,22 @@ function sWave(){ sky(DT,0.3); var m=handSide()==='left', f=handFrac(), live=f!=
 /* the flight field: rocks, bullets, ship. The core counts in field units (180 high); K turns them into game pixels */
 function field(dt,speed){ sky(dt,speed);
   if(!g) return;
-  if(g.state!=='play'){ g.bullets=[]; g.rocks.forEach(function(r){ r.x+=r.vx*dt; r.y+=r.vy*dt; }); }   // after the game: rocks drift on, for the look only
+  if(g.state!=='play'){ g.bullets=[]; g.ebullets=[]; g.rocks.forEach(function(r){ r.x+=r.vx*dt; r.y+=r.vy*dt; }); if(g.ufo) g.ufo.x-=6*dt; }   // after the game: things drift on, for the look only
   g.rocks.forEach(function(r){ var sp=rockSpr[r.id]; if(!sp){ sp=rockSpr[r.id]=makeRock(Math.max(3,Math.round(r.r*K))); }
     sp.rot=(sp.rot+sp.vr*dt+16)%16; var fr=sp.frames[Math.floor(sp.rot)%16]; lx.drawImage(fr,Math.round(r.x*K-sp.size/2),Math.round(r.y*K-sp.size/2)); });
+  g.picks.forEach(function(p){ var x=Math.round(p.x*K), y=Math.round(p.y*K+Math.sin(clock*3)*2);
+    R(P.pick,x-5,y-5,11,11); R(P.bg,x-4,y-4,9,9); blit(ICON[p.type],[P.pick],x-3,y-3); light(x,y,14*K,P.glowP,0.35); });
+  if(g.ufo){ var u=g.ufo, big=u.kind==='big', ux=Math.round(u.x*K), uy=Math.round(u.y*K);
+    blit(big?UFO_BIG:UFO_SMALL,P.ufo,ux-(big?9:6),uy-(big?4:2));
+    if(Math.floor(clock*6)%2){ R(P.ufo[3],ux-(big?5:3),uy+1,1,1); R(P.ufo[3],ux+(big?4:2),uy+1,1,1); }
+    light(ux,uy,(big?22:16)*K,hex(P.ufo[2]).join(','),0.35); }
+  g.ebullets.forEach(function(b){ R(P.ebullet,b.x*K-1,b.y*K-1,2,2); light(b.x*K,b.y*K,7*K,hex(P.ebullet).join(','),0.5); });
   g.bullets.forEach(function(b){ R(P.bullet,b.x*K-2,b.y*K,4,1); light(b.x*K,b.y*K,6*K,P.glowB,0.45); });
-  if(g.state==='play') drawShip(g.ship.x*K,g.ship.y*K,clock,g.ship.inv>0&&Math.floor(clock*14)%2===0);
+  if(g.state==='play'){ var sx=g.ship.x*K, sy=g.ship.y*K;
+    drawShip(sx,sy,clock,g.ship.inv>0&&Math.floor(clock*14)%2===0);
+    if(g.ship.shield>0&&(g.ship.shield>3||Math.floor(clock*8)%2)){                 // the shield: a ring of dots, blinking in its last 3 s
+      for(var a=0;a<28;a+=2){ var an=a/28*6.283+clock*2; R(P.pick,sx+7+Math.cos(an)*11,sy+Math.sin(an)*9,1,1); } light(sx+7,sy,16*K,P.glowP,0.25); }
+    if(livesT>0){ for(var i=0;i<g.lives;i++) blit(MINI,[P.ship[1],P.ship[2]],sx-2+i*7,sy-14); } }   // lives: shown only for a moment after a hit
   drawParts(dt);
 }
 function sCount(){ countT-=DT; var f=handFrac(); if(f!==null) lastHand=f;
@@ -99,16 +110,18 @@ function sPlay(){
   acc+=DT; var n=0;
   while(acc>=Core.DT&&n<5){ acc-=Core.DT; n++; var h=handFrac(); Core.step(g,h); Logs.step(g,h); react(); if(g.state!=='play') break; }
   if(n===5) acc=0;
-  shake=Math.max(0,shake-DT); flash=Math.max(0,flash-DT);
-  field(DT,1);
+  shake=Math.max(0,shake-DT); flash=Math.max(0,flash-DT); livesT=Math.max(0,livesT-DT);
+  field(DT,g.slow>0?0.5:1);
   text(String(g.score).padStart(6,'0'),LW/2,topY(),P.text,'center');                // at the top only the score (agreed 24 Sep)
   if(flash>0){ lx.globalAlpha=Math.min(0.35,flash); R(P.hit,0,0,LW,LH); lx.globalAlpha=1; }
   if(g.state==='over'){ overT=0; Logs.gameStop(); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } T=Tune.create(T.field,true); go('over'); }
 }
 function react(){ g.events.forEach(function(k){
-  if(k==='break'||k==='hit'||k==='over') Sfx.play(k); else if(k==='fire'&&Math.random()<0.5) Sfx.play('fire'); });
+  if(k==='fire'){ if(Math.random()<0.5) Sfx.play('fire'); } else if(k!=='crash') Sfx.play(k); });
   (g.gone||[]).forEach(function(r){ burst(r.x*K,r.y*K,8+Math.round(r.r*K),P.rock.slice(2).concat([P.flame[1]]),50*K); delete rockSpr[r.id]; shake=Math.max(shake,0.08+r.r*0.004); });
-  if(g.events.indexOf('hit')>=0||g.events.indexOf('over')>=0){ flash=0.25; shake=0.4; burst(g.ship.x*K+6,g.ship.y*K,26,P.ship.concat(P.flame),70*K); }
+  (g.fx||[]).forEach(function(f){ if(f.ufo){ burst(f.x*K,f.y*K,40,P.ufo,90*K); shake=0.35; } else if(f.pick) burst(f.x*K,f.y*K,14,[P.pick,P.text],50*K); });
+  if(g.events.indexOf('shield')>=0) burst(g.ship.x*K+6,g.ship.y*K,20,[P.pick,P.text],60*K);
+  if(g.events.indexOf('hit')>=0||g.events.indexOf('over')>=0){ flash=0.25; shake=0.4; livesT=1.8; burst(g.ship.x*K+6,g.ship.y*K,26,P.ship.concat(P.flame),70*K); }
 }
 function sOver(){ overT+=DT; var e=Tune.step(T,DT,Sonar.state(),true,Sonar.shift); if(e) Logs.ev('подстройка',e);
   if(T.ok) caught=true;
@@ -138,8 +151,8 @@ function pauseGame(){ if(scr==='play'||scr==='count'||scr==='count-resume'){ pau
 function startCount(){ countT=3; shipY=null; lastHand=handFrac(); Logs.ev('отсчёт',{field:+T.field.toFixed(1),auto:T.auto}); store.set('sonaroids_field',Math.round(T.field)); go('count'); }
 function startGame(){
   var seed=0; try{ var a=new Uint32Array(1); crypto.getRandomValues(a); seed=a[0]; }catch(e){ seed=Math.floor(Math.random()*4294967296); }
-  g=Core.create(seed,Core.FH*LW/LH); acc=0; rockSpr={}; parts=[]; var I=Sonar.info();
-  Logs.gameStart({core:'skeleton-1',seed:seed,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:'frozen',asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
+  g=Core.create(seed,Core.FH*LW/LH); acc=0; rockSpr={}; parts=[]; livesT=0; var I=Sonar.info();
+  Logs.gameStart({core:'rules-1',seed:seed,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:'frozen',asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
     chan:I.chan,probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,started:new Date().toISOString(),app:'sonaroids'});
   Sfx.play('start'); go('play');
 }

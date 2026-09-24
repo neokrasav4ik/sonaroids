@@ -226,50 +226,96 @@ if(typeof module!=='undefined') module.exports=Tune;
 /* ── FLIGHT CORE: the game itself, without drawing. Deterministic: the same seed and the same palm inputs give the same game
    on any device, so the leaderboard server can replay a game from its palm trajectory and check the score.
    Rules for that: a fixed 60 Hz step; a seeded integer RNG; only + − × ÷ and sqrt (exact in IEEE on every engine) —
-   no Math.sin/exp/atan, whose last bits differ between browsers.
-   Field: FH = 180 units high, FW = 180 × aspect wide (stored in the game log). The skeleton has test rocks only:
-   the real rules (splitting, streak, power-ups, saucer, levels) come next. ── */
+   no Math.sin/exp/atan, whose last bits differ between browsers. Field: FH = 180 units high, FW = 180 × aspect wide.
+   Rules (agreed 24 Sep):
+   - the ship fires by itself; rocks split large → 2 medium → 2 small, 20 / 50 / 100 points;
+   - points × height: the middle of the screen ×3, then ×2, the edges ×1 (not shown); × streak: +1 for every 5 hits in a row, a hit resets it;
+   - power-ups to fly into: shield (one hit), triple shot (10 s), slow motion (6 s);
+   - one difficulty that grows: the first 30 s calm, then rocks get faster and more frequent — about 2× by minute 3,
+     2.5× by minute 6, slowly more after;
+   - levels count base points (before the multipliers, which can reach ×12): a level every 5000;
+   - saucers: a large one from level 3 (shoots at random, 200 points), a small aiming one from level 5 (1000 points); 3 lives.
+   With the bot player (tests/bot.js) that gives: a game of 5–8 min, the first saucer at ~1.1 min, small ones from ~1.9 min. ── */
 var Core=(function(){
   var DT=1/60, FH=180, MARGIN=FH*0.08, SHIP_X=30;
   var FOLLOW=0.30952;                       // 1 − exp(−(1/60)/0.045): the ship follows the palm with a 45 ms lag (literal, see above)
   var R_SIZE=[13.5,8.1,4.3], PTS=[20,50,100], FIRE=0.17, BULLET_V=190, LIVES=3, INV=1.4;
+  var STREAK_MAX=4;                        // the streak adds up to ×4 (after 15 hits in a row)
+  /* tuning, set with a bot player (tests/bot.js): a rock every SPAWN s at pace 1; pieces fly off at SPLIT_VX × the parent's speed
+     and SPLIT_VY up or down; a new level every LEVEL base points (points before the height and streak multipliers) */
+  var TUNE={SPAWN:[1.6,2.6],SPLIT_VX:[0.85,1.15],SPLIT_VY:[8,18],HIT_R:0.8,LEVEL:5000};
+  var UFO={big:{hw:7,hh:3,pts:200,fire:1.4,v:70},small:{hw:5,hh:2,pts:1000,fire:1.1,v:85}};
   function rng(seed){ var a=seed>>>0; return function(){ a=(a+0x6D2B79F5)>>>0; var t=a; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
   function create(seed,FW){
-    var g={seed:seed>>>0,FW:FW||380,FH:FH,rand:rng(seed),n:0,t:0,state:'play',score:0,lives:LIVES,
-      ship:{x:SHIP_X,y:FH/2,inv:0},rocks:[],bullets:[],fireT:0.3,spawnT:0.6,nextId:1,events:[]};
-    return g;
+    return {seed:seed>>>0,FW:FW||380,FH:FH,rand:rng(seed),n:0,t:0,state:'play',score:0,lives:LIVES,level:1,combo:0,
+      base:0,ship:{x:SHIP_X,y:FH/2,inv:0,shield:0,triple:0},rocks:[],bullets:[],picks:[],ebullets:[],ufo:null,slow:0,
+      fireT:0.3,spawnT:0.6,pickT:9,ufoT:-1,nextId:1,events:[],gone:[],fx:[]};
   }
   function rnd(g,a,b){ return a+g.rand()*(b-a); }
-  function spawn(g){
-    var sz=g.rand()<0.55?0:(g.rand()<0.6?1:2), r=R_SIZE[sz];
-    g.rocks.push({id:g.nextId++,sz:sz,r:r,x:g.FW+r+2,y:rnd(g,r+4,FH-r-4),vx:-rnd(g,18,30),vy:rnd(g,-6,6)});
-  }
+  /* how much faster and more frequent everything is: 1 for the first 30 s, 2 at 3 min, 2.5 at 6 min, then +0.1 a minute up to 3.2 */
+  function pace(t){ if(t<30) return 1; if(t<180) return 1+(t-30)/150; if(t<360) return 2+0.5*(t-180)/180; return Math.min(3.2,2.5+(t-360)/600); }
+  function heightMult(y){ var f=y/FH-0.5; if(f<0) f=-f; return f<0.15?3:f<0.3?2:1; }
+  function spawnRock(g,sz,x,y,vx,vy){ g.rocks.push({id:g.nextId++,sz:sz,r:R_SIZE[sz],x:x,y:y,vx:vx,vy:vy}); }
+  function spawn(g,m){ var sz=g.rand()<0.55?0:(g.rand()<0.6?1:2), r=R_SIZE[sz];
+    spawnRock(g,sz,g.FW+r+2,rnd(g,r+4,FH-r-4),-rnd(g,18,30)*m,rnd(g,-6,6)); }
+  function award(g,base){ g.combo++; var got=base*heightMult(g.ship.y)*Math.min(STREAK_MAX,1+Math.floor(g.combo/5)); g.score+=got; g.base+=base;
+    var lv=1+Math.floor(g.base/TUNE.LEVEL); if(lv>g.level){ g.level=lv; g.events.push('level'); } return got; }
+  /* a rock breaks: into two smaller ones, unless it was small */
+  function crack(g,r,byShip){ r.dead=true; g.gone.push(r); g.events.push(byShip?'crash':'break');
+    if(r.sz<2) for(var i=0;i<2;i++) spawnRock(g,r.sz+1,r.x,r.y,r.vx*rnd(g,TUNE.SPLIT_VX[0],TUNE.SPLIT_VX[1]),(i?-1:1)*rnd(g,TUNE.SPLIT_VY[0],TUNE.SPLIT_VY[1]));
+    if(!byShip) award(g,PTS[r.sz]); }
+  function hurt(g){ var s=g.ship; if(s.inv>0) return;
+    if(s.shield>0){ s.shield=0; s.inv=0.6; g.events.push('shield'); return; }
+    g.combo=0; g.lives--; s.inv=INV; g.events.push(g.lives>0?'hit':'over'); if(g.lives<=0) g.state='over'; }
+  function norm(dx,dy,v){ var l=Math.sqrt(dx*dx+dy*dy)||1; return [dx/l*v,dy/l*v]; }
   /* one fixed step. hand: palm position as a screen fraction from the bottom (0…1), or null when no palm is seen */
   function step(g,hand){
-    g.events=[]; if(g.state!=='play') return g;
+    g.events=[]; g.gone=[]; g.fx=[]; if(g.state!=='play') return g;
     g.n++; g.t=g.n*DT;
-    var s=g.ship;
+    var s=g.ship, m=pace(g.t), w=g.slow>0?0.5:1, wdt=DT*w, i, j, b, r, u=g.ufo;
     if(hand!==null&&hand!==undefined){ var ty=FH-MARGIN-hand*(FH-2*MARGIN); s.y+=(ty-s.y)*FOLLOW; }
-    if(s.inv>0) s.inv-=DT;
-    g.fireT-=DT; if(g.fireT<=0){ g.fireT+=FIRE; g.bullets.push({x:s.x+14,y:s.y}); g.events.push('fire'); }
-    g.spawnT-=DT; if(g.spawnT<=0){ spawn(g); g.spawnT=rnd(g,0.9,1.6); }
-    var i,j,b,r;
-    for(i=0;i<g.bullets.length;i++) g.bullets[i].x+=BULLET_V*DT;
-    for(i=0;i<g.rocks.length;i++){ r=g.rocks[i]; r.x+=r.vx*DT; r.y+=r.vy*DT; if((r.y<r.r&&r.vy<0)||(r.y>FH-r.r&&r.vy>0)) r.vy=-r.vy; }
-    for(i=0;i<g.bullets.length;i++){ b=g.bullets[i];
+    if(s.inv>0) s.inv-=DT; if(s.shield>0) s.shield-=DT; if(s.triple>0) s.triple-=DT; if(g.slow>0) g.slow-=DT;
+    // shooting
+    g.fireT-=DT; if(g.fireT<=0){ g.fireT+=FIRE; var bx=s.x+14; g.bullets.push({x:bx,y:s.y,vx:BULLET_V,vy:0});
+      if(s.triple>0){ g.bullets.push({x:bx,y:s.y,vx:185,vy:-38}); g.bullets.push({x:bx,y:s.y,vx:185,vy:38}); } g.events.push('fire'); }
+    // what comes in
+    g.spawnT-=wdt; if(g.spawnT<=0){ spawn(g,m); g.spawnT=rnd(g,TUNE.SPAWN[0],TUNE.SPAWN[1])/m; }
+    g.pickT-=DT; if(g.pickT<=0){ g.pickT=rnd(g,12,18); var k=g.rand(); g.picks.push({type:k<0.34?'shield':k<0.67?'triple':'slow',x:g.FW+6,y:rnd(g,FH*0.15,FH*0.85)}); }
+    if(g.level>=3&&g.ufoT<0&&!u) g.ufoT=rnd(g,2,5);
+    if(g.ufoT>0&&!u){ g.ufoT-=wdt; if(g.ufoT<=0){ var kind=(g.level>=5&&g.rand()<0.5)?'small':'big';
+      u=g.ufo={id:g.nextId++,kind:kind,x:g.FW+10,y:rnd(g,FH*0.2,FH*0.8),ty:FH/2,tyT:0,fire:1.2}; g.events.push('ufo'); } }
+    // movement
+    for(i=0;i<g.bullets.length;i++){ b=g.bullets[i]; b.x+=b.vx*DT; b.y+=b.vy*DT; }
+    for(i=0;i<g.rocks.length;i++){ r=g.rocks[i]; r.x+=r.vx*wdt; r.y+=r.vy*wdt; if((r.y<r.r&&r.vy<0)||(r.y>FH-r.r&&r.vy>0)) r.vy=-r.vy; }
+    for(i=0;i<g.picks.length;i++) g.picks[i].x-=24*wdt;
+    for(i=0;i<g.ebullets.length;i++){ b=g.ebullets[i]; b.x+=b.vx*wdt; b.y+=b.vy*wdt; }
+    if(u){ var U=UFO[u.kind]; u.x+=(u.x>g.FW*0.72?-30:-6)*wdt;
+      u.tyT-=wdt; if(u.tyT<=0){ u.tyT=rnd(g,1,2.5); u.ty=rnd(g,FH*0.2,FH*0.8); } u.y+=(u.ty-u.y)*0.02*w;
+      u.fire-=wdt; if(u.fire<=0&&u.x<g.FW-4){ u.fire=U.fire; var v=u.kind==='small'?norm(s.x-u.x,s.y-u.y,U.v):norm(-1,rnd(g,-0.6,0.6),U.v);
+        g.ebullets.push({x:u.x,y:u.y,vx:v[0],vy:v[1]}); g.events.push('ufo_fire'); }
+      if(u.x<-20){ g.ufo=u=null; g.ufoT=rnd(g,16,24); } }
+    // hits
+    for(i=0;i<g.bullets.length;i++){ b=g.bullets[i]; if(b.dead) continue;
       for(j=0;j<g.rocks.length;j++){ r=g.rocks[j]; if(r.dead) continue; var dx=b.x-r.x, dy=b.y-r.y;
-        if(dx*dx+dy*dy<(r.r+1)*(r.r+1)){ b.dead=true; r.dead=true; g.score+=PTS[r.sz]; g.events.push('break'); break; } } }
+        if(dx*dx+dy*dy<(r.r+1)*(r.r+1)){ b.dead=true; crack(g,r,false); break; } }
+      if(!b.dead&&u){ var U2=UFO[u.kind]; if(b.x-u.x<U2.hw+1&&u.x-b.x<U2.hw+1&&b.y-u.y<U2.hh+2&&u.y-b.y<U2.hh+2){ b.dead=true;
+        g.fx.push({ufo:u.kind,x:u.x,y:u.y}); award(g,U2.pts); g.events.push('ufo_die'); g.ufo=u=null; g.ufoT=rnd(g,16,24); } } }
+    // the ship runs into things
     for(j=0;j<g.rocks.length;j++){ r=g.rocks[j]; if(r.dead) continue; var ex=r.x-s.x-3, ey=r.y-s.y;
-      if(ex*ex+ey*ey<(r.r+4)*(r.r+4)){ r.dead=true; r.byShip=true;
-        if(s.inv<=0){ g.lives--; s.inv=INV; g.events.push(g.lives>0?'hit':'over'); if(g.lives<=0) g.state='over'; } } }
-    g.bullets=g.bullets.filter(function(q){ return !q.dead&&q.x<g.FW+8; });
-    g.gone=g.rocks.filter(function(q){ return q.dead; });                  // for the renderer: explosions
+      var hr=r.r*TUNE.HIT_R+3; if(ex*ex+ey*ey<hr*hr){ crack(g,r,true); hurt(g); } }
+    for(j=0;j<g.ebullets.length;j++){ b=g.ebullets[j]; var qx=b.x-s.x-3, qy=b.y-s.y; if(qx<6&&qx>-6&&qy<5&&qy>-5){ b.dead=true; hurt(g); } }
+    if(u){ var U3=UFO[u.kind], ux=u.x-s.x-3, uy=u.y-s.y; if(ux<U3.hw+5&&ux>-U3.hw-5&&uy<U3.hh+4&&uy>-U3.hh-4){ g.fx.push({ufo:u.kind,x:u.x,y:u.y}); g.events.push('ufo_die'); g.ufo=u=null; g.ufoT=rnd(g,16,24); hurt(g); } }
+    for(j=0;j<g.picks.length;j++){ var p=g.picks[j], px=p.x-s.x-3, py=p.y-s.y; if(px<9&&px>-9&&py<9&&py>-9){ p.dead=true;
+      if(p.type==='shield') s.shield=15; else if(p.type==='triple') s.triple=10; else g.slow=6; g.events.push('pick'); g.fx.push({pick:p.type,x:p.x,y:p.y}); } }
+    g.bullets=g.bullets.filter(function(q){ return !q.dead&&q.x<g.FW+8&&q.y>-4&&q.y<FH+4; });
+    g.ebullets=g.ebullets.filter(function(q){ return !q.dead&&q.x>-4&&q.x<g.FW+4&&q.y>-4&&q.y<FH+4; });
     g.rocks=g.rocks.filter(function(q){ return !q.dead&&q.x>-q.r-6; });
+    g.picks=g.picks.filter(function(q){ return !q.dead&&q.x>-10; });
     return g;
   }
   /* a whole game from a palm trajectory (one value per step, −1 = no palm): what the server will run */
   function replay(seed,FW,hands){ var g=create(seed,FW); for(var i=0;i<hands.length&&g.state==='play';i++) step(g,hands[i]<0?null:hands[i]); return g; }
-  return {create:create,step:step,replay:replay,DT:DT,FH:FH,MARGIN:MARGIN};
+  return {TUNE:TUNE,create:create,step:step,replay:replay,pace:pace,heightMult:heightMult,DT:DT,FH:FH,MARGIN:MARGIN,UFO:UFO,R_SIZE:R_SIZE};
 })();
 if(typeof module!=='undefined') module.exports=Core;
 /* ── SONAR: speaker probe, microphone, echo processing. Moved over from the lab (04_audio_engine, 06_side_pick, 07_calibration)
@@ -337,7 +383,7 @@ var Sonar=(function(){
     for(var i=0;i<listeners.length;i++) listeners[i](m.f,r,gap);
   }
   /* signal-to-noise in the probe band: 8 periods in a row put the probe exactly on every 8th spectral line, noise on all of them */
-  function probeSNR(frames,fs,fLo,fHi){
+  function probeStats(frames,fs,fLo,fHi){
     var N8=frames.length*512, x=new Float64Array(N8), i, j;
     for(i=0;i<frames.length;i++) for(j=0;j<512;j++) x[i*512+j]=frames[i][j];
     var P=frames.length, df=fs/N8, b0=Math.floor(fLo/df), b1=Math.ceil(fHi/df), sig=0, nz=0, nl=0, nn=0;
@@ -348,11 +394,14 @@ var Sonar=(function(){
       if(r===0){ sig+=p; nl++; } else if(r>=2&&r<=P-2){ nz+=p; nn++; }
     }
     var noisePerBin=nz/(nn||1), probe=sig-noisePerBin*nl, noiseBand=noisePerBin*(b1-b0+1);
-    return 10*Math.log10(Math.max(probe,1e-30)/Math.max(noiseBand,1e-30));
+    return {snr:10*Math.log10(Math.max(probe,1e-30)/Math.max(noiseBand,1e-30)), line:10*Math.log10(Math.max(probe,1e-30)/(nl||1))};
   }
-  /* auto level: turn our own probe down to the minimum with a margin — how loud it is in the room hardly depends on the phone's volume */
-  var SNR_TARGET=48, G_MIN=0.015, G_MAX=0.3;
-  function measureSNR(){ return sleep(350).then(function(){ return collect(8); }).then(function(fr){ return probeSNR(fr,fs,F_LO,20450); }); }
+  function probeSNR(frames,fs,fLo,fHi){ return probeStats(frames,fs,fLo,fHi).snr; }
+  /* auto level: turn our own probe down to the minimum with a margin — how loud it is in the room hardly depends on the phone's volume.
+     It also measures how loud the probe itself is, per unit of our gain (PROBE_LVL, dB): that — not the signal-to-noise ratio —
+     tells a muted phone from a noisy room. On the maintainer's iPhone it is 12–13 dB with any volume that worked (24 Sep). */
+  var SNR_TARGET=48, G_MIN=0.015, G_MAX=0.3, PROBE_LVL=null, QUIET_LVL=-6;
+  function measureSNR(){ return sleep(350).then(function(){ return collect(8); }).then(function(fr){ var st=probeStats(fr,fs,F_LO,20450); PROBE_LVL=st.line-20*Math.log10(PROBE_G); return st.snr; }); }
   function autoLevel(){
     var tries=0;
     function step(){ return measureSNR().then(function(s){
@@ -379,7 +428,9 @@ var Sonar=(function(){
     active=false; last=null; lost=false; PROBE_G=0.25;
     onStage&&onStage('side');
     return pickChannel().then(function(){ onStage&&onStage('level'); return autoLevel(); }).then(function(L){
-      if(L.snr<30){ setProbe('off'); return {ok:false,why:'quiet',snr:L.snr}; }
+      // "barely heard": the probe itself is ~19 dB quieter than on a phone with sound on (silent mode, volume at zero),
+      // or so drowned in noise that the echo cannot be read. A noisy room with a normal probe goes on (24 Sep: 33 dB SNR worked fine)
+      if(PROBE_LVL<QUIET_LVL||L.snr<18){ setProbe('off'); return {ok:false,why:'quiet',snr:L.snr,level:PROBE_LVL}; }
       DSP2.init(fs,'all'); DSP2.setCal(PHYS_CAL); DSP2.set('autocenter',1); active=true; onStage&&onStage('room');
       return waitReady().then(function(st){ if(st==='noprobe'){ active=false; setProbe('off'); return {ok:false,why:'noprobe'}; } return {ok:true,snr:L.snr}; });
     });
@@ -397,7 +448,7 @@ var Sonar=(function(){
     listen:function(f){ listeners.push(f); },
     state:function(){ return last; }, lost:function(){ return lost; }, clearLost:function(){ lost=false; },
     shift:function(d){ DSP2.shift(d); },
-    info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,f_lo:F_LO,cal:PHYS_CAL,gaps:gaps,booted:booted}; },
+    info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,probe_level:PROBE_LVL,f_lo:F_LO,cal:PHYS_CAL,gaps:gaps,booted:booted}; },
     chan:function(){ return chan; }, ctx:function(){ return ctx; }};
 })();
 /* ── LOGS, for analysis on a computer (the lab's tools read them: replay_game.js, setup_log.py, game_log.py).
@@ -446,7 +497,7 @@ var Logs=(function(){
     return new Blob([buf],{type:'audio/wav'});
   }
   function base(kind){ var I=Sonar.info();
-    return {kind:kind,fs:I.fs,N:N,kLo:I.kLo,kHi:I.kHi,probe:{bins:'all',channel:I.chan,phase:'pi*q^2/M',peak:0.9,gain:I.probe_gain,snr_db:I.probe_snr,f_lo:I.f_lo,loop:true},
+    return {kind:kind,fs:I.fs,N:N,kLo:I.kLo,kHi:I.kHi,probe:{bins:'all',channel:I.chan,phase:'pi*q^2/M',peak:0.9,gain:I.probe_gain,snr_db:I.probe_snr,level_db:I.probe_level,f_lo:I.f_lo,loop:true},
       pcm:{bits:16,full_scale:1/SCALE},app:'sonaroids',ended:new Date().toISOString(),ua:navigator.userAgent}; }
   function setupBlob(){ if(!S||!S.f) return null; var inf=DSP2.info(), m=base('setup-log');
     m.v=1; m.first_frame=0; m.frames=S.f; m.clipped=S.clip; m.gaps=S.gaps; m.setup=S.meta0; m.cal_now=inf.cal; m.dsp_info={d0:inf.d0,prom:inf.prom,mm:inf.mm};
@@ -507,6 +558,12 @@ var Sfx=(function(){
     else if(kind==='tick'){ tone(1200,null,0.07,'square',0.3); }
     else if(kind==='ok'){ [1047,1319,1568].forEach(function(f,i){ tone(f,null,0.08,'square',0.35,i*0.08); }); }
     else if(kind==='tap'){ tone(1000,700,0.06,'square',0.25); }
+    else if(kind==='level'){ [784,988,1175,1568].forEach(function(f,i){ tone(f,null,0.07,'square',0.3,i*0.07); }); }
+    else if(kind==='pick'){ tone(660,1320,0.12,'square',0.35); tone(1320,1760,0.1,'square',0.3,0.1); }
+    else if(kind==='shield'){ crash(0.25,2400,0.5); tone(1500,600,0.2,'triangle',0.4); }
+    else if(kind==='ufo'){ for(var i=0;i<4;i++) tone(i%2?520:700,i%2?700:520,0.12,'triangle',0.3,i*0.12); }
+    else if(kind==='ufo_fire'){ tone(900,300,0.1,'sawtooth',0.18); }
+    else if(kind==='ufo_die'){ crash(0.6,700,0.9); tone(600,80,0.5,'square',0.45); }
   }
   return {play:play,on:function(){ return on; },toggle:function(){ on=!on; try{ localStorage.setItem('sonaroids_sfx',on?'1':'0'); }catch(e){} return on; }};
 })();
@@ -551,7 +608,7 @@ if(typeof document==='undefined') return;
 var P={bg:'#1B1A2E', neb:['#2A2440','#3C2B4F','#4A2F4A'], stars:['#5A4C6E','#B89BB2','#FFE9D6'],
   rock:['#2A2233','#4C3E57','#7A6380','#B08FA5','#EBCBD0'],
   ship:['#1F5E52','#2F8F7C','#7FE0C8','#E9FFF8'], flame:['#FF7A7A','#FFB86B','#FFF1C9'], bullet:'#FFB86B', glowB:'255,184,107',
-  pick:'#FFE66D', glowP:'255,230,109', text:'#FFF3EA', soft:'#C9A9B6', line:'#4A3A57', band:'#7FE0C8', hit:'#FF7A7A', hand:['#6E4D57','#C99A94','#F3CDBF']};
+  pick:'#FFE66D', glowP:'255,230,109', ufo:['#4B2F80','#7B55C7','#B48CFF','#EADFFF'], ebullet:'#FF7A7A', text:'#FFF3EA', soft:'#C9A9B6', line:'#4A3A57', band:'#7FE0C8', hit:'#FF7A7A', hand:['#6E4D57','#C99A94','#F3CDBF']};
 var PIXH=215;
 var cv=document.getElementById('cv'), cx=cv.getContext('2d');
 var lc=document.createElement('canvas'), lx=lc.getContext('2d');
@@ -662,6 +719,23 @@ var SHIP_MAP=[
  '.....12221......',
  '....1221........',
  '....11..........'];
+var UFO_BIG=[
+ '.......1111.......',
+ '......134431......',
+ '.....13444431.....',
+ '..11122222222111..',
+ '.1233333333333321.',
+ '122222222222222221',
+ '.1111111111111111.',
+ '...11.......11....'];
+var UFO_SMALL=[
+ '....1111....',
+ '...134431...',
+ '.1122222211.',
+ '123333333321',
+ '.11111111111'];
+var ICON={shield:['.1111.','1....1','1.11.1','1.11.1','1....1','.1111.'], triple:['1.....','11..1.','111.11','111.11','11..1.','1.....'], slow:['111111','.1..1.','..11..','..11..','.1..1.','111111']};
+var MINI=['11...','12221','11...'];                                  // a life: a tiny ship
 function blit(map,cols,x,y){ for(var r=0;r<map.length;r++) for(var c=0;c<map[r].length;c++){ var ch=map[r][c]; if(ch==='.') continue;
   lx.fillStyle=cols[+ch-1]; lx.fillRect(Math.round(x+c),Math.round(y+r),1,1); } }
 function bigBlit(map,col,x,y,k){ for(var r=0;r<map.length;r++) for(var c=0;c<map[r].length;c++) if(map[r][c]!=='.') R(col,x+c*k,y+r*k,k,k); }
@@ -792,7 +866,7 @@ var PAUSE=1.5, STEPS=['lang','sound','phone','mic','away','wave'];
 var scr=null, scrT=0, clock=0, onboarding=false, direct=false, booted=false, errKind=null;
 var handSaved=store.get('sonaroids_hand',''), acoustic=false;
 var prep=null, T=null, caught=false, g=null, acc=0, countT=0, overT=0, shake=0, flash=0, rockSpr={}, best=+store.get('sonaroids_best','0')||0;
-var lastHand=null, shipY=null, sayLast='', pausedFrom=null;
+var lastHand=null, shipY=null, sayLast='', pausedFrom=null, livesT=0;
 function go(s){ scr=s; scrT=0; BTN=[]; }
 
 /* which side the charging port (and so the playing hand) is on: the phone's rotation until the sonar has checked it by sound */
@@ -863,11 +937,22 @@ function sWave(){ sky(DT,0.3); var m=handSide()==='left', f=handFrac(), live=f!=
 /* the flight field: rocks, bullets, ship. The core counts in field units (180 high); K turns them into game pixels */
 function field(dt,speed){ sky(dt,speed);
   if(!g) return;
-  if(g.state!=='play'){ g.bullets=[]; g.rocks.forEach(function(r){ r.x+=r.vx*dt; r.y+=r.vy*dt; }); }   // after the game: rocks drift on, for the look only
+  if(g.state!=='play'){ g.bullets=[]; g.ebullets=[]; g.rocks.forEach(function(r){ r.x+=r.vx*dt; r.y+=r.vy*dt; }); if(g.ufo) g.ufo.x-=6*dt; }   // after the game: things drift on, for the look only
   g.rocks.forEach(function(r){ var sp=rockSpr[r.id]; if(!sp){ sp=rockSpr[r.id]=makeRock(Math.max(3,Math.round(r.r*K))); }
     sp.rot=(sp.rot+sp.vr*dt+16)%16; var fr=sp.frames[Math.floor(sp.rot)%16]; lx.drawImage(fr,Math.round(r.x*K-sp.size/2),Math.round(r.y*K-sp.size/2)); });
+  g.picks.forEach(function(p){ var x=Math.round(p.x*K), y=Math.round(p.y*K+Math.sin(clock*3)*2);
+    R(P.pick,x-5,y-5,11,11); R(P.bg,x-4,y-4,9,9); blit(ICON[p.type],[P.pick],x-3,y-3); light(x,y,14*K,P.glowP,0.35); });
+  if(g.ufo){ var u=g.ufo, big=u.kind==='big', ux=Math.round(u.x*K), uy=Math.round(u.y*K);
+    blit(big?UFO_BIG:UFO_SMALL,P.ufo,ux-(big?9:6),uy-(big?4:2));
+    if(Math.floor(clock*6)%2){ R(P.ufo[3],ux-(big?5:3),uy+1,1,1); R(P.ufo[3],ux+(big?4:2),uy+1,1,1); }
+    light(ux,uy,(big?22:16)*K,hex(P.ufo[2]).join(','),0.35); }
+  g.ebullets.forEach(function(b){ R(P.ebullet,b.x*K-1,b.y*K-1,2,2); light(b.x*K,b.y*K,7*K,hex(P.ebullet).join(','),0.5); });
   g.bullets.forEach(function(b){ R(P.bullet,b.x*K-2,b.y*K,4,1); light(b.x*K,b.y*K,6*K,P.glowB,0.45); });
-  if(g.state==='play') drawShip(g.ship.x*K,g.ship.y*K,clock,g.ship.inv>0&&Math.floor(clock*14)%2===0);
+  if(g.state==='play'){ var sx=g.ship.x*K, sy=g.ship.y*K;
+    drawShip(sx,sy,clock,g.ship.inv>0&&Math.floor(clock*14)%2===0);
+    if(g.ship.shield>0&&(g.ship.shield>3||Math.floor(clock*8)%2)){                 // the shield: a ring of dots, blinking in its last 3 s
+      for(var a=0;a<28;a+=2){ var an=a/28*6.283+clock*2; R(P.pick,sx+7+Math.cos(an)*11,sy+Math.sin(an)*9,1,1); } light(sx+7,sy,16*K,P.glowP,0.25); }
+    if(livesT>0){ for(var i=0;i<g.lives;i++) blit(MINI,[P.ship[1],P.ship[2]],sx-2+i*7,sy-14); } }   // lives: shown only for a moment after a hit
   drawParts(dt);
 }
 function sCount(){ countT-=DT; var f=handFrac(); if(f!==null) lastHand=f;
@@ -881,16 +966,18 @@ function sPlay(){
   acc+=DT; var n=0;
   while(acc>=Core.DT&&n<5){ acc-=Core.DT; n++; var h=handFrac(); Core.step(g,h); Logs.step(g,h); react(); if(g.state!=='play') break; }
   if(n===5) acc=0;
-  shake=Math.max(0,shake-DT); flash=Math.max(0,flash-DT);
-  field(DT,1);
+  shake=Math.max(0,shake-DT); flash=Math.max(0,flash-DT); livesT=Math.max(0,livesT-DT);
+  field(DT,g.slow>0?0.5:1);
   text(String(g.score).padStart(6,'0'),LW/2,topY(),P.text,'center');                // at the top only the score (agreed 24 Sep)
   if(flash>0){ lx.globalAlpha=Math.min(0.35,flash); R(P.hit,0,0,LW,LH); lx.globalAlpha=1; }
   if(g.state==='over'){ overT=0; Logs.gameStop(); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } T=Tune.create(T.field,true); go('over'); }
 }
 function react(){ g.events.forEach(function(k){
-  if(k==='break'||k==='hit'||k==='over') Sfx.play(k); else if(k==='fire'&&Math.random()<0.5) Sfx.play('fire'); });
+  if(k==='fire'){ if(Math.random()<0.5) Sfx.play('fire'); } else if(k!=='crash') Sfx.play(k); });
   (g.gone||[]).forEach(function(r){ burst(r.x*K,r.y*K,8+Math.round(r.r*K),P.rock.slice(2).concat([P.flame[1]]),50*K); delete rockSpr[r.id]; shake=Math.max(shake,0.08+r.r*0.004); });
-  if(g.events.indexOf('hit')>=0||g.events.indexOf('over')>=0){ flash=0.25; shake=0.4; burst(g.ship.x*K+6,g.ship.y*K,26,P.ship.concat(P.flame),70*K); }
+  (g.fx||[]).forEach(function(f){ if(f.ufo){ burst(f.x*K,f.y*K,40,P.ufo,90*K); shake=0.35; } else if(f.pick) burst(f.x*K,f.y*K,14,[P.pick,P.text],50*K); });
+  if(g.events.indexOf('shield')>=0) burst(g.ship.x*K+6,g.ship.y*K,20,[P.pick,P.text],60*K);
+  if(g.events.indexOf('hit')>=0||g.events.indexOf('over')>=0){ flash=0.25; shake=0.4; livesT=1.8; burst(g.ship.x*K+6,g.ship.y*K,26,P.ship.concat(P.flame),70*K); }
 }
 function sOver(){ overT+=DT; var e=Tune.step(T,DT,Sonar.state(),true,Sonar.shift); if(e) Logs.ev('подстройка',e);
   if(T.ok) caught=true;
@@ -920,8 +1007,8 @@ function pauseGame(){ if(scr==='play'||scr==='count'||scr==='count-resume'){ pau
 function startCount(){ countT=3; shipY=null; lastHand=handFrac(); Logs.ev('отсчёт',{field:+T.field.toFixed(1),auto:T.auto}); store.set('sonaroids_field',Math.round(T.field)); go('count'); }
 function startGame(){
   var seed=0; try{ var a=new Uint32Array(1); crypto.getRandomValues(a); seed=a[0]; }catch(e){ seed=Math.floor(Math.random()*4294967296); }
-  g=Core.create(seed,Core.FH*LW/LH); acc=0; rockSpr={}; parts=[]; var I=Sonar.info();
-  Logs.gameStart({core:'skeleton-1',seed:seed,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:'frozen',asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
+  g=Core.create(seed,Core.FH*LW/LH); acc=0; rockSpr={}; parts=[]; livesT=0; var I=Sonar.info();
+  Logs.gameStart({core:'rules-1',seed:seed,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:'frozen',asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
     chan:I.chan,probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,started:new Date().toISOString(),app:'sonaroids'});
   Sfx.play('start'); go('play');
 }

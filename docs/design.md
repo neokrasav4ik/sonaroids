@@ -44,13 +44,15 @@ Later launches: steps 5–6 and straight into the game.
 
 - **The ship fires on its own**, always forward. The player only chooses height: rise to a rock — it's shot; leave its line — dodged. — agreed
 - **Rocks split:** large → two medium → two small. 20 / 50 / 100 points, as in the original. — agreed
-- **Points by height:** middle of the screen ×3, then ×2, edges ×1 — otherwise hugging the edge pays off, since rocks can reach you there from one side only. **Not shown on screen** — the rule works silently. — agreed
-- **Streak:** every 5 hits in a row add +1 to the multiplier; getting hit resets it. — agreed
-- **Power-ups** — you have to fly into them: shield (one hit), triple shot (10 s), slow motion (6 s). Candidates for later: magnet, piercing laser. — agreed
-- **Flying saucer**, as in the original: shoots at the ship; you dodge by height. Appears from level 5–6. Large — 200 points, small aiming one — 1000. — agreed
+- **Points by height:** the middle of the screen ×3, then ×2, the edges ×1. **Not shown on screen.** — agreed
+- **Streak:** every 5 hits in a row add +1 to the multiplier, up to ×4; getting hit resets it. — agreed
+- **Power-ups** — you have to fly into them: shield (one hit, up to 15 s; shown as a ring of dots around the ship), triple shot (10 s), slow motion (6 s). One every 12–18 s. — agreed
+- **One difficulty that grows with time:** calm for the first 30 s, then rocks get faster and more frequent — about 2× by minute 3, 2.5× by minute 6, slowly more after. — agreed
+- **Levels** count base points (before the height and streak multipliers, which reach ×12): a level every 5000. The large saucer from level 3, the small aiming one from level 5. The maintainer asked for saucers earlier: with the bot the first saucer comes at ~1.1 min, small ones at ~1.9 min, a game lasts 5–8 min. — agreed 24 Sep
+- **3 lives**, shown only at the moment of a hit — tiny ships above the ship. — trying
+- **"Is the probe heard"** is decided by how loud the probe itself is, not by signal-to-noise: a noisy room must not send the player to "turn off silent mode". — agreed 24 Sep
+- **Flying saucer**, as in the original: shoots at the ship; you dodge by height. Large — 200 points, small aiming one — 1000. — agreed
 - **No breaks:** a game runs continuously, 5–10 minutes on average. The arm doesn't get tired with the elbow on an armrest. — agreed
-- **Levels** by score: rock speed and density grow; saucers from level 5–6. 3 lives. — agreed
-- **One difficulty:** the game gradually speeds up and gets harder; no easy/normal/hard choice. — agreed
 
 ## 5. Modes and leaderboards
 
@@ -87,7 +89,7 @@ Prototype: `game/proto/` — the ship follows your finger.
 1. ~~Choose style, ×3 display, pixel size and onboarding look~~ — "Dusk", ×3 hidden, medium pixels, "volume" onboarding.
 2. ~~Repository foundation: docs, lab, landing page, publishing to sonaroids.app~~ — live since 24 Sep; our own 5×7 pixel font is done.
 3. Game skeleton: first-launch screens, mechanics from the lab, rendering, sound, own font — built 24 Sep (`src/`, sonaroids.app/play), to be checked on phones.
-4. Game rules: rocks, splitting, points, streak, power-ups, saucer, levels.
+4. Game rules: rocks, splitting, points, streak, power-ups, saucer, levels — built 24 Sep, difficulty tuned with a bot (`tests/bot.js`), to be checked by playing.
 5. Leaderboards: server, game verification, tables, daily challenge.
 6. Android: mechanics check on different phones, then the APK.
 

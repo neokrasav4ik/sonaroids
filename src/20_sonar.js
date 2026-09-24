@@ -63,7 +63,7 @@ var Sonar=(function(){
     for(var i=0;i<listeners.length;i++) listeners[i](m.f,r,gap);
   }
   /* signal-to-noise in the probe band: 8 periods in a row put the probe exactly on every 8th spectral line, noise on all of them */
-  function probeSNR(frames,fs,fLo,fHi){
+  function probeStats(frames,fs,fLo,fHi){
     var N8=frames.length*512, x=new Float64Array(N8), i, j;
     for(i=0;i<frames.length;i++) for(j=0;j<512;j++) x[i*512+j]=frames[i][j];
     var P=frames.length, df=fs/N8, b0=Math.floor(fLo/df), b1=Math.ceil(fHi/df), sig=0, nz=0, nl=0, nn=0;
@@ -74,11 +74,14 @@ var Sonar=(function(){
       if(r===0){ sig+=p; nl++; } else if(r>=2&&r<=P-2){ nz+=p; nn++; }
     }
     var noisePerBin=nz/(nn||1), probe=sig-noisePerBin*nl, noiseBand=noisePerBin*(b1-b0+1);
-    return 10*Math.log10(Math.max(probe,1e-30)/Math.max(noiseBand,1e-30));
+    return {snr:10*Math.log10(Math.max(probe,1e-30)/Math.max(noiseBand,1e-30)), line:10*Math.log10(Math.max(probe,1e-30)/(nl||1))};
   }
-  /* auto level: turn our own probe down to the minimum with a margin — how loud it is in the room hardly depends on the phone's volume */
-  var SNR_TARGET=48, G_MIN=0.015, G_MAX=0.3;
-  function measureSNR(){ return sleep(350).then(function(){ return collect(8); }).then(function(fr){ return probeSNR(fr,fs,F_LO,20450); }); }
+  function probeSNR(frames,fs,fLo,fHi){ return probeStats(frames,fs,fLo,fHi).snr; }
+  /* auto level: turn our own probe down to the minimum with a margin — how loud it is in the room hardly depends on the phone's volume.
+     It also measures how loud the probe itself is, per unit of our gain (PROBE_LVL, dB): that — not the signal-to-noise ratio —
+     tells a muted phone from a noisy room. On the maintainer's iPhone it is 12–13 dB with any volume that worked (24 Sep). */
+  var SNR_TARGET=48, G_MIN=0.015, G_MAX=0.3, PROBE_LVL=null, QUIET_LVL=-6;
+  function measureSNR(){ return sleep(350).then(function(){ return collect(8); }).then(function(fr){ var st=probeStats(fr,fs,F_LO,20450); PROBE_LVL=st.line-20*Math.log10(PROBE_G); return st.snr; }); }
   function autoLevel(){
     var tries=0;
     function step(){ return measureSNR().then(function(s){
@@ -105,7 +108,9 @@ var Sonar=(function(){
     active=false; last=null; lost=false; PROBE_G=0.25;
     onStage&&onStage('side');
     return pickChannel().then(function(){ onStage&&onStage('level'); return autoLevel(); }).then(function(L){
-      if(L.snr<30){ setProbe('off'); return {ok:false,why:'quiet',snr:L.snr}; }
+      // "barely heard": the probe itself is ~19 dB quieter than on a phone with sound on (silent mode, volume at zero),
+      // or so drowned in noise that the echo cannot be read. A noisy room with a normal probe goes on (24 Sep: 33 dB SNR worked fine)
+      if(PROBE_LVL<QUIET_LVL||L.snr<18){ setProbe('off'); return {ok:false,why:'quiet',snr:L.snr,level:PROBE_LVL}; }
       DSP2.init(fs,'all'); DSP2.setCal(PHYS_CAL); DSP2.set('autocenter',1); active=true; onStage&&onStage('room');
       return waitReady().then(function(st){ if(st==='noprobe'){ active=false; setProbe('off'); return {ok:false,why:'noprobe'}; } return {ok:true,snr:L.snr}; });
     });
@@ -123,6 +128,6 @@ var Sonar=(function(){
     listen:function(f){ listeners.push(f); },
     state:function(){ return last; }, lost:function(){ return lost; }, clearLost:function(){ lost=false; },
     shift:function(d){ DSP2.shift(d); },
-    info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,f_lo:F_LO,cal:PHYS_CAL,gaps:gaps,booted:booted}; },
+    info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,probe_level:PROBE_LVL,f_lo:F_LO,cal:PHYS_CAL,gaps:gaps,booted:booted}; },
     chan:function(){ return chan; }, ctx:function(){ return ctx; }};
 })();

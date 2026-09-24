@@ -7,7 +7,9 @@ echo "== the built game matches src/ ==";        python3 build.py --check
 echo; echo "== the font matches its drawing ==";  python3 font/make_font.py --check
 echo; echo "== DSP2 is the lab's ==";              node tests/test_same_dsp.js
 echo; echo "== flight core: deterministic ==";     node tests/test_core.js
+echo; echo "== game rules and difficulty (bot) ==";  node tests/test_rules.js
 echo; echo "== wave tuning on a synthetic palm =="; node tests/test_tune.js
+echo; echo "== is the probe heard: muted vs noisy =="; node tests/test_quiet.js
 echo; echo "== strings and font ==";               node tests/test_text.js
 echo; echo "== screens fit, all sizes (Chromium) =="; node tests/screens.js
 echo; echo "== the whole game, synthetic microphone (Chromium) =="; node tests/flow.js

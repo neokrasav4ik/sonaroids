@@ -8,7 +8,7 @@ if(typeof document==='undefined') return;
 var P={bg:'#1B1A2E', neb:['#2A2440','#3C2B4F','#4A2F4A'], stars:['#5A4C6E','#B89BB2','#FFE9D6'],
   rock:['#2A2233','#4C3E57','#7A6380','#B08FA5','#EBCBD0'],
   ship:['#1F5E52','#2F8F7C','#7FE0C8','#E9FFF8'], flame:['#FF7A7A','#FFB86B','#FFF1C9'], bullet:'#FFB86B', glowB:'255,184,107',
-  pick:'#FFE66D', glowP:'255,230,109', text:'#FFF3EA', soft:'#C9A9B6', line:'#4A3A57', band:'#7FE0C8', hit:'#FF7A7A', hand:['#6E4D57','#C99A94','#F3CDBF']};
+  pick:'#FFE66D', glowP:'255,230,109', ufo:['#4B2F80','#7B55C7','#B48CFF','#EADFFF'], ebullet:'#FF7A7A', text:'#FFF3EA', soft:'#C9A9B6', line:'#4A3A57', band:'#7FE0C8', hit:'#FF7A7A', hand:['#6E4D57','#C99A94','#F3CDBF']};
 var PIXH=215;
 var cv=document.getElementById('cv'), cx=cv.getContext('2d');
 var lc=document.createElement('canvas'), lx=lc.getContext('2d');

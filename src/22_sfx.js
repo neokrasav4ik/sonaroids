@@ -2,6 +2,7 @@
    at 6 kHz, so no harmonic can reach the probe band (18–20 kHz). No music. ── */
 var Sfx=(function(){
   var ctx=null, bus=null, noise=null, on=true, vol=1;
+  try{ var sv=+localStorage.getItem('sonaroids_sfxvol'); if(sv>0&&sv<=1) vol=sv; }catch(e){}   // v0.19: the level found on this phone is kept
   try{ on=localStorage.getItem('sonaroids_sfx')!=='0'; }catch(e){}
   function setup(){
     var c=Sonar.ctx(); if(c!==ctx){ ctx=c; bus=null; } if(!ctx||bus) return;              // a new audio context after the microphone was re-opened: rebuild
@@ -44,6 +45,9 @@ var Sfx=(function(){
   }
   /* the game's own sounds must not flood the microphone: on the OnePlus 15 (24 Sep) they reached it ~50 dB louder than on iPhone,
      far above the probe, and the ship drifted. When the microphone gets near its limit, the sounds are turned down step by step */
-  function duck(){ if(vol<=0.05) return false; vol=Math.max(0.05,vol*0.7); if(bus) bus.gain.setTargetAtTime(1.1*vol,ctx.currentTime,0.05); return true; }
+  /* v0.19: down to 0.03 and remembered for this phone. On the OnePlus the game's sounds reached the microphone at −17…−34 dB rms
+     (peaks up to 0.84) against −55 on iPhone, and with them the echo range jumped half as much again */
+  function duck(){ if(vol<=0.03) return false; vol=Math.max(0.03,vol*0.6); if(bus) bus.gain.setTargetAtTime(1.1*vol,ctx.currentTime,0.05);
+    try{ localStorage.setItem('sonaroids_sfxvol',String(vol)); }catch(e){} return true; }
   return {duck:duck,level:function(){ return vol; },play:play,on:function(){ return on; },toggle:function(){ on=!on; try{ localStorage.setItem('sonaroids_sfx',on?'1':'0'); }catch(e){} return on; }};
 })();

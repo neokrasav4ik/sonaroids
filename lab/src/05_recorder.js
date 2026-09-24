@@ -12,7 +12,7 @@ var SCRIPT=[
 var trackH=0;
 function yOf(v){ return (1-(v-30)/(170-30))*trackH; }
 function buildTracks(){
-  var mine=(chan==='left')?'trL':'trR', other=(chan==='left')?'trR':'trL';
+  var mine=(hand==='left')?'trL':'trR', other=(hand==='left')?'trR':'trL';
   el(other).style.visibility='hidden'; el(mine).style.visibility='visible';
   var tr=el(mine); trackH=tr.getBoundingClientRect().height||300;
   Array.prototype.slice.call(tr.querySelectorAll('.lab,.tick')).forEach(function(x){ x.remove(); });
@@ -28,7 +28,7 @@ function runRec(){
   var prom;
   pickChannel().then(function(){ return autoLevel(); }).then(function(){
     buildTracks(); mode='rec';
-    el('sub').textContent='Рука будет '+(chan==='left'?'слева':'справа')+' от телефона.';
+    el('sub').textContent='Рука будет '+(hand==='left'?'слева':'справа')+' от телефона.';
     return sleep(400).then(function(){ return collect(10); });
   }).then(function(fr){
     prom=promSub(fr,'all');
@@ -37,7 +37,7 @@ function runRec(){
       el('sub').textContent='Прибавь громкость, выключи беззвучный, отключи наушники, открой динамики. Сейчас '+prom.toFixed(0)+' дБ, нужно 15.';
       setProbe('off'); mode=null; return sleep(7000).then(function(){ show('home'); });
     }
-    var mk=(chan==='left')?'mkL':'mkR', marks={}, t0=performance.now(), cur=-1;
+    var mk=(hand==='left')?'mkL':'mkR', marks={}, t0=performance.now(), cur=-1;
     rec.on=true;
     return new Promise(function(done){
       (function tick(){
@@ -55,7 +55,7 @@ function runRec(){
       var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
       var so=(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0);
       recMeta={v:4,kind:'single-landscape',fs:fs,N:N,kLo:kLo,kHi:kHi,
-        probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
+        hand:hand,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
         prom_db:prom,samples:n,gaps:rec.gaps,peak:pk,orientation:{angle:so,w:window.innerWidth,h:window.innerHeight},
         script:SCRIPT.filter(function(s){return s.k!=='end';}).map(function(s){ return {k:s.k,t:s.t,H:s.d}; }),
         marks:marks,units:'target height in mm above the table',ua:navigator.userAgent,date:new Date().toISOString()};
@@ -87,7 +87,7 @@ function showDone(pk,pr){
   function kv(k,v,c){ var r=document.createElement('div'); r.className='kv'; r.innerHTML='<span>'+k+'</span><b class="'+(c||'')+'">'+v+'</b>'; st.appendChild(r); }
   kv('длительность',(recMeta.samples/fs).toFixed(1)+' с');
   kv('разрывов потока',recMeta.gaps,recMeta.gaps===0?'good':'bad');
-  kv('сторона руки',chan==='left'?'слева':'справа');
+  kv('сторона руки',(hand==='left'?'слева':'справа')+(hand!==chan?' (зонд в другом канале)':''));
   kv('зонд слышен',pr.toFixed(0)+' дБ',pr>=15?'good':'bad');
   kv('пик входа',pk.toFixed(3),(pk>0.002&&pk<0.98)?'good':'bad');
   kv('размер',(blob.size/1048576).toFixed(1)+' МБ');

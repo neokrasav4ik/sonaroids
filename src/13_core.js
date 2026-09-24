@@ -20,7 +20,10 @@ var Core=(function(){
   /* tuning, set with a bot player (tests/bot.js): a rock every SPAWN s at pace 1, and pace^1.125 times as often later (more rocks, not just faster ones); pieces fly off at SPLIT_VX × the parent's speed
      and SPLIT_VY up or down; a new level every LEVEL base points (points before the height and streak multipliers) */
   var TUNE={SPAWN:[1.0,1.7],SPLIT_VX:[0.85,1.15],SPLIT_VY:[8,18],HIT_R:0.8,LEVEL:5000,SLOW_FROM:1.4};
-  var UFO={big:{hw:7,hh:3,pts:200,fire:1.4,v:70},small:{hw:5,hh:2,pts:1000,fire:1.1,v:85}};
+  var UFO={big:{hw:7,hh:3,pts:200,fire:1.4,v:70,hp:2},small:{hw:5,hh:2,pts:1000,fire:1.1,v:85,hp:1}};
+  // v0.17 "a mini-boss, not one more rock": the saucer sidesteps when the ship has been level with it for a moment
+  // (not always, and not again right away), moves up and down faster, the large one takes two hits, and it cannot be hit before it is on screen
+  var DODGE={see:0.3,p:0.65,cool:[1.3,2.1],jump:[20,34],follow:0.035};
   function rng(seed){ var a=seed>>>0; return function(){ a=(a+0x6D2B79F5)>>>0; var t=a; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
   /* y0 — where the ship starts (field units): at the palm, so the first frames of flight do not jerk it from the middle (v0.16) */
   function create(seed,FW,y0){
@@ -62,14 +65,19 @@ var Core=(function(){
       g.picks.push({type:slowOk?(k<0.34?'shield':k<0.67?'triple':'slow'):(k<0.5?'shield':'triple'),x:g.FW+6,y:rnd(g,FH*0.15,FH*0.85)}); }
     if(g.level>=UFO_BIG_LV&&g.ufoT<0&&!u) g.ufoT=rnd(g,2,5);
     if(g.ufoT>0&&!u){ g.ufoT-=wdt; if(g.ufoT<=0){ var kind=(g.level>=UFO_SMALL_LV&&g.rand()<0.5)?'small':'big';
-      u=g.ufo={id:g.nextId++,kind:kind,x:g.FW+10,y:rnd(g,FH*0.2,FH*0.8),ty:FH/2,tyT:0,fire:1.2}; g.events.push('ufo'); } }
+      u=g.ufo={id:g.nextId++,kind:kind,x:g.FW+10,y:rnd(g,FH*0.2,FH*0.8),ty:FH/2,tyT:0,fire:1.2,hp:UFO[kind].hp,seen:0,dodgeT:0,hitT:0}; g.events.push('ufo'); } }
     // movement
     for(i=0;i<g.bullets.length;i++){ b=g.bullets[i]; b.x+=b.vx*DT; b.y+=b.vy*DT; }
     for(i=0;i<g.rocks.length;i++){ r=g.rocks[i]; r.x+=r.vx*wdt; r.y+=r.vy*wdt; if((r.y<r.r&&r.vy<0)||(r.y>FH-r.r&&r.vy>0)) r.vy=-r.vy; }
     for(i=0;i<g.picks.length;i++) g.picks[i].x-=24*wdt;
     for(i=0;i<g.ebullets.length;i++){ b=g.ebullets[i]; b.x+=b.vx*wdt; b.y+=b.vy*wdt; }
     if(u){ var U=UFO[u.kind]; u.x+=(u.x>g.FW*0.72?-30:-6)*wdt;
-      u.tyT-=wdt; if(u.tyT<=0){ u.tyT=rnd(g,1,2.5); u.ty=rnd(g,FH*0.2,FH*0.8); } u.y+=(u.ty-u.y)*0.02*w;
+      u.tyT-=wdt; if(u.tyT<=0){ u.tyT=rnd(g,1,2.5); u.ty=rnd(g,FH*0.2,FH*0.8); }
+      u.dodgeT-=wdt; u.hitT-=wdt; var lv=s.y-u.y; if(lv<U.hh+6&&lv>-U.hh-6) u.seen+=wdt; else u.seen=0;
+      if(u.seen>DODGE.see&&u.dodgeT<=0){ u.dodgeT=rnd(g,DODGE.cool[0],DODGE.cool[1]); u.seen=0;
+        if(g.rand()<DODGE.p){ var jd=rnd(g,DODGE.jump[0],DODGE.jump[1]), up=u.y>=s.y?1:-1, ny=u.y+up*jd;
+          if(ny<FH*0.12||ny>FH*0.88) ny=u.y-up*jd; u.ty=Math.max(FH*0.12,Math.min(FH*0.88,ny)); u.tyT=1.2; g.events.push('ufo_dodge'); } }
+      u.y+=(u.ty-u.y)*DODGE.follow*w;
       u.fire-=wdt; if(u.fire<=0&&u.x<g.FW-4){ u.fire=U.fire; var v=u.kind==='small'?norm(s.x-u.x,s.y-u.y,U.v):norm(-1,rnd(g,-0.6,0.6),U.v);
         g.ebullets.push({x:u.x,y:u.y,vx:v[0],vy:v[1]}); g.events.push('ufo_fire'); }
       if(u.x<-20){ g.ufo=u=null; g.ufoT=rnd(g,16,24); } }
@@ -77,8 +85,9 @@ var Core=(function(){
     for(i=0;i<g.bullets.length;i++){ b=g.bullets[i]; if(b.dead) continue;
       for(j=0;j<g.rocks.length;j++){ r=g.rocks[j]; if(r.dead) continue; var dx=b.x-r.x, dy=b.y-r.y;
         if(dx*dx+dy*dy<(r.r+1)*(r.r+1)){ b.dead=true; crack(g,r,false); break; } }
-      if(!b.dead&&u){ var U2=UFO[u.kind]; if(b.x-u.x<U2.hw+1&&u.x-b.x<U2.hw+1&&b.y-u.y<U2.hh+2&&u.y-b.y<U2.hh+2){ b.dead=true;
-        g.fx.push({ufo:u.kind,x:u.x,y:u.y}); award(g,U2.pts); g.events.push('ufo_die'); g.ufo=u=null; g.ufoT=rnd(g,16,24); } } }
+      if(!b.dead&&u&&u.x<g.FW-2){ var U2=UFO[u.kind]; if(b.x-u.x<U2.hw+1&&u.x-b.x<U2.hw+1&&b.y-u.y<U2.hh+2&&u.y-b.y<U2.hh+2){ b.dead=true;
+        if(--u.hp>0){ u.hitT=0.25; u.dodgeT=0; u.seen=DODGE.see; g.events.push('ufo_hit'); }      // hurt: it flashes and tries to get away at once
+        else { g.fx.push({ufo:u.kind,x:u.x,y:u.y}); award(g,U2.pts); g.events.push('ufo_die'); g.ufo=u=null; g.ufoT=rnd(g,16,24); } } } }
     // the ship runs into things
     for(j=0;j<g.rocks.length;j++){ r=g.rocks[j]; if(r.dead) continue; var ex=r.x-s.x-3, ey=r.y-s.y;
       var hr=r.r*TUNE.HIT_R+3; if(ex*ex+ey*ey<hr*hr){ crack(g,r,true); hurt(g); } }
@@ -94,6 +103,6 @@ var Core=(function(){
   }
   /* a whole game from a palm trajectory (one value per step, −1 = no palm): what the server will run */
   function replay(seed,FW,hands,y0){ var g=create(seed,FW,y0); for(var i=0;i<hands.length&&g.state==='play';i++) step(g,hands[i]<0?null:hands[i]); return g; }
-  return {TUNE:TUNE,SHIP_X:SHIP_X,UFO_BIG_LV:UFO_BIG_LV,UFO_SMALL_LV:UFO_SMALL_LV,create:create,step:step,replay:replay,pace:pace,heightMult:heightMult,DT:DT,FH:FH,MARGIN:MARGIN,UFO:UFO,R_SIZE:R_SIZE};
+  return {TUNE:TUNE,SHIP_X:SHIP_X,UFO_BIG_LV:UFO_BIG_LV,UFO_SMALL_LV:UFO_SMALL_LV,create:create,step:step,replay:replay,pace:pace,heightMult:heightMult,DT:DT,FH:FH,MARGIN:MARGIN,UFO:UFO,DODGE:DODGE,R_SIZE:R_SIZE};
 })();
 if(typeof module!=='undefined') module.exports=Core;

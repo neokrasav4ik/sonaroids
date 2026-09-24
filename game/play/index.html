@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='0.16';
+var VERSION='0.17';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -70,7 +70,7 @@ var DSP2=(function(){
   var N=512,C=343,fs,kLo,kHi,kc,ks,M,Pr,Pi,lam,mm,T,gA,gB,G,cosT,sinT;
   var d0,dref,boot,bootN=30,prevH,hist,L=4,prom,noProbe,bgAcc,bgN,bgR,bgI,BG_N=40;
   var Es,hold,present,refr,Q_FLOOR=-28,T_ON=-16,T_INT=-30,HOLD_S=1.5,tauE=0.15,REFR_S=0.7,TAU_BG=2.0,TAU=1.5;
-  var eAvg=0,TE=3,E_FAST=12,ePres=0,why='',rngBuf=[],xBuf=[],centered=false,autoC=false,presN=0,x,fast,cal={k:0.75,o:1,s:0.8},eHold=null,lowN=0,resS=-99,resFloor=null,upN=0,warm=0,absBuf=[],ABS_MED=15,DEADB=5,dirS=null,lostN=0,lost=false;
+  var gN=null,eAvg=0,TE=3,E_FAST=12,ePres=0,why='',rngBuf=[],xBuf=[],centered=false,autoC=false,presN=0,x,fast,cal={k:0.75,o:1,s:0.8},eHold=null,lowN=0,resS=-99,resFloor=null,upN=0,warm=0,absBuf=[],ABS_MED=15,DEADB=5,dirS=null,lostN=0,lost=false;
   function init(sampleRate,parity){
     fs=sampleRate; var df=fs/N; kLo=Math.ceil(18300/df); kHi=Math.floor(20500/df); kc=Math.floor((kLo+kHi)/2);
     ks=[]; for(var k=kLo;k<=kHi;k++) if(parity===undefined||parity==='all'||k%2===parity) ks.push(k);
@@ -80,7 +80,7 @@ var DSP2=(function(){
     for(var q=0;q<M;q++){ var ph=Math.PI*q*q/M; Pr[q]=Math.cos(ph); Pi[q]=Math.sin(ph); }
     cosT=new Float64Array(M*N); sinT=new Float64Array(M*N);
     for(q=0;q<M;q++){ var w=-2*Math.PI*ks[q]/N; for(var n=0;n<N;n++){ cosT[q*N+n]=Math.cos(w*n); sinT[q*N+n]=Math.sin(w*n); } }
-    d0=null; dref=null; boot=[]; prevH=null; hist=[]; prom=null; noProbe=false;
+    d0=null; dref=null; gN=null; boot=[]; prevH=null; hist=[]; prom=null; noProbe=false;
     bgAcc=null; bgN=0; bgR=null; bgI=null; Es=-80; hold=0; present=false; refr=0; x=null; fast=0; eHold=null; ePres=0; why=""; rngBuf=[]; xBuf=[]; centered=false; presN=0; lowN=0; resS=-99; resFloor=null; upN=0; warm=0; absBuf=[]; dirS=null; lostN=0; lost=false;
   }
   function bandSpec(fr){
@@ -104,8 +104,14 @@ var DSP2=(function(){
         noProbe=false; d0=b; dref=bv/boot.length; }
       return null;
     }
+    // с 24.09 ночи: отклик нормируется на прямой сигнал (его усиление и фазу). На Android (OnePlus 15) усиление тракта
+    // «динамик→микрофон» плавает на 2–3 дБ за секунды, а ближний хвост прямого сигнала там сильный (−27 дБ) — пустая комната
+    // давала остаток −10 дБ вместо −30, и ладонь тонула. Усиление учится только в тихой пустой комнате (как уровень пустоты):
+    // рука рядом с телефоном просачивается в прямой отсчёт, и на iPhone иначе портилась высота
+    var vd0=tap(H,d0); if(!gN) gN=[vd0[0],vd0[1]]; else if(!present&&Es<Q_FLOOR){ gN[0]+=0.03*(vd0[0]-gN[0]); gN[1]+=0.03*(vd0[1]-gN[1]); }
+    var gm=gN[0]*gN[0]+gN[1]*gN[1], sq=Math.sqrt(dref), nr=sq*gN[0]/gm, ni=-sq*gN[1]/gm;
     var h=[new Float64Array(G),new Float64Array(G)];
-    for(i=0;i<G;i++){ var v2=tap(H,(d0+gA+i)%T); h[0][i]=v2[0]; h[1][i]=v2[1]; }
+    for(i=0;i<G;i++){ var v2=tap(H,(d0+gA+i)%T); h[0][i]=v2[0]*nr-v2[1]*ni; h[1][i]=v2[0]*ni+v2[1]*nr; }
     // прямой сигнал пропал на 20 дБ и больше целую секунду — звук ушёл в другое устройство
     var vd=tap(H,d0), pd=vd[0]*vd[0]+vd[1]*vd[1]; dirS=(dirS===null)?pd:dirS+0.1*(pd-dirS);
     if(dirS<dref*0.01){ if(++lostN>fs/N) lost=true; } else lostN=0;
@@ -255,7 +261,10 @@ var Core=(function(){
   /* tuning, set with a bot player (tests/bot.js): a rock every SPAWN s at pace 1, and pace^1.125 times as often later (more rocks, not just faster ones); pieces fly off at SPLIT_VX × the parent's speed
      and SPLIT_VY up or down; a new level every LEVEL base points (points before the height and streak multipliers) */
   var TUNE={SPAWN:[1.0,1.7],SPLIT_VX:[0.85,1.15],SPLIT_VY:[8,18],HIT_R:0.8,LEVEL:5000,SLOW_FROM:1.4};
-  var UFO={big:{hw:7,hh:3,pts:200,fire:1.4,v:70},small:{hw:5,hh:2,pts:1000,fire:1.1,v:85}};
+  var UFO={big:{hw:7,hh:3,pts:200,fire:1.4,v:70,hp:2},small:{hw:5,hh:2,pts:1000,fire:1.1,v:85,hp:1}};
+  // v0.17 "a mini-boss, not one more rock": the saucer sidesteps when the ship has been level with it for a moment
+  // (not always, and not again right away), moves up and down faster, the large one takes two hits, and it cannot be hit before it is on screen
+  var DODGE={see:0.3,p:0.65,cool:[1.3,2.1],jump:[20,34],follow:0.035};
   function rng(seed){ var a=seed>>>0; return function(){ a=(a+0x6D2B79F5)>>>0; var t=a; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
   /* y0 — where the ship starts (field units): at the palm, so the first frames of flight do not jerk it from the middle (v0.16) */
   function create(seed,FW,y0){
@@ -297,14 +306,19 @@ var Core=(function(){
       g.picks.push({type:slowOk?(k<0.34?'shield':k<0.67?'triple':'slow'):(k<0.5?'shield':'triple'),x:g.FW+6,y:rnd(g,FH*0.15,FH*0.85)}); }
     if(g.level>=UFO_BIG_LV&&g.ufoT<0&&!u) g.ufoT=rnd(g,2,5);
     if(g.ufoT>0&&!u){ g.ufoT-=wdt; if(g.ufoT<=0){ var kind=(g.level>=UFO_SMALL_LV&&g.rand()<0.5)?'small':'big';
-      u=g.ufo={id:g.nextId++,kind:kind,x:g.FW+10,y:rnd(g,FH*0.2,FH*0.8),ty:FH/2,tyT:0,fire:1.2}; g.events.push('ufo'); } }
+      u=g.ufo={id:g.nextId++,kind:kind,x:g.FW+10,y:rnd(g,FH*0.2,FH*0.8),ty:FH/2,tyT:0,fire:1.2,hp:UFO[kind].hp,seen:0,dodgeT:0,hitT:0}; g.events.push('ufo'); } }
     // movement
     for(i=0;i<g.bullets.length;i++){ b=g.bullets[i]; b.x+=b.vx*DT; b.y+=b.vy*DT; }
     for(i=0;i<g.rocks.length;i++){ r=g.rocks[i]; r.x+=r.vx*wdt; r.y+=r.vy*wdt; if((r.y<r.r&&r.vy<0)||(r.y>FH-r.r&&r.vy>0)) r.vy=-r.vy; }
     for(i=0;i<g.picks.length;i++) g.picks[i].x-=24*wdt;
     for(i=0;i<g.ebullets.length;i++){ b=g.ebullets[i]; b.x+=b.vx*wdt; b.y+=b.vy*wdt; }
     if(u){ var U=UFO[u.kind]; u.x+=(u.x>g.FW*0.72?-30:-6)*wdt;
-      u.tyT-=wdt; if(u.tyT<=0){ u.tyT=rnd(g,1,2.5); u.ty=rnd(g,FH*0.2,FH*0.8); } u.y+=(u.ty-u.y)*0.02*w;
+      u.tyT-=wdt; if(u.tyT<=0){ u.tyT=rnd(g,1,2.5); u.ty=rnd(g,FH*0.2,FH*0.8); }
+      u.dodgeT-=wdt; u.hitT-=wdt; var lv=s.y-u.y; if(lv<U.hh+6&&lv>-U.hh-6) u.seen+=wdt; else u.seen=0;
+      if(u.seen>DODGE.see&&u.dodgeT<=0){ u.dodgeT=rnd(g,DODGE.cool[0],DODGE.cool[1]); u.seen=0;
+        if(g.rand()<DODGE.p){ var jd=rnd(g,DODGE.jump[0],DODGE.jump[1]), up=u.y>=s.y?1:-1, ny=u.y+up*jd;
+          if(ny<FH*0.12||ny>FH*0.88) ny=u.y-up*jd; u.ty=Math.max(FH*0.12,Math.min(FH*0.88,ny)); u.tyT=1.2; g.events.push('ufo_dodge'); } }
+      u.y+=(u.ty-u.y)*DODGE.follow*w;
       u.fire-=wdt; if(u.fire<=0&&u.x<g.FW-4){ u.fire=U.fire; var v=u.kind==='small'?norm(s.x-u.x,s.y-u.y,U.v):norm(-1,rnd(g,-0.6,0.6),U.v);
         g.ebullets.push({x:u.x,y:u.y,vx:v[0],vy:v[1]}); g.events.push('ufo_fire'); }
       if(u.x<-20){ g.ufo=u=null; g.ufoT=rnd(g,16,24); } }
@@ -312,8 +326,9 @@ var Core=(function(){
     for(i=0;i<g.bullets.length;i++){ b=g.bullets[i]; if(b.dead) continue;
       for(j=0;j<g.rocks.length;j++){ r=g.rocks[j]; if(r.dead) continue; var dx=b.x-r.x, dy=b.y-r.y;
         if(dx*dx+dy*dy<(r.r+1)*(r.r+1)){ b.dead=true; crack(g,r,false); break; } }
-      if(!b.dead&&u){ var U2=UFO[u.kind]; if(b.x-u.x<U2.hw+1&&u.x-b.x<U2.hw+1&&b.y-u.y<U2.hh+2&&u.y-b.y<U2.hh+2){ b.dead=true;
-        g.fx.push({ufo:u.kind,x:u.x,y:u.y}); award(g,U2.pts); g.events.push('ufo_die'); g.ufo=u=null; g.ufoT=rnd(g,16,24); } } }
+      if(!b.dead&&u&&u.x<g.FW-2){ var U2=UFO[u.kind]; if(b.x-u.x<U2.hw+1&&u.x-b.x<U2.hw+1&&b.y-u.y<U2.hh+2&&u.y-b.y<U2.hh+2){ b.dead=true;
+        if(--u.hp>0){ u.hitT=0.25; u.dodgeT=0; u.seen=DODGE.see; g.events.push('ufo_hit'); }      // hurt: it flashes and tries to get away at once
+        else { g.fx.push({ufo:u.kind,x:u.x,y:u.y}); award(g,U2.pts); g.events.push('ufo_die'); g.ufo=u=null; g.ufoT=rnd(g,16,24); } } } }
     // the ship runs into things
     for(j=0;j<g.rocks.length;j++){ r=g.rocks[j]; if(r.dead) continue; var ex=r.x-s.x-3, ey=r.y-s.y;
       var hr=r.r*TUNE.HIT_R+3; if(ex*ex+ey*ey<hr*hr){ crack(g,r,true); hurt(g); } }
@@ -329,7 +344,7 @@ var Core=(function(){
   }
   /* a whole game from a palm trajectory (one value per step, −1 = no palm): what the server will run */
   function replay(seed,FW,hands,y0){ var g=create(seed,FW,y0); for(var i=0;i<hands.length&&g.state==='play';i++) step(g,hands[i]<0?null:hands[i]); return g; }
-  return {TUNE:TUNE,SHIP_X:SHIP_X,UFO_BIG_LV:UFO_BIG_LV,UFO_SMALL_LV:UFO_SMALL_LV,create:create,step:step,replay:replay,pace:pace,heightMult:heightMult,DT:DT,FH:FH,MARGIN:MARGIN,UFO:UFO,R_SIZE:R_SIZE};
+  return {TUNE:TUNE,SHIP_X:SHIP_X,UFO_BIG_LV:UFO_BIG_LV,UFO_SMALL_LV:UFO_SMALL_LV,create:create,step:step,replay:replay,pace:pace,heightMult:heightMult,DT:DT,FH:FH,MARGIN:MARGIN,UFO:UFO,DODGE:DODGE,R_SIZE:R_SIZE};
 })();
 if(typeof module!=='undefined') module.exports=Core;
 /* ── SONAR: speaker probe, microphone, echo processing. Moved over from the lab (04_audio_engine, 06_side_pick, 07_calibration)
@@ -603,6 +618,8 @@ var Sfx=(function(){
     else if(kind==='shield'){ crash(0.25,2400,0.5); tone(1500,600,0.2,'triangle',0.4); }
     else if(kind==='ufo'){ for(var i=0;i<4;i++) tone(i%2?520:700,i%2?700:520,0.12,'triangle',0.3,i*0.12); }
     else if(kind==='ufo_fire'){ tone(900,300,0.1,'sawtooth',0.18); }
+    else if(kind==='ufo_hit'){ crash(0.15,2200,0.5); tone(1300,500,0.12,'square',0.35); }
+    else if(kind==='ufo_dodge'){ tone(380,950,0.09,'triangle',0.16); }
     else if(kind==='ufo_die'){ crash(0.6,700,0.9); tone(600,80,0.5,'square',0.45); }
   }
   /* the game's own sounds must not flood the microphone: on the OnePlus 15 (24 Sep) they reached it ~50 dB louder than on iPhone,
@@ -618,7 +635,7 @@ STR.en={
   phone_t:'PUT THE PHONE DOWN', phone_s:'SCREEN UP, CHARGING PORT TOWARDS YOUR PLAYING HAND', port:'PORT',
   mic_t:'THE GAME HEARS YOUR HAND', mic_s:'IT LISTENS TO THE ECHO OF AN INAUDIBLE SOUND', allow:'ALLOW THE MICROPHONE',
   away_t:'TAKE YOUR HAND AWAY', away_s:'LISTENING TO THE EMPTY ROOM', away_ok:'THE ROOM IS QUIET',
-  wave_t:'WAVE YOUR PALM', wave_s:'UP AND DOWN, 5–15 CM ABOVE THE TABLE', wave_ok:'GOT YOUR RANGE', cm:'CM',
+  wave_t:'WAVE YOUR PALM', wave_s:'UP AND DOWN, 5–15 CM ABOVE THE TABLE', wave_ok:'GOT YOUR RANGE', try_s:'THE SHIP FOLLOWS YOUR PALM — TRY THE TOP AND THE BOTTOM', cm:'CM',
   ring_wait:'GET READY', ring_listen:'LISTENING', ring_catch:'CATCHING THE RANGE', ring_ok:'DONE',
   start:'START', over:'GAME OVER', best:'BEST', again:'AGAIN', menu:'MENU', logs:'LOGS',
   lost_t:'NO PROBE SOUND', lost_s:'SOUND WENT TO ANOTHER DEVICE. UNPLUG HEADPHONES OR BLUETOOTH', retry:'TRY AGAIN',
@@ -632,7 +649,7 @@ STR.ru={
   phone_t:'ПОЛОЖИ ТЕЛЕФОН', phone_s:'ЭКРАНОМ ВВЕРХ, РАЗЪЁМОМ К РУКЕ, КОТОРОЙ ИГРАЕШЬ', port:'РАЗЪЁМ',
   mic_t:'ИГРА СЛЫШИТ РУКУ', mic_s:'ОНА СЛУШАЕТ ЭХО НЕСЛЫШНОГО ЗВУКА', allow:'РАЗРЕШИТЬ МИКРОФОН',
   away_t:'УБЕРИ РУКУ', away_s:'СЛУШАЮ ПУСТУЮ КОМНАТУ', away_ok:'КОМНАТА ТИХАЯ',
-  wave_t:'ПОМАШИ ЛАДОНЬЮ', wave_s:'ВВЕРХ-ВНИЗ, 5–15 СМ НАД СТОЛОМ', wave_ok:'РАЗМАХ ПОЙМАН', cm:'СМ',
+  wave_t:'ПОМАШИ ЛАДОНЬЮ', wave_s:'ВВЕРХ-ВНИЗ, 5–15 СМ НАД СТОЛОМ', wave_ok:'РАЗМАХ ПОЙМАН', try_s:'КОРАБЛЬ ИДЁТ ЗА ЛАДОНЬЮ — ПРОВЕРЬ ВЕРХ И НИЗ', cm:'СМ',
   ring_wait:'ПРИГОТОВЬСЯ', ring_listen:'СЛУШАЮ', ring_catch:'ЛОВЛЮ РАЗМАХ', ring_ok:'ГОТОВО',
   start:'СТАРТ', over:'ИГРА ОКОНЧЕНА', best:'РЕКОРД', again:'ЕЩЁ РАЗ', menu:'МЕНЮ', logs:'ЖУРНАЛЫ',
   lost_t:'ЗОНДА НЕ СЛЫШНО', lost_s:'ЗВУК УШЁЛ В ДРУГОЕ УСТРОЙСТВО. ОТКЛЮЧИ НАУШНИКИ ИЛИ BLUETOOTH', retry:'ЕЩЁ РАЗ',
@@ -930,7 +947,11 @@ function portSide(){ var a=null;
   try{ if(screen.orientation&&typeof screen.orientation.angle==='number') a=screen.orientation.angle; }catch(e){}
   if(a===null&&typeof window.orientation==='number') a=window.orientation;
   if(a===90) return 'right'; if(a===270||a===-90) return 'left'; return handSaved==='left'?'left':'right'; }
-function handSide(){ return acoustic?Sonar.chan():portSide(); }
+/* v0.17: the rotation decides whenever it is known; the sound only picks the probe's channel. On a Redmi the speaker channels
+   do not swap when the phone turns, so "the louder channel" said the port was on the other side 9 times out of 10 */
+function orientKnown(){ var a=null; try{ if(screen.orientation&&typeof screen.orientation.angle==='number') a=screen.orientation.angle; }catch(e){}
+  if(a===null&&typeof window.orientation==='number') a=window.orientation; return a===90||a===270||a===-90; }
+function handSide(){ return orientKnown()?portSide():acoustic?Sonar.chan():portSide(); }
 function freeSide(){ return handSide()==='right'?'left':'right'; }
 function say(s){ if(s!==sayLast){ sayLast=s; var el=document.getElementById('say'); if(el) el.textContent=s; } }
 
@@ -942,7 +963,7 @@ function titles(t,s,col){ var y=topY(), mw=LW-SAFE.l-SAFE.r-24, cx0=Math.round((
 function btnW(labels){ var w=0; labels.forEach(function(s){ w=Math.max(w,PF.width(s)); }); return Math.max(Math.round(LW*0.2),Math.round((w+14)*1.16)); }
 function sideX(w){ return freeSide()==='left'?SAFE.l+Math.max(8,Math.round(LW*0.04)):LW-SAFE.r-Math.max(8,Math.round(LW*0.04))-w; }
 /* a column of buttons on the free side, vertically centred on y0 */
-function column(items,y0){ var w=btnW(items.map(function(b){ return b[1]; })), h=BH, gap=10, y=Math.round(y0-(items.length*(h+gap)-gap)/2), x=sideX(w);
+function column(items,y0,x0){ var w=btnW(items.map(function(b){ return b[1]; })), h=BH, gap=10, y=Math.round(y0-(items.length*(h+gap)-gap)/2), x=x0===undefined?sideX(w):x0;
   items.forEach(function(b){ button(b[0],b[1],x,y,w,h,b[2]||'',Math.floor(clock*2)%2===0); y+=h+gap; }); }
 function nextBtn(id,label){ var w=btnW([label]); button(id,label,sideX(w),Math.round(LH*0.64),w,BH,'primary',Math.floor(scrT*2)%2===0); }
 function ringAt(){ return freeSide()==='left'?[Math.round(LW*0.13),Math.round(LH*0.42)]:[Math.round(LW*0.87),Math.round(LH*0.42)]; }
@@ -963,7 +984,7 @@ function sTitle(){ sky(DT,0.4); var y=Math.round(LH*0.3), cx0=freeSide()==='left
   text(L('version')+' '+VERSION,freeSide()==='left'?LW-SAFE.r-8:SAFE.l+8,LH-SAFE.b-12,P.soft,freeSide()==='left'?'right':'left');   // for telling uploads apart
   var sy=Math.round(LH*0.62+Math.sin(clock*1.3)*LH*0.08); drawShip(cx0-40,sy,clock,false);
   for(var i=0;i<3;i++){ var bx=cx0-20+((clock*90+i*40)%120); R(P.bullet,bx,sy,4,1); light(bx,sy,6*K,P.glowB,0.45); }
-  column([['play',L('play'),'primary'],['recal',L('recal')],['howto',L('howto')],['lang',L('lang')],['sfx',L(Sfx.on()?'sfx_on':'sfx_off')]],Math.round(LH*0.47));
+  column([['play',L('play'),'primary'],['howto',L('howto')],['lang',L('lang')],['sfx',L(Sfx.on()?'sfx_on':'sfx_off')]],Math.round(LH*0.47));
   say('Sonaroids. '+L('play')); }
 function sSound(){ sky(DT,0.3); titles(L(direct?'volume_direct':'volume'),L('volume_s')); soundVolume(scrT); nextBtn('next',L('next')); stepSquares('sound'); }
 function sPhone(){ sky(DT,0.3); var m=handSide()==='left';
@@ -983,12 +1004,23 @@ function sAway(){ sky(DT,0.3); var m=handSide()==='left', aw=Math.min(1,Math.max
   stepSquares('away'); }
 function sWave(){ sky(DT,0.3); poolFill(1); var m=handSide()==='left', f=handFrac(), live=f!==null;
   if(scrT>=WAVE_PAUSE){ var e=Tune.step(T,DT,Sonar.state(),true,Sonar.shift); if(e) Logs.ev('подстройка',e); }
-  if(T.ok&&!caught){ caught=true; Sfx.play('ok'); store.set('sonaroids_seen','1'); }
+  if(T.ok&&!caught){ caught=true; caughtT=scrT; Sfx.play('ok'); store.set('sonaroids_seen','1'); }
+  if(caught&&scrT-caughtT>=CAUGHT_SHOW){ sTry(); return; }
   picture(function(){ return scene('wave',scrT,live?f:waveH(scrT),0,scrT>WAVE_PAUSE,clock); },m);
   var st=scrT<WAVE_PAUSE?'wait':caught?'ok':'catch', dur=T.buf.length?T.buf[T.buf.length-1].t-T.buf[0].t:0;
   titles(L('wave_t'),caught?L('wave_ok'):L('wave_s'));
   ringUI(st==='wait'?scrT/WAVE_PAUSE:st==='ok'?1:Math.min(0.95,dur/5.2),st);
-  if(caught){ var w=btnW([L('start')]); button('start',L('start'),sideX(w),Math.round(LH*0.64),w,BH,'primary',Math.floor(scrT*2)%2===0); }
+  stepSquares('wave'); }
+/* v0.17: once the range is caught the table picture goes and the real ship at game size follows the palm —
+   the player sees at once whether the calibration came out right. "Play", and under it "recalibrate" (the empty room anew, then wave) */
+var CAUGHT_SHOW=1.0, caughtT=0;
+function followShip(){ var f=handFrac(); if(f!==null) lastHand=f;
+  var ty=(Core.FH-Core.MARGIN-(lastHand===null?0.5:lastHand)*(Core.FH-2*Core.MARGIN))*K; shipY=shipY===null?ty:shipY+(ty-shipY)*0.3; return f!==null; }
+function sTry(){ followShip(); /* the sky is already drawn by sWave */ drawShip(fx(Core.SHIP_X),shipY,clock,false);
+  titles(L('wave_ok'),L('try_s'));
+  // buttons on the free side, but never over the ship's lane (it flies at the left edge of the field)
+  var items=[['start',L('play'),'primary'],['again',L('recal')]], bw=btnW(items.map(function(q){ return q[1]; })), lane=Math.round(fx(Core.SHIP_X))+34;
+  column(items,Math.round(LH*0.62),freeSide()==='left'?Math.max(sideX(bw),lane):undefined);
   stepSquares('wave'); }
 /* the flight field: rocks, bullets, ship. The core counts in field units (180 high); K turns them into game pixels */
 /* the flight field: rocks, bullets, ship. The core counts in field units (180 high); fx() and K turn them into game pixels.
@@ -1008,7 +1040,8 @@ function field(dt,speed){ sky(dt,speed);
   g.picks.forEach(function(p){ var x=Math.round(fx(p.x)), y=Math.round(p.y*K+Math.sin(clock*3)*2);
     R(P.pick,x-5,y-5,11,11); R(P.bg,x-4,y-4,9,9); blit(ICON[p.type],[P.pick],x-3,y-3); light(x,y,14*K,P.glowP,0.35); });
   if(g.ufo){ var u=g.ufo, big=u.kind==='big', ux=Math.round(fx(u.x)), uy=Math.round(u.y*K);
-    blit(big?UFO_BIG:UFO_SMALL,P.ufo,ux-(big?9:6),uy-(big?4:2));
+    var hurtNow=u.hitT>0&&Math.floor(clock*20)%2===0;                                                  // just hit: it flashes white
+    blit(big?UFO_BIG:UFO_SMALL,hurtNow?[P.text,P.text,P.text,P.text]:P.ufo,ux-(big?9:6),uy-(big?4:2));
     if(Math.floor(clock*6)%2){ R(P.ufo[3],ux-(big?5:3),uy+1,1,1); R(P.ufo[3],ux+(big?4:2),uy+1,1,1); }
     light(ux,uy,(big?22:16)*K,hex(P.ufo[2]).join(','),0.35); }
   g.ebullets.forEach(function(b){ R(P.ebullet,fx(b.x)-1,b.y*K-1,2,2); light(fx(b.x),b.y*K,7*K,hex(P.ebullet).join(','),0.5); });
@@ -1020,8 +1053,7 @@ function field(dt,speed){ sky(dt,speed);
     if(livesT>0){ for(var i=0;i<g.lives;i++) blit(MINI,[P.ship[1],P.ship[2]],sx-2+i*7,sy-14); } }   // lives: shown only for a moment after a hit
   drawParts(dt);
 }
-function sCount(){ countT-=DT; poolFill(2); var f=handFrac(); if(f!==null) lastHand=f;
-  var ty=(Core.FH-Core.MARGIN-(lastHand===null?0.5:lastHand)*(Core.FH-2*Core.MARGIN))*K; shipY=shipY===null?ty:shipY+(ty-shipY)*0.3;
+function sCount(){ countT-=DT; poolFill(2); followShip();
   sky(DT,0.6); drawShip(fx(Core.SHIP_X),shipY,clock,false);
   var n=Math.max(1,Math.ceil(countT)), cx0=Math.round(LW/2), cy0=Math.round(LH/2);
   ring(cx0,cy0,13,1-(countT-Math.floor(countT)),P.band); text(String(n),cx0,cy0-3,P.text,'center'); say(String(n));
@@ -1046,6 +1078,7 @@ function react(){ g.events.forEach(function(k){
   if(k==='fire'){ if(Math.random()<0.5) Sfx.play('fire'); } else if(k!=='crash') Sfx.play(k); });
   (g.gone||[]).forEach(function(r){ burst(fx(r.x),r.y*K,8+Math.round(r.r*K),P.rock.slice(2).concat([P.flame[1]]),50*K); delete rockSpr[r.id]; shake=Math.max(shake,0.08+r.r*0.004); });
   (g.fx||[]).forEach(function(f){ if(f.ufo){ burst(fx(f.x),f.y*K,40,P.ufo,90*K); shake=0.35; } else if(f.pick) burst(fx(f.x),f.y*K,14,[P.pick,P.text],50*K); });
+  if(g.events.indexOf('ufo_hit')>=0&&g.ufo){ burst(fx(g.ufo.x),g.ufo.y*K,14,[P.text].concat(P.ufo.slice(1)),60*K); shake=Math.max(shake,0.12); }
   if(g.events.indexOf('shield')>=0) burst(fx(g.ship.x)+6,g.ship.y*K,20,[P.pick,P.text],60*K);
   if(g.events.indexOf('hit')>=0||g.events.indexOf('over')>=0){ flash=0.25; shake=0.4; livesT=1.8; burst(fx(g.ship.x)+6,g.ship.y*K,26,P.ship.concat(P.flame),70*K); }
 }
@@ -1064,8 +1097,8 @@ function startPrepare(){
   prep={res:null,doneT:0}; acoustic=false;
   Sonar.prepare(function(stage){ if(stage==='room'){ var I=Sonar.info();
       Logs.setupStart({kind:'подготовка',cal:I.cal,autocenter:true,tune:'waves',asym:Tune.ASYM,field_auto:true,field_mm:+store.get('sonaroids_field','100')||100,
-        chan:I.chan,probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,prom:null,started:new Date().toISOString(),app:'sonaroids'}); } })
-  .then(function(r){ prep.res=r; prep.doneT=scrT; if(r.ok){ acoustic=true; handSaved=Sonar.chan(); store.set('sonaroids_hand',handSaved); } })
+        chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,prom:null,started:new Date().toISOString(),app:'sonaroids'}); } })
+  .then(function(r){ prep.res=r; prep.doneT=scrT; if(r.ok){ acoustic=true; handSaved=handSide(); store.set('sonaroids_hand',handSaved); } })
   .catch(function(){ prep.res={ok:false,why:'error'}; });
 }
 /* make sure the microphone works before going on; if the phone took it away (the app was in the background), open it again —
@@ -1078,13 +1111,13 @@ function toAway(){ prep=null; go('away'); }
 function toWave(){ T=Tune.create(+store.get('sonaroids_field','100')||100,true); caught=false; go('wave'); }
 function pauseGame(){ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; go('paused'); } }
 function startCount(){ if(resumeAfterPrep&&g&&g.state==='play'){ resumeAfterPrep=false; countT=3; go('count-resume'); return; }
-  resumeAfterPrep=false; countT=3; shipY=null; lastHand=handFrac(); Logs.ev('отсчёт',{field:+T.field.toFixed(1),auto:T.auto}); store.set('sonaroids_field',Math.round(T.field)); go('count'); }
+  resumeAfterPrep=false; countT=3; if(scr!=='wave') shipY=null; lastHand=handFrac()===null?lastHand:handFrac(); /* from the try-out the ship goes on where it is */ Logs.ev('отсчёт',{field:+T.field.toFixed(1),auto:T.auto}); store.set('sonaroids_field',Math.round(T.field)); go('count'); }
 function startGame(){
   var seed=0; try{ var a=new Uint32Array(1); crypto.getRandomValues(a); seed=a[0]; }catch(e){ seed=Math.floor(Math.random()*4294967296); }
   var y0=shipY===null?null:+(shipY/K).toFixed(3);
   g=Core.create(seed,Core.FH*(LW-SAFE.l)/LH,y0); acc=0; rockSpr={}; parts=[]; livesT=0; var I=Sonar.info();
   Logs.gameStart({core:'rules-1',seed:seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:'frozen',asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
-    chan:I.chan,probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,started:new Date().toISOString(),app:'sonaroids'});
+    chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,started:new Date().toISOString(),app:'sonaroids'});
   Sfx.play('start'); go('play');
 }
 var ACT={
@@ -1154,7 +1187,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:') navigator.service
 if(store.get('sonaroids_seen','')!=='1'){ onboarding=true; go('lang'); } else go('title');
 requestAnimationFrame(loop);
 /* test hooks: headless tests drive the screens through these (harmless in the game) */
-window.__sonaroids={go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR}; },
+window.__sonaroids={go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },
   setBooted:function(v){ booted=v; },
   fake:function(){ booted=true; prep={res:{ok:true},doneT:-9}; T=Tune.create(100,true); T.ok=true; caught=true;          // a stand-in state for layout checks
     g=Core.create(1,Core.FH*(LW-SAFE.l)/LH); for(var i=0;i<300;i++) Core.step(g,0.5); g.state='over'; },state:function(){ return {scr:scr,g:g,T:T,caught:caught,prep:prep,lang:lang}; }};

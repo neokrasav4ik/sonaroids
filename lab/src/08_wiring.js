@@ -10,7 +10,7 @@ function fail(e){ show('home'); el('err').classList.remove('hidden'); el('err').
     if(t-lastT<350&&!(tg&&tg.closest&&tg.closest('button,input,a'))) e.preventDefault(); lastT=t; },{passive:false});
   document.addEventListener('dblclick',stop,{passive:false});
   window.addEventListener('resize',function(){ setTimeout(fitScreen,60); });
-  window.addEventListener('orientationchange',function(){ setTimeout(fitScreen,250); });
+  window.addEventListener('orientationchange',function(){ setTimeout(function(){ handSide(); fitScreen(); },250); });
 })();
 function goFlow(flow){ if(flow==='rec') runRec(); else quickStart(); }
 function viaOrient(flow){ nextFlow=flow; if(window.innerWidth<window.innerHeight) show('orient'); else goFlow(flow); }

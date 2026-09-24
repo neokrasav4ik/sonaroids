@@ -29,6 +29,15 @@ const none=!g.ufo&&g.ufoT<0; g.level=Core.UFO_BIG_LV; let seen=null; for(let i=0
 check('no saucer before level '+Core.UFO_BIG_LV+'; a large one after', none&&seen==='big', 'seen '+seen);
 g.level=Core.UFO_SMALL_LV; g.ufo=null; g.ufoT=0.01; const kinds={}; for(let k=0;k<40;k++){ g.ufo=null; g.ufoT=0.01; g.lives=3; Core.step(g,0.5); if(g.ufo) kinds[g.ufo.kind]=1; }
 check('from level '+Core.UFO_SMALL_LV+' small saucers too', kinds.small&&kinds.big, Object.keys(kinds).join(','));
+// the saucer is a mini-boss (v0.17): the large one takes two hits, none count while it is off screen, and it sidesteps a ship lined up with it
+g=Core.create(11,380); g.spawnT=99; g.pickT=99; g.level=Core.UFO_BIG_LV; g.ufoT=0.01; Core.step(g,0.5);
+const ub=g.ufo; ub.y=Core.FH/2; ub.ty=ub.y; ub.tyT=99; ub.dodgeT=99; g.ship.y=Core.FH/2; g.ship.inv=99; let hitEv=0, dieEv=0, offHit=false;
+for(let i=0;i<60*12&&g.ufo;i++){ const u=g.ufo; u.ty=Core.FH/2; u.tyT=99; u.dodgeT=99; u.fire=99; g.ship.y=Core.FH/2; Core.step(g,null);
+  if(g.events.includes('ufo_hit')){ hitEv++; if(u.x>=g.FW-2) offHit=true; } if(g.events.includes('ufo_die')) dieEv++; }
+check('a large saucer takes two hits, none off screen', hitEv===1&&dieEv===1&&!offHit, `hits ${hitEv}, deaths ${dieEv}`);
+let dodges=0; for(let k=0;k<20;k++){ g=Core.create(100+k,380); g.spawnT=99; g.pickT=99; g.level=Core.UFO_BIG_LV; g.ufoT=0.01; Core.step(g,0.5); g.ship.inv=99;
+  for(let i=0;i<60*3&&g.ufo;i++){ g.ship.y=g.ufo.y; Core.step(g,null); if(g.events.includes('ufo_dodge')){ dodges++; break; } } }
+check('a saucer lined up with the ship usually sidesteps', dodges>=8, dodges+' of 20');
 // the pace
 check('pace: 1 for 15 s, 1.7 at 3 min, 2.2 at 7 min', Core.pace(10)===1&&Math.abs(Core.pace(180)-1.7)<1e-9&&Math.abs(Core.pace(420)-2.2)<1e-9);
 // slow motion is not given while the game is still calm

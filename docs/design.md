@@ -19,6 +19,8 @@ Marks: **agreed** — decided; **trying** — to be decided live on the prototyp
 - Android APK — a thin wrapper around the site. First the mechanics are checked on 2–3 different Android phones with the lab's test recording: speakers and microphones differ, and not all of them handle 18–20 kHz. — agreed
 - No native iPhone app.
 - **Android, first tries on 24 Sep (OnePlus 15 and Redmi, Chrome):** on the OnePlus control is poor already while getting ready. From the logs: the palm's echo relative to the direct signal is ~12 dB weaker than on iPhone (the palm flickers in and out), the fast and absolute parts hardly agree, and after loud game sounds the direct signal lost its steadiness in one game (−20 dB). The microphone does come without processing (the 0.14 log shows it). The Redmi is better, but the palm has to be held further to the side. Next: the lab's labelled recording on both phones, to measure against a known path. — open
+  - Labelled recordings on the OnePlus (24 Sep, 22:27 hand as on iPhone, 22:28 hand further out): the cause is not the microphone but the speaker→microphone path, whose gain drifts 2–3 dB within seconds, while the tail of the direct sound near the phone is strong (−27 dB vs −55 on iPhone). The empty room then looked 20 dB "louder" than it is and the palm sank into it. Since 0.17 the echo is measured against the direct sound's own level and phase (learned only in a quiet empty room): shape agreement 0.73 → 0.99 and −0.05 → 0.93, iPhone unchanged. A still palm is still seen poorly on the OnePlus (its echo is only ~10 dB over the empty room) — next OnePlus logs will tell. — in progress
+  - Redmi: the side came out wrong 9 times out of 10 — its speaker channels do not swap when the phone turns. Since 0.17 the playing side follows the screen's rotation; the sound only picks which speaker plays the probe. — done, to check
 
 ## 3. First screens
 
@@ -34,7 +36,7 @@ Each screen is a picture and one or two lines. A command appears, a pause ring f
 3. **Put the phone down:** screen up, charging port towards the hand you'll play with. The microphone is next to the port, so the phone actually decides the side; the app verifies it acoustically. Buttons move to the free-hand side. — agreed
 4. **Microphone permission** — the system prompt, preceded by one line saying why.
 5. **"Take your hand away"** — 2 seconds: probe level and the empty room.
-6. **"Wave your palm, 5–15 cm above the table"** — the ship follows the hand right away while the game fits the screen to your range. Tutorial and first "wow" at once. — agreed
+6. **"Wave your palm, 5–15 cm above the table"** — the ship follows the hand right away while the game fits the screen to your range. Tutorial and first "wow" at once. — agreed Once the range is caught, the table picture goes and the real ship at game size follows the palm — you see at once whether calibration came out right; next to it "Play" and under it "Recalibrate" (the empty room again, then wave). "Recalibrate" is no longer in the title menu. — agreed 24 Sep, v0.17
 7. The game.
 
 Later launches: steps 5–6 and straight into the game. **Before every new game** ("Again") "take your hand away" (the empty room anew, v0.16) and the wave step come again: the screen is fitted to the range anew; only a range of 5 cm or more counts as waving, and the waving must go on for at least 5 s — the ring fills over that time (v0.10). No tuning on the game-over screen: on 24 Sep an idle wiggle after a game shrank the field from 118 to 66 mm and the ship got twitchy. — agreed 24 Sep
@@ -50,7 +52,7 @@ Later launches: steps 5–6 and straight into the game. **Before every new game*
 - **Levels** count base points (before the height and streak multipliers, which reach ×12): a level every 5000. The large saucer from level 2 (~30 s), the small aiming one from level 4 (~1 min); v0.13. The maintainer asked for saucers earlier: with the bot (v0.9) the first saucer comes at ~0.8 min and a middling bot lasts ~5 min; live games are shorter so far, ~3 min. — agreed 24 Sep
 - **3 lives**, shown only at the moment of a hit — tiny ships above the ship. — trying
 - **"Is the probe heard"** is decided by how loud the probe itself is, not by signal-to-noise: a noisy room must not send the player to "turn up the volume". — agreed 24 Sep
-- **Flying saucer**, as in the original: shoots at the ship; you dodge by height. Large — 200 points, small aiming one — 1000. — agreed
+- **Flying saucer**, as in the original: shoots at the ship; you dodge by height. Large — 200 points, small aiming one — 1000. — agreed Since v0.17 the saucer is a mini-boss, a little harder: it sidesteps when the ship stays level with it (not always, not again right away), moves up and down faster, the large one takes two hits (flashes white after the first), and it cannot be shot off screen. With the bot a saucer lives 5.9 s instead of 3.8. — agreed 24 Sep
 - **No breaks:** a game runs continuously, 5–10 minutes on average. The arm doesn't get tired with the elbow on an armrest. — agreed
 
 ## 5. Modes and leaderboards

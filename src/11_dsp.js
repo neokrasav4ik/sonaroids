@@ -3,7 +3,7 @@ var DSP2=(function(){
   var N=512,C=343,fs,kLo,kHi,kc,ks,M,Pr,Pi,lam,mm,T,gA,gB,G,cosT,sinT;
   var d0,dref,boot,bootN=30,prevH,hist,L=4,prom,noProbe,bgAcc,bgN,bgR,bgI,BG_N=40;
   var Es,hold,present,refr,Q_FLOOR=-28,T_ON=-16,T_INT=-30,HOLD_S=1.5,tauE=0.15,REFR_S=0.7,TAU_BG=2.0,TAU=1.5;
-  var eAvg=0,TE=3,E_FAST=12,ePres=0,why='',rngBuf=[],xBuf=[],centered=false,autoC=false,presN=0,x,fast,cal={k:0.75,o:1,s:0.8},eHold=null,lowN=0,resS=-99,resFloor=null,upN=0,warm=0,absBuf=[],ABS_MED=15,DEADB=5,dirS=null,lostN=0,lost=false;
+  var gN=null,eAvg=0,TE=3,E_FAST=12,ePres=0,why='',rngBuf=[],xBuf=[],centered=false,autoC=false,presN=0,x,fast,cal={k:0.75,o:1,s:0.8},eHold=null,lowN=0,resS=-99,resFloor=null,upN=0,warm=0,absBuf=[],ABS_MED=15,DEADB=5,dirS=null,lostN=0,lost=false;
   function init(sampleRate,parity){
     fs=sampleRate; var df=fs/N; kLo=Math.ceil(18300/df); kHi=Math.floor(20500/df); kc=Math.floor((kLo+kHi)/2);
     ks=[]; for(var k=kLo;k<=kHi;k++) if(parity===undefined||parity==='all'||k%2===parity) ks.push(k);
@@ -13,7 +13,7 @@ var DSP2=(function(){
     for(var q=0;q<M;q++){ var ph=Math.PI*q*q/M; Pr[q]=Math.cos(ph); Pi[q]=Math.sin(ph); }
     cosT=new Float64Array(M*N); sinT=new Float64Array(M*N);
     for(q=0;q<M;q++){ var w=-2*Math.PI*ks[q]/N; for(var n=0;n<N;n++){ cosT[q*N+n]=Math.cos(w*n); sinT[q*N+n]=Math.sin(w*n); } }
-    d0=null; dref=null; boot=[]; prevH=null; hist=[]; prom=null; noProbe=false;
+    d0=null; dref=null; gN=null; boot=[]; prevH=null; hist=[]; prom=null; noProbe=false;
     bgAcc=null; bgN=0; bgR=null; bgI=null; Es=-80; hold=0; present=false; refr=0; x=null; fast=0; eHold=null; ePres=0; why=""; rngBuf=[]; xBuf=[]; centered=false; presN=0; lowN=0; resS=-99; resFloor=null; upN=0; warm=0; absBuf=[]; dirS=null; lostN=0; lost=false;
   }
   function bandSpec(fr){
@@ -37,8 +37,14 @@ var DSP2=(function(){
         noProbe=false; d0=b; dref=bv/boot.length; }
       return null;
     }
+    // с 24.09 ночи: отклик нормируется на прямой сигнал (его усиление и фазу). На Android (OnePlus 15) усиление тракта
+    // «динамик→микрофон» плавает на 2–3 дБ за секунды, а ближний хвост прямого сигнала там сильный (−27 дБ) — пустая комната
+    // давала остаток −10 дБ вместо −30, и ладонь тонула. Усиление учится только в тихой пустой комнате (как уровень пустоты):
+    // рука рядом с телефоном просачивается в прямой отсчёт, и на iPhone иначе портилась высота
+    var vd0=tap(H,d0); if(!gN) gN=[vd0[0],vd0[1]]; else if(!present&&Es<Q_FLOOR){ gN[0]+=0.03*(vd0[0]-gN[0]); gN[1]+=0.03*(vd0[1]-gN[1]); }
+    var gm=gN[0]*gN[0]+gN[1]*gN[1], sq=Math.sqrt(dref), nr=sq*gN[0]/gm, ni=-sq*gN[1]/gm;
     var h=[new Float64Array(G),new Float64Array(G)];
-    for(i=0;i<G;i++){ var v2=tap(H,(d0+gA+i)%T); h[0][i]=v2[0]; h[1][i]=v2[1]; }
+    for(i=0;i<G;i++){ var v2=tap(H,(d0+gA+i)%T); h[0][i]=v2[0]*nr-v2[1]*ni; h[1][i]=v2[0]*ni+v2[1]*nr; }
     // прямой сигнал пропал на 20 дБ и больше целую секунду — звук ушёл в другое устройство
     var vd=tap(H,d0), pd=vd[0]*vd[0]+vd[1]*vd[1]; dirS=(dirS===null)?pd:dirS+0.1*(pd-dirS);
     if(dirS<dref*0.01){ if(++lostN>fs/N) lost=true; } else lostN=0;

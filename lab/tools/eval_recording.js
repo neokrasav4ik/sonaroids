@@ -24,6 +24,6 @@ for(const f of process.argv.slice(2)){
   console.log(`\n== ${f.split('/').pop()} ==  полоса с ${flo} Гц | зонд: выраженность ${inf.prom.toFixed(1)} дБ` + (meta.probe&&meta.probe.gain!==undefined?` | уровень ${(+meta.probe.gain).toFixed(3)}, запас ${meta.probe.snr_db?meta.probe.snr_db.toFixed(1):'—'} дБ`:''));
   console.log(`  калибровка по записи: k=${cal.k.toFixed(2)} o=${cal.o.toFixed(0)} s=${cal.s.toFixed(2)} (согласие ${cal.r.toFixed(2)})`);
   console.log(`  по форме: ${sh.c.toFixed(3)} (сдвиг ${sh.shift>=0?'+':''}${sh.shift.toFixed(2)} с, масштаб ${sh.k.toFixed(2)}), разброс ${sh.med.toFixed(1)} мм | против метки: медиана ${e[e.length>>1].toFixed(1)}, p90 ${e[Math.floor(e.length*.9)].toFixed(0)} мм`);
-  console.log(`  удержание: среднее ${(hd.reduce((a,b)=>a+b)/hd.length).toFixed(0)} мм, дрожь ${sd(hd).toFixed(1)} мм, уход ${(hd[hd.length-1]-hd[0]).toFixed(0)} мм`);
+  console.log(hd.length>1?`  удержание: среднее ${(hd.reduce((a,b)=>a+b)/hd.length).toFixed(0)} мм, дрожь ${sd(hd).toFixed(1)} мм, уход ${(hd[hd.length-1]-hd[0]).toFixed(0)} мм`:'  удержание: руки не видно');
   console.log(`  рука видна: пусто ${pres(0.8,3)} | ставит ${pres(3,5)} | ведёт ${pres(5,11)} | держит ${pres(11,14)} | убрана ${pres(14.5,16)} | входы ${o.filter(r=>r.started).map(r=>r.t.toFixed(2)).join(',')} | уходы ${o.filter((r,i)=>i&&o[i-1].present&&!r.present).map(r=>r.t.toFixed(2)).join(',')}`);
 }

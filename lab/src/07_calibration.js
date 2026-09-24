@@ -5,7 +5,7 @@
    Пошаговая калибровка «низко — высоко — покачай» убрана: по ней чувствительность менялась от раза к разу в 1,7 раза. ── */
 var PHYS_CAL={k:1.17,o:100-1.17*110,s:0.9}, curCal=PHYS_CAL, calLive=false;
 function median(a){ var b=a.slice().sort(function(x,y){return x-y;}); return b.length?b[b.length>>1]:NaN; }
-function side(){ return chan==='left'?'слева':'справа'; }
+function side(){ return hand==='left'?'слева':'справа'; }
 function waitReady(){ return new Promise(function(r){ (function chk(){ var i=DSP2.info(); if(i.noProbe) return r('noprobe'); if(i.ready) return r('ok'); setTimeout(chk,60); })(); }); }
 var CS={step:'quick',busy:false,rs:null};
 function calText(step,title,sub,btn){ el('calStep').textContent=step; el('calT').textContent=title; el('calS').textContent=sub;

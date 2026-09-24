@@ -7,7 +7,7 @@ function logStart(){
   var cap=LOG_SEC*fs;
   if(!LOG||!LOG.pcm||LOG.pcm.length!==cap) LOG={pcm:new Int16Array(cap)};
   LOG.on=true; LOG.f=0; LOG.clip=0; LOG.gaps=0; LOG.dsp=[]; LOG.ren=[]; LOG.ev=[]; LOG.t0=performance.now();
-  LOG.meta0={cal:curCal,cal_now:DSP2.info().cal,autocenter:true,tune:'waves',asym:ASYM,field_auto:gAutoField,field_mm:gSpan,diff:gDiff,span:gSpan,sfx:{on:gSfxOn,vol:sfxVol},chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,f_lo:F_LO,
+  LOG.meta0={cal:curCal,cal_now:DSP2.info().cal,autocenter:true,tune:'waves',asym:ASYM,field_auto:gAutoField,field_mm:gSpan,diff:gDiff,span:gSpan,sfx:{on:gSfxOn,vol:sfxVol},chan:chan,hand:hand,probe_gain:PROBE_G,probe_snr:PROBE_SNR,f_lo:F_LO,
     W:Math.round(G?G.W:0),H:Math.round(G?G.H:0),prom:DSP2.info().prom,started:new Date().toISOString()};
 }
 function logFrame(fr,r,gap){
@@ -78,7 +78,7 @@ function slogStart(kind){
   var cap=SLOG_SEC*fs;
   if(!SLOG||!SLOG.pcm||SLOG.pcm.length!==cap) SLOG={pcm:new Int16Array(cap)};
   var S=SLOG; S.on=true; S.f=0; S.clip=0; S.gaps=0; S.dsp=[]; S.ev=[]; S.pres=null; S.kind=kind;
-  S.meta0={kind:kind,cal:curCal,autocenter:true,tune:'waves',asym:ASYM,field_auto:gAutoField,field_mm:gSpan,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,f_lo:F_LO,prom:null,started:new Date().toISOString()};
+  S.meta0={kind:kind,cal:curCal,autocenter:true,tune:'waves',asym:ASYM,field_auto:gAutoField,field_mm:gSpan,chan:chan,hand:hand,probe_gain:PROBE_G,probe_snr:PROBE_SNR,f_lo:F_LO,prom:null,started:new Date().toISOString()};
   slogEv('старт: '+kind);
 }
 function slogEv(k,x){ var S=SLOG; if(!S||!S.on) return; S.ev.push(x===undefined?[S.f,k]:[S.f,k,x]); }
@@ -253,7 +253,7 @@ function draw(){
   if(G.state!=='over'&&!blink) ship(c,G.ship.x,G.ship.y,G.ship.r,G.t,G.state==='play');
   if(G.flash>0){ c.fillStyle='rgba(196,80,58,'+(G.flash*1.2).toFixed(2)+')'; c.fillRect(0,0,W,H); }
   // индикатор руки у края — внутри безопасной зоны
-  var m=H*0.08, hf=handFrac(), ix=(chan==='left')?Math.max(16,gSafe.l+12)-3:W-Math.max(16,gSafe.r+12); c.fillStyle='rgba(37,49,57,.9)'; c.fillRect(ix,m,3,H-2*m);
+  var m=H*0.08, hf=handFrac(), ix=(hand==='left')?Math.max(16,gSafe.l+12)-3:W-Math.max(16,gSafe.r+12); c.fillStyle='rgba(37,49,57,.9)'; c.fillRect(ix,m,3,H-2*m);
   if(hf!==null){ c.fillStyle='#D9743F'; c.fillRect(ix-3,H-m-hf*(H-2*m)-4,9,8); }
   if(AT.ok&&(G.state==='wait'||G.state==='over')){ var r2=tunePick(AT.buf); if(r2){ c.fillStyle='#6FAE7E';     // пойманный диапазон — две зелёные отметки у индикатора
     [r2.lo,r2.hi].forEach(function(v){ var f=fracOf(v); c.fillRect(ix-7,H-m-f*(H-2*m)-1,17,2); }); } }

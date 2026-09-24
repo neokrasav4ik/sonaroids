@@ -12,4 +12,5 @@ echo; echo "== wave tuning on a synthetic palm =="; node tests/test_tune.js
 echo; echo "== is the probe heard: muted vs noisy =="; node tests/test_quiet.js
 echo; echo "== strings and font ==";               node tests/test_text.js
 echo; echo "== screens fit, all sizes (Chromium) =="; node tests/screens.js
+echo; echo "== which end of the phone the hand plays at (Chromium) =="; node tests/side.js
 echo; echo "== the whole game, synthetic microphone (Chromium) =="; node tests/flow.js

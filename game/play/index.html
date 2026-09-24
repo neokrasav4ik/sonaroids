@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='0.17';
+var VERSION='0.18';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -70,7 +70,7 @@ var DSP2=(function(){
   var N=512,C=343,fs,kLo,kHi,kc,ks,M,Pr,Pi,lam,mm,T,gA,gB,G,cosT,sinT;
   var d0,dref,boot,bootN=30,prevH,hist,L=4,prom,noProbe,bgAcc,bgN,bgR,bgI,BG_N=40;
   var Es,hold,present,refr,Q_FLOOR=-28,T_ON=-16,T_INT=-30,HOLD_S=1.5,tauE=0.15,REFR_S=0.7,TAU_BG=2.0,TAU=1.5;
-  var gN=null,eAvg=0,TE=3,E_FAST=12,ePres=0,why='',rngBuf=[],xBuf=[],centered=false,autoC=false,presN=0,x,fast,cal={k:0.75,o:1,s:0.8},eHold=null,lowN=0,resS=-99,resFloor=null,upN=0,warm=0,absBuf=[],ABS_MED=15,DEADB=5,dirS=null,lostN=0,lost=false;
+  var gN=null,drops=0,moveN=0,scanWait=0,relocks=0,eAvg=0,TE=3,E_FAST=12,ePres=0,why='',rngBuf=[],xBuf=[],centered=false,autoC=false,presN=0,x,fast,cal={k:0.75,o:1,s:0.8},eHold=null,lowN=0,resS=-99,resFloor=null,upN=0,warm=0,absBuf=[],ABS_MED=15,DEADB=5,dirS=null,lostN=0,lost=false;
   function init(sampleRate,parity){
     fs=sampleRate; var df=fs/N; kLo=Math.ceil(18300/df); kHi=Math.floor(20500/df); kc=Math.floor((kLo+kHi)/2);
     ks=[]; for(var k=kLo;k<=kHi;k++) if(parity===undefined||parity==='all'||k%2===parity) ks.push(k);
@@ -80,7 +80,7 @@ var DSP2=(function(){
     for(var q=0;q<M;q++){ var ph=Math.PI*q*q/M; Pr[q]=Math.cos(ph); Pi[q]=Math.sin(ph); }
     cosT=new Float64Array(M*N); sinT=new Float64Array(M*N);
     for(q=0;q<M;q++){ var w=-2*Math.PI*ks[q]/N; for(var n=0;n<N;n++){ cosT[q*N+n]=Math.cos(w*n); sinT[q*N+n]=Math.sin(w*n); } }
-    d0=null; dref=null; gN=null; boot=[]; prevH=null; hist=[]; prom=null; noProbe=false;
+    d0=null; dref=null; gN=null; drops=0; moveN=0; scanWait=0; relocks=0; boot=[]; prevH=null; hist=[]; prom=null; noProbe=false;
     bgAcc=null; bgN=0; bgR=null; bgI=null; Es=-80; hold=0; present=false; refr=0; x=null; fast=0; eHold=null; ePres=0; why=""; rngBuf=[]; xBuf=[]; centered=false; presN=0; lowN=0; resS=-99; resFloor=null; upN=0; warm=0; absBuf=[]; dirS=null; lostN=0; lost=false;
   }
   function bandSpec(fr){
@@ -92,6 +92,10 @@ var DSP2=(function(){
   function tap(H,n){ var sr=0,si=0; for(var q=0;q<M;q++){ var a=2*Math.PI*(ks[q]-kc)*n/N, c=Math.cos(a), s=Math.sin(a);
     sr+=H[0][q]*c-H[1][q]*s; si+=H[0][q]*s+H[1][q]*c; } return [sr/N,si/N]; }
   function frame(fr){
+    /* провал входа: Android вставляет тишину (ровные нули). Такой кадр — не звук комнаты: пропускаю и начинаю разности заново,
+       иначе скачок на его краях выглядит как движение руки */
+    var zr=0; for(var zi=0;zi<fr.length;zi++){ if(fr[zi]===0){ if(++zr>=48) break; } else zr=0; }
+    if(zr>=48&&d0!==null){ prevH=null; hist=[]; drops++; return null; }
     var H=bandSpec(fr),i,n;
     if(d0===null){                                     // первые кадры: слышен ли зонд, где прямой сигнал
       var mags=new Float64Array(T); for(n=0;n<T;n++){ var v=tap(H,n); mags[n]=v[0]*v[0]+v[1]*v[1]; }
@@ -115,6 +119,12 @@ var DSP2=(function(){
     // прямой сигнал пропал на 20 дБ и больше целую секунду — звук ушёл в другое устройство
     var vd=tap(H,d0), pd=vd[0]*vd[0]+vd[1]*vd[1]; dirS=(dirS===null)?pd:dirS+0.1*(pd-dirS);
     if(dirS<dref*0.01){ if(++lostN>fs/N) lost=true; } else lostN=0;
+    // прямой сигнал «переехал» (с 24.09 ночи): Android иногда вставляет во вход кусок тишины (запись OnePlus 23:40 — 1920 нулей),
+    // и весь отклик сдвигается по задержке на столько же отсчётов по кругу. Комната та же — надо лишь заново найти прямой сигнал.
+    // Упал ниже −10 дБ на ~0,1 с — ищу пик по всем задержкам (не чаще раза в 0,5 с); если он почти прежней силы — перехожу туда
+    if(dirS<dref*0.1){ if(++moveN>=8&&--scanWait<=0){ scanWait=Math.round(0.5*fs/N); var bb=0,bp=0; for(n=0;n<T;n++){ var vs=tap(H,n), ps=vs[0]*vs[0]+vs[1]*vs[1]; if(ps>bp){ bp=ps; bb=n; } }
+        if(bp>dref*0.25&&bb!==d0){ var vn=tap(H,bb); if(gN) gN=[vn[0],vn[1]]; d0=bb; dirS=bp; moveN=0; relocks++; prevH=null; hist=[]; lostN=0; return null; }   /* сдвиг поворачивает и фазу прямого — усиление берётся заново */ } }
+    else { moveN=0; scanWait=0; }
     if(!prevH){ prevH=h; return null; }
     var h2=[new Float64Array(G),new Float64Array(G)];
     for(i=0;i<G;i++){ h2[0][i]=0.5*(h[0][i]+prevH[0][i]); h2[1][i]=0.5*(h[1][i]+prevH[1][i]); }
@@ -199,7 +209,7 @@ var DSP2=(function(){
   return {init:init,frame:frame,recenter:recenter,shift:shift,
     setCal:function(c){ cal.k=c.k; cal.o=c.o; cal.s=c.s; },
     set:function(k,v){ if(k==='tint') T_INT=v; if(k==='tau') TAU=v; if(k==='absmed') ABS_MED=Math.max(1,Math.round(v)); if(k==='deadband') DEADB=Math.max(0,v); if(k==='autocenter') autoC=!!v; },
-    info:function(){ return {d0:d0,prom:prom,noProbe:noProbe,lost:lost,ready:bgR!==null,mm:mm,centered:centered,cal:{k:cal.k,o:cal.o,s:cal.s}}; }};
+    info:function(){ return {relocks:relocks,drops:drops,d0:d0,prom:prom,noProbe:noProbe,lost:lost,ready:bgR!==null,mm:mm,centered:centered,cal:{k:cal.k,o:cal.o,s:cal.s}}; }};
 })();
 if(typeof module!=='undefined') module.exports=DSP2;
 /* ── WAVE TUNING (from the lab, 24 Sep): while the game waits for the start, the player waves the palm in the 5–15 cm range
@@ -632,10 +642,10 @@ var STR={};
 STR.en={
   title:'SONAROIDS', early:'EARLY VERSION', version:'VERSION', play:'PLAY', recal:'RECALIBRATE', howto:'HOW TO PLAY', lang:'РУССКИЙ', sfx_on:'SOUNDS: ON', sfx_off:'SOUNDS: OFF',
   next:'NEXT', volume:'SET THE VOLUME TO 30–70%', volume_s:'WITH THE VOLUME BUTTONS', volume_direct:'THE VOLUME IS TOO LOW — TURN IT UP TO 30–70%',
-  phone_t:'PUT THE PHONE DOWN', phone_s:'SCREEN UP, CHARGING PORT TOWARDS YOUR PLAYING HAND', port:'PORT',
+  phone_t:'PUT THE PHONE DOWN', phone_s_cam:'SCREEN UP, FRONT CAMERA TOWARDS YOUR PLAYING HAND', cam:'CAMERA', phone_s:'SCREEN UP, CHARGING PORT TOWARDS YOUR PLAYING HAND', port:'PORT',
   mic_t:'THE GAME HEARS YOUR HAND', mic_s:'IT LISTENS TO THE ECHO OF AN INAUDIBLE SOUND', allow:'ALLOW THE MICROPHONE',
   away_t:'TAKE YOUR HAND AWAY', away_s:'LISTENING TO THE EMPTY ROOM', away_ok:'THE ROOM IS QUIET',
-  wave_t:'WAVE YOUR PALM', wave_s:'UP AND DOWN, 5–15 CM ABOVE THE TABLE', wave_ok:'GOT YOUR RANGE', try_s:'THE SHIP FOLLOWS YOUR PALM — TRY THE TOP AND THE BOTTOM', cm:'CM',
+  wave_t:'WAVE YOUR PALM', wave_s:'UP AND DOWN, 5–15 CM ABOVE THE TABLE', wave_ok:'GOT YOUR RANGE', other_t:'WAVE ON THE OTHER SIDE', other_s:'THE PHONE DOES NOT HEAR THE PALM ON THIS SIDE', try_s:'THE SHIP FOLLOWS YOUR PALM — TRY THE TOP AND THE BOTTOM', cm:'CM',
   ring_wait:'GET READY', ring_listen:'LISTENING', ring_catch:'CATCHING THE RANGE', ring_ok:'DONE',
   start:'START', over:'GAME OVER', best:'BEST', again:'AGAIN', menu:'MENU', logs:'LOGS',
   lost_t:'NO PROBE SOUND', lost_s:'SOUND WENT TO ANOTHER DEVICE. UNPLUG HEADPHONES OR BLUETOOTH', retry:'TRY AGAIN',
@@ -646,10 +656,10 @@ STR.en={
 STR.ru={
   title:'SONAROIDS', early:'РАННЯЯ ВЕРСИЯ', version:'ВЕРСИЯ', play:'ИГРАТЬ', recal:'ПЕРЕКАЛИБРОВАТЬ', howto:'ИНСТРУКЦИЯ', lang:'ENGLISH', sfx_on:'ЗВУКИ: ВКЛ', sfx_off:'ЗВУКИ: ВЫКЛ',
   next:'ДАЛЬШЕ', volume:'УСТАНОВИ ГРОМКОСТЬ НА 30–70%', volume_s:'КНОПКАМИ ГРОМКОСТИ', volume_direct:'ГРОМКОСТЬ СЛИШКОМ ТИХАЯ — ПРИБАВЬ ДО 30–70%',
-  phone_t:'ПОЛОЖИ ТЕЛЕФОН', phone_s:'ЭКРАНОМ ВВЕРХ, РАЗЪЁМОМ К РУКЕ, КОТОРОЙ ИГРАЕШЬ', port:'РАЗЪЁМ',
+  phone_t:'ПОЛОЖИ ТЕЛЕФОН', phone_s_cam:'ЭКРАНОМ ВВЕРХ, ФРОНТАЛЬНОЙ КАМЕРОЙ К РУКЕ, КОТОРОЙ ИГРАЕШЬ', cam:'КАМЕРА', phone_s:'ЭКРАНОМ ВВЕРХ, РАЗЪЁМОМ К РУКЕ, КОТОРОЙ ИГРАЕШЬ', port:'РАЗЪЁМ',
   mic_t:'ИГРА СЛЫШИТ РУКУ', mic_s:'ОНА СЛУШАЕТ ЭХО НЕСЛЫШНОГО ЗВУКА', allow:'РАЗРЕШИТЬ МИКРОФОН',
   away_t:'УБЕРИ РУКУ', away_s:'СЛУШАЮ ПУСТУЮ КОМНАТУ', away_ok:'КОМНАТА ТИХАЯ',
-  wave_t:'ПОМАШИ ЛАДОНЬЮ', wave_s:'ВВЕРХ-ВНИЗ, 5–15 СМ НАД СТОЛОМ', wave_ok:'РАЗМАХ ПОЙМАН', try_s:'КОРАБЛЬ ИДЁТ ЗА ЛАДОНЬЮ — ПРОВЕРЬ ВЕРХ И НИЗ', cm:'СМ',
+  wave_t:'ПОМАШИ ЛАДОНЬЮ', wave_s:'ВВЕРХ-ВНИЗ, 5–15 СМ НАД СТОЛОМ', wave_ok:'РАЗМАХ ПОЙМАН', other_t:'ПОМАШИ С ДРУГОЙ СТОРОНЫ', other_s:'С ЭТОЙ СТОРОНЫ ТЕЛЕФОН НЕ СЛЫШИТ ЛАДОНЬ', try_s:'КОРАБЛЬ ИДЁТ ЗА ЛАДОНЬЮ — ПРОВЕРЬ ВЕРХ И НИЗ', cm:'СМ',
   ring_wait:'ПРИГОТОВЬСЯ', ring_listen:'СЛУШАЮ', ring_catch:'ЛОВЛЮ РАЗМАХ', ring_ok:'ГОТОВО',
   start:'СТАРТ', over:'ИГРА ОКОНЧЕНА', best:'РЕКОРД', again:'ЕЩЁ РАЗ', menu:'МЕНЮ', logs:'ЖУРНАЛЫ',
   lost_t:'ЗОНДА НЕ СЛЫШНО', lost_s:'ЗВУК УШЁЛ В ДРУГОЕ УСТРОЙСТВО. ОТКЛЮЧИ НАУШНИКИ ИЛИ BLUETOOTH', retry:'ЕЩЁ РАЗ',
@@ -856,14 +866,15 @@ function handIso(Xa,Yb,hz,o,cm,al){                                    // Xa —
   box(Xa+0.8*cm,Xb-0.8*cm,Yb+11*cm,Yb+17*cm,hz-3.4*cm,hz-0.4*cm,o,HS.t,HS.x,HS.y,al*0.55);      // fading further on
 }
 var PSC=1.6;
-function phoneIso(o,cm,portOn){
+function phoneIso(o,cm,portOn,cam){                                          // cam: the hand's end is the front-camera end (v0.17)
   var X0=-7.5*cm*PSC,X1=7.5*cm*PSC,Y0=-3.6*cm*PSC,Y1=3.6*cm*PSC,Zp=1.0*cm, q;
   box(X0,X1,Y0,Y1,0,Zp,o,P.rock[2],P.rock[1],P.rock[0]);
   polyFill([iso(X0+0.5*cm,Y0+0.45*cm,Zp,o),iso(X1-0.5*cm,Y0+0.45*cm,Zp,o),iso(X1-0.5*cm,Y1-0.45*cm,Zp,o),iso(X0+0.5*cm,Y1-0.45*cm,Zp,o)],P.bg);
   for(var g=0;g<2;g++){ var a0=iso(X0+(2.2+g*1.3)*cm,Y1-0.8*cm,Zp,o), a1=iso(X0+(3.6+g*1.3)*cm,Y0+0.8*cm,Zp,o);
     for(q=0;q<=1;q+=0.06) if(bay(Math.round(a0[0]+(a1[0]-a0[0])*q),Math.round(a0[1]+(a1[1]-a0[1])*q))<0.5) R(P.neb[1],a0[0]+(a1[0]-a0[0])*q,a0[1]+(a1[1]-a0[1])*q,1,1); }
-  var pa=iso(X1,-0.9*cm,Zp,o), pb=iso(X1,0.9*cm,Zp,o), port=iso(X1,0,Zp,o); for(q=0;q<=1;q+=0.1) R(portOn?P.pick:P.rock[3],pa[0]+(pb[0]-pa[0])*q,pa[1]+(pb[1]-pa[1])*q,1,1);
-  return {X0:X0,X1:X1,Y0:Y0,Y1:Y1,Zp:Zp,port:port};
+  var PX=cam?X0:X1, pa=iso(PX,-0.9*cm,Zp,o), pb=iso(PX,0.9*cm,Zp,o), port=iso(PX,0,Zp,o); for(q=0;q<=1;q+=0.1) R(!cam&&portOn?P.pick:P.rock[3],pa[0]+(pb[0]-pa[0])*q,pa[1]+(pb[1]-pa[1])*q,1,1);
+  var camP=iso(X1-0.25*cm,0,Zp,o); if(cam){ R(portOn?P.pick:P.rock[0],camP[0]-1,camP[1]-1,3,3); R(P.bg,camP[0],camP[1],1,1); }       // the front camera: a dot at the hand's end
+  return {X0:X0,X1:X1,Y0:Y0,Y1:Y1,Zp:Zp,port:cam?camP:port,cam:!!cam};
 }
 /* the tiny game on the drawn phone's screen. It is drawn after the picture is mirrored: a turned-over phone turns its screen too,
    so the ship stays on the player's left and flies right */
@@ -887,7 +898,7 @@ function scene(id,t,f,away,waves,T){
     for(var yy=0;yy<LH;yy+=3) for(var xx=(yy%6?2:0);xx<LW;xx+=4){ var q0=unIso(xx,yy,o); if(q0[0]>TX0&&q0[0]<TX&&q0[1]>TY0&&q0[1]<TY1) R(P.neb[2],xx,yy,1,1); }
     lx=keep; }
   lx.drawImage(tableC,0,0);
-  var ph=phoneIso(o,cm,id==='phone'&&Math.floor(T*3)%2===0);
+  var ph=phoneIso(o,cm,id==='phone'&&Math.floor(T*3)%2===0,typeof camEnd==='function'&&camEnd());
   var HSC=0.85, hw=8.5*cm*HSC, Xa=ph.X1+1.2*cm, Yb=5*cm, al=1, Z5=5*cm, Z15=15*cm;
   var hz=Z5+(Z15-Z5)*f+2.4*cm*HSC, dy=0;
   if(id==='phone') dy=(1-ease(t/1.8))*28*cm;
@@ -906,7 +917,7 @@ function scene(id,t,f,away,waves,T){
   if(al>0.5&&id!=='phone'){ var d0=iso(Xa+hw,Yb,0,o), d1=iso(Xa+hw,Yb,hz-2.4*cm*HSC,o); dots(d0[0],d1[1],d0[1],P.soft); }
   if(al>0) handIso(Xa,Yb+dy,hz,o,cm*HSC,al);
   labels.screen={ph:ph,o:o,cm:cm,f:f,T:T};
-  if(id==='phone') labels.push({x:ph.port[0]+6,y:ph.port[1]+8,t:'← '+L('port'),c:P.pick,arrow:true});
+  if(id==='phone') labels.push({x:ph.port[0]+6,y:ph.port[1]+8,t:'← '+L(ph.cam?'cam':'port'),c:P.pick,arrow:true});
   return labels;
 }
 /* sound picture: a speaker and the volume scale with 3–7 lit. On the maintainer's iPhone (24 Sep) the probe follows the media volume —
@@ -942,16 +953,27 @@ var prep=null, T=null, caught=false, g=null, acc=0, countT=0, overT=0, shake=0, 
 var lastHand=null, shipY=null, sayLast='', pausedFrom=null, livesT=0, duckT=0;
 function go(s){ scr=s; scrT=0; BTN=[]; }
 
-/* which side the charging port (and so the playing hand) is on: the phone's rotation until the sonar has checked it by sound */
-function portSide(){ var a=null;
+/* ── which side the playing hand is on ──
+   The rotation tells where the charging port is; the phone's end the hand should be at is learned (v0.17, 24 Sep, night):
+   on iPhone it is the port end, on a Redmi the front-camera end — there the palm is not heard by the port at all.
+   handRel: 'port' | 'camera' | '' — kept per device once a wave has been caught. Before that: the louder probe channel says
+   (it pointed at the camera end on the Redmi 9 times of 10), and if the palm is not heard at all while waving, the side flips */
+var handRel=store.get('sonaroids_rel',''), accSide=null, NOHAND_T=6, flipT=-9, seenT=0;
+function portOr(){ var a=null;
   try{ if(screen.orientation&&typeof screen.orientation.angle==='number') a=screen.orientation.angle; }catch(e){}
   if(a===null&&typeof window.orientation==='number') a=window.orientation;
-  if(a===90) return 'right'; if(a===270||a===-90) return 'left'; return handSaved==='left'?'left':'right'; }
-/* v0.17: the rotation decides whenever it is known; the sound only picks the probe's channel. On a Redmi the speaker channels
-   do not swap when the phone turns, so "the louder channel" said the port was on the other side 9 times out of 10 */
-function orientKnown(){ var a=null; try{ if(screen.orientation&&typeof screen.orientation.angle==='number') a=screen.orientation.angle; }catch(e){}
-  if(a===null&&typeof window.orientation==='number') a=window.orientation; return a===90||a===270||a===-90; }
-function handSide(){ return orientKnown()?portSide():acoustic?Sonar.chan():portSide(); }
+  return a===90?'right':(a===270||a===-90)?'left':null; }
+function other(s){ return s==='left'?'right':'left'; }
+function portSide(){ var o=portOr(); return o||(handSaved==='left'?'left':'right'); }
+function handSide(){ var o=portOr();
+  if(o&&handRel) return handRel==='port'?o:other(o);
+  if(acoustic&&accSide) return accSide;
+  return o||(handSaved==='left'?'left':'right'); }
+function camEnd(){ var o=portOr(); return !!o&&handSide()!==o; }          // the hand is at the front-camera end of the phone
+/* the palm has not been heard for NOHAND_T s while waving: offer the other end of the phone */
+function flipSide(){ var o=portOr(), was=handSide();
+  if(o) handRel=(handSide()===o)?'camera':'port'; else accSide=other(handSide());
+  flipT=scrT; seenT=scrT; T=Tune.create(+store.get('sonaroids_field','100')||100,true); Logs.ev('сторона',{from:was,to:handSide(),rel:handRel}); Sfx.play('tap'); }
 function freeSide(){ return handSide()==='right'?'left':'right'; }
 function say(s){ if(s!==sayLast){ sayLast=s; var el=document.getElementById('say'); if(el) el.textContent=s; } }
 
@@ -988,7 +1010,7 @@ function sTitle(){ sky(DT,0.4); var y=Math.round(LH*0.3), cx0=freeSide()==='left
   say('Sonaroids. '+L('play')); }
 function sSound(){ sky(DT,0.3); titles(L(direct?'volume_direct':'volume'),L('volume_s')); soundVolume(scrT); nextBtn('next',L('next')); stepSquares('sound'); }
 function sPhone(){ sky(DT,0.3); var m=handSide()==='left';
-  picture(function(){ return scene('phone',scrT,0.5,0,false,clock); },m); titles(L('phone_t'),L('phone_s'));
+  picture(function(){ return scene('phone',scrT,0.5,0,false,clock); },m); titles(L('phone_t'),L(camEnd()?'phone_s_cam':'phone_s'));
   if(scrT>1.2) nextBtn('next',L('next')); stepSquares('phone'); }
 function sMic(){ sky(DT,0.3); var m=handSide()==='left';
   picture(function(){ return scene('away',scrT,0.5,0,true,clock); },m); titles(L('mic_t'),L('mic_s'));
@@ -1004,11 +1026,14 @@ function sAway(){ sky(DT,0.3); var m=handSide()==='left', aw=Math.min(1,Math.max
   stepSquares('away'); }
 function sWave(){ sky(DT,0.3); poolFill(1); var m=handSide()==='left', f=handFrac(), live=f!==null;
   if(scrT>=WAVE_PAUSE){ var e=Tune.step(T,DT,Sonar.state(),true,Sonar.shift); if(e) Logs.ev('подстройка',e); }
-  if(T.ok&&!caught){ caught=true; caughtT=scrT; Sfx.play('ok'); store.set('sonaroids_seen','1'); }
+  if(T.ok&&!caught){ caught=true; caughtT=scrT; Sfx.play('ok'); store.set('sonaroids_seen','1');
+    if(portOr()&&handRel) store.set('sonaroids_rel',handRel); handSaved=handSide(); store.set('sonaroids_hand',handSaved); }   // this end of the phone works: remember it
+  var stt=Sonar.state(); if((stt&&stt.present)||scrT<WAVE_PAUSE) seenT=Math.max(seenT,scrT);
+  if(!caught&&scrT-seenT>NOHAND_T) flipSide();
   if(caught&&scrT-caughtT>=CAUGHT_SHOW){ sTry(); return; }
   picture(function(){ return scene('wave',scrT,live?f:waveH(scrT),0,scrT>WAVE_PAUSE,clock); },m);
   var st=scrT<WAVE_PAUSE?'wait':caught?'ok':'catch', dur=T.buf.length?T.buf[T.buf.length-1].t-T.buf[0].t:0;
-  titles(L('wave_t'),caught?L('wave_ok'):L('wave_s'));
+  if(scrT-flipT<4&&!caught) titles(L('other_t'),L('other_s'),P.pick); else titles(L('wave_t'),caught?L('wave_ok'):L('wave_s'));
   ringUI(st==='wait'?scrT/WAVE_PAUSE:st==='ok'?1:Math.min(0.95,dur/5.2),st);
   stepSquares('wave'); }
 /* v0.17: once the range is caught the table picture goes and the real ship at game size follows the palm —
@@ -1098,7 +1123,7 @@ function startPrepare(){
   Sonar.prepare(function(stage){ if(stage==='room'){ var I=Sonar.info();
       Logs.setupStart({kind:'подготовка',cal:I.cal,autocenter:true,tune:'waves',asym:Tune.ASYM,field_auto:true,field_mm:+store.get('sonaroids_field','100')||100,
         chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,prom:null,started:new Date().toISOString(),app:'sonaroids'}); } })
-  .then(function(r){ prep.res=r; prep.doneT=scrT; if(r.ok){ acoustic=true; handSaved=handSide(); store.set('sonaroids_hand',handSaved); } })
+  .then(function(r){ prep.res=r; prep.doneT=scrT; if(r.ok){ acoustic=true; accSide=Sonar.chan(); var o=portOr(); if(o&&!handRel) handRel=accSide===o?'port':'camera'; handSaved=handSide(); store.set('sonaroids_hand',handSaved); } })
   .catch(function(){ prep.res={ok:false,why:'error'}; });
 }
 /* make sure the microphone works before going on; if the phone took it away (the app was in the background), open it again —
@@ -1108,7 +1133,7 @@ function ensure(then){ if(booted&&Sonar.healthy()) then(); else { Sonar.restart(
 function boot(then){ Sonar.boot().then(function(){ booted=true; Sfx.play('tap'); then(); })
   .catch(function(e){ errKind=(e&&e.message&&/webaudio|worklet/.test(e.message))?'audio':'mic'; go('nomic'); }); }
 function toAway(){ prep=null; go('away'); }
-function toWave(){ T=Tune.create(+store.get('sonaroids_field','100')||100,true); caught=false; go('wave'); }
+function toWave(){ T=Tune.create(+store.get('sonaroids_field','100')||100,true); caught=false; flipT=-9; seenT=0; go('wave'); }
 function pauseGame(){ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; go('paused'); } }
 function startCount(){ if(resumeAfterPrep&&g&&g.state==='play'){ resumeAfterPrep=false; countT=3; go('count-resume'); return; }
   resumeAfterPrep=false; countT=3; if(scr!=='wave') shipY=null; lastHand=handFrac()===null?lastHand:handFrac(); /* from the try-out the ship goes on where it is */ Logs.ev('отсчёт',{field:+T.field.toFixed(1),auto:T.auto}); store.set('sonaroids_field',Math.round(T.field)); go('count'); }
@@ -1189,6 +1214,7 @@ requestAnimationFrame(loop);
 /* test hooks: headless tests drive the screens through these (harmless in the game) */
 window.__sonaroids={go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },
   setBooted:function(v){ booted=v; },
+  side:function(){ return {hand:handSide(),rel:handRel,cam:camEnd(),stored:store.get('sonaroids_rel',''),say:sayLast}; }, wave:function(){ toWave(); },
   fake:function(){ booted=true; prep={res:{ok:true},doneT:-9}; T=Tune.create(100,true); T.ok=true; caught=true;          // a stand-in state for layout checks
     g=Core.create(1,Core.FH*(LW-SAFE.l)/LH); for(var i=0;i<300;i++) Core.step(g,0.5); g.state='over'; },state:function(){ return {scr:scr,g:g,T:T,caught:caught,prep:prep,lang:lang}; }};
 })();

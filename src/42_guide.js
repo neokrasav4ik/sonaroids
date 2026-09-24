@@ -31,14 +31,15 @@ function handIso(Xa,Yb,hz,o,cm,al){                                    // Xa —
   box(Xa+0.8*cm,Xb-0.8*cm,Yb+11*cm,Yb+17*cm,hz-3.4*cm,hz-0.4*cm,o,HS.t,HS.x,HS.y,al*0.55);      // fading further on
 }
 var PSC=1.6;
-function phoneIso(o,cm,portOn){
+function phoneIso(o,cm,portOn,cam){                                          // cam: the hand's end is the front-camera end (v0.17)
   var X0=-7.5*cm*PSC,X1=7.5*cm*PSC,Y0=-3.6*cm*PSC,Y1=3.6*cm*PSC,Zp=1.0*cm, q;
   box(X0,X1,Y0,Y1,0,Zp,o,P.rock[2],P.rock[1],P.rock[0]);
   polyFill([iso(X0+0.5*cm,Y0+0.45*cm,Zp,o),iso(X1-0.5*cm,Y0+0.45*cm,Zp,o),iso(X1-0.5*cm,Y1-0.45*cm,Zp,o),iso(X0+0.5*cm,Y1-0.45*cm,Zp,o)],P.bg);
   for(var g=0;g<2;g++){ var a0=iso(X0+(2.2+g*1.3)*cm,Y1-0.8*cm,Zp,o), a1=iso(X0+(3.6+g*1.3)*cm,Y0+0.8*cm,Zp,o);
     for(q=0;q<=1;q+=0.06) if(bay(Math.round(a0[0]+(a1[0]-a0[0])*q),Math.round(a0[1]+(a1[1]-a0[1])*q))<0.5) R(P.neb[1],a0[0]+(a1[0]-a0[0])*q,a0[1]+(a1[1]-a0[1])*q,1,1); }
-  var pa=iso(X1,-0.9*cm,Zp,o), pb=iso(X1,0.9*cm,Zp,o), port=iso(X1,0,Zp,o); for(q=0;q<=1;q+=0.1) R(portOn?P.pick:P.rock[3],pa[0]+(pb[0]-pa[0])*q,pa[1]+(pb[1]-pa[1])*q,1,1);
-  return {X0:X0,X1:X1,Y0:Y0,Y1:Y1,Zp:Zp,port:port};
+  var PX=cam?X0:X1, pa=iso(PX,-0.9*cm,Zp,o), pb=iso(PX,0.9*cm,Zp,o), port=iso(PX,0,Zp,o); for(q=0;q<=1;q+=0.1) R(!cam&&portOn?P.pick:P.rock[3],pa[0]+(pb[0]-pa[0])*q,pa[1]+(pb[1]-pa[1])*q,1,1);
+  var camP=iso(X1-0.25*cm,0,Zp,o); if(cam){ R(portOn?P.pick:P.rock[0],camP[0]-1,camP[1]-1,3,3); R(P.bg,camP[0],camP[1],1,1); }       // the front camera: a dot at the hand's end
+  return {X0:X0,X1:X1,Y0:Y0,Y1:Y1,Zp:Zp,port:cam?camP:port,cam:!!cam};
 }
 /* the tiny game on the drawn phone's screen. It is drawn after the picture is mirrored: a turned-over phone turns its screen too,
    so the ship stays on the player's left and flies right */
@@ -62,7 +63,7 @@ function scene(id,t,f,away,waves,T){
     for(var yy=0;yy<LH;yy+=3) for(var xx=(yy%6?2:0);xx<LW;xx+=4){ var q0=unIso(xx,yy,o); if(q0[0]>TX0&&q0[0]<TX&&q0[1]>TY0&&q0[1]<TY1) R(P.neb[2],xx,yy,1,1); }
     lx=keep; }
   lx.drawImage(tableC,0,0);
-  var ph=phoneIso(o,cm,id==='phone'&&Math.floor(T*3)%2===0);
+  var ph=phoneIso(o,cm,id==='phone'&&Math.floor(T*3)%2===0,typeof camEnd==='function'&&camEnd());
   var HSC=0.85, hw=8.5*cm*HSC, Xa=ph.X1+1.2*cm, Yb=5*cm, al=1, Z5=5*cm, Z15=15*cm;
   var hz=Z5+(Z15-Z5)*f+2.4*cm*HSC, dy=0;
   if(id==='phone') dy=(1-ease(t/1.8))*28*cm;
@@ -81,7 +82,7 @@ function scene(id,t,f,away,waves,T){
   if(al>0.5&&id!=='phone'){ var d0=iso(Xa+hw,Yb,0,o), d1=iso(Xa+hw,Yb,hz-2.4*cm*HSC,o); dots(d0[0],d1[1],d0[1],P.soft); }
   if(al>0) handIso(Xa,Yb+dy,hz,o,cm*HSC,al);
   labels.screen={ph:ph,o:o,cm:cm,f:f,T:T};
-  if(id==='phone') labels.push({x:ph.port[0]+6,y:ph.port[1]+8,t:'← '+L('port'),c:P.pick,arrow:true});
+  if(id==='phone') labels.push({x:ph.port[0]+6,y:ph.port[1]+8,t:'← '+L(ph.cam?'cam':'port'),c:P.pick,arrow:true});
   return labels;
 }
 /* sound picture: a speaker and the volume scale with 3–7 lit. On the maintainer's iPhone (24 Sep) the probe follows the media volume —

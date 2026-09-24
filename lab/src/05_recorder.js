@@ -28,7 +28,7 @@ function runRec(){
   var prom;
   pickChannel().then(function(){ return autoLevel(); }).then(function(){
     buildTracks(); mode='rec';
-    el('sub').textContent='Рука будет '+(hand==='left'?'слева':'справа')+' от телефона.';
+    el('sub').textContent='Рука будет '+(hand==='left'?'слева':'справа')+' от телефона'+(orientSide()?(hand===orientSide()?', у разъёма.':', у фронтальной камеры.'):'.');
     return sleep(400).then(function(){ return collect(10); });
   }).then(function(fr){
     prom=promSub(fr,'all');
@@ -87,7 +87,7 @@ function showDone(pk,pr){
   function kv(k,v,c){ var r=document.createElement('div'); r.className='kv'; r.innerHTML='<span>'+k+'</span><b class="'+(c||'')+'">'+v+'</b>'; st.appendChild(r); }
   kv('длительность',(recMeta.samples/fs).toFixed(1)+' с');
   kv('разрывов потока',recMeta.gaps,recMeta.gaps===0?'good':'bad');
-  kv('сторона руки',(hand==='left'?'слева':'справа')+(hand!==chan?' (зонд в другом канале)':''));
+  var os=orientSide(); kv('сторона руки',(hand==='left'?'слева':'справа')+(os?(hand===os?' — у разъёма':' — у фронтальной камеры'):''));
   kv('зонд слышен',pr.toFixed(0)+' дБ',pr>=15?'good':'bad');
   kv('пик входа',pk.toFixed(3),(pk>0.002&&pk<0.98)?'good':'bad');
   kv('размер',(blob.size/1048576).toFixed(1)+' МБ');

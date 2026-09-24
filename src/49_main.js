@@ -14,16 +14,27 @@ var prep=null, T=null, caught=false, g=null, acc=0, countT=0, overT=0, shake=0, 
 var lastHand=null, shipY=null, sayLast='', pausedFrom=null, livesT=0, duckT=0;
 function go(s){ scr=s; scrT=0; BTN=[]; }
 
-/* which side the charging port (and so the playing hand) is on: the phone's rotation until the sonar has checked it by sound */
-function portSide(){ var a=null;
+/* ── which side the playing hand is on ──
+   The rotation tells where the charging port is; the phone's end the hand should be at is learned (v0.17, 24 Sep, night):
+   on iPhone it is the port end, on a Redmi the front-camera end — there the palm is not heard by the port at all.
+   handRel: 'port' | 'camera' | '' — kept per device once a wave has been caught. Before that: the louder probe channel says
+   (it pointed at the camera end on the Redmi 9 times of 10), and if the palm is not heard at all while waving, the side flips */
+var handRel=store.get('sonaroids_rel',''), accSide=null, NOHAND_T=6, flipT=-9, seenT=0;
+function portOr(){ var a=null;
   try{ if(screen.orientation&&typeof screen.orientation.angle==='number') a=screen.orientation.angle; }catch(e){}
   if(a===null&&typeof window.orientation==='number') a=window.orientation;
-  if(a===90) return 'right'; if(a===270||a===-90) return 'left'; return handSaved==='left'?'left':'right'; }
-/* v0.17: the rotation decides whenever it is known; the sound only picks the probe's channel. On a Redmi the speaker channels
-   do not swap when the phone turns, so "the louder channel" said the port was on the other side 9 times out of 10 */
-function orientKnown(){ var a=null; try{ if(screen.orientation&&typeof screen.orientation.angle==='number') a=screen.orientation.angle; }catch(e){}
-  if(a===null&&typeof window.orientation==='number') a=window.orientation; return a===90||a===270||a===-90; }
-function handSide(){ return orientKnown()?portSide():acoustic?Sonar.chan():portSide(); }
+  return a===90?'right':(a===270||a===-90)?'left':null; }
+function other(s){ return s==='left'?'right':'left'; }
+function portSide(){ var o=portOr(); return o||(handSaved==='left'?'left':'right'); }
+function handSide(){ var o=portOr();
+  if(o&&handRel) return handRel==='port'?o:other(o);
+  if(acoustic&&accSide) return accSide;
+  return o||(handSaved==='left'?'left':'right'); }
+function camEnd(){ var o=portOr(); return !!o&&handSide()!==o; }          // the hand is at the front-camera end of the phone
+/* the palm has not been heard for NOHAND_T s while waving: offer the other end of the phone */
+function flipSide(){ var o=portOr(), was=handSide();
+  if(o) handRel=(handSide()===o)?'camera':'port'; else accSide=other(handSide());
+  flipT=scrT; seenT=scrT; T=Tune.create(+store.get('sonaroids_field','100')||100,true); Logs.ev('сторона',{from:was,to:handSide(),rel:handRel}); Sfx.play('tap'); }
 function freeSide(){ return handSide()==='right'?'left':'right'; }
 function say(s){ if(s!==sayLast){ sayLast=s; var el=document.getElementById('say'); if(el) el.textContent=s; } }
 
@@ -60,7 +71,7 @@ function sTitle(){ sky(DT,0.4); var y=Math.round(LH*0.3), cx0=freeSide()==='left
   say('Sonaroids. '+L('play')); }
 function sSound(){ sky(DT,0.3); titles(L(direct?'volume_direct':'volume'),L('volume_s')); soundVolume(scrT); nextBtn('next',L('next')); stepSquares('sound'); }
 function sPhone(){ sky(DT,0.3); var m=handSide()==='left';
-  picture(function(){ return scene('phone',scrT,0.5,0,false,clock); },m); titles(L('phone_t'),L('phone_s'));
+  picture(function(){ return scene('phone',scrT,0.5,0,false,clock); },m); titles(L('phone_t'),L(camEnd()?'phone_s_cam':'phone_s'));
   if(scrT>1.2) nextBtn('next',L('next')); stepSquares('phone'); }
 function sMic(){ sky(DT,0.3); var m=handSide()==='left';
   picture(function(){ return scene('away',scrT,0.5,0,true,clock); },m); titles(L('mic_t'),L('mic_s'));
@@ -76,11 +87,14 @@ function sAway(){ sky(DT,0.3); var m=handSide()==='left', aw=Math.min(1,Math.max
   stepSquares('away'); }
 function sWave(){ sky(DT,0.3); poolFill(1); var m=handSide()==='left', f=handFrac(), live=f!==null;
   if(scrT>=WAVE_PAUSE){ var e=Tune.step(T,DT,Sonar.state(),true,Sonar.shift); if(e) Logs.ev('подстройка',e); }
-  if(T.ok&&!caught){ caught=true; caughtT=scrT; Sfx.play('ok'); store.set('sonaroids_seen','1'); }
+  if(T.ok&&!caught){ caught=true; caughtT=scrT; Sfx.play('ok'); store.set('sonaroids_seen','1');
+    if(portOr()&&handRel) store.set('sonaroids_rel',handRel); handSaved=handSide(); store.set('sonaroids_hand',handSaved); }   // this end of the phone works: remember it
+  var stt=Sonar.state(); if((stt&&stt.present)||scrT<WAVE_PAUSE) seenT=Math.max(seenT,scrT);
+  if(!caught&&scrT-seenT>NOHAND_T) flipSide();
   if(caught&&scrT-caughtT>=CAUGHT_SHOW){ sTry(); return; }
   picture(function(){ return scene('wave',scrT,live?f:waveH(scrT),0,scrT>WAVE_PAUSE,clock); },m);
   var st=scrT<WAVE_PAUSE?'wait':caught?'ok':'catch', dur=T.buf.length?T.buf[T.buf.length-1].t-T.buf[0].t:0;
-  titles(L('wave_t'),caught?L('wave_ok'):L('wave_s'));
+  if(scrT-flipT<4&&!caught) titles(L('other_t'),L('other_s'),P.pick); else titles(L('wave_t'),caught?L('wave_ok'):L('wave_s'));
   ringUI(st==='wait'?scrT/WAVE_PAUSE:st==='ok'?1:Math.min(0.95,dur/5.2),st);
   stepSquares('wave'); }
 /* v0.17: once the range is caught the table picture goes and the real ship at game size follows the palm —
@@ -170,7 +184,7 @@ function startPrepare(){
   Sonar.prepare(function(stage){ if(stage==='room'){ var I=Sonar.info();
       Logs.setupStart({kind:'подготовка',cal:I.cal,autocenter:true,tune:'waves',asym:Tune.ASYM,field_auto:true,field_mm:+store.get('sonaroids_field','100')||100,
         chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,prom:null,started:new Date().toISOString(),app:'sonaroids'}); } })
-  .then(function(r){ prep.res=r; prep.doneT=scrT; if(r.ok){ acoustic=true; handSaved=handSide(); store.set('sonaroids_hand',handSaved); } })
+  .then(function(r){ prep.res=r; prep.doneT=scrT; if(r.ok){ acoustic=true; accSide=Sonar.chan(); var o=portOr(); if(o&&!handRel) handRel=accSide===o?'port':'camera'; handSaved=handSide(); store.set('sonaroids_hand',handSaved); } })
   .catch(function(){ prep.res={ok:false,why:'error'}; });
 }
 /* make sure the microphone works before going on; if the phone took it away (the app was in the background), open it again —
@@ -180,7 +194,7 @@ function ensure(then){ if(booted&&Sonar.healthy()) then(); else { Sonar.restart(
 function boot(then){ Sonar.boot().then(function(){ booted=true; Sfx.play('tap'); then(); })
   .catch(function(e){ errKind=(e&&e.message&&/webaudio|worklet/.test(e.message))?'audio':'mic'; go('nomic'); }); }
 function toAway(){ prep=null; go('away'); }
-function toWave(){ T=Tune.create(+store.get('sonaroids_field','100')||100,true); caught=false; go('wave'); }
+function toWave(){ T=Tune.create(+store.get('sonaroids_field','100')||100,true); caught=false; flipT=-9; seenT=0; go('wave'); }
 function pauseGame(){ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; go('paused'); } }
 function startCount(){ if(resumeAfterPrep&&g&&g.state==='play'){ resumeAfterPrep=false; countT=3; go('count-resume'); return; }
   resumeAfterPrep=false; countT=3; if(scr!=='wave') shipY=null; lastHand=handFrac()===null?lastHand:handFrac(); /* from the try-out the ship goes on where it is */ Logs.ev('отсчёт',{field:+T.field.toFixed(1),auto:T.auto}); store.set('sonaroids_field',Math.round(T.field)); go('count'); }
@@ -261,6 +275,7 @@ requestAnimationFrame(loop);
 /* test hooks: headless tests drive the screens through these (harmless in the game) */
 window.__sonaroids={go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },
   setBooted:function(v){ booted=v; },
+  side:function(){ return {hand:handSide(),rel:handRel,cam:camEnd(),stored:store.get('sonaroids_rel',''),say:sayLast}; }, wave:function(){ toWave(); },
   fake:function(){ booted=true; prep={res:{ok:true},doneT:-9}; T=Tune.create(100,true); T.ok=true; caught=true;          // a stand-in state for layout checks
     g=Core.create(1,Core.FH*(LW-SAFE.l)/LH); for(var i=0;i<300;i++) Core.step(g,0.5); g.state='over'; },state:function(){ return {scr:scr,g:g,T:T,caught:caught,prep:prep,lang:lang}; }};
 })();

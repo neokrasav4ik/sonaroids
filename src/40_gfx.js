@@ -10,8 +10,8 @@ var P={bg:'#1B1A2E', neb:['#2A2440','#3C2B4F','#4A2F4A'], stars:['#5A4C6E','#B89
   ship:['#1F5E52','#2F8F7C','#7FE0C8','#E9FFF8'], flame:['#FF7A7A','#FFB86B','#FFF1C9'], bullet:'#FFB86B', glowB:'255,184,107',
   pick:'#FFE66D', glowP:'255,230,109', ufo:['#4B2F80','#7B55C7','#B48CFF','#EADFFF'], ebullet:'#FF7A7A', text:'#FFF3EA', soft:'#C9A9B6', line:'#4A3A57', band:'#7FE0C8', hit:'#FF7A7A', hand:['#6E4D57','#C99A94','#F3CDBF']};
 var PIXH=215;
-var cv=document.getElementById('cv'), cx=cv.getContext('2d');
-var lc=document.createElement('canvas'), lx=lc.getContext('2d');
+var cv=document.getElementById('cv'), lc=cv, lx=cv.getContext('2d');                          // the visible canvas is the low-resolution one
+var gl=document.getElementById('glow'), gx=gl.getContext('2d'), glowDirty=false, glowSpr={};
 var pc=document.createElement('canvas');                         // pictures that can be mirrored for a left-handed player
 var DPR=1, W=0, H=0, S=1, LW=380, LH=215, K=LH/180, SAFE={l:0,r:0,t:0,b:0}, nebC=null, nebX=0, stars=[], lights=[], parts=[];
 var BAY=[0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5];
@@ -25,9 +25,11 @@ function safeInsets(){ var d=document.createElement('div');
 function resize(){
   DPR=Math.min(3,window.devicePixelRatio||1);
   var w=Math.max(200,window.innerWidth), h=Math.max(150,window.innerHeight);
-  cv.width=Math.round(w*DPR); cv.height=Math.round(h*DPR); W=cv.width; H=cv.height;
+  W=Math.round(w*DPR); H=Math.round(h*DPR);
   S=Math.max(1,Math.round(Math.min(W,H)/PIXH)); LH=Math.ceil(H/S); LW=Math.ceil(W/S); K=LH/180;
-  lc.width=LW; lc.height=LH; pc.width=LW; pc.height=LH; lx.imageSmoothingEnabled=false; cx.imageSmoothingEnabled=false;
+  lc.width=LW; lc.height=LH; pc.width=LW; pc.height=LH; lx.imageSmoothingEnabled=false;
+  var css=function(el){ el.style.width=(LW*S/DPR)+'px'; el.style.height=(LH*S/DPR)+'px'; };
+  css(cv); css(gl); gl.width=LW*2; gl.height=LH*2; glowDirty=false; tableC=null;   // soft light needs no fine detail: half a game pixel, scaled up smoothly
   var si={l:0,r:0,t:0,b:0}; try{ si=safeInsets(); }catch(e){}
   var u=DPR/S; SAFE={l:Math.ceil(si.l*u),r:Math.ceil(si.r*u),t:Math.ceil(si.t*u),b:Math.ceil(si.b*u)};
   makeNebula(); makeStars();
@@ -54,14 +56,16 @@ function sky(dt,speed){                                             // nebula an
   stars.forEach(function(s){ var i=s.z<0.5?0:s.z<0.85?1:2; if(i===2&&Math.sin(t*3+s.tw)>0.6) i=1; lx.fillStyle=P.stars[i]; lx.fillRect(Math.round(s.x),Math.round(s.y),1,1); });
 }
 function light(x,y,rad,rgb,a){ lights.push([x,y,rad,rgb,a]); }
+/* a soft light sprite per colour, made once: drawing it is much cheaper than a new gradient per light per frame */
+function glowSprite(rgb){ var c=glowSpr[rgb]; if(c) return c; c=document.createElement('canvas'); c.width=c.height=64; var x=c.getContext('2d'), g=x.createRadialGradient(32,32,0,32,32,32);
+  g.addColorStop(0,'rgba('+rgb+',1)'); g.addColorStop(1,'rgba('+rgb+',0)'); x.fillStyle=g; x.fillRect(0,0,64,64); return glowSpr[rgb]=c; }
 function present(shake){
-  var ox=0, oy=0; if(shake>0){ ox=Math.round(rnd(-1,1)*shake*6)*S; oy=Math.round(rnd(-1,1)*shake*6)*S; }
-  cx.globalCompositeOperation='source-over'; cx.fillStyle=P.bg; cx.fillRect(0,0,W,H);
-  cx.drawImage(lc,0,0,LW,LH,ox,oy,LW*S,LH*S);
-  cx.globalCompositeOperation='lighter';
-  lights.forEach(function(L){ var x=L[0]*S+ox, y=L[1]*S+oy, r=L[2]*S, g=cx.createRadialGradient(x,y,0,x,y,r);
-    g.addColorStop(0,'rgba('+L[3]+','+L[4]+')'); g.addColorStop(1,'rgba('+L[3]+',0)'); cx.fillStyle=g; cx.fillRect(x-r,y-r,2*r,2*r); });
-  cx.globalCompositeOperation='source-over'; lights=[];
+  var ox=0, oy=0; if(shake>0){ ox=Math.round(rnd(-1,1)*shake*6)*S/DPR; oy=Math.round(rnd(-1,1)*shake*6)*S/DPR; }
+  var tf=ox||oy?'translate('+ox+'px,'+oy+'px)':''; if(cv.style.transform!==tf){ cv.style.transform=tf; gl.style.transform=tf; }
+  if(glowDirty||lights.length){ gx.clearRect(0,0,gl.width,gl.height); gx.globalCompositeOperation='lighter';
+    lights.forEach(function(L){ var r=L[2]*2; gx.globalAlpha=Math.min(1,L[4]); gx.drawImage(glowSprite(L[3]),L[0]*2-r,L[1]*2-r,2*r,2*r); });
+    gx.globalAlpha=1; gx.globalCompositeOperation='source-over'; glowDirty=lights.length>0; }
+  lights=[];
 }
 
 /* ── pixels, text, buttons ── */

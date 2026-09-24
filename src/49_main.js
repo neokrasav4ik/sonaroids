@@ -135,7 +135,7 @@ function sOver(){ overT+=DT;                       // no tuning here: it is done
   text(L('over'),cx0,y,P.text,'center'); text('V'+VERSION,freeSide()==='left'?LW-SAFE.r-8:SAFE.l+8,LH-SAFE.b-12,P.soft,freeSide()==='left'?'right':'left'); text(String(g.score).padStart(6,'0'),cx0,y+14,P.band,'center'); text(L('best')+' '+String(best).padStart(6,'0'),cx0,y+26,P.soft,'center');
   say(L('over')+' '+g.score);
   if(overT>0.8) column([['again',L('again'),'primary'],['menu',L('menu')]].concat(Logs.has()?[['logs',L('logs')]]:[]),Math.round(LH*0.5)); }
-function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('paused')); column([['resume',L('resume'),'primary']].concat(pausedFrom==='play'?[['quit',L('quit')]]:[]),Math.round(LH*0.5)); }
+function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('paused')); column([['resume',L('resume'),'primary']].concat(pausedFrom==='play'?[['quit',L('quit')]]:[]).concat([['exit',L('exit')]]),Math.round(LH*0.5)); }
 function sLost(){ sky(DT,0.2); titles(L('lost_t'),L('lost_s'),P.hit); nextBtn('retry',L('retry')); }
 function sNomic(){ sky(DT,0.2); titles(L('nomic_t'),L(errKind==='mic'?'nomic_s':'noaudio_s'),P.hit); nextBtn('retry',L('retry')); }
 function sRotate(){ lx.fillStyle=P.bg; lx.fillRect(0,0,LW,LH); var y=Math.round(LH/2-10); para(L('rotate'),LW/2,y,LW-16,P.text); say(L('rotate')); }
@@ -183,12 +183,17 @@ var ACT={
   retry:function(){ Sonar.clearLost(); ensure(toAway); },
   pause:function(){ pauseGame(); },
   quit:function(){ Logs.gameEv('ended by the player'); endGame(); },
+  exit:function(){ if(g&&g.state==='play'){ Logs.gameEv('ended by the player'); endGame(); } go('title'); },
   resume:function(){ if(pausedFrom==='play'){ if(booted&&Sonar.healthy()){ countT=3; go('count-resume'); } else { resumeAfterPrep=true; ensure(null); } } else ensure(startCount); }
 };
-cv.addEventListener('pointerdown',function(e){
-  var x=e.clientX*DPR/S, y=e.clientY*DPR/S;
-  for(var i=BTN.length-1;i>=0;i--){ var b=BTN[i]; if(x>=b.x-4&&x<b.x+b.w+4&&y>=b.y-4&&y<b.y+b.h+4){ if(b.id!=='allow'&&b.id!=='play'&&b.id!=='retry') Sfx.play('tap'); ACT[b.id](); e.preventDefault(); return; } }
-},{passive:false});
+/* buttons act when the finger lifts (on the same button it went down on): iPhone lets a page share files or open the microphone
+   only from a finished tap — acting on touch-down made "logs" work only on the second tap (v0.12) */
+var downOn=null;
+function btnAt(e){ var x=e.clientX*DPR/S, y=e.clientY*DPR/S;
+  for(var i=BTN.length-1;i>=0;i--){ var b=BTN[i]; if(x>=b.x-4&&x<b.x+b.w+4&&y>=b.y-4&&y<b.y+b.h+4) return b.id; } return null; }
+cv.addEventListener('pointerdown',function(e){ downOn=btnAt(e); e.preventDefault(); },{passive:false});
+cv.addEventListener('pointerup',function(e){ var id=btnAt(e); if(id&&id===downOn&&ACT[id]){ if(id!=='allow'&&id!=='play'&&id!=='retry') Sfx.play('tap'); ACT[id](); } downOn=null; e.preventDefault(); },{passive:false});
+cv.addEventListener('pointercancel',function(){ downOn=null; });
 ['gesturestart','gesturechange','gestureend','dblclick'].forEach(function(n){ document.addEventListener(n,function(e){ e.preventDefault(); },{passive:false}); });
 document.addEventListener('touchmove',function(e){ e.preventDefault(); },{passive:false});
 document.addEventListener('visibilitychange',function(){
@@ -205,8 +210,11 @@ function sCountResume(){ countT-=DT; field(DT,0); var n=Math.max(1,Math.ceil(cou
 
 /* ── the loop ── */
 var DT=1/60, lastNow=performance.now();
+/* at most 60 frames a second in flight and 30 on the other screens: phones with 120 Hz screens would otherwise draw twice as often
+   for nothing and warm up (v0.12) */
 function loop(now){
   requestAnimationFrame(loop);
+  var fast=scr==='play'||scr==='count'||scr==='count-resume'; if(now-lastNow<(fast?15:31)) return;
   DT=Math.min(0.05,Math.max(0,(now-lastNow)/1000)); lastNow=now; clock+=DT; scrT+=DT; BTN=[];
   if(LH>LW){ pauseGame(); sRotate(); present(0); return; }
   if(booted&&Sonar.lost()&&(scr==='wave'||scr==='count'||scr==='play'||scr==='over')){ if(g&&g.state==='play') Logs.gameStop(); go('lost'); }

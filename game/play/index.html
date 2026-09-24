@@ -17,13 +17,17 @@
 <style>
   html,body{margin:0;height:100%;background:#1B1A2E;overflow:hidden;overscroll-behavior:none;touch-action:none;
     -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
-  #cv{position:fixed;left:0;top:0;width:100vw;height:100vh;display:block;touch-action:none;image-rendering:pixelated;image-rendering:crisp-edges}
+  /* the game is drawn on a small canvas in whole game pixels and the browser scales it up (cheap, on the graphics chip);
+     soft light goes on a full-resolution canvas on top, blended as light */
+  #cv{position:fixed;left:0;top:0;display:block;touch-action:none;image-rendering:pixelated;image-rendering:crisp-edges}
+  #glow{position:fixed;left:0;top:0;pointer-events:none;mix-blend-mode:screen;image-rendering:auto}
   /* the same words for screen readers: what is drawn on the canvas is repeated here */
   #say{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 </style>
 </head>
 <body>
 <canvas id="cv"></canvas>
+<canvas id="glow"></canvas>
 <div id="say" aria-live="polite"></div>
 <script>
 /* Sonaroids pixel font 5x7 (Latin, Cyrillic, digits, punctuation).
@@ -46,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='0.11';
+var VERSION='0.12';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -606,7 +610,7 @@ STR.en={
   start:'START', over:'GAME OVER', best:'BEST', again:'AGAIN', menu:'MENU', logs:'LOGS',
   lost_t:'NO PROBE SOUND', lost_s:'SOUND WENT TO ANOTHER DEVICE. UNPLUG HEADPHONES OR BLUETOOTH', retry:'TRY AGAIN',
   nomic_t:'NO MICROPHONE', nomic_s:'ALLOW IT IN THE BROWSER SETTINGS AND TRY AGAIN', noaudio_s:'THIS BROWSER CANNOT PLAY THE GAME. TRY SAFARI OR CHROME',
-  rotate:'TURN THE PHONE SIDEWAYS', paused:'PAUSE', resume:'GO ON', quit:'END THE GAME', menu_a:'MENU'
+  rotate:'TURN THE PHONE SIDEWAYS', paused:'PAUSE', resume:'GO ON', quit:'END THE GAME', exit:'EXIT TO MENU', menu_a:'MENU'
 };
 /* ── UI strings, Russian ── */
 STR.ru={
@@ -620,7 +624,7 @@ STR.ru={
   start:'СТАРТ', over:'ИГРА ОКОНЧЕНА', best:'РЕКОРД', again:'ЕЩЁ РАЗ', menu:'МЕНЮ', logs:'ЖУРНАЛЫ',
   lost_t:'ЗОНДА НЕ СЛЫШНО', lost_s:'ЗВУК УШЁЛ В ДРУГОЕ УСТРОЙСТВО. ОТКЛЮЧИ НАУШНИКИ ИЛИ BLUETOOTH', retry:'ЕЩЁ РАЗ',
   nomic_t:'НЕТ МИКРОФОНА', nomic_s:'РАЗРЕШИ ЕГО В НАСТРОЙКАХ БРАУЗЕРА И ПОПРОБУЙ ЕЩЁ РАЗ', noaudio_s:'В ЭТОМ БРАУЗЕРЕ ИГРА НЕ ЗАПУСТИТСЯ. ПОПРОБУЙ SAFARI ИЛИ CHROME',
-  rotate:'ПОВЕРНИ ТЕЛЕФОН ГОРИЗОНТАЛЬНО', paused:'ПАУЗА', resume:'ДАЛЬШЕ', quit:'ЗАКОНЧИТЬ ИГРУ', menu_a:'МЕНЮ'
+  rotate:'ПОВЕРНИ ТЕЛЕФОН ГОРИЗОНТАЛЬНО', paused:'ПАУЗА', resume:'ДАЛЬШЕ', quit:'ЗАКОНЧИТЬ ИГРУ', exit:'ВЫЙТИ В МЕНЮ', menu_a:'МЕНЮ'
 };
 /* ════ THE APP: drawing, first-launch screens and the game loop share one scope (40_gfx … 49_main) ════ */
 (function(){
@@ -634,8 +638,8 @@ var P={bg:'#1B1A2E', neb:['#2A2440','#3C2B4F','#4A2F4A'], stars:['#5A4C6E','#B89
   ship:['#1F5E52','#2F8F7C','#7FE0C8','#E9FFF8'], flame:['#FF7A7A','#FFB86B','#FFF1C9'], bullet:'#FFB86B', glowB:'255,184,107',
   pick:'#FFE66D', glowP:'255,230,109', ufo:['#4B2F80','#7B55C7','#B48CFF','#EADFFF'], ebullet:'#FF7A7A', text:'#FFF3EA', soft:'#C9A9B6', line:'#4A3A57', band:'#7FE0C8', hit:'#FF7A7A', hand:['#6E4D57','#C99A94','#F3CDBF']};
 var PIXH=215;
-var cv=document.getElementById('cv'), cx=cv.getContext('2d');
-var lc=document.createElement('canvas'), lx=lc.getContext('2d');
+var cv=document.getElementById('cv'), lc=cv, lx=cv.getContext('2d');                          // the visible canvas is the low-resolution one
+var gl=document.getElementById('glow'), gx=gl.getContext('2d'), glowDirty=false, glowSpr={};
 var pc=document.createElement('canvas');                         // pictures that can be mirrored for a left-handed player
 var DPR=1, W=0, H=0, S=1, LW=380, LH=215, K=LH/180, SAFE={l:0,r:0,t:0,b:0}, nebC=null, nebX=0, stars=[], lights=[], parts=[];
 var BAY=[0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5];
@@ -649,9 +653,11 @@ function safeInsets(){ var d=document.createElement('div');
 function resize(){
   DPR=Math.min(3,window.devicePixelRatio||1);
   var w=Math.max(200,window.innerWidth), h=Math.max(150,window.innerHeight);
-  cv.width=Math.round(w*DPR); cv.height=Math.round(h*DPR); W=cv.width; H=cv.height;
+  W=Math.round(w*DPR); H=Math.round(h*DPR);
   S=Math.max(1,Math.round(Math.min(W,H)/PIXH)); LH=Math.ceil(H/S); LW=Math.ceil(W/S); K=LH/180;
-  lc.width=LW; lc.height=LH; pc.width=LW; pc.height=LH; lx.imageSmoothingEnabled=false; cx.imageSmoothingEnabled=false;
+  lc.width=LW; lc.height=LH; pc.width=LW; pc.height=LH; lx.imageSmoothingEnabled=false;
+  var css=function(el){ el.style.width=(LW*S/DPR)+'px'; el.style.height=(LH*S/DPR)+'px'; };
+  css(cv); css(gl); gl.width=LW*2; gl.height=LH*2; glowDirty=false; tableC=null;   // soft light needs no fine detail: half a game pixel, scaled up smoothly
   var si={l:0,r:0,t:0,b:0}; try{ si=safeInsets(); }catch(e){}
   var u=DPR/S; SAFE={l:Math.ceil(si.l*u),r:Math.ceil(si.r*u),t:Math.ceil(si.t*u),b:Math.ceil(si.b*u)};
   makeNebula(); makeStars();
@@ -678,14 +684,16 @@ function sky(dt,speed){                                             // nebula an
   stars.forEach(function(s){ var i=s.z<0.5?0:s.z<0.85?1:2; if(i===2&&Math.sin(t*3+s.tw)>0.6) i=1; lx.fillStyle=P.stars[i]; lx.fillRect(Math.round(s.x),Math.round(s.y),1,1); });
 }
 function light(x,y,rad,rgb,a){ lights.push([x,y,rad,rgb,a]); }
+/* a soft light sprite per colour, made once: drawing it is much cheaper than a new gradient per light per frame */
+function glowSprite(rgb){ var c=glowSpr[rgb]; if(c) return c; c=document.createElement('canvas'); c.width=c.height=64; var x=c.getContext('2d'), g=x.createRadialGradient(32,32,0,32,32,32);
+  g.addColorStop(0,'rgba('+rgb+',1)'); g.addColorStop(1,'rgba('+rgb+',0)'); x.fillStyle=g; x.fillRect(0,0,64,64); return glowSpr[rgb]=c; }
 function present(shake){
-  var ox=0, oy=0; if(shake>0){ ox=Math.round(rnd(-1,1)*shake*6)*S; oy=Math.round(rnd(-1,1)*shake*6)*S; }
-  cx.globalCompositeOperation='source-over'; cx.fillStyle=P.bg; cx.fillRect(0,0,W,H);
-  cx.drawImage(lc,0,0,LW,LH,ox,oy,LW*S,LH*S);
-  cx.globalCompositeOperation='lighter';
-  lights.forEach(function(L){ var x=L[0]*S+ox, y=L[1]*S+oy, r=L[2]*S, g=cx.createRadialGradient(x,y,0,x,y,r);
-    g.addColorStop(0,'rgba('+L[3]+','+L[4]+')'); g.addColorStop(1,'rgba('+L[3]+',0)'); cx.fillStyle=g; cx.fillRect(x-r,y-r,2*r,2*r); });
-  cx.globalCompositeOperation='source-over'; lights=[];
+  var ox=0, oy=0; if(shake>0){ ox=Math.round(rnd(-1,1)*shake*6)*S/DPR; oy=Math.round(rnd(-1,1)*shake*6)*S/DPR; }
+  var tf=ox||oy?'translate('+ox+'px,'+oy+'px)':''; if(cv.style.transform!==tf){ cv.style.transform=tf; gl.style.transform=tf; }
+  if(glowDirty||lights.length){ gx.clearRect(0,0,gl.width,gl.height); gx.globalCompositeOperation='lighter';
+    lights.forEach(function(L){ var r=L[2]*2; gx.globalAlpha=Math.min(1,L[4]); gx.drawImage(glowSprite(L[3]),L[0]*2-r,L[1]*2-r,2*r,2*r); });
+    gx.globalAlpha=1; gx.globalCompositeOperation='source-over'; glowDirty=lights.length>0; }
+  lights=[];
 }
 
 /* ── pixels, text, buttons ── */
@@ -840,17 +848,26 @@ function phoneGame(ph,o,cm,f,T,mirror){
 }
 /* the scene. id: 'phone' | 'away' | 'wave'; t — seconds on this screen; f — palm height 0…1 (5…15 cm); away — 0…1 how far the hand has left;
    waves — probe waves on. Returns labels (in picture coordinates) */
+var tableC=null;
 function scene(id,t,f,away,waves,T){
   var cm=Math.min(LH*0.024,LW*0.0135), o=[LW*0.43,LH*0.16+23.6*LH*0.024], labels=[];      // narrow screens (iPad): scale to the width
-  var TX0=-24*cm, TX=34*cm, TY0=-15*cm, TY1=19*cm; polyFill([iso(TX0,TY0,0,o),iso(TX,TY0,0,o),iso(TX,TY1,0,o),iso(TX0,TY1,0,o)],P.neb[1]);
-  for(var yy=0;yy<LH;yy+=3) for(var xx=(yy%6?2:0);xx<LW;xx+=4){ var q0=unIso(xx,yy,o); if(q0[0]>TX0&&q0[0]<TX&&q0[1]>TY0&&q0[1]<TY1) R(P.neb[2],xx,yy,1,1); }
+  var TX0=-24*cm, TX=34*cm, TY0=-15*cm, TY1=19*cm;
+  if(!tableC){ tableC=document.createElement('canvas'); tableC.width=LW; tableC.height=LH; var keep=lx; lx=tableC.getContext('2d');
+    polyFill([iso(TX0,TY0,0,o),iso(TX,TY0,0,o),iso(TX,TY1,0,o),iso(TX0,TY1,0,o)],P.neb[1]);
+    for(var yy=0;yy<LH;yy+=3) for(var xx=(yy%6?2:0);xx<LW;xx+=4){ var q0=unIso(xx,yy,o); if(q0[0]>TX0&&q0[0]<TX&&q0[1]>TY0&&q0[1]<TY1) R(P.neb[2],xx,yy,1,1); }
+    lx=keep; }
+  lx.drawImage(tableC,0,0);
   var ph=phoneIso(o,cm,id==='phone'&&Math.floor(T*3)%2===0);
   var HSC=0.85, hw=8.5*cm*HSC, Xa=ph.X1+1.2*cm, Yb=5*cm, al=1, Z5=5*cm, Z15=15*cm;
   var hz=Z5+(Z15-Z5)*f+2.4*cm*HSC, dy=0;
   if(id==='phone') dy=(1-ease(t/1.8))*28*cm;
   if(away>0){ var q=ease(away); dy=q*30*cm; hz+=q*8*cm; al=1-q; }
   if(al>0.1){ var sc=[Xa+hw/2,Yb-8*cm*HSC+dy], dens=Math.max(0.15,0.8-(hz/cm)*0.035)*al;       // the palm's shadow: paler the higher it is
-    for(var y2=0;y2<LH;y2++) for(var x2=0;x2<LW;x2++){ var q1=unIso(x2,y2,o), ex=(q1[0]-sc[0])/(5.2*cm*HSC), ey=(q1[1]-sc[1])/(11*cm*HSC); if(ex*ex+ey*ey<1&&bay(x2,y2)<dens) R(P.neb[0],x2,y2,1,1); } }
+    var rx=5.2*cm*HSC, ry=11*cm*HSC, c4=[iso(sc[0]-rx,sc[1]-ry,0,o),iso(sc[0]+rx,sc[1]-ry,0,o),iso(sc[0]-rx,sc[1]+ry,0,o),iso(sc[0]+rx,sc[1]+ry,0,o)];
+    var bx0=Math.max(0,Math.floor(Math.min(c4[0][0],c4[1][0],c4[2][0],c4[3][0]))), bx1=Math.min(LW,Math.ceil(Math.max(c4[0][0],c4[1][0],c4[2][0],c4[3][0])));
+    var by0=Math.max(0,Math.floor(Math.min(c4[0][1],c4[1][1],c4[2][1],c4[3][1]))), by1=Math.min(LH,Math.ceil(Math.max(c4[0][1],c4[1][1],c4[2][1],c4[3][1])));
+    lx.fillStyle=P.neb[0];
+    for(var y2=by0;y2<by1;y2++) for(var x2=bx0;x2<bx1;x2++){ var q1=unIso(x2,y2,o), ex=(q1[0]-sc[0])/rx, ey=(q1[1]-sc[1])/ry; if(ex*ex+ey*ey<1&&bay(x2,y2)<dens) lx.fillRect(x2,y2,1,1); } }
   if(waves) for(var i=0;i<3;i++){ var rr=((T*6+i*4.5)%13.5)*cm+1*cm;
     for(var a=-1.4;a<=1.4;a+=0.05){ var pp=iso(ph.X1+Math.cos(a)*rr,Math.sin(a)*rr,0,o); R(P.bullet,pp[0],pp[1],1,1); } }
   if(id==='wave'){ var rX=Xa+hw+9*cm, rY=Yb-9*cm, b0=iso(rX,rY,0,o), b5=iso(rX,rY,Z5,o), b15=iso(rX,rY,Z15,o);         // a 5–15 cm ruler
@@ -1016,7 +1033,7 @@ function sOver(){ overT+=DT;                       // no tuning here: it is done
   text(L('over'),cx0,y,P.text,'center'); text('V'+VERSION,freeSide()==='left'?LW-SAFE.r-8:SAFE.l+8,LH-SAFE.b-12,P.soft,freeSide()==='left'?'right':'left'); text(String(g.score).padStart(6,'0'),cx0,y+14,P.band,'center'); text(L('best')+' '+String(best).padStart(6,'0'),cx0,y+26,P.soft,'center');
   say(L('over')+' '+g.score);
   if(overT>0.8) column([['again',L('again'),'primary'],['menu',L('menu')]].concat(Logs.has()?[['logs',L('logs')]]:[]),Math.round(LH*0.5)); }
-function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('paused')); column([['resume',L('resume'),'primary']].concat(pausedFrom==='play'?[['quit',L('quit')]]:[]),Math.round(LH*0.5)); }
+function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('paused')); column([['resume',L('resume'),'primary']].concat(pausedFrom==='play'?[['quit',L('quit')]]:[]).concat([['exit',L('exit')]]),Math.round(LH*0.5)); }
 function sLost(){ sky(DT,0.2); titles(L('lost_t'),L('lost_s'),P.hit); nextBtn('retry',L('retry')); }
 function sNomic(){ sky(DT,0.2); titles(L('nomic_t'),L(errKind==='mic'?'nomic_s':'noaudio_s'),P.hit); nextBtn('retry',L('retry')); }
 function sRotate(){ lx.fillStyle=P.bg; lx.fillRect(0,0,LW,LH); var y=Math.round(LH/2-10); para(L('rotate'),LW/2,y,LW-16,P.text); say(L('rotate')); }
@@ -1064,12 +1081,17 @@ var ACT={
   retry:function(){ Sonar.clearLost(); ensure(toAway); },
   pause:function(){ pauseGame(); },
   quit:function(){ Logs.gameEv('ended by the player'); endGame(); },
+  exit:function(){ if(g&&g.state==='play'){ Logs.gameEv('ended by the player'); endGame(); } go('title'); },
   resume:function(){ if(pausedFrom==='play'){ if(booted&&Sonar.healthy()){ countT=3; go('count-resume'); } else { resumeAfterPrep=true; ensure(null); } } else ensure(startCount); }
 };
-cv.addEventListener('pointerdown',function(e){
-  var x=e.clientX*DPR/S, y=e.clientY*DPR/S;
-  for(var i=BTN.length-1;i>=0;i--){ var b=BTN[i]; if(x>=b.x-4&&x<b.x+b.w+4&&y>=b.y-4&&y<b.y+b.h+4){ if(b.id!=='allow'&&b.id!=='play'&&b.id!=='retry') Sfx.play('tap'); ACT[b.id](); e.preventDefault(); return; } }
-},{passive:false});
+/* buttons act when the finger lifts (on the same button it went down on): iPhone lets a page share files or open the microphone
+   only from a finished tap — acting on touch-down made "logs" work only on the second tap (v0.12) */
+var downOn=null;
+function btnAt(e){ var x=e.clientX*DPR/S, y=e.clientY*DPR/S;
+  for(var i=BTN.length-1;i>=0;i--){ var b=BTN[i]; if(x>=b.x-4&&x<b.x+b.w+4&&y>=b.y-4&&y<b.y+b.h+4) return b.id; } return null; }
+cv.addEventListener('pointerdown',function(e){ downOn=btnAt(e); e.preventDefault(); },{passive:false});
+cv.addEventListener('pointerup',function(e){ var id=btnAt(e); if(id&&id===downOn&&ACT[id]){ if(id!=='allow'&&id!=='play'&&id!=='retry') Sfx.play('tap'); ACT[id](); } downOn=null; e.preventDefault(); },{passive:false});
+cv.addEventListener('pointercancel',function(){ downOn=null; });
 ['gesturestart','gesturechange','gestureend','dblclick'].forEach(function(n){ document.addEventListener(n,function(e){ e.preventDefault(); },{passive:false}); });
 document.addEventListener('touchmove',function(e){ e.preventDefault(); },{passive:false});
 document.addEventListener('visibilitychange',function(){
@@ -1086,8 +1108,11 @@ function sCountResume(){ countT-=DT; field(DT,0); var n=Math.max(1,Math.ceil(cou
 
 /* ── the loop ── */
 var DT=1/60, lastNow=performance.now();
+/* at most 60 frames a second in flight and 30 on the other screens: phones with 120 Hz screens would otherwise draw twice as often
+   for nothing and warm up (v0.12) */
 function loop(now){
   requestAnimationFrame(loop);
+  var fast=scr==='play'||scr==='count'||scr==='count-resume'; if(now-lastNow<(fast?15:31)) return;
   DT=Math.min(0.05,Math.max(0,(now-lastNow)/1000)); lastNow=now; clock+=DT; scrT+=DT; BTN=[];
   if(LH>LW){ pauseGame(); sRotate(); present(0); return; }
   if(booted&&Sonar.lost()&&(scr==='wave'||scr==='count'||scr==='play'||scr==='over')){ if(g&&g.state==='play') Logs.gameStop(); go('lost'); }

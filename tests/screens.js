@@ -22,7 +22,7 @@ const SCREENS=['lang','title','sound','phone','mic','wave','count','play','pause
       const r=await p.evaluate(()=>({btn:__sonaroids.btn(),S:__sonaroids.S()}));
       const {LW,LH}=r.S;
       if(s==='play'&&!r.btn.some(q=>q.id==='pause')) bad.push(`${w}x${h} ${lang} ${hand}: no menu button in flight`);
-      if(s==='pause-play'&&!(r.btn.some(q=>q.id==='resume')&&r.btn.some(q=>q.id==='quit'))) bad.push(`${w}x${h} ${lang} ${hand}: pause lacks resume/end`);
+      if(s==='pause-play'&&!(r.btn.some(q=>q.id==='resume')&&r.btn.some(q=>q.id==='quit')&&r.btn.some(q=>q.id==='exit'))) bad.push(`${w}x${h} ${lang} ${hand}: pause lacks resume/end`);
       r.btn.forEach((q,i)=>{ if(q.x<0||q.y<0||q.x+q.w>LW||q.y+q.h>LH) bad.push(`${w}x${h} ${lang} ${hand} ${s}: button ${q.id} off screen`);
         r.btn.forEach((o,j)=>{ if(j>i&&q.x<o.x+o.w&&o.x<q.x+q.w&&q.y<o.y+o.h&&o.y<q.y+q.h) bad.push(`${w}x${h} ${lang} ${hand} ${s}: ${q.id} overlaps ${o.id}`); }); });
       if(w===844&&hand==='right'||w===844&&s==='phone') await p.screenshot({path:path.join(OUT,`${lang}_${hand}_${s}.png`)});

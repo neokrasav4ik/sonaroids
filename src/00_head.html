@@ -17,12 +17,16 @@
 <style>
   html,body{margin:0;height:100%;background:#1B1A2E;overflow:hidden;overscroll-behavior:none;touch-action:none;
     -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
-  #cv{position:fixed;left:0;top:0;width:100vw;height:100vh;display:block;touch-action:none;image-rendering:pixelated;image-rendering:crisp-edges}
+  /* the game is drawn on a small canvas in whole game pixels and the browser scales it up (cheap, on the graphics chip);
+     soft light goes on a full-resolution canvas on top, blended as light */
+  #cv{position:fixed;left:0;top:0;display:block;touch-action:none;image-rendering:pixelated;image-rendering:crisp-edges}
+  #glow{position:fixed;left:0;top:0;pointer-events:none;mix-blend-mode:screen;image-rendering:auto}
   /* the same words for screen readers: what is drawn on the canvas is repeated here */
   #say{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 </style>
 </head>
 <body>
 <canvas id="cv"></canvas>
+<canvas id="glow"></canvas>
 <div id="say" aria-live="polite"></div>
 <script>

@@ -53,17 +53,26 @@ function phoneGame(ph,o,cm,f,T,mirror){
 }
 /* the scene. id: 'phone' | 'away' | 'wave'; t — seconds on this screen; f — palm height 0…1 (5…15 cm); away — 0…1 how far the hand has left;
    waves — probe waves on. Returns labels (in picture coordinates) */
+var tableC=null;
 function scene(id,t,f,away,waves,T){
   var cm=Math.min(LH*0.024,LW*0.0135), o=[LW*0.43,LH*0.16+23.6*LH*0.024], labels=[];      // narrow screens (iPad): scale to the width
-  var TX0=-24*cm, TX=34*cm, TY0=-15*cm, TY1=19*cm; polyFill([iso(TX0,TY0,0,o),iso(TX,TY0,0,o),iso(TX,TY1,0,o),iso(TX0,TY1,0,o)],P.neb[1]);
-  for(var yy=0;yy<LH;yy+=3) for(var xx=(yy%6?2:0);xx<LW;xx+=4){ var q0=unIso(xx,yy,o); if(q0[0]>TX0&&q0[0]<TX&&q0[1]>TY0&&q0[1]<TY1) R(P.neb[2],xx,yy,1,1); }
+  var TX0=-24*cm, TX=34*cm, TY0=-15*cm, TY1=19*cm;
+  if(!tableC){ tableC=document.createElement('canvas'); tableC.width=LW; tableC.height=LH; var keep=lx; lx=tableC.getContext('2d');
+    polyFill([iso(TX0,TY0,0,o),iso(TX,TY0,0,o),iso(TX,TY1,0,o),iso(TX0,TY1,0,o)],P.neb[1]);
+    for(var yy=0;yy<LH;yy+=3) for(var xx=(yy%6?2:0);xx<LW;xx+=4){ var q0=unIso(xx,yy,o); if(q0[0]>TX0&&q0[0]<TX&&q0[1]>TY0&&q0[1]<TY1) R(P.neb[2],xx,yy,1,1); }
+    lx=keep; }
+  lx.drawImage(tableC,0,0);
   var ph=phoneIso(o,cm,id==='phone'&&Math.floor(T*3)%2===0);
   var HSC=0.85, hw=8.5*cm*HSC, Xa=ph.X1+1.2*cm, Yb=5*cm, al=1, Z5=5*cm, Z15=15*cm;
   var hz=Z5+(Z15-Z5)*f+2.4*cm*HSC, dy=0;
   if(id==='phone') dy=(1-ease(t/1.8))*28*cm;
   if(away>0){ var q=ease(away); dy=q*30*cm; hz+=q*8*cm; al=1-q; }
   if(al>0.1){ var sc=[Xa+hw/2,Yb-8*cm*HSC+dy], dens=Math.max(0.15,0.8-(hz/cm)*0.035)*al;       // the palm's shadow: paler the higher it is
-    for(var y2=0;y2<LH;y2++) for(var x2=0;x2<LW;x2++){ var q1=unIso(x2,y2,o), ex=(q1[0]-sc[0])/(5.2*cm*HSC), ey=(q1[1]-sc[1])/(11*cm*HSC); if(ex*ex+ey*ey<1&&bay(x2,y2)<dens) R(P.neb[0],x2,y2,1,1); } }
+    var rx=5.2*cm*HSC, ry=11*cm*HSC, c4=[iso(sc[0]-rx,sc[1]-ry,0,o),iso(sc[0]+rx,sc[1]-ry,0,o),iso(sc[0]-rx,sc[1]+ry,0,o),iso(sc[0]+rx,sc[1]+ry,0,o)];
+    var bx0=Math.max(0,Math.floor(Math.min(c4[0][0],c4[1][0],c4[2][0],c4[3][0]))), bx1=Math.min(LW,Math.ceil(Math.max(c4[0][0],c4[1][0],c4[2][0],c4[3][0])));
+    var by0=Math.max(0,Math.floor(Math.min(c4[0][1],c4[1][1],c4[2][1],c4[3][1]))), by1=Math.min(LH,Math.ceil(Math.max(c4[0][1],c4[1][1],c4[2][1],c4[3][1])));
+    lx.fillStyle=P.neb[0];
+    for(var y2=by0;y2<by1;y2++) for(var x2=bx0;x2<bx1;x2++){ var q1=unIso(x2,y2,o), ex=(q1[0]-sc[0])/rx, ey=(q1[1]-sc[1])/ry; if(ex*ex+ey*ey<1&&bay(x2,y2)<dens) lx.fillRect(x2,y2,1,1); } }
   if(waves) for(var i=0;i<3;i++){ var rr=((T*6+i*4.5)%13.5)*cm+1*cm;
     for(var a=-1.4;a<=1.4;a+=0.05){ var pp=iso(ph.X1+Math.cos(a)*rr,Math.sin(a)*rr,0,o); R(P.bullet,pp[0],pp[1],1,1); } }
   if(id==='wave'){ var rX=Xa+hw+9*cm, rY=Yb-9*cm, b0=iso(rX,rY,0,o), b5=iso(rX,rY,Z5,o), b15=iso(rX,rY,Z15,o);         // a 5–15 cm ruler

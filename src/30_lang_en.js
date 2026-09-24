@@ -11,5 +11,5 @@ STR.en={
   start:'START', over:'GAME OVER', best:'BEST', again:'AGAIN', menu:'MENU', logs:'LOGS',
   lost_t:'NO PROBE SOUND', lost_s:'SOUND WENT TO ANOTHER DEVICE. UNPLUG HEADPHONES OR BLUETOOTH', retry:'TRY AGAIN',
   nomic_t:'NO MICROPHONE', nomic_s:'ALLOW IT IN THE BROWSER SETTINGS AND TRY AGAIN', noaudio_s:'THIS BROWSER CANNOT PLAY THE GAME. TRY SAFARI OR CHROME',
-  rotate:'TURN THE PHONE SIDEWAYS', paused:'PAUSE', resume:'GO ON', quit:'END THE GAME', menu_a:'MENU'
+  rotate:'TURN THE PHONE SIDEWAYS', paused:'PAUSE', resume:'GO ON', quit:'END THE GAME', exit:'EXIT TO MENU', menu_a:'MENU'
 };

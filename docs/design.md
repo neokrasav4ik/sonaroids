@@ -68,7 +68,9 @@ Prototype: `game/proto/` — the ship follows your finger.
 - **Style "Dusk":** lilac space with nebulae, pastel rocks, mint ship, apricot shots, lilac saucer, yellow power-ups. — agreed
   Rejected: "Midnight" (dark blue, orange ship) and "Outline" (near-monochrome rock outlines).
 - **Rocks** have volume: light from the top left, craters, 16 rotation frames, tone transitions by ordered dithering. — trying
-- **Font:** our own 5×7 pixel font with Latin and Cyrillic, about 2 KB. The prototype temporarily uses Press Start 2P. — agreed
+- **Font:** our own 5×7 pixel font with Latin, Cyrillic, digits and punctuation, 3.5 KB (`font/`). In the game, text is drawn with the same pixel as the picture, all one size, told apart by colour; a smaller text pixel was tried and looked worse. The site's landing page uses its own pixel, about 1.3 CSS px. — agreed
+- **In flight, only the score is shown at the top.** No labels: no streak, multipliers, shield or floating points. — agreed
+  How to show lives and shield without words (e.g. a glow around the ship) — to be decided on the skeleton. — open
 - **Sound:** event sounds only — shot, split, power-up, hit, level. Synthesised in code in the spirit of old consoles, everything below 6 kHz so it doesn't disturb the probe. **No background music.** — agreed
 
 ## 7. Technology
@@ -83,7 +85,7 @@ Prototype: `game/proto/` — the ship follows your finger.
 ## 8. Order of work
 
 1. ~~Choose style, ×3 display, pixel size and onboarding look~~ — "Dusk", ×3 hidden, medium pixels, "volume" onboarding.
-2. Repository foundation: docs, lab, landing page, publishing to sonaroids.app.
+2. ~~Repository foundation: docs, lab, landing page, publishing to sonaroids.app~~ — live since 24 Sep; our own 5×7 pixel font is done.
 3. Game skeleton: first-launch screens, mechanics from the lab, rendering, sound, own font.
 4. Game rules: rocks, splitting, points, streak, power-ups, saucer, levels.
 5. Leaderboards: server, game verification, tables, daily challenge.

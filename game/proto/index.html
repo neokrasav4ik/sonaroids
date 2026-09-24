@@ -33,6 +33,7 @@
   <div id="rot">ПОВЕРНИ ТЕЛЕФОН<br>ГОРИЗОНТАЛЬНО</div>
 </div>
 
+<script src="../font.js"></script>
 <script>
 (function(){
 "use strict";
@@ -54,7 +55,7 @@ var STYLES=[
 var PIXN=['КРУПНО','СРЕДНЕ','МЕЛКО'], PIXH=[160,215,280];
 var X3N=['НЕ ПОКАЗЫВАТЬ','ПОЛОСА','ВСПЛЫВАШКИ'];
 var SCRN=['ИГРА','ИНСТРУКЦИЯ'];
-var st={s:1,pix:1,x3:0,scr:1};   // решено: стиль «Сумерки», очки по высоте не показывать
+var st={s:1,pix:1,x3:0,scr:1};   // решено: стиль «Сумерки», очки по высоте не показывать, текст — пикселем игры   // решено: стиль «Сумерки», очки по высоте не показывать
 try{ var sv=JSON.parse(localStorage.getItem('sonaroids_styles4')||'{}'); if(sv.scr===0||sv.scr===1) st.scr=sv.scr; }catch(e){}
 function save(){ try{ localStorage.setItem('sonaroids_styles4',JSON.stringify({pix:st.pix,scr:st.scr})); }catch(e){} }
 var P=STYLES[st.s];
@@ -444,18 +445,14 @@ function present(){
   if(flash>0){ cx.fillStyle=P.hit; cx.globalAlpha=Math.min(0.35,flash); cx.fillRect(0,0,W,H); cx.globalAlpha=1; }
   hud();
 }
-/* надписи шрифтом с сеткой 8×8: размер кратен 8 игровым пикселям — буквы попадают в ту же сетку */
-function txt(s,x,y,px,col,align){ cx.font=px+'px "Press Start 2P", ui-monospace, monospace'; cx.textAlign=align||'left'; cx.textBaseline='top'; cx.fillStyle=col; cx.fillText(s,Math.round(x),Math.round(y)); }
+/* надписи своим пиксельным шрифтом 5×7 (font.js), пикселем игры: все одного размера, различаются цветом (решено 24.09).
+   px — прежний размер надписи, больше не влияет. */
+function txt(s,x,y,px,col,align){ var u=S, w=PF.width(s,u); x=Math.round(align==='center'?x-w/2:align==='right'?x-w:x);
+  cx.fillStyle=col; PF.draw(cx,s,x,Math.round(y)+u,u); }
 function hud(){
   var big=8*S, sm=Math.max(8,8*Math.round(S/2)), gs=Math.max(16,8*Math.round(S*0.8)), top=Math.round(Math.max(8*S,H*0.04));   // gs — подсказки, крупнее служебных надписей
   if(st.scr>=1){ guideHud(big,gs,top); return; }
-  txt(String(score).padStart(6,'0'),W/2,top,big,P.text,'center');
-  var m=heightMult(ship.y), cm=1+Math.floor(combo/5), line2='СЕРИЯ '+combo+(cm>1?'  ×'+cm:'');
-  txt(line2,W/2,top+big*1.6,sm,combo>=5?P.pick:P.soft,'center');
-  if(st.x3!==0) txt('ВЫСОТА',W-10*S,top+big*1.6,sm,P.soft,'right');
-  if(st.x3!==0){ txt('×'+m,W-10*S-(window.innerWidth<700?0:0),top,big,m===3?P.band:m===2?P.text:P.soft,'right'); }
-  if(ship.shield>0) txt('ЩИТ',W-10*S,top+big*2.7,sm,P.pick,'right');
-  pops.forEach(function(p){ cx.globalAlpha=Math.min(1,p.life*1.6); txt(p.txt,p.x*S,p.y*S,sm,p.col,'center'); cx.globalAlpha=1; });
+  txt(String(score).padStart(6,'0'),W/2,top,big,P.text,'center');   // сверху только счёт: без подписей серии, множителей и щита (решено 24.09)
   if(t-lastTouch>4&&t<600) txt('ВЕДИ ПАЛЬЦЕМ ВВЕРХ-ВНИЗ — ТАК БУДЕТ ЛАДОНЬ',W/2,H-gs*2.4,gs,P.soft,'center');
 }
 
@@ -484,7 +481,7 @@ function loop(now){ var dt=Math.min(0.05,(now-last)/1000); last=now;
   draw(); present(); requestAnimationFrame(loop); }
 resize(); restyle();
 for(var i=0;i<5;i++) spawnFromRight(), rocks[rocks.length-1].x=LW*rnd(0.4,1.0);
-(document.fonts&&document.fonts.load?document.fonts.load('16px "Press Start 2P"'):Promise.resolve()).catch(function(){}).then(function(){ requestAnimationFrame(loop); });
+requestAnimationFrame(loop);
 })();
 </script>
 

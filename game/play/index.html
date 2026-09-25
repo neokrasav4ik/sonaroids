@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='0.23';
+var VERSION='0.24';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -282,7 +282,7 @@ var Core=(function(){
   // v0.23: 25 ms (was 45). The maintainer felt the ship lag sharp palm moves ("yo-yo"); the chain palm → microphone → sonar → ship is
   // ~0.1 s, and this smoothing was the one part free to shorten: on game logs it adds only ~8% to the ship's fine jitter
   var FOLLOW=0.48658;                       // 1 − exp(−(1/60)/0.025): the ship follows the palm with a 25 ms lag (literal, see above)
-  var R_SIZE=[13.5,8.1,4.3], PTS=[20,50,100], FIRE=0.17, BULLET_V=190, LIVES=3, INV=1.4;
+  var R_SIZE=[13.5,8.1,4.3], PTS=[20,50,100], FIRE=0.17, BULLET_V=190, LIVES=3, INV=1.4, LIFE_P=0.2;
   var UFO_BIG_LV=2, UFO_SMALL_LV=4;          // saucers: large from level 2, small aiming from level 4 (v0.13: earlier, was 3 and 5)
   var STREAK_MAX=4;                        // the streak adds up to ×4 (after 15 hits in a row)
   /* tuning, set with a bot player (tests/bot.js): a rock every SPAWN s at pace 1, and pace^1.125 times as often later (more rocks, not just faster ones); pieces fly off at SPLIT_VX × the parent's speed
@@ -330,7 +330,9 @@ var Core=(function(){
     // what comes in
     g.spawnT-=wdt; if(g.spawnT<=0){ spawn(g,m); g.spawnT=rnd(g,TUNE.SPAWN[0],TUNE.SPAWN[1])/(m*Math.sqrt(Math.sqrt(Math.sqrt(m)))); }   // m^1.125 via sqrt: exact on every engine, unlike pow
     g.pickT-=DT; if(g.pickT<=0){ g.pickT=rnd(g,12,18); var k=g.rand(), slowOk=m>=TUNE.SLOW_FROM;                                  // slow motion only once things have sped up
-      g.picks.push({type:slowOk?(k<0.34?'shield':k<0.67?'triple':'slow'):(k<0.5?'shield':'triple'),x:g.FW+6,y:rnd(g,FH*0.15,FH*0.85)}); }
+      // v0.24: an extra life — only after a life was lost (never above 3), about one power-up in five then. There was none before
+      var lifeOk=g.lives<LIVES&&g.rand()<LIFE_P;
+      g.picks.push({type:lifeOk?'life':slowOk?(k<0.34?'shield':k<0.67?'triple':'slow'):(k<0.5?'shield':'triple'),x:g.FW+6,y:rnd(g,FH*0.15,FH*0.85)}); }
     if(g.level>=UFO_BIG_LV&&g.ufoT<0&&!u) g.ufoT=rnd(g,2,5);
     if(g.ufoT>0&&!u){ g.ufoT-=wdt; if(g.ufoT<=0){ var kind=(g.level>=UFO_SMALL_LV&&g.rand()<0.5)?'small':'big';
       u=g.ufo={id:g.nextId++,kind:kind,x:g.FW+10,y:rnd(g,FH*0.2,FH*0.8),ty:FH/2,tyT:0,fire:1.2,hp:UFO[kind].hp,seen:0,dodgeT:0,hitT:0}; g.events.push('ufo'); } }
@@ -362,7 +364,7 @@ var Core=(function(){
     for(j=0;j<g.ebullets.length;j++){ b=g.ebullets[j]; var qx=b.x-s.x-3, qy=b.y-s.y; if(qx<6&&qx>-6&&qy<5&&qy>-5){ b.dead=true; hurt(g); } }
     if(u){ var U3=UFO[u.kind], ux=u.x-s.x-3, uy=u.y-s.y; if(ux<U3.hw+5&&ux>-U3.hw-5&&uy<U3.hh+4&&uy>-U3.hh-4){ g.fx.push({ufo:u.kind,x:u.x,y:u.y}); g.events.push('ufo_die'); g.ufo=u=null; g.ufoT=rnd(g,16,24); hurt(g); } }
     for(j=0;j<g.picks.length;j++){ var p=g.picks[j], px=p.x-s.x-3, py=p.y-s.y; if(px<9&&px>-9&&py<9&&py>-9){ p.dead=true;
-      if(p.type==='shield') s.shield=15; else if(p.type==='triple') s.triple=10; else g.slow=6; g.events.push('pick'); g.fx.push({pick:p.type,x:p.x,y:p.y}); } }
+      if(p.type==='shield') s.shield=15; else if(p.type==='triple') s.triple=10; else if(p.type==='life') g.lives=Math.min(LIVES,g.lives+1); else g.slow=6; g.events.push('pick'); g.fx.push({pick:p.type,x:p.x,y:p.y}); } }
     g.bullets=g.bullets.filter(function(q){ return !q.dead&&q.x<g.FW+8&&q.y>-4&&q.y<FH+4; });
     g.ebullets=g.ebullets.filter(function(q){ return !q.dead&&q.x>-4&&q.x<g.FW+4&&q.y>-4&&q.y<FH+4; });
     g.rocks=g.rocks.filter(function(q){ return !q.dead&&q.x>-q.r-6; });
@@ -671,7 +673,7 @@ STR.en={
   start:'START', over:'GAME OVER', best:'BEST', again:'AGAIN', menu:'MENU', logs:'LOGS',
   lost_t:'NO PROBE SOUND', lost_s:'SOUND WENT TO ANOTHER DEVICE. UNPLUG HEADPHONES OR BLUETOOTH', retry:'TRY AGAIN',
   nomic_t:'NO MICROPHONE', nomic_s:'ALLOW IT IN THE BROWSER SETTINGS AND TRY AGAIN', noaudio_s:'THIS BROWSER CANNOT PLAY THE GAME. TRY SAFARI OR CHROME',
-  rotate:'TURN THE PHONE SIDEWAYS', paused:'PAUSE', resume:'GO ON', quit:'END THE GAME', exit:'EXIT TO MENU', menu_a:'MENU'
+  rotate:'TURN THE PHONE SIDEWAYS', paused:'PAUSE', resume:'GO ON', quit:'END THE GAME', restart:'START OVER', restart_s:'KEEP THE CALIBRATION OR RECALIBRATE?', rs_go:'PLAY NOW', back:'BACK', exit:'EXIT TO MENU', menu_a:'MENU'
 };
 /* ── UI strings, Russian ── */
 STR.ru={
@@ -685,7 +687,7 @@ STR.ru={
   start:'СТАРТ', over:'ИГРА ОКОНЧЕНА', best:'РЕКОРД', again:'ЕЩЁ РАЗ', menu:'МЕНЮ', logs:'ЖУРНАЛЫ',
   lost_t:'ЗОНДА НЕ СЛЫШНО', lost_s:'ЗВУК УШЁЛ В ДРУГОЕ УСТРОЙСТВО. ОТКЛЮЧИ НАУШНИКИ ИЛИ BLUETOOTH', retry:'ЕЩЁ РАЗ',
   nomic_t:'НЕТ МИКРОФОНА', nomic_s:'РАЗРЕШИ ЕГО В НАСТРОЙКАХ БРАУЗЕРА И ПОПРОБУЙ ЕЩЁ РАЗ', noaudio_s:'В ЭТОМ БРАУЗЕРЕ ИГРА НЕ ЗАПУСТИТСЯ. ПОПРОБУЙ SAFARI ИЛИ CHROME',
-  rotate:'ПОВЕРНИ ТЕЛЕФОН ГОРИЗОНТАЛЬНО', paused:'ПАУЗА', resume:'ДАЛЬШЕ', quit:'ЗАКОНЧИТЬ ИГРУ', exit:'ВЫЙТИ В МЕНЮ', menu_a:'МЕНЮ'
+  rotate:'ПОВЕРНИ ТЕЛЕФОН ГОРИЗОНТАЛЬНО', paused:'ПАУЗА', resume:'ДАЛЬШЕ', quit:'ЗАКОНЧИТЬ ИГРУ', restart:'НАЧАТЬ ЗАНОВО', restart_s:'С ТОЙ ЖЕ КАЛИБРОВКОЙ ИЛИ ПЕРЕКАЛИБРОВАТЬ?', rs_go:'СРАЗУ ИГРАТЬ', back:'НАЗАД', exit:'ВЫЙТИ В МЕНЮ', menu_a:'МЕНЮ'
 };
 /* ════ THE APP: drawing, first-launch screens and the game loop share one scope (40_gfx … 49_main) ════ */
 (function(){
@@ -831,7 +833,8 @@ var UFO_SMALL=[
  '.1122222211.',
  '123333333321',
  '.11111111111'];
-var ICON={shield:['.1111.','1....1','1.11.1','1.11.1','1....1','.1111.'], triple:['.....11','...11..','.11....','1111111','.11....','...11..','.....11'],   /* three diverging shots (v0.13) */ slow:['111111','.1..1.','..11..','..11..','.1..1.','111111']};
+var ICON={shield:['.1111.','1....1','1.11.1','1.11.1','1....1','.1111.'], triple:['.....11','...11..','.11....','1111111','.11....','...11..','.....11'],   /* three diverging shots (v0.13) */ slow:['111111','.1..1.','..11..','..11..','.1..1.','111111'],
+  life:['.......','.11.11.','1111111','1111111','.11111.','..111..','...1...']};   /* a heart: one more life (v0.24) */
 var MINI=['11...','12221','11...'];                                  // a life: a tiny ship
 function blit(map,cols,x,y){ for(var r=0;r<map.length;r++) for(var c=0;c<map[r].length;c++){ var ch=map[r][c]; if(ch==='.') continue;
   lx.fillStyle=cols[+ch-1]; lx.fillRect(Math.round(x+c),Math.round(y+r),1,1); } }
@@ -1129,6 +1132,7 @@ function react(){ g.events.forEach(function(k){
   (g.fx||[]).forEach(function(f){ if(f.ufo){ burst(fx(f.x),f.y*K,40,P.ufo,90*K); shake=0.35; } else if(f.pick) burst(fx(f.x),f.y*K,14,[P.pick,P.text],50*K); });
   if(g.events.indexOf('ufo_hit')>=0&&g.ufo){ burst(fx(g.ufo.x),g.ufo.y*K,14,[P.text].concat(P.ufo.slice(1)),60*K); shake=Math.max(shake,0.12); }
   if(g.events.indexOf('shield')>=0) burst(fx(g.ship.x)+6,g.ship.y*K,20,[P.pick,P.text],60*K);
+  if((g.fx||[]).some(function(f){ return f.pick==='life'; })) livesT=1.8;                  // a life taken: the lives show for a moment
   if(g.events.indexOf('hit')>=0||g.events.indexOf('over')>=0){ flash=0.25; shake=0.4; livesT=1.8; burst(fx(g.ship.x)+6,g.ship.y*K,26,P.ship.concat(P.flame),70*K); }
 }
 function sOver(){ overT+=DT;                       // no tuning here: it is done on the wave screen before every game (24 Sep)
@@ -1136,7 +1140,12 @@ function sOver(){ overT+=DT;                       // no tuning here: it is done
   text(L('over'),cx0,y,P.text,'center'); text('V'+VERSION,freeSide()==='left'?LW-SAFE.r-8:SAFE.l+8,LH-SAFE.b-12,P.soft,freeSide()==='left'?'right':'left'); text(String(g.score).padStart(6,'0'),cx0,y+14,P.band,'center'); text(L('best')+' '+String(best).padStart(6,'0'),cx0,y+26,P.soft,'center');
   say(L('over')+' '+g.score);
   if(overT>0.8) column([['again',L('again'),'primary'],['menu',L('menu')]].concat(Logs.has()?[['logs',L('logs')]]:[]),Math.round(LH*0.5)); }
-function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('paused')); column([['resume',L('resume'),'primary']].concat(pausedFrom==='play'?[['quit',L('quit')]]:[]).concat([['exit',L('exit')]]),Math.round(LH*0.5)); }
+function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('paused')); column([['resume',L('resume'),'primary']].concat(pausedFrom==='play'?[['restart',L('restart')],['quit',L('quit')]]:[]).concat([['exit',L('exit')]]),Math.round(LH*0.52)); }
+/* v0.24 "start over" from the pause menu: straight into a countdown with the same calibration, or through calibration again */
+function sRestart(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('restart'),L('restart_s'));
+  column([['rs_go',L('rs_go'),'primary'],['rs_cal',L('recal')],['rs_back',L('back')]],Math.round(LH*0.58)); }
+/* the running game is dropped without the game-over screen; its score still counts for the best */
+function dropGame(){ if(g&&g.state==='play'){ Logs.gameEv('restarted by the player'); g.state='over'; Logs.gameStop(); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } } }
 function sLost(){ sky(DT,0.2); titles(L('lost_t'),L('lost_s'),P.hit); nextBtn('retry',L('retry')); }
 function sNomic(){ sky(DT,0.2); titles(L('nomic_t'),L(errKind==='mic'?'nomic_s':'noaudio_s'),P.hit); nextBtn('retry',L('retry')); }
 function sRotate(){ lx.fillStyle=P.bg; lx.fillRect(0,0,LW,LH); var y=Math.round(LH/2-10); para(L('rotate'),LW/2,y,LW-16,P.text); say(L('rotate')); }
@@ -1187,6 +1196,10 @@ var ACT={
   retry:function(){ Sonar.clearLost(); ensure(toAway); },
   pause:function(){ pauseGame(); },
   quit:function(){ Logs.gameEv('ended by the player'); endGame(); },
+  restart:function(){ go('restart'); },
+  rs_go:function(){ dropGame(); resumeAfterPrep=false; ensure(startCount); },
+  rs_cal:function(){ dropGame(); resumeAfterPrep=false; ensure(toAway); },
+  rs_back:function(){ go('paused'); },
   exit:function(){ if(g&&g.state==='play'){ Logs.gameEv('ended by the player'); endGame(); } go('title'); },
   resume:function(){ if(pausedFrom==='play'){ if(booted&&Sonar.healthy()){ countT=3; go('count-resume'); } else { resumeAfterPrep=true; ensure(null); } } else ensure(startCount); }
 };
@@ -1227,7 +1240,7 @@ function loop(now){
     case 'sound': sSound(); break;
     case 'phone': sPhone(); break; case 'mic': sMic(); break; case 'away': sAway(); break; case 'wave': sWave(); break;
     case 'count': sCount(); break; case 'count-resume': sCountResume(); break; case 'play': sPlay(); break; case 'over': sOver(); break;
-    case 'paused': sPaused(); break; case 'lost': sLost(); break; case 'nomic': sNomic(); break;
+    case 'paused': sPaused(); break; case 'restart': sRestart(); break; case 'lost': sLost(); break; case 'nomic': sNomic(); break;
   }
   present(scr==='play'?shake:0);
 }

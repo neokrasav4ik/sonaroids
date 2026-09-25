@@ -16,7 +16,7 @@ var Core=(function(){
   // v0.23: 25 ms (was 45). The maintainer felt the ship lag sharp palm moves ("yo-yo"); the chain palm → microphone → sonar → ship is
   // ~0.1 s, and this smoothing was the one part free to shorten: on game logs it adds only ~8% to the ship's fine jitter
   var FOLLOW=0.48658;                       // 1 − exp(−(1/60)/0.025): the ship follows the palm with a 25 ms lag (literal, see above)
-  var R_SIZE=[13.5,8.1,4.3], PTS=[20,50,100], FIRE=0.17, BULLET_V=190, LIVES=3, INV=1.4;
+  var R_SIZE=[13.5,8.1,4.3], PTS=[20,50,100], FIRE=0.17, BULLET_V=190, LIVES=3, INV=1.4, LIFE_P=0.2;
   var UFO_BIG_LV=2, UFO_SMALL_LV=4;          // saucers: large from level 2, small aiming from level 4 (v0.13: earlier, was 3 and 5)
   var STREAK_MAX=4;                        // the streak adds up to ×4 (after 15 hits in a row)
   /* tuning, set with a bot player (tests/bot.js): a rock every SPAWN s at pace 1, and pace^1.125 times as often later (more rocks, not just faster ones); pieces fly off at SPLIT_VX × the parent's speed
@@ -64,7 +64,9 @@ var Core=(function(){
     // what comes in
     g.spawnT-=wdt; if(g.spawnT<=0){ spawn(g,m); g.spawnT=rnd(g,TUNE.SPAWN[0],TUNE.SPAWN[1])/(m*Math.sqrt(Math.sqrt(Math.sqrt(m)))); }   // m^1.125 via sqrt: exact on every engine, unlike pow
     g.pickT-=DT; if(g.pickT<=0){ g.pickT=rnd(g,12,18); var k=g.rand(), slowOk=m>=TUNE.SLOW_FROM;                                  // slow motion only once things have sped up
-      g.picks.push({type:slowOk?(k<0.34?'shield':k<0.67?'triple':'slow'):(k<0.5?'shield':'triple'),x:g.FW+6,y:rnd(g,FH*0.15,FH*0.85)}); }
+      // v0.24: an extra life — only after a life was lost (never above 3), about one power-up in five then. There was none before
+      var lifeOk=g.lives<LIVES&&g.rand()<LIFE_P;
+      g.picks.push({type:lifeOk?'life':slowOk?(k<0.34?'shield':k<0.67?'triple':'slow'):(k<0.5?'shield':'triple'),x:g.FW+6,y:rnd(g,FH*0.15,FH*0.85)}); }
     if(g.level>=UFO_BIG_LV&&g.ufoT<0&&!u) g.ufoT=rnd(g,2,5);
     if(g.ufoT>0&&!u){ g.ufoT-=wdt; if(g.ufoT<=0){ var kind=(g.level>=UFO_SMALL_LV&&g.rand()<0.5)?'small':'big';
       u=g.ufo={id:g.nextId++,kind:kind,x:g.FW+10,y:rnd(g,FH*0.2,FH*0.8),ty:FH/2,tyT:0,fire:1.2,hp:UFO[kind].hp,seen:0,dodgeT:0,hitT:0}; g.events.push('ufo'); } }
@@ -96,7 +98,7 @@ var Core=(function(){
     for(j=0;j<g.ebullets.length;j++){ b=g.ebullets[j]; var qx=b.x-s.x-3, qy=b.y-s.y; if(qx<6&&qx>-6&&qy<5&&qy>-5){ b.dead=true; hurt(g); } }
     if(u){ var U3=UFO[u.kind], ux=u.x-s.x-3, uy=u.y-s.y; if(ux<U3.hw+5&&ux>-U3.hw-5&&uy<U3.hh+4&&uy>-U3.hh-4){ g.fx.push({ufo:u.kind,x:u.x,y:u.y}); g.events.push('ufo_die'); g.ufo=u=null; g.ufoT=rnd(g,16,24); hurt(g); } }
     for(j=0;j<g.picks.length;j++){ var p=g.picks[j], px=p.x-s.x-3, py=p.y-s.y; if(px<9&&px>-9&&py<9&&py>-9){ p.dead=true;
-      if(p.type==='shield') s.shield=15; else if(p.type==='triple') s.triple=10; else g.slow=6; g.events.push('pick'); g.fx.push({pick:p.type,x:p.x,y:p.y}); } }
+      if(p.type==='shield') s.shield=15; else if(p.type==='triple') s.triple=10; else if(p.type==='life') g.lives=Math.min(LIVES,g.lives+1); else g.slow=6; g.events.push('pick'); g.fx.push({pick:p.type,x:p.x,y:p.y}); } }
     g.bullets=g.bullets.filter(function(q){ return !q.dead&&q.x<g.FW+8&&q.y>-4&&q.y<FH+4; });
     g.ebullets=g.ebullets.filter(function(q){ return !q.dead&&q.x>-4&&q.x<g.FW+4&&q.y>-4&&q.y<FH+4; });
     g.rocks=g.rocks.filter(function(q){ return !q.dead&&q.x>-q.r-6; });

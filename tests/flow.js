@@ -19,7 +19,7 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
   const shot=async n=>p.screenshot({path:path.join(OUT,n+'.png')});
   await shot('01_title');
   await p.evaluate(()=>__sonaroids.act.play()); t0=Date.now();
-  let logs={setup:null,game:null}, pausedOk=false, healthyAfter=null, again=null, seen2=[], last2=null, caughtAt=null, startAt=null, range=null, follow=[], shots={};
+  let logs={setup:null,game:null}, pausedOk=false, restartOk=false, restartInfo='', healthyAfter=null, again=null, seen2=[], last2=null, caughtAt=null, startAt=null, range=null, follow=[], shots={};
   while(T()<95){
     await p.waitForTimeout(100);
     const s=await p.evaluate(()=>{ const s=__sonaroids.state(), st=Sonar.state(); return {scr:s.scr,caught:s.caught,
@@ -40,6 +40,12 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
       const bp=await p.evaluate(()=>{ const b=__sonaroids.btn().find(q=>q.id==='pause'), m=__sonaroids.S(); return b?{x:(b.x+b.w/2)*m.S/m.DPR,y:(b.y+b.h/2)*m.S/m.DPR}:null; });
       if(bp) await p.mouse.click(bp.x,bp.y); await p.waitForTimeout(300);
       await shot('06a_paused'); pausedOk=await p.evaluate(()=>__sonaroids.scr()==='paused'&&__sonaroids.btn().some(b=>b.id==='quit'));
+      // "start over" → "play now": a countdown with the same calibration, then a fresh game (v0.24)
+      await p.evaluate(()=>__sonaroids.act.restart()); await p.waitForTimeout(200); const rs=await p.evaluate(()=>__sonaroids.scr());
+      await p.evaluate(()=>__sonaroids.act.rs_go()); await p.waitForTimeout(3600);
+      const st=await p.evaluate(()=>({scr:__sonaroids.scr(),t:__sonaroids.state().g.t}));
+      restartOk=rs==='restart'&&st.scr==='play'&&st.t<1.5; restartInfo=`${rs} → ${st.scr}, new game at ${st.t.toFixed(1)} s`;
+      await p.evaluate(()=>__sonaroids.act.pause()); await p.waitForTimeout(100);
       await p.evaluate(()=>__sonaroids.act.quit()); }
     if(s.scr==='over'&&!shots.over){ shots.over=1; await p.waitForTimeout(1200); await shot('06_over');
       logs=await p.evaluate(async()=>{ const f=async b=>b?Array.from(new Uint8Array(await b.arrayBuffer())):null; return {setup:await f(Logs.setupBlob()),game:await f(Logs.gameBlob())}; });
@@ -66,7 +72,7 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
   console.log(`logs: setup ${logs.setup?(logs.setup.length/1024).toFixed(0)+' KB':'none'}, game ${logs.game?(logs.game.length/1024).toFixed(0)+' KB':'none'}; lab replay of the setup log: echo range differs from the page by ${m?m[1]:'?'} mm (median)`);
   if(errors.length) console.log('page errors:',errors.join(' | '));
   const need=['title','away','wave','count','play','over'], got=need.every(n=>seen.some(s=>s.startsWith(n+'@')));
-  console.log(`menu in flight → pause with “end the game”: ${pausedOk?'yes':'NO'}`);
-  const ok=pausedOk&&healthyAfter===false&&seen2.includes('away')&&seen2[seen2.length-1]==='wave'&&got&&caughtAt!==null&&range&&range[0]<0.12&&range[1]>0.8&&range[1]<0.95&&corr>0.95&&logs.setup&&logs.game&&m&&+m[1]<0.5&&!errors.length;
+  console.log(`menu in flight → pause with “end the game”: ${pausedOk?'yes':'NO'}; start over → play now: ${restartOk?'yes':'NO'} (${restartInfo})`);
+  const ok=pausedOk&&restartOk&&healthyAfter===false&&seen2.includes('away')&&seen2[seen2.length-1]==='wave'&&got&&caughtAt!==null&&range&&range[0]<0.12&&range[1]>0.8&&range[1]<0.95&&corr>0.95&&logs.setup&&logs.game&&m&&+m[1]<0.5&&!errors.length;
   console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;
 })();

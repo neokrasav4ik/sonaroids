@@ -169,6 +169,7 @@ function react(){ g.events.forEach(function(k){
   (g.fx||[]).forEach(function(f){ if(f.ufo){ burst(fx(f.x),f.y*K,40,P.ufo,90*K); shake=0.35; } else if(f.pick) burst(fx(f.x),f.y*K,14,[P.pick,P.text],50*K); });
   if(g.events.indexOf('ufo_hit')>=0&&g.ufo){ burst(fx(g.ufo.x),g.ufo.y*K,14,[P.text].concat(P.ufo.slice(1)),60*K); shake=Math.max(shake,0.12); }
   if(g.events.indexOf('shield')>=0) burst(fx(g.ship.x)+6,g.ship.y*K,20,[P.pick,P.text],60*K);
+  if((g.fx||[]).some(function(f){ return f.pick==='life'; })) livesT=1.8;                  // a life taken: the lives show for a moment
   if(g.events.indexOf('hit')>=0||g.events.indexOf('over')>=0){ flash=0.25; shake=0.4; livesT=1.8; burst(fx(g.ship.x)+6,g.ship.y*K,26,P.ship.concat(P.flame),70*K); }
 }
 function sOver(){ overT+=DT;                       // no tuning here: it is done on the wave screen before every game (24 Sep)
@@ -176,7 +177,12 @@ function sOver(){ overT+=DT;                       // no tuning here: it is done
   text(L('over'),cx0,y,P.text,'center'); text('V'+VERSION,freeSide()==='left'?LW-SAFE.r-8:SAFE.l+8,LH-SAFE.b-12,P.soft,freeSide()==='left'?'right':'left'); text(String(g.score).padStart(6,'0'),cx0,y+14,P.band,'center'); text(L('best')+' '+String(best).padStart(6,'0'),cx0,y+26,P.soft,'center');
   say(L('over')+' '+g.score);
   if(overT>0.8) column([['again',L('again'),'primary'],['menu',L('menu')]].concat(Logs.has()?[['logs',L('logs')]]:[]),Math.round(LH*0.5)); }
-function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('paused')); column([['resume',L('resume'),'primary']].concat(pausedFrom==='play'?[['quit',L('quit')]]:[]).concat([['exit',L('exit')]]),Math.round(LH*0.5)); }
+function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('paused')); column([['resume',L('resume'),'primary']].concat(pausedFrom==='play'?[['restart',L('restart')],['quit',L('quit')]]:[]).concat([['exit',L('exit')]]),Math.round(LH*0.52)); }
+/* v0.24 "start over" from the pause menu: straight into a countdown with the same calibration, or through calibration again */
+function sRestart(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('restart'),L('restart_s'));
+  column([['rs_go',L('rs_go'),'primary'],['rs_cal',L('recal')],['rs_back',L('back')]],Math.round(LH*0.58)); }
+/* the running game is dropped without the game-over screen; its score still counts for the best */
+function dropGame(){ if(g&&g.state==='play'){ Logs.gameEv('restarted by the player'); g.state='over'; Logs.gameStop(); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } } }
 function sLost(){ sky(DT,0.2); titles(L('lost_t'),L('lost_s'),P.hit); nextBtn('retry',L('retry')); }
 function sNomic(){ sky(DT,0.2); titles(L('nomic_t'),L(errKind==='mic'?'nomic_s':'noaudio_s'),P.hit); nextBtn('retry',L('retry')); }
 function sRotate(){ lx.fillStyle=P.bg; lx.fillRect(0,0,LW,LH); var y=Math.round(LH/2-10); para(L('rotate'),LW/2,y,LW-16,P.text); say(L('rotate')); }
@@ -227,6 +233,10 @@ var ACT={
   retry:function(){ Sonar.clearLost(); ensure(toAway); },
   pause:function(){ pauseGame(); },
   quit:function(){ Logs.gameEv('ended by the player'); endGame(); },
+  restart:function(){ go('restart'); },
+  rs_go:function(){ dropGame(); resumeAfterPrep=false; ensure(startCount); },
+  rs_cal:function(){ dropGame(); resumeAfterPrep=false; ensure(toAway); },
+  rs_back:function(){ go('paused'); },
   exit:function(){ if(g&&g.state==='play'){ Logs.gameEv('ended by the player'); endGame(); } go('title'); },
   resume:function(){ if(pausedFrom==='play'){ if(booted&&Sonar.healthy()){ countT=3; go('count-resume'); } else { resumeAfterPrep=true; ensure(null); } } else ensure(startCount); }
 };
@@ -267,7 +277,7 @@ function loop(now){
     case 'sound': sSound(); break;
     case 'phone': sPhone(); break; case 'mic': sMic(); break; case 'away': sAway(); break; case 'wave': sWave(); break;
     case 'count': sCount(); break; case 'count-resume': sCountResume(); break; case 'play': sPlay(); break; case 'over': sOver(); break;
-    case 'paused': sPaused(); break; case 'lost': sLost(); break; case 'nomic': sNomic(); break;
+    case 'paused': sPaused(); break; case 'restart': sRestart(); break; case 'lost': sLost(); break; case 'nomic': sNomic(); break;
   }
   present(scr==='play'?shake:0);
 }

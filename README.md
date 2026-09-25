@@ -10,7 +10,7 @@ The phone lies flat on the table. It plays an inaudible ultrasonic tone (18–20
 
 - Web app: [sonaroids.app](https://sonaroids.app). An Android APK wrapper is postponed until the mechanics work well on Android.
 - Target size: the whole game under 100 KB. Graphics, sound and font are generated in code.
-- Shared leaderboards: all-time and daily challenge.
+- Shared leaderboards (planned): every game on a freshly generated layout, no daily challenge.
 
 ## Repository
 

@@ -56,7 +56,8 @@ Later launches: steps 5–6 and straight into the game. **Before every new game*
 - **Rocks split:** large → two medium → two small. 20 / 50 / 100 points, as in the original. — agreed
 - **Points by height:** the middle of the screen ×3, then ×2, the edges ×1. **Not shown on screen.** — agreed
 - **Streak:** every 5 hits in a row add +1 to the multiplier, up to ×4; getting hit resets it. — agreed
-- **Power-ups** — you have to fly into them: shield (one hit, up to 15 s; shown as a ring of dots around the ship), triple shot (10 s), slow motion (6 s) — only once the game has sped up (~110 s). One every 12–18 s. — agreed
+- **Power-ups** — you have to fly into them: shield (one hit, up to 15 s; shown as a ring of dots around the ship), triple shot (10 s), slow motion (6 s) — only once the game has sped up (~110 s). One every 12–18 s. — agreed Since v0.24 there is also a **life** (a heart): only after a life was lost, about one power-up in five, never above three lives; taking it shows the lives by the ship for a moment. — agreed 25 Sep
+- **Pause** (the corner button): GO ON / START OVER / END THE GAME / EXIT TO MENU. "Start over" asks: PLAY NOW (a countdown with the same calibration) or RECALIBRATE (the empty room and waving); the dropped game's score counts for the best. — agreed 25 Sep, v0.24
 - **One difficulty that grows with time:** calm but not empty for the first 15 s, then a smooth rise: rocks per second 0.74 at the start → 1.1 at 2 min → 1.35 at 3 min → 1.6 at 5 min (speed ×1.7 by 3 min, ×2.2 by 7 min, frequency = pace to the power 1.125). — v0.13 — agreed
 - **Levels** count base points (before the height and streak multipliers, which reach ×12): a level every 5000. The large saucer from level 2 (~30 s), the small aiming one from level 4 (~1 min); v0.13. The maintainer asked for saucers earlier: with the bot (v0.9) the first saucer comes at ~0.8 min and a middling bot lasts ~5 min; live games are shorter so far, ~3 min. — agreed 24 Sep
 - **3 lives**, shown only at the moment of a hit — tiny ships above the ship. — trying
@@ -66,8 +67,8 @@ Later launches: steps 5–6 and straight into the game. **Before every new game*
 
 ## 5. Modes and leaderboards
 
-- **Regular game** and **daily challenge** — the same rock layout for everyone on a given day. — agreed
-- **Shared leaderboards:** all-time and today's challenge. — agreed
+- **One regular game:** every game is played on a freshly generated layout. No daily challenge (the same layout for everyone on a day). — agreed 25 Sep
+- **Shared leaderboards:** all-time (and maybe today's — from the same regular games). — agreed
 - **Player name** — a normal nickname, not three letters: up to 16 characters from Latin, Cyrillic, digits and simple symbols (everything the pixel font can draw). No registration; the nickname is stored on the device and asked once, at the first leaderboard score. Server side: a simple profanity filter and rate limiting. — agreed
 - **Anti-cheat:** the game is deterministic given the layout seed. Together with the score the client sends the palm trajectory (a few KB); the server replays the game with the same game code and checks the score. — agreed
 
@@ -100,7 +101,7 @@ Prototype: `game/proto/` — the ship follows your finger.
 2. ~~Repository foundation: docs, lab, landing page, publishing to sonaroids.app~~ — live since 24 Sep; our own 5×7 pixel font is done.
 3. Game skeleton: first-launch screens, mechanics from the lab, rendering, sound, own font — built 24 Sep (`src/`, sonaroids.app/play), to be checked on phones.
 4. Game rules: rocks, splitting, points, streak, power-ups, saucer, levels — built 24 Sep, difficulty tuned with a bot (`tests/bot.js`), to be checked by playing.
-5. Leaderboards: server, game verification, tables, daily challenge.
+5. Leaderboards: server, game verification, tables.
 6. Android (postponed 25 Sep): mechanics on phones with a weak 18–20 kHz path, then the APK.
 
 ## 9. Open questions

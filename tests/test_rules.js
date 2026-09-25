@@ -38,6 +38,11 @@ check('a large saucer takes two hits, none off screen', hitEv===1&&dieEv===1&&!o
 let dodges=0; for(let k=0;k<20;k++){ g=Core.create(100+k,380); g.spawnT=99; g.pickT=99; g.level=Core.UFO_BIG_LV; g.ufoT=0.01; Core.step(g,0.5); g.ship.inv=99;
   for(let i=0;i<60*3&&g.ufo;i++){ g.ship.y=g.ufo.y; Core.step(g,null); if(g.events.includes('ufo_dodge')){ dodges++; break; } } }
 check('a saucer lined up with the ship usually sidesteps', dodges>=8, dodges+' of 20');
+// an extra life (v0.24): only after a hit, never above 3
+g=Core.create(21,380); g.spawnT=99; let lifeFull=0; for(let k=0;k<200;k++){ g.pickT=0.001; g.picks=[]; Core.step(g,null); if(g.picks[0]&&g.picks[0].type==='life') lifeFull++; }
+g.lives=2; let lifeLow=0; for(let k=0;k<200;k++){ g.pickT=0.001; g.picks=[]; Core.step(g,null); if(g.picks[0]&&g.picks[0].type==='life') lifeLow++; }
+g.picks=[{type:'life',x:g.ship.x+3,y:g.ship.y}]; Core.step(g,null); const after=g.lives;
+check('an extra life comes only after a hit (about 1 in 5), up to 3', lifeFull===0&&lifeLow>20&&lifeLow<60&&after===3, `at 3 lives ${lifeFull}/200, at 2 lives ${lifeLow}/200, taken → ${after}`);
 // the pace
 check('pace: 1 for 15 s, 1.7 at 3 min, 2.2 at 7 min', Core.pace(10)===1&&Math.abs(Core.pace(180)-1.7)<1e-9&&Math.abs(Core.pace(420)-2.2)<1e-9);
 // slow motion is not given while the game is still calm

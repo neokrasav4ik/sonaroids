@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='0.24';
+var VERSION='0.25';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -373,7 +373,9 @@ var Core=(function(){
   }
   /* a whole game from a palm trajectory (one value per step, −1 = no palm): what the server will run */
   function replay(seed,FW,hands,y0){ var g=create(seed,FW,y0); for(var i=0;i<hands.length&&g.state==='play';i++) step(g,hands[i]<0?null:hands[i]); return g; }
-  return {TUNE:TUNE,SHIP_X:SHIP_X,UFO_BIG_LV:UFO_BIG_LV,UFO_SMALL_LV:UFO_SMALL_LV,create:create,step:step,replay:replay,pace:pace,heightMult:heightMult,DT:DT,FH:FH,MARGIN:MARGIN,UFO:UFO,DODGE:DODGE,R_SIZE:R_SIZE};
+  /* the rules' tag: the leaderboard server replays a game only with the same rules. Change it whenever a change here alters play */
+  var TAG='rules-2';
+  return {TAG:TAG,TUNE:TUNE,SHIP_X:SHIP_X,UFO_BIG_LV:UFO_BIG_LV,UFO_SMALL_LV:UFO_SMALL_LV,create:create,step:step,replay:replay,pace:pace,heightMult:heightMult,DT:DT,FH:FH,MARGIN:MARGIN,UFO:UFO,DODGE:DODGE,R_SIZE:R_SIZE};
 })();
 if(typeof module!=='undefined') module.exports=Core;
 /* ── SONAR: speaker probe, microphone, echo processing. Moved over from the lab (04_audio_engine, 06_side_pick, 07_calibration)
@@ -660,6 +662,51 @@ var Sfx=(function(){
     try{ localStorage.setItem('sonaroids_sfxvol',String(vol)); }catch(e){} return true; }
   return {duck:duck,level:function(){ return vol; },play:play,on:function(){ return on; },toggle:function(){ on=!on; try{ localStorage.setItem('sonaroids_sfx',on?'1':'0'); }catch(e){} return on; }};
 })();
+/* ── LEADERBOARD CLIENT (v0.25): talks to server/server.js at api.sonaroids.app.
+   A game is sent as its seed, field width, start height and the palm height of every core step — rounded to 1/4000,
+   and the game itself steps with exactly those rounded numbers, so the server's replay lands on the same score.
+   The player is a random secret kept on the device (sonaroids_pid); the nickname is asked once, at the first place in a table.
+   No network (or a local file) — nothing is sent; a game that could not be sent is kept (the last 3) and tried again later. ── */
+var Board=(function(){
+  var API=(typeof window!=='undefined'&&window.SONAROIDS_API)||'https://api.sonaroids.app', Q=4000, NONE=65535;
+  var cur=null, last=null, cache={}, pending=null;
+  function ls(k,v){ try{ if(v===undefined) return localStorage.getItem(k); if(v===null) localStorage.removeItem(k); else localStorage.setItem(k,v); }catch(e){} return null; }
+  function on(){ return !!(typeof window!=='undefined'&&(window.SONAROIDS_API||location.protocol==='https:'))&&typeof fetch==='function'; }
+  function pid(){ var p=ls('sonaroids_pid'); if(p&&/^[0-9a-f]{32}$/.test(p)) return p;
+    var a=new Uint8Array(16); crypto.getRandomValues(a); p=''; for(var i=0;i<16;i++) p+=(a[i]<16?'0':'')+a[i].toString(16); ls('sonaroids_pid',p); return p; }
+  function nick(){ return ls('sonaroids_nick'); }
+  /* the palm height the game steps with: rounded so that the server can repeat it exactly */
+  function q(h){ return h===null||h===undefined?null:Math.round(h*Q)/Q; }
+  function start(seed,FW,y0){ cur={core:Core.TAG,seed:seed,FW:FW,y0:y0,q:[]}; last=null; }
+  function step(h){ if(cur) cur.q.push(h===null?NONE:Math.round(h*Q)); }
+  function b64(u8){ var s='', CH=0x8000; for(var i=0;i<u8.length;i+=CH) s+=String.fromCharCode.apply(null,u8.subarray(i,i+CH)); return btoa(s); }
+  function pack(qs){ var u8=new Uint8Array(qs.length*2); for(var i=0;i<qs.length;i++){ u8[2*i]=qs[i]&255; u8[2*i+1]=qs[i]>>8; }
+    if(typeof CompressionStream!=='function') return Promise.resolve({enc:'raw',hands:b64(u8)});
+    try{ var cs=new CompressionStream('deflate-raw'), w=cs.writable.getWriter(); w.write(u8); w.close();
+      return new Response(cs.readable).arrayBuffer().then(function(ab){ return {enc:'deflate',hands:b64(new Uint8Array(ab))}; },function(){ return {enc:'raw',hands:b64(u8)}; }); }
+    catch(e){ return Promise.resolve({enc:'raw',hands:b64(u8)}); } }
+  function keep(body){ var l=[]; try{ l=JSON.parse(ls('sonaroids_unsent')||'[]'); }catch(e){} l.push(body); ls('sonaroids_unsent',JSON.stringify(l.slice(-3))); }
+  function post(path,body){ return fetch(API+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){ return r.json().then(function(j){ j.code=r.status; return j; }); }); }
+  /* a game is over (or dropped): send it. last — what the game-over screen shows: sending | done | offline | old | error */
+  function finish(score){ var c=cur; cur=null; if(!c||!on()||!(score>0)||!c.q.length) return; last={state:'sending',score:score};
+    pack(c.q).then(function(p){ var body={pid:pid(),core:c.core,seed:c.seed,FW:c.FW,y0:c.y0,enc:p.enc,hands:p.hands,score:score};
+      return post('/v1/game',body).then(function(j){ cache={};
+        if(j.ok) last={state:'done',score:j.score,ranks:j.ranks,listed:j.listed,named:j.named||!!nick()};
+        else if(j.error==='core') last={state:'old'}; else last={state:'error',why:j.error}; },
+      function(){ keep(body); last={state:'offline'}; }); }); }
+  /* games that could not be sent before: try again (at launch and after a game) */
+  function flush(){ if(!on()||pending) return; var l=[]; try{ l=JSON.parse(ls('sonaroids_unsent')||'[]'); }catch(e){} if(!l.length) return;
+    ls('sonaroids_unsent',null); pending=Promise.all(l.map(function(b){ return post('/v1/game',b).catch(function(){ keep(b); }); })).then(function(){ pending=null; cache={}; }); }
+  function setNick(n){ return post('/v1/nick',{pid:pid(),nick:n}).then(function(j){ if(j.ok){ ls('sonaroids_nick',j.nick); cache={}; if(last&&last.state==='done') last.named=true; } return j; }); }
+  /* a table: cached for 30 s; state loading | ok | offline */
+  function top(period){ var c=cache[period]; if(c&&(c.state==='loading'||Date.now()-c.at<30000)) return c;
+    c=cache[period]={state:'loading',at:Date.now()}; if(!on()){ c.state='offline'; return c; }
+    fetch(API+'/v1/top?period='+period+'&limit=10',{headers:{'X-Player':pid()}}).then(function(r){ return r.json(); })
+      .then(function(j){ c.state='ok'; c.entries=j.entries||[]; c.me=j.me||null; c.at=Date.now(); },function(){ c.state='offline'; c.at=Date.now(); });
+    return c; }
+  return {q:q,start:start,step:step,finish:finish,flush:flush,setNick:setNick,top:top,nick:nick,on:on,
+    last:function(){ return last; }, _set:function(p,c){ cache[p]=c; }, _last:function(l){ last=l; }};
+})();
 /* ── UI strings, English. All caps: the game's pixel font is drawn in capitals on screen. ── */
 var STR={};
 STR.en={
@@ -673,7 +720,10 @@ STR.en={
   start:'START', over:'GAME OVER', best:'BEST', again:'AGAIN', menu:'MENU', logs:'LOGS',
   lost_t:'NO PROBE SOUND', lost_s:'SOUND WENT TO ANOTHER DEVICE. UNPLUG HEADPHONES OR BLUETOOTH', retry:'TRY AGAIN',
   nomic_t:'NO MICROPHONE', nomic_s:'ALLOW IT IN THE BROWSER SETTINGS AND TRY AGAIN', noaudio_s:'THIS BROWSER CANNOT PLAY THE GAME. TRY SAFARI OR CHROME',
-  rotate:'TURN THE PHONE SIDEWAYS', paused:'PAUSE', resume:'GO ON', quit:'END THE GAME', restart:'START OVER', restart_s:'KEEP THE CALIBRATION OR RECALIBRATE?', rs_go:'PLAY NOW', back:'BACK', exit:'EXIT TO MENU', menu_a:'MENU'
+  rotate:'TURN THE PHONE SIDEWAYS', paused:'PAUSE', resume:'GO ON', quit:'END THE GAME', scores:'HIGH SCORES', p_day:'TODAY', p_week:'THIS WEEK', p_all:'ALL TIME', loading:'LOADING…', offline:'NO CONNECTION TO THE TABLE', empty:'EMPTY SO FAR', you:'YOU',
+  name:'NAME', name_set:'SET YOUR NAME', nick_t:'YOU MADE THE TABLE!', nick_t2:'YOUR NAME IN THE TABLE', nick_s:'UP TO 16 CHARACTERS: LATIN LETTERS, DIGITS AND _', done:'DONE', later:'LATER',
+  nick_bad:'THAT NAME IS NOT ALLOWED', nick_net:'NO CONNECTION — TRY LATER', sending:'SENDING TO THE TABLE…', sent_off:'OFFLINE — WILL SEND LATER', old:'UPDATE THE GAME TO GET INTO THE TABLE',
+  place_day:'#{n} TODAY', place_week:'#{n} THIS WEEK', place_all:'#{n} ALL TIME', restart:'START OVER', restart_s:'KEEP THE CALIBRATION OR RECALIBRATE?', rs_go:'PLAY NOW', back:'BACK', exit:'EXIT TO MENU', menu_a:'MENU'
 };
 /* ── UI strings, Russian ── */
 STR.ru={
@@ -687,7 +737,10 @@ STR.ru={
   start:'СТАРТ', over:'ИГРА ОКОНЧЕНА', best:'РЕКОРД', again:'ЕЩЁ РАЗ', menu:'МЕНЮ', logs:'ЖУРНАЛЫ',
   lost_t:'ЗОНДА НЕ СЛЫШНО', lost_s:'ЗВУК УШЁЛ В ДРУГОЕ УСТРОЙСТВО. ОТКЛЮЧИ НАУШНИКИ ИЛИ BLUETOOTH', retry:'ЕЩЁ РАЗ',
   nomic_t:'НЕТ МИКРОФОНА', nomic_s:'РАЗРЕШИ ЕГО В НАСТРОЙКАХ БРАУЗЕРА И ПОПРОБУЙ ЕЩЁ РАЗ', noaudio_s:'В ЭТОМ БРАУЗЕРЕ ИГРА НЕ ЗАПУСТИТСЯ. ПОПРОБУЙ SAFARI ИЛИ CHROME',
-  rotate:'ПОВЕРНИ ТЕЛЕФОН ГОРИЗОНТАЛЬНО', paused:'ПАУЗА', resume:'ДАЛЬШЕ', quit:'ЗАКОНЧИТЬ ИГРУ', restart:'НАЧАТЬ ЗАНОВО', restart_s:'С ТОЙ ЖЕ КАЛИБРОВКОЙ ИЛИ ПЕРЕКАЛИБРОВАТЬ?', rs_go:'СРАЗУ ИГРАТЬ', back:'НАЗАД', exit:'ВЫЙТИ В МЕНЮ', menu_a:'МЕНЮ'
+  rotate:'ПОВЕРНИ ТЕЛЕФОН ГОРИЗОНТАЛЬНО', paused:'ПАУЗА', resume:'ДАЛЬШЕ', quit:'ЗАКОНЧИТЬ ИГРУ', scores:'РЕКОРДЫ', p_day:'СЕГОДНЯ', p_week:'НЕДЕЛЯ', p_all:'ВСЁ ВРЕМЯ', loading:'ЗАГРУЖАЮ…', offline:'НЕТ СВЯЗИ С ТАБЛИЦЕЙ', empty:'ПОКА ПУСТО', you:'ТЫ',
+  name:'ИМЯ', name_set:'УКАЗАТЬ ИМЯ', nick_t:'ТЫ В ТАБЛИЦЕ РЕКОРДОВ!', nick_t2:'ИМЯ В ТАБЛИЦЕ', nick_s:'ДО 16 ЗНАКОВ: ЛАТИНСКИЕ БУКВЫ, ЦИФРЫ И _', done:'ГОТОВО', later:'ПОТОМ',
+  nick_bad:'ТАКОЕ ИМЯ НЕЛЬЗЯ', nick_net:'НЕТ СВЯЗИ — ПОПРОБУЙ ПОЗЖЕ', sending:'ОТПРАВЛЯЮ В ТАБЛИЦУ…', sent_off:'НЕТ СЕТИ — ОТПРАВЛЮ ПОЗЖЕ', old:'ОБНОВИ ИГРУ, ЧТОБЫ ПОПАСТЬ В ТАБЛИЦУ',
+  place_day:'МЕСТО {n} ЗА СЕГОДНЯ', place_week:'МЕСТО {n} ЗА НЕДЕЛЮ', place_all:'МЕСТО {n} ЗА ВСЁ ВРЕМЯ', restart:'НАЧАТЬ ЗАНОВО', restart_s:'С ТОЙ ЖЕ КАЛИБРОВКОЙ ИЛИ ПЕРЕКАЛИБРОВАТЬ?', rs_go:'СРАЗУ ИГРАТЬ', back:'НАЗАД', exit:'ВЫЙТИ В МЕНЮ', menu_a:'МЕНЮ'
 };
 /* ════ THE APP: drawing, first-launch screens and the game loop share one scope (40_gfx … 49_main) ════ */
 (function(){
@@ -977,7 +1030,8 @@ var prep=null, T=null, caught=false, g=null, acc=0, countT=0, overT=0, shake=0, 
 /* own sounds louder than this in the microphone are turned down (v0.19: 0.05, was 0.3). iPhone: peaks 0.007–0.013 with sounds on — never ducks */
 var DUCK_PEAK=0.05;
 var lastHand=null, shipY=null, sayLast='', pausedFrom=null, livesT=0, duckT=0;
-function go(s){ scr=s; scrT=0; BTN=[]; }
+function go(s){ if(s!==scr) scrPrev=scr; scr=s; scrT=0; BTN=[]; if(s!=='nick'&&typeof nickField==='function'&&nickEl) nickField(false); }
+var scrPrev=null;
 
 /* ── which side the playing hand is on ──
    The rotation tells where the charging port is; the phone's end the hand should be at is learned (v0.17, 24 Sep, night):
@@ -1032,7 +1086,7 @@ function sTitle(){ sky(DT,0.4); var y=Math.round(LH*0.3), cx0=freeSide()==='left
   text(L('version')+' '+VERSION,freeSide()==='left'?LW-SAFE.r-8:SAFE.l+8,LH-SAFE.b-12,P.soft,freeSide()==='left'?'right':'left');   // for telling uploads apart
   var sy=Math.round(LH*0.62+Math.sin(clock*1.3)*LH*0.08); drawShip(cx0-40,sy,clock,false);
   for(var i=0;i<3;i++){ var bx=cx0-20+((clock*90+i*40)%120); R(P.bullet,bx,sy,4,1); light(bx,sy,6*K,P.glowB,0.45); }
-  column([['play',L('play'),'primary'],['howto',L('howto')],['lang',L('lang')],['sfx',L(Sfx.on()?'sfx_on':'sfx_off')]],Math.round(LH*0.47));
+  column([['play',L('play'),'primary'],['scores',L('scores')],['howto',L('howto')],['lang',L('lang')],['sfx',L(Sfx.on()?'sfx_on':'sfx_off')]],Math.round(LH*0.5));
   say('Sonaroids. '+L('play')); }
 function sSound(){ sky(DT,0.3); titles(L(direct?'volume_direct':'volume'),L('volume_s')); soundVolume(scrT); nextBtn('next',L('next')); stepSquares('sound'); }
 function sPhone(){ sky(DT,0.3); var m=handSide()==='left';
@@ -1113,7 +1167,7 @@ function sCount(){ countT-=DT; poolFill(2); followShip();
   if(countT<=0) startGame(); }
 function sPlay(){
   acc+=DT; var n=0;
-  while(acc>=Core.DT&&n<5){ acc-=Core.DT; n++; var h=handFrac(); Core.step(g,h); Logs.step(g,h); react(); if(g.state!=='play') break; }
+  while(acc>=Core.DT&&n<5){ acc-=Core.DT; n++; var h=Board.q(handFrac()); Core.step(g,h); Board.step(h); Logs.step(g,h); react(); if(g.state!=='play') break; }   // v0.25: the palm rounded to 1/4000 — the server replays these exact numbers
   if(n===5) acc=0;
   shake=Math.max(0,shake-DT); flash=Math.max(0,flash-DT); livesT=Math.max(0,livesT-DT);
   duckT-=DT; if(duckT<=0&&Sonar.peak()>DUCK_PEAK){ duckT=0.4; if(Sfx.duck()) Logs.gameEv('sounds down',+Sfx.level().toFixed(2)); }   // own sounds too loud in the microphone
@@ -1125,7 +1179,7 @@ function sPlay(){
   if(flash>0){ lx.globalAlpha=Math.min(0.35,flash); R(P.hit,0,0,LW,LH); lx.globalAlpha=1; }
   if(g.state==='over') endGame();
 }
-function endGame(){ g.state='over'; overT=0; Logs.gameStop(); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } go('over'); }
+function endGame(){ g.state='over'; overT=0; Logs.gameStop(); Board.finish(g.score); Board.flush(); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } go('over'); }
 function react(){ g.events.forEach(function(k){
   if(k==='fire'){ if(Math.random()<0.5) Sfx.play('fire'); } else if(k!=='crash') Sfx.play(k); });
   (g.gone||[]).forEach(function(r){ burst(fx(r.x),r.y*K,8+Math.round(r.r*K),P.rock.slice(2).concat([P.flame[1]]),50*K); delete rockSpr[r.id]; shake=Math.max(shake,0.08+r.r*0.004); });
@@ -1138,14 +1192,48 @@ function react(){ g.events.forEach(function(k){
 function sOver(){ overT+=DT;                       // no tuning here: it is done on the wave screen before every game (24 Sep)
   field(DT,0.3); var cx0=freeSide()==='left'?Math.round(LW*0.6):Math.round(LW*0.4), y=Math.round(LH*0.3);
   text(L('over'),cx0,y,P.text,'center'); text('V'+VERSION,freeSide()==='left'?LW-SAFE.r-8:SAFE.l+8,LH-SAFE.b-12,P.soft,freeSide()==='left'?'right':'left'); text(String(g.score).padStart(6,'0'),cx0,y+14,P.band,'center'); text(L('best')+' '+String(best).padStart(6,'0'),cx0,y+26,P.soft,'center');
-  say(L('over')+' '+g.score);
-  if(overT>0.8) column([['again',L('again'),'primary'],['menu',L('menu')]].concat(Logs.has()?[['logs',L('logs')]]:[]),Math.round(LH*0.5)); }
+  var bl=boardLine(); if(bl) text(bl[0],cx0,y+40,bl[1],'center');
+  say(L('over')+' '+g.score+(bl?'. '+bl[0]:''));
+  var lb=Board.last(); if(lb&&lb.state==='done'&&lb.listed&&!lb.named&&!nickAsked&&overT>1.5){ nickAsked=true; nickFrom='over'; go('nick'); return; }   // the first place in a table: ask the name once
+  if(overT>0.8) column([['again',L('again'),'primary'],['menu',L('menu')],['scores',L('scores')]].concat(Logs.has()?[['logs',L('logs')]]:[]),Math.round(LH*0.52)); }
+/* the game-over screen's line about the table: [text, colour] or null */
+function boardLine(){ var b=Board.last(); if(!b) return null;
+  if(b.state==='sending') return [L('sending'),P.soft]; if(b.state==='offline') return [L('sent_off'),P.soft]; if(b.state==='old') return [L('old'),P.soft];
+  if(b.state!=='done'||!b.ranks) return null; var r=b.ranks, k=r.all<=100?'all':r.week<=100?'week':'day';
+  return [L('place_'+k).replace('{n}',r[k]),b.listed?P.pick:P.soft]; }
+/* ── high scores (v0.25): today, this week, all time; the list on one side, the buttons on the free side ── */
+var tblBox=null, period='day', scoresFrom='title', nickFrom='title', nickAsked=false, nickMsg='', nickBusy=false, nickEl=null;
+function sScores(){ sky(DT,0.3); var c=Board.top(period);
+  var nm=Board.nick(), items=[['p_day',L('p_day'),period==='day'?'primary':''],['p_week',L('p_week'),period==='week'?'primary':''],['p_all',L('p_all'),period==='all'?'primary':''],
+    ['name',nm?L('name')+': '+nm:L('name_set')],['sc_back',L('back')]], bw=btnW(items.map(function(q){ return q[1]; })), bx=sideX(bw), m=Math.max(10,Math.round(LW*0.03));
+  var x0=freeSide()==='left'?bx+bw+m:SAFE.l+m, x1=freeSide()==='left'?LW-SAFE.r-m:bx-m;          // the list takes the rest of the width
+  tblBox=[x0,x1]; var y=topY(); text(L('scores')+' — '+L('p_'+period),x0,y,P.text); y+=16; say(L('scores')+', '+L('p_'+period));
+  if(c.state==='loading') text(L('loading'),x0,y,P.soft); else if(c.state==='offline') text(L('offline'),x0,y,P.soft);
+  else if(!c.entries.length) text(L('empty'),x0,y,P.soft);
+  else { var row=function(rank,nick,score,col){ var sw=PF.width(String(score)), room=x1-sw-6-(x0+20), n=nick; while(n.length>1&&PF.width(n)>room) n=n.slice(0,-2)+'…';   // a long name is cut to fit
+      text(String(rank),x0+14,y,P.soft,'right'); text(n,x0+20,y,col); text(String(score),x1,y,col,'right'); y+=11; };
+    c.entries.forEach(function(e){ row(e.rank,e.nick,e.score,e.me?P.band:P.text); });
+    if(c.me&&!c.entries.some(function(e){ return e.me; })){ text('…',x0+20,y-3,P.soft); y+=8; row(c.me.rank,c.me.nick||L('you'),c.me.score,P.band); } }
+  column(items,Math.round(LH*0.52)); }
+/* the name: a real text field over the canvas (the phone's keyboard needs one); checked by the server too */
+var NICK_RE=/^[A-Za-z0-9_]{1,16}$/;                     // Latin letters, digits and _ only (25 Sep); the server checks the same
+function nickField(show){ if(!nickEl){ nickEl=document.createElement('input'); nickEl.type='text'; nickEl.maxLength=16; nickEl.autocomplete='off'; nickEl.spellcheck=false; nickEl.setAttribute('autocapitalize','off'); nickEl.setAttribute('aria-label','nickname');
+    nickEl.style.cssText='position:fixed;z-index:5;display:none;font:18px/1.2 ui-monospace,Menlo,monospace;text-align:center;padding:6px 8px;border:2px solid '+P.band+';background:'+P.bg+';color:'+P.text+';border-radius:0;outline:none;-webkit-appearance:none';
+    nickEl.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); ACT.nick_ok(); } }); document.body.appendChild(nickEl); }
+  if(!show){ if(nickEl.style.display!=='none'){ nickEl.style.display='none'; nickEl.blur(); } return; }
+  var m=S/DPR, w=Math.round(LW*0.42), x=Math.round((LW-w)/2), y=Math.round(LH*0.34);
+  nickEl.style.left=Math.round(x*m)+'px'; nickEl.style.top=Math.round(y*m)+'px'; nickEl.style.width=Math.round(w*m)+'px';
+  if(nickEl.style.display==='none'){ nickEl.value=Board.nick()||''; nickEl.style.display='block'; } }
+function sNick(){ sky(DT,0.3); titles(L(nickFrom==='over'?'nick_t':'nick_t2'),L('nick_s')); nickField(true);
+  if(nickMsg) text(nickMsg,Math.round(LW/2),Math.round(LH*0.34)-10,P.hit,'center');
+  var items=[['nick_ok',nickBusy?L('loading'):L('done'),'primary'],['nick_later',L(nickFrom==='over'?'later':'back')]], w=btnW(items.map(function(q){ return q[1]; })), gap=10, y0=Math.round(LH*0.66), x=Math.round(LW/2-w-gap/2);
+  button(items[0][0],items[0][1],x,y0,w,BH,'primary',true); button(items[1][0],items[1][1],x+w+gap,y0,w,BH,'',false); }
 function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('paused')); column([['resume',L('resume'),'primary']].concat(pausedFrom==='play'?[['restart',L('restart')],['quit',L('quit')]]:[]).concat([['exit',L('exit')]]),Math.round(LH*0.52)); }
 /* v0.24 "start over" from the pause menu: straight into a countdown with the same calibration, or through calibration again */
 function sRestart(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('restart'),L('restart_s'));
   column([['rs_go',L('rs_go'),'primary'],['rs_cal',L('recal')],['rs_back',L('back')]],Math.round(LH*0.58)); }
 /* the running game is dropped without the game-over screen; its score still counts for the best */
-function dropGame(){ if(g&&g.state==='play'){ Logs.gameEv('restarted by the player'); g.state='over'; Logs.gameStop(); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } } }
+function dropGame(){ if(g&&g.state==='play'){ Logs.gameEv('restarted by the player'); g.state='over'; Logs.gameStop(); Board.finish(g.score); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } } }
 function sLost(){ sky(DT,0.2); titles(L('lost_t'),L('lost_s'),P.hit); nextBtn('retry',L('retry')); }
 function sNomic(){ sky(DT,0.2); titles(L('nomic_t'),L(errKind==='mic'?'nomic_s':'noaudio_s'),P.hit); nextBtn('retry',L('retry')); }
 function sRotate(){ lx.fillStyle=P.bg; lx.fillRect(0,0,LW,LH); var y=Math.round(LH/2-10); para(L('rotate'),LW/2,y,LW-16,P.text); say(L('rotate')); }
@@ -1173,8 +1261,8 @@ function startCount(){ if(resumeAfterPrep&&g&&g.state==='play'){ resumeAfterPrep
 function startGame(){
   var seed=0; try{ var a=new Uint32Array(1); crypto.getRandomValues(a); seed=a[0]; }catch(e){ seed=Math.floor(Math.random()*4294967296); }
   var y0=shipY===null?null:+(shipY/K).toFixed(3);
-  g=Core.create(seed,Core.FH*(LW-SAFE.l)/LH,y0); acc=0; rockSpr={}; parts=[]; livesT=0; var I=Sonar.info();
-  Logs.gameStart({core:'rules-2',seed:seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:'frozen',asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
+  g=Core.create(seed,Core.FH*(LW-SAFE.l)/LH,y0); Board.start(seed,g.FW,y0); nickAsked=false; acc=0; rockSpr={}; parts=[]; livesT=0; var I=Sonar.info();
+  Logs.gameStart({core:Core.TAG,seed:seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:'frozen',asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
     chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,started:new Date().toISOString(),app:'sonaroids'});
   Sfx.play('start'); go('play');
 }
@@ -1192,6 +1280,13 @@ var ACT={
   start:function(){ ensure(startCount); },
   again:function(){ ensure(toAway); },                 // before every game: the empty room anew, then wave (v0.16: things drift over a game)
   menu:function(){ go('title'); },
+  scores:function(){ period='day'; scoresFrom=scr; go('scores'); },
+  p_day:function(){ period='day'; }, p_week:function(){ period='week'; }, p_all:function(){ period='all'; },
+  name:function(){ nickFrom='scores'; nickMsg=''; go('nick'); },
+  sc_back:function(){ go(scoresFrom==='over'&&g&&g.state==='over'?'over':'title'); },
+  nick_ok:function(){ if(nickBusy||!nickEl) return; var v=nickEl.value.trim(); if(!NICK_RE.test(v)){ nickMsg=L('nick_bad'); return; }
+    nickBusy=true; nickMsg=''; Board.setNick(v).then(function(j){ nickBusy=false; if(j.ok){ nickField(false); go(nickFrom==='over'?'over':'scores'); } else nickMsg=L('nick_bad'); },function(){ nickBusy=false; nickMsg=L('nick_net'); }); },
+  nick_later:function(){ nickField(false); nickMsg=''; go(nickFrom==='over'?'over':'scores'); },
   logs:function(){ Logs.share(); },
   retry:function(){ Sonar.clearLost(); ensure(toAway); },
   pause:function(){ pauseGame(); },
@@ -1240,17 +1335,18 @@ function loop(now){
     case 'sound': sSound(); break;
     case 'phone': sPhone(); break; case 'mic': sMic(); break; case 'away': sAway(); break; case 'wave': sWave(); break;
     case 'count': sCount(); break; case 'count-resume': sCountResume(); break; case 'play': sPlay(); break; case 'over': sOver(); break;
-    case 'paused': sPaused(); break; case 'restart': sRestart(); break; case 'lost': sLost(); break; case 'nomic': sNomic(); break;
+    case 'paused': sPaused(); break; case 'restart': sRestart(); break; case 'scores': sScores(); break; case 'nick': sNick(); break; case 'lost': sLost(); break; case 'nomic': sNomic(); break;
   }
   present(scr==='play'?shake:0);
 }
-resize();
+resize(); Board.flush();
 if('serviceWorker' in navigator&&location.protocol==='https:') navigator.serviceWorker.register('sw.js').then(function(r){ r.update(); }).catch(function(){});   // works offline; checks for a new version on every launch
 if(store.get('sonaroids_seen','')!=='1'){ onboarding=true; go('lang'); } else go('title');
 requestAnimationFrame(loop);
 /* test hooks: headless tests drive the screens through these (harmless in the game) */
 window.__sonaroids={go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },
   setBooted:function(v){ booted=v; },
+  board:function(){ return {tbl:tblBox,nick:nickEl?{shown:nickEl.style.display!=='none',rect:nickEl.getBoundingClientRect().toJSON()}:null}; },
   side:function(){ return {hand:handSide(),rel:handRel,cam:camEnd(),stored:store.get('sonaroids_rel',''),say:sayLast}; }, wave:function(){ toWave(); },
   fake:function(){ booted=true; prep={res:{ok:true},doneT:-9}; T=Tune.create(100,true); T.ok=true; caught=true;          // a stand-in state for layout checks
     g=Core.create(1,Core.FH*(LW-SAFE.l)/LH); for(var i=0;i<300;i++) Core.step(g,0.5); g.state='over'; },state:function(){ return {scr:scr,g:g,T:T,caught:caught,prep:prep,lang:lang}; }};

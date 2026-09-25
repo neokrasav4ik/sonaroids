@@ -13,5 +13,6 @@ echo; echo "== band equalizer (Android) ==";           node tests/test_eq.js
 echo; echo "== is the probe heard: muted vs noisy =="; node tests/test_quiet.js
 echo; echo "== strings and font ==";               node tests/test_text.js
 echo; echo "== screens fit, all sizes (Chromium) =="; node tests/screens.js
+echo; echo "== leaderboard server (temporary database) =="; node --no-warnings tests/test_server.js
 echo; echo "== which end of the phone the hand plays at (Chromium) =="; node tests/side.js
 echo; echo "== the whole game, synthetic microphone (Chromium) =="; node tests/flow.js

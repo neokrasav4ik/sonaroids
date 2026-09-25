@@ -11,5 +11,8 @@ STR.en={
   start:'START', over:'GAME OVER', best:'BEST', again:'AGAIN', menu:'MENU', logs:'LOGS',
   lost_t:'NO PROBE SOUND', lost_s:'SOUND WENT TO ANOTHER DEVICE. UNPLUG HEADPHONES OR BLUETOOTH', retry:'TRY AGAIN',
   nomic_t:'NO MICROPHONE', nomic_s:'ALLOW IT IN THE BROWSER SETTINGS AND TRY AGAIN', noaudio_s:'THIS BROWSER CANNOT PLAY THE GAME. TRY SAFARI OR CHROME',
-  rotate:'TURN THE PHONE SIDEWAYS', paused:'PAUSE', resume:'GO ON', quit:'END THE GAME', restart:'START OVER', restart_s:'KEEP THE CALIBRATION OR RECALIBRATE?', rs_go:'PLAY NOW', back:'BACK', exit:'EXIT TO MENU', menu_a:'MENU'
+  rotate:'TURN THE PHONE SIDEWAYS', paused:'PAUSE', resume:'GO ON', quit:'END THE GAME', scores:'HIGH SCORES', p_day:'TODAY', p_week:'THIS WEEK', p_all:'ALL TIME', loading:'LOADING…', offline:'NO CONNECTION TO THE TABLE', empty:'EMPTY SO FAR', you:'YOU',
+  name:'NAME', name_set:'SET YOUR NAME', nick_t:'YOU MADE THE TABLE!', nick_t2:'YOUR NAME IN THE TABLE', nick_s:'UP TO 16 CHARACTERS: LATIN LETTERS, DIGITS AND _', done:'DONE', later:'LATER',
+  nick_bad:'THAT NAME IS NOT ALLOWED', nick_net:'NO CONNECTION — TRY LATER', sending:'SENDING TO THE TABLE…', sent_off:'OFFLINE — WILL SEND LATER', old:'UPDATE THE GAME TO GET INTO THE TABLE',
+  place_day:'#{n} TODAY', place_week:'#{n} THIS WEEK', place_all:'#{n} ALL TIME', restart:'START OVER', restart_s:'KEEP THE CALIBRATION OR RECALIBRATE?', rs_go:'PLAY NOW', back:'BACK', exit:'EXIT TO MENU', menu_a:'MENU'
 };

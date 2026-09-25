@@ -10,7 +10,7 @@ The phone lies flat on the table. It plays an inaudible ultrasonic tone (18–20
 
 - Web app: [sonaroids.app](https://sonaroids.app). An Android APK wrapper is postponed until the mechanics work well on Android.
 - Target size: the whole game under 100 KB. Graphics, sound and font are generated in code.
-- Shared leaderboards (planned): every game on a freshly generated layout, no daily challenge.
+- Shared leaderboards: today, this week, all time; every game on a freshly generated layout, no daily challenge. The server replays each game to check the score.
 
 ## Repository
 
@@ -22,7 +22,7 @@ The phone lies flat on the table. It plays an inaudible ultrasonic tone (18–20
 | `tests/` | the game's checks, `sh tests/run.sh`. |
 | `lab/` | the sonar lab: the working test app `lab/app/sonar_lab3.html`, its sources and offline test benches. Notes in Russian. |
 | `docs/` | design document (`design.md`; Russian original in `docs/ru/`). |
-| `server/` | *(later)* leaderboard server. |
+| `server/` | the leaderboard server (api.sonaroids.app): plain Node + SQLite, replays every game with the game's own rules. Install: `server/README.md` (Russian: `docs/ru/server.md`). |
 
 ### The game's code (`src/`)
 
@@ -35,6 +35,7 @@ The phone lies flat on the table. It plays an inaudible ultrasonic tone (18–20
 | `20_sonar.js` | speakers and microphone: probes, side check, auto level, getting ready; `Sonar.simulate()` feeds synthetic frames in tests |
 | `21_log.js` | setup and game logs (WAV + JSON), readable by the lab's tools |
 | `22_sfx.js` | event sounds, all below 6 kHz |
+| `23_net.js` | the leaderboard client: sends a game (seed + palm heights), the name, reads the tables |
 | `30_lang_en.js`, `31_lang_ru.js` | UI strings |
 | `40_gfx.js`, `41_sprites.js`, `42_guide.js`, `49_main.js` | drawing, first-launch pictures, screens and the game loop |
 

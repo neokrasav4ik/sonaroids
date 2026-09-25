@@ -1,0 +1,9 @@
+# Caddy takes care of HTTPS (a free certificate from Let's Encrypt) and passes requests to the Node server.
+# Install: sudo cp server/Caddyfile /etc/caddy/Caddyfile && sudo systemctl reload caddy
+api.sonaroids.app {
+	encode gzip
+	request_body {
+		max_size 300KB
+	}
+	reverse_proxy 127.0.0.1:8787
+}

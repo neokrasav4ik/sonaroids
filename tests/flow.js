@@ -11,15 +11,22 @@ const SRC=fs.readFileSync(path.join(__dirname,'sim_source.js'),'utf8');
 const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) return 100+50*Math.sin(2*Math.PI*(t-9)/2); return 100+40*Math.sin(2*Math.PI*(t-20)/5); }`;
 (async()=>{
   const b=await chromium.launch(); const ctx=await b.newContext({viewport:{width:844,height:390},deviceScaleFactor:2});
-  await ctx.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_lang','en'); ${SRC}; window.makeSimSource=makeSimSource; window.__scen=${SCEN};`);
+  await ctx.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_lang','en'); ${SRC}; window.makeSimSource=makeSimSource; window.__scen=${SCEN}; window.SONAROIDS_API='https://api.test';`);
   const p=await ctx.newPage(); const errors=[]; p.on('pageerror',e=>errors.push(e.message));
+  // the leaderboard server, faked: games and names are caught here and checked below; every game "makes the table", no name yet
+  const posted=[], nicks=[];
+  await p.route('https://api.test/**',async route=>{ const r=route.request(), u=new URL(r.url()), cors={'Access-Control-Allow-Origin':'*'};
+    if(r.method()==='OPTIONS') return route.fulfill({status:204,headers:Object.assign({'Access-Control-Allow-Methods':'GET, POST','Access-Control-Allow-Headers':'Content-Type, X-Player'},cors)});
+    if(u.pathname==='/v1/game'){ const bd=JSON.parse(r.postData()); posted.push(bd); return route.fulfill({status:200,headers:cors,contentType:'application/json',body:JSON.stringify({ok:true,score:bd.score,level:1,ranks:{day:1,week:2,all:30},listed:true,named:false})}); }
+    if(u.pathname==='/v1/nick'){ const bd=JSON.parse(r.postData()); nicks.push(bd.nick); return route.fulfill({status:200,headers:cors,contentType:'application/json',body:JSON.stringify({ok:true,nick:bd.nick})}); }
+    return route.fulfill({status:200,headers:cors,contentType:'application/json',body:JSON.stringify({period:'day',entries:[],me:null})}); });
   await p.goto('file://'+path.join(ROOT,'game','play','index.html'));
   await p.evaluate(()=>{ Sonar.simulate({fs:48000,chan:'right',source:makeSimSource(window.__scen)}); });
   const seen=['title@0']; let last=null, t0=Date.now(); const T=()=>(Date.now()-t0)/1000;
   const shot=async n=>p.screenshot({path:path.join(OUT,n+'.png')});
   await shot('01_title');
   await p.evaluate(()=>__sonaroids.act.play()); t0=Date.now();
-  let logs={setup:null,game:null}, pausedOk=false, restartOk=false, restartInfo='', healthyAfter=null, again=null, seen2=[], last2=null, caughtAt=null, startAt=null, range=null, follow=[], shots={};
+  let logs={setup:null,game:null}, pausedOk=false, nickScreen=null, afterNick=null, restartOk=false, restartInfo='', healthyAfter=null, again=null, seen2=[], last2=null, caughtAt=null, startAt=null, range=null, follow=[], shots={};
   while(T()<95){
     await p.waitForTimeout(100);
     const s=await p.evaluate(()=>{ const s=__sonaroids.state(), st=Sonar.state(); return {scr:s.scr,caught:s.caught,
@@ -45,9 +52,15 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
       await p.evaluate(()=>__sonaroids.act.rs_go()); await p.waitForTimeout(3600);
       const st=await p.evaluate(()=>({scr:__sonaroids.scr(),t:__sonaroids.state().g.t}));
       restartOk=rs==='restart'&&st.scr==='play'&&st.t<1.5; restartInfo=`${rs} → ${st.scr}, new game at ${st.t.toFixed(1)} s`;
+      await p.waitForTimeout(8000);                          // let the fresh game score something, so it is sent too
       await p.evaluate(()=>__sonaroids.act.pause()); await p.waitForTimeout(100);
       await p.evaluate(()=>__sonaroids.act.quit()); }
     if(s.scr==='over'&&!shots.over){ shots.over=1; await p.waitForTimeout(1200); await shot('06_over');
+      // the first place in a table: the name is asked once (v0.25)
+      for(let k=0;k<30&&await p.evaluate(()=>__sonaroids.scr())!=='nick';k++) await p.waitForTimeout(100);
+      nickScreen=await p.evaluate(()=>__sonaroids.scr()); await shot('06b_nick');
+      await p.evaluate(()=>{ const el=document.querySelector('input'); el.value=' Tester_1 '; __sonaroids.act.nick_ok(); }); await p.waitForTimeout(400);
+      afterNick=await p.evaluate(()=>__sonaroids.scr()+'|'+localStorage.getItem('sonaroids_nick'));
       logs=await p.evaluate(async()=>{ const f=async b=>b?Array.from(new Uint8Array(await b.arrayBuffer())):null; return {setup:await f(Logs.setupBlob()),game:await f(Logs.gameBlob())}; });
       // a second game after the app was in the background (iOS takes the microphone away: no frames), with the palm still moving
       // next to the phone (24 Sep: this start said "too quiet"): "again" must re-open the microphone and get ready again
@@ -72,7 +85,14 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
   console.log(`logs: setup ${logs.setup?(logs.setup.length/1024).toFixed(0)+' KB':'none'}, game ${logs.game?(logs.game.length/1024).toFixed(0)+' KB':'none'}; lab replay of the setup log: echo range differs from the page by ${m?m[1]:'?'} mm (median)`);
   if(errors.length) console.log('page errors:',errors.join(' | '));
   const need=['title','away','wave','count','play','over'], got=need.every(n=>seen.some(s=>s.startsWith(n+'@')));
+  // every game the page sent must replay on the server's code to the same score
+  const Core=require('../src/13_core.js'), zlib=require('zlib');
+  const replays=posted.map(bd=>{ const buf=bd.enc==='deflate'?zlib.inflateRawSync(Buffer.from(bd.hands,'base64')):Buffer.from(bd.hands,'base64'); const hands=[]; for(let i=0;i<buf.length;i+=2){ const v=buf.readUInt16LE(i); hands.push(v===65535?-1:v/4000); }
+    const g=Core.replay(bd.seed,bd.FW,hands,bd.y0); return {sent:bd.score,replay:g.score,steps:hands.length,bytes:bd.hands.length,core:bd.core}; });
+  // the first game is doctored for the screenshots (level 5, a saucer, a shield — see 'stage' above), so it cannot replay; the next one is a clean game
+  const boardOk=replays.length>=2&&replays.slice(1).every(r=>r.sent===r.replay&&r.sent>0&&r.core===Core.TAG)&&nickScreen==='nick'&&afterNick==='over|Tester_1'&&nicks[0]==='Tester_1';
+  console.log(`leaderboard: ${replays.length} games sent, replayed on the server's code: ${replays.map(r=>r.sent+(r.sent===r.replay?' = ':' ≠ ')+r.replay+' ('+r.steps+' steps, '+r.bytes+' B)').join('; ')} | name asked: ${nickScreen}, then ${afterNick}`);
   console.log(`menu in flight → pause with “end the game”: ${pausedOk?'yes':'NO'}; start over → play now: ${restartOk?'yes':'NO'} (${restartInfo})`);
-  const ok=pausedOk&&restartOk&&healthyAfter===false&&seen2.includes('away')&&seen2[seen2.length-1]==='wave'&&got&&caughtAt!==null&&range&&range[0]<0.12&&range[1]>0.8&&range[1]<0.95&&corr>0.95&&logs.setup&&logs.game&&m&&+m[1]<0.5&&!errors.length;
+  const ok=boardOk&&pausedOk&&restartOk&&healthyAfter===false&&seen2.includes('away')&&seen2[seen2.length-1]==='wave'&&got&&caughtAt!==null&&range&&range[0]<0.12&&range[1]>0.8&&range[1]<0.95&&corr>0.95&&logs.setup&&logs.game&&m&&+m[1]<0.5&&!errors.length;
   console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;
 })();

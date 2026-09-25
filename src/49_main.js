@@ -14,7 +14,8 @@ var prep=null, T=null, caught=false, g=null, acc=0, countT=0, overT=0, shake=0, 
 /* own sounds louder than this in the microphone are turned down (v0.19: 0.05, was 0.3). iPhone: peaks 0.007–0.013 with sounds on — never ducks */
 var DUCK_PEAK=0.05;
 var lastHand=null, shipY=null, sayLast='', pausedFrom=null, livesT=0, duckT=0;
-function go(s){ scr=s; scrT=0; BTN=[]; }
+function go(s){ if(s!==scr) scrPrev=scr; scr=s; scrT=0; BTN=[]; if(s!=='nick'&&typeof nickField==='function'&&nickEl) nickField(false); }
+var scrPrev=null;
 
 /* ── which side the playing hand is on ──
    The rotation tells where the charging port is; the phone's end the hand should be at is learned (v0.17, 24 Sep, night):
@@ -69,7 +70,7 @@ function sTitle(){ sky(DT,0.4); var y=Math.round(LH*0.3), cx0=freeSide()==='left
   text(L('version')+' '+VERSION,freeSide()==='left'?LW-SAFE.r-8:SAFE.l+8,LH-SAFE.b-12,P.soft,freeSide()==='left'?'right':'left');   // for telling uploads apart
   var sy=Math.round(LH*0.62+Math.sin(clock*1.3)*LH*0.08); drawShip(cx0-40,sy,clock,false);
   for(var i=0;i<3;i++){ var bx=cx0-20+((clock*90+i*40)%120); R(P.bullet,bx,sy,4,1); light(bx,sy,6*K,P.glowB,0.45); }
-  column([['play',L('play'),'primary'],['howto',L('howto')],['lang',L('lang')],['sfx',L(Sfx.on()?'sfx_on':'sfx_off')]],Math.round(LH*0.47));
+  column([['play',L('play'),'primary'],['scores',L('scores')],['howto',L('howto')],['lang',L('lang')],['sfx',L(Sfx.on()?'sfx_on':'sfx_off')]],Math.round(LH*0.5));
   say('Sonaroids. '+L('play')); }
 function sSound(){ sky(DT,0.3); titles(L(direct?'volume_direct':'volume'),L('volume_s')); soundVolume(scrT); nextBtn('next',L('next')); stepSquares('sound'); }
 function sPhone(){ sky(DT,0.3); var m=handSide()==='left';
@@ -150,7 +151,7 @@ function sCount(){ countT-=DT; poolFill(2); followShip();
   if(countT<=0) startGame(); }
 function sPlay(){
   acc+=DT; var n=0;
-  while(acc>=Core.DT&&n<5){ acc-=Core.DT; n++; var h=handFrac(); Core.step(g,h); Logs.step(g,h); react(); if(g.state!=='play') break; }
+  while(acc>=Core.DT&&n<5){ acc-=Core.DT; n++; var h=Board.q(handFrac()); Core.step(g,h); Board.step(h); Logs.step(g,h); react(); if(g.state!=='play') break; }   // v0.25: the palm rounded to 1/4000 — the server replays these exact numbers
   if(n===5) acc=0;
   shake=Math.max(0,shake-DT); flash=Math.max(0,flash-DT); livesT=Math.max(0,livesT-DT);
   duckT-=DT; if(duckT<=0&&Sonar.peak()>DUCK_PEAK){ duckT=0.4; if(Sfx.duck()) Logs.gameEv('sounds down',+Sfx.level().toFixed(2)); }   // own sounds too loud in the microphone
@@ -162,7 +163,7 @@ function sPlay(){
   if(flash>0){ lx.globalAlpha=Math.min(0.35,flash); R(P.hit,0,0,LW,LH); lx.globalAlpha=1; }
   if(g.state==='over') endGame();
 }
-function endGame(){ g.state='over'; overT=0; Logs.gameStop(); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } go('over'); }
+function endGame(){ g.state='over'; overT=0; Logs.gameStop(); Board.finish(g.score); Board.flush(); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } go('over'); }
 function react(){ g.events.forEach(function(k){
   if(k==='fire'){ if(Math.random()<0.5) Sfx.play('fire'); } else if(k!=='crash') Sfx.play(k); });
   (g.gone||[]).forEach(function(r){ burst(fx(r.x),r.y*K,8+Math.round(r.r*K),P.rock.slice(2).concat([P.flame[1]]),50*K); delete rockSpr[r.id]; shake=Math.max(shake,0.08+r.r*0.004); });
@@ -175,14 +176,48 @@ function react(){ g.events.forEach(function(k){
 function sOver(){ overT+=DT;                       // no tuning here: it is done on the wave screen before every game (24 Sep)
   field(DT,0.3); var cx0=freeSide()==='left'?Math.round(LW*0.6):Math.round(LW*0.4), y=Math.round(LH*0.3);
   text(L('over'),cx0,y,P.text,'center'); text('V'+VERSION,freeSide()==='left'?LW-SAFE.r-8:SAFE.l+8,LH-SAFE.b-12,P.soft,freeSide()==='left'?'right':'left'); text(String(g.score).padStart(6,'0'),cx0,y+14,P.band,'center'); text(L('best')+' '+String(best).padStart(6,'0'),cx0,y+26,P.soft,'center');
-  say(L('over')+' '+g.score);
-  if(overT>0.8) column([['again',L('again'),'primary'],['menu',L('menu')]].concat(Logs.has()?[['logs',L('logs')]]:[]),Math.round(LH*0.5)); }
+  var bl=boardLine(); if(bl) text(bl[0],cx0,y+40,bl[1],'center');
+  say(L('over')+' '+g.score+(bl?'. '+bl[0]:''));
+  var lb=Board.last(); if(lb&&lb.state==='done'&&lb.listed&&!lb.named&&!nickAsked&&overT>1.5){ nickAsked=true; nickFrom='over'; go('nick'); return; }   // the first place in a table: ask the name once
+  if(overT>0.8) column([['again',L('again'),'primary'],['menu',L('menu')],['scores',L('scores')]].concat(Logs.has()?[['logs',L('logs')]]:[]),Math.round(LH*0.52)); }
+/* the game-over screen's line about the table: [text, colour] or null */
+function boardLine(){ var b=Board.last(); if(!b) return null;
+  if(b.state==='sending') return [L('sending'),P.soft]; if(b.state==='offline') return [L('sent_off'),P.soft]; if(b.state==='old') return [L('old'),P.soft];
+  if(b.state!=='done'||!b.ranks) return null; var r=b.ranks, k=r.all<=100?'all':r.week<=100?'week':'day';
+  return [L('place_'+k).replace('{n}',r[k]),b.listed?P.pick:P.soft]; }
+/* ── high scores (v0.25): today, this week, all time; the list on one side, the buttons on the free side ── */
+var tblBox=null, period='day', scoresFrom='title', nickFrom='title', nickAsked=false, nickMsg='', nickBusy=false, nickEl=null;
+function sScores(){ sky(DT,0.3); var c=Board.top(period);
+  var nm=Board.nick(), items=[['p_day',L('p_day'),period==='day'?'primary':''],['p_week',L('p_week'),period==='week'?'primary':''],['p_all',L('p_all'),period==='all'?'primary':''],
+    ['name',nm?L('name')+': '+nm:L('name_set')],['sc_back',L('back')]], bw=btnW(items.map(function(q){ return q[1]; })), bx=sideX(bw), m=Math.max(10,Math.round(LW*0.03));
+  var x0=freeSide()==='left'?bx+bw+m:SAFE.l+m, x1=freeSide()==='left'?LW-SAFE.r-m:bx-m;          // the list takes the rest of the width
+  tblBox=[x0,x1]; var y=topY(); text(L('scores')+' — '+L('p_'+period),x0,y,P.text); y+=16; say(L('scores')+', '+L('p_'+period));
+  if(c.state==='loading') text(L('loading'),x0,y,P.soft); else if(c.state==='offline') text(L('offline'),x0,y,P.soft);
+  else if(!c.entries.length) text(L('empty'),x0,y,P.soft);
+  else { var row=function(rank,nick,score,col){ var sw=PF.width(String(score)), room=x1-sw-6-(x0+20), n=nick; while(n.length>1&&PF.width(n)>room) n=n.slice(0,-2)+'…';   // a long name is cut to fit
+      text(String(rank),x0+14,y,P.soft,'right'); text(n,x0+20,y,col); text(String(score),x1,y,col,'right'); y+=11; };
+    c.entries.forEach(function(e){ row(e.rank,e.nick,e.score,e.me?P.band:P.text); });
+    if(c.me&&!c.entries.some(function(e){ return e.me; })){ text('…',x0+20,y-3,P.soft); y+=8; row(c.me.rank,c.me.nick||L('you'),c.me.score,P.band); } }
+  column(items,Math.round(LH*0.52)); }
+/* the name: a real text field over the canvas (the phone's keyboard needs one); checked by the server too */
+var NICK_RE=/^[A-Za-z0-9_]{1,16}$/;                     // Latin letters, digits and _ only (25 Sep); the server checks the same
+function nickField(show){ if(!nickEl){ nickEl=document.createElement('input'); nickEl.type='text'; nickEl.maxLength=16; nickEl.autocomplete='off'; nickEl.spellcheck=false; nickEl.setAttribute('autocapitalize','off'); nickEl.setAttribute('aria-label','nickname');
+    nickEl.style.cssText='position:fixed;z-index:5;display:none;font:18px/1.2 ui-monospace,Menlo,monospace;text-align:center;padding:6px 8px;border:2px solid '+P.band+';background:'+P.bg+';color:'+P.text+';border-radius:0;outline:none;-webkit-appearance:none';
+    nickEl.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); ACT.nick_ok(); } }); document.body.appendChild(nickEl); }
+  if(!show){ if(nickEl.style.display!=='none'){ nickEl.style.display='none'; nickEl.blur(); } return; }
+  var m=S/DPR, w=Math.round(LW*0.42), x=Math.round((LW-w)/2), y=Math.round(LH*0.34);
+  nickEl.style.left=Math.round(x*m)+'px'; nickEl.style.top=Math.round(y*m)+'px'; nickEl.style.width=Math.round(w*m)+'px';
+  if(nickEl.style.display==='none'){ nickEl.value=Board.nick()||''; nickEl.style.display='block'; } }
+function sNick(){ sky(DT,0.3); titles(L(nickFrom==='over'?'nick_t':'nick_t2'),L('nick_s')); nickField(true);
+  if(nickMsg) text(nickMsg,Math.round(LW/2),Math.round(LH*0.34)-10,P.hit,'center');
+  var items=[['nick_ok',nickBusy?L('loading'):L('done'),'primary'],['nick_later',L(nickFrom==='over'?'later':'back')]], w=btnW(items.map(function(q){ return q[1]; })), gap=10, y0=Math.round(LH*0.66), x=Math.round(LW/2-w-gap/2);
+  button(items[0][0],items[0][1],x,y0,w,BH,'primary',true); button(items[1][0],items[1][1],x+w+gap,y0,w,BH,'',false); }
 function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('paused')); column([['resume',L('resume'),'primary']].concat(pausedFrom==='play'?[['restart',L('restart')],['quit',L('quit')]]:[]).concat([['exit',L('exit')]]),Math.round(LH*0.52)); }
 /* v0.24 "start over" from the pause menu: straight into a countdown with the same calibration, or through calibration again */
 function sRestart(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('restart'),L('restart_s'));
   column([['rs_go',L('rs_go'),'primary'],['rs_cal',L('recal')],['rs_back',L('back')]],Math.round(LH*0.58)); }
 /* the running game is dropped without the game-over screen; its score still counts for the best */
-function dropGame(){ if(g&&g.state==='play'){ Logs.gameEv('restarted by the player'); g.state='over'; Logs.gameStop(); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } } }
+function dropGame(){ if(g&&g.state==='play'){ Logs.gameEv('restarted by the player'); g.state='over'; Logs.gameStop(); Board.finish(g.score); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } } }
 function sLost(){ sky(DT,0.2); titles(L('lost_t'),L('lost_s'),P.hit); nextBtn('retry',L('retry')); }
 function sNomic(){ sky(DT,0.2); titles(L('nomic_t'),L(errKind==='mic'?'nomic_s':'noaudio_s'),P.hit); nextBtn('retry',L('retry')); }
 function sRotate(){ lx.fillStyle=P.bg; lx.fillRect(0,0,LW,LH); var y=Math.round(LH/2-10); para(L('rotate'),LW/2,y,LW-16,P.text); say(L('rotate')); }
@@ -210,8 +245,8 @@ function startCount(){ if(resumeAfterPrep&&g&&g.state==='play'){ resumeAfterPrep
 function startGame(){
   var seed=0; try{ var a=new Uint32Array(1); crypto.getRandomValues(a); seed=a[0]; }catch(e){ seed=Math.floor(Math.random()*4294967296); }
   var y0=shipY===null?null:+(shipY/K).toFixed(3);
-  g=Core.create(seed,Core.FH*(LW-SAFE.l)/LH,y0); acc=0; rockSpr={}; parts=[]; livesT=0; var I=Sonar.info();
-  Logs.gameStart({core:'rules-2',seed:seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:'frozen',asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
+  g=Core.create(seed,Core.FH*(LW-SAFE.l)/LH,y0); Board.start(seed,g.FW,y0); nickAsked=false; acc=0; rockSpr={}; parts=[]; livesT=0; var I=Sonar.info();
+  Logs.gameStart({core:Core.TAG,seed:seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:'frozen',asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
     chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,started:new Date().toISOString(),app:'sonaroids'});
   Sfx.play('start'); go('play');
 }
@@ -229,6 +264,13 @@ var ACT={
   start:function(){ ensure(startCount); },
   again:function(){ ensure(toAway); },                 // before every game: the empty room anew, then wave (v0.16: things drift over a game)
   menu:function(){ go('title'); },
+  scores:function(){ period='day'; scoresFrom=scr; go('scores'); },
+  p_day:function(){ period='day'; }, p_week:function(){ period='week'; }, p_all:function(){ period='all'; },
+  name:function(){ nickFrom='scores'; nickMsg=''; go('nick'); },
+  sc_back:function(){ go(scoresFrom==='over'&&g&&g.state==='over'?'over':'title'); },
+  nick_ok:function(){ if(nickBusy||!nickEl) return; var v=nickEl.value.trim(); if(!NICK_RE.test(v)){ nickMsg=L('nick_bad'); return; }
+    nickBusy=true; nickMsg=''; Board.setNick(v).then(function(j){ nickBusy=false; if(j.ok){ nickField(false); go(nickFrom==='over'?'over':'scores'); } else nickMsg=L('nick_bad'); },function(){ nickBusy=false; nickMsg=L('nick_net'); }); },
+  nick_later:function(){ nickField(false); nickMsg=''; go(nickFrom==='over'?'over':'scores'); },
   logs:function(){ Logs.share(); },
   retry:function(){ Sonar.clearLost(); ensure(toAway); },
   pause:function(){ pauseGame(); },
@@ -277,17 +319,18 @@ function loop(now){
     case 'sound': sSound(); break;
     case 'phone': sPhone(); break; case 'mic': sMic(); break; case 'away': sAway(); break; case 'wave': sWave(); break;
     case 'count': sCount(); break; case 'count-resume': sCountResume(); break; case 'play': sPlay(); break; case 'over': sOver(); break;
-    case 'paused': sPaused(); break; case 'restart': sRestart(); break; case 'lost': sLost(); break; case 'nomic': sNomic(); break;
+    case 'paused': sPaused(); break; case 'restart': sRestart(); break; case 'scores': sScores(); break; case 'nick': sNick(); break; case 'lost': sLost(); break; case 'nomic': sNomic(); break;
   }
   present(scr==='play'?shake:0);
 }
-resize();
+resize(); Board.flush();
 if('serviceWorker' in navigator&&location.protocol==='https:') navigator.serviceWorker.register('sw.js').then(function(r){ r.update(); }).catch(function(){});   // works offline; checks for a new version on every launch
 if(store.get('sonaroids_seen','')!=='1'){ onboarding=true; go('lang'); } else go('title');
 requestAnimationFrame(loop);
 /* test hooks: headless tests drive the screens through these (harmless in the game) */
 window.__sonaroids={go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },
   setBooted:function(v){ booted=v; },
+  board:function(){ return {tbl:tblBox,nick:nickEl?{shown:nickEl.style.display!=='none',rect:nickEl.getBoundingClientRect().toJSON()}:null}; },
   side:function(){ return {hand:handSide(),rel:handRel,cam:camEnd(),stored:store.get('sonaroids_rel',''),say:sayLast}; }, wave:function(){ toWave(); },
   fake:function(){ booted=true; prep={res:{ok:true},doneT:-9}; T=Tune.create(100,true); T.ok=true; caught=true;          // a stand-in state for layout checks
     g=Core.create(1,Core.FH*(LW-SAFE.l)/LH); for(var i=0;i<300;i++) Core.step(g,0.5); g.state='over'; },state:function(){ return {scr:scr,g:g,T:T,caught:caught,prep:prep,lang:lang}; }};

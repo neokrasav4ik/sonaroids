@@ -68,8 +68,8 @@ Later launches: steps 5–6 and straight into the game. **Before every new game*
 ## 5. Modes and leaderboards
 
 - **One regular game:** every game is played on a freshly generated layout. No daily challenge (the same layout for everyone on a day). — agreed 25 Sep
-- **Shared leaderboards:** all-time (and maybe today's — from the same regular games). — agreed
-- **Player name** — a normal nickname, not three letters: up to 16 characters from Latin, Cyrillic, digits and simple symbols (everything the pixel font can draw). No registration; the nickname is stored on the device and asked once, at the first leaderboard score. Server side: a simple profanity filter and rate limiting. — agreed
+- **Shared leaderboards:** three tabs — today, this week, all time (UTC: the day from midnight, the week from Monday); one line per player, their best game. — agreed 25 Sep, v0.25
+- **Player name:** 1–16 Latin letters, digits and `_` only (25 Sep). No sign-up; the player is a random key on the phone, the name is asked once, at the first place in a table (top 100), changed on the high-scores screen. The server has a word filter and rate limits. — agreed
 - **Anti-cheat:** the game is deterministic given the layout seed. Together with the score the client sends the palm trajectory (a few KB); the server replays the game with the same game code and checks the score. — agreed
 
 ## 6. Look
@@ -90,7 +90,7 @@ Prototype: `game/proto/` — the ship follows your finger.
 
 - **The game is on GitHub Pages**, open repository. A static site: HTML, JS and a little data. GitHub Actions on every change to `main` runs the checks and publishes. A service worker keeps the game working offline and updates it on the next launch. — agreed
   Why not our own server: GitHub serves the site worldwide for free with HTTPS for sonaroids.app, and it doesn't depend on the leaderboard server — if that goes down, the game keeps working and only the tables disappear.
-- **Leaderboard server** — on the maintainer's own VPS, a small Node + SQLite service at `api.sonaroids.app`. Games are verified with the same game code as in the browser. — agreed
+- **Leaderboard server (v0.25):** the maintainer's VPS (Ubuntu/Debian, no Docker): Node 22.13+ with no packages (`node:sqlite`), systemd, HTTPS by Caddy, `api.sonaroids.app`. A game travels as its layout seed and the palm height of every step (rounded to 1/4000 — the game steps with exactly those numbers); the server replays it with the same `src/13_core.js`. Install: `server/README.md`. Earlier note: on the maintainer's own VPS, a small Node + SQLite service at `api.sonaroids.app`. Games are verified with the same game code as in the browser. — agreed
 - **Server code is in this repository too** (`server/`).
 - **Repository layout:** `game/` — the game; `server/` — leaderboards; `lab/` — the sonar lab and its test benches; `docs/` — documents. UI strings — one file per language.
 - **The mechanics move over from the lab as they are:** DSP2 (hand presence, fast and absolute parts, centring, wave-based auto-tuning, bottom stretch), auto-level, side detection, logs for analysis.

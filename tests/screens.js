@@ -4,7 +4,7 @@
 let chromium; try{ ({chromium}=require('playwright')); }catch(e){ console.log('playwright not installed — skipped'); process.exit(0); }
 const fs=require('fs'), path=require('path'); const ROOT=path.join(__dirname,'..'), OUT=path.join(__dirname,'out','screens'); fs.mkdirSync(OUT,{recursive:true});
 const SIZES=[[568,320],[667,375],[740,360],[844,390],[932,430],[1024,768],[1366,1024]];
-const SCREENS=['lang','title','sound','phone','mic','wave','wave-try','count','play','pause-play','restart','over','lost','nomic'];
+const SCREENS=['lang','title','sound','phone','mic','wave','wave-try','count','play','pause-play','restart','over','scores','nick','lost','nomic'];
 (async()=>{
   const b=await chromium.launch(); const bad=[]; const errors=[]; let n=0;
   for(const [w,h] of SIZES) for(const lang of ['en','ru']) for(const hand of ['right','left']){
@@ -18,6 +18,8 @@ const SCREENS=['lang','title','sound','phone','mic','wave','wave-try','count','p
         if(s==='play'){ g.state='play'; g.lives=3; g.rocks=[]; g.ship.inv=99; __sonaroids.go('play'); }
         else if(s==='pause-play'){ __sonaroids.act.pause(); }
         else if(s==='wave-try'){ __sonaroids.go('wave'); }
+        else if(s==='scores'){ const E=[]; for(let i=1;i<=10;i++) E.push({rank:i,nick:i===3?'WWWWWWWWWWWWWWWW':'Player_'+i,score:9876543-i*1000,me:i===5}); Board._set('day',{state:'ok',at:Date.now()+1e9,entries:E,me:{rank:5,score:9871543,nick:'Player_5'}}); __sonaroids.act.scores(); }
+        else if(s==='nick'){ __sonaroids.act.name(); }
         else { if(s==='over') g.state='over'; __sonaroids.go(s); } },s);
       await p.waitForTimeout(s==='over'?1000:s==='phone'||s==='wave-try'?1300:150); n++;
       const r=await p.evaluate(()=>({btn:__sonaroids.btn(),S:__sonaroids.S()}));
@@ -25,6 +27,8 @@ const SCREENS=['lang','title','sound','phone','mic','wave','wave-try','count','p
       if(s==='wave-try'&&!(r.btn.some(q=>q.id==='start')&&r.btn.some(q=>q.id==='again'))) bad.push(`${w}x${h} ${lang} ${hand}: calibrated screen lacks play/recalibrate`);
       if(s==='wave-try'){ const lane=r.S.shipLane; if(lane!==undefined&&r.btn.some(q=>q.x<lane&&q.x+q.w>lane-24)) bad.push(`${w}x${h} ${lang} ${hand}: button over the ship lane`); }
       if(s==='play'&&!r.btn.some(q=>q.id==='pause')) bad.push(`${w}x${h} ${lang} ${hand}: no menu button in flight`);
+      if(s==='scores'){ const b=await p.evaluate(()=>__sonaroids.board()); if(!b.tbl||r.btn.some(q=>q.x<b.tbl[1]&&q.x+q.w>b.tbl[0]-4)) bad.push(`${w}x${h} ${lang} ${hand}: the table runs under the buttons`); if(b.tbl&&b.tbl[1]-b.tbl[0]<130) bad.push(`${w}x${h} ${lang} ${hand}: the table is too narrow (${b.tbl[1]-b.tbl[0]} px)`); }
+      if(s==='nick'){ const b=await p.evaluate(()=>__sonaroids.board()); const m=r.S; if(!b.nick||!b.nick.shown||b.nick.rect.left<0||b.nick.rect.right>w||b.nick.rect.bottom>h) bad.push(`${w}x${h} ${lang} ${hand}: the name field is missing or off screen`); }
       if(s==='restart'&&!(['rs_go','rs_cal','rs_back'].every(id=>r.btn.some(q=>q.id===id)))) bad.push(`${w}x${h} ${lang} ${hand}: start-over screen lacks its buttons`);
       if(s==='pause-play'&&!(['resume','restart','quit','exit'].every(id=>r.btn.some(q=>q.id===id)))) bad.push(`${w}x${h} ${lang} ${hand}: pause lacks resume/end`);
       r.btn.forEach((q,i)=>{ if(q.x<0||q.y<0||q.x+q.w>LW||q.y+q.h>LH) bad.push(`${w}x${h} ${lang} ${hand} ${s}: button ${q.id} off screen`);

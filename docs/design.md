@@ -85,6 +85,7 @@ Prototype: `game/proto/` — the ship follows your finger.
 - **Rocks** have volume: light from the top left, craters, 16 rotation frames, tone transitions by ordered dithering. — trying
 - **Font:** our own 5×7 pixel font with Latin, Cyrillic, digits and punctuation, 3.5 KB (`font/`). In the game, text is drawn with the same pixel as the picture, all one size, told apart by colour; a smaller text pixel was tried and looked worse. The site's landing page uses its own pixel, about 1.3 CSS px. — agreed
 - **In flight, only the score is shown at the top.** No labels: no streak, multipliers, shield or floating points. — agreed
+  Since v0.30 the top corner, level with the score, carries "sonaroids.app" in lowercase, in the version number's font and colour; not a link. The corner is the one away from the menu button: right for a right hand, left for a left hand. The bottom left corner was tried first, but the ship flies over it at the very bottom. — decided 25 Sep
   How to show lives and shield without words (e.g. a glow around the ship) — to be decided on the skeleton. — open
 - **Sound:** event sounds only — shot, split, power-up, hit, level. Synthesised in code in the spirit of old consoles, everything below 6 kHz so it doesn't disturb the probe. **No background music.** — agreed
 

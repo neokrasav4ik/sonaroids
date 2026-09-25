@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='0.29';
+var VERSION='0.30';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -1182,6 +1182,7 @@ function sCount(){ countT-=DT; poolFill(2); followShip();
   ring(cx0,cy0,13,1-(countT-Math.floor(countT)),P.band); text(String(n),cx0,cy0-3,P.text,'center'); say(String(n));
   if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.play('tick');
   if(countT<=0) startGame(); }
+var SITE='sonaroids.app';
 function sPlay(){
   acc+=DT; var n=0;
   while(acc>=Core.DT&&n<5){ acc-=Core.DT; n++; var h=Board.q(handFrac()); Core.step(g,h); Board.step(h); Logs.step(g,h); react(); if(g.state!=='play') break; }   // v0.25: the palm rounded to 1/4000 — the server replays these exact numbers
@@ -1190,6 +1191,8 @@ function sPlay(){
   duckT-=DT; if(duckT<=0&&Sonar.peak()>DUCK_PEAK){ duckT=0.4; if(Sfx.duck()) Logs.gameEv('sounds down',+Sfx.level().toFixed(2)); }   // own sounds too loud in the microphone
   field(DT,g.slow>0?0.5:1);
   text(String(g.score).padStart(6,'0'),LW/2,topY(),P.text,'center');                // at the top only the score (agreed 24 Sep)
+  // v0.30: the site's name in the top corner away from the menu button (on the hand's side), level with the score; not a link
+  if(freeSide()==='left') text(SITE,LW-SAFE.r-14,topY(),P.soft,'right'); else text(SITE,SAFE.l+14,topY(),P.soft,'left');
   // the menu button: in the top corner on the free hand's side
   // v0.11: further into the corner — the camera island sits in the middle of the side, so the top of the safe margin is free
   iconButton('pause',freeSide()==='left'?Math.round(SAFE.l*0.5)+10:LW-Math.round(SAFE.r*0.5)-10-(BH-3),SAFE.t+7); say(L('menu_a'));

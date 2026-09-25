@@ -29,7 +29,7 @@ A game lasts a few minutes: the pace keeps growing, and a hand held in the air g
 - **Pause menu:** go on, start over (straight away or recalibrate), end the game, exit.
 - **High scores:** today, this week, all time. Every game is on a freshly generated layout. The first time a game makes the table, the game asks for a name (Latin letters, digits, `_`).
 
-Only the score shows in flight — no labels, no numbers popping up. The picture is drawn at low resolution in whole pixels, with soft light on top; graphics, sounds and the 5×7 pixel font are all made in code.
+In flight the screen shows only the score and, small in the top corner, sonaroids.app — no labels, no numbers popping up. The picture is drawn at low resolution in whole pixels, with soft light on top; graphics, sounds and the 5×7 pixel font are all made in code.
 
 ## Phones
 

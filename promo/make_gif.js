@@ -13,7 +13,7 @@ patch('var HSC=0.85,','var HSC=0.62,');                                         
 patch('function loop(now){\n  requestAnimationFrame(loop);','function loop(now){\n  requestAnimationFrame(loop); if(window.__gifMode) return;');
 patch('function phoneGame(ph,o,cm,f,T,mirror){','function phoneGame(ph,o,cm,f,T,mirror){ if(window.__gifPhone) return window.__gifPhone(ph,o,cm,f,T,{iso:iso,R:R,blit:blit,SHIP_MAP:SHIP_MAP,P:P,light:light,K:K});');
 patch('  var t=performance.now()/1000;','  var t=window.__gifMode?window.__gifT*4*Math.PI/(3*'+D+'):performance.now()/1000;');   // star twinkle, looping with the GIF
-patch('window.__sonaroids={','window.__gifFrame=function(t,f){ window.__gifT=t; sky(0,0); picture(function(){ var l=scene("wave",t,f,0,true,t), o=[]; o.screen=l.screen; return o; },false); present(0); };\nwindow.__sonaroids={');
+patch('window.__sonaroids={','window.__gifFrame=function(t,f){ window.__gifT=t; sky(0,0); picture(function(){ var l=scene("wave",t,f,0,true,t), o=[]; o.screen=l.screen; return o; },false); var ty=Math.round(LH*0.1), tw=text("sonaroids.app",LW/2,ty,P.band,"center",2); light(LW/2,ty+7,tw*0.4,"127,224,200",0.12); present(0); };\nwindow.__sonaroids={');
 const tmp=path.join(ROOT,'game','play','__gif.html'); fs.writeFileSync(tmp,html);
 
 /* the little game on the phone: periodic, worked out by stepping from two loops back */

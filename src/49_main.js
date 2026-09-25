@@ -179,11 +179,11 @@ function react(){ g.events.forEach(function(k){
 }
 function sOver(){ overT+=DT;                       // no tuning here: it is done on the wave screen before every game (24 Sep)
   field(DT,0.3); var cx0=freeSide()==='left'?Math.round(LW*0.6):Math.round(LW*0.4), y=Math.round(LH*0.3);
-  text(L('over'),cx0,y,P.text,'center');
+  text(L('over'),cx0,y,P.text,'center'); text(String(g.score),cx0,y+13,P.band,'center',2);   // the score, big (25 Sep)
   // v0.27: the version is also a switch — a tap shows the "logs" button (for this launch); the logs are always being written
   var vs='V'+VERSION, vr=freeSide()==='left', vx=vr?LW-SAFE.r-8:SAFE.l+8, vy=LH-SAFE.b-12, vw=PF.width(vs);
   text(vs,vx,vy,diag?P.band:P.soft,vr?'right':'left'); var bx0=Math.max(0,(vr?vx-vw:vx)-8), bx1=Math.min(LW,(vr?vx:vx+vw)+8), by0=vy-8; BTN.push({id:'ver',x:bx0,y:by0,w:bx1-bx0,h:Math.min(PF.CAP+16,LH-by0)});   // a generous tap area, inside the screen text(String(g.score).padStart(6,'0'),cx0,y+14,P.band,'center'); text(L('best')+' '+String(best).padStart(6,'0'),cx0,y+26,P.soft,'center');
-  var bl=boardLine(); if(bl) text(bl[0],cx0,y+40,bl[1],'center');
+  var bl=boardLine(); if(bl) text(bl[0],cx0,y+43,bl[1],'center');
   say(L('over')+' '+g.score+(bl?'. '+bl[0]:''));
   var lb=Board.last(); if(lb&&lb.state==='done'&&lb.listed&&!lb.named&&!nickAsked&&overT>1.5){ nickAsked=true; nickFrom='over'; go('nick'); return; }   // the first place in a table: ask the name once
   if(overT>0.8) column([['again',L('again'),'primary'],['menu',L('menu')],['scores',L('scores')]].concat(diag&&Logs.has()?[['logs',L('logs')]]:[]),Math.round(LH*0.52)); }

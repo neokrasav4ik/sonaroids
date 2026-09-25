@@ -20,7 +20,7 @@ const SCREENS=['lang','title','sound','phone','mic','wave','wave-try','count','p
         else if(s==='wave-try'){ __sonaroids.go('wave'); }
         else if(s==='scores'){ const E=[]; for(let i=1;i<=10;i++) E.push({rank:i,nick:i===3?'WWWWWWWWWWWWWWWW':'Player_'+i,score:9876543-i*1000,me:i===5}); Board._set('day',{state:'ok',at:Date.now()+1e9,entries:E,me:{rank:5,score:9871543,nick:'Player_5'}}); __sonaroids.act.scores(); }
         else if(s==='nick'){ __sonaroids.act.name(); }
-        else { if(s==='over') g.state='over'; __sonaroids.go(s); } },s);
+        else { if(s==='over'){ g.state='over'; g.score=12480; } __sonaroids.go(s); } },s);
       await p.waitForTimeout(s==='over'?1000:s==='phone'||s==='wave-try'?1300:150); n++;
       const r=await p.evaluate(()=>({btn:__sonaroids.btn(),S:__sonaroids.S()}));
       const {LW,LH}=r.S;

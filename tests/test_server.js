@@ -3,7 +3,12 @@
 try{ require('node:sqlite'); }catch(e){ console.log('Node '+process.version+' has no node:sqlite (needs 22.13+) — skipped'); console.log('RESULT: ok'); process.exit(0); }
 const os=require('os'), fs=require('fs'), path=require('path'), zlib=require('zlib'), crypto=require('crypto');
 const tmp=path.join(os.tmpdir(),'sonaroids_test_'+process.pid+'.db'); process.env.DB=tmp; process.env.ORIGINS='https://sonaroids.app';
-const {server,cleanNick,since}=require('../server/server.js'), Core=require('../src/13_core.js');
+/* a database from before v0.29 (no dev / seen columns, one old game): the server must add the columns in place */
+{ const {DatabaseSync}=require('node:sqlite'), o=new DatabaseSync(tmp);
+  o.exec(`CREATE TABLE games(id INTEGER PRIMARY KEY, player TEXT NOT NULL, seed INTEGER NOT NULL, core TEXT NOT NULL, score INTEGER NOT NULL, level INTEGER NOT NULL,
+    t REAL NOT NULL, created INTEGER NOT NULL, fw REAL, y0 REAL, replay BLOB, UNIQUE(player,seed)); CREATE TABLE players(player TEXT PRIMARY KEY, nick TEXT, created INTEGER NOT NULL);`);
+  o.prepare('INSERT INTO games(player,seed,core,score,level,t,created) VALUES(?,?,?,?,?,?,?)').run('old',1,'rules-2',5,1,3,Date.now()); o.close(); }
+const {server,cleanNick,cleanDev,since,db}=require('../server/server.js'), Core=require('../src/13_core.js');
 const res=[]; const check=(name,ok,info)=>{ res.push(!!ok); console.log((ok?'ok   ':'FAIL ')+name+(info?' — '+info:'')); };
 const pid=()=>crypto.randomBytes(16).toString('hex');
 /* a game as the page plays it: palm heights rounded to 1/4000, the same numbers go to the server */
@@ -27,14 +32,26 @@ function play(seed,amp,steps){ const hands=[], g=Core.create(seed,380,90); for(l
   r=await post('/v1/nick',{pid:A,nick:' Den_Sonar '}); check('a nickname is trimmed and set', r.code===200&&r.j.nick==='Den_Sonar');
   const badNicks=['Fuck_you','Иван','Den Sonar','a-b','Z!',"x';DROP",'<script>','a'.repeat(17),''];
   check('only Latin letters, digits and _; bad words refused', badNicks.every(n=>cleanNick(n)===null)&&['neo_42','Den','A_1','x'.repeat(16)].every(n=>cleanNick(n)!==null));
-  await post('/v1/game',Object.assign({pid:A},a2.body)); await post('/v1/game',Object.assign({pid:B},b1.body)); await post('/v1/nick',{pid:B,nick:'Beta'});
+  const DEV={os:'android',br:'samsung',model:'SM-S938B',pwa:false,lang:'ru',fs:48000,snr:41.3,lvl:-12.5,gain:0.25,eq:true,eq_db:21.4,relocks:2,drops:7,side:'camera',ec:false,ns:true,agc:false,
+    ua:'Mozilla/5.0 (Linux; Android 16)',ip:'1.2.3.4',nick:'x',extra:{a:1}};
+  await post('/v1/game',Object.assign({pid:A},a2.body,{dev:DEV}));
+  const row=db.prepare('SELECT dev, seen FROM games WHERE seed=12').get(), sd=JSON.parse(row.dev||'{}');
+  check('the phone note is kept, only its known keys; the share of palm seen', sd.model==='SM-S938B'&&sd.ns===true&&sd.snr===41.3&&!('ua' in sd)&&!('ip' in sd)&&!('extra' in sd)&&row.seen>0.99&&row.seen<1,
+    row.dev+', seen '+row.seen);
+  check('a bad phone note is dropped, not refused', cleanDev({os:'windows',model:"x';DROP TABLE",snr:'40',fs:1e9})===null&&cleanDev('x')===null&&cleanDev(null)===null); await post('/v1/game',Object.assign({pid:B},b1.body)); await post('/v1/nick',{pid:B,nick:'Beta'});
   r=await post('/v1/game',Object.assign({pid:C},play(14,0.2,60*20).body));
   t=await get('/v1/top?period=week&limit=10',{'X-Player':A});
   const order=t.j.entries.map(e=>e.nick+':'+e.score).join(', '), best=Math.max(a1.g.score,a2.g.score);
   check('the table: one line per player, best game, highest first, "me" marked', t.j.entries.length===2&&t.j.entries[0].score>=t.j.entries[1].score&&t.j.entries.find(e=>e.nick==='Den_Sonar').score===best&&t.j.entries.some(e=>e.me&&e.nick==='Den_Sonar')&&t.j.me&&t.j.me.score===best, order);
   t=await get('/v1/top?period=day',{'X-Player':C}); check('an unnamed player still sees their own rank', t.j.me&&t.j.me.rank===3&&t.j.me.nick===null, JSON.stringify(t.j.me));
   const mon=new Date(since('week',Date.UTC(2026,8,25,12))); check('periods in UTC: the week starts on Monday', mon.toISOString()==='2026-09-21T00:00:00.000Z'&&new Date(since('day',Date.UTC(2026,8,25,12))).toISOString()==='2026-09-25T00:00:00.000Z');
+  const S=pid(); await post('/v1/setup',{pid:S,result:'noprobe',dev:DEV}); await post('/v1/setup',{pid:S,result:'caught',t:7.3,flips:1,dev:DEV});
+  r=await post('/v1/setup',{pid:S,result:"x';DROP"}); const r2=await post('/v1/setup',{pid:'zz',result:'caught'});
+  const srows=db.prepare('SELECT result,t,flips,dev FROM setups').all();
+  check('getting-ready reports from every player; bad ones refused', srows.length===2&&srows[1].t===7.3&&srows[1].flips===1&&JSON.parse(srows[0].dev).model==='SM-S938B'&&r.code===400&&r2.code===400, JSON.stringify(srows.map(x=>x.result)));
   const h=await get('/v1/health'); check('health', h.j.ok&&h.j.core===Core.TAG);
+  const st=require('child_process').execFileSync(process.execPath,['--no-warnings',path.join(__dirname,'..','server','stats.js'),'7'],{env:Object.assign({},process.env,{DB:tmp})}).toString();
+  check('server/stats.js: phones by kind, old games apart', /android \/ samsung \/ SM-S938B\s+1\s+1/.test(st)&&/before v0\.29/.test(st)&&/getting ready.*2 reports/.test(st)&&/SM-S938B\s+2\s+1\s+50%/.test(st), '\n'+st.trim().split('\n').map(l=>'       '+l).join('\n'));
   server.close(); try{ fs.unlinkSync(tmp); fs.unlinkSync(tmp+'-wal'); fs.unlinkSync(tmp+'-shm'); }catch(e){}
   const ok=res.every(Boolean); console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1; setTimeout(()=>process.exit(process.exitCode),100);
 })();

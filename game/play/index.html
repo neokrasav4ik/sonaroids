@@ -670,7 +670,12 @@ var Sfx=(function(){
    No network (or a local file) — nothing is sent; a game that could not be sent is kept (the last 3) and tried again later. ── */
 var Board=(function(){
   var API=(typeof window!=='undefined'&&window.SONAROIDS_API)||'https://api.sonaroids.app', Q=4000, NONE=65535;
-  var cur=null, last=null, cache={}, pending=null;
+  var cur=null, last=null, cache={}, pending=null, devFn=null, model='';
+  /* v0.29: with every game goes a short note on the phone (see devInfo in 49_main.js; the server keeps only known keys).
+     Android's model name comes from Chrome's userAgentData, asked once; iPhone gives none. */
+  try{ var uad=typeof navigator!=='undefined'&&navigator.userAgentData; if(uad&&uad.getHighEntropyValues&&uad.platform==='Android')
+    uad.getHighEntropyValues(['model']).then(function(h){ model=String(h.model||'').replace(/[^A-Za-z0-9 _.()+-]/g,'').slice(0,32); },function(){}); }catch(e){}
+  function dev(){ var d=null; try{ d=devFn?devFn():null; }catch(e){} if(d&&model) d.model=model; return d; }
   function ls(k,v){ try{ if(v===undefined) return localStorage.getItem(k); if(v===null) localStorage.removeItem(k); else localStorage.setItem(k,v); }catch(e){} return null; }
   function on(){ return !!(typeof window!=='undefined'&&(window.SONAROIDS_API||location.protocol==='https:'))&&typeof fetch==='function'; }
   function pid(){ var p=ls('sonaroids_pid'); if(p&&/^[0-9a-f]{32}$/.test(p)) return p;
@@ -689,12 +694,18 @@ var Board=(function(){
   function keep(body){ var l=[]; try{ l=JSON.parse(ls('sonaroids_unsent')||'[]'); }catch(e){} l.push(body); ls('sonaroids_unsent',JSON.stringify(l.slice(-3))); }
   function post(path,body){ return fetch(API+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){ return r.json().then(function(j){ j.code=r.status; return j; }); }); }
   /* a game is over (or dropped): send it. last — what the game-over screen shows: sending | done | offline | old | error */
-  function finish(score){ var c=cur; cur=null; if(!c||!on()||!(score>0)||!c.q.length) return; last={state:'sending',score:score};
-    pack(c.q).then(function(p){ var body={pid:pid(),core:c.core,seed:c.seed,FW:c.FW,y0:c.y0,enc:p.enc,hands:p.hands,score:score};
+  function finish(score){ var c=cur; cur=null; if(!c||!on()||!(score>0)||!c.q.length) return; last={state:'sending',score:score}; var d=dev();
+    pack(c.q).then(function(p){ var body={pid:pid(),core:c.core,seed:c.seed,FW:c.FW,y0:c.y0,enc:p.enc,hands:p.hands,score:score,dev:d};
       return post('/v1/game',body).then(function(j){ cache={};
         if(j.ok) last={state:'done',score:j.score,ranks:j.ranks,listed:j.listed,named:j.named||!!nick()};
         else if(j.error==='core') last={state:'old'}; else last={state:'error',why:j.error}; },
       function(){ keep(body); last={state:'offline'}; }); }); }
+  /* v0.29: how getting ready went, from every player — also those who never get to play (no microphone, the probe not heard, the palm
+     never caught). Sent once and forgotten: result caught | nocatch | quiet | noprobe | error | nomic | noaudio | lost; t — seconds on the wave step,
+     flips — how many times the game suggested the other end of the phone. */
+  function setup(result,x){ if(!on()) return; x=x||{}; var b={pid:pid(),result:result,dev:dev()};
+    if(typeof x.t==='number') b.t=Math.round(x.t*10)/10; if(typeof x.flips==='number') b.flips=x.flips;
+    try{ post('/v1/setup',b).catch(function(){}); }catch(e){} }
   /* games that could not be sent before: try again (at launch and after a game) */
   function flush(){ if(!on()||pending) return; var l=[]; try{ l=JSON.parse(ls('sonaroids_unsent')||'[]'); }catch(e){} if(!l.length) return;
     ls('sonaroids_unsent',null); pending=Promise.all(l.map(function(b){ return post('/v1/game',b).catch(function(){ keep(b); }); })).then(function(){ pending=null; cache={}; }); }
@@ -705,7 +716,7 @@ var Board=(function(){
     fetch(API+'/v1/top?period='+period+'&limit=10',{headers:{'X-Player':pid()}}).then(function(r){ return r.json(); })
       .then(function(j){ c.state='ok'; c.entries=j.entries||[]; c.me=j.me||null; c.at=Date.now(); },function(){ c.state='offline'; c.at=Date.now(); });
     return c; }
-  return {q:q,start:start,step:step,finish:finish,flush:flush,setNick:setNick,top:top,nick:nick,on:on,
+  return {setup:setup,devInfo:function(f){ devFn=f; },q:q,start:start,step:step,finish:finish,flush:flush,setNick:setNick,top:top,nick:nick,on:on,
     last:function(){ return last; }, _set:function(p,c){ cache[p]=c; }, _last:function(l){ last=l; }};
 })();
 /* ── UI strings, English. All caps: the game's pixel font is drawn in capitals on screen. ── */
@@ -721,7 +732,7 @@ STR.en={
   start:'START', over:'GAME OVER', best:'BEST', again:'AGAIN', menu:'MENU', logs:'LOGS',
   lost_t:'NO PROBE SOUND', lost_s:'SOUND WENT TO ANOTHER DEVICE. UNPLUG HEADPHONES OR BLUETOOTH', retry:'TRY AGAIN',
   nomic_t:'NO MICROPHONE', nomic_s:'ALLOW IT IN THE BROWSER SETTINGS AND TRY AGAIN', noaudio_s:'THIS BROWSER CANNOT PLAY THE GAME. TRY SAFARI OR CHROME',
-  rotate:'TURN THE PHONE SIDEWAYS', paused:'PAUSE', resume:'GO ON', quit:'END THE GAME', scores:'HIGH SCORES', p_day:'TODAY', p_week:'THIS WEEK', p_all:'ALL TIME', loading:'LOADING…', offline:'NO CONNECTION TO THE TABLE', empty:'EMPTY SO FAR', you:'YOU',
+  rotate:'TURN THE PHONE SIDEWAYS', rotate_s:'THE SCREEN WON\'T TURN? SWITCH OFF THE ROTATION LOCK: ON IPHONE IN CONTROL CENTRE, ON ANDROID IN QUICK SETTINGS (AUTO-ROTATE)', paused:'PAUSE', resume:'GO ON', quit:'END THE GAME', scores:'HIGH SCORES', p_day:'TODAY', p_week:'THIS WEEK', p_all:'ALL TIME', loading:'LOADING…', offline:'NO CONNECTION TO THE TABLE', empty:'EMPTY SO FAR', you:'YOU',
   name:'NAME', name_set:'SET YOUR NAME', nick_t:'YOU MADE THE TABLE!', nick_t2:'YOUR NAME IN THE TABLE', nick_s:'UP TO 16 CHARACTERS: LATIN LETTERS, DIGITS AND _', done:'DONE', later:'LATER',
   nick_bad:'THAT NAME IS NOT ALLOWED', nick_net:'NO CONNECTION — TRY LATER', sending:'SENDING TO THE TABLE…', sent_off:'OFFLINE — WILL SEND LATER', old:'UPDATE THE GAME TO GET INTO THE TABLE',
   place_day:'#{n} TODAY', place_week:'#{n} THIS WEEK', place_all:'#{n} ALL TIME', restart:'START OVER', restart_s:'KEEP THE CALIBRATION OR RECALIBRATE?', rs_go:'PLAY NOW', back:'BACK', exit:'EXIT TO MENU', menu_a:'MENU'
@@ -738,7 +749,7 @@ STR.ru={
   start:'СТАРТ', over:'ИГРА ОКОНЧЕНА', best:'РЕКОРД', again:'ЕЩЁ РАЗ', menu:'МЕНЮ', logs:'ЖУРНАЛЫ',
   lost_t:'ЗОНДА НЕ СЛЫШНО', lost_s:'ЗВУК УШЁЛ В ДРУГОЕ УСТРОЙСТВО. ОТКЛЮЧИ НАУШНИКИ ИЛИ BLUETOOTH', retry:'ЕЩЁ РАЗ',
   nomic_t:'НЕТ МИКРОФОНА', nomic_s:'РАЗРЕШИ ЕГО В НАСТРОЙКАХ БРАУЗЕРА И ПОПРОБУЙ ЕЩЁ РАЗ', noaudio_s:'В ЭТОМ БРАУЗЕРЕ ИГРА НЕ ЗАПУСТИТСЯ. ПОПРОБУЙ SAFARI ИЛИ CHROME',
-  rotate:'ПОВЕРНИ ТЕЛЕФОН ГОРИЗОНТАЛЬНО', paused:'ПАУЗА', resume:'ДАЛЬШЕ', quit:'ЗАКОНЧИТЬ ИГРУ', scores:'РЕКОРДЫ', p_day:'СЕГОДНЯ', p_week:'НЕДЕЛЯ', p_all:'ВСЁ ВРЕМЯ', loading:'ЗАГРУЖАЮ…', offline:'НЕТ СВЯЗИ С ТАБЛИЦЕЙ', empty:'ПОКА ПУСТО', you:'ТЫ',
+  rotate:'ПОВЕРНИ ТЕЛЕФОН ГОРИЗОНТАЛЬНО', rotate_s:'НЕ ПОВОРАЧИВАЕТСЯ? ВЫКЛЮЧИ БЛОКИРОВКУ ПОВОРОТА ЭКРАНА: НА IPHONE — В ПУНКТЕ УПРАВЛЕНИЯ, НА ANDROID — В ШТОРКЕ (АВТОПОВОРОТ)', paused:'ПАУЗА', resume:'ДАЛЬШЕ', quit:'ЗАКОНЧИТЬ ИГРУ', scores:'РЕКОРДЫ', p_day:'СЕГОДНЯ', p_week:'НЕДЕЛЯ', p_all:'ВСЁ ВРЕМЯ', loading:'ЗАГРУЖАЮ…', offline:'НЕТ СВЯЗИ С ТАБЛИЦЕЙ', empty:'ПОКА ПУСТО', you:'ТЫ',
   name:'ИМЯ', name_set:'УКАЗАТЬ ИМЯ', nick_t:'ТЫ В ТАБЛИЦЕ РЕКОРДОВ!', nick_t2:'ИМЯ В ТАБЛИЦЕ', nick_s:'ДО 16 ЗНАКОВ: ЛАТИНСКИЕ БУКВЫ, ЦИФРЫ И _', done:'ГОТОВО', later:'ПОТОМ',
   nick_bad:'ТАКОЕ ИМЯ НЕЛЬЗЯ', nick_net:'НЕТ СВЯЗИ — ПОПРОБУЙ ПОЗЖЕ', sending:'ОТПРАВЛЯЮ В ТАБЛИЦУ…', sent_off:'НЕТ СЕТИ — ОТПРАВЛЮ ПОЗЖЕ', old:'ОБНОВИ ИГРУ, ЧТОБЫ ПОПАСТЬ В ТАБЛИЦУ',
   place_day:'МЕСТО {n} ЗА СЕГОДНЯ', place_week:'МЕСТО {n} ЗА НЕДЕЛЮ', place_all:'МЕСТО {n} ЗА ВСЁ ВРЕМЯ', restart:'НАЧАТЬ ЗАНОВО', restart_s:'С ТОЙ ЖЕ КАЛИБРОВКОЙ ИЛИ ПЕРЕКАЛИБРОВАТЬ?', rs_go:'СРАЗУ ИГРАТЬ', back:'НАЗАД', exit:'ВЫЙТИ В МЕНЮ', menu_a:'МЕНЮ'
@@ -1031,8 +1042,9 @@ var prep=null, T=null, caught=false, g=null, acc=0, countT=0, overT=0, shake=0, 
 /* own sounds louder than this in the microphone are turned down (v0.19: 0.05, was 0.3). iPhone: peaks 0.007–0.013 with sounds on — never ducks */
 var DUCK_PEAK=0.05;
 var lastHand=null, shipY=null, sayLast='', pausedFrom=null, livesT=0, duckT=0;
-function go(s){ if(s!==scr) scrPrev=scr; scr=s; scrT=0; BTN=[]; if(s!=='nick'&&typeof nickField==='function'&&nickEl) nickField(false); }
-var scrPrev=null, diag=false;                        // diag: the "logs" button is shown (a tap on the version on the game-over screen)
+function go(s){ if(scr==='wave'&&s!=='wave'&&!caught&&T&&typeof Board!=='undefined') Board.setup('nocatch',{t:scrT,flips:flips});   // left the wave step without a caught range
+  if(s!==scr) scrPrev=scr; scr=s; scrT=0; BTN=[]; if(s!=='nick'&&typeof nickField==='function'&&nickEl) nickField(false); }
+var scrPrev=null, diag=false, flips=0;                        // diag: the "logs" button is shown (a tap on the version on the game-over screen)
 
 /* ── which side the playing hand is on ──
    The rotation tells where the charging port is; the phone's end the hand should be at is learned (v0.17, 24 Sep, night):
@@ -1054,7 +1066,7 @@ function camEnd(){ var o=portOr(); return !!o&&handSide()!==o; }          // the
 /* the palm has not been heard for NOHAND_T s while waving: offer the other end of the phone */
 function flipSide(){ var o=portOr(), was=handSide();
   if(o) handRel=(handSide()===o)?'camera':'port'; else accSide=other(handSide());
-  flipT=scrT; seenT=scrT; T=Tune.create(+store.get('sonaroids_field','100')||100,true); Logs.ev('сторона',{from:was,to:handSide(),rel:handRel}); Sfx.play('tap'); }
+  flips++; flipT=scrT; seenT=scrT; T=Tune.create(+store.get('sonaroids_field','100')||100,true); Logs.ev('сторона',{from:was,to:handSide(),rel:handRel}); Sfx.play('tap'); }
 function freeSide(){ return handSide()==='right'?'left':'right'; }
 function say(s){ if(s!==sayLast){ sayLast=s; var el=document.getElementById('say'); if(el) el.textContent=s; } }
 
@@ -1112,7 +1124,7 @@ function sAway(){ sky(DT,0.3); var m=handSide()==='left', aw=Math.min(1,Math.max
 function sWave(){ sky(DT,0.3); poolFill(1); var m=handSide()==='left', f=handFrac(), live=f!==null;
   // v0.21: tuning stops once the range is caught — the try-out screen shows exactly what the game will use (exploring the edges there widened the field)
   if(scrT>=WAVE_PAUSE&&!caught){ var e=Tune.step(T,DT,Sonar.state(),true,Sonar.shift); if(e) Logs.ev('подстройка',e); }
-  if(T.ok&&!caught){ caught=true; caughtT=scrT; Sfx.play('ok'); store.set('sonaroids_seen','1');
+  if(T.ok&&!caught){ caught=true; caughtT=scrT; Sfx.play('ok'); store.set('sonaroids_seen','1'); Board.setup('caught',{t:scrT,flips:flips});
     if(portOr()&&handRel) store.set('sonaroids_rel',handRel); handSaved=handSide(); store.set('sonaroids_hand',handSaved); }   // this end of the phone works: remember it
   var stt=Sonar.state(); if((stt&&stt.present)||scrT<WAVE_PAUSE) seenT=Math.max(seenT,scrT);
   if(!caught&&scrT-seenT>NOHAND_T) flipSide();
@@ -1184,6 +1196,15 @@ function sPlay(){
   if(flash>0){ lx.globalAlpha=Math.min(0.35,flash); R(P.hit,0,0,LW,LH); lx.globalAlpha=1; }
   if(g.state==='over') endGame();
 }
+/* v0.29: what goes with a game about the phone — kinds, not the user agent string: which phones play and how well the sonar works on them
+   (server/stats.js). The model name, on Android only, is added by Board. */
+function devInfo(){ var ua=navigator.userAgent||'', ios=/iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1), and=/Android/.test(ua);
+  var br=/SamsungBrowser/.test(ua)?'samsung':/YaBrowser|YaApp/.test(ua)?'yandex':/Edg|OPR|OPiOS|EdgiOS/.test(ua)?'other':/FxiOS|Firefox/.test(ua)?'firefox':/CriOS|Chrome/.test(ua)?'chrome':/Safari/.test(ua)?'safari':'other';
+  var I=Sonar.info(), D=DSP2.info(), m=Sonar.micSettings()||{}, r=function(v,k){ return typeof v==='number'&&isFinite(v)?Math.round(v*k)/k:undefined; };
+  var pwa=false; try{ pwa=!!(navigator.standalone||matchMedia('(display-mode: standalone)').matches); }catch(e){}
+  return {os:ios?'ios':and?'android':'other',br:br,pwa:pwa,lang:lang,fs:I.fs,snr:r(I.probe_snr,10),lvl:r(I.probe_level,10),gain:r(I.probe_gain,1000),
+    eq:!!D.eq,eq_db:r(D.eq_db,10),relocks:D.relocks,drops:D.drops,side:handRel||undefined,ec:m.echoCancellation,ns:m.noiseSuppression,agc:m.autoGainControl}; }
+Board.devInfo(devInfo);
 function endGame(){ g.state='over'; overT=0; Logs.gameStop(); Board.finish(g.score); Board.flush(); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } go('over'); }
 function react(){ g.events.forEach(function(k){
   if(k==='fire'){ if(Math.random()<0.5) Sfx.play('fire'); } else if(k!=='crash') Sfx.play(k); });
@@ -1244,7 +1265,8 @@ function sRestart(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.glob
 function dropGame(){ if(g&&g.state==='play'){ Logs.gameEv('restarted by the player'); g.state='over'; Logs.gameStop(); Board.finish(g.score); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } } }
 function sLost(){ sky(DT,0.2); titles(L('lost_t'),L('lost_s'),P.hit); nextBtn('retry',L('retry')); }
 function sNomic(){ sky(DT,0.2); titles(L('nomic_t'),L(errKind==='mic'?'nomic_s':'noaudio_s'),P.hit); nextBtn('retry',L('retry')); }
-function sRotate(){ lx.fillStyle=P.bg; lx.fillRect(0,0,LW,LH); var y=Math.round(LH/2-10); para(L('rotate'),LW/2,y,LW-16,P.text); say(L('rotate')); }
+function sRotate(){ lx.fillStyle=P.bg; lx.fillRect(0,0,LW,LH); var y=Math.round(LH/2-24); y=para(L('rotate'),LW/2,y,LW-16,P.text);
+  para(L('rotate_s'),LW/2,y+12,LW-24,P.soft); say(L('rotate')+'. '+L('rotate_s')); }   // 25 Sep: some players don't think of the rotation lock
 
 /* ── actions ── */
 function startPrepare(){
@@ -1252,17 +1274,17 @@ function startPrepare(){
   Sonar.prepare(function(stage){ if(stage==='room'){ var I=Sonar.info();
       Logs.setupStart({kind:'подготовка',cal:I.cal,autocenter:true,tune:'waves',asym:Tune.ASYM,field_auto:true,field_mm:+store.get('sonaroids_field','100')||100,
         chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,prom:null,started:new Date().toISOString(),app:'sonaroids'}); } })
-  .then(function(r){ prep.res=r; prep.doneT=scrT; if(r.ok){ acoustic=true; accSide=Sonar.chan(); var o=portOr(); if(o&&!handRel) handRel=accSide===o?'port':'camera'; handSaved=handSide(); store.set('sonaroids_hand',handSaved); } })
-  .catch(function(){ prep.res={ok:false,why:'error'}; });
+  .then(function(r){ prep.res=r; prep.doneT=scrT; if(!r.ok) Board.setup(r.why||'error'); if(r.ok){ acoustic=true; accSide=Sonar.chan(); var o=portOr(); if(o&&!handRel) handRel=accSide===o?'port':'camera'; handSaved=handSide(); store.set('sonaroids_hand',handSaved); } })
+  .catch(function(){ prep.res={ok:false,why:'error'}; Board.setup('error'); });
 }
 /* make sure the microphone works before going on; if the phone took it away (the app was in the background), open it again —
    this runs from a tap, which browsers require — and get ready again (take your hand away → wave) */
 var resumeAfterPrep=false;
 function ensure(then){ if(booted&&Sonar.healthy()) then(); else { Sonar.restart(); booted=false; boot(toAway); } }
 function boot(then){ Sonar.boot().then(function(){ booted=true; Sfx.play('tap'); then(); })
-  .catch(function(e){ errKind=(e&&e.message&&/webaudio|worklet/.test(e.message))?'audio':'mic'; go('nomic'); }); }
+  .catch(function(e){ errKind=(e&&e.message&&/webaudio|worklet/.test(e.message))?'audio':'mic'; Board.setup(errKind==='mic'?'nomic':'noaudio'); go('nomic'); }); }
 function toAway(){ prep=null; go('away'); }
-function toWave(){ T=Tune.create(+store.get('sonaroids_field','100')||100,true); caught=false; flipT=-9; seenT=0; go('wave'); }
+function toWave(){ T=Tune.create(+store.get('sonaroids_field','100')||100,true); caught=false; flips=0; flipT=-9; seenT=0; go('wave'); }
 function pauseGame(){ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; go('paused'); } }
 function startCount(){ if(resumeAfterPrep&&g&&g.state==='play'){ resumeAfterPrep=false; countT=3; go('count-resume'); return; }
   resumeAfterPrep=false; countT=3; if(scr!=='wave') shipY=null; lastHand=handFrac()===null?lastHand:handFrac(); /* from the try-out the ship goes on where it is */ Logs.ev('отсчёт',{field:+T.field.toFixed(1),auto:T.auto}); store.set('sonaroids_field',Math.round(T.field)); go('count'); }
@@ -1339,7 +1361,7 @@ function loop(now){
   var fast=scr==='play'||scr==='count'||scr==='count-resume'; if(now-lastNow<(fast?15:31)) return;
   DT=Math.min(0.05,Math.max(0,(now-lastNow)/1000)); lastNow=now; clock+=DT; scrT+=DT; BTN=[];
   if(LH>LW){ pauseGame(); sRotate(); present(0); return; }
-  if(booted&&Sonar.lost()&&(scr==='wave'||scr==='count'||scr==='play'||scr==='over')){ if(g&&g.state==='play') Logs.gameStop(); go('lost'); }
+  if(booted&&Sonar.lost()&&(scr==='wave'||scr==='count'||scr==='play'||scr==='over')){ if(g&&g.state==='play') Logs.gameStop(); Board.setup('lost'); go('lost'); }
   switch(scr){
     case 'lang': sLang(); break; case 'title': sTitle(); break;
     case 'sound': sSound(); break;

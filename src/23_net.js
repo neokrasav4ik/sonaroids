@@ -5,7 +5,12 @@
    No network (or a local file) — nothing is sent; a game that could not be sent is kept (the last 3) and tried again later. ── */
 var Board=(function(){
   var API=(typeof window!=='undefined'&&window.SONAROIDS_API)||'https://api.sonaroids.app', Q=4000, NONE=65535;
-  var cur=null, last=null, cache={}, pending=null;
+  var cur=null, last=null, cache={}, pending=null, devFn=null, model='';
+  /* v0.29: with every game goes a short note on the phone (see devInfo in 49_main.js; the server keeps only known keys).
+     Android's model name comes from Chrome's userAgentData, asked once; iPhone gives none. */
+  try{ var uad=typeof navigator!=='undefined'&&navigator.userAgentData; if(uad&&uad.getHighEntropyValues&&uad.platform==='Android')
+    uad.getHighEntropyValues(['model']).then(function(h){ model=String(h.model||'').replace(/[^A-Za-z0-9 _.()+-]/g,'').slice(0,32); },function(){}); }catch(e){}
+  function dev(){ var d=null; try{ d=devFn?devFn():null; }catch(e){} if(d&&model) d.model=model; return d; }
   function ls(k,v){ try{ if(v===undefined) return localStorage.getItem(k); if(v===null) localStorage.removeItem(k); else localStorage.setItem(k,v); }catch(e){} return null; }
   function on(){ return !!(typeof window!=='undefined'&&(window.SONAROIDS_API||location.protocol==='https:'))&&typeof fetch==='function'; }
   function pid(){ var p=ls('sonaroids_pid'); if(p&&/^[0-9a-f]{32}$/.test(p)) return p;
@@ -24,12 +29,18 @@ var Board=(function(){
   function keep(body){ var l=[]; try{ l=JSON.parse(ls('sonaroids_unsent')||'[]'); }catch(e){} l.push(body); ls('sonaroids_unsent',JSON.stringify(l.slice(-3))); }
   function post(path,body){ return fetch(API+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){ return r.json().then(function(j){ j.code=r.status; return j; }); }); }
   /* a game is over (or dropped): send it. last — what the game-over screen shows: sending | done | offline | old | error */
-  function finish(score){ var c=cur; cur=null; if(!c||!on()||!(score>0)||!c.q.length) return; last={state:'sending',score:score};
-    pack(c.q).then(function(p){ var body={pid:pid(),core:c.core,seed:c.seed,FW:c.FW,y0:c.y0,enc:p.enc,hands:p.hands,score:score};
+  function finish(score){ var c=cur; cur=null; if(!c||!on()||!(score>0)||!c.q.length) return; last={state:'sending',score:score}; var d=dev();
+    pack(c.q).then(function(p){ var body={pid:pid(),core:c.core,seed:c.seed,FW:c.FW,y0:c.y0,enc:p.enc,hands:p.hands,score:score,dev:d};
       return post('/v1/game',body).then(function(j){ cache={};
         if(j.ok) last={state:'done',score:j.score,ranks:j.ranks,listed:j.listed,named:j.named||!!nick()};
         else if(j.error==='core') last={state:'old'}; else last={state:'error',why:j.error}; },
       function(){ keep(body); last={state:'offline'}; }); }); }
+  /* v0.29: how getting ready went, from every player — also those who never get to play (no microphone, the probe not heard, the palm
+     never caught). Sent once and forgotten: result caught | nocatch | quiet | noprobe | error | nomic | noaudio | lost; t — seconds on the wave step,
+     flips — how many times the game suggested the other end of the phone. */
+  function setup(result,x){ if(!on()) return; x=x||{}; var b={pid:pid(),result:result,dev:dev()};
+    if(typeof x.t==='number') b.t=Math.round(x.t*10)/10; if(typeof x.flips==='number') b.flips=x.flips;
+    try{ post('/v1/setup',b).catch(function(){}); }catch(e){} }
   /* games that could not be sent before: try again (at launch and after a game) */
   function flush(){ if(!on()||pending) return; var l=[]; try{ l=JSON.parse(ls('sonaroids_unsent')||'[]'); }catch(e){} if(!l.length) return;
     ls('sonaroids_unsent',null); pending=Promise.all(l.map(function(b){ return post('/v1/game',b).catch(function(){ keep(b); }); })).then(function(){ pending=null; cache={}; }); }
@@ -40,6 +51,6 @@ var Board=(function(){
     fetch(API+'/v1/top?period='+period+'&limit=10',{headers:{'X-Player':pid()}}).then(function(r){ return r.json(); })
       .then(function(j){ c.state='ok'; c.entries=j.entries||[]; c.me=j.me||null; c.at=Date.now(); },function(){ c.state='offline'; c.at=Date.now(); });
     return c; }
-  return {q:q,start:start,step:step,finish:finish,flush:flush,setNick:setNick,top:top,nick:nick,on:on,
+  return {setup:setup,devInfo:function(f){ devFn=f; },q:q,start:start,step:step,finish:finish,flush:flush,setNick:setNick,top:top,nick:nick,on:on,
     last:function(){ return last; }, _set:function(p,c){ cache[p]=c; }, _last:function(l){ last=l; }};
 })();

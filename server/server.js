@@ -30,9 +30,16 @@ CREATE TABLE IF NOT EXISTS games(id INTEGER PRIMARY KEY, player TEXT NOT NULL, s
   UNIQUE(player,seed));
 CREATE INDEX IF NOT EXISTS games_created ON games(created);
 CREATE INDEX IF NOT EXISTS games_score ON games(score);
-CREATE TABLE IF NOT EXISTS players(player TEXT PRIMARY KEY, nick TEXT, created INTEGER NOT NULL);`);
+CREATE TABLE IF NOT EXISTS players(player TEXT PRIMARY KEY, nick TEXT, created INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS setups(id INTEGER PRIMARY KEY, player TEXT NOT NULL, created INTEGER NOT NULL, result TEXT NOT NULL, t REAL, flips INTEGER, dev TEXT);
+CREATE INDEX IF NOT EXISTS setups_created ON setups(created);`);
+/* v0.29: what kind of phone played and how well it heard the probe (dev, JSON), and the share of steps the palm was seen (seen, 0…1).
+   Added to an existing database in place; older games keep NULL there. */
+{ const cols=db.prepare('PRAGMA table_info(games)').all().map(c=>c.name);
+  if(!cols.includes('dev')) db.exec('ALTER TABLE games ADD COLUMN dev TEXT'); if(!cols.includes('seen')) db.exec('ALTER TABLE games ADD COLUMN seen REAL'); }
 const q={
-  insGame: db.prepare('INSERT INTO games(player,seed,core,score,level,t,created,fw,y0,replay) VALUES(?,?,?,?,?,?,?,?,?,?)'),
+  insGame: db.prepare('INSERT INTO games(player,seed,core,score,level,t,created,fw,y0,replay,dev,seen) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)'),
+  insSetup: db.prepare('INSERT INTO setups(player,created,result,t,flips,dev) VALUES(?,?,?,?,?,?)'),
   insPlayer: db.prepare('INSERT OR IGNORE INTO players(player,nick,created) VALUES(?,NULL,?)'),
   getPlayer: db.prepare('SELECT nick FROM players WHERE player=?'),
   setNick: db.prepare('UPDATE players SET nick=? WHERE player=?'),
@@ -79,6 +86,18 @@ function decodeHands(enc,b64){ let buf=Buffer.from(String(b64||''),'base64');
   const hands=new Array(n); for(let i=0;i<n;i++){ const v=buf.readUInt16LE(i*2); if(v===NONE) hands[i]=-1; else if(v<=Q) hands[i]=v/Q; else throw new Error('value'); }
   return {hands,raw:buf}; }
 
+/* the phone, as the page describes it (v0.29): only these keys, only these shapes — anything else is dropped. No user agent string, no IP.
+   os, br — coarse kinds; model — Android's own model name when Chrome gives it (e.g. SM-S938B), never on iPhone; pwa — started from the home screen;
+   fs, snr, lvl, gain — sample rate, probe signal-to-noise and level (dB), probe gain; eq, eq_db — band equalizer; relocks, drops — input trouble;
+   side — the hand's end of the phone; ec, ns, agc — echo cancelling, noise suppression, auto gain as the browser really set them. */
+const DEV_STR={os:/^(ios|android|other)$/,br:/^(safari|chrome|firefox|samsung|yandex|other)$/,model:/^[A-Za-z0-9 _.()+-]{1,32}$/,side:/^(port|camera)$/,lang:/^(en|ru)$/};
+const DEV_NUM={fs:[8000,192000],snr:[-50,150],lvl:[-150,50],gain:[0,1],eq_db:[-10,100],relocks:[0,1e6],drops:[0,1e6]}, DEV_BOOL=['pwa','eq','ec','ns','agc'];
+function cleanDev(d){ if(!d||typeof d!=='object'||Array.isArray(d)) return null; const o={};
+  for(const k in DEV_STR) if(typeof d[k]==='string'&&DEV_STR[k].test(d[k])) o[k]=d[k];
+  for(const k in DEV_NUM){ const v=d[k]; if(typeof v==='number'&&isFinite(v)&&v>=DEV_NUM[k][0]&&v<=DEV_NUM[k][1]) o[k]=Math.round(v*1000)/1000; }
+  for(const k of DEV_BOOL) if(typeof d[k]==='boolean') o[k]=d[k];
+  return Object.keys(o).length?JSON.stringify(o):null; }
+
 /* ── requests ── */
 function send(res,code,obj,origin){ const body=JSON.stringify(obj);
   const h={'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','Content-Length':Buffer.byteLength(body)};
@@ -99,12 +118,21 @@ function postGame(b,now){
   const g=Core.replay(seed,FW,d.hands,y0);
   if(g.score!==b.score) return [422,{ok:false,error:'mismatch',score:g.score}];
   const player=hash(b.pid); q.insPlayer.run(player,now);
-  try{ q.insGame.run(player,seed,Core.TAG,g.score,g.level,+g.t.toFixed(2),now,FW,y0,zlib.deflateRawSync(d.raw)); }
+  let seen=0; for(const h of d.hands) if(h>=0) seen++; seen=+(seen/d.hands.length).toFixed(4);
+  try{ q.insGame.run(player,seed,Core.TAG,g.score,g.level,+g.t.toFixed(2),now,FW,y0,zlib.deflateRawSync(d.raw),cleanDev(b.dev),seen); }
   catch(e){ if(/UNIQUE/.test(String(e.message))) return [409,{ok:false,error:'dup'}]; throw e; }
   const ranks={}; let listed=false;
   for(const p of PERIODS){ const best=q.best.get(player,since(p,now)).s; ranks[p]=rankOf(player,best,p,now); if(ranks[p]<=LISTED&&best===g.score) listed=true; }
   const named=!!q.getPlayer.get(player).nick;
   return [200,{ok:true,score:g.score,level:g.level,ranks,listed,named}];
+}
+/* v0.29: how getting ready went — from every player, also those who never get to play; for server/stats.js only */
+const SETUP_RE=/^(caught|nocatch|quiet|noprobe|error|nomic|noaudio|lost)$/;
+function postSetup(b,now){
+  if(typeof b.pid!=='string'||!/^[0-9a-f]{32}$/.test(b.pid)) return [400,{ok:false,error:'pid'}];
+  if(typeof b.result!=='string'||!SETUP_RE.test(b.result)) return [400,{ok:false,error:'result'}];
+  const t=typeof b.t==='number'&&isFinite(b.t)&&b.t>=0&&b.t<=3600?+b.t.toFixed(1):null, flips=Number.isInteger(b.flips)&&b.flips>=0&&b.flips<=1000?b.flips:null;
+  q.insSetup.run(hash(b.pid),now,b.result,t,flips,cleanDev(b.dev)); return [200,{ok:true}];
 }
 function postNick(b){
   if(typeof b.pid!=='string'||!/^[0-9a-f]{32}$/.test(b.pid)) return [400,{ok:false,error:'pid'}];
@@ -128,11 +156,11 @@ const server=http.createServer(async(req,res)=>{
   try{
     if(req.method==='GET'&&url.pathname==='/v1/health') return send(res,200,{ok:true,core:Core.TAG},origin);
     if(req.method==='GET'&&url.pathname==='/v1/top'){ if(!allow('r:'+who,120)) return send(res,429,{ok:false,error:'slow down'},origin); const [c,o]=getTop(url,req,now); return send(res,c,o,origin); }
-    if(req.method==='POST'&&(url.pathname==='/v1/game'||url.pathname==='/v1/nick')){
-      if(!allow('w:'+who,20)) return send(res,429,{ok:false,error:'slow down'},origin);
-      const b=await readBody(req); const [c,o]=url.pathname==='/v1/game'?postGame(b,now):postNick(b); return send(res,c,o,origin); }
+    if(req.method==='POST'&&(url.pathname==='/v1/game'||url.pathname==='/v1/nick'||url.pathname==='/v1/setup')){
+      if(!allow((url.pathname==='/v1/setup'?'s:':'w:')+who,url.pathname==='/v1/setup'?30:20)) return send(res,429,{ok:false,error:'slow down'},origin);
+      const b=await readBody(req); const [c,o]=url.pathname==='/v1/game'?postGame(b,now):url.pathname==='/v1/setup'?postSetup(b,now):postNick(b); return send(res,c,o,origin); }
     send(res,404,{ok:false,error:'not found'},origin);
   }catch(e){ send(res,e.message==='big'||e.message==='json'?400:500,{ok:false,error:e.message==='big'||e.message==='json'?e.message:'server'},origin); if(!/big|json/.test(e.message)) console.error(new Date().toISOString(),e); }
 });
 if(require.main===module) server.listen(PORT,'127.0.0.1',()=>console.log(`sonaroids leaderboard on 127.0.0.1:${PORT}, rules ${Core.TAG}, db ${DB_PATH}`));
-module.exports={server,cleanNick,since,decodeHands,db};
+module.exports={server,cleanNick,cleanDev,since,decodeHands,db};

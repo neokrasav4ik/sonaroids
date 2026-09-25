@@ -14,10 +14,11 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
   await ctx.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_lang','en'); ${SRC}; window.makeSimSource=makeSimSource; window.__scen=${SCEN}; window.SONAROIDS_API='https://api.test';`);
   const p=await ctx.newPage(); const errors=[]; p.on('pageerror',e=>errors.push(e.message));
   // the leaderboard server, faked: games and names are caught here and checked below; every game "makes the table", no name yet
-  const posted=[], nicks=[];
+  const posted=[], nicks=[], setups=[];
   await p.route('https://api.test/**',async route=>{ const r=route.request(), u=new URL(r.url()), cors={'Access-Control-Allow-Origin':'*'};
     if(r.method()==='OPTIONS') return route.fulfill({status:204,headers:Object.assign({'Access-Control-Allow-Methods':'GET, POST','Access-Control-Allow-Headers':'Content-Type, X-Player'},cors)});
     if(u.pathname==='/v1/game'){ const bd=JSON.parse(r.postData()); posted.push(bd); return route.fulfill({status:200,headers:cors,contentType:'application/json',body:JSON.stringify({ok:true,score:bd.score,level:1,ranks:{day:1,week:2,all:30},listed:true,named:false})}); }
+    if(u.pathname==='/v1/setup'){ setups.push(JSON.parse(r.postData()).result); return route.fulfill({status:200,headers:cors,contentType:'application/json',body:'{"ok":true}'}); }
     if(u.pathname==='/v1/nick'){ const bd=JSON.parse(r.postData()); nicks.push(bd.nick); return route.fulfill({status:200,headers:cors,contentType:'application/json',body:JSON.stringify({ok:true,nick:bd.nick})}); }
     return route.fulfill({status:200,headers:cors,contentType:'application/json',body:JSON.stringify({period:'day',entries:[],me:null})}); });
   await p.goto('file://'+path.join(ROOT,'game','play','index.html'));
@@ -92,7 +93,10 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
   // the first game is doctored for the screenshots (level 5, a saucer, a shield — see 'stage' above), so it cannot replay; the next one is a clean game
   const boardOk=replays.length>=2&&replays.slice(1).every(r=>r.sent===r.replay&&r.sent>0&&r.core===Core.TAG)&&nickScreen==='nick'&&afterNick==='over|Tester_1'&&nicks[0]==='Tester_1';
   console.log(`leaderboard: ${replays.length} games sent, replayed on the server's code: ${replays.map(r=>r.sent+(r.sent===r.replay?' = ':' ≠ ')+r.replay+' ('+r.steps+' steps, '+r.bytes+' B)').join('; ')} | name asked: ${nickScreen}, then ${afterNick}`);
+  const dv=posted.length?posted[posted.length-1].dev:null, devOk=!!(dv&&dv.os&&dv.br&&dv.fs===48000&&typeof dv.snr==='number'&&typeof dv.eq==='boolean'&&!('ua' in dv));
+  console.log(`getting-ready reports: ${setups.join(', ')||'NONE'}`);
+  console.log(`phone note with the game: ${dv?JSON.stringify(dv):'NONE'}`);
   console.log(`menu in flight → pause with “end the game”: ${pausedOk?'yes':'NO'}; start over → play now: ${restartOk?'yes':'NO'} (${restartInfo})`);
-  const ok=boardOk&&pausedOk&&restartOk&&healthyAfter===false&&seen2.includes('away')&&seen2[seen2.length-1]==='wave'&&got&&caughtAt!==null&&range&&range[0]<0.12&&range[1]>0.8&&range[1]<0.95&&corr>0.95&&logs.setup&&logs.game&&m&&+m[1]<0.5&&!errors.length;
+  const ok=boardOk&&devOk&&setups.includes('caught')&&pausedOk&&restartOk&&healthyAfter===false&&seen2.includes('away')&&seen2[seen2.length-1]==='wave'&&got&&caughtAt!==null&&range&&range[0]<0.12&&range[1]>0.8&&range[1]<0.95&&corr>0.95&&logs.setup&&logs.game&&m&&+m[1]<0.5&&!errors.length;
   console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;
 })();

@@ -17,7 +17,7 @@ The phone lies flat on the table. It plays an inaudible ultrasonic tone (18–20
 | path | what's inside |
 |---|---|
 | `src/` | the game's source, in numbered parts. `build.py` joins them into one file, `game/play/index.html`. |
-| `game/` | the published site (sonaroids.app): landing page, `play/` — the game (built file, icons, manifest, service worker), `proto/` — the style prototype, `font.js`. |
+| `game/` | the published site (sonaroids.app): `index.html` sends visitors straight into the game, `play/` — the game (built file, icons, manifest, service worker), `proto/` — the style prototype (unlinked), `font.js`, `robots.txt`. The sonar lab is published unlinked at `/lab/sonar_lab3.html`. |
 | `font/` | the game's own 5×7 pixel font (Latin and Cyrillic): `font5x7.txt` is the drawing, `make_font.py` packs it into `game/font.js`. |
 | `tests/` | the game's checks, `sh tests/run.sh`. |
 | `lab/` | the sonar lab: the working test app `lab/app/sonar_lab3.html`, its sources and offline test benches. Notes in Russian. |

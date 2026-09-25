@@ -67,7 +67,11 @@ function sLang(){ sky(DT,0.3); var y=Math.round(LH*0.3); text('SONAROIDS',LW/2,y
   say('Sonaroids. English / Русский'); stepSquares('lang'); }
 function sTitle(){ sky(DT,0.4); var y=Math.round(LH*0.3), cx0=freeSide()==='left'?Math.round(LW*0.6):Math.round(LW*0.4);
   text('SONAROIDS',cx0,y,P.band,'center',2);
-  text(L('version')+' '+VERSION,freeSide()==='left'?LW-SAFE.r-8:SAFE.l+8,LH-SAFE.b-12,P.soft,freeSide()==='left'?'right':'left');   // for telling uploads apart
+  if(/Android/i.test(navigator.userAgent)) text(L('android'),cx0,y+22,P.soft,'center');          // v0.28: the landing page's note, now here
+  var vr=freeSide()==='left', vx=vr?LW-SAFE.r-8:SAFE.l+8, vy=LH-SAFE.b-12;
+  text(L('version')+' '+VERSION,vx,vy,P.soft,vr?'right':'left');   // for telling uploads apart
+  // v0.28: the site opens straight into the game; the source code link moved here from the landing page
+  var gs=L('source'), gw=PF.width(gs); text(gs,vx,vy-13,P.soft,vr?'right':'left'); BTN.push({id:'source',x:Math.max(0,(vr?vx-gw:vx)-6),y:vy-19,w:gw+12,h:PF.CAP+10});
   var sy=Math.round(LH*0.62+Math.sin(clock*1.3)*LH*0.08); drawShip(cx0-40,sy,clock,false);
   for(var i=0;i<3;i++){ var bx=cx0-20+((clock*90+i*40)%120); R(P.bullet,bx,sy,4,1); light(bx,sy,6*K,P.glowB,0.45); }
   column([['play',L('play'),'primary'],['scores',L('scores')],['howto',L('howto')],['lang',L('lang')],['sfx',L(Sfx.on()?'sfx_on':'sfx_off')]],Math.round(LH*0.5));
@@ -276,6 +280,7 @@ var ACT={
   nick_later:function(){ nickField(false); nickMsg=''; go(nickFrom==='over'?'over':'scores'); },
   logs:function(){ Logs.share(); },
   ver:function(){ diag=!diag; },
+  source:function(){ try{ window.open('https://github.com/neokrasav4ik/sonaroids','_blank','noopener'); }catch(e){} },
   retry:function(){ Sonar.clearLost(); ensure(toAway); },
   pause:function(){ pauseGame(); },
   quit:function(){ Logs.gameEv('ended by the player'); endGame(); },

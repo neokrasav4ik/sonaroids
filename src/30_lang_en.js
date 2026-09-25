@@ -1,7 +1,7 @@
 /* ── UI strings, English. All caps: the game's pixel font is drawn in capitals on screen. ── */
 var STR={};
 STR.en={
-  title:'SONAROIDS', version:'VERSION', play:'PLAY', recal:'RECALIBRATE', howto:'HOW TO PLAY', lang:'РУССКИЙ', sfx_on:'SOUNDS: ON', sfx_off:'SOUNDS: OFF',
+  title:'SONAROIDS', android:'ON ANDROID IT DOES NOT WORK ON EVERY PHONE', source:'SOURCE CODE', version:'VERSION', play:'PLAY', recal:'RECALIBRATE', howto:'HOW TO PLAY', lang:'РУССКИЙ', sfx_on:'SOUNDS: ON', sfx_off:'SOUNDS: OFF',
   next:'NEXT', volume:'SET THE VOLUME TO 30–70%', volume_s:'WITH THE VOLUME BUTTONS', volume_direct:'THE VOLUME IS TOO LOW — TURN IT UP TO 30–70%',
   phone_t:'PUT THE PHONE DOWN', phone_s_cam:'SCREEN UP, FRONT CAMERA TOWARDS YOUR PLAYING HAND', cam:'CAMERA', phone_s:'SCREEN UP, CHARGING PORT TOWARDS YOUR PLAYING HAND', port:'PORT',
   mic_t:'THE GAME HEARS YOUR HAND', mic_s:'IT LISTENS TO THE ECHO OF AN INAUDIBLE SOUND', allow:'ALLOW THE MICROPHONE',

@@ -4,7 +4,7 @@
    with what the processing saw (dsp), what the game did (render: one row per core step) and events. ── */
 var Logs=(function(){
   /* event names stay Russian: the lab's analysis tools look for them ('подстройка', 'рука есть', ...) */
-  /* 16-bit samples, full scale = 1/scale of the input: 4 for a quiet microphone (iPhone), 1 for a loud one (OnePlus 15: the log clipped, v0.14) */
+  /* 16-bit samples, full scale = 1/scale of the input: 4 for a quiet microphone (iPhone), 1 for a loud one (OnePlus 13: the log clipped, v0.14) */
   var N=512, SLOG_SEC=120, GLOG_SEC=150, S=null, G=null;
   function pickScale(){ return /iPhone|iPad|iPod/.test(navigator.userAgent)?4:1; }   // by microphone loudness alone it still clipped on the OnePlus (v0.14)
   function pcmPut(L,fr,at){ var SC=L.scale; for(var i=0;i<N;i++){ var v=Math.round(fr[i]*32767*SC); if(v>32767){ v=32767; L.clip++; } else if(v<-32768){ v=-32768; L.clip++; } L.pcm[(at+i)%L.pcm.length]=v; } }

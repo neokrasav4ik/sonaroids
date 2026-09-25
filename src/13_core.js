@@ -13,7 +13,9 @@
    With the bot player (tests/bot.js) that gives: a game of 5–8 min, the first saucer at ~1.1 min, small ones from ~1.9 min. ── */
 var Core=(function(){
   var DT=1/60, FH=180, MARGIN=FH*0.08, SHIP_X=34;
-  var FOLLOW=0.30952;                       // 1 − exp(−(1/60)/0.045): the ship follows the palm with a 45 ms lag (literal, see above)
+  // v0.23: 25 ms (was 45). The maintainer felt the ship lag sharp palm moves ("yo-yo"); the chain palm → microphone → sonar → ship is
+  // ~0.1 s, and this smoothing was the one part free to shorten: on game logs it adds only ~8% to the ship's fine jitter
+  var FOLLOW=0.48658;                       // 1 − exp(−(1/60)/0.025): the ship follows the palm with a 25 ms lag (literal, see above)
   var R_SIZE=[13.5,8.1,4.3], PTS=[20,50,100], FIRE=0.17, BULLET_V=190, LIVES=3, INV=1.4;
   var UFO_BIG_LV=2, UFO_SMALL_LV=4;          // saucers: large from level 2, small aiming from level 4 (v0.13: earlier, was 3 and 5)
   var STREAK_MAX=4;                        // the streak adds up to ×4 (after 15 hits in a row)

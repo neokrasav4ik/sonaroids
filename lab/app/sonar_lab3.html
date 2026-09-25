@@ -231,7 +231,7 @@ var DSP2=(function(){
   var N=512,C=343,fs,kLo,kHi,kc,ks,M,Pr,Pi,lam,mm,T,gA,gB,G,cosT,sinT;
   var d0,dref,boot,bootN=30,prevH,hist,L=4,prom,noProbe,bgAcc,bgN,bgR,bgI,BG_N=40;
   var Es,hold,present,refr,Q_FLOOR=-28,T_ON=-16,T_INT=-30,HOLD_S=1.5,tauE=0.15,REFR_S=0.7,TAU_BG=2.0,TAU=1.5;
-  var eqW=null,eqDb=0,EQ_ON=16,EQ_MAX=10,gN=null,drops=0,moveN=0,scanWait=0,relocks=0,eAvg=0,TE=3,E_FAST=12,ePres=0,why='',rngBuf=[],xBuf=[],centered=false,autoC=false,presN=0,x,fast,cal={k:0.75,o:1,s:0.8},eHold=null,lowN=0,resS=-99,resFloor=null,upN=0,warm=0,absBuf=[],ABS_MED=15,DEADB=5,dirS=null,lostN=0,lost=false;
+  var eqW=null,eqDb=0,EQ_ON=16,EQ_MAX=10,gN=null,drops=0,moveN=0,scanWait=0,relocks=0,eAvg=0,TE=3,E_FAST=12,ePres=0,why='',rngBuf=[],xBuf=[],centered=false,autoC=false,presN=0,x,fast,cal={k:0.75,o:1,s:0.8},eHold=null,lowN=0,resS=-99,resFloor=null,upN=0,warm=0,absBuf=[],ABS_MED=15,DEADB=5,DEADB_UP=15,dirS=null,lostN=0,lost=false;
   function init(sampleRate,parity){
     fs=sampleRate; var df=fs/N; kLo=Math.ceil(18300/df); kHi=Math.floor(20500/df); kc=Math.floor((kLo+kHi)/2);
     ks=[]; for(var k=kLo;k<=kHi;k++) if(parity===undefined||parity==='all'||k%2===parity) ks.push(k);
@@ -278,7 +278,7 @@ var DSP2=(function(){
         noProbe=false; d0=b; dref=bv/boot.length; }
       return null;
     }
-    // с 24.09 ночи: отклик нормируется на прямой сигнал (его усиление и фазу). На Android (OnePlus 15) усиление тракта
+    // с 24.09 ночи: отклик нормируется на прямой сигнал (его усиление и фазу). На Android (OnePlus 13) усиление тракта
     // «динамик→микрофон» плавает на 2–3 дБ за секунды, а ближний хвост прямого сигнала там сильный (−27 дБ) — пустая комната
     // давала остаток −10 дБ вместо −30, и ладонь тонула. Усиление учится только в тихой пустой комнате (как уровень пустоты):
     // рука рядом с телефоном просачивается в прямой отсчёт, и на iPhone иначе портилась высота
@@ -354,9 +354,12 @@ var DSP2=(function(){
       // у краёв (особенно внизу, у стола) абсолютная часть сжата и раньше тянула корабль к середине — «ладонь на столе, а корабль не внизу»
       // с 24.09 вечера: чем больше расхождение, тем быстрее тянет (в 1+(e/12)² раза): при быстрых взмахах быстрая часть уплывала
       // на 60–90 мм за несколько секунд, и корабль «прилипал» к краю (партия 2001). На записях с меткой форма не хуже
-      var kq=1+(eAvg/E_FAST)*(eAvg/E_FAST);
+      // с 25.09: ниже середины абсолютная часть тянет ВВЕРХ без ускорения и с зоной ±15 мм: у стола (ладонь на 4–5 см) она врёт вверх
+      // на 25–40 мм, и ускоренное подтягивание не пускало корабль вниз («резинка» внизу; запись с меткой 11:09 на 4–12 см:
+      // форма 0.826 → 0.911, дрожь удержания 6.9 → 4.1 мм; 11:26 0.628 → 0.895; остальные записи те же или лучше)
+      var up=eAvg>0&&x<100, kq=up?1:1+(eAvg/E_FAST)*(eAvg/E_FAST);
       eAvg+=(1-Math.exp(-kq/(TE*fpsF)))*((absM-x)-eAvg);
-      var ex=Math.abs(eAvg)>DEADB?eAvg-(eAvg>0?DEADB:-DEADB):0, dx=(1-Math.exp(-kq/(TAU*fpsF)))*ex;
+      var db=up?DEADB_UP:DEADB, ex=Math.abs(eAvg)>db?eAvg-(eAvg>0?db:-db):0, dx=(1-Math.exp(-kq/(TAU*fpsF)))*ex;
       x+=dx; eAvg-=dx; }
     // память последней секунды с рукой — для центровки; первая центровка сама, через 0,8 с после появления руки
     if(present){ rngBuf.push(range); xBuf.push(x); if(rngBuf.length>Math.round(fpsF)){ rngBuf.shift(); xBuf.shift(); } presN++; }

@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='0.22';
+var VERSION='0.23';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -70,7 +70,7 @@ var DSP2=(function(){
   var N=512,C=343,fs,kLo,kHi,kc,ks,M,Pr,Pi,lam,mm,T,gA,gB,G,cosT,sinT;
   var d0,dref,boot,bootN=30,prevH,hist,L=4,prom,noProbe,bgAcc,bgN,bgR,bgI,BG_N=40;
   var Es,hold,present,refr,Q_FLOOR=-28,T_ON=-16,T_INT=-30,HOLD_S=1.5,tauE=0.15,REFR_S=0.7,TAU_BG=2.0,TAU=1.5;
-  var eqW=null,eqDb=0,EQ_ON=16,EQ_MAX=10,gN=null,drops=0,moveN=0,scanWait=0,relocks=0,eAvg=0,TE=3,E_FAST=12,ePres=0,why='',rngBuf=[],xBuf=[],centered=false,autoC=false,presN=0,x,fast,cal={k:0.75,o:1,s:0.8},eHold=null,lowN=0,resS=-99,resFloor=null,upN=0,warm=0,absBuf=[],ABS_MED=15,DEADB=5,dirS=null,lostN=0,lost=false;
+  var eqW=null,eqDb=0,EQ_ON=16,EQ_MAX=10,gN=null,drops=0,moveN=0,scanWait=0,relocks=0,eAvg=0,TE=3,E_FAST=12,ePres=0,why='',rngBuf=[],xBuf=[],centered=false,autoC=false,presN=0,x,fast,cal={k:0.75,o:1,s:0.8},eHold=null,lowN=0,resS=-99,resFloor=null,upN=0,warm=0,absBuf=[],ABS_MED=15,DEADB=5,DEADB_UP=15,dirS=null,lostN=0,lost=false;
   function init(sampleRate,parity){
     fs=sampleRate; var df=fs/N; kLo=Math.ceil(18300/df); kHi=Math.floor(20500/df); kc=Math.floor((kLo+kHi)/2);
     ks=[]; for(var k=kLo;k<=kHi;k++) if(parity===undefined||parity==='all'||k%2===parity) ks.push(k);
@@ -117,7 +117,7 @@ var DSP2=(function(){
         noProbe=false; d0=b; dref=bv/boot.length; }
       return null;
     }
-    // с 24.09 ночи: отклик нормируется на прямой сигнал (его усиление и фазу). На Android (OnePlus 15) усиление тракта
+    // с 24.09 ночи: отклик нормируется на прямой сигнал (его усиление и фазу). На Android (OnePlus 13) усиление тракта
     // «динамик→микрофон» плавает на 2–3 дБ за секунды, а ближний хвост прямого сигнала там сильный (−27 дБ) — пустая комната
     // давала остаток −10 дБ вместо −30, и ладонь тонула. Усиление учится только в тихой пустой комнате (как уровень пустоты):
     // рука рядом с телефоном просачивается в прямой отсчёт, и на iPhone иначе портилась высота
@@ -193,9 +193,12 @@ var DSP2=(function(){
       // у краёв (особенно внизу, у стола) абсолютная часть сжата и раньше тянула корабль к середине — «ладонь на столе, а корабль не внизу»
       // с 24.09 вечера: чем больше расхождение, тем быстрее тянет (в 1+(e/12)² раза): при быстрых взмахах быстрая часть уплывала
       // на 60–90 мм за несколько секунд, и корабль «прилипал» к краю (партия 2001). На записях с меткой форма не хуже
-      var kq=1+(eAvg/E_FAST)*(eAvg/E_FAST);
+      // с 25.09: ниже середины абсолютная часть тянет ВВЕРХ без ускорения и с зоной ±15 мм: у стола (ладонь на 4–5 см) она врёт вверх
+      // на 25–40 мм, и ускоренное подтягивание не пускало корабль вниз («резинка» внизу; запись с меткой 11:09 на 4–12 см:
+      // форма 0.826 → 0.911, дрожь удержания 6.9 → 4.1 мм; 11:26 0.628 → 0.895; остальные записи те же или лучше)
+      var up=eAvg>0&&x<100, kq=up?1:1+(eAvg/E_FAST)*(eAvg/E_FAST);
       eAvg+=(1-Math.exp(-kq/(TE*fpsF)))*((absM-x)-eAvg);
-      var ex=Math.abs(eAvg)>DEADB?eAvg-(eAvg>0?DEADB:-DEADB):0, dx=(1-Math.exp(-kq/(TAU*fpsF)))*ex;
+      var db=up?DEADB_UP:DEADB, ex=Math.abs(eAvg)>db?eAvg-(eAvg>0?db:-db):0, dx=(1-Math.exp(-kq/(TAU*fpsF)))*ex;
       x+=dx; eAvg-=dx; }
     // память последней секунды с рукой — для центровки; первая центровка сама, через 0,8 с после появления руки
     if(present){ rngBuf.push(range); xBuf.push(x); if(rngBuf.length>Math.round(fpsF)){ rngBuf.shift(); xBuf.shift(); } presN++; }
@@ -276,7 +279,9 @@ if(typeof module!=='undefined') module.exports=Tune;
    With the bot player (tests/bot.js) that gives: a game of 5–8 min, the first saucer at ~1.1 min, small ones from ~1.9 min. ── */
 var Core=(function(){
   var DT=1/60, FH=180, MARGIN=FH*0.08, SHIP_X=34;
-  var FOLLOW=0.30952;                       // 1 − exp(−(1/60)/0.045): the ship follows the palm with a 45 ms lag (literal, see above)
+  // v0.23: 25 ms (was 45). The maintainer felt the ship lag sharp palm moves ("yo-yo"); the chain palm → microphone → sonar → ship is
+  // ~0.1 s, and this smoothing was the one part free to shorten: on game logs it adds only ~8% to the ship's fine jitter
+  var FOLLOW=0.48658;                       // 1 − exp(−(1/60)/0.025): the ship follows the palm with a 25 ms lag (literal, see above)
   var R_SIZE=[13.5,8.1,4.3], PTS=[20,50,100], FIRE=0.17, BULLET_V=190, LIVES=3, INV=1.4;
   var UFO_BIG_LV=2, UFO_SMALL_LV=4;          // saucers: large from level 2, small aiming from level 4 (v0.13: earlier, was 3 and 5)
   var STREAK_MAX=4;                        // the streak adds up to ×4 (after 15 hits in a row)
@@ -531,7 +536,7 @@ var Sonar=(function(){
    with what the processing saw (dsp), what the game did (render: one row per core step) and events. ── */
 var Logs=(function(){
   /* event names stay Russian: the lab's analysis tools look for them ('подстройка', 'рука есть', ...) */
-  /* 16-bit samples, full scale = 1/scale of the input: 4 for a quiet microphone (iPhone), 1 for a loud one (OnePlus 15: the log clipped, v0.14) */
+  /* 16-bit samples, full scale = 1/scale of the input: 4 for a quiet microphone (iPhone), 1 for a loud one (OnePlus 13: the log clipped, v0.14) */
   var N=512, SLOG_SEC=120, GLOG_SEC=150, S=null, G=null;
   function pickScale(){ return /iPhone|iPad|iPod/.test(navigator.userAgent)?4:1; }   // by microphone loudness alone it still clipped on the OnePlus (v0.14)
   function pcmPut(L,fr,at){ var SC=L.scale; for(var i=0;i<N;i++){ var v=Math.round(fr[i]*32767*SC); if(v>32767){ v=32767; L.clip++; } else if(v<-32768){ v=-32768; L.clip++; } L.pcm[(at+i)%L.pcm.length]=v; } }
@@ -645,7 +650,7 @@ var Sfx=(function(){
     else if(kind==='ufo_dodge'){ tone(380,950,0.09,'triangle',0.16); }
     else if(kind==='ufo_die'){ crash(0.6,700,0.9); tone(600,80,0.5,'square',0.45); }
   }
-  /* the game's own sounds must not flood the microphone: on the OnePlus 15 (24 Sep) they reached it ~50 dB louder than on iPhone,
+  /* the game's own sounds must not flood the microphone: on the OnePlus 13 (24 Sep) they reached it ~50 dB louder than on iPhone,
      far above the probe, and the ship drifted. When the microphone gets near its limit, the sounds are turned down step by step */
   /* v0.19: down to 0.03 and remembered for this phone. On the OnePlus the game's sounds reached the microphone at −17…−34 dB rms
      (peaks up to 0.84) against −55 on iPhone, and with them the echo range jumped half as much again */
@@ -1059,7 +1064,7 @@ function sWave(){ sky(DT,0.3); poolFill(1); var m=handSide()==='left', f=handFra
    the player sees at once whether the calibration came out right. "Play", and under it "recalibrate" (the empty room anew, then wave) */
 var CAUGHT_SHOW=1.0, caughtT=0;
 function followShip(){ var f=handFrac(); if(f!==null) lastHand=f;
-  var ty=(Core.FH-Core.MARGIN-(lastHand===null?0.5:lastHand)*(Core.FH-2*Core.MARGIN))*K; shipY=shipY===null?ty:shipY+(ty-shipY)*0.3; return f!==null; }
+  var ty=(Core.FH-Core.MARGIN-(lastHand===null?0.5:lastHand)*(Core.FH-2*Core.MARGIN))*K; shipY=shipY===null?ty:shipY+(ty-shipY)*0.49; return f!==null; }
 function sTry(){ followShip(); /* the sky is already drawn by sWave */ drawShip(fx(Core.SHIP_X),shipY,clock,false);
   titles(L('wave_ok'),L('try_s'));
   // buttons on the free side, but never over the ship's lane (it flies at the left edge of the field)
@@ -1160,7 +1165,7 @@ function startGame(){
   var seed=0; try{ var a=new Uint32Array(1); crypto.getRandomValues(a); seed=a[0]; }catch(e){ seed=Math.floor(Math.random()*4294967296); }
   var y0=shipY===null?null:+(shipY/K).toFixed(3);
   g=Core.create(seed,Core.FH*(LW-SAFE.l)/LH,y0); acc=0; rockSpr={}; parts=[]; livesT=0; var I=Sonar.info();
-  Logs.gameStart({core:'rules-1',seed:seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:'frozen',asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
+  Logs.gameStart({core:'rules-2',seed:seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:'frozen',asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
     chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,started:new Date().toISOString(),app:'sonaroids'});
   Sfx.play('start'); go('play');
 }

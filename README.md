@@ -6,7 +6,7 @@ The phone lies flat on the table. It plays an inaudible ultrasonic tone (18–20
 
 **Status:** early version at [sonaroids.app/play](https://sonaroids.app/play/): first-launch guide, calibration, the full game (splitting rocks, points by height, power-ups, saucers, growing difficulty), pause menu and logs. The sonar control comes from `lab/`. Design: `docs/design.md`, changes: `CHANGELOG.md`.
 
-**Phones.** It works best on **iPhone** (add it to the Home Screen). On **Android** (Chrome) it depends on the phone's speaker and microphone: many phones pass the 18–20 kHz band poorly, and control can be noticeably worse or not work at all. Tried so far: OnePlus 15 — poor; Redmi — the palm is heard only at the front-camera end, and not precisely. Details in `docs/design.md`, section 2.
+**Phones.** It works best on **iPhone** (add it to the Home Screen). On **Android** (Chrome) it depends on the phone's speaker and microphone: many phones pass the 18–20 kHz band poorly, and control can be noticeably worse or not work at all. Tried so far: OnePlus 13 — poor; Redmi Note 10 — the palm is heard only at the front-camera end, and not precisely. Details in `docs/design.md`, section 2.
 
 - Web app: [sonaroids.app](https://sonaroids.app). An Android APK wrapper is postponed until the mechanics work well on Android.
 - Target size: the whole game under 100 KB. Graphics, sound and font are generated in code.

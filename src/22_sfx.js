@@ -43,7 +43,7 @@ var Sfx=(function(){
     else if(kind==='ufo_dodge'){ tone(380,950,0.09,'triangle',0.16); }
     else if(kind==='ufo_die'){ crash(0.6,700,0.9); tone(600,80,0.5,'square',0.45); }
   }
-  /* the game's own sounds must not flood the microphone: on the OnePlus 15 (24 Sep) they reached it ~50 dB louder than on iPhone,
+  /* the game's own sounds must not flood the microphone: on the OnePlus 13 (24 Sep) they reached it ~50 dB louder than on iPhone,
      far above the probe, and the ship drifted. When the microphone gets near its limit, the sounds are turned down step by step */
   /* v0.19: down to 0.03 and remembered for this phone. On the OnePlus the game's sounds reached the microphone at −17…−34 dB rms
      (peaks up to 0.84) against −55 on iPhone, and with them the echo range jumped half as much again */

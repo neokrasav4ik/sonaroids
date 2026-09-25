@@ -25,8 +25,7 @@ curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo 
 sudo apt update && sudo apt install -y caddy
 ```
 
-Caddy сам получает и продлевает сертификат HTTPS. Если на сервере уже работает nginx на портах 80/443 — скажи,
-дам вариант для nginx вместо Caddy.
+Caddy сам получает и продлевает сертификат HTTPS. Если на сервере уже работает nginx на портах 80/443 (проверка: `sudo ss -tlnp | grep -E ':(80|443) '`), Caddy не нужен — в шаге 4 вариант для nginx.
 
 ## 2. Пользователь, папки, код
 
@@ -57,6 +56,20 @@ curl https://api.sonaroids.app/v1/health
 ```
 
 Если Caddy уже обслуживает другие сайты — не заменяй файл, а допиши в `/etc/caddy/Caddyfile` блок из `server/Caddyfile`.
+
+**Если порты 80/443 занимает nginx** (Caddy тогда падает с «address already in use»):
+
+```sh
+sudo systemctl disable --now caddy
+sudo cp /opt/sonaroids/server/nginx-api.sonaroids.app.conf /etc/nginx/sites-available/api.sonaroids.app
+sudo ln -s /etc/nginx/sites-available/api.sonaroids.app /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d api.sonaroids.app
+curl https://api.sonaroids.app/v1/health
+```
+
+certbot сам получит сертификат, допишет HTTPS в этот файл и будет его продлевать.
 
 ## 5. Ежедневная копия базы
 

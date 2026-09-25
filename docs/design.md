@@ -101,7 +101,7 @@ Prototype: `game/proto/` — the ship follows your finger.
 2. ~~Repository foundation: docs, lab, landing page, publishing to sonaroids.app~~ — live since 24 Sep; our own 5×7 pixel font is done.
 3. Game skeleton: first-launch screens, mechanics from the lab, rendering, sound, own font — built 24 Sep (`src/`, sonaroids.app/play), to be checked on phones.
 4. Game rules: rocks, splitting, points, streak, power-ups, saucer, levels — built 24 Sep, difficulty tuned with a bot (`tests/bot.js`), to be checked by playing.
-5. Leaderboards: server, game verification, tables.
+5. ~~Leaderboards: server, game verification, tables~~ — live since 25 Sep (v0.25–0.26, api.sonaroids.app on the maintainer's VPS, nginx + certbot).
 6. Android (postponed 25 Sep): mechanics on phones with a weak 18–20 kHz path, then the APK.
 
 ## 9. Open questions

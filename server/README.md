@@ -10,6 +10,7 @@ only a score the replay reproduces is stored. Russian step-by-step guide: `docs/
 | `backup.js` | a daily copy of the database (`VACUUM INTO`), keeps 14 |
 | `sonaroids-api.service` | systemd unit: runs as user `sonaroids`, data in `/var/lib/sonaroids` |
 | `Caddyfile` | HTTPS for api.sonaroids.app in front of the Node server |
+| `nginx-api.sonaroids.app.conf` | the same for a server that already runs nginx (HTTPS then by certbot) |
 
 **How a game travels.** Seed, field width, start height and the palm height of every 60 Hz step, rounded to 1/4000
 (the page steps with exactly those numbers), as 16-bit values, raw-deflated, base64: a few KB for a few minutes of play.
@@ -49,8 +50,14 @@ curl https://api.sonaroids.app/v1/health
 
 **Update:** `cd /opt/sonaroids && sudo git pull && sudo systemctl restart sonaroids-api`.
 **Logs:** `journalctl -u sonaroids-api -n 100`.
-Already running nginx on ports 80/443? Put a `proxy_pass http://127.0.0.1:8787;` site for api.sonaroids.app there
-(with certbot for HTTPS) instead of Caddy.
+Already running nginx on ports 80/443 (Caddy then fails with "address already in use")? Use nginx instead of Caddy:
+```sh
+sudo systemctl disable --now caddy
+sudo cp /opt/sonaroids/server/nginx-api.sonaroids.app.conf /etc/nginx/sites-available/api.sonaroids.app
+sudo ln -s /etc/nginx/sites-available/api.sonaroids.app /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+sudo apt install -y certbot python3-certbot-nginx && sudo certbot --nginx -d api.sonaroids.app
+```
 
 **Tests** (no server needed): `node --no-warnings tests/test_server.js` — a temporary database, a real replayed game,
 a forged score, a duplicate, bad names, tables and ranks.

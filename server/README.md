@@ -18,6 +18,7 @@ The player is a random 128-bit secret kept on the phone; the database stores onl
 letters, digits and `_`, plus a small word filter. Tables: best game per named player, UTC day / week from Monday / all time.
 Limits: 20 writes and 120 reads a minute per address, 256 KB per request, 45 minutes per game.
 Transfer codes (0.32): `/v1/link` gives a 6-character code for 10 minutes (kept in memory only — a restart drops the codes), `/v1/claim` joins two keys into one player. At most 10 code attempts a minute per address.
+Removing a stray player (0.33a): `sudo -u sonaroids DB=/var/lib/sonaroids/sonaroids.db node --no-warnings server/drop_player.js <start of the key>` shows what would go; add `--yes` to remove (a copy of the database goes to `backup/` first).
 **The phone note** (since 0.29): each game also carries iOS/Android, the kind of browser, home-screen or not, the model (Android only, when Chrome gives it),
 the sample rate, probe level and SNR, the band equalizer, input drops and relocks, the hand's end of the phone, and whether echo cancelling, noise suppression and
 auto gain were really off. The server keeps only these keys (`cleanDev`), plus the share of steps the palm was seen; no user agent string and no IP are stored.

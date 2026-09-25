@@ -68,6 +68,14 @@ function play(seed,amp,steps){ const hands=[], g=Core.create(seed,380,90); for(l
   check('the transfer code: a 6-character code; the other device takes over the player and its games join in; one use only',
     lk.j.ok&&/^[A-Z2-9]{6}$/.test(lk.j.code)&&wrong.code===404&&cl.j.ok&&cl.j.pid===A&&cl.j.nick==='Den_Sonar'&&nE===0&&pE===0&&mine===1&&sE===1&&again.code===404&&t.j.entries.filter(e=>e.nick==='Den_Sonar').length===1,
     `code ${lk.j.code}, claim → ${JSON.stringify({ok:cl.j.ok,nick:cl.j.nick})}, the same code again → ${again.code}`);
+  // v0.34: server/drop_player.js — a stray player (a key no device holds) is removed by the start of its key; a dry run first, a copy of the database before
+  const whoB=hashP(B).slice(0,8), dp=(...x)=>require('child_process').spawnSync(process.execPath,['--no-warnings',path.join(__dirname,'..','server','drop_player.js'),...x],{env:Object.assign({},process.env,{DB:tmp})});
+  const dry=dp(whoB), nB0=db.prepare('SELECT count(*) AS n FROM games WHERE player=?').get(hashP(B)).n, bad1=dp('zz'), bad2=dp('');
+  const real=dp(whoB,'--yes'), nB1=db.prepare('SELECT count(*) AS n FROM games WHERE player=? OR player IN (SELECT player FROM players WHERE nick=?)').get(hashP(B),'Beta').n;
+  const cp=(String(real.stdout).match(/copy of the database: (\S+)/)||[])[1]; t=await get('/v1/top?period=all&limit=10');
+  check('server/drop_player.js: shows first, removes with --yes, keeps a copy', dry.status===0&&/Beta/.test(String(dry.stdout))&&nB0>0&&bad1.status!==0&&bad2.status!==0&&real.status===0&&nB1===0&&cp&&fs.existsSync(cp)&&!t.j.entries.some(e=>e.nick==='Beta'),
+    String(real.stdout).trim().split('\n').slice(-1)[0]);
+  try{ fs.unlinkSync(cp); }catch(e){}
   server.close(); try{ fs.unlinkSync(tmp); fs.unlinkSync(tmp+'-wal'); fs.unlinkSync(tmp+'-shm'); }catch(e){}
   const ok=res.every(Boolean); console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1; setTimeout(()=>process.exit(process.exitCode),100);
 })();

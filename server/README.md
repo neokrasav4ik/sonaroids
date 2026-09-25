@@ -37,7 +37,7 @@ sudo git clone https://github.com/neokrasav4ik/sonaroids.git /opt/sonaroids
 
 sudo cp /opt/sonaroids/server/sonaroids-api.service /etc/systemd/system/
 sudo systemctl daemon-reload && sudo systemctl enable --now sonaroids-api
-curl http://127.0.0.1:8787/v1/health              # {"ok":true,"core":"rules-2"}
+curl http://127.0.0.1:8787/v1/health              # {"ok":true,"core":"rules-3"}
 
 sudo cp /opt/sonaroids/server/Caddyfile /etc/caddy/Caddyfile && sudo systemctl reload caddy   # or add the block to an existing Caddyfile
 sudo ufw allow 80,443/tcp                          # only if ufw is on

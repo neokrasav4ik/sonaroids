@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='0.25';
+var VERSION='0.26';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -224,7 +224,7 @@ var DSP2=(function(){
     info:function(){ return {eq_db:eqDb,eq:!!eqW,relocks:relocks,drops:drops,d0:d0,prom:prom,noProbe:noProbe,lost:lost,ready:bgR!==null,mm:mm,centered:centered,cal:{k:cal.k,o:cal.o,s:cal.s}}; }};
 })();
 if(typeof module!=='undefined') module.exports=DSP2;
-/* ── WAVE TUNING (from the lab, 24 Sep): while the game waits for the start, the player waves the palm in the 4–12 cm range (v0.22; was 5–15)
+/* ── WAVE TUNING (from the lab, 24 Sep): while the game waits for the start, the player waves the palm in the 5–15 cm range (4–12 in v0.22–0.25)
    and the ship follows. The last 6 s of palm heights are used: their 5th and 95th percentiles land on 6% and 90% of the screen;
    the whole screen covers 50–120 mm of palm travel. Steps every 0.25 s, each 35% of the way. Frozen from the countdown to game over.
    The screen is not linear: below the middle it is stretched ASYM times (near the table the sonar sees motion weaker).
@@ -278,7 +278,8 @@ if(typeof module!=='undefined') module.exports=Tune;
    - saucers: a large one from level 2 (shoots at random, 200 points), a small aiming one from level 4 (1000 points); 3 lives.
    With the bot player (tests/bot.js) that gives: a game of 5–8 min, the first saucer at ~1.1 min, small ones from ~1.9 min. ── */
 var Core=(function(){
-  var DT=1/60, FH=180, MARGIN=FH*0.08, SHIP_X=34;
+  // v0.26: the ship's lane reaches 4% from the screen's edges (was 8%: "hard to fly along the edge, the bottom most of all", 25 Sep)
+  var DT=1/60, FH=180, MARGIN=FH*0.04, SHIP_X=34;
   // v0.23: 25 ms (was 45). The maintainer felt the ship lag sharp palm moves ("yo-yo"); the chain palm → microphone → sonar → ship is
   // ~0.1 s, and this smoothing was the one part free to shorten: on game logs it adds only ~8% to the ship's fine jitter
   var FOLLOW=0.48658;                       // 1 − exp(−(1/60)/0.025): the ship follows the palm with a 25 ms lag (literal, see above)
@@ -374,7 +375,7 @@ var Core=(function(){
   /* a whole game from a palm trajectory (one value per step, −1 = no palm): what the server will run */
   function replay(seed,FW,hands,y0){ var g=create(seed,FW,y0); for(var i=0;i<hands.length&&g.state==='play';i++) step(g,hands[i]<0?null:hands[i]); return g; }
   /* the rules' tag: the leaderboard server replays a game only with the same rules. Change it whenever a change here alters play */
-  var TAG='rules-2';
+  var TAG='rules-3';
   return {TAG:TAG,TUNE:TUNE,SHIP_X:SHIP_X,UFO_BIG_LV:UFO_BIG_LV,UFO_SMALL_LV:UFO_SMALL_LV,create:create,step:step,replay:replay,pace:pace,heightMult:heightMult,DT:DT,FH:FH,MARGIN:MARGIN,UFO:UFO,DODGE:DODGE,R_SIZE:R_SIZE};
 })();
 if(typeof module!=='undefined') module.exports=Core;
@@ -715,7 +716,7 @@ STR.en={
   phone_t:'PUT THE PHONE DOWN', phone_s_cam:'SCREEN UP, FRONT CAMERA TOWARDS YOUR PLAYING HAND', cam:'CAMERA', phone_s:'SCREEN UP, CHARGING PORT TOWARDS YOUR PLAYING HAND', port:'PORT',
   mic_t:'THE GAME HEARS YOUR HAND', mic_s:'IT LISTENS TO THE ECHO OF AN INAUDIBLE SOUND', allow:'ALLOW THE MICROPHONE',
   away_t:'TAKE YOUR HAND AWAY', away_s:'LISTENING TO THE EMPTY ROOM', away_ok:'THE ROOM IS QUIET',
-  wave_t:'WAVE YOUR PALM', wave_s:'UP AND DOWN, 4–12 CM ABOVE THE TABLE', wave_ok:'GOT YOUR RANGE', other_t:'WAVE ON THE OTHER SIDE', other_s:'THE PHONE DOES NOT HEAR THE PALM ON THIS SIDE', try_s:'THE SHIP FOLLOWS YOUR PALM — TRY THE TOP AND THE BOTTOM', cm:'CM',
+  wave_t:'WAVE YOUR PALM', wave_s:'UP AND DOWN, 5–15 CM ABOVE THE TABLE', wave_ok:'GOT YOUR RANGE', other_t:'WAVE ON THE OTHER SIDE', other_s:'THE PHONE DOES NOT HEAR THE PALM ON THIS SIDE', try_s:'THE SHIP FOLLOWS YOUR PALM — TRY THE TOP AND THE BOTTOM', cm:'CM',
   ring_wait:'GET READY', ring_listen:'LISTENING', ring_catch:'CATCHING THE RANGE', ring_ok:'DONE',
   start:'START', over:'GAME OVER', best:'BEST', again:'AGAIN', menu:'MENU', logs:'LOGS',
   lost_t:'NO PROBE SOUND', lost_s:'SOUND WENT TO ANOTHER DEVICE. UNPLUG HEADPHONES OR BLUETOOTH', retry:'TRY AGAIN',
@@ -732,7 +733,7 @@ STR.ru={
   phone_t:'ПОЛОЖИ ТЕЛЕФОН', phone_s_cam:'ЭКРАНОМ ВВЕРХ, ФРОНТАЛЬНОЙ КАМЕРОЙ К РУКЕ, КОТОРОЙ ИГРАЕШЬ', cam:'КАМЕРА', phone_s:'ЭКРАНОМ ВВЕРХ, РАЗЪЁМОМ К РУКЕ, КОТОРОЙ ИГРАЕШЬ', port:'РАЗЪЁМ',
   mic_t:'ИГРА СЛЫШИТ РУКУ', mic_s:'ОНА СЛУШАЕТ ЭХО НЕСЛЫШНОГО ЗВУКА', allow:'РАЗРЕШИТЬ МИКРОФОН',
   away_t:'УБЕРИ РУКУ', away_s:'СЛУШАЮ ПУСТУЮ КОМНАТУ', away_ok:'КОМНАТА ТИХАЯ',
-  wave_t:'ПОМАШИ ЛАДОНЬЮ', wave_s:'ВВЕРХ-ВНИЗ, 4–12 СМ НАД СТОЛОМ', wave_ok:'РАЗМАХ ПОЙМАН', other_t:'ПОМАШИ С ДРУГОЙ СТОРОНЫ', other_s:'С ЭТОЙ СТОРОНЫ ТЕЛЕФОН НЕ СЛЫШИТ ЛАДОНЬ', try_s:'КОРАБЛЬ ИДЁТ ЗА ЛАДОНЬЮ — ПРОВЕРЬ ВЕРХ И НИЗ', cm:'СМ',
+  wave_t:'ПОМАШИ ЛАДОНЬЮ', wave_s:'ВВЕРХ-ВНИЗ, 5–15 СМ НАД СТОЛОМ', wave_ok:'РАЗМАХ ПОЙМАН', other_t:'ПОМАШИ С ДРУГОЙ СТОРОНЫ', other_s:'С ЭТОЙ СТОРОНЫ ТЕЛЕФОН НЕ СЛЫШИТ ЛАДОНЬ', try_s:'КОРАБЛЬ ИДЁТ ЗА ЛАДОНЬЮ — ПРОВЕРЬ ВЕРХ И НИЗ', cm:'СМ',
   ring_wait:'ПРИГОТОВЬСЯ', ring_listen:'СЛУШАЮ', ring_catch:'ЛОВЛЮ РАЗМАХ', ring_ok:'ГОТОВО',
   start:'СТАРТ', over:'ИГРА ОКОНЧЕНА', best:'РЕКОРД', again:'ЕЩЁ РАЗ', menu:'МЕНЮ', logs:'ЖУРНАЛЫ',
   lost_t:'ЗОНДА НЕ СЛЫШНО', lost_s:'ЗВУК УШЁЛ В ДРУГОЕ УСТРОЙСТВО. ОТКЛЮЧИ НАУШНИКИ ИЛИ BLUETOOTH', retry:'ЕЩЁ РАЗ',
@@ -918,7 +919,7 @@ function polyFill(pts,c){ lx.fillStyle=c; var y0=Math.floor(Math.min.apply(null,
   for(var y=y0;y<=y1;y++){ var xs=[], yy=y+0.5; for(var a=0,b=pts.length-1;a<pts.length;b=a++){ var A=pts[a],B=pts[b]; if((A[1]>yy)!==(B[1]>yy)) xs.push(A[0]+(yy-A[1])*(B[0]-A[0])/(B[1]-A[1])); }
     xs.sort(function(p,q){return p-q;}); for(var i=0;i+1<xs.length;i+=2){ var xa=Math.round(xs[i]), xb=Math.round(xs[i+1]); if(xb>xa) lx.fillRect(xa,y,xb-xa,1); } } }
 function ease(x){ x=Math.max(0,Math.min(1,x)); return x*x*(3-2*x); }
-function waveH(t){ return 0.5+0.5*Math.sin(t*2.4-Math.PI/2); }       // demo waving: 0 — 4 cm, 1 — 12 cm (v0.22: was 5–15)
+function waveH(t){ return 0.5+0.5*Math.sin(t*2.4-Math.PI/2); }       // demo waving: 0 — 5 cm, 1 — 15 cm (v0.26: back from 4–12)
 /* oblique projection "front-left, from above": the long side of the phone runs along the screen */
 function iso(X,Y,Z,o){ return [o[0]+X+0.42*Y, o[1]+0.62*Y-Z]; }
 function unIso(sx,sy,o){ var Y=(sy-o[1])/0.62; return [sx-o[0]-0.42*Y, Y]; }
@@ -964,7 +965,7 @@ function phoneGame(ph,o,cm,f,T,mirror){
   var sp=at(0.12,0.12+(1-f)*0.76); blit(SHIP_MAP,P.ship,Math.round(sp[0])-2,Math.round(sp[1])-5);
   for(var b=0;b<3;b++){ var bu=((T*0.9+b/3)%1)*0.7+0.22, bp=at(bu,0.12+(1-f)*0.76); R(P.bullet,bp[0],bp[1],3,1); }
 }
-/* the scene. id: 'phone' | 'away' | 'wave'; t — seconds on this screen; f — palm height 0…1 (4…12 cm); away — 0…1 how far the hand has left;
+/* the scene. id: 'phone' | 'away' | 'wave'; t — seconds on this screen; f — palm height 0…1 (5…15 cm); away — 0…1 how far the hand has left;
    waves — probe waves on. Returns labels (in picture coordinates) */
 var tableC=null;
 function scene(id,t,f,away,waves,T){
@@ -976,7 +977,7 @@ function scene(id,t,f,away,waves,T){
     lx=keep; }
   lx.drawImage(tableC,0,0);
   var ph=phoneIso(o,cm,id==='phone'&&Math.floor(T*3)%2===0,typeof camEnd==='function'&&camEnd());
-  var HSC=0.85, hw=8.5*cm*HSC, Xa=ph.X1+1.2*cm, Yb=5*cm, al=1, Z5=4*cm, Z15=12*cm;          // v0.22: the maintainer steers better waving 4–12 cm (25 Sep)
+  var HSC=0.85, hw=8.5*cm*HSC, Xa=ph.X1+1.2*cm, Yb=5*cm, al=1, Z5=5*cm, Z15=15*cm;          // v0.26: back to 5–15 cm (4–12 was tried in v0.22–0.25)
   var hz=Z5+(Z15-Z5)*f+2.4*cm*HSC, dy=0;
   if(id==='phone') dy=(1-ease(t/1.8))*28*cm;
   if(away>0){ var q=ease(away); dy=q*30*cm; hz+=q*8*cm; al=1-q; }
@@ -988,9 +989,9 @@ function scene(id,t,f,away,waves,T){
     for(var y2=by0;y2<by1;y2++) for(var x2=bx0;x2<bx1;x2++){ var q1=unIso(x2,y2,o), ex=(q1[0]-sc[0])/rx, ey=(q1[1]-sc[1])/ry; if(ex*ex+ey*ey<1&&bay(x2,y2)<dens) lx.fillRect(x2,y2,1,1); } }
   if(waves) for(var i=0;i<3;i++){ var rr=((T*6+i*4.5)%13.5)*cm+1*cm;
     for(var a=-1.4;a<=1.4;a+=0.05){ var pp=iso(ph.X1+Math.cos(a)*rr,Math.sin(a)*rr,0,o); R(P.bullet,pp[0],pp[1],1,1); } }
-  if(id==='wave'){ var rX=Xa+hw+9*cm, rY=Yb-9*cm, b0=iso(rX,rY,0,o), b5=iso(rX,rY,Z5,o), b15=iso(rX,rY,Z15,o);         // a 4–12 cm ruler
+  if(id==='wave'){ var rX=Xa+hw+9*cm, rY=Yb-9*cm, b0=iso(rX,rY,0,o), b5=iso(rX,rY,Z5,o), b15=iso(rX,rY,Z15,o);         // a 5–15 cm ruler
     dots(b0[0],b0[1],b15[1],P.soft); R(P.soft,b5[0]-3,b5[1],7,1); R(P.soft,b15[0]-3,b15[1],7,1);
-    labels.push({x:b15[0]+6,y:b15[1]-3,t:'12 '+L('cm'),c:P.soft}); labels.push({x:b5[0]+6,y:b5[1]-3,t:'4 '+L('cm'),c:P.soft}); }
+    labels.push({x:b15[0]+6,y:b15[1]-3,t:'15 '+L('cm'),c:P.soft}); labels.push({x:b5[0]+6,y:b5[1]-3,t:'5 '+L('cm'),c:P.soft}); }
   if(al>0.5&&id!=='phone'){ var d0=iso(Xa+hw,Yb,0,o), d1=iso(Xa+hw,Yb,hz-2.4*cm*HSC,o); dots(d0[0],d1[1],d0[1],P.soft); }
   if(al>0) handIso(Xa,Yb+dy,hz,o,cm*HSC,al);
   labels.screen={ph:ph,o:o,cm:cm,f:f,T:T};

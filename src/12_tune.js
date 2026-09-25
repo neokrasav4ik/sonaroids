@@ -1,4 +1,4 @@
-/* ── WAVE TUNING (from the lab, 24 Sep): while the game waits for the start, the player waves the palm in the 4–12 cm range (v0.22; was 5–15)
+/* ── WAVE TUNING (from the lab, 24 Sep): while the game waits for the start, the player waves the palm in the 5–15 cm range (4–12 in v0.22–0.25)
    and the ship follows. The last 6 s of palm heights are used: their 5th and 95th percentiles land on 6% and 90% of the screen;
    the whole screen covers 50–120 mm of palm travel. Steps every 0.25 s, each 35% of the way. Frozen from the countdown to game over.
    The screen is not linear: below the middle it is stretched ASYM times (near the table the sonar sees motion weaker).

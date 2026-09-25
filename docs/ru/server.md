@@ -46,7 +46,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now sonaroids-api
 curl http://127.0.0.1:8787/v1/health
 ```
 
-Ответ `{"ok":true,"core":"rules-2"}` — сервер работает. Служба перезапускается сама при сбое и после перезагрузки.
+Ответ `{"ok":true,"core":"rules-3"}` — сервер работает. Служба перезапускается сама при сбое и после перезагрузки.
 
 ## 4. HTTPS
 

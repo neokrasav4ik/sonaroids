@@ -2,7 +2,7 @@
 
 A tiny retro space game for phones that you steer with one hand — **without touching the screen**.
 
-The phone lies flat on the table. It plays an inaudible ultrasonic tone (18–20 kHz) through its own speaker and listens to the echo with its own microphone. The height of your palm next to the phone, 4–12 cm above the table, becomes the height of your ship. The ship fires on its own; you only choose where to be.
+The phone lies flat on the table. It plays an inaudible ultrasonic tone (18–20 kHz) through its own speaker and listens to the echo with its own microphone. The height of your palm next to the phone, 5–15 cm above the table, becomes the height of your ship. The ship fires on its own; you only choose where to be.
 
 **Status:** early version at [sonaroids.app/play](https://sonaroids.app/play/): first-launch guide, calibration, the full game (splitting rocks, points by height, power-ups, saucers, growing difficulty), pause menu and logs. The sonar control comes from `lab/`. Design: `docs/design.md`, changes: `CHANGELOG.md`.
 

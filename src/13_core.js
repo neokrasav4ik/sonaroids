@@ -12,7 +12,8 @@
    - saucers: a large one from level 2 (shoots at random, 200 points), a small aiming one from level 4 (1000 points); 3 lives.
    With the bot player (tests/bot.js) that gives: a game of 5–8 min, the first saucer at ~1.1 min, small ones from ~1.9 min. ── */
 var Core=(function(){
-  var DT=1/60, FH=180, MARGIN=FH*0.08, SHIP_X=34;
+  // v0.26: the ship's lane reaches 4% from the screen's edges (was 8%: "hard to fly along the edge, the bottom most of all", 25 Sep)
+  var DT=1/60, FH=180, MARGIN=FH*0.04, SHIP_X=34;
   // v0.23: 25 ms (was 45). The maintainer felt the ship lag sharp palm moves ("yo-yo"); the chain palm → microphone → sonar → ship is
   // ~0.1 s, and this smoothing was the one part free to shorten: on game logs it adds only ~8% to the ship's fine jitter
   var FOLLOW=0.48658;                       // 1 − exp(−(1/60)/0.025): the ship follows the palm with a 25 ms lag (literal, see above)
@@ -108,7 +109,7 @@ var Core=(function(){
   /* a whole game from a palm trajectory (one value per step, −1 = no palm): what the server will run */
   function replay(seed,FW,hands,y0){ var g=create(seed,FW,y0); for(var i=0;i<hands.length&&g.state==='play';i++) step(g,hands[i]<0?null:hands[i]); return g; }
   /* the rules' tag: the leaderboard server replays a game only with the same rules. Change it whenever a change here alters play */
-  var TAG='rules-2';
+  var TAG='rules-3';
   return {TAG:TAG,TUNE:TUNE,SHIP_X:SHIP_X,UFO_BIG_LV:UFO_BIG_LV,UFO_SMALL_LV:UFO_SMALL_LV,create:create,step:step,replay:replay,pace:pace,heightMult:heightMult,DT:DT,FH:FH,MARGIN:MARGIN,UFO:UFO,DODGE:DODGE,R_SIZE:R_SIZE};
 })();
 if(typeof module!=='undefined') module.exports=Core;

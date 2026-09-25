@@ -78,7 +78,7 @@ function scene(id,t,f,away,waves,T){
     for(var a=-1.4;a<=1.4;a+=0.05){ var pp=iso(ph.X1+Math.cos(a)*rr,Math.sin(a)*rr,0,o); R(P.bullet,pp[0],pp[1],1,1); } }
   if(id==='wave'){ var rX=Xa+hw+9*cm, rY=Yb-9*cm, b0=iso(rX,rY,0,o), b5=iso(rX,rY,Z5,o), b15=iso(rX,rY,Z15,o);         // a 5–15 cm ruler
     dots(b0[0],b0[1],b15[1],P.soft); R(P.soft,b5[0]-3,b5[1],7,1); R(P.soft,b15[0]-3,b15[1],7,1);
-    labels.push({x:b15[0]+6,y:b15[1]-3,t:'15 '+L('cm'),c:P.soft}); labels.push({x:b5[0]+6,y:b5[1]-3,t:'5 '+L('cm'),c:P.soft}); }
+    labels.push({x:b15[0]+6,y:b15[1]-3,t:'10 '+L('cm'),c:P.soft});   /* v0.31: the numbers say 5–10 (plays better, the maintainer); the ruler and tuning are unchanged */ labels.push({x:b5[0]+6,y:b5[1]-3,t:'5 '+L('cm'),c:P.soft}); }
   if(al>0.5&&id!=='phone'){ var d0=iso(Xa+hw,Yb,0,o), d1=iso(Xa+hw,Yb,hz-2.4*cm*HSC,o); dots(d0[0],d1[1],d0[1],P.soft); }
   if(al>0) handIso(Xa,Yb+dy,hz,o,cm*HSC,al);
   labels.screen={ph:ph,o:o,cm:cm,f:f,T:T};

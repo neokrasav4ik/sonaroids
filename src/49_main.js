@@ -65,6 +65,8 @@ function handFrac(){ var st=Sonar.state(); return (st&&st.present&&T)?Tune.fracO
 function sLang(){ sky(DT,0.3); var y=Math.round(LH*0.3); text('SONAROIDS',LW/2,y,P.band,'center',2);
   var bw=btnW(['ENGLISH','РУССКИЙ']), gap=12, by=Math.round(LH*0.5);
   button('en','ENGLISH',Math.round(LW/2-gap/2-bw),by,bw,BH,lang==='en'?'primary':''); button('ru','РУССКИЙ',Math.round(LW/2+gap/2),by,bw,BH,lang==='ru'?'primary':'');
+  // v0.31: in a phone's browser (not launched from the home screen) — full screen needs the home screen; both languages, none is chosen yet
+  if(inBrowser()){ text(STR.ru.fullscr,LW/2,Math.round(LH*0.68),P.soft,'center'); text(STR.en.fullscr,LW/2,Math.round(LH*0.68)+12,P.soft,'center'); }
   say('Sonaroids. English / Русский'); stepSquares('lang'); }
 function sTitle(){ sky(DT,0.4); var y=Math.round(LH*0.3), cx0=freeSide()==='left'?Math.round(LW*0.6):Math.round(LW*0.4);
   text('SONAROIDS',cx0,y,P.band,'center',2);
@@ -78,6 +80,8 @@ function sTitle(){ sky(DT,0.4); var y=Math.round(LH*0.3), cx0=freeSide()==='left
   column([['play',L('play'),'primary'],['scores',L('scores')],['howto',L('howto')],['lang',L('lang')],['sfx',L(Sfx.on()?'sfx_on':'sfx_off')]],Math.round(LH*0.5));
   say('Sonaroids. '+L('play')); }
 function sSound(){ sky(DT,0.3); titles(L(direct?'volume_direct':'volume'),L('volume_s')); soundVolume(scrT); nextBtn('next',L('next')); stepSquares('sound'); }
+function inBrowser(){ var ua=navigator.userAgent||'', mob=/iPhone|iPad|iPod|Android/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1), pwa=false;
+  try{ pwa=!!(navigator.standalone||matchMedia('(display-mode: standalone)').matches); }catch(e){} return mob&&!pwa; }
 function sPhone(){ sky(DT,0.3); var m=handSide()==='left';
   picture(function(){ return scene('phone',scrT,0.5,0,false,clock); },m); titles(L('phone_t'),L(camEnd()?'phone_s_cam':'phone_s'));
   if(scrT>1.2) nextBtn('next',L('next')); stepSquares('phone'); }

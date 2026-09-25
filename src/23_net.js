@@ -32,7 +32,7 @@ var Board=(function(){
   function finish(score){ var c=cur; cur=null; if(!c||!on()||!(score>0)||!c.q.length) return; last={state:'sending',score:score}; var d=dev();
     pack(c.q).then(function(p){ var body={pid:pid(),core:c.core,seed:c.seed,FW:c.FW,y0:c.y0,enc:p.enc,hands:p.hands,score:score,dev:d};
       return post('/v1/game',body).then(function(j){ cache={};
-        if(j.ok) last={state:'done',score:j.score,ranks:j.ranks,listed:j.listed,named:j.named||!!nick()};
+        if(j.ok) last={state:'done',score:j.score,ranks:j.ranks,here:j.here||null,listed:j.listed,named:j.named||!!nick()};
         else if(j.error==='core') last={state:'old'}; else last={state:'error',why:j.error}; },
       function(){ keep(body); last={state:'offline'}; }); }); }
   /* v0.29: how getting ready went, from every player — also those who never get to play (no microphone, the probe not heard, the palm
@@ -45,12 +45,18 @@ var Board=(function(){
   function flush(){ if(!on()||pending) return; var l=[]; try{ l=JSON.parse(ls('sonaroids_unsent')||'[]'); }catch(e){} if(!l.length) return;
     ls('sonaroids_unsent',null); pending=Promise.all(l.map(function(b){ return post('/v1/game',b).catch(function(){ keep(b); }); })).then(function(){ pending=null; cache={}; }); }
   function setNick(n){ return post('/v1/nick',{pid:pid(),nick:n}).then(function(j){ if(j.ok){ ls('sonaroids_nick',j.nick); cache={}; if(last&&last.state==='done') last.named=true; } return j; }); }
+  /* v0.32: the transfer code — Safari, the home-screen app and another phone are different players (the key lives in the browser's storage).
+     link: this device asks for a code; claim: this device enters it, takes over that player's key and name, and its own games are joined in */
+  function link(){ return post('/v1/link',{pid:pid()}); }
+  function claim(code){ return post('/v1/claim',{pid:pid(),code:code}).then(function(j){ if(j.ok&&/^[0-9a-f]{32}$/.test(j.pid)){
+      var l=[]; try{ l=JSON.parse(ls('sonaroids_unsent')||'[]'); }catch(e){} l.forEach(function(b){ b.pid=j.pid; }); if(l.length) ls('sonaroids_unsent',JSON.stringify(l));
+      ls('sonaroids_pid',j.pid); ls('sonaroids_nick',j.nick||null); cache={}; } return j; }); }
   /* a table: cached for 30 s; state loading | ok | offline */
   function top(period){ var c=cache[period]; if(c&&(c.state==='loading'||Date.now()-c.at<30000)) return c;
     c=cache[period]={state:'loading',at:Date.now()}; if(!on()){ c.state='offline'; return c; }
     fetch(API+'/v1/top?period='+period+'&limit=10',{headers:{'X-Player':pid()}}).then(function(r){ return r.json(); })
       .then(function(j){ c.state='ok'; c.entries=j.entries||[]; c.me=j.me||null; c.at=Date.now(); },function(){ c.state='offline'; c.at=Date.now(); });
     return c; }
-  return {setup:setup,devInfo:function(f){ devFn=f; },q:q,start:start,step:step,finish:finish,flush:flush,setNick:setNick,top:top,nick:nick,on:on,
+  return {setup:setup,link:link,claim:claim,devInfo:function(f){ devFn=f; },q:q,start:start,step:step,finish:finish,flush:flush,setNick:setNick,top:top,nick:nick,on:on,
     last:function(){ return last; }, _set:function(p,c){ cache[p]=c; }, _last:function(l){ last=l; }};
 })();

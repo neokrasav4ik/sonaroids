@@ -2,8 +2,11 @@
    Every submitted game is replayed with the game's own core (src/13_core.js); only a score the replay reproduces is stored.
 
    API (JSON, CORS for the game's site):
-     POST /v1/game   {pid, core, seed, FW, y0, enc, hands, score}  → {ok, id, score, ranks:{day,week,all}, listed, named}
+     POST /v1/game   {pid, core, seed, FW, y0, enc, hands, score}  → {ok, score, ranks:{day,week,all}, here:{day,week,all}, listed, named}
+                     ranks — the place of the player's best game; here — the place of this very game (v0.32)
      POST /v1/nick   {pid, nick}                                    → {ok, nick}
+     POST /v1/link   {pid}                                          → {ok, code, ttl}   a transfer code, 10 minutes (v0.32)
+     POST /v1/claim  {pid, code}                                    → {ok, pid, nick}   take over the code's player, joining this one into it
      GET  /v1/top?period=day|week|all&limit=N   (header X-Player: pid, optional) → {period, entries:[{rank,nick,score,level,t,me}], me}
      GET  /v1/health                                                → {ok, core}
    pid — a random secret the game keeps on the device; the database stores only its hash.
@@ -49,6 +52,9 @@ const q={
     WHERE g.created>=? AND p.nick IS NOT NULL AND g.id=(SELECT g2.id FROM games g2 WHERE g2.player=g.player AND g2.created>=? ORDER BY g2.score DESC, g2.created ASC LIMIT 1)
     ORDER BY g.score DESC, g.created ASC LIMIT ?`),
   best: db.prepare('SELECT MAX(score) AS s FROM games WHERE player=? AND created>=?'),
+  // v0.32: joining two players into one (the transfer code): games, getting-ready reports, the name
+  mvGames: db.prepare('UPDATE OR IGNORE games SET player=? WHERE player=?'), delGames: db.prepare('DELETE FROM games WHERE player=?'),
+  mvSetups: db.prepare('UPDATE setups SET player=? WHERE player=?'), delPlayer: db.prepare('DELETE FROM players WHERE player=?'),
   // how many named players did better than a score since a moment
   above: db.prepare(`SELECT COUNT(*) AS n FROM (SELECT g.player, MAX(g.score) AS s FROM games g JOIN players p ON p.player=g.player
     WHERE g.created>=? AND p.nick IS NOT NULL AND g.player<>? GROUP BY g.player) WHERE s>?`),
@@ -77,7 +83,7 @@ function cleanNick(s){ if(typeof s!=='string') return null; s=s.trim(); if(!NICK
 const buckets=new Map();
 function allow(key,perMin){ const now=Date.now(); let b=buckets.get(key); if(!b){ b={t:now,n:perMin}; buckets.set(key,b); }
   b.n=Math.min(perMin,b.n+(now-b.t)/60000*perMin); b.t=now; if(b.n<1) return false; b.n-=1; return true; }
-setInterval(()=>{ const old=Date.now()-600000; for(const [k,b] of buckets) if(b.t<old) buckets.delete(k); },300000).unref();
+setInterval(()=>{ const old=Date.now()-600000; for(const [k,b] of buckets) if(b.t<old) buckets.delete(k); for(const [c,l] of links) if(l.exp<Date.now()) links.delete(c); },300000).unref();
 
 /* palm heights: Uint16 little-endian, raw deflate (enc 'deflate') or not (enc 'raw'), base64 */
 function decodeHands(enc,b64){ let buf=Buffer.from(String(b64||''),'base64');
@@ -123,8 +129,10 @@ function postGame(b,now){
   catch(e){ if(/UNIQUE/.test(String(e.message))) return [409,{ok:false,error:'dup'}]; throw e; }
   const ranks={}; let listed=false;
   for(const p of PERIODS){ const best=q.best.get(player,since(p,now)).s; ranks[p]=rankOf(player,best,p,now); if(ranks[p]<=LISTED&&best===g.score) listed=true; }
+  // v0.32: where this very game stands — the players above it, counting the player's own better game (the table shows one game per player)
+  const here={}; for(const p of PERIODS){ const t0=since(p,now), own=q.best.get(player,t0).s; here[p]=q.above.get(t0,player,g.score).n+(own>g.score?1:0)+1; }
   const named=!!q.getPlayer.get(player).nick;
-  return [200,{ok:true,score:g.score,level:g.level,ranks,listed,named}];
+  return [200,{ok:true,score:g.score,level:g.level,ranks,here,listed,named}];
 }
 /* v0.29: how getting ready went — from every player, also those who never get to play; for server/stats.js only */
 const SETUP_RE=/^(caught|nocatch|quiet|noprobe|error|nomic|noaudio|lost)$/;
@@ -133,6 +141,26 @@ function postSetup(b,now){
   if(typeof b.result!=='string'||!SETUP_RE.test(b.result)) return [400,{ok:false,error:'result'}];
   const t=typeof b.t==='number'&&isFinite(b.t)&&b.t>=0&&b.t<=3600?+b.t.toFixed(1):null, flips=Number.isInteger(b.flips)&&b.flips>=0&&b.flips<=1000?b.flips:null;
   q.insSetup.run(hash(b.pid),now,b.result,t,flips,cleanDev(b.dev)); return [200,{ok:true}];
+}
+/* v0.32: the transfer code. Safari, the home-screen app and another phone keep separate players (the key lives in the browser's storage).
+   One device asks for a code (6 characters, 10 minutes, kept in memory only); the other enters it: it takes over the first device's key,
+   and its own games, reports and name are joined into that player. */
+const LINK_TTL=600000, LINK_ABC='ABCDEFGHJKMNPQRSTUVWXYZ23456789', links=new Map();
+function postLink(b,now){
+  if(typeof b.pid!=='string'||!/^[0-9a-f]{32}$/.test(b.pid)) return [400,{ok:false,error:'pid'}];
+  for(const [c,l] of links) if(l.pid===b.pid||l.exp<now) links.delete(c);
+  let code; do{ code=''; for(const x of crypto.randomBytes(6)) code+=LINK_ABC[x%LINK_ABC.length]; }while(links.has(code));
+  links.set(code,{pid:b.pid,exp:now+LINK_TTL}); q.insPlayer.run(hash(b.pid),now); return [200,{ok:true,code,ttl:LINK_TTL/1000}];
+}
+function postClaim(b,now){
+  if(typeof b.pid!=='string'||!/^[0-9a-f]{32}$/.test(b.pid)) return [400,{ok:false,error:'pid'}];
+  const code=String(b.code||'').toUpperCase().replace(/[^A-Z0-9]/g,''), l=links.get(code);
+  if(!l||l.exp<now) return [404,{ok:false,error:'code'}];
+  links.delete(code); const pa=hash(l.pid), pb=hash(b.pid);
+  if(pa!==pb){ db.exec('BEGIN'); try{ q.insPlayer.run(pa,now); q.mvGames.run(pa,pb); q.delGames.run(pb); q.mvSetups.run(pa,pb);
+      const na=q.getPlayer.get(pa), nb=q.getPlayer.get(pb); if(!na.nick&&nb&&nb.nick) q.setNick.run(nb.nick,pa); q.delPlayer.run(pb); db.exec('COMMIT'); }
+    catch(e){ db.exec('ROLLBACK'); throw e; } }
+  const p=q.getPlayer.get(pa); return [200,{ok:true,pid:l.pid,nick:p?p.nick:null}];
 }
 function postNick(b){
   if(typeof b.pid!=='string'||!/^[0-9a-f]{32}$/.test(b.pid)) return [400,{ok:false,error:'pid'}];
@@ -156,9 +184,11 @@ const server=http.createServer(async(req,res)=>{
   try{
     if(req.method==='GET'&&url.pathname==='/v1/health') return send(res,200,{ok:true,core:Core.TAG},origin);
     if(req.method==='GET'&&url.pathname==='/v1/top'){ if(!allow('r:'+who,120)) return send(res,429,{ok:false,error:'slow down'},origin); const [c,o]=getTop(url,req,now); return send(res,c,o,origin); }
-    if(req.method==='POST'&&(url.pathname==='/v1/game'||url.pathname==='/v1/nick'||url.pathname==='/v1/setup')){
-      if(!allow((url.pathname==='/v1/setup'?'s:':'w:')+who,url.pathname==='/v1/setup'?30:20)) return send(res,429,{ok:false,error:'slow down'},origin);
-      const b=await readBody(req); const [c,o]=url.pathname==='/v1/game'?postGame(b,now):url.pathname==='/v1/setup'?postSetup(b,now):postNick(b); return send(res,c,o,origin); }
+    if(req.method==='POST'&&(url.pathname==='/v1/game'||url.pathname==='/v1/nick'||url.pathname==='/v1/setup'||url.pathname==='/v1/link'||url.pathname==='/v1/claim')){
+      const lim=url.pathname==='/v1/setup'?['s:',30]:url.pathname==='/v1/claim'?['c:',10]:['w:',20];   // a code is guessed at most 10 times a minute
+      if(!allow(lim[0]+who,lim[1])) return send(res,429,{ok:false,error:'slow down'},origin);
+      const b=await readBody(req), pth=url.pathname;
+      const [c,o]=pth==='/v1/game'?postGame(b,now):pth==='/v1/setup'?postSetup(b,now):pth==='/v1/link'?postLink(b,now):pth==='/v1/claim'?postClaim(b,now):postNick(b); return send(res,c,o,origin); }
     send(res,404,{ok:false,error:'not found'},origin);
   }catch(e){ send(res,e.message==='big'||e.message==='json'?400:500,{ok:false,error:e.message==='big'||e.message==='json'?e.message:'server'},origin); if(!/big|json/.test(e.message)) console.error(new Date().toISOString(),e); }
 });

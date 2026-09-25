@@ -15,7 +15,7 @@ var prep=null, T=null, caught=false, g=null, acc=0, countT=0, overT=0, shake=0, 
 var DUCK_PEAK=0.05;
 var lastHand=null, shipY=null, sayLast='', pausedFrom=null, livesT=0, duckT=0;
 function go(s){ if(scr==='wave'&&s!=='wave'&&!caught&&T&&typeof Board!=='undefined') Board.setup('nocatch',{t:scrT,flips:flips});   // left the wave step without a caught range
-  if(s!==scr) scrPrev=scr; scr=s; scrT=0; BTN=[]; if(s!=='nick'&&typeof nickField==='function'&&nickEl) nickField(false); }
+  if(s!==scr) scrPrev=scr; scr=s; scrT=0; BTN=[]; if(s!=='nick'&&s!=='linkin'&&typeof nickField==='function'&&nickEl) nickField(false); }
 var scrPrev=null, diag=false, flips=0;                        // diag: the "logs" button is shown (a tap on the version on the game-over screen)
 
 /* ── which side the playing hand is on ──
@@ -200,20 +200,24 @@ function sOver(){ overT+=DT;                       // no tuning here: it is done
   // v0.27: the version is also a switch — a tap shows the "logs" button (for this launch); the logs are always being written
   var vs='V'+VERSION, vr=freeSide()==='left', vx=vr?LW-SAFE.r-8:SAFE.l+8, vy=LH-SAFE.b-12, vw=PF.width(vs);
   text(vs,vx,vy,diag?P.band:P.soft,vr?'right':'left'); var bx0=Math.max(0,(vr?vx-vw:vx)-8), bx1=Math.min(LW,(vr?vx:vx+vw)+8), by0=vy-8; BTN.push({id:'ver',x:bx0,y:by0,w:bx1-bx0,h:Math.min(PF.CAP+16,LH-by0)});   // a generous tap area, inside the screen text(String(g.score).padStart(6,'0'),cx0,y+14,P.band,'center'); text(L('best')+' '+String(best).padStart(6,'0'),cx0,y+26,P.soft,'center');
-  var bl=boardLine(); if(bl) text(bl[0],cx0,y+43,bl[1],'center');
+  var bl=boardLine(); if(bl){ text(bl[0],cx0,y+43,bl[1],'center'); if(bl[2]) text(bl[2],cx0,y+55,P.soft,'center'); }
   say(L('over')+' '+g.score+(bl?'. '+bl[0]:''));
   var lb=Board.last(); if(lb&&lb.state==='done'&&lb.listed&&!lb.named&&!nickAsked&&overT>1.5){ nickAsked=true; nickFrom='over'; go('nick'); return; }   // the first place in a table: ask the name once
   if(overT>0.8) column([['again',L('again'),'primary'],['menu',L('menu')],['scores',L('scores')]].concat(diag&&Logs.has()?[['logs',L('logs')]]:[]),Math.round(LH*0.52)); }
 /* the game-over screen's line about the table: [text, colour] or null */
 function boardLine(){ var b=Board.last(); if(!b) return null;
   if(b.state==='sending') return [L('sending'),P.soft]; if(b.state==='offline') return [L('sent_off'),P.soft]; if(b.state==='old') return [L('old'),P.soft];
-  if(b.state!=='done'||!b.ranks) return null; var r=b.ranks, k=r.all<=100?'all':r.week<=100?'week':'day';
-  return [L('place_'+k).replace('{n}',r[k]),b.listed?P.pick:P.soft]; }
+  if(b.state!=='done'||!b.ranks) return null; var r=b.ranks, h=b.here, k;
+  if(!h){ k=r.all<=100?'all':r.week<=100?'week':'day'; return [L('place_'+k).replace('{n}',r[k]),b.listed?P.pick:P.soft]; }   // a server before v0.32
+  // v0.32: the place of this very game; when the player's record is better, a second line with the record's place (the table shows the record)
+  k=h.all<=100?'all':h.week<=100?'week':'day';
+  if(h[k]===r[k]) return [L('place_'+k).replace('{n}',r[k]),b.listed?P.pick:P.soft];
+  return [L('here_'+k).replace('{n}',h[k]),P.soft,L('pb_'+k).replace('{n}',r[k])]; }
 /* ── high scores (v0.25): today, this week, all time; the list on one side, the buttons on the free side ── */
 var tblBox=null, period='day', scoresFrom='title', nickFrom='title', nickAsked=false, nickMsg='', nickBusy=false, nickEl=null;
 function sScores(){ sky(DT,0.3); var c=Board.top(period);
   var nm=Board.nick(), items=[['p_day',L('p_day'),period==='day'?'primary':''],['p_week',L('p_week'),period==='week'?'primary':''],['p_all',L('p_all'),period==='all'?'primary':''],
-    ['name',nm?L('name')+': '+nm:L('name_set')],['sc_back',L('back')]], bw=btnW(items.map(function(q){ return q[1]; })), bx=sideX(bw), m=Math.max(10,Math.round(LW*0.03));
+    ['name',nm?L('name')+': '+nm:L('name_set')],['link',L('link')],['sc_back',L('back')]], bw=btnW(items.map(function(q){ return q[1]; })), bx=sideX(bw), m=Math.max(10,Math.round(LW*0.03));
   var x0=freeSide()==='left'?bx+bw+m:SAFE.l+m, x1=freeSide()==='left'?LW-SAFE.r-m:bx-m;          // the list takes the rest of the width
   tblBox=[x0,x1]; var y=topY(); text(L('scores')+' — '+L('p_'+period),x0,y,P.text); y+=16; say(L('scores')+', '+L('p_'+period));
   if(c.state==='loading') text(L('loading'),x0,y,P.soft); else if(c.state==='offline') text(L('offline'),x0,y,P.soft);
@@ -227,15 +231,34 @@ function sScores(){ sky(DT,0.3); var c=Board.top(period);
 var NICK_RE=/^[A-Za-z0-9_]{1,16}$/;                     // Latin letters, digits and _ only (25 Sep); the server checks the same
 function nickField(show){ if(!nickEl){ nickEl=document.createElement('input'); nickEl.type='text'; nickEl.maxLength=16; nickEl.autocomplete='off'; nickEl.spellcheck=false; nickEl.setAttribute('autocapitalize','off'); nickEl.setAttribute('aria-label','nickname');
     nickEl.style.cssText='position:fixed;z-index:5;display:none;font:18px/1.2 ui-monospace,Menlo,monospace;text-align:center;padding:6px 8px;border:2px solid '+P.band+';background:'+P.bg+';color:'+P.text+';border-radius:0;outline:none;-webkit-appearance:none';
-    nickEl.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); ACT.nick_ok(); } }); document.body.appendChild(nickEl); }
+    nickEl.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); if(scr==='linkin') ACT.code_ok(); else ACT.nick_ok(); } }); document.body.appendChild(nickEl); }
   if(!show){ if(nickEl.style.display!=='none'){ nickEl.style.display='none'; nickEl.blur(); } return; }
   var m=S/DPR, w=Math.round(LW*0.42), x=Math.round((LW-w)/2), y=Math.round(LH*0.34);
   nickEl.style.left=Math.round(x*m)+'px'; nickEl.style.top=Math.round(y*m)+'px'; nickEl.style.width=Math.round(w*m)+'px';
-  if(nickEl.style.display==='none'){ nickEl.value=Board.nick()||''; nickEl.style.display='block'; } }
+  var mode=scr==='linkin'?'code':'nick';
+  if(nickEl.style.display==='none'||nickEl.getAttribute('data-mode')!==mode){ nickEl.setAttribute('data-mode',mode); nickEl.maxLength=mode==='code'?8:16;
+    nickEl.setAttribute('autocapitalize',mode==='code'?'characters':'off'); nickEl.setAttribute('aria-label',mode==='code'?'code':'nickname');
+    nickEl.value=mode==='code'?'':(Board.nick()||''); nickEl.style.display='block'; } }
 function sNick(){ sky(DT,0.3); titles(L(nickFrom==='over'?'nick_t':'nick_t2'),L('nick_s')); nickField(true);
   if(nickMsg) text(nickMsg,Math.round(LW/2),Math.round(LH*0.34)-10,P.hit,'center');
   var items=[['nick_ok',nickBusy?L('loading'):L('done'),'primary'],['nick_later',L(nickFrom==='over'?'later':'back')]], w=btnW(items.map(function(q){ return q[1]; })), gap=10, y0=Math.round(LH*0.66), x=Math.round(LW/2-w-gap/2);
   button(items[0][0],items[0][1],x,y0,w,BH,'primary',true); button(items[1][0],items[1][1],x+w+gap,y0,w,BH,'',false); }
+/* v0.32: the transfer code (see Board.link / Board.claim) */
+var linkCode=null, linkMsg='', linkBusy=false, linkNick=null;
+function sLink(){ sky(DT,0.3); titles(L('link_t'),L('link_s')); column([['link_show',L('link_show'),'primary'],['link_in',L('link_in')],['link_back',L('back')]],Math.round(LH*0.64)); }
+function sLinkShow(){ sky(DT,0.3); titles(L('link_code_t'));
+  var cx0=Math.round((SAFE.l+LW-SAFE.r)/2);
+  if(linkCode) text(linkCode.slice(0,3)+' '+linkCode.slice(3),cx0,Math.round(LH*0.3),P.band,'center',3);
+  else text(linkMsg||L('loading'),cx0,Math.round(LH*0.34),linkMsg?P.hit:P.soft,'center');
+  para(L('link_code_s'),cx0,Math.round(LH*0.52),LW-SAFE.l-SAFE.r-40,P.soft);
+  if(linkCode) say(L('link_code_t')+' '+linkCode.split('').join(' '));
+  var w=btnW([L('back')]); button('link_back2',L('back'),Math.round(cx0-w/2),Math.round(LH*0.76),w,BH,''); }
+function sLinkIn(){ sky(DT,0.3); titles(L('link_in_t'),L('link_in_s')); nickField(true);
+  if(linkMsg) text(linkMsg,Math.round(LW/2),Math.round(LH*0.34)-10,P.hit,'center');
+  var items=[['code_ok',linkBusy?L('loading'):L('done'),'primary'],['link_back2',L('back')]], w=btnW(items.map(function(q){ return q[1]; })), gap=10, y0=Math.round(LH*0.66), x=Math.round(LW/2-w-gap/2);
+  button(items[0][0],items[0][1],x,y0,w,BH,'primary',true); button(items[1][0],items[1][1],x+w+gap,y0,w,BH,'',false); }
+function sLinkDone(){ sky(DT,0.3); titles(L('link_ok_t'),L('link_ok_s').replace('{nick}',linkNick?' — '+linkNick:''));
+  var w=btnW([L('next')]); button('link_done',L('next'),Math.round(LW/2-w/2),Math.round(LH*0.6),w,BH,'primary',true); }
 function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('paused')); column([['resume',L('resume'),'primary']].concat(pausedFrom==='play'?[['restart',L('restart')],['quit',L('quit')]]:[]).concat([['exit',L('exit')]]),Math.round(LH*0.52)); }
 /* v0.24 "start over" from the pause menu: straight into a countdown with the same calibration, or through calibration again */
 function sRestart(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('restart'),L('restart_s'));
@@ -295,6 +318,12 @@ var ACT={
   sc_back:function(){ go(scoresFrom==='over'&&g&&g.state==='over'?'over':'title'); },
   nick_ok:function(){ if(nickBusy||!nickEl) return; var v=nickEl.value.trim(); if(!NICK_RE.test(v)){ nickMsg=L('nick_bad'); return; }
     nickBusy=true; nickMsg=''; Board.setNick(v).then(function(j){ nickBusy=false; if(j.ok){ nickField(false); go(nickFrom==='over'?'over':'scores'); } else nickMsg=L('nick_bad'); },function(){ nickBusy=false; nickMsg=L('nick_net'); }); },
+  link:function(){ go('link'); }, link_back:function(){ go('scores'); }, link_back2:function(){ nickField(false); linkMsg=''; go('link'); },
+  link_show:function(){ linkCode=null; linkMsg=''; go('linkshow'); Board.link().then(function(j){ if(j.ok) linkCode=j.code; else linkMsg=L('nick_net'); },function(){ linkMsg=L('nick_net'); }); },
+  link_in:function(){ linkMsg=''; go('linkin'); },
+  code_ok:function(){ if(linkBusy||!nickEl) return; var v=nickEl.value.toUpperCase().replace(/[^A-Z0-9]/g,''); if(v.length!==6){ linkMsg=L('link_bad'); return; }
+    linkBusy=true; linkMsg=''; Board.claim(v).then(function(j){ linkBusy=false; if(j.ok){ nickField(false); linkNick=j.nick; go('linkdone'); } else linkMsg=L('link_bad'); },function(){ linkBusy=false; linkMsg=L('nick_net'); }); },
+  link_done:function(){ period='all'; go('scores'); },
   nick_later:function(){ nickField(false); nickMsg=''; go(nickFrom==='over'?'over':'scores'); },
   logs:function(){ Logs.share(); },
   ver:function(){ diag=!diag; },
@@ -346,7 +375,7 @@ function loop(now){
     case 'sound': sSound(); break;
     case 'phone': sPhone(); break; case 'mic': sMic(); break; case 'away': sAway(); break; case 'wave': sWave(); break;
     case 'count': sCount(); break; case 'count-resume': sCountResume(); break; case 'play': sPlay(); break; case 'over': sOver(); break;
-    case 'paused': sPaused(); break; case 'restart': sRestart(); break; case 'scores': sScores(); break; case 'nick': sNick(); break; case 'lost': sLost(); break; case 'nomic': sNomic(); break;
+    case 'paused': sPaused(); break; case 'restart': sRestart(); break; case 'scores': sScores(); break; case 'nick': sNick(); break; case 'lost': sLost(); break; case 'nomic': sNomic(); break; case 'link': sLink(); break; case 'linkshow': sLinkShow(); break; case 'linkin': sLinkIn(); break; case 'linkdone': sLinkDone(); break;
   }
   present(scr==='play'?shake:0);
 }

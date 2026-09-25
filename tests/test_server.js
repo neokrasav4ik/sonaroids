@@ -52,6 +52,22 @@ function play(seed,amp,steps){ const hands=[], g=Core.create(seed,380,90); for(l
   const h=await get('/v1/health'); check('health', h.j.ok&&h.j.core===Core.TAG);
   const st=require('child_process').execFileSync(process.execPath,['--no-warnings',path.join(__dirname,'..','server','stats.js'),'7'],{env:Object.assign({},process.env,{DB:tmp})}).toString();
   check('server/stats.js: phones by kind, old games apart', /android \/ samsung \/ SM-S938B\s+1\s+1/.test(st)&&/before v0\.29/.test(st)&&/getting ready.*2 reports/.test(st)&&/SM-S938B\s+2\s+1\s+50%/.test(st), '\n'+st.trim().split('\n').map(l=>'       '+l).join('\n'));
+  // v0.32: the place of this very game, counting the player's own better game (the table shows only the best game per player)
+  const bestA=Math.max(a1.g.score,a2.g.score), a3=play(15,0.25,60*30); r=await post('/v1/game',Object.assign({pid:A},a3.body));
+  const wantHere=1+(b1.g.score>a3.g.score?1:0)+(bestA>a3.g.score?1:0), wantRank=1+(b1.g.score>Math.max(bestA,a3.g.score)?1:0);
+  check('game over: the place of this game and of the player\'s record', r.j.ok&&r.j.here&&r.j.here.week===wantHere&&r.j.ranks.week===wantRank&&(a3.g.score<bestA?r.j.here.week>r.j.ranks.week:r.j.here.week===r.j.ranks.week),
+    `this game ${a3.g.score} → place ${r.j.here.week}, the record ${Math.max(bestA,a3.g.score)} → place ${r.j.ranks.week}`);
+  // v0.32: the transfer code — another device (E, its own game, no name) takes over A's player; E's games join A's
+  const hashP=x=>crypto.createHash('sha256').update('sonaroids:'+x).digest('hex').slice(0,32), E=pid(), e1=play(16,0.3,60*40);
+  await post('/v1/game',Object.assign({pid:E},e1.body)); await post('/v1/setup',{pid:E,result:'caught',t:5});
+  const lk=await post('/v1/link',{pid:A}); const wrong=await post('/v1/claim',{pid:E,code:'AAAAAA'}), cl=await post('/v1/claim',{pid:E,code:' '+lk.j.code.toLowerCase().slice(0,3)+'-'+lk.j.code.slice(3)+' '});
+  const again=await post('/v1/claim',{pid:pid(),code:lk.j.code});
+  const nE=db.prepare('SELECT count(*) AS n FROM games WHERE player=?').get(hashP(E)).n, mine=db.prepare('SELECT count(*) AS n FROM games WHERE player=? AND seed=16').get(hashP(A)).n,
+    pE=db.prepare('SELECT count(*) AS n FROM players WHERE player=?').get(hashP(E)).n, sE=db.prepare('SELECT count(*) AS n FROM setups WHERE player=?').get(hashP(A)).n;
+  t=await get('/v1/top?period=all&limit=10',{'X-Player':A});
+  check('the transfer code: a 6-character code; the other device takes over the player and its games join in; one use only',
+    lk.j.ok&&/^[A-Z2-9]{6}$/.test(lk.j.code)&&wrong.code===404&&cl.j.ok&&cl.j.pid===A&&cl.j.nick==='Den_Sonar'&&nE===0&&pE===0&&mine===1&&sE===1&&again.code===404&&t.j.entries.filter(e=>e.nick==='Den_Sonar').length===1,
+    `code ${lk.j.code}, claim → ${JSON.stringify({ok:cl.j.ok,nick:cl.j.nick})}, the same code again → ${again.code}`);
   server.close(); try{ fs.unlinkSync(tmp); fs.unlinkSync(tmp+'-wal'); fs.unlinkSync(tmp+'-shm'); }catch(e){}
   const ok=res.every(Boolean); console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1; setTimeout(()=>process.exit(process.exitCode),100);
 })();

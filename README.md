@@ -21,6 +21,7 @@ The phone lies flat on the table. It plays an inaudible ultrasonic tone (18–20
 | `font/` | the game's own 5×7 pixel font (Latin and Cyrillic): `font5x7.txt` is the drawing, `make_font.py` packs it into `game/font.js`. |
 | `tests/` | the game's checks, `sh tests/run.sh`. |
 | `lab/` | the sonar lab: the working test app `lab/app/sonar_lab3.html`, its sources and offline test benches. Notes in Russian. |
+| `promo/` | the promo GIF (`sonaroids.gif`), drawn by the game's own code: `node promo/make_gif.js && python3 promo/make_gif.py`. |
 | `docs/` | design document (`design.md`; Russian original in `docs/ru/`). |
 | `server/` | the leaderboard server (api.sonaroids.app): plain Node + SQLite, replays every game with the game's own rules. Install: `server/README.md` (Russian: `docs/ru/server.md`). |
 

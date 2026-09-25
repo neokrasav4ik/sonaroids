@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Sonaroids</title>
+<link rel="icon" href="play/icon-192.png">
+<link rel="apple-touch-icon" href="play/icon-180.png">
 <meta name="description" content="A tiny retro space game you steer with your palm, without touching the screen. The phone lies on the table and reads your hand's movement with ultrasound.">
 <meta name="theme-color" content="#1B1A2E">
 <style>
@@ -30,10 +32,10 @@
   var TXT={
     en:{t1:'Steer a spaceship with your palm, without touching the screen.',
         t2:'The phone lies on the table and reads your hand’s movement with ultrasound.',
-        t3:'EARLY VERSION', t4:'Works best on iPhone. On Android it depends on the phone’s speaker and microphone.', play:'PLAY', proto:'STYLE PROTOTYPE', lab:'SONAR LAB', code:'SOURCE CODE', lang:'РУС'},
+        t3:'', t4:'Works best on iPhone. On Android it depends on the phone’s speaker and microphone.', play:'PLAY', proto:'STYLE PROTOTYPE', lab:'SONAR LAB', code:'SOURCE CODE', lang:'РУС'},
     ru:{t1:'Веди корабль ладонью, не касаясь экрана.',
         t2:'Телефон лежит на столе и считывает движения руки ультразвуком.',
-        t3:'РАННЯЯ ВЕРСИЯ', t4:'Лучше всего работает на iPhone. На Android всё зависит от динамика и микрофона телефона.', play:'ИГРАТЬ', proto:'ПРОТОТИП СТИЛЯ', lab:'ЛАБА СОНАРА', code:'ИСХОДНЫЙ КОД', lang:'ENG'}};
+        t3:'', t4:'Лучше всего работает на iPhone. На Android всё зависит от динамика и микрофона телефона.', play:'ИГРАТЬ', proto:'ПРОТОТИП СТИЛЯ', lab:'ЛАБА СОНАРА', code:'ИСХОДНЫЙ КОД', lang:'ENG'}};
   var COL={bg:'#1B1A2E',star:['#4A3F5E','#B89BB2','#FFE9D6'],mint:'#7FE0C8',ink:'#FFF3EA',apricot:'#FFB86B',line:'#5A4870',hot:'#7FE0C8'};
   var lang='en';
   try{ lang=localStorage.getItem('sonaroids_lang')||((navigator.language||'').toLowerCase().indexOf('ru')===0?'ru':'en'); }catch(e){}
@@ -69,7 +71,7 @@
     var y=Math.max(18,Math.round((H-hTot)/2));
     L.title={x:Math.round((W-tw)/2),y:y,s:ts}; y+=7*ts+20;
     L.lines=[]; p1.concat(['']).concat(p2).forEach(function(s){ if(s) L.lines.push({s:s,x:Math.round((W-PF.width(s))/2),y:y}); y+=s?10:6; });
-    y+=14; L.soon={x:Math.round((W-PF.width(T.t3))/2),y:y}; y+=PF.CAP+6;
+    y+=14; L.soon={x:Math.round((W-PF.width(T.t3))/2),y:y}; if(T.t3) y+=PF.CAP+6;
     L.note=p4.map(function(q){ var o={s:q,x:Math.round((W-PF.width(q))/2),y:y}; y+=10; return o; }); y+=8;
     var bx=Math.round((W-(oneRow?rowW:Math.max.apply(0,btn.map(function(b){ return b.w; }))))/2);
     btn.forEach(function(b){ var x=oneRow?bx:Math.round((W-b.w)/2); place(b.k,x,y,b.w,b.h); if(oneRow) bx+=b.w+6; else y+=b.h+5; });
@@ -92,7 +94,7 @@
       cx.fillStyle=COL.star[s[2]<0.6?0:s[2]<0.92?1:2]; cx.fillRect(Math.floor(s[0]),Math.floor(s[1]),1,1); });
     var t=L.title; text('SONAROIDS',t.x,t.y,t.s,COL.mint);
     L.lines.forEach(function(l){ text(l.s,l.x,l.y,1,COL.ink); });
-    text(T.t3,L.soon.x,L.soon.y,1,COL.apricot);
+    if(T.t3) text(T.t3,L.soon.x,L.soon.y,1,COL.apricot);
     L.note.forEach(function(l){ text(l.s,l.x,l.y,1,'#C9A9B6'); });
     ['play','proto','lab','code'].forEach(function(k){ box(k,T[k],k==='play'?COL.mint:COL.ink); }); box('lang',T.lang,'#C9A9B6');
     requestAnimationFrame(draw); }

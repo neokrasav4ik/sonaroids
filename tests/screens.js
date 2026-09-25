@@ -29,6 +29,7 @@ const SCREENS=['lang','title','sound','phone','mic','wave','wave-try','count','p
       if(s==='play'&&!r.btn.some(q=>q.id==='pause')) bad.push(`${w}x${h} ${lang} ${hand}: no menu button in flight`);
       if(s==='scores'){ const b=await p.evaluate(()=>__sonaroids.board()); if(!b.tbl||r.btn.some(q=>q.x<b.tbl[1]&&q.x+q.w>b.tbl[0]-4)) bad.push(`${w}x${h} ${lang} ${hand}: the table runs under the buttons`); if(b.tbl&&b.tbl[1]-b.tbl[0]<130) bad.push(`${w}x${h} ${lang} ${hand}: the table is too narrow (${b.tbl[1]-b.tbl[0]} px)`); }
       if(s==='nick'){ const b=await p.evaluate(()=>__sonaroids.board()); const m=r.S; if(!b.nick||!b.nick.shown||b.nick.rect.left<0||b.nick.rect.right>w||b.nick.rect.bottom>h) bad.push(`${w}x${h} ${lang} ${hand}: the name field is missing or off screen`); }
+      if(s==='over'&&!(r.btn.some(q=>q.id==='ver')&&!r.btn.some(q=>q.id==='logs'))) bad.push(`${w}x${h} ${lang} ${hand}: game over — the version should be tappable and the logs button hidden`);
       if(s==='restart'&&!(['rs_go','rs_cal','rs_back'].every(id=>r.btn.some(q=>q.id===id)))) bad.push(`${w}x${h} ${lang} ${hand}: start-over screen lacks its buttons`);
       if(s==='pause-play'&&!(['resume','restart','quit','exit'].every(id=>r.btn.some(q=>q.id===id)))) bad.push(`${w}x${h} ${lang} ${hand}: pause lacks resume/end`);
       r.btn.forEach((q,i)=>{ if(q.x<0||q.y<0||q.x+q.w>LW||q.y+q.h>LH) bad.push(`${w}x${h} ${lang} ${hand} ${s}: button ${q.id} off screen`);

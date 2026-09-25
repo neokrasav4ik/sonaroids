@@ -39,28 +39,34 @@ def check_js(html):
     r = subprocess.run(['node', '--check', tmp.name], capture_output=True, text=True); os.unlink(tmp.name)
     return r.returncode == 0, r.stderr.strip()
 
-SHIP = ['....11..........', '....1221........', '.....12221......', '..1112233321....', '.122223333332111', '.123333333333333',
-        '.122223333332111', '..1112233321....', '.....12221......', '....1221........', '....11..........']
 def icons():
-    from PIL import Image
+    """The home-screen icons, in the sonar lab's style (the maintainer's choice, 25 Sep): black space, a neon-orange outlined ship,
+    white outlined rocks — like the classic vector Asteroids. Drawn big with soft glow, then scaled down.
+    icon-maskable-512.png keeps everything inside the middle 80% (Android may cut the icon to a circle)."""
+    from PIL import Image, ImageDraw, ImageFilter, ImageChops
     import random
-    ship = [(31, 94, 82), (47, 143, 124), (127, 224, 200), (233, 255, 248)]
-    for size in (180, 192, 512):
-        g = 40                                              # the icon is a 40×40 pixel picture, scaled up without smoothing
-        im = Image.new('RGB', (g, g), (27, 26, 46)); px = im.load(); rnd = random.Random(7)
-        for _ in range(26):
-            x, y = rnd.randrange(g), rnd.randrange(g); px[x, y] = rnd.choice([(90, 76, 110), (184, 155, 178), (255, 233, 214)])
-        for y in range(g):                                  # a soft nebula band
-            for x in range(g):
-                if abs((y - 26) - 0.35 * (x - 20)) < 3 and (x * 7 + y * 3) % 4 == 0: px[x, y] = (60, 43, 79)
-        ox, oy = 10, 14
-        for r, row in enumerate(SHIP):
-            for c, ch in enumerate(row):
-                if ch != '.': px[ox + c, oy + r] = ship[int(ch) - 1]
-        for (x, y, col) in [(8, 19, (255, 122, 122)), (9, 19, (255, 184, 107)), (10, 19, (255, 241, 201)), (8, 18, (255, 122, 122)), (8, 20, (255, 122, 122)), (7, 19, (255, 122, 122))]:
-            px[x, y] = col
-        for x in (29, 33): px[x, 19] = (255, 184, 107); px[x + 1, 19] = (255, 184, 107)
-        im.resize((size, size), Image.NEAREST).save(os.path.join(HERE, 'game', 'play', 'icon-%d.png' % size))
+    def draw(size, scale, out):
+        S = 2048; k = S / 180                                    # a 180-unit grid, like the lab's icon
+        def P(x, y): return ((90 + (x - 90) * scale) * k, (90 + (y - 90) * scale) * k)
+        bg = Image.new('RGB', (S, S), (4, 5, 10)); d = ImageDraw.Draw(bg); r = random.Random(5)
+        for _ in range(70):
+            x, y = r.uniform(0, 180), r.uniform(0, 180); a = r.choice([0.6, 0.8, 1.0]); c = int(120 + 120 * r.random())
+            d.ellipse(((x - a) * k, (y - a) * k, (x + a) * k, (y + a) * k), fill=(c, c, c))
+        def layer(polys, col, w):
+            L = Image.new('RGB', (S, S), (0, 0, 0)); dd = ImageDraw.Draw(L)
+            for p in polys: dd.line([P(x, y) for x, y in p] + [P(*p[0])], fill=col, width=int(w * k * scale), joint='curve')
+            return L
+        ship = [[(30, 52), (98, 82), (30, 112), (46, 82)], [(14, 72), (38, 82), (14, 92), (22, 82)]]
+        rocks = [[(118, 36), (134, 28), (152, 34), (160, 50), (150, 66), (132, 70), (120, 60), (124, 48)],
+                 [(132, 130), (146, 120), (162, 126), (166, 142), (154, 156), (138, 154), (130, 142)],
+                 [(88, 150), (100, 146), (108, 154), (104, 166), (92, 166)]]
+        glow = ImageChops.add(layer(ship, (255, 140, 30), 5).filter(ImageFilter.GaussianBlur(10 * k / 4)),
+                              layer(rocks, (200, 200, 210), 4).filter(ImageFilter.GaussianBlur(8 * k / 4)))
+        img = ImageChops.add(bg, glow)
+        img = ImageChops.lighter(img, layer(ship, (255, 168, 60), 2.2)); img = ImageChops.lighter(img, layer(rocks, (245, 245, 250), 2.0))
+        img.resize((size, size), Image.LANCZOS).save(os.path.join(HERE, 'game', 'play', out))
+    for size in (180, 192, 512): draw(size, 1.0, 'icon-%d.png' % size)
+    draw(512, 0.8, 'icon-maskable-512.png')
     print('icons written')
 
 if __name__ == '__main__':

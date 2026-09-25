@@ -58,6 +58,7 @@ Later launches: steps 5–6 and straight into the game. **Before every new game*
 - **Streak:** every 5 hits in a row add +1 to the multiplier, up to ×4; getting hit resets it. — agreed
 - **Power-ups** — you have to fly into them: shield (one hit, up to 15 s; shown as a ring of dots around the ship), triple shot (10 s), slow motion (6 s) — only once the game has sped up (~110 s). One every 12–18 s. — agreed Since v0.24 there is also a **life** (a heart): only after a life was lost, about one power-up in five, never above three lives; taking it shows the lives by the ship for a moment. — agreed 25 Sep
 - **Pause** (the corner button): GO ON / START OVER / END THE GAME / EXIT TO MENU. "Start over" asks: PLAY NOW (a countdown with the same calibration) or RECALIBRATE (the empty room and waving); the dropped game's score counts for the best. — agreed 25 Sep, v0.24
+- **Logs for analysis (v0.27):** always written, but the "logs" button after a game is hidden; a tap on the version number in the corner of the game-over screen shows it (until the game is restarted). "Early version" removed. — agreed 25 Sep
 - **One difficulty that grows with time:** calm but not empty for the first 15 s, then a smooth rise: rocks per second 0.74 at the start → 1.1 at 2 min → 1.35 at 3 min → 1.6 at 5 min (speed ×1.7 by 3 min, ×2.2 by 7 min, frequency = pace to the power 1.125). — v0.13 — agreed
 - **Levels** count base points (before the height and streak multipliers, which reach ×12): a level every 5000. The large saucer from level 2 (~30 s), the small aiming one from level 4 (~1 min); v0.13. The maintainer asked for saucers earlier: with the bot (v0.9) the first saucer comes at ~0.8 min and a middling bot lasts ~5 min; live games are shorter so far, ~3 min. — agreed 24 Sep
 - **3 lives**, shown only at the moment of a hit — tiny ships above the ship. — trying
@@ -106,4 +107,4 @@ Prototype: `game/proto/` — the ship follows your finger.
 
 ## 9. Open questions
 
-- App icon and how it looks on the Home Screen.
+- ~~App icon and how it looks on the Home Screen~~ — agreed 25 Sep (v0.27): in the sonar lab's style — black space, a neon-orange outlined ship, white outlined rocks (like vector Asteroids); a separate one with margins for Android's round mask.

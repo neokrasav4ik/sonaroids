@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='0.32';
+var VERSION='0.33';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -692,7 +692,7 @@ var Board=(function(){
       return new Response(cs.readable).arrayBuffer().then(function(ab){ return {enc:'deflate',hands:b64(new Uint8Array(ab))}; },function(){ return {enc:'raw',hands:b64(u8)}; }); }
     catch(e){ return Promise.resolve({enc:'raw',hands:b64(u8)}); } }
   function keep(body){ var l=[]; try{ l=JSON.parse(ls('sonaroids_unsent')||'[]'); }catch(e){} l.push(body); ls('sonaroids_unsent',JSON.stringify(l.slice(-3))); }
-  function post(path,body){ return fetch(API+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){ return r.json().then(function(j){ j.code=r.status; return j; }); }); }
+  function post(path,body){ return fetch(API+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){ return r.json().then(function(j){ j.http=r.status; return j; });   /* v0.33: was j.code — it overwrote the transfer code */ }); }
   /* a game is over (or dropped): send it. last — what the game-over screen shows: sending | done | offline | old | error */
   function finish(score){ var c=cur; cur=null; if(!c||!on()||!(score>0)||!c.q.length) return; last={state:'sending',score:score}; var d=dev();
     pack(c.q).then(function(p){ var body={pid:pid(),core:c.core,seed:c.seed,FW:c.FW,y0:c.y0,enc:p.enc,hands:p.hands,score:score,dev:d};
@@ -1365,7 +1365,7 @@ var ACT={
   nick_ok:function(){ if(nickBusy||!nickEl) return; var v=nickEl.value.trim(); if(!NICK_RE.test(v)){ nickMsg=L('nick_bad'); return; }
     nickBusy=true; nickMsg=''; Board.setNick(v).then(function(j){ nickBusy=false; if(j.ok){ nickField(false); go(nickFrom==='over'?'over':'scores'); } else nickMsg=L('nick_bad'); },function(){ nickBusy=false; nickMsg=L('nick_net'); }); },
   link:function(){ go('link'); }, link_back:function(){ go('scores'); }, link_back2:function(){ nickField(false); linkMsg=''; go('link'); },
-  link_show:function(){ linkCode=null; linkMsg=''; go('linkshow'); Board.link().then(function(j){ if(j.ok) linkCode=j.code; else linkMsg=L('nick_net'); },function(){ linkMsg=L('nick_net'); }); },
+  link_show:function(){ linkCode=null; linkMsg=''; go('linkshow'); Board.link().then(function(j){ if(j.ok&&typeof j.code==='string'&&/^[A-Z0-9]{6}$/.test(j.code)) linkCode=j.code; else linkMsg=L('nick_net'); },function(){ linkMsg=L('nick_net'); }); },
   link_in:function(){ linkMsg=''; go('linkin'); },
   code_ok:function(){ if(linkBusy||!nickEl) return; var v=nickEl.value.toUpperCase().replace(/[^A-Z0-9]/g,''); if(v.length!==6){ linkMsg=L('link_bad'); return; }
     linkBusy=true; linkMsg=''; Board.claim(v).then(function(j){ linkBusy=false; if(j.ok){ nickField(false); linkNick=j.nick; go('linkdone'); } else linkMsg=L('link_bad'); },function(){ linkBusy=false; linkMsg=L('nick_net'); }); },
@@ -1435,7 +1435,7 @@ window.__sonaroids={go:go,act:ACT,scr:function(){ return scr; },btn:function(){ 
   board:function(){ return {tbl:tblBox,nick:nickEl?{shown:nickEl.style.display!=='none',rect:nickEl.getBoundingClientRect().toJSON()}:null}; },
   side:function(){ return {hand:handSide(),rel:handRel,cam:camEnd(),stored:store.get('sonaroids_rel',''),say:sayLast}; }, wave:function(){ toWave(); },
   fake:function(){ booted=true; prep={res:{ok:true},doneT:-9}; T=Tune.create(100,true); T.ok=true; caught=true;          // a stand-in state for layout checks
-    g=Core.create(1,Core.FH*(LW-SAFE.l)/LH); for(var i=0;i<300;i++) Core.step(g,0.5); g.state='over'; },state:function(){ return {scr:scr,g:g,T:T,caught:caught,prep:prep,lang:lang}; }};
+    g=Core.create(1,Core.FH*(LW-SAFE.l)/LH); for(var i=0;i<300;i++) Core.step(g,0.5); g.state='over'; },state:function(){ return {scr:scr,g:g,T:T,caught:caught,prep:prep,lang:lang,linkCode:linkCode}; }};
 })();
 </script>
 </body>

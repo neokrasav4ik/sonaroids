@@ -11,6 +11,13 @@ const SCREENS=['lang','title','sound','phone','mic','wave','wave-try','count','p
     const ctx=await b.newContext({viewport:{width:w,height:h},deviceScaleFactor:w<700?2:3});
     await ctx.addInitScript(`localStorage.setItem('sonaroids_lang','${lang}'); localStorage.setItem('sonaroids_hand','${hand}'); localStorage.setItem('sonaroids_seen','1');`);
     const p=await ctx.newPage(); p.on('pageerror',e=>errors.push(e.message));
+    // the leaderboard server, faked at the HTTP level: the transfer code and its claim (tables are not needed here)
+    await p.route('https://api.sonaroids.app/**',async route=>{ const r=route.request(), u=new URL(r.url()), cors={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'Content-Type, X-Player'};
+      if(r.method()==='OPTIONS') return route.fulfill({status:204,headers:cors});
+      const j=o=>route.fulfill({status:200,headers:cors,contentType:'application/json',body:JSON.stringify(o)});
+      if(u.pathname==='/v1/link') return j({ok:true,code:'K7M4QX',ttl:600});
+      if(u.pathname==='/v1/claim'){ const b=JSON.parse(r.postData()); return j(b.code==='K7M4QX'?{ok:true,pid:'0'.repeat(32),nick:'neokrasav4ik'}:{ok:false,error:'code'}); }
+      return route.abort(); });
     await p.goto('file://'+path.join(ROOT,'game','play','index.html')); await p.waitForTimeout(300);
     await p.evaluate(()=>__sonaroids.fake());
     for(const s of SCREENS){
@@ -22,9 +29,9 @@ const SCREENS=['lang','title','sound','phone','mic','wave','wave-try','count','p
         else if(s==='nick'){ __sonaroids.act.name(); }
         else if(s==='over-here'){ g.state='over'; g.score=798000; Board._last({state:'done',score:798000,ranks:{day:1,week:1,all:1},here:{day:2,week:2,all:2},listed:false,named:true}); __sonaroids.go('over'); }
         else if(s==='link'){ __sonaroids.act.link(); }
-        else if(s==='linkshow'){ Board.link=()=>Promise.resolve({ok:true,code:'K7M4QX',ttl:600}); __sonaroids.act.link_show(); }
+        else if(s==='linkshow'){ __sonaroids.act.link_show(); }   // the code comes through Board.link → fetch → the faked server below (v0.33: a mocked Board.link hid a bug)
         else if(s==='linkin'){ __sonaroids.act.link_back2(); __sonaroids.act.link_in(); }
-        else if(s==='linkdone'){ Board.claim=()=>Promise.resolve({ok:true,pid:'0'.repeat(32),nick:'neokrasav4ik'}); document.querySelector('input').value='K7M 4QX'; __sonaroids.act.code_ok(); }
+        else if(s==='linkdone'){ document.querySelector('input').value='k7m 4qx'; __sonaroids.act.code_ok(); }
         else { if(s==='over'){ g.state='over'; g.score=12480; } __sonaroids.go(s); } },s);
       await p.waitForTimeout(s==='over'||s==='over-here'?1000:s==='phone'||s==='wave-try'?1300:150); n++;
       const r=await p.evaluate(()=>({btn:__sonaroids.btn(),S:__sonaroids.S()}));
@@ -33,6 +40,8 @@ const SCREENS=['lang','title','sound','phone','mic','wave','wave-try','count','p
       if(s==='wave-try'){ const lane=r.S.shipLane; if(lane!==undefined&&r.btn.some(q=>q.x<lane&&q.x+q.w>lane-24)) bad.push(`${w}x${h} ${lang} ${hand}: button over the ship lane`); }
       if(s==='play'&&!r.btn.some(q=>q.id==='pause')) bad.push(`${w}x${h} ${lang} ${hand}: no menu button in flight`);
       if(s==='scores'){ const b=await p.evaluate(()=>__sonaroids.board()); if(!b.tbl||r.btn.some(q=>q.x<b.tbl[1]&&q.x+q.w>b.tbl[0]-4)) bad.push(`${w}x${h} ${lang} ${hand}: the table runs under the buttons`); if(b.tbl&&b.tbl[1]-b.tbl[0]<130) bad.push(`${w}x${h} ${lang} ${hand}: the table is too narrow (${b.tbl[1]-b.tbl[0]} px)`); }
+      if(s==='linkshow'){ await p.waitForTimeout(300); const lc=await p.evaluate(()=>__sonaroids.state().linkCode); if(lc!=='K7M4QX') bad.push(`${w}x${h} ${lang} ${hand}: the transfer code is ${JSON.stringify(lc)}`); }
+      if(s==='linkdone'){ await p.waitForTimeout(300); if(await p.evaluate(()=>__sonaroids.scr())!=='linkdone') bad.push(`${w}x${h} ${lang} ${hand}: the code was not taken`); }
       if(s==='linkin'||s==='linkdone'){ const vis=await p.evaluate(()=>{ const el=document.querySelector('input'); return el&&el.style.display!=='none'?el.getAttribute('data-mode'):'hidden'; }); if(s==='linkin'?vis!=='code':vis!=='hidden') bad.push(`${w}x${h} ${lang} ${hand}: ${s}: the code field is ${vis}`); }
       if(s==='nick'){ const b=await p.evaluate(()=>__sonaroids.board()); const m=r.S; if(!b.nick||!b.nick.shown||b.nick.rect.left<0||b.nick.rect.right>w||b.nick.rect.bottom>h) bad.push(`${w}x${h} ${lang} ${hand}: the name field is missing or off screen`); }
       if(s==='over'&&!(r.btn.some(q=>q.id==='ver')&&!r.btn.some(q=>q.id==='logs'))) bad.push(`${w}x${h} ${lang} ${hand}: game over — the version should be tappable and the logs button hidden`);

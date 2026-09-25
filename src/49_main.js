@@ -319,7 +319,7 @@ var ACT={
   nick_ok:function(){ if(nickBusy||!nickEl) return; var v=nickEl.value.trim(); if(!NICK_RE.test(v)){ nickMsg=L('nick_bad'); return; }
     nickBusy=true; nickMsg=''; Board.setNick(v).then(function(j){ nickBusy=false; if(j.ok){ nickField(false); go(nickFrom==='over'?'over':'scores'); } else nickMsg=L('nick_bad'); },function(){ nickBusy=false; nickMsg=L('nick_net'); }); },
   link:function(){ go('link'); }, link_back:function(){ go('scores'); }, link_back2:function(){ nickField(false); linkMsg=''; go('link'); },
-  link_show:function(){ linkCode=null; linkMsg=''; go('linkshow'); Board.link().then(function(j){ if(j.ok) linkCode=j.code; else linkMsg=L('nick_net'); },function(){ linkMsg=L('nick_net'); }); },
+  link_show:function(){ linkCode=null; linkMsg=''; go('linkshow'); Board.link().then(function(j){ if(j.ok&&typeof j.code==='string'&&/^[A-Z0-9]{6}$/.test(j.code)) linkCode=j.code; else linkMsg=L('nick_net'); },function(){ linkMsg=L('nick_net'); }); },
   link_in:function(){ linkMsg=''; go('linkin'); },
   code_ok:function(){ if(linkBusy||!nickEl) return; var v=nickEl.value.toUpperCase().replace(/[^A-Z0-9]/g,''); if(v.length!==6){ linkMsg=L('link_bad'); return; }
     linkBusy=true; linkMsg=''; Board.claim(v).then(function(j){ linkBusy=false; if(j.ok){ nickField(false); linkNick=j.nick; go('linkdone'); } else linkMsg=L('link_bad'); },function(){ linkBusy=false; linkMsg=L('nick_net'); }); },
@@ -389,5 +389,5 @@ window.__sonaroids={go:go,act:ACT,scr:function(){ return scr; },btn:function(){ 
   board:function(){ return {tbl:tblBox,nick:nickEl?{shown:nickEl.style.display!=='none',rect:nickEl.getBoundingClientRect().toJSON()}:null}; },
   side:function(){ return {hand:handSide(),rel:handRel,cam:camEnd(),stored:store.get('sonaroids_rel',''),say:sayLast}; }, wave:function(){ toWave(); },
   fake:function(){ booted=true; prep={res:{ok:true},doneT:-9}; T=Tune.create(100,true); T.ok=true; caught=true;          // a stand-in state for layout checks
-    g=Core.create(1,Core.FH*(LW-SAFE.l)/LH); for(var i=0;i<300;i++) Core.step(g,0.5); g.state='over'; },state:function(){ return {scr:scr,g:g,T:T,caught:caught,prep:prep,lang:lang}; }};
+    g=Core.create(1,Core.FH*(LW-SAFE.l)/LH); for(var i=0;i<300;i++) Core.step(g,0.5); g.state='over'; },state:function(){ return {scr:scr,g:g,T:T,caught:caught,prep:prep,lang:lang,linkCode:linkCode}; }};
 })();

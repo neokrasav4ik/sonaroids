@@ -27,7 +27,7 @@ var Board=(function(){
       return new Response(cs.readable).arrayBuffer().then(function(ab){ return {enc:'deflate',hands:b64(new Uint8Array(ab))}; },function(){ return {enc:'raw',hands:b64(u8)}; }); }
     catch(e){ return Promise.resolve({enc:'raw',hands:b64(u8)}); } }
   function keep(body){ var l=[]; try{ l=JSON.parse(ls('sonaroids_unsent')||'[]'); }catch(e){} l.push(body); ls('sonaroids_unsent',JSON.stringify(l.slice(-3))); }
-  function post(path,body){ return fetch(API+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){ return r.json().then(function(j){ j.code=r.status; return j; }); }); }
+  function post(path,body){ return fetch(API+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){ return r.json().then(function(j){ j.http=r.status; return j; });   /* v0.33: was j.code — it overwrote the transfer code */ }); }
   /* a game is over (or dropped): send it. last — what the game-over screen shows: sending | done | offline | old | error */
   function finish(score){ var c=cur; cur=null; if(!c||!on()||!(score>0)||!c.q.length) return; last={state:'sending',score:score}; var d=dev();
     pack(c.q).then(function(p){ var body={pid:pid(),core:c.core,seed:c.seed,FW:c.FW,y0:c.y0,enc:p.enc,hands:p.hands,score:score,dev:d};

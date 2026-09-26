@@ -3,7 +3,7 @@ var DSP2=(function(){
   var N=512,C=343,fs,kLo,kHi,kc,ks,M,Pr,Pi,lam,mm,T,gA,gB,G,cosT,sinT;
   var d0,dref,boot,bootN=30,prevH,hist,L=4,prom,noProbe,bgAcc,bgN,bgR,bgI,BG_N=40;
   var Es,hold,present,refr,Q_FLOOR=-28,T_ON=-16,T_INT=-30,HOLD_S=1.5,tauE=0.15,REFR_S=0.7,TAU_BG=2.0,TAU=1.5;
-  var eqW=null,eqDb=0,EQ_ON=16,EQ_MAX=10,gN=null,drops=0,moveN=0,scanWait=0,relocks=0,eAvg=0,TE=3,E_FAST=12,ePres=0,why='',rngBuf=[],xBuf=[],centered=false,autoC=false,presN=0,x,fast,cal={k:0.75,o:1,s:0.8},eHold=null,lowN=0,resS=-99,resFloor=null,upN=0,warm=0,absBuf=[],ABS_MED=15,DEADB=5,DEADB_UP=15,dirS=null,lostN=0,lost=false;
+  var eqW=null,eqDb=0,EQ_ON=16,EQ_MAX=10,gN=null,drops=0,sinceDrop=1e9,covered=false,lastPeak=null,moveN=0,scanWait=0,relocks=0,eAvg=0,TE=3,E_FAST=12,ePres=0,why='',rngBuf=[],xBuf=[],centered=false,autoC=false,presN=0,x,fast,cal={k:0.75,o:1,s:0.8},eHold=null,lowN=0,resS=-99,resFloor=null,upN=0,warm=0,absBuf=[],ABS_MED=15,DEADB=5,DEADB_UP=15,dirS=null,lostN=0,lost=false;
   function init(sampleRate,parity){
     fs=sampleRate; var df=fs/N; kLo=Math.ceil(18300/df); kHi=Math.floor(20500/df); kc=Math.floor((kLo+kHi)/2);
     ks=[]; for(var k=kLo;k<=kHi;k++) if(parity===undefined||parity==='all'||k%2===parity) ks.push(k);
@@ -13,7 +13,7 @@ var DSP2=(function(){
     for(var q=0;q<M;q++){ var ph=Math.PI*q*q/M; Pr[q]=Math.cos(ph); Pi[q]=Math.sin(ph); }
     cosT=new Float64Array(M*N); sinT=new Float64Array(M*N);
     for(q=0;q<M;q++){ var w=-2*Math.PI*ks[q]/N; for(var n=0;n<N;n++){ cosT[q*N+n]=Math.cos(w*n); sinT[q*N+n]=Math.sin(w*n); } }
-    d0=null; dref=null; eqW=null; eqDb=0; gN=null; drops=0; moveN=0; scanWait=0; relocks=0; boot=[]; prevH=null; hist=[]; prom=null; noProbe=false;
+    d0=null; dref=null; eqW=null; eqDb=0; gN=null; drops=0; sinceDrop=1e9; covered=false; lastPeak=null; moveN=0; scanWait=0; relocks=0; boot=[]; prevH=null; hist=[]; prom=null; noProbe=false;
     bgAcc=null; bgN=0; bgR=null; bgI=null; Es=-80; hold=0; present=false; refr=0; x=null; fast=0; eHold=null; ePres=0; why=""; rngBuf=[]; xBuf=[]; centered=false; presN=0; lowN=0; resS=-99; resFloor=null; upN=0; warm=0; absBuf=[]; dirS=null; lostN=0; lost=false;
   }
   function bandSpec(fr){
@@ -28,7 +28,7 @@ var DSP2=(function(){
     /* провал входа: Android вставляет тишину (ровные нули). Такой кадр — не звук комнаты: пропускаю и начинаю разности заново,
        иначе скачок на его краях выглядит как движение руки */
     var zr=0; for(var zi=0;zi<fr.length;zi++){ if(fr[zi]===0){ if(++zr>=48) break; } else zr=0; }
-    if(zr>=48&&d0!==null){ prevH=null; hist=[]; drops++; return null; }
+    if(zr>=48&&d0!==null){ prevH=null; hist=[]; drops++; sinceDrop=0; return null; }
     var H=bandSpec(fr),i,n;
     if(eqW) for(i=0;i<M;i++){ H[0][i]*=eqW[i]; H[1][i]*=eqW[i]; }
     if(d0===null){                                     // первые кадры: слышен ли зонд, где прямой сигнал
@@ -54,19 +54,26 @@ var DSP2=(function(){
     // «динамик→микрофон» плавает на 2–3 дБ за секунды, а ближний хвост прямого сигнала там сильный (−27 дБ) — пустая комната
     // давала остаток −10 дБ вместо −30, и ладонь тонула. Усиление учится только в тихой пустой комнате (как уровень пустоты):
     // рука рядом с телефоном просачивается в прямой отсчёт, и на iPhone иначе портилась высота
-    var vd0=tap(H,d0); if(!gN) gN=[vd0[0],vd0[1]]; else if(!present&&Es<Q_FLOOR){ gN[0]+=0.03*(vd0[0]-gN[0]); gN[1]+=0.03*(vd0[1]-gN[1]); }
+    var vd0=tap(H,d0); if(!gN) gN=[vd0[0],vd0[1]]; else if(!present&&!covered&&Es<Q_FLOOR){ gN[0]+=0.03*(vd0[0]-gN[0]); gN[1]+=0.03*(vd0[1]-gN[1]); }
     var gm=gN[0]*gN[0]+gN[1]*gN[1], sq=Math.sqrt(dref), nr=sq*gN[0]/gm, ni=-sq*gN[1]/gm;
     var h=[new Float64Array(G),new Float64Array(G)];
     for(i=0;i<G;i++){ var v2=tap(H,(d0+gA+i)%T); h[0][i]=v2[0]*nr-v2[1]*ni; h[1][i]=v2[0]*ni+v2[1]*nr; }
     // прямой сигнал пропал на 20 дБ и больше целую секунду — звук ушёл в другое устройство
-    var vd=tap(H,d0), pd=vd[0]*vd[0]+vd[1]*vd[1]; dirS=(dirS===null)?pd:dirS+0.1*(pd-dirS);
-    if(dirS<dref*0.01){ if(++lostN>fs/N) lost=true; } else lostN=0;
+    sinceDrop++; var vd=tap(H,d0), pd=vd[0]*vd[0]+vd[1]*vd[1]; dirS=(dirS===null)?pd:dirS+0.1*(pd-dirS);
+    // с 26.09: зонд пропал, только если его не слышно ни на одной задержке. Закрытый ладонью динамик глушит прямой сигнал на 20–35 дБ,
+    // но зонд в микрофоне громкий (отражение от ладони) — это не наушники и не Bluetooth
+    if(dirS<dref*0.01&&!(lastPeak!==null&&lastPeak>dref*0.1)){ if(++lostN>fs/N) lost=true; } else lostN=0;
     // прямой сигнал «переехал» (с 24.09 ночи): Android иногда вставляет во вход кусок тишины (запись OnePlus 23:40 — 1920 нулей),
     // и весь отклик сдвигается по задержке на столько же отсчётов по кругу. Комната та же — надо лишь заново найти прямой сигнал.
     // Упал ниже −10 дБ на ~0,1 с — ищу пик по всем задержкам (не чаще раза в 0,5 с); если он почти прежней силы — перехожу туда
+    // С 26.09 переезд — только в первые 2 с после провала входа: единственная известная причина сдвига. Без провала прямой сигнал
+    // проседает, когда динамик или микрофон закрыты (ладонь вплотную, пальцы): партия 26.09 10:29 — −20…−35 дБ две минуты,
+    // «переезд» на чужой пик, и дальность эха застыла. Теперь это «закрыто» (covered): ничего не переучивается, абсолютная часть не тянет
     if(dirS<dref*0.1){ if(++moveN>=8&&--scanWait<=0){ scanWait=Math.round(0.5*fs/N); var bb=0,bp=0; for(n=0;n<T;n++){ var vs=tap(H,n), ps=vs[0]*vs[0]+vs[1]*vs[1]; if(ps>bp){ bp=ps; bb=n; } }
-        if(bp>dref*0.25&&bb!==d0){ var vn=tap(H,bb); if(gN) gN=[vn[0],vn[1]]; d0=bb; dirS=bp; moveN=0; relocks++; prevH=null; hist=[]; lostN=0; return null; }   /* сдвиг поворачивает и фазу прямого — усиление берётся заново */ } }
-    else { moveN=0; scanWait=0; }
+        lastPeak=bp;
+        if(sinceDrop<2*fs/N&&bp>dref*0.25&&bb!==d0){ var vn=tap(H,bb); if(gN) gN=[vn[0],vn[1]]; d0=bb; dirS=bp; moveN=0; relocks++; prevH=null; hist=[]; lostN=0; return null; }   /* сдвиг поворачивает и фазу прямого — усиление берётся заново */ }
+      covered=moveN>=8&&sinceDrop>=2*fs/N; }
+    else { moveN=0; scanWait=0; covered=false; lastPeak=null; }
     if(!prevH){ prevH=h; return null; }
     var h2=[new Float64Array(G),new Float64Array(G)];
     for(i=0;i<G;i++){ h2[0][i]=0.5*(h[0][i]+prevH[0][i]); h2[1][i]=0.5*(h[1][i]+prevH[1][i]); }
@@ -115,12 +122,12 @@ var DSP2=(function(){
     }
     if(refr>0) refr--;
     var started=present&&!was;
-    if(!present){ var aB=1-Math.exp(-1/(TAU_BG*fpsF));      // без руки фон тихо обновляется
+    if(!present&&!covered){ var aB=1-Math.exp(-1/(TAU_BG*fpsF));      // без руки фон тихо обновляется
       for(i=0;i<G;i++){ bgR[i]+=aB*(h2[0][i]-bgR[i]); bgI[i]+=aB*(h2[1][i]-bgI[i]); } }
     if(E>T_INT) fast+=vel;                                   // сырое смещение — для калибровки
-    absBuf.push(abs); if(absBuf.length>ABS_MED) absBuf.shift();
+    if(!covered){ absBuf.push(abs); if(absBuf.length>ABS_MED) absBuf.shift(); }
     var absM=absBuf.length>2?absBuf.slice().sort(function(p,q){return p-q;})[absBuf.length>>1]:abs;
-    if(started||x===null){ x=abs; eAvg=0; }
+    if((started&&!covered)||x===null){ x=abs; eAvg=0; }
     if(present){ if(E>T_INT) x+=cal.s*vel;
       // абсолютная часть — ограничитель ухода. С 24.09 тянет по СРЕДНЕМУ расхождению за 3 с, а не по мгновенному:
       // у краёв (особенно внизу, у стола) абсолютная часть сжата и раньше тянула корабль к середине — «ладонь на столе, а корабль не внизу»
@@ -129,10 +136,10 @@ var DSP2=(function(){
       // с 25.09: ниже середины абсолютная часть тянет ВВЕРХ без ускорения и с зоной ±15 мм: у стола (ладонь на 4–5 см) она врёт вверх
       // на 25–40 мм, и ускоренное подтягивание не пускало корабль вниз («резинка» внизу; запись с меткой 11:09 на 4–12 см:
       // форма 0.826 → 0.911, дрожь удержания 6.9 → 4.1 мм; 11:26 0.628 → 0.895; остальные записи те же или лучше)
-      var up=eAvg>0&&x<100, kq=up?1:1+(eAvg/E_FAST)*(eAvg/E_FAST);
+      if(!covered){ var up=eAvg>0&&x<100, kq=up?1:1+(eAvg/E_FAST)*(eAvg/E_FAST);
       eAvg+=(1-Math.exp(-kq/(TE*fpsF)))*((absM-x)-eAvg);
       var db=up?DEADB_UP:DEADB, ex=Math.abs(eAvg)>db?eAvg-(eAvg>0?db:-db):0, dx=(1-Math.exp(-kq/(TAU*fpsF)))*ex;
-      x+=dx; eAvg-=dx; }
+      x+=dx; eAvg-=dx; } }
     // память последней секунды с рукой — для центровки; первая центровка сама, через 0,8 с после появления руки
     if(present){ rngBuf.push(range); xBuf.push(x); if(rngBuf.length>Math.round(fpsF)){ rngBuf.shift(); xBuf.shift(); } presN++; }
     else { rngBuf=[]; xBuf=[]; presN=0; }
@@ -154,5 +161,5 @@ var DSP2=(function(){
   return {init:init,frame:frame,recenter:recenter,shift:shift,
     setCal:function(c){ cal.k=c.k; cal.o=c.o; cal.s=c.s; },
     set:function(k,v){ if(k==='tint') T_INT=v; if(k==='tau') TAU=v; if(k==='absmed') ABS_MED=Math.max(1,Math.round(v)); if(k==='deadband') DEADB=Math.max(0,v); if(k==='autocenter') autoC=!!v; },
-    info:function(){ return {eq_db:eqDb,eq:!!eqW,relocks:relocks,drops:drops,d0:d0,prom:prom,noProbe:noProbe,lost:lost,ready:bgR!==null,mm:mm,centered:centered,cal:{k:cal.k,o:cal.o,s:cal.s}}; }};
+    info:function(){ return {covered:covered,eq_db:eqDb,eq:!!eqW,relocks:relocks,drops:drops,d0:d0,prom:prom,noProbe:noProbe,lost:lost,ready:bgR!==null,mm:mm,centered:centered,cal:{k:cal.k,o:cal.o,s:cal.s}}; }};
 })();

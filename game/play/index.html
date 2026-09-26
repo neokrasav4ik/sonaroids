@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='0.33';
+var VERSION='0.34';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -70,7 +70,7 @@ var DSP2=(function(){
   var N=512,C=343,fs,kLo,kHi,kc,ks,M,Pr,Pi,lam,mm,T,gA,gB,G,cosT,sinT;
   var d0,dref,boot,bootN=30,prevH,hist,L=4,prom,noProbe,bgAcc,bgN,bgR,bgI,BG_N=40;
   var Es,hold,present,refr,Q_FLOOR=-28,T_ON=-16,T_INT=-30,HOLD_S=1.5,tauE=0.15,REFR_S=0.7,TAU_BG=2.0,TAU=1.5;
-  var eqW=null,eqDb=0,EQ_ON=16,EQ_MAX=10,gN=null,drops=0,moveN=0,scanWait=0,relocks=0,eAvg=0,TE=3,E_FAST=12,ePres=0,why='',rngBuf=[],xBuf=[],centered=false,autoC=false,presN=0,x,fast,cal={k:0.75,o:1,s:0.8},eHold=null,lowN=0,resS=-99,resFloor=null,upN=0,warm=0,absBuf=[],ABS_MED=15,DEADB=5,DEADB_UP=15,dirS=null,lostN=0,lost=false;
+  var eqW=null,eqDb=0,EQ_ON=16,EQ_MAX=10,gN=null,drops=0,sinceDrop=1e9,covered=false,lastPeak=null,moveN=0,scanWait=0,relocks=0,eAvg=0,TE=3,E_FAST=12,ePres=0,why='',rngBuf=[],xBuf=[],centered=false,autoC=false,presN=0,x,fast,cal={k:0.75,o:1,s:0.8},eHold=null,lowN=0,resS=-99,resFloor=null,upN=0,warm=0,absBuf=[],ABS_MED=15,DEADB=5,DEADB_UP=15,dirS=null,lostN=0,lost=false;
   function init(sampleRate,parity){
     fs=sampleRate; var df=fs/N; kLo=Math.ceil(18300/df); kHi=Math.floor(20500/df); kc=Math.floor((kLo+kHi)/2);
     ks=[]; for(var k=kLo;k<=kHi;k++) if(parity===undefined||parity==='all'||k%2===parity) ks.push(k);
@@ -80,7 +80,7 @@ var DSP2=(function(){
     for(var q=0;q<M;q++){ var ph=Math.PI*q*q/M; Pr[q]=Math.cos(ph); Pi[q]=Math.sin(ph); }
     cosT=new Float64Array(M*N); sinT=new Float64Array(M*N);
     for(q=0;q<M;q++){ var w=-2*Math.PI*ks[q]/N; for(var n=0;n<N;n++){ cosT[q*N+n]=Math.cos(w*n); sinT[q*N+n]=Math.sin(w*n); } }
-    d0=null; dref=null; eqW=null; eqDb=0; gN=null; drops=0; moveN=0; scanWait=0; relocks=0; boot=[]; prevH=null; hist=[]; prom=null; noProbe=false;
+    d0=null; dref=null; eqW=null; eqDb=0; gN=null; drops=0; sinceDrop=1e9; covered=false; lastPeak=null; moveN=0; scanWait=0; relocks=0; boot=[]; prevH=null; hist=[]; prom=null; noProbe=false;
     bgAcc=null; bgN=0; bgR=null; bgI=null; Es=-80; hold=0; present=false; refr=0; x=null; fast=0; eHold=null; ePres=0; why=""; rngBuf=[]; xBuf=[]; centered=false; presN=0; lowN=0; resS=-99; resFloor=null; upN=0; warm=0; absBuf=[]; dirS=null; lostN=0; lost=false;
   }
   function bandSpec(fr){
@@ -95,7 +95,7 @@ var DSP2=(function(){
     /* провал входа: Android вставляет тишину (ровные нули). Такой кадр — не звук комнаты: пропускаю и начинаю разности заново,
        иначе скачок на его краях выглядит как движение руки */
     var zr=0; for(var zi=0;zi<fr.length;zi++){ if(fr[zi]===0){ if(++zr>=48) break; } else zr=0; }
-    if(zr>=48&&d0!==null){ prevH=null; hist=[]; drops++; return null; }
+    if(zr>=48&&d0!==null){ prevH=null; hist=[]; drops++; sinceDrop=0; return null; }
     var H=bandSpec(fr),i,n;
     if(eqW) for(i=0;i<M;i++){ H[0][i]*=eqW[i]; H[1][i]*=eqW[i]; }
     if(d0===null){                                     // первые кадры: слышен ли зонд, где прямой сигнал
@@ -121,19 +121,26 @@ var DSP2=(function(){
     // «динамик→микрофон» плавает на 2–3 дБ за секунды, а ближний хвост прямого сигнала там сильный (−27 дБ) — пустая комната
     // давала остаток −10 дБ вместо −30, и ладонь тонула. Усиление учится только в тихой пустой комнате (как уровень пустоты):
     // рука рядом с телефоном просачивается в прямой отсчёт, и на iPhone иначе портилась высота
-    var vd0=tap(H,d0); if(!gN) gN=[vd0[0],vd0[1]]; else if(!present&&Es<Q_FLOOR){ gN[0]+=0.03*(vd0[0]-gN[0]); gN[1]+=0.03*(vd0[1]-gN[1]); }
+    var vd0=tap(H,d0); if(!gN) gN=[vd0[0],vd0[1]]; else if(!present&&!covered&&Es<Q_FLOOR){ gN[0]+=0.03*(vd0[0]-gN[0]); gN[1]+=0.03*(vd0[1]-gN[1]); }
     var gm=gN[0]*gN[0]+gN[1]*gN[1], sq=Math.sqrt(dref), nr=sq*gN[0]/gm, ni=-sq*gN[1]/gm;
     var h=[new Float64Array(G),new Float64Array(G)];
     for(i=0;i<G;i++){ var v2=tap(H,(d0+gA+i)%T); h[0][i]=v2[0]*nr-v2[1]*ni; h[1][i]=v2[0]*ni+v2[1]*nr; }
     // прямой сигнал пропал на 20 дБ и больше целую секунду — звук ушёл в другое устройство
-    var vd=tap(H,d0), pd=vd[0]*vd[0]+vd[1]*vd[1]; dirS=(dirS===null)?pd:dirS+0.1*(pd-dirS);
-    if(dirS<dref*0.01){ if(++lostN>fs/N) lost=true; } else lostN=0;
+    sinceDrop++; var vd=tap(H,d0), pd=vd[0]*vd[0]+vd[1]*vd[1]; dirS=(dirS===null)?pd:dirS+0.1*(pd-dirS);
+    // с 26.09: зонд пропал, только если его не слышно ни на одной задержке. Закрытый ладонью динамик глушит прямой сигнал на 20–35 дБ,
+    // но зонд в микрофоне громкий (отражение от ладони) — это не наушники и не Bluetooth
+    if(dirS<dref*0.01&&!(lastPeak!==null&&lastPeak>dref*0.1)){ if(++lostN>fs/N) lost=true; } else lostN=0;
     // прямой сигнал «переехал» (с 24.09 ночи): Android иногда вставляет во вход кусок тишины (запись OnePlus 23:40 — 1920 нулей),
     // и весь отклик сдвигается по задержке на столько же отсчётов по кругу. Комната та же — надо лишь заново найти прямой сигнал.
     // Упал ниже −10 дБ на ~0,1 с — ищу пик по всем задержкам (не чаще раза в 0,5 с); если он почти прежней силы — перехожу туда
+    // С 26.09 переезд — только в первые 2 с после провала входа: единственная известная причина сдвига. Без провала прямой сигнал
+    // проседает, когда динамик или микрофон закрыты (ладонь вплотную, пальцы): партия 26.09 10:29 — −20…−35 дБ две минуты,
+    // «переезд» на чужой пик, и дальность эха застыла. Теперь это «закрыто» (covered): ничего не переучивается, абсолютная часть не тянет
     if(dirS<dref*0.1){ if(++moveN>=8&&--scanWait<=0){ scanWait=Math.round(0.5*fs/N); var bb=0,bp=0; for(n=0;n<T;n++){ var vs=tap(H,n), ps=vs[0]*vs[0]+vs[1]*vs[1]; if(ps>bp){ bp=ps; bb=n; } }
-        if(bp>dref*0.25&&bb!==d0){ var vn=tap(H,bb); if(gN) gN=[vn[0],vn[1]]; d0=bb; dirS=bp; moveN=0; relocks++; prevH=null; hist=[]; lostN=0; return null; }   /* сдвиг поворачивает и фазу прямого — усиление берётся заново */ } }
-    else { moveN=0; scanWait=0; }
+        lastPeak=bp;
+        if(sinceDrop<2*fs/N&&bp>dref*0.25&&bb!==d0){ var vn=tap(H,bb); if(gN) gN=[vn[0],vn[1]]; d0=bb; dirS=bp; moveN=0; relocks++; prevH=null; hist=[]; lostN=0; return null; }   /* сдвиг поворачивает и фазу прямого — усиление берётся заново */ }
+      covered=moveN>=8&&sinceDrop>=2*fs/N; }
+    else { moveN=0; scanWait=0; covered=false; lastPeak=null; }
     if(!prevH){ prevH=h; return null; }
     var h2=[new Float64Array(G),new Float64Array(G)];
     for(i=0;i<G;i++){ h2[0][i]=0.5*(h[0][i]+prevH[0][i]); h2[1][i]=0.5*(h[1][i]+prevH[1][i]); }
@@ -182,12 +189,12 @@ var DSP2=(function(){
     }
     if(refr>0) refr--;
     var started=present&&!was;
-    if(!present){ var aB=1-Math.exp(-1/(TAU_BG*fpsF));      // без руки фон тихо обновляется
+    if(!present&&!covered){ var aB=1-Math.exp(-1/(TAU_BG*fpsF));      // без руки фон тихо обновляется
       for(i=0;i<G;i++){ bgR[i]+=aB*(h2[0][i]-bgR[i]); bgI[i]+=aB*(h2[1][i]-bgI[i]); } }
     if(E>T_INT) fast+=vel;                                   // сырое смещение — для калибровки
-    absBuf.push(abs); if(absBuf.length>ABS_MED) absBuf.shift();
+    if(!covered){ absBuf.push(abs); if(absBuf.length>ABS_MED) absBuf.shift(); }
     var absM=absBuf.length>2?absBuf.slice().sort(function(p,q){return p-q;})[absBuf.length>>1]:abs;
-    if(started||x===null){ x=abs; eAvg=0; }
+    if((started&&!covered)||x===null){ x=abs; eAvg=0; }
     if(present){ if(E>T_INT) x+=cal.s*vel;
       // абсолютная часть — ограничитель ухода. С 24.09 тянет по СРЕДНЕМУ расхождению за 3 с, а не по мгновенному:
       // у краёв (особенно внизу, у стола) абсолютная часть сжата и раньше тянула корабль к середине — «ладонь на столе, а корабль не внизу»
@@ -196,10 +203,10 @@ var DSP2=(function(){
       // с 25.09: ниже середины абсолютная часть тянет ВВЕРХ без ускорения и с зоной ±15 мм: у стола (ладонь на 4–5 см) она врёт вверх
       // на 25–40 мм, и ускоренное подтягивание не пускало корабль вниз («резинка» внизу; запись с меткой 11:09 на 4–12 см:
       // форма 0.826 → 0.911, дрожь удержания 6.9 → 4.1 мм; 11:26 0.628 → 0.895; остальные записи те же или лучше)
-      var up=eAvg>0&&x<100, kq=up?1:1+(eAvg/E_FAST)*(eAvg/E_FAST);
+      if(!covered){ var up=eAvg>0&&x<100, kq=up?1:1+(eAvg/E_FAST)*(eAvg/E_FAST);
       eAvg+=(1-Math.exp(-kq/(TE*fpsF)))*((absM-x)-eAvg);
       var db=up?DEADB_UP:DEADB, ex=Math.abs(eAvg)>db?eAvg-(eAvg>0?db:-db):0, dx=(1-Math.exp(-kq/(TAU*fpsF)))*ex;
-      x+=dx; eAvg-=dx; }
+      x+=dx; eAvg-=dx; } }
     // память последней секунды с рукой — для центровки; первая центровка сама, через 0,8 с после появления руки
     if(present){ rngBuf.push(range); xBuf.push(x); if(rngBuf.length>Math.round(fpsF)){ rngBuf.shift(); xBuf.shift(); } presN++; }
     else { rngBuf=[]; xBuf=[]; presN=0; }
@@ -221,7 +228,7 @@ var DSP2=(function(){
   return {init:init,frame:frame,recenter:recenter,shift:shift,
     setCal:function(c){ cal.k=c.k; cal.o=c.o; cal.s=c.s; },
     set:function(k,v){ if(k==='tint') T_INT=v; if(k==='tau') TAU=v; if(k==='absmed') ABS_MED=Math.max(1,Math.round(v)); if(k==='deadband') DEADB=Math.max(0,v); if(k==='autocenter') autoC=!!v; },
-    info:function(){ return {eq_db:eqDb,eq:!!eqW,relocks:relocks,drops:drops,d0:d0,prom:prom,noProbe:noProbe,lost:lost,ready:bgR!==null,mm:mm,centered:centered,cal:{k:cal.k,o:cal.o,s:cal.s}}; }};
+    info:function(){ return {covered:covered,eq_db:eqDb,eq:!!eqW,relocks:relocks,drops:drops,d0:d0,prom:prom,noProbe:noProbe,lost:lost,ready:bgR!==null,mm:mm,centered:centered,cal:{k:cal.k,o:cal.o,s:cal.s}}; }};
 })();
 if(typeof module!=='undefined') module.exports=DSP2;
 /* ── WAVE TUNING (from the lab, 24 Sep): while the game waits for the start, the player waves the palm in the 5–15 cm range (4–12 in v0.22–0.25)
@@ -728,7 +735,7 @@ var Board=(function(){
 /* ── UI strings, English. All caps: the game's pixel font is drawn in capitals on screen. ── */
 var STR={};
 STR.en={
-  title:'SONAROIDS', android:'ON ANDROID IT DOES NOT WORK ON EVERY PHONE', source:'SOURCE CODE', version:'VERSION', play:'PLAY', recal:'RECALIBRATE', howto:'HOW TO PLAY', fullscr:'FOR FULL SCREEN MODE, ADD THE SITE TO YOUR HOME SCREEN', lang:'РУССКИЙ', sfx_on:'SOUNDS: ON', sfx_off:'SOUNDS: OFF',
+  title:'SONAROIDS', android:'ON ANDROID IT DOES NOT WORK ON EVERY PHONE', source:'SOURCE CODE', version:'VERSION', play:'PLAY', recal:'RECALIBRATE', howto:'HOW TO PLAY', covered:"DON'T COVER THE SPEAKER AND MIC", fullscr:'FOR FULL SCREEN MODE, ADD THE SITE TO YOUR HOME SCREEN', lang:'РУССКИЙ', sfx_on:'SOUNDS: ON', sfx_off:'SOUNDS: OFF',
   next:'NEXT', volume:'SET THE VOLUME TO 30–70%', volume_s:'WITH THE VOLUME BUTTONS', volume_direct:'THE VOLUME IS TOO LOW — TURN IT UP TO 30–70%',
   phone_t:'PUT THE PHONE DOWN', phone_s_cam:'SCREEN UP, FRONT CAMERA TOWARDS YOUR PLAYING HAND', cam:'CAMERA', phone_s:'SCREEN UP, CHARGING PORT TOWARDS YOUR PLAYING HAND', port:'PORT',
   mic_t:'THE GAME HEARS YOUR HAND', mic_s:'IT LISTENS TO THE ECHO OF AN INAUDIBLE SOUND', allow:'ALLOW THE MICROPHONE',
@@ -751,7 +758,7 @@ STR.en={
 };
 /* ── UI strings, Russian ── */
 STR.ru={
-  title:'SONAROIDS', android:'НА ANDROID РАБОТАЕТ НЕ НА ВСЕХ ТЕЛЕФОНАХ', source:'ИСХОДНЫЙ КОД', version:'ВЕРСИЯ', play:'ИГРАТЬ', recal:'ПЕРЕКАЛИБРОВАТЬ', howto:'ИНСТРУКЦИЯ', fullscr:'ДЛЯ ПОЛНОЭКРАННОГО РЕЖИМА — ДОБАВЬ САЙТ НА ЭКРАН «ДОМОЙ»', lang:'ENGLISH', sfx_on:'ЗВУКИ: ВКЛ', sfx_off:'ЗВУКИ: ВЫКЛ',
+  title:'SONAROIDS', android:'НА ANDROID РАБОТАЕТ НЕ НА ВСЕХ ТЕЛЕФОНАХ', source:'ИСХОДНЫЙ КОД', version:'ВЕРСИЯ', play:'ИГРАТЬ', recal:'ПЕРЕКАЛИБРОВАТЬ', howto:'ИНСТРУКЦИЯ', covered:'НЕ ЗАКРЫВАЙ ДИНАМИК И МИКРОФОН', fullscr:'ДЛЯ ПОЛНОЭКРАННОГО РЕЖИМА — ДОБАВЬ САЙТ НА ЭКРАН «ДОМОЙ»', lang:'ENGLISH', sfx_on:'ЗВУКИ: ВКЛ', sfx_off:'ЗВУКИ: ВЫКЛ',
   next:'ДАЛЬШЕ', volume:'УСТАНОВИ ГРОМКОСТЬ НА 30–70%', volume_s:'КНОПКАМИ ГРОМКОСТИ', volume_direct:'ГРОМКОСТЬ СЛИШКОМ ТИХАЯ — ПРИБАВЬ ДО 30–70%',
   phone_t:'ПОЛОЖИ ТЕЛЕФОН', phone_s_cam:'ЭКРАНОМ ВВЕРХ, ФРОНТАЛЬНОЙ КАМЕРОЙ К РУКЕ, КОТОРОЙ ИГРАЕШЬ', cam:'КАМЕРА', phone_s:'ЭКРАНОМ ВВЕРХ, РАЗЪЁМОМ К РУКЕ, КОТОРОЙ ИГРАЕШЬ', port:'РАЗЪЁМ',
   mic_t:'ИГРА СЛЫШИТ РУКУ', mic_s:'ОНА СЛУШАЕТ ЭХО НЕСЛЫШНОГО ЗВУКА', allow:'РАЗРЕШИТЬ МИКРОФОН',
@@ -1153,7 +1160,7 @@ function sWave(){ sky(DT,0.3); poolFill(1); var m=handSide()==='left', f=handFra
   if(caught&&scrT-caughtT>=CAUGHT_SHOW){ sTry(); return; }
   picture(function(){ return scene('wave',scrT,live?f:waveH(scrT),0,scrT>WAVE_PAUSE,clock); },m);
   var st=scrT<WAVE_PAUSE?'wait':caught?'ok':'catch', dur=T.buf.length?T.buf[T.buf.length-1].t-T.buf[0].t:0;
-  if(scrT-flipT<4&&!caught) titles(L('other_t'),L('other_s'),P.pick); else titles(L('wave_t'),caught?L('wave_ok'):L('wave_s'));
+  var wty=(scrT-flipT<4&&!caught)?titles(L('other_t'),L('other_s'),P.pick):titles(L('wave_t'),caught?L('wave_ok'):L('wave_s')); coveredLine(wty+2);
   ringUI(st==='wait'?scrT/WAVE_PAUSE:st==='ok'?1:Math.min(0.95,dur/5.2),st);
   stepSquares('wave'); }
 /* v0.17: once the range is caught the table picture goes and the real ship at game size follows the palm —
@@ -1205,6 +1212,10 @@ function sCount(){ countT-=DT; poolFill(2); followShip();
   if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.play('tick');
   if(countT<=0) startGame(); }
 var SITE='sonaroids.app';
+/* v0.34: the speaker or the microphone covered (the palm right at the port end, fingers): the direct sound sinks by 20–35 dB while the probe
+   is still loud in the microphone. The sonar no longer takes it for a shifted input; the player gets a line under the score after 0.7 s */
+var covT=0;
+function coveredLine(y){ covT=(typeof DSP2!=='undefined'&&DSP2.info().covered)?covT+DT:0; if(covT>0.7) text(L('covered'),Math.round(LW/2),y,P.hit,'center'); }
 function sPlay(){
   acc+=DT; var n=0;
   while(acc>=Core.DT&&n<5){ acc-=Core.DT; n++; var h=Board.q(handFrac()); Core.step(g,h); Board.step(h); Logs.step(g,h); react(); if(g.state!=='play') break; }   // v0.25: the palm rounded to 1/4000 — the server replays these exact numbers
@@ -1215,6 +1226,7 @@ function sPlay(){
   text(String(g.score).padStart(6,'0'),LW/2,topY(),P.text,'center');                // at the top only the score (agreed 24 Sep)
   // v0.30: the site's name in the top corner away from the menu button (on the hand's side), level with the score; not a link
   if(freeSide()==='left') text(SITE,LW-SAFE.r-14,topY(),P.soft,'right'); else text(SITE,SAFE.l+14,topY(),P.soft,'left');
+  coveredLine(topY()+12);
   // the menu button: in the top corner on the free hand's side
   // v0.11: further into the corner — the camera island sits in the middle of the side, so the top of the safe margin is free
   iconButton('pause',freeSide()==='left'?Math.round(SAFE.l*0.5)+10:LW-Math.round(SAFE.r*0.5)-10-(BH-3),SAFE.t+7); say(L('menu_a'));

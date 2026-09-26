@@ -14,6 +14,7 @@ echo; echo "== подстройка по взмахам перед старто�
 echo; echo "== игра =="; node tests/test_game_flow.js
 echo; echo "== журнал партии =="; node tests/test_log.js | tail -3
 echo; echo "== журнал настройки =="; node tests/test_setup_log.js
+echo; echo "== динамик закрыт ладонью: не переезжать, не терять зонд =="; node tests/test_covered.js
 echo; echo "== зонд пропал посреди партии =="; node tests/test_probe_lost.js
 echo; echo "== всё в один экран (Chromium; без playwright пропускается) =="; python3 tests/test_layout.py | tail -8
 echo; echo "== микрофон и звуковая сессия =="; node tests/test_mic_session.js

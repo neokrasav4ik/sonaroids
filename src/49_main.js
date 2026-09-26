@@ -107,7 +107,7 @@ function sWave(){ sky(DT,0.3); poolFill(1); var m=handSide()==='left', f=handFra
   if(caught&&scrT-caughtT>=CAUGHT_SHOW){ sTry(); return; }
   picture(function(){ return scene('wave',scrT,live?f:waveH(scrT),0,scrT>WAVE_PAUSE,clock); },m);
   var st=scrT<WAVE_PAUSE?'wait':caught?'ok':'catch', dur=T.buf.length?T.buf[T.buf.length-1].t-T.buf[0].t:0;
-  if(scrT-flipT<4&&!caught) titles(L('other_t'),L('other_s'),P.pick); else titles(L('wave_t'),caught?L('wave_ok'):L('wave_s'));
+  var wty=(scrT-flipT<4&&!caught)?titles(L('other_t'),L('other_s'),P.pick):titles(L('wave_t'),caught?L('wave_ok'):L('wave_s')); coveredLine(wty+2);
   ringUI(st==='wait'?scrT/WAVE_PAUSE:st==='ok'?1:Math.min(0.95,dur/5.2),st);
   stepSquares('wave'); }
 /* v0.17: once the range is caught the table picture goes and the real ship at game size follows the palm —
@@ -159,6 +159,10 @@ function sCount(){ countT-=DT; poolFill(2); followShip();
   if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.play('tick');
   if(countT<=0) startGame(); }
 var SITE='sonaroids.app';
+/* v0.34: the speaker or the microphone covered (the palm right at the port end, fingers): the direct sound sinks by 20–35 dB while the probe
+   is still loud in the microphone. The sonar no longer takes it for a shifted input; the player gets a line under the score after 0.7 s */
+var covT=0;
+function coveredLine(y){ covT=(typeof DSP2!=='undefined'&&DSP2.info().covered)?covT+DT:0; if(covT>0.7) text(L('covered'),Math.round(LW/2),y,P.hit,'center'); }
 function sPlay(){
   acc+=DT; var n=0;
   while(acc>=Core.DT&&n<5){ acc-=Core.DT; n++; var h=Board.q(handFrac()); Core.step(g,h); Board.step(h); Logs.step(g,h); react(); if(g.state!=='play') break; }   // v0.25: the palm rounded to 1/4000 — the server replays these exact numbers
@@ -169,6 +173,7 @@ function sPlay(){
   text(String(g.score).padStart(6,'0'),LW/2,topY(),P.text,'center');                // at the top only the score (agreed 24 Sep)
   // v0.30: the site's name in the top corner away from the menu button (on the hand's side), level with the score; not a link
   if(freeSide()==='left') text(SITE,LW-SAFE.r-14,topY(),P.soft,'right'); else text(SITE,SAFE.l+14,topY(),P.soft,'left');
+  coveredLine(topY()+12);
   // the menu button: in the top corner on the free hand's side
   // v0.11: further into the corner — the camera island sits in the middle of the side, so the top of the safe margin is free
   iconButton('pause',freeSide()==='left'?Math.round(SAFE.l*0.5)+10:LW-Math.round(SAFE.r*0.5)-10-(BH-3),SAFE.t+7); say(L('menu_a'));

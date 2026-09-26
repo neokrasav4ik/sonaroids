@@ -1,10 +1,12 @@
-/* The promo GIF: the calibration picture (table, phone, palm) with a bigger phone and a smaller palm; on the phone's screen
-   the ship follows the palm and shoots rocks. Drawn by the game's own code (game/play/index.html, patched in memory),
+/* The promo GIF: both ways to play side by side (v0.37) — the phone on the table and the phone in the hand — drawn like the
+   getting-ready pictures, without rulers, with a bigger phone and a smaller palm; on both phones' screens the ship follows the palm and shoots rocks. Drawn by the game's own code (game/play/index.html, patched in memory),
    frame by frame in headless Chromium, then packed by make_gif.py. Everything repeats every D seconds, so the GIF loops without a seam.
    Run: node promo/make_gif.js && python3 promo/make_gif.py */
 const {chromium}=require('playwright'), fs=require('fs'), path=require('path');
 const ROOT=path.join(__dirname,'..'), OUT=path.join(__dirname,'frames');
 const D=4.5, FPS=20, W=+(process.env.W||960), H=+(process.env.H||540);
+/* where the two pictures sit (as the game's SPLIT_T / SPLIT_H: the phone's centre at ox·W, oy·H + a fixed drop; k — size) and the "or" between them */
+const J=process.env.LAYOUT?JSON.parse(process.env.LAYOUT):{}, LT=J.t||{ox:0.23,oy:0.29,k:0.6}, LH_=J.h||{ox:0.665,oy:0.27,k:0.6}, OR=J.or||[0.475,0.56];
 
 let html=fs.readFileSync(path.join(ROOT,'game','play','index.html'),'utf8');
 const patch=(a,b)=>{ if(!html.includes(a)) throw new Error('anchor not found: '+a.slice(0,50)); html=html.replace(a,b); };
@@ -13,7 +15,8 @@ patch('var HSC=0.85,','var HSC=0.62,');                                         
 patch('function loop(now){\n  requestAnimationFrame(loop);','function loop(now){\n  requestAnimationFrame(loop); if(window.__gifMode) return;');
 patch('function phoneGame(ph,o,cm,f,T,mirror){','function phoneGame(ph,o,cm,f,T,mirror){ if(window.__gifPhone) return window.__gifPhone(ph,o,cm,f,T,{iso:iso,R:R,blit:blit,SHIP_MAP:SHIP_MAP,P:P,light:light,K:K});');
 patch('  var t=performance.now()/1000;','  var t=window.__gifMode?window.__gifT*4*Math.PI/(3*'+D+'):performance.now()/1000;');   // star twinkle, looping with the GIF
-patch('window.__sonaroids={','window.__gifFrame=function(t,f){ window.__gifT=t; sky(0,0); picture(function(){ var l=scene("wave",t,f,0,true,t), o=[]; o.screen=l.screen; return o; },false); var ty=Math.round(LH*0.1), tw=text("sonaroids.app",LW/2,ty,P.band,"center",2); light(LW/2,ty+7,tw*0.4,"127,224,200",0.12); present(0); };\nwindow.__sonaroids={');
+patch("if(al>0.5&&id!=='phone'){ var d0=","if(al>0.5&&id!=='phone'&&id!=='gif'){ var d0=");     // no height line: no rulers of any kind in the GIF
+patch('window.__sonaroids={','window.__gifFrame=function(t,f){ window.__gifT=t; sky(0,0); picture(function(){ var a=scene("gif",t,f,0,true,t,'+JSON.stringify(LT)+'), b=sceneHand("gif",t,f,0,true,t,'+JSON.stringify(LH_)+'), o=[]; o.screens=[a.screen,b.screen]; return o; },false); text("or",LW*'+OR[0]+',LH*'+OR[1]+',P.soft,"center"); var ty=Math.round(LH*0.1), tw=text("sonaroids.app",LW/2,ty,P.band,"center",2); light(LW/2,ty+7,tw*0.4,"127,224,200",0.12); present(0); };\nwindow.__sonaroids={');
 const tmp=path.join(ROOT,'game','play','__gif.html'); fs.writeFileSync(tmp,html);
 
 /* the little game on the phone: periodic, worked out by stepping from two loops back */
@@ -55,8 +58,8 @@ const PHONE=`(function(){
   const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.goto('file://'+tmp); await p.waitForTimeout(500);
   await p.evaluate(PHONE); await p.evaluate(()=>{ window.__gifMode=true; });
-  const n=Math.round(D*FPS);
-  for(let i=0;i<n;i++){ const t=i/FPS; await p.evaluate(t=>window.__gifFrame(t,window.__hand(t)),t);
+  const n=process.env.ONE?1:Math.round(D*FPS);
+  for(let i=0;i<n;i++){ const t=process.env.ONE?+process.env.ONE:i/FPS; await p.evaluate(t=>window.__gifFrame(t,window.__hand(t)),t);
     await p.screenshot({path:path.join(OUT,String(i).padStart(4,'0')+'.png')}); }
   await b.close(); fs.unlinkSync(tmp);
   console.log(`${n} frames, ${W}×${H}, loop ${D} s at ${FPS} fps`+(errs.length?' | errors: '+errs.join('; '):''));

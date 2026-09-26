@@ -6,7 +6,7 @@ var N=512,fs,kLo,kHi,kc;
 var ctx,stream,node,an,gSL,gSR,gL,gR,booted=false, F_LO=18300, PROBE_G=0.25, PROBE_SNR=null;
 var mode=null,lastSeq=-1,gaps=0,collector=null;
 function sleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
-function show(id){ ['home','orient','rec','recDone','cal','game','sideIntro','recSide','dualIntro','rightIntro','rightPlay'].forEach(function(s){ el(s).classList.toggle('hidden',s!==id); });
+function show(id){ ['home','orient','rec','recDone','cal','game','sideIntro','recSide','dualIntro','rightIntro','rightPlay','arkIntro','arkPlay'].forEach(function(s){ el(s).classList.toggle('hidden',s!==id); });
   /* запись вбок идёт с телефоном вертикально — на её экранах просьба повернуть не показывается */
   if(document.body&&document.body.classList) document.body.classList.toggle('pok',id==='sideIntro'||id==='rightIntro'||id==='rightPlay'||((id==='recSide'||id==='recDone')&&(lastRec==='recSide'||lastRec==='recRight'))); fitScreen(); }
 /* всё в один экран: если видимый экран (или открытое меню игры) не влезает по высоте или ширине — уменьшаю базовый шрифт, пока не влезет */
@@ -87,6 +87,7 @@ function onFrame(e){
   var gap=(lastSeq>=0&&m.s!==lastSeq+1); lastSeq=m.s; if(gap) gaps++;
   if(collector){ collector.arr.push(m.f); if(collector.arr.length>=collector.n){ var c=collector; collector=null; c.done(c.arr); } }
   if(mode==='rec'&&rec.on){ if(gap) rec.gaps++; rec.frames.push(m.f); }
+  else if(mode==='ark'){ var r4=DSP2.frame(m.f); if(r4) absS.st=r4; akFrame(m.f,gap,r4); }
   else if(mode==='right'){ var r3=(RP.D||DSP2).frame(m.f); if(r3) absS.st=r3; rpFrame(m.f,gap,r3); }
   else if(mode==='cal'||mode==='game'){ absS.fpsN++; if(gap){ absS.gaps++; }
     var r2=DSP2.frame(m.f); if(r2){ absS.st=r2; if(mode==='cal'&&calSink) calSink(r2); }

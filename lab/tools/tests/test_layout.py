@@ -18,6 +18,9 @@ SETUP={
  'cal':"show('cal'); CS.busy=false; calText('Готовлюсь','Зонда почти не слышно',NOPROBE); el('calBig').textContent='руки пока не вижу'; el('calDiag').textContent='рука: видна (движение) · эхо +31 дБ над пустой · движение -18 дБ'; el('calLogS').classList.remove('hidden'); fitScreen();",
  'dualIntro':"lastRec='recDual'; show('dualIntro');",
  'recDual':"lastRec='recDual'; show('recSide'); buildHTrack(DUAL_A); el('mkH').style.left=xOf(60)+'px'; el('sdSay').textContent='Закрой пальцем верхний динамик'; el('sdSub').textContent='Узкая щель над экраном, у фронтальной камеры. Три секунды.'; el('sdClock').textContent='10.2 / 45 с';",
+ 'arkIntro':"lastRec='ark'; show('arkIntro');",
+ 'arkPlay':"lastRec='ark'; show('arkPlay'); AK.bricks=akBricks(2); AK.ball={x:0.42,y:0.62}; AK.px=0.55; AK.phase='play'; AK.present=true; AK.dist=92; AK.score=120; AK.lives=2; AK.level=2; akDraw(); akText('',''); ",
+ 'arkOver':"lastRec='ark'; show('arkPlay'); AK.bricks=akBricks(1); AK.ball={x:0.42,y:0.62}; AK.px=0.55; AK.phase='over'; AK.score=120; AK.lives=0; AK.level=1; akDraw(); akText('Конец','счёт 120 · уровень 1 · лучший 120'); akButtons(true);",
  'menu':"show('game'); el('gPanel').classList.remove('hidden'); el('gLogI').textContent='Записано 150 с партии (последние 150 с). Журнал настройки: 120 с.'; fitScreen();",
 }
 # 26.09: запись вбок идёт с телефоном вертикально — её экраны проверяю в портрете

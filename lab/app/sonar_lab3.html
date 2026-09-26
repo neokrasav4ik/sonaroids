@@ -60,6 +60,11 @@
   #recSide{flex-direction:column;align-items:stretch;gap:.6rem}
   #rightIntro .pic{height:16vh;max-width:100%;margin:.2rem auto 0;display:block} @media (max-height:600px){ #rightIntro .pic{display:none} } #rightIntro .pic.away{transform:scaleY(-1)} #rightIntro .pic.away text{display:none} #rightOri{font-family:"IBM Plex Mono",monospace;font-size:.8rem;margin:.2rem 0 .4rem}
   body.flip #rightPlay,body.flip #recSide,body.flip #recDone{transform:rotate(180deg)}
+  #arkPlay{padding:0;background:#0b0a14} #akC{position:absolute;inset:0;width:100%;height:100%;display:block}
+  #akTop{position:absolute;left:0;right:0;top:30%;text-align:center;pointer-events:none;padding:0 1rem}
+  #akSay{font-size:2rem;font-weight:600} #akSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
+  #akBtns{position:absolute;left:calc(max(1rem,env(safe-area-inset-left)) + 1rem);top:50%;transform:translateY(-50%);width:15rem;display:flex;flex-direction:column;gap:.5rem}
+  #akStop{position:absolute;left:calc(max(.7rem,env(safe-area-inset-left)) + .3rem);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + 3.4rem);width:auto;padding:.5em .9em;font-size:.85rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
   #rightPlay{padding:0;background:#04070A} #rpC{position:absolute;inset:0;width:100%;height:100%;display:block}
   #rpTop{position:absolute;left:0;right:0;top:calc(max(.8rem,env(safe-area-inset-top)) + 5.4rem);text-align:center;pointer-events:none;padding:0 1rem}
   #rpSay{font-size:2rem;font-weight:600} #rpSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
@@ -147,6 +152,7 @@
     <button id="goRecSide" class="ghost">Запись вбок (телефон вертикально)</button>
     <button id="goRecDual" class="ghost">Два динамика</button>
     <button id="goRight" class="ghost">Ладонь справа (телефон вертикально)</button>
+    <button id="goArk" class="ghost">Арканоид (прототип)</button>
     <p class="small" style="margin:-.15rem 0 .2rem">По метке, 16 с или 1,5 мин — присылаешь WAV, я проверяю механику на твоём сигнале.</p>
     <button id="silentT" class="ghost" style="font-size:.84rem">Беззвучный режим телефона: …</button>
     <p id="silentP" class="small" style="margin:-.15rem 0 .2rem"></p>
@@ -245,6 +251,29 @@
     <button id="rpMode" class="ghost">Управление: …</button>
     <button id="rpSave" class="ghost">Сохранить запись</button>
     <button id="rpHome" class="ghost">В начало</button>
+  </div>
+</div>
+
+<div class="screen hidden" id="arkIntro"><div class="two">
+  <div class="col">
+    <h1>Арканоид — прототип</h1>
+    <p>Управление как в игре: телефон горизонтально, разъёмом к ладони — на столе (ладонь вверх-вниз над столом) или в руке (ладонь ребром к торцу и от него), 5–15 см. <b>Ладонь дальше от разъёма — ракетка дальше от него.</b></p>
+    <p>Сначала убери руку, потом шесть секунд помаши в рабочем диапазоне — ракетка подстроится под размах. Мяч запускается сам. После игры можно сохранить запись.</p>
+  </div>
+  <div class="col btns">
+    <button id="arkGo" class="big">Играть</button>
+    <button id="arkBack" class="ghost">Назад</button>
+  </div>
+</div></div>
+
+<div class="screen hidden" id="arkPlay">
+  <canvas id="akC"></canvas>
+  <div id="akTop"><div id="akSay"></div><div id="akSub"></div></div>
+  <button id="akStop" class="gbtn">Стоп</button>
+  <div id="akBtns" class="hidden">
+    <button id="akAgain" class="big">Ещё раз</button>
+    <button id="akSave" class="ghost">Сохранить запись</button>
+    <button id="akHome" class="ghost">В начало</button>
   </div>
 </div>
 
@@ -582,7 +611,7 @@ var N=512,fs,kLo,kHi,kc;
 var ctx,stream,node,an,gSL,gSR,gL,gR,booted=false, F_LO=18300, PROBE_G=0.25, PROBE_SNR=null;
 var mode=null,lastSeq=-1,gaps=0,collector=null;
 function sleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
-function show(id){ ['home','orient','rec','recDone','cal','game','sideIntro','recSide','dualIntro','rightIntro','rightPlay'].forEach(function(s){ el(s).classList.toggle('hidden',s!==id); });
+function show(id){ ['home','orient','rec','recDone','cal','game','sideIntro','recSide','dualIntro','rightIntro','rightPlay','arkIntro','arkPlay'].forEach(function(s){ el(s).classList.toggle('hidden',s!==id); });
   /* запись вбок идёт с телефоном вертикально — на её экранах просьба повернуть не показывается */
   if(document.body&&document.body.classList) document.body.classList.toggle('pok',id==='sideIntro'||id==='rightIntro'||id==='rightPlay'||((id==='recSide'||id==='recDone')&&(lastRec==='recSide'||lastRec==='recRight'))); fitScreen(); }
 /* всё в один экран: если видимый экран (или открытое меню игры) не влезает по высоте или ширине — уменьшаю базовый шрифт, пока не влезет */
@@ -663,6 +692,7 @@ function onFrame(e){
   var gap=(lastSeq>=0&&m.s!==lastSeq+1); lastSeq=m.s; if(gap) gaps++;
   if(collector){ collector.arr.push(m.f); if(collector.arr.length>=collector.n){ var c=collector; collector=null; c.done(c.arr); } }
   if(mode==='rec'&&rec.on){ if(gap) rec.gaps++; rec.frames.push(m.f); }
+  else if(mode==='ark'){ var r4=DSP2.frame(m.f); if(r4) absS.st=r4; akFrame(m.f,gap,r4); }
   else if(mode==='right'){ var r3=(RP.D||DSP2).frame(m.f); if(r3) absS.st=r3; rpFrame(m.f,gap,r3); }
   else if(mode==='cal'||mode==='game'){ absS.fpsN++; if(gap){ absS.gaps++; }
     var r2=DSP2.frame(m.f); if(r2){ absS.st=r2; if(mode==='cal'&&calSink) calSink(r2); }
@@ -944,7 +974,7 @@ function fail(e){ show('home'); el('err').classList.remove('hidden'); el('err').
   window.addEventListener('resize',function(){ setTimeout(fitScreen,60); });
   window.addEventListener('orientationchange',function(){ setTimeout(function(){ handSide(); fitScreen(); },250); });
 })();
-function goFlow(flow){ if(flow==='dualIntro'){ show('dualIntro'); return; } if(flow==='rec'||flow==='recLong'){ lastRec=flow; runRec(flow==='recLong'?'long':'rec'); } else quickStart(); }
+function goFlow(flow){ if(flow==='dualIntro'||flow==='arkIntro'){ show(flow); return; } if(flow==='rec'||flow==='recLong'){ lastRec=flow; runRec(flow==='recLong'?'long':'rec'); } else quickStart(); }
 /* запись вбок: сначала экран-подсказка; начать можно, только когда экран стоит вертикально (иначе метка пойдёт не по той оси) */
 function sideOri(){ if(el('sideIntro').classList.contains('hidden')) return; var up=window.innerHeight>window.innerWidth;
   el('sideOri').textContent=up?'Экран вертикально — можно начинать.':'Экран ещё горизонтальный. Поверни телефон вертикально; если экран не поворачивается — выключи блокировку поворота.';
@@ -978,7 +1008,7 @@ el('calGo').addEventListener('click',function(){ if(!CS.busy) quickStart(); });
 function seg(attr,fn){ Array.prototype.forEach.call(document.querySelectorAll('['+attr+']'),function(b){
   b.addEventListener('click',function(){ Array.prototype.forEach.call(document.querySelectorAll('['+attr+']'),function(x){ x.classList.toggle('sel',x===b); }); fn(b.getAttribute(attr)); }); }); }
 document.addEventListener('visibilitychange',function(){ if(!ctx) return;
-  if(document.hidden) setProbe('off'); else if(mode==='cal'||mode==='game'||mode==='rec'||mode==='right') setProbe('single-'+chan); });
+  if(document.hidden) setProbe('off'); else if(mode==='cal'||mode==='game'||mode==='rec'||mode==='right'||mode==='ark') setProbe('single-'+chan); });
 
 /* ── ЛАДОНЬ СПРАВА (с 27.09): новая механика на пробу ──
    Телефон вертикально, экраном вверх, разъёмом к игроку. Правая ладонь ребром (мизинец внизу, ладонью к телефону) стоит справа
@@ -1123,6 +1153,104 @@ el('rpAgain').addEventListener('click',function(){ rightPlay(); });
 el('rpSave').addEventListener('click',function(){ rpSave(); });
 el('rpStop').addEventListener('click',function(){ if(RP.phase==='play'){ RP.lives=0; return; } cancelAnimationFrame(RP.raf); RP.on=false; RP.phase=''; mode=null; setProbe('off'); rpText('Остановлено',''); rpButtons(true); });
 el('rpHome').addEventListener('click',function(){ cancelAnimationFrame(RP.raf); RP.on=false; RP.phase=''; mode=null; setProbe('off'); rpFlip(false); show('home'); });
+
+/* ── АРКАНОИД: прототип (с 27.09) ──
+   Решение автора 27.09: следующая игра — Арканоид, режимом внутри Sonaroids (сборник ретро-игр с сонарным управлением);
+   сначала прототип в лабе. Управление — проверенное: телефон горизонтально, разъём смотрит на ладонь (в руке — ладонь к торцу
+   и от него; на столе — вверх-вниз над столом). Ракетка внизу ходит влево-вправо (вариант «Б» эскиза): ладонь дальше от
+   разъёма — ракетка дальше от него (разъём справа — правее; повёрнут влево — зеркально). Подготовка как в пробе «ладонь справа»:
+   пустая комната → взмахи 6 с (ход на всю ширину — 5-й и 95-й перцентили, 50–140 мм) → отсчёт → мяч сам. Касаний нет.
+   Пишется звук (до 150 с), метки фаз, карта хода и по кадрам ракетка/мяч/события — sonarark_*.wav, разбор tools/eval_ark.js. */
+var AK={on:false,frames:[],gaps:0,marks:{},log:[],map:null,phase:'',raf:0,best:0};
+var AK_MAX=Math.round(150*48000/512), AK_COLS=12, AK_ROWS=6, AK_COLORS=['#f2a7c3','#e8b4f0','#c9b8e8','#9fd3f0','#a8e6cf','#ffd59e'];
+function akFrame(f,gap,r){ if(!AK.on) return; if(AK.frames.length<AK_MAX){ if(gap) AK.gaps++; AK.frames.push(f); }
+  if(r){ AK.present=r.present; if(r.present){ AK.dist=r.height; if(AK.phase==='wave') AK.wave.push(r.height); } } }
+function akMark(k){ AK.marks[k]=AK.frames.length*N; }
+function akText(a,b){ el('akSay').textContent=a; el('akSub').textContent=b||''; }
+function akButtons(v){ el('akBtns').classList.toggle('hidden',!v); }
+function akBricks(level){ var b=[], gap=level%3; for(var r=0;r<AK_ROWS;r++) for(var c=0;c<AK_COLS;c++){
+    if(gap===1&&(c+r)%5===0) continue; if(gap===2&&(r===2||r===3)&&c%3===1) continue;
+    b.push({c:c,r:r,hp:(r===0&&level>1)?2:1}); } return b; }
+function akNewBall(){ AK.ball={x:AK.px,y:0.8,vx:0,vy:0,wait:1.0}; }
+function arkPlay(){
+  show('arkPlay'); akButtons(false); cancelAnimationFrame(AK.raf);
+  AK={on:false,frames:[],gaps:0,marks:{},log:[],map:null,phase:'prep',raf:0,best:AK.best||0,wave:[],present:false,dist:null,
+      px:0.5,lives:3,score:0,level:1,speed:0.62,bricks:akBricks(1),ball:null,port:orientSide()||'right'};
+  akNewBall(); akText('Готовлюсь','Убери руку. Подбираю громкость зонда.'); mode=null; akDraw();
+  pickChannel().then(function(){ return autoLevel(); }).then(function(L){
+    if(L.snr<30){ setProbe('off'); akText('Зонда почти не слышно',NOPROBE); akButtons(true); return null; }
+    DSP2.init(fs,'all'); DSP2.setCal(PHYS_CAL); mode='ark'; AK.on=true; akMark('empty'); AK.phase='empty';
+    akText('Убери руку','Слушаю пустую комнату.'); return rpWait(DSP2); }).then(function(st){
+    if(!st) return;
+    if(st==='noprobe'){ setProbe('off'); mode=null; AK.on=false; akText('Зонда не слышно',NOPROBE); akButtons(true); return; }
+    return sleep(600).then(function(){ akMark('wave'); AK.phase='wave'; AK.wave=[];
+      akText('Помаши ладонью','У разъёма: ближе — дальше, как в игре (5–15 см). Шесть секунд.'); return sleep(6000); }).then(function(){
+      var w=AK.wave.slice().sort(function(a,b){return a-b;}), lo=50, hi=150;
+      if(w.length>50){ lo=w[Math.floor(w.length*0.05)]; hi=w[Math.floor(w.length*0.95)]; }
+      if(hi-lo<50){ var c=(hi+lo)/2; lo=c-25; hi=c+25; } if(hi-lo>140){ var c2=(hi+lo)/2; lo=c2-70; hi=c2+70; }
+      AK.map={lo:lo,hi:hi,n:w.length}; akMark('count'); AK.phase='count';
+      akText('3','Ладонь дальше от разъёма — ракетка дальше от него.');
+      return sleep(1000).then(function(){ akText('2',''); return sleep(1000); }).then(function(){ akText('1',''); return sleep(1000); }); }).then(function(){
+      akMark('play'); AK.phase='play'; akText('',''); AK.last=performance.now(); AK.t0=AK.last; AK.raf=requestAnimationFrame(akLoop); });
+  }).catch(function(e){ akText('Не вышло',(e&&e.message)||String(e)); akButtons(true); });
+}
+function akPaddleX(){ var m=AK.map; if(!m||AK.dist===null) return AK.px; var f=Math.max(0,Math.min(1,(AK.dist-m.lo)/(m.hi-m.lo))); if(AK.port==='left') f=1-f; return 0.09+0.82*f; }
+function akEv(k){ AK.log.push([AK.frames.length,k]); }
+function akLoop(now){
+  if(AK.phase!=='play') return;
+  var dt=Math.min(0.033,(now-AK.last)/1000); AK.last=now;
+  var cv=el('akC'), ar=(cv.width||800)/(cv.height||400);                           // ширина/высота: мяч летит по-честному круглым
+  if(AK.present) AK.px=akPaddleX();
+  var pw=0.16, py=0.92, B=AK.ball, br=0.018;
+  if(B.wait>0){ B.wait-=dt; B.x=AK.px; B.y=py-0.05; if(B.wait<=0){ var a=(-0.35+0.7*Math.random()); B.vx=Math.sin(a)*AK.speed/ar; B.vy=-Math.cos(a)*AK.speed; } }
+  else { var steps=3; for(var s=0;s<steps;s++){ B.x+=B.vx*dt/steps; B.y+=B.vy*dt/steps;
+      if(B.x<br/ar){ B.x=br/ar; B.vx=Math.abs(B.vx); } if(B.x>1-br/ar){ B.x=1-br/ar; B.vx=-Math.abs(B.vx); } if(B.y<br){ B.y=br; B.vy=Math.abs(B.vy); }
+      // ракетка: угол отскока — от места удара (классика)
+      if(B.vy>0&&B.y+br>=py&&B.y<py+0.03&&Math.abs(B.x-AK.px)<=pw/2+br/ar){ var off=(B.x-AK.px)/(pw/2), ang=off*1.05; AK.speed=Math.min(1.25,AK.speed*1.015);
+        B.vx=Math.sin(ang)*AK.speed/ar; B.vy=-Math.cos(ang)*AK.speed; B.y=py-br; akEv('paddle'); }
+      // кирпичи: сетка в верхней трети
+      var bw=1/AK_COLS, bh=0.045, top=0.08;
+      for(var i=0;i<AK.bricks.length;i++){ var k=AK.bricks[i], x0=k.c*bw, y0=top+k.r*bh;
+        if(B.x+br/ar>x0&&B.x-br/ar<x0+bw&&B.y+br>y0&&B.y-br<y0+bh){ var ox=Math.min(B.x+br/ar-x0,x0+bw-(B.x-br/ar))*ar, oy=Math.min(B.y+br-y0,y0+bh-(B.y-br));
+          if(ox<oy) B.vx=-B.vx; else B.vy=-B.vy; k.hp--; if(k.hp<=0){ AK.bricks.splice(i,1); AK.score+=10*AK.level; akEv('brick'); } else akEv('hit2'); break; } }
+      if(B.y>1.03){ AK.lives--; akEv('miss:'+(B.x-AK.px).toFixed(3)); if(AK.lives>0) akNewBall(); break; } }
+    if(!AK.bricks.length){ AK.level++; AK.bricks=akBricks(AK.level); AK.speed=Math.min(1.25,0.62+0.06*(AK.level-1)); akNewBall(); akEv('level'); } }
+  AK.log.push([AK.frames.length,+AK.px.toFixed(4),+B.x.toFixed(4),+B.y.toFixed(4),AK.present?1:0]);
+  akDraw();
+  if(AK.lives<=0||AK.frames.length>=AK_MAX){ AK.phase='over'; akMark('over'); AK.on=false; mode=null; setProbe('off'); AK.best=Math.max(AK.best,AK.score);
+    akText('Конец','счёт '+AK.score+' · уровень '+AK.level+' · лучший '+AK.best); akButtons(true); return; }
+  AK.raf=requestAnimationFrame(akLoop);
+}
+function akDraw(){ var cv=el('akC'); if(!cv||!cv.getContext) return; var dpr=Math.min(2,window.devicePixelRatio||1), bw0=cv.clientWidth||800, bh0=cv.clientHeight||400;
+  if(cv.width!==Math.round(bw0*dpr)){ cv.width=Math.round(bw0*dpr); cv.height=Math.round(bh0*dpr); }
+  var c=cv.getContext('2d'), W=cv.width, H=cv.height; c.fillStyle='#0b0a14'; c.fillRect(0,0,W,H);
+  var bw=W/AK_COLS, bh=0.045*H, top=0.08*H; (AK.bricks||[]).forEach(function(k){ c.fillStyle=AK_COLORS[k.r%AK_COLORS.length]; c.globalAlpha=k.hp>1?1:0.85;
+    c.fillRect(k.c*bw+2*dpr,top+k.r*bh+2*dpr,bw-4*dpr,bh-4*dpr); c.globalAlpha=1; if(k.hp>1){ c.strokeStyle='#fff'; c.lineWidth=dpr; c.strokeRect(k.c*bw+3*dpr,top+k.r*bh+3*dpr,bw-6*dpr,bh-6*dpr); } });
+  var pw=0.16*W, px=(AK.px||0.5)*W, py=0.92*H; c.fillStyle=AK.present||AK.phase!=='play'?'#5fe0b8':'#3a6e60'; c.fillRect(px-pw/2,py,pw,0.022*H);
+  if(AK.ball){ c.fillStyle='#ffb27a'; c.beginPath(); c.arc(AK.ball.x*W,AK.ball.y*H,0.018*H,0,6.283); c.fill(); }
+  if(AK.phase!=='play'){ c.fillStyle='rgba(11,10,20,.72)'; c.fillRect(0,0,W,H); }   /* вне игры поле притушено — надписи поверх читаются */
+  c.fillStyle='#E7EDE9'; c.font=Math.round(15*dpr)+'px "IBM Plex Mono",monospace'; c.textAlign='left';
+  if(AK.phase==='play'||AK.phase==='over'){ c.fillText(String(AK.score),10*dpr,0.06*H); c.textAlign='right'; c.fillText('♥'.repeat(Math.max(0,AK.lives))+'  ур. '+AK.level,W-10*dpr,0.06*H); }
+  c.textAlign='center'; c.fillStyle='#8A9B96'; c.font=Math.round(11*dpr)+'px "IBM Plex Mono",monospace';
+  c.fillText(AK.dist===null||AK.dist===undefined?'ладони не слышно':(AK.present?'':'(нет ладони) ')+'ладонь '+(AK.dist/10).toFixed(1).replace('.',',')+' см',W/2,H-6*dpr); }
+function akSave(){ if(!AK.frames.length) return; var n=AK.frames.length*N, all=new Float32Array(n); AK.frames.forEach(function(f,j){ all.set(f,j*N); });
+  var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
+  var meta={v:1,kind:'ark-play',port:AK.port,fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
+    cal:PHYS_CAL,map:AK.map,marks:AK.marks,log:AK.log,score:AK.score,level:AK.level,lives:AK.lives,samples:n,gaps:AK.gaps,peak:pk,
+    orientation:{angle:(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0),w:window.innerWidth,h:window.innerHeight},
+    units:'log: [frame, paddle x 0..1, ball x, ball y (0 top), palm seen] or [frame, event]; paddle x = 0.09+0.82·f, f from height (DSP2, PHYS_CAL) by map, mirrored if the port is on the left',
+    ua:navigator.userAgent,date:new Date().toISOString()};
+  var b=wav(all,meta), d=new Date(), z=function(x){ return (x<10?'0':'')+x; };
+  var name='sonarark_'+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+'.wav'; AK.blob=b; AK.fname=name;
+  if(navigator.canShare){ try{ var fl=new File([b],name,{type:'audio/wav'}); if(navigator.canShare({files:[fl]})){ navigator.share({files:[fl],title:name}).catch(function(){}); return; } }catch(e){} }
+  var a2=document.createElement('a'); a2.href=URL.createObjectURL(b); a2.download=name; document.body.appendChild(a2); a2.click(); setTimeout(function(){ a2.remove(); },1000); }
+el('goArk').addEventListener('click',function(){ boot().then(function(){ lastRec='ark'; viaOrient('arkIntro'); }).catch(fail); });
+el('arkGo').addEventListener('click',function(){ arkPlay(); });
+el('arkBack').addEventListener('click',function(){ show('home'); });
+el('akAgain').addEventListener('click',function(){ arkPlay(); });
+el('akSave').addEventListener('click',function(){ akSave(); });
+el('akStop').addEventListener('click',function(){ if(AK.phase==='play'){ AK.lives=0; return; } cancelAnimationFrame(AK.raf); AK.on=false; AK.phase=''; mode=null; setProbe('off'); akText('Остановлено',''); akButtons(true); });
+el('akHome').addEventListener('click',function(){ cancelAnimationFrame(AK.raf); AK.on=false; AK.phase=''; mode=null; setProbe('off'); show('home'); });
 
 
 /* ── ЖУРНАЛ ПАРТИИ: звук + что видела обработка + что происходило в игре ── */

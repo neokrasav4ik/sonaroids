@@ -119,3 +119,8 @@ Prototype: `game/proto/` — the ship follows your finger.
 ## 9. Open questions
 
 - ~~App icon and how it looks on the Home Screen~~ — agreed 25 Sep (v0.27): in the sonar lab's style — black space, a neon-orange outlined ship, white outlined rocks (like vector Asteroids); a separate one with margins for Android's round mask.
+
+## 10. Other ways to steer, and the next game (26–27 Sep)
+
+- **Tried in the lab, does not work** (details in `lab/HANDOVER.md`, 2.7б–2.7г, Russian): the palm moving sideways in front of the port — with one microphone the sonar hears only distance, left and right sound the same; a second speaker — with the microphone open, the iPhone's other channel arrives ~60 times weaker and from the same place, no second axis; "palm to the right" with the phone upright — the port faces the body, the echo of the chest and arm drowns the palm, unplayable sitting or standing (in both poses, port towards and away from the player). The maintainer's conclusion: only "port facing the palm", as now. — agreed 27 Sep
+- **Sonaroids becomes a collection of retro games with sonar control.** Next: **Arkanoid**, as a mode inside Sonaroids; a prototype in the lab first. The paddle at the bottom moves left and right, as in the classic: the farther the palm from the port, the farther the paddle from it. The same control — on the table or in the hand. — agreed 27 Sep

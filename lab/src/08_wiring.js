@@ -12,7 +12,7 @@ function fail(e){ show('home'); el('err').classList.remove('hidden'); el('err').
   window.addEventListener('resize',function(){ setTimeout(fitScreen,60); });
   window.addEventListener('orientationchange',function(){ setTimeout(function(){ handSide(); fitScreen(); },250); });
 })();
-function goFlow(flow){ if(flow==='dualIntro'){ show('dualIntro'); return; } if(flow==='rec'||flow==='recLong'){ lastRec=flow; runRec(flow==='recLong'?'long':'rec'); } else quickStart(); }
+function goFlow(flow){ if(flow==='dualIntro'||flow==='arkIntro'){ show(flow); return; } if(flow==='rec'||flow==='recLong'){ lastRec=flow; runRec(flow==='recLong'?'long':'rec'); } else quickStart(); }
 /* запись вбок: сначала экран-подсказка; начать можно, только когда экран стоит вертикально (иначе метка пойдёт не по той оси) */
 function sideOri(){ if(el('sideIntro').classList.contains('hidden')) return; var up=window.innerHeight>window.innerWidth;
   el('sideOri').textContent=up?'Экран вертикально — можно начинать.':'Экран ещё горизонтальный. Поверни телефон вертикально; если экран не поворачивается — выключи блокировку поворота.';
@@ -46,4 +46,4 @@ el('calGo').addEventListener('click',function(){ if(!CS.busy) quickStart(); });
 function seg(attr,fn){ Array.prototype.forEach.call(document.querySelectorAll('['+attr+']'),function(b){
   b.addEventListener('click',function(){ Array.prototype.forEach.call(document.querySelectorAll('['+attr+']'),function(x){ x.classList.toggle('sel',x===b); }); fn(b.getAttribute(attr)); }); }); }
 document.addEventListener('visibilitychange',function(){ if(!ctx) return;
-  if(document.hidden) setProbe('off'); else if(mode==='cal'||mode==='game'||mode==='rec'||mode==='right') setProbe('single-'+chan); });
+  if(document.hidden) setProbe('off'); else if(mode==='cal'||mode==='game'||mode==='rec'||mode==='right'||mode==='ark') setProbe('single-'+chan); });

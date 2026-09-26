@@ -8,7 +8,7 @@
 """
 import os, sys, re, subprocess, tempfile
 HERE=os.path.dirname(os.path.abspath(__file__))
-ORDER=['00_head.html', '01_worklet.js', '02_dsp.js', '03_game_core.js', '04_audio_engine.js', '05_recorder.js', '06_side_pick.js', '07_calibration.js', '08_wiring.js', '085_right.js', '09_game_ui_log.js']
+ORDER=['00_head.html', '01_worklet.js', '02_dsp.js', '03_game_core.js', '04_audio_engine.js', '05_recorder.js', '06_side_pick.js', '07_calibration.js', '08_wiring.js', '085_right.js', '086_ark.js', '09_game_ui_log.js']
 def build():
     return "".join(open(os.path.join(HERE,'src',f),encoding='utf-8').read() for f in ORDER)
 def check_js(html):

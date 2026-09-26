@@ -60,6 +60,11 @@
   #recSide{flex-direction:column;align-items:stretch;gap:.6rem}
   #rightIntro .pic{height:16vh;max-width:100%;margin:.2rem auto 0;display:block} @media (max-height:600px){ #rightIntro .pic{display:none} } #rightIntro .pic.away{transform:scaleY(-1)} #rightIntro .pic.away text{display:none} #rightOri{font-family:"IBM Plex Mono",monospace;font-size:.8rem;margin:.2rem 0 .4rem}
   body.flip #rightPlay,body.flip #recSide,body.flip #recDone{transform:rotate(180deg)}
+  #arkPlay{padding:0;background:#0b0a14} #akC{position:absolute;inset:0;width:100%;height:100%;display:block}
+  #akTop{position:absolute;left:0;right:0;top:30%;text-align:center;pointer-events:none;padding:0 1rem}
+  #akSay{font-size:2rem;font-weight:600} #akSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
+  #akBtns{position:absolute;left:calc(max(1rem,env(safe-area-inset-left)) + 1rem);top:50%;transform:translateY(-50%);width:15rem;display:flex;flex-direction:column;gap:.5rem}
+  #akStop{position:absolute;left:calc(max(.7rem,env(safe-area-inset-left)) + .3rem);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + 3.4rem);width:auto;padding:.5em .9em;font-size:.85rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
   #rightPlay{padding:0;background:#04070A} #rpC{position:absolute;inset:0;width:100%;height:100%;display:block}
   #rpTop{position:absolute;left:0;right:0;top:calc(max(.8rem,env(safe-area-inset-top)) + 5.4rem);text-align:center;pointer-events:none;padding:0 1rem}
   #rpSay{font-size:2rem;font-weight:600} #rpSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
@@ -147,6 +152,7 @@
     <button id="goRecSide" class="ghost">Запись вбок (телефон вертикально)</button>
     <button id="goRecDual" class="ghost">Два динамика</button>
     <button id="goRight" class="ghost">Ладонь справа (телефон вертикально)</button>
+    <button id="goArk" class="ghost">Арканоид (прототип)</button>
     <p class="small" style="margin:-.15rem 0 .2rem">По метке, 16 с или 1,5 мин — присылаешь WAV, я проверяю механику на твоём сигнале.</p>
     <button id="silentT" class="ghost" style="font-size:.84rem">Беззвучный режим телефона: …</button>
     <p id="silentP" class="small" style="margin:-.15rem 0 .2rem"></p>
@@ -245,6 +251,29 @@
     <button id="rpMode" class="ghost">Управление: …</button>
     <button id="rpSave" class="ghost">Сохранить запись</button>
     <button id="rpHome" class="ghost">В начало</button>
+  </div>
+</div>
+
+<div class="screen hidden" id="arkIntro"><div class="two">
+  <div class="col">
+    <h1>Арканоид — прототип</h1>
+    <p>Управление как в игре: телефон горизонтально, разъёмом к ладони — на столе (ладонь вверх-вниз над столом) или в руке (ладонь ребром к торцу и от него), 5–15 см. <b>Ладонь дальше от разъёма — ракетка дальше от него.</b></p>
+    <p>Сначала убери руку, потом шесть секунд помаши в рабочем диапазоне — ракетка подстроится под размах. Мяч запускается сам. После игры можно сохранить запись.</p>
+  </div>
+  <div class="col btns">
+    <button id="arkGo" class="big">Играть</button>
+    <button id="arkBack" class="ghost">Назад</button>
+  </div>
+</div></div>
+
+<div class="screen hidden" id="arkPlay">
+  <canvas id="akC"></canvas>
+  <div id="akTop"><div id="akSay"></div><div id="akSub"></div></div>
+  <button id="akStop" class="gbtn">Стоп</button>
+  <div id="akBtns" class="hidden">
+    <button id="akAgain" class="big">Ещё раз</button>
+    <button id="akSave" class="ghost">Сохранить запись</button>
+    <button id="akHome" class="ghost">В начало</button>
   </div>
 </div>
 

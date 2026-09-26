@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='0.36';
+var VERSION='0.37';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -70,7 +70,7 @@ var DSP2=(function(){
   var N=512,C=343,fs,kLo,kHi,kc,ks,M,Pr,Pi,lam,mm,T,gA,gB,G,cosT,sinT;
   var d0,dref,boot,bootN=30,prevH,hist,L=4,prom,noProbe,bgAcc,bgN,bgR,bgI,BG_N=40;
   var Es,hold,present,refr,Q_FLOOR=-28,T_ON=-16,T_INT=-30,HOLD_S=1.5,tauE=0.15,REFR_S=0.7,TAU_BG=2.0,TAU=1.5;
-  var eqW=null,eqDb=0,EQ_ON=16,EQ_MAX=10,gN=null,drops=0,sinceDrop=1e9,covered=false,lastPeak=null,moveN=0,scanWait=0,relocks=0,eAvg=0,TE=3,E_FAST=12,ePres=0,why='',rngBuf=[],xBuf=[],centered=false,autoC=false,presN=0,x,fast,cal={k:0.75,o:1,s:0.8},eHold=null,lowN=0,resS=-99,resFloor=null,upN=0,warm=0,absBuf=[],ABS_MED=15,DEADB=5,DEADB_UP=15,dirS=null,lostN=0,lost=false;
+  var eqW=null,eqDb=0,EQ_ON=16,ACC_N=24,FINE_N=188,EQ_MAX=10,gN=null,drops=0,sinceDrop=1e9,covered=false,lastPeak=null,d0B=0,fineN=-1,fR=null,fI=null,refR=null,refI=null,acR=null,acI=null,acN=0,moveN=0,scanWait=0,relocks=0,eAvg=0,TE=3,E_FAST=12,ePres=0,why='',rngBuf=[],xBuf=[],centered=false,autoC=false,presN=0,x,fast,cal={k:0.75,o:1,s:0.8},eHold=null,lowN=0,resS=-99,resFloor=null,upN=0,warm=0,absBuf=[],ABS_MED=15,DEADB=5,DEADB_UP=15,dirS=null,lostN=0,lost=false;
   function init(sampleRate,parity){
     fs=sampleRate; var df=fs/N; kLo=Math.ceil(18300/df); kHi=Math.floor(20500/df); kc=Math.floor((kLo+kHi)/2);
     ks=[]; for(var k=kLo;k<=kHi;k++) if(parity===undefined||parity==='all'||k%2===parity) ks.push(k);
@@ -80,7 +80,7 @@ var DSP2=(function(){
     for(var q=0;q<M;q++){ var ph=Math.PI*q*q/M; Pr[q]=Math.cos(ph); Pi[q]=Math.sin(ph); }
     cosT=new Float64Array(M*N); sinT=new Float64Array(M*N);
     for(q=0;q<M;q++){ var w=-2*Math.PI*ks[q]/N; for(var n=0;n<N;n++){ cosT[q*N+n]=Math.cos(w*n); sinT[q*N+n]=Math.sin(w*n); } }
-    d0=null; dref=null; eqW=null; eqDb=0; gN=null; drops=0; sinceDrop=1e9; covered=false; lastPeak=null; moveN=0; scanWait=0; relocks=0; boot=[]; prevH=null; hist=[]; prom=null; noProbe=false;
+    d0=null; dref=null; eqW=null; eqDb=0; gN=null; drops=0; sinceDrop=1e9; covered=false; lastPeak=null; d0B=0; fineN=-1; fR=null; fI=null; refR=null; refI=null; acR=null; acI=null; acN=0; moveN=0; scanWait=0; relocks=0; boot=[]; prevH=null; hist=[]; prom=null; noProbe=false;
     bgAcc=null; bgN=0; bgR=null; bgI=null; Es=-80; hold=0; present=false; refr=0; x=null; fast=0; eHold=null; ePres=0; why=""; rngBuf=[]; xBuf=[]; centered=false; presN=0; lowN=0; resS=-99; resFloor=null; upN=0; warm=0; absBuf=[]; dirS=null; lostN=0; lost=false;
   }
   function bandSpec(fr){
@@ -109,12 +109,13 @@ var DSP2=(function(){
         eqW=null; eqDb=10*Math.log10(pmx/(pmn||1e-30));
         if(eqDb>EQ_ON){ eqW=new Float64Array(M); for(q=0;q<M;q++) eqW[q]=Math.min(EQ_MAX,Math.sqrt(pmx/(pw[q]||1e-30)));
           boot.forEach(function(h){ for(var q2=0;q2<M;q2++){ h[0][q2]*=eqW[q2]; h[1][q2]*=eqW[q2]; } }); }
+        refR=new Float64Array(T); refI=new Float64Array(T); boot.forEach(function(h){ for(var j=0;j<T;j++){ var v=tap(h,j); refR[j]+=v[0]; refI[j]+=v[1]; } });   // v0.36: the complex response, for finding a shift
         boot=boot.map(function(h){ var m=new Float64Array(T); for(var j=0;j<T;j++){ var v=tap(h,j); m[j]=v[0]*v[0]+v[1]*v[1]; } return m; });
         boot.forEach(function(m){ for(var j=0;j<T;j++) s[j]+=m[j]; });
         for(n=0;n<T;n++) if(s[n]>bv){ bv=s[n]; b=n; }
         var srt=Array.prototype.slice.call(s).sort(function(p,q){return p-q;}); prom=10*Math.log10(bv/(srt[T>>1]||1e-30));
         if(prom<12){ noProbe=true; boot=[]; return null; }
-        noProbe=false; d0=b; dref=bv/boot.length; }
+        noProbe=false; d0=b; d0B=b; dref=bv/boot.length; }
       return null;
     }
     // с 24.09 ночи: отклик нормируется на прямой сигнал (его усиление и фазу). На Android (OnePlus 13) усиление тракта
@@ -132,15 +133,38 @@ var DSP2=(function(){
     if(dirS<dref*0.01&&!(lastPeak!==null&&lastPeak>dref*0.1)){ if(++lostN>fs/N) lost=true; } else lostN=0;
     // прямой сигнал «переехал» (с 24.09 ночи): Android иногда вставляет во вход кусок тишины (запись OnePlus 23:40 — 1920 нулей),
     // и весь отклик сдвигается по задержке на столько же отсчётов по кругу. Комната та же — надо лишь заново найти прямой сигнал.
-    // Упал ниже −10 дБ на ~0,1 с — ищу пик по всем задержкам (не чаще раза в 0,5 с); если он почти прежней силы — перехожу туда
-    // С 26.09 переезд — только в первые 2 с после провала входа: единственная известная причина сдвига. Без провала прямой сигнал
-    // проседает, когда динамик или микрофон закрыты (ладонь вплотную, пальцы): партия 26.09 10:29 — −20…−35 дБ две минуты,
-    // «переезд» на чужой пик, и дальность эха застыла. Теперь это «закрыто» (covered): ничего не переучивается, абсолютная часть не тянет
-    if(dirS<dref*0.1){ if(++moveN>=8&&--scanWait<=0){ scanWait=Math.round(0.5*fs/N); var bb=0,bp=0; for(n=0;n<T;n++){ var vs=tap(H,n), ps=vs[0]*vs[0]+vs[1]*vs[1]; if(ps>bp){ bp=ps; bb=n; } }
-        lastPeak=bp;
-        if(sinceDrop<2*fs/N&&bp>dref*0.25&&bb!==d0){ var vn=tap(H,bb); if(gN) gN=[vn[0],vn[1]]; d0=bb; dirS=bp; moveN=0; relocks++; prevH=null; hist=[]; lostN=0; return null; }   /* сдвиг поворачивает и фазу прямого — усиление берётся заново */ }
-      covered=moveN>=8&&sinceDrop>=2*fs/N; }
-    else { moveN=0; scanWait=0; covered=false; lastPeak=null; }
+    // Упал ниже −10 дБ на ~0,1 с — ищу сдвиг (не чаще раза в 0,5 с). v0.34 переезжала только в первые 2 с после провала входа,
+    // а без провала считала это «закрыто» (covered): ничего не переучивается, абсолютная часть не тянет. Закрытым остаётся лишь то,
+    // для чего сдвинутой копии отклика не нашлось
+    // с 26.09 (v0.36): прямой сигнал пропал — ищу, не сдвинулся ли весь отклик по задержке. В партиях «в руке» — iPhone 26.09 10:29
+    // (весь отклик сдвинулся на ~256 отсчётов) и OnePlus 15:53 (на ~140) — провалов входа не было, профиль по всем задержкам совпадал
+    // со сдвинутым на 0,99, а v0.34 считала это «закрыто»: не тянула по положению, корабль уплывал вверх, игрок видел «не закрывай динамик»
+    // при свободном торце. Сдвиг ищу по КОМПЛЕКСНОМУ отклику, накопленному за ~0,3 с: ладонь движется, её эхо при накоплении гасится,
+    // а прямой сигнал стоит. По модулю (и по самому громкому отсчёту) выходило на 10–17 отсчётов мимо — ладонь в 5 см громче прямого,
+    // а положение эха от точности d0 зависит сильно (согласие быстрой части и дальности 0,03 против 0,9 на партии 10:29)
+    if(dirS<dref*0.1){ moveN++;
+      if(moveN>=8){ if(!acR){ acR=new Float64Array(T); acI=new Float64Array(T); acN=0; }
+        for(n=0;n<T;n++){ var va=tap(H,n); acR[n]+=va[0]; acI[n]+=va[1]; } acN++;
+        if(acN>=ACC_N&&--scanWait<=0){ scanWait=Math.round(0.5*fs/N); var bb=0,bp=0,br=0,bi=0,n0=0,n1=0,bs=0,bc=-1;
+          for(n=0;n<T;n++){ var pa=(acR[n]*acR[n]+acI[n]*acI[n])/(acN*acN); if(pa>bp){ bp=pa; bb=n; } }
+          lastPeak=bp;
+          for(n=0;n<T;n++){ n0+=refR[n]*refR[n]+refI[n]*refI[n]; n1+=acR[n]*acR[n]+acI[n]*acI[n]; }
+          for(var sh=0;sh<T;sh++){ br=0; bi=0; for(n=0;n<T;n++){ var m=(n+sh)%T; br+=refR[n]*acR[m]+refI[n]*acI[m]; bi+=refR[n]*acI[m]-refI[n]*acR[m]; } var cc=br*br+bi*bi; if(cc>bc){ bc=cc; bs=sh; } }
+          var sim=Math.sqrt(bc/(n0*n1||1e-30)), nd=(d0B+bs)%T, pn=(acR[nd]*acR[nd]+acI[nd]*acI[nd])/(acN*acN);
+          acR=null; acI=null; acN=0;
+          if(nd!==d0&&sim>0.9&&pn>dref*0.1){ var vn=tap(H,nd); if(gN) gN=[vn[0],vn[1]]; d0=nd; dirS=pn; moveN=0; covered=false; relocks++; prevH=null; hist=[]; lostN=0; fineN=0; fR=null; fI=null; return null; }   /* сдвиг поворачивает и фазу прямого — усиление берётся заново */ } }
+      covered=moveN>=8; }
+    else { moveN=0; scanWait=0; covered=false; lastPeak=null; acR=null; acI=null; acN=0; }
+    // после переезда — уточнение: 2 с комплексного отклика (ладонь за это время уходит, её эхо гасится сильнее), поиск ±4 отсчёта.
+    // Точность нужна: на партии 10:29 d0 на 1 отсчёт мимо — согласие быстрой части и дальности 0,84 → 0,71, на 4 — 0,2;
+    // OnePlus 15:53: первый поиск — 148, уточнение — 144 (как по отклику за каждую секунду), согласие 0,31 → 0,55
+    if(fineN>=0&&!covered){ if(!fR){ fR=new Float64Array(T); fI=new Float64Array(T); }
+      for(n=0;n<T;n++){ var vf=tap(H,n); fR[n]+=vf[0]; fI[n]+=vf[1]; }
+      if(++fineN>=FINE_N){ var fb=0,fc=-1,sh0=(d0-d0B+T)%T;
+        for(var j=-4;j<=4;j++){ var fr2=0,fi2=0; for(n=0;n<T;n++){ var m3=(n+sh0+j+T)%T; fr2+=refR[n]*fR[m3]+refI[n]*fI[m3]; fi2+=refR[n]*fI[m3]-refI[n]*fR[m3]; } var fcc=fr2*fr2+fi2*fi2; if(fcc>fc){ fc=fcc; fb=j; } }
+        if(Math.abs(fb)<2) fb=0;   /* ±1 — в пределах точности (на OnePlus и без сдвига оценка ходит на ±2) */
+        if(fb!==0){ d0=(d0+fb+T)%T; gN=[fR[d0]/fineN,fI[d0]/fineN]; dirS=(gN[0]*gN[0]+gN[1]*gN[1]); prevH=null; hist=[]; }
+        fineN=-1; fR=null; fI=null; if(fb!==0) return null; } }
     if(!prevH){ prevH=h; return null; }
     var h2=[new Float64Array(G),new Float64Array(G)];
     for(i=0;i<G;i++){ h2[0][i]=0.5*(h[0][i]+prevH[0][i]); h2[1][i]=0.5*(h[1][i]+prevH[1][i]); }

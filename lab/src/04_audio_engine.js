@@ -6,7 +6,9 @@ var N=512,fs,kLo,kHi,kc;
 var ctx,stream,node,an,gSL,gSR,gL,gR,booted=false, F_LO=18300, PROBE_G=0.25, PROBE_SNR=null;
 var mode=null,lastSeq=-1,gaps=0,collector=null;
 function sleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
-function show(id){ ['home','orient','rec','recDone','cal','game'].forEach(function(s){ el(s).classList.toggle('hidden',s!==id); }); fitScreen(); }
+function show(id){ ['home','orient','rec','recDone','cal','game','sideIntro','recSide'].forEach(function(s){ el(s).classList.toggle('hidden',s!==id); });
+  /* запись вбок идёт с телефоном вертикально — на её экранах просьба повернуть не показывается */
+  if(document.body&&document.body.classList) document.body.classList.toggle('pok',id==='sideIntro'||id==='recSide'||(id==='recDone'&&lastRec==='recSide')); fitScreen(); }
 /* всё в один экран: если видимый экран (или открытое меню игры) не влезает по высоте или ширине — уменьшаю базовый шрифт, пока не влезет */
 function fitScreen(){ try{
   var root=document.documentElement; root.style.fontSize='';

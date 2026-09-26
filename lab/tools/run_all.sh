@@ -17,5 +17,7 @@ echo; echo "== журнал настройки =="; node tests/test_setup_log.js
 echo; echo "== динамик закрыт ладонью: не переезжать, не терять зонд =="; node tests/test_covered.js
 echo; echo "== весь отклик сдвинулся без провала входа: переехать точно, не считать «закрыто» =="; node tests/test_shift.js
 echo; echo "== зонд пропал посреди партии =="; node tests/test_probe_lost.js
+echo; echo "== запись вбок: разбор на синтетике (симметрично и нет) =="; o=$(node eval_side.js --synth); echo "$o" | tail -5
+echo; echo "== запись вбок через страницу: портрет, метка, WAV, разбор =="; o=$(node tests/test_side_rec.js); echo "$o" | grep -v "^  "
 echo; echo "== всё в один экран (Chromium; без playwright пропускается) =="; python3 tests/test_layout.py | tail -8
 echo; echo "== микрофон и звуковая сессия =="; node tests/test_mic_session.js

@@ -18,15 +18,22 @@ SETUP={
  'cal':"show('cal'); CS.busy=false; calText('Готовлюсь','Зонда почти не слышно',NOPROBE); el('calBig').textContent='руки пока не вижу'; el('calDiag').textContent='рука: видна (движение) · эхо +31 дБ над пустой · движение -18 дБ'; el('calLogS').classList.remove('hidden'); fitScreen();",
  'menu':"show('game'); el('gPanel').classList.remove('hidden'); el('gLogI').textContent='Записано 150 с партии (последние 150 с). Журнал настройки: 120 с.'; fitScreen();",
 }
+# 26.09: запись вбок идёт с телефоном вертикально — её экраны проверяю в портрете
+PSIZES=[(320,568,'SE-1'),(375,667,'SE'),(390,844,'14'),(430,932,'Pro Max')]
+PSETUP={
+ 'sideIntro':"lastRec='recSide'; show('sideIntro'); sideOri();",
+ 'recSide':"lastRec='recSide'; show('recSide'); buildHTrack(); el('mkH').style.left=xOf(40)+'px'; el('sdSay').textContent='Замри справа'; el('sdSub').textContent='Напротив метки, на том же расстоянии.'; el('sdClock').textContent='22.4 / 39 с';",
+ 'sideDone':"lastRec='recSide'; show('recDone'); var st=el('stats'); ['длительность','разрывов потока','экран','зонд слышен','пик входа','размер'].forEach(function(k){ var r=document.createElement('div'); r.className='kv'; r.innerHTML='<span>'+k+'</span><b>39.0 с</b>'; st.appendChild(r); }); el('share').classList.remove('hidden'); fitScreen();",
+}
 bad=0
-with sync_playwright() as p:
-    b=p.chromium.launch()
-    for (w,h,name) in SIZES:
+def run(b,sizes,setup):
+    global bad
+    for (w,h,name) in sizes:
         pg=b.new_page(viewport={'width':w,'height':h})
         pg.goto(URL); pg.wait_for_timeout(200)
         pg.evaluate("()=>{ window.__T={}; }")
         # код приложения живёт внутри замыкания — подключаюсь через тестовый крючок, который собираю тут же из текста страницы
-        for scr,js in SETUP.items():
+        for scr,js in setup.items():
             pg.goto(URL); pg.wait_for_timeout(150)
             r=pg.evaluate("""(js)=>{ const src=[...document.scripts].map(s=>s.textContent).join('\\n');
                 const hook=src.replace("el('gMenu').addEventListener","window.__run=function(c){ eval(c); };\\nel('gMenu').addEventListener");
@@ -43,6 +50,10 @@ with sync_playwright() as p:
             pg.screenshot(path=str(OUT/f'layout_{scr}_{w}x{h}.png'))
             print(f"{'ok ' if ok else 'НЕ ВЛЕЗАЕТ'} {name:>14} {w}x{h} {scr:8} шрифт {r['fs']:>6} | высота {r['sh']}/{r['ch']}" + ('' if ok else f" | вылезает: {r['out']}"))
         pg.close()
+with sync_playwright() as p:
+    b=p.chromium.launch()
+    run(b,SIZES,SETUP)
+    run(b,PSIZES,PSETUP)
     # сторона кнопок: рука справа — кнопки слева; рука слева — зеркально
     for hand in ('right','left'):
         pg=b.new_page(viewport={'width':844,'height':390}); pg.goto(URL); pg.wait_for_timeout(150)

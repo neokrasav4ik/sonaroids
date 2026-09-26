@@ -64,8 +64,8 @@ var tableC=null;
 function scene(id,t,f,away,waves,T,lay){
   var cm=Math.min(LH*0.024,LW*0.0135)*(lay?lay.k:1), o=lay?[LW*lay.ox,LH*lay.oy+23.6*cm]:[LW*0.43,LH*0.16+23.6*LH*0.024], labels=[];      // narrow screens (iPad): scale to the width
   var TX0=-21.1*cm, TX=31.1*cm, TY0=-13.3*cm, TY1=17.3*cm, fl=iso(TX0,TY0,0,o)[0];          // v0.35: the table 10% smaller
-  if(fl<LW*0.04) TX0+=LW*0.04-fl;                                          // and on narrow screens it stops short of the left edge
-  var fr=iso(TX,TY1,0,o)[0]; if(fr>LW*0.47) TX-=fr-LW*0.47;                // …and of the middle, where the second picture starts
+  if(lay&&!lay.solo&&fl<LW*0.04) TX0+=LW*0.04-fl;                                     // and, beside the second picture, it stops short of the left edge
+  var fr=iso(TX,TY1,0,o)[0]; if(lay&&!lay.solo&&fr>LW*0.47) TX-=fr-LW*0.47;           // …and of the middle, where the second picture starts
   var tkey=LW+'x'+LH+(lay?':'+lay.ox+':'+lay.k:'');
   if(!tableC||tableC._k!==tkey){ tableC=document.createElement('canvas'); tableC.width=LW; tableC.height=LH; tableC._k=tkey; var keep=lx; lx=tableC.getContext('2d');
     polyFill([iso(TX0,TY0,0,o),iso(TX,TY0,0,o),iso(TX,TY1,0,o),iso(TX0,TY1,0,o)],P.neb[1]);

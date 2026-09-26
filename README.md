@@ -4,7 +4,7 @@
 
 A tiny retro space game for phones that you steer with your palm — **without touching the screen**.
 
-<p align="center"><img src="promo/sonaroids.gif" width="720" alt="Two ways to play: the phone on the table with a palm moving up and down beside it, or the phone in one hand with the other palm moving at its end; on both screens the ship follows the palm and shoots rocks"></p>
+<p align="center"><img src="promo/sonaroids.gif" width="720" alt="Two ways to play, side by side: a palm moving up and down beside the lying phone, or a palm moving to and from the phone's end; on both screens the ship follows the palm and shoots rocks"></p>
 
 The phone lies flat on the table. It plays an inaudible ultrasonic tone through its own speaker and listens to the echo with its own microphone. The height of your palm beside the phone becomes the height of your ship. The ship fires on its own — you only choose where to be.
 

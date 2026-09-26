@@ -1,14 +1,22 @@
-/* The promo GIF: both ways to play side by side (v0.37) — the phone on the table and the phone in the hand — drawn like the
-   getting-ready pictures, without rulers, with a bigger phone and a smaller palm; on both phones' screens the ship follows the palm and shoots rocks. Drawn by the game's own code (game/play/index.html, patched in memory),
-   frame by frame in headless Chromium, then packed by make_gif.py. Everything repeats every D seconds, so the GIF loops without a seam.
-   Run: node promo/make_gif.js && python3 promo/make_gif.py */
+/* The promo GIFs (v0.38: four), drawn like the getting-ready pictures, without rulers, with a bigger phone and a smaller palm;
+   on the phones' screens the ship follows the palm and shoots rocks. VARIANT picks the picture:
+     clean (default) — both ways side by side, "or" between them, no table and no hand holding the phone → sonaroids.gif (in the README)
+     table — the phone on the table, as the very first GIF → sonaroids_table.gif
+     hand  — the phone held in one hand, the other palm at its end → sonaroids_hand.gif
+     both  — both ways side by side with the table and the holding hand (v0.37a) → sonaroids_both_table.gif
+   Drawn by the game's own code (game/play/index.html, patched in memory), frame by frame in headless Chromium, then packed by
+   make_gif.py. Everything repeats every D seconds, so the GIF loops without a seam.
+   Run: VARIANT=hand node promo/make_gif.js && VARIANT=hand python3 promo/make_gif.py  (sh promo/make_all.sh — all four)
+   LAYOUT='{"t":{"ox":..,"oy":..,"k":..},"h":{..},"or":[x,y]}' moves the pictures; ONE=t renders one frame at time t for a quick look */
 const {chromium}=require('playwright'), fs=require('fs'), path=require('path');
-const ROOT=path.join(__dirname,'..'), OUT=path.join(__dirname,process.env.VARIANT==='clean'?'frames_clean':'frames');
-/* VARIANT=clean (v0.37b): the same two ways without the table and without the hand that holds the phone → sonaroids_clean.gif */
-const CLEAN=process.env.VARIANT==='clean';
+const V=process.env.VARIANT||'clean', ROOT=path.join(__dirname,'..'), OUT=path.join(__dirname,'frames_'+V);
 const D=4.5, FPS=20, W=+(process.env.W||960), H=+(process.env.H||540);
-/* where the two pictures sit (as the game's SPLIT_T / SPLIT_H: the phone's centre at ox·W, oy·H + a fixed drop; k — size) and the "or" between them */
-const J=process.env.LAYOUT?JSON.parse(process.env.LAYOUT):{}, LT=J.t||(CLEAN?{ox:0.2,oy:0.28,k:0.62}:{ox:0.23,oy:0.29,k:0.6}), LH_=J.h||(CLEAN?{ox:0.63,oy:0.28,k:0.62}:{ox:0.665,oy:0.27,k:0.6}), OR=J.or||(CLEAN?[0.49,0.62]:[0.475,0.56]);
+/* where the pictures sit (as the game's SPLIT_T / SPLIT_H: the phone's centre at ox·W, oy·H + a fixed drop; k — size) and the "or" between them */
+const DEF={clean:{t:{ox:0.2,oy:0.28,k:0.62},h:{ox:0.63,oy:0.28,k:0.62},or:[0.49,0.62]}, both:{t:{ox:0.23,oy:0.29,k:0.6},h:{ox:0.665,oy:0.27,k:0.6},or:[0.475,0.56]},
+  table:{t:{ox:0.43,oy:0.16,k:1,solo:1}}, hand:{h:{ox:0.4,oy:0.1,k:0.9}}}[V];
+if(!DEF) throw new Error('VARIANT: clean, table, hand or both');
+const J=Object.assign({},DEF,process.env.LAYOUT?JSON.parse(process.env.LAYOUT):{}), LT=J.t, LH_=J.h, OR=J.or;
+const NO_TABLE=V==='clean', NO_HOLD=V==='clean';
 
 let html=fs.readFileSync(path.join(ROOT,'game','play','index.html'),'utf8');
 const patch=(a,b)=>{ if(!html.includes(a)) throw new Error('anchor not found: '+a.slice(0,50)); html=html.replace(a,b); };
@@ -18,10 +26,10 @@ patch('function loop(now){\n  requestAnimationFrame(loop);','function loop(now){
 patch('function phoneGame(ph,o,cm,f,T,mirror){','function phoneGame(ph,o,cm,f,T,mirror){ if(window.__gifPhone) return window.__gifPhone(ph,o,cm,f,T,{iso:iso,R:R,blit:blit,SHIP_MAP:SHIP_MAP,P:P,light:light,K:K});');
 patch('  var t=performance.now()/1000;','  var t=window.__gifMode?window.__gifT*4*Math.PI/(3*'+D+'):performance.now()/1000;');   // star twinkle, looping with the GIF
 patch("if(al>0.5&&id!=='phone'){ var d0=","if(al>0.5&&id!=='phone'&&id!=='gif'){ var d0=");     // no height line: no rulers of any kind in the GIF
-patch('window.__sonaroids={','window.__gifFrame=function(t,f){ window.__gifT=t; sky(0,0); picture(function(){ var a=scene("gif",t,f,0,true,t,'+JSON.stringify(LT)+'), b=sceneHand("gif",t,f,0,true,t,'+JSON.stringify(LH_)+'), o=[]; o.screens=[a.screen,b.screen]; return o; },false); text("or",LW*'+OR[0]+',LH*'+OR[1]+',P.soft,"center"); var ty=Math.round(LH*0.1), tw=text("sonaroids.app",LW/2,ty,P.band,"center",2); light(LW/2,ty+7,tw*0.4,"127,224,200",0.12); present(0); };\nwindow.__sonaroids={');
-if(CLEAN){ patch('  lx.drawImage(tableC,0,0);','  if(0) lx.drawImage(tableC,0,0);');                     // no table…
-  patch('  if(al>0.1){ var sc=[Xa+hw/2,','  if(0){ var sc=[Xa+hw/2,');                                  // …and no shadow on it
-  const a=html.indexOf('function sceneHand('), b=html.indexOf('  var al=1, gap=(5+5*f)*cm',a);                // no hand holding the phone
+patch('window.__sonaroids={','window.__gifFrame=function(t,f){ window.__gifT=t; sky(0,0); picture(function(){ var o=[], sc=[]; '+(LT?'var a=scene("gif",t,f,0,true,t,'+JSON.stringify(LT)+'); sc.push(a.screen);':'')+(LH_?'var b=sceneHand("gif",t,f,0,true,t,'+JSON.stringify(LH_)+'); sc.push(b.screen);':'')+' o.screens=sc; return o; },false); '+(OR?'text("or",LW*'+OR[0]+',LH*'+OR[1]+',P.soft,"center"); ':'')+'var ty=Math.round(LH*0.1), tw=text("sonaroids.app",LW/2,ty,P.band,"center",2); light(LW/2,ty+7,tw*0.4,"127,224,200",0.12); present(0); };\nwindow.__sonaroids={');
+if(NO_TABLE){ patch('  lx.drawImage(tableC,0,0);','  if(0) lx.drawImage(tableC,0,0);');                  // no table…
+  patch('  if(al>0.1){ var sc=[Xa+hw/2,','  if(0){ var sc=[Xa+hw/2,'); }                              // …and no shadow on it
+if(NO_HOLD){ const a=html.indexOf('function sceneHand('), b=html.indexOf('  var al=1, gap=(5+5*f)*cm',a);                // no hand holding the phone
   html=html.slice(0,a)+html.slice(a,b).replace(/\n  (box\(gx|for\(j=0;j<4;j\+\+\) box\(gx)/g,'\n  if(0) $1')+html.slice(b); }
 const tmp=path.join(ROOT,'game','play','__gif.html'); fs.writeFileSync(tmp,html);
 

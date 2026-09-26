@@ -12,7 +12,7 @@ function fail(e){ show('home'); el('err').classList.remove('hidden'); el('err').
   window.addEventListener('resize',function(){ setTimeout(fitScreen,60); });
   window.addEventListener('orientationchange',function(){ setTimeout(function(){ handSide(); fitScreen(); },250); });
 })();
-function goFlow(flow){ if(flow==='rec'||flow==='recLong'){ lastRec=flow; runRec(flow==='recLong'?'long':'rec'); } else quickStart(); }
+function goFlow(flow){ if(flow==='dualIntro'){ show('dualIntro'); return; } if(flow==='rec'||flow==='recLong'){ lastRec=flow; runRec(flow==='recLong'?'long':'rec'); } else quickStart(); }
 /* запись вбок: сначала экран-подсказка; начать можно, только когда экран стоит вертикально (иначе метка пойдёт не по той оси) */
 function sideOri(){ if(el('sideIntro').classList.contains('hidden')) return; var up=window.innerHeight>window.innerWidth;
   el('sideOri').textContent=up?'Экран вертикально — можно начинать.':'Экран ещё горизонтальный. Поверни телефон вертикально; если экран не поворачивается — выключи блокировку поворота.';
@@ -30,12 +30,15 @@ el('silentT').addEventListener('click',function(){ try{ localStorage.setItem('so
 el('goGame').addEventListener('click',function(){ boot().then(function(){ viaOrient('game'); }).catch(fail); });
 el('goRec').addEventListener('click',function(){ boot().then(function(){ viaOrient('rec'); }).catch(fail); });
 el('goRecLong').addEventListener('click',function(){ boot().then(function(){ viaOrient('recLong'); }).catch(fail); });
+el('goRecDual').addEventListener('click',function(){ boot().then(function(){ lastRec='recDual'; viaOrient('dualIntro'); }).catch(fail); });
+el('dualGo').addEventListener('click',function(){ lastRec='recDual'; runRec('dual'); });
+el('dualBack').addEventListener('click',function(){ show('home'); });
 el('goRecSide').addEventListener('click',function(){ boot().then(toSide).catch(fail); });
 el('sideGo').addEventListener('click',function(){ lastRec='recSide'; runRec('side'); });
 el('sideBack').addEventListener('click',function(){ show('home'); });
 el('orientOk').addEventListener('click',function(){ goFlow(nextFlow); });
 el('orientBack').addEventListener('click',function(){ show('home'); });
-el('recAgain').addEventListener('click',function(){ if(lastRec==='recSide') toSide(); else viaOrient(lastRec); });
+el('recAgain').addEventListener('click',function(){ if(lastRec==='recSide') toSide(); else if(lastRec==='recDual') viaOrient('dualIntro'); else viaOrient(lastRec); });
 el('toHome').addEventListener('click',function(){ show('home'); });
 el('save').addEventListener('click',function(){ var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; document.body.appendChild(a); a.click(); setTimeout(function(){ a.remove(); },1000); });
 el('share').addEventListener('click',function(){ navigator.share({files:[new File([blob],fname,{type:'audio/wav'})],title:fname}).catch(function(){}); });

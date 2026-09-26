@@ -73,7 +73,19 @@ function analyse(meta,x){ const flo=C.bandOf(meta), rows=[]; let cur=null;
   const cum=[]; let acc=0; mv.forEach(r=>{ cum.push(r.fast); });
   const feats={'дальность эха':r=>r.range,'сила эха':r=>r.res,'быстрая часть':r=>r.fast};
   const fol={}; for(const [n,g] of Object.entries(feats)) fol[n]={x:follow(g,v=>v),ax:follow(g,v=>Math.abs(v))};
-  return {inf,mm,gA,H,dist,fol,rows,mvN:mv.length}; }
+  /* 27.09: главный тест — можно ли по эху восстановить x в движении. Подгоняю x ≈ a·дальность + b·сила + c (лучшая задержка до 0,6 с).
+     Одни «замри» обманчивы: у настоящей руки «галочка» (ближе всего к разъёму — не по центру, а на 1–2 см вбок, так ходит рука от локтя),
+     и крайние точки слева и справа могут различаться, хотя посередине пути лево и право путаются (запись 22:17, кулак) */
+  function fitX(lag){ const X=[],Y=[]; mv.forEach(r=>{ const tx=target(r.t-lag); if(tx===null) return; X.push([r.range,r.res,1]); Y.push(tx); });
+    const A=[[0,0,0],[0,0,0],[0,0,0]], b=[0,0,0]; X.forEach((v,i)=>{ for(let p=0;p<3;p++){ b[p]+=v[p]*Y[i]; for(let q=0;q<3;q++) A[p][q]+=v[p]*v[q]; } });
+    const det=m=>m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1])-m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0])+m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]);
+    const D=det(A); if(!D) return {lag,r2:0,rmse:NaN}; const w=[0,1,2].map(k=>det(A.map((row,i)=>row.map((v,j)=>j===k?b[i]:v)))/D);
+    const P=X.map(v=>v[0]*w[0]+v[1]*w[1]+w[2]), my=Y.reduce((u,v)=>u+v)/Y.length; let ss=0,st=0; P.forEach((p,i)=>{ ss+=(Y[i]-p)**2; st+=(Y[i]-my)**2; });
+    return {lag,r2:1-ss/st,rmse:Math.sqrt(ss/Y.length)}; }
+  let fx=null; for(let lag=-0.6;lag<=0.601;lag+=0.05){ const q=fitX(lag); if(!fx||q.r2>fx.r2) fx=q; }
+  const bins=[[-99,-25],[-25,-10],[-10,10],[10,25],[25,99]].map(([a,b])=>{ const w=mv.filter(r=>{ const tx=target(r.t-fx.lag); return tx!==null&&tx>=a&&tx<b; });
+    const m=k=>{ const v=w.map(r=>r[k]).sort((p,q)=>p-q); return v.length?v[v.length>>1]:NaN; }; return {a,b,range:m('range'),res:m('res')}; });
+  return {inf,mm,gA,H,dist,fol,fx,bins,rows,mvN:mv.length}; }
 
 function report(name,meta,x){ const R=analyse(meta,x), H=R.H, d=R.dist;
   console.log(`\n== ${name} ==${meta.synth?' (синтетика'+(meta.asym?', правая сторона сильнее на '+Math.round(meta.asym*100)+'%':'')+')':''} | зонд: выраженность ${R.inf.prom.toFixed(1)} дБ`+
@@ -100,9 +112,13 @@ function report(name,meta,x){ const R=analyse(meta,x), H=R.H, d=R.dist;
     console.log(`  ${key==='res'?'сила эха':'дальность'}: справа ${r.map(v=>v.toFixed(1)).join('/')}, слева ${l.map(v=>v.toFixed(1)).join('/')}, центр ${c.map(v=>v.toFixed(1)).join('/')} ${unit} → стороны ${lr?'РАСХОДЯТСЯ':'не расходятся'}, центр ${off?'отличается от краёв':'не отличается'}`);
     return {lr,off}; }
   const sR=sc('res',1,'дБ'), sG=sc('range',3,'мм');
-  const lr=lrP||sR.lr||sG.lr, off=offP||sR.off||sG.off;
-  const v=lr?'ЛЕВО И ПРАВО РАЗЛИЧИМЫ':off?'лево и право НЕ различимы; различимо только «ушла от центра»':'не различимы ни стороны, ни уход от центра';
-  console.log('  ВЫВОД: '+v); return {lr,off,sep,sepC}; }
+  const lrHold=lrP||sR.lr||sG.lr, off=offP||sR.off||sG.off;
+  console.log(`  в движении: x по дальности и силе эха — R² ${R.fx.r2.toFixed(2)}, ошибка ${R.fx.rmse.toFixed(0)} мм при размахе ±${A} (задержка ${R.fx.lag.toFixed(2)} с); по метке:`);
+  R.bins.forEach(q=>console.log(`    x ${(q.a<-90?'≤ −25':q.b>90?'≥ +25':(q.a>0?'+':'')+q.a+'…'+(q.b>0?'+':'')+q.b).padEnd(9)} мм | дальность ${q.range.toFixed(0).padStart(4)} мм | сила эха ${q.res.toFixed(1).padStart(5)} дБ`));
+  // лево и право различимы, только если x восстанавливается и в движении (R² ≥ 0,5), а не только на крайних «замри»
+  const lr=lrHold&&R.fx.r2>=0.5;
+  const v=lr?'ЛЕВО И ПРАВО РАЗЛИЧИМЫ':lrHold?'крайние положения слева и справа различаются, но в движении x по эху не восстанавливается — лево и право путаются':off?'лево и право НЕ различимы; различимо только «ушла от центра»':'не различимы ни стороны, ни уход от центра';
+  console.log('  ВЫВОД: '+v); return {lr,lrHold,off,sep,sepC,r2:R.fx.r2}; }
 
 module.exports={synthRec,analyse,report,target,SCRIPT_T:39};
 if(require.main===module){

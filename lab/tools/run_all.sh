@@ -19,5 +19,7 @@ echo; echo "== весь отклик сдвинулся без провала в
 echo; echo "== зонд пропал посреди партии =="; node tests/test_probe_lost.js
 echo; echo "== запись вбок: разбор на синтетике (симметрично и нет) =="; o=$(node eval_side.js --synth); echo "$o" | tail -5
 echo; echo "== запись вбок через страницу: портрет, метка, WAV, разбор =="; o=$(node tests/test_side_rec.js); echo "$o" | grep -v "^  "
+echo; echo "== два динамика: разбор на синтетике (два торца и один динамик) =="; o=$(node eval_dual.js --synth); echo "$o" | grep -E "ВЫВОД|ИТОГ"
+echo; echo "== два динамика через страницу: зонды по фазам, метка, WAV, разбор =="; o=$(node tests/test_dual_rec.js); echo "$o" | grep -E "^(ok|FAIL|ИТОГ)"
 echo; echo "== всё в один экран (Chromium; без playwright пропускается) =="; python3 tests/test_layout.py | tail -8
 echo; echo "== микрофон и звуковая сессия =="; node tests/test_mic_session.js

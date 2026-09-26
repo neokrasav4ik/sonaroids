@@ -16,6 +16,8 @@ SETUP={
  'rec':"show('rec'); el('say').textContent='Ладонь сбоку на 10 см'; el('sub').textContent='У края с микрофоном, ладонью вниз, напротив метки.'; el('clock').textContent='4.2 / 16 с';",
  'recDone':"show('recDone'); var st=el('stats'); ['длительность','разрывов потока','сторона руки','зонд слышен','пик входа','размер'].forEach(function(k){ var r=document.createElement('div'); r.className='kv'; r.innerHTML='<span>'+k+'</span><b>16.0 с</b>'; st.appendChild(r); }); el('share').classList.remove('hidden'); fitScreen();",
  'cal':"show('cal'); CS.busy=false; calText('Готовлюсь','Зонда почти не слышно',NOPROBE); el('calBig').textContent='руки пока не вижу'; el('calDiag').textContent='рука: видна (движение) · эхо +31 дБ над пустой · движение -18 дБ'; el('calLogS').classList.remove('hidden'); fitScreen();",
+ 'dualIntro':"lastRec='recDual'; show('dualIntro');",
+ 'recDual':"lastRec='recDual'; show('recSide'); buildHTrack(DUAL_A); el('mkH').style.left=xOf(60)+'px'; el('sdSay').textContent='Закрой пальцем верхний динамик'; el('sdSub').textContent='Узкая щель над экраном, у фронтальной камеры. Три секунды.'; el('sdClock').textContent='10.2 / 45 с';",
  'menu':"show('game'); el('gPanel').classList.remove('hidden'); el('gLogI').textContent='Записано 150 с партии (последние 150 с). Журнал настройки: 120 с.'; fitScreen();",
 }
 # 26.09: запись вбок идёт с телефоном вертикально — её экраны проверяю в портрете

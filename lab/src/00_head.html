@@ -138,6 +138,7 @@
     <button id="goRec" class="ghost">Запись для меня</button>
     <button id="goRecLong" class="ghost">Длинная запись (1,5 мин)</button>
     <button id="goRecSide" class="ghost">Запись вбок (телефон вертикально)</button>
+    <button id="goRecDual" class="ghost">Два динамика</button>
     <p class="small" style="margin:-.15rem 0 .2rem">По метке, 16 с или 1,5 мин — присылаешь WAV, я проверяю механику на твоём сигнале.</p>
     <button id="silentT" class="ghost" style="font-size:.84rem">Беззвучный режим телефона: …</button>
     <p id="silentP" class="small" style="margin:-.15rem 0 .2rem"></p>
@@ -180,6 +181,26 @@
     <div id="sideOri"></div>
     <button id="sideGo" class="big">Держу, начать</button>
     <button id="sideBack" class="ghost">Назад</button>
+  </div>
+</div></div>
+
+<div class="screen hidden" id="dualIntro"><div class="two">
+  <div class="col">
+    <h1>Два динамика</h1>
+    <p>Телефон лежит горизонтально экраном вверх, как в игре. Сначала пару секунд руку не подноси, потом по команде закрой пальцем верхний динамик — узкую щель над экраном у фронтальной камеры.</p>
+    <p>Потом ладонь вниз, ~5 см над столом, у <b>ближнего к тебе длинного края</b> телефона: веди её вдоль телефона за меткой внизу экрана, от торца к торцу. 45 с.</p>
+  </div>
+  <div class="col btns">
+    <svg class="pic" viewBox="0 0 220 120" aria-hidden="true" style="width:100%;max-height:30vh">
+      <rect x="30" y="14" width="160" height="72" rx="10" fill="#1b2630" stroke="#3A4A52"/>
+      <rect x="182" y="42" width="4" height="16" rx="2" fill="#8A9B96"/><text x="200" y="54" fill="#8A9B96" font-size="8">разъём</text>
+      <rect x="35" y="36" width="3" height="28" rx="1.5" fill="#8A9B96"/><text x="30" y="9" fill="#8A9B96" font-size="8">верхний динамик ↓</text>
+      <path d="M92,96 q-8,-2 -10,8 l0,10 q12,4 36,0 l0,-10 q-2,-10 -10,-8z" fill="#E0B592" stroke="#9c7556"/>
+      <path d="M70,108 l-24,0" stroke="#E7EDE9" stroke-width="2"/><path d="M46,108 l6,-4 l0,8z" fill="#E7EDE9"/>
+      <path d="M150,108 l24,0" stroke="#E7EDE9" stroke-width="2"/><path d="M174,108 l-6,-4 l0,8z" fill="#E7EDE9"/>
+    </svg>
+    <button id="dualGo" class="big">Начать</button>
+    <button id="dualBack" class="ghost">Назад</button>
   </div>
 </div></div>
 

@@ -6,7 +6,7 @@ A tiny retro space game for phones that you steer with your palm — **without t
 
 <p align="center"><img src="promo/sonaroids.gif" width="720" alt="Two ways to play, side by side: a palm moving up and down beside the lying phone, or a palm moving to and from the phone's end; on both screens the ship follows the palm and shoots rocks"></p>
 
-The phone lies flat on the table — or sits in your other hand. It plays an inaudible ultrasonic tone through its own speaker and listens to the echo with its own microphone. How far your palm is from the phone becomes the height of your ship: a palm above the lying phone, or a palm at the end of the held one. The ship fires on its own — you only choose where to be.
+The phone lies flat on the table. It plays an inaudible ultrasonic tone through its own speaker and listens to the echo with its own microphone. The height of your palm beside the phone becomes the height of your ship. The ship fires on its own — you only choose where to be.
 
 **▶ Play: [sonaroids.app](https://sonaroids.app)** — best on iPhone, added to the Home Screen.
 
@@ -26,22 +26,20 @@ A game lasts a few minutes: the pace keeps growing, and a hand held in the air g
 - **Points by height:** the middle of the screen ×3, then ×2, the edges ×1; plus a **streak** multiplier for hits in a row (up to ×4).
 - **Power-ups** — fly into them: shield (takes one hit), triple shot, slow motion (once the game has sped up), and a heart — an extra life (only after you've lost one, never above three).
 - **Saucers:** a large one from level 2, a small one that aims at you from level 4. They sidestep when you line up with them; the large one takes two hits.
-- **Pause menu:** go on, start over (straight away or recalibrate), end the game, exit, and the sound row.
-- **Sounds:** "- SOUNDS ▮▮▮▮▮▮▯▯ +" in the menu and in the pause — 8 levels, a tap in the middle switches them off and on. If the game's own sounds get too loud for the microphone, it turns them down by itself.
+- **Pause menu:** go on, start over (straight away or recalibrate), end the game, exit.
 - **High scores:** today, this week, all time. Every game is on a freshly generated layout. The first time a game makes the table, the game asks for a name (Latin letters, digits, `_`).
 
 In flight the screen shows only the score and, small in the top corner, sonaroids.app — no labels, no numbers popping up. The picture is drawn at low resolution in whole pixels, with soft light on top; graphics, sounds and the 5×7 pixel font are all made in code.
 
 ## Phones
 
-It works best on **iPhone**. On **Android** (Chrome) it depends on the phone's speaker and microphone: many phones pass the 18–20 kHz band poorly, and control can be noticeably worse or not work at all. Tried so far: OnePlus 13 — poor on the table, but held in the hand almost as good as an iPhone; Redmi Note 10 — the palm is heard only at the front-camera end, and not precisely. The notes games send to the server show the palm heard on Galaxy S25, Pixel 8 Pro, Nothing Phone (3a), realme GT Neo 5 and Honor 600 Lite; OnePlus 9 Pro is too quiet. The game learns which end of the phone your hand should be at, and says so if it can't hear the palm. Details: `docs/design.md`, section 2.
+It works best on **iPhone**. On **Android** (Chrome) it depends on the phone's speaker and microphone: many phones pass the 18–20 kHz band poorly, and control can be noticeably worse or not work at all. Tried so far: OnePlus 13 — poor; Redmi Note 10 — the palm is heard only at the front-camera end, and not precisely. The game learns which end of the phone your hand should be at, and says so if it can't hear the palm. Details: `docs/design.md`, section 2.
 
 ## How the sonar works, in short
 
 - The probe is a periodic multi-tone signal: 512 samples at 48 kHz, 23 tones from 18.4 to 20.4 kHz. An AudioWorklet delivers the microphone stream sample-exact, so the echo picture is computed coherently every 10.7 ms.
 - Palm **motion** comes from the phase change of the echo (sub-millimetre, but it drifts); palm **position** comes from where the echo sits compared with the empty room (noisy, but it doesn't drift). The two are fused: motion drives the ship, position keeps it from wandering.
 - The echo is measured against the direct sound's own level; on phones whose speaker fades toward 20 kHz the band is equalized; if the phone drops a stretch of input, the direct sound is found again.
-- With the phone in the hand the whole echo picture sometimes jumps in time at once, with no gap in the input (by 256 samples on an iPhone, ~144 on a OnePlus). When the direct sound disappears, the sonar looks for a shifted copy of the whole response, gathered over a third of a second so that the moving palm's echo cancels out, and moves there. Only if there is none is the speaker taken as covered, and the game says so.
 - No separate calibration: before each game you take your hand away (the empty room), then wave — and the screen is fitted to your range.
 
 Measurements, experiments and what didn't work: `lab/HANDOVER.md` (Russian).
@@ -60,7 +58,7 @@ A game is sent to the server not as a score but as the game itself: the layout n
 | `tests/` | the game's and the server's checks: `sh tests/run.sh` |
 | `lab/` | the sonar lab: the test app `lab/app/sonar_lab3.html` (published unlinked at `/lab/sonar_lab3.html`), its sources and offline benches; notes in Russian |
 | `font/` | the 5×7 pixel font (Latin and Cyrillic): `font5x7.txt` is the drawing, `make_font.py` packs it into `game/font.js` |
-| `promo/` | the GIFs, drawn by the game's own code: `sonaroids.gif` (above — both ways), `sonaroids_table.gif`, `sonaroids_hand.gif`, `sonaroids_both_table.gif`; all of them: `sh promo/make_all.sh` |
+| `promo/` | the GIF above, drawn by the game's own code: `node promo/make_gif.js && python3 promo/make_gif.py` |
 | `docs/` | the design document `design.md` (Russian original in `docs/ru/`), the server install guide in Russian |
 
 ### The game's code (`src/`)

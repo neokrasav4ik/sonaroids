@@ -35,12 +35,34 @@ var SCRIPT_SIDE=[
   {t:36, k:'away',  say:'Убери руку',            sub:'Совсем.', H:function(){return null;}, d:'—'},
   {t:39, k:'end'}
 ];
-var trackW=0;
-function xOf(v){ return (0.5+v/(2*SIDE_A*1.2))*trackW; }
-function buildHTrack(){ var tr=el('trH'); trackW=tr.getBoundingClientRect().width||300;
+/* 27.09: «Два динамика» — у iPhone два динамика: внизу (у разъёма) и разговорный в верхнем торце. Если каждый канал играет свой зонд
+   (чётные и нечётные частоты), один микрофон слышит два расстояния до руки — по ним можно понять, где рука ВДОЛЬ телефона.
+   Запись проверяет: (1) правда ли каналы звучат из разных торцов (задержка прямого сигнала, закрытый пальцем верхний динамик);
+   (2) следует ли разница двух расстояний за ладонью, которая ходит вдоль длинного края. Телефон лежит горизонтально, как в игре.
+   Метка — положение ладони вдоль телефона в мм от середины, + — вправо (как видит игрок). Разбор — tools/eval_dual.js */
+var DUAL_A=60;
+var SCRIPT_DUAL=[
+  {t:0,  k:'e_l',    probe:'single-left',  say:'Убери руку', sub:'Слушаю левый канал.', H:function(){return null;}, d:'—'},
+  {t:3,  k:'e_r',    probe:'single-right', say:'Убери руку', sub:'Слушаю правый канал.', H:function(){return null;}, d:'—'},
+  {t:6,  k:'e_d',    probe:'dual', say:'Убери руку', sub:'Оба динамика вместе.', H:function(){return null;}, d:'—'},
+  {t:9,  k:'cover',  probe:'dual', say:'Закрой пальцем верхний динамик', sub:'Узкая щель над экраном, у фронтальной камеры. Три секунды.', H:function(){return null;}, d:'—'},
+  {t:12, k:'uncover',probe:'dual', say:'Убери палец', sub:'И руку тоже.', H:function(){return null;}, d:'—'},
+  {t:14, k:'place',  probe:'dual', say:'Ладонь у ближнего длинного края', sub:'Ладонью вниз, ~5 см над столом, напротив метки.', H:function(){return 0;}, d:'0'},
+  {t:17, k:'move',   probe:'dual', say:'Веди за меткой', sub:'Вдоль телефона, на той же высоте.', H:function(t){return DUAL_A*Math.sin(2*Math.PI*(t-17)/8);}, d:DUAL_A+'*sin(2pi(t-17)/8)'},
+  {t:33, k:'hl',     probe:'dual', say:'Замри слева', sub:'Напротив метки.', H:function(){return -DUAL_A;}, d:String(-DUAL_A)},
+  {t:36, k:'hr',     probe:'dual', say:'Замри справа', sub:'Напротив метки.', H:function(){return DUAL_A;}, d:String(DUAL_A)},
+  {t:39, k:'hc',     probe:'dual', say:'Замри по центру', sub:'Напротив метки.', H:function(){return 0;}, d:'0'},
+  {t:42, k:'away',   probe:'dual', say:'Убери руку', sub:'Совсем.', H:function(){return null;}, d:'—'},
+  {t:45, k:'end'}
+];
+var trackW=0, trackA=SIDE_A;
+function xOf(v){ return (0.5+v/(2*trackA*1.2))*trackW; }
+function buildHTrack(A){ trackA=A||SIDE_A; var tr=el('trH'); trackW=tr.getBoundingClientRect().width||300;
   Array.prototype.slice.call(tr.querySelectorAll('.lab,.tick')).forEach(function(x){ x.remove(); });
-  [-40,-20,0,20,40].forEach(function(v){
-    var l=document.createElement('div'); l.className='lab'; l.textContent=v===0?'центр':(v<0?'← ':'')+(Math.abs(v)/10)+' см'+(v>0?' →':''); l.style.left=xOf(v)+'px'; tr.appendChild(l);
+  var os=A?orientSide():null;   /* для «двух динамиков» концы дорожки подписаны торцами телефона */
+  [-1,-0.5,0,0.5,1].map(function(f){ return f*trackA; }).forEach(function(v){
+    var end=v===-trackA?'left':v===trackA?'right':null, tag=(os&&end)?(end===os?'разъём':'камера'):null;
+    var l=document.createElement('div'); l.className='lab'; l.textContent=tag?(end==='left'?'← '+tag:tag+' →'):v===0?'центр':(v<0?'← ':'')+(Math.abs(v)/10)+' см'+(v>0?' →':''); l.style.left=xOf(v)+'px'; tr.appendChild(l);
     var k=document.createElement('div'); k.className='tick'; k.style.left=xOf(v)+'px'; tr.appendChild(k); }); }
 var trackH=0;
 function yOf(v){ return (1-(v-30)/(170-30))*trackH; }
@@ -54,16 +76,16 @@ function buildTracks(){
     var k=document.createElement('div'); k.className='tick'; k.style.top=yOf(v)+'px'; tr.appendChild(k); });
 }
 var recMeta=null, blob=null, fname='';
-/* kind: 'rec' — 16 с, 'long' — 1,5 мин, 'side' — вбок, телефон вертикально */
-function runRec(kind){ var long=kind==='long', side=kind==='side', S=side?SCRIPT_SIDE:long?SCRIPT_LONG:SCRIPT, TOT=S[S.length-1].t;
+/* kind: 'rec' — 16 с, 'long' — 1,5 мин, 'side' — вбок, телефон вертикально, 'dual' — два динамика (метка тоже по горизонтальной дорожке) */
+function runRec(kind){ var long=kind==='long', dual=kind==='dual', side=kind==='side'||dual, S=dual?SCRIPT_DUAL:kind==='side'?SCRIPT_SIDE:long?SCRIPT_LONG:SCRIPT, TOT=S[S.length-1].t;
   var SAY=side?'sdSay':'say', SUB=side?'sdSub':'sub', CLK=side?'sdClock':'clock';
-  if(side){ show('recSide'); el('mkH').style.opacity=0; } else { show('rec'); el('mkL').style.opacity=0; el('mkR').style.opacity=0; }
+  if(side){ show('recSide'); el('mkH').style.opacity=0; el('sdPort').style.display=dual?'none':''; } else { show('rec'); el('mkL').style.opacity=0; el('mkR').style.opacity=0; }
   el(SAY).textContent='Выбираю динамик'; el(SUB).textContent='Рука убрана.'; el(CLK).textContent='';
   mode=null; rec={on:false,frames:[],gaps:0};
   var prom;
   pickChannel().then(function(){ return autoLevel(); }).then(function(){
-    if(side) buildHTrack(); else buildTracks(); mode='rec';
-    el(SUB).textContent=side?'Правая ладонь у разъёма.':'Рука будет '+(hand==='left'?'слева':'справа')+' от телефона'+(orientSide()?(hand===orientSide()?', у разъёма.':', у фронтальной камеры.'):'.');
+    if(side) buildHTrack(dual?DUAL_A:0); else buildTracks(); mode='rec';
+    el(SUB).textContent=dual?'Телефон лежит горизонтально.':side?'Правая ладонь у разъёма.':'Рука будет '+(hand==='left'?'слева':'справа')+' от телефона'+(orientSide()?(hand===orientSide()?', у разъёма.':', у фронтальной камеры.'):'.');
     return sleep(400).then(function(){ return collect(10); });
   }).then(function(fr){
     prom=promSub(fr,'all');
@@ -79,7 +101,7 @@ function runRec(kind){ var long=kind==='long', side=kind==='side', S=side?SCRIPT
         var t=(performance.now()-t0)/1000,i;
         for(i=S.length-1;i>=0;i--) if(t>=S[i].t) break;
         if(i!==cur){ cur=i; var s=S[i]; if(s.k==='end'){ done(marks); return; }
-          marks[s.k]=rec.frames.length*N; el(SAY).textContent=s.say; el(SUB).textContent=s.sub; }
+          marks[s.k]=rec.frames.length*N; el(SAY).textContent=s.say; el(SUB).textContent=s.sub; if(s.probe) setProbe(s.probe); }
         var h=S[cur].H(t); el(mk).style.opacity=h===null?0:1; if(h!==null){ if(side) el(mk).style.left=xOf(h)+'px'; else el(mk).style.top=yOf(h)+'px'; }
         el(CLK).textContent=t.toFixed(1)+' / '+TOT+' с'; requestAnimationFrame(tick);
       })();
@@ -89,14 +111,14 @@ function runRec(kind){ var long=kind==='long', side=kind==='side', S=side?SCRIPT
       rec.frames.forEach(function(f,j){ all.set(f,j*N); });
       var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
       var so=(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0);
-      recMeta={v:4,kind:side?'side-portrait':long?'single-landscape-long':'single-landscape',fs:fs,N:N,kLo:kLo,kHi:kHi,
+      recMeta={v:4,kind:dual?'dual-landscape':side?'side-portrait':long?'single-landscape-long':'single-landscape',port:orientSide(),dual_gain:0.25,fs:fs,N:N,kLo:kLo,kHi:kHi,
         hand:hand,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
         prom_db:prom,samples:n,gaps:rec.gaps,peak:pk,orientation:{angle:so,w:window.innerWidth,h:window.innerHeight},
-        script:S.filter(function(s){return s.k!=='end';}).map(function(s){ return {k:s.k,t:s.t,H:s.d}; }),
-        marks:marks,units:side?'target sideways offset of the palm in mm, + = to the right as the player sees it (phone upright, port towards the player)':'target height in mm above the table',ua:navigator.userAgent,date:new Date().toISOString()};
+        script:S.filter(function(s){return s.k!=='end';}).map(function(s){ return {k:s.k,t:s.t,H:s.d,probe:s.probe}; }),
+        marks:marks,units:dual?'target position of the palm along the phone in mm from its middle, + = to the right as the player sees it (phone flat, landscape); port — the end with the port, from the screen rotation':side?'target sideways offset of the palm in mm, + = to the right as the player sees it (phone upright, port towards the player)':'target height in mm above the table',ua:navigator.userAgent,date:new Date().toISOString()};
       blob=wav(all,recMeta);
       var d=new Date(), z=function(x){ return (x<10?'0':'')+x; };
-      fname=(side?'sonarside_':long?'sonarlong_':'sonar1h_')+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+'.wav';
+      fname=(dual?'sonardual_':side?'sonarside_':long?'sonarlong_':'sonar1h_')+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+'.wav';
       showDone(pk,prom);
     });
   });
@@ -122,7 +144,8 @@ function showDone(pk,pr){
   function kv(k,v,c){ var r=document.createElement('div'); r.className='kv'; r.innerHTML='<span>'+k+'</span><b class="'+(c||'')+'">'+v+'</b>'; st.appendChild(r); }
   kv('длительность',(recMeta.samples/fs).toFixed(1)+' с');
   kv('разрывов потока',recMeta.gaps,recMeta.gaps===0?'good':'bad');
-  if(recMeta.kind==='side-portrait'){ var up=recMeta.orientation.h>recMeta.orientation.w; kv('экран',up?'вертикально':'горизонтально — поверни и запиши заново',up?'good':'bad'); }
+  if(recMeta.kind==='dual-landscape'){ kv('разъём',recMeta.port==='right'?'справа':recMeta.port==='left'?'слева':'не знаю',recMeta.port?'good':'bad'); }
+  else if(recMeta.kind==='side-portrait'){ var up=recMeta.orientation.h>recMeta.orientation.w; kv('экран',up?'вертикально':'горизонтально — поверни и запиши заново',up?'good':'bad'); }
   else { var os=orientSide(); kv('сторона руки',(hand==='left'?'слева':'справа')+(os?(hand===os?' — у разъёма':' — у фронтальной камеры'):'')); }
   kv('зонд слышен',pr.toFixed(0)+' дБ',pr>=15?'good':'bad');
   kv('пик входа',pk.toFixed(3),(pk>0.002&&pk<0.98)?'good':'bad');

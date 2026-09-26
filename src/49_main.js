@@ -52,8 +52,8 @@ function sideX(w){ return freeSide()==='left'?SAFE.l+Math.max(8,Math.round(LW*0.
 /* a column of buttons on the free side, vertically centred on y0 */
 function column(items,y0,x0){ var w=btnW(items.map(function(b){ return b[1]; })), h=BH, gap=10, y=Math.round(y0-(items.length*(h+gap)-gap)/2), x=x0===undefined?sideX(w):x0;
   items.forEach(function(b){ button(b[0],b[1],x,y,w,h,b[2]||'',Math.floor(clock*2)%2===0); y+=h+gap; }); }
-function nextBtn(id,label){ var w=btnW([label]); button(id,label,sideX(w),Math.round(LH*0.64),w,BH,'primary',Math.floor(scrT*2)%2===0); }
-function ringAt(){ return freeSide()==='left'?[Math.round(LW*0.13),Math.round(LH*0.42)]:[Math.round(LW*0.87),Math.round(LH*0.42)]; }
+function nextBtn(id,label){ var w=btnW([label]); button(id,label,sideX(w),Math.round(LH*0.76),w,BH,'primary',Math.floor(scrT*2)%2===0); }   /* v0.35: lower, off the pictures */
+function ringAt(){ return freeSide()==='left'?[Math.round(LW*0.13),Math.round(LH*0.74)]:[Math.round(LW*0.87),Math.round(LH*0.74)]; }   /* v0.35: lower, under the two pictures */
 function ringUI(p,st){ var r=ringAt(), col=st==='wait'?P.soft:st==='ok'?P.band:P.bullet;
   ring(r[0],r[1],11,p,col); if(st==='ok') tick(r[0],r[1],P.band);
   text(L(st==='wait'?'ring_wait':st==='listen'?'ring_listen':st==='catch'?'ring_catch':'ring_ok'),r[0],r[1]+17,col,'center'); }
@@ -83,13 +83,13 @@ function sSound(){ sky(DT,0.3); titles(L(direct?'volume_direct':'volume'),L('vol
 function inBrowser(){ var ua=navigator.userAgent||'', mob=/iPhone|iPad|iPod|Android/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1), pwa=false;
   try{ pwa=!!(navigator.standalone||matchMedia('(display-mode: standalone)').matches); }catch(e){} return mob&&!pwa; }
 function sPhone(){ sky(DT,0.3); var m=handSide()==='left';
-  picture(function(){ return scene('phone',scrT,0.5,0,false,clock); },m); titles(L('phone_t'),L(camEnd()?'phone_s_cam':'phone_s'));
+  picture(function(){ return sceneBoth('phone',scrT,0.5,0,false,clock); },m); titles(L('phone_t'),L(camEnd()?'phone_s_cam':'phone_s'));
   if(scrT>1.2) nextBtn('next',L('next')); stepSquares('phone'); }
 function sMic(){ sky(DT,0.3); var m=handSide()==='left';
-  picture(function(){ return scene('away',scrT,0.5,0,true,clock); },m); titles(L('mic_t'),L('mic_s'));
-  var w=btnW([L('allow')]); button('allow',L('allow'),sideX(w),Math.round(LH*0.64),w,BH,'primary',Math.floor(scrT*2)%2===0); stepSquares('mic'); }
+  picture(function(){ return sceneBoth('away',scrT,0.5,0,true,clock); },m); titles(L('mic_t'),L('mic_s'));
+  var w=btnW([L('allow')]); button('allow',L('allow'),sideX(w),Math.round(LH*0.76),w,BH,'primary',Math.floor(scrT*2)%2===0); stepSquares('mic'); }
 function sAway(){ sky(DT,0.3); var m=handSide()==='left', aw=Math.min(1,Math.max(0,(scrT-AWAY_T0)/(AWAY_T1-AWAY_T0)));
-  picture(function(){ return scene('away',scrT,0.5,aw,scrT>PAUSE,clock); },m);
+  picture(function(){ return sceneBoth('away',scrT,0.5,aw,scrT>PAUSE,clock); },m);
   var st=scrT<PAUSE?'wait':(prep&&prep.res&&prep.res.ok)?'ok':'listen';
   titles(L('away_t'),st==='ok'?L('away_ok'):L('away_s'));
   ringUI(st==='wait'?scrT/PAUSE:st==='ok'?1:Math.min(0.95,(scrT-PAUSE)/3.2),st);
@@ -105,7 +105,7 @@ function sWave(){ sky(DT,0.3); poolFill(1); var m=handSide()==='left', f=handFra
   var stt=Sonar.state(); if((stt&&stt.present)||scrT<WAVE_PAUSE) seenT=Math.max(seenT,scrT);
   if(!caught&&scrT-seenT>NOHAND_T) flipSide();
   if(caught&&scrT-caughtT>=CAUGHT_SHOW){ sTry(); return; }
-  picture(function(){ return scene('wave',scrT,live?f:waveH(scrT),0,scrT>WAVE_PAUSE,clock); },m);
+  picture(function(){ return sceneBoth('wave',scrT,live?f:waveH(scrT),0,scrT>WAVE_PAUSE,clock); },m);
   var st=scrT<WAVE_PAUSE?'wait':caught?'ok':'catch', dur=T.buf.length?T.buf[T.buf.length-1].t-T.buf[0].t:0;
   var wty=(scrT-flipT<4&&!caught)?titles(L('other_t'),L('other_s'),P.pick):titles(L('wave_t'),caught?L('wave_ok'):L('wave_s')); coveredLine(wty+2);
   ringUI(st==='wait'?scrT/WAVE_PAUSE:st==='ok'?1:Math.min(0.95,dur/5.2),st);

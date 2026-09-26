@@ -12,10 +12,10 @@ The phone lies flat on the table. It plays an inaudible ultrasonic tone through 
 
 ## How to play
 
-1. Turn the phone sideways and lay it on the table, screen up.
+1. Turn the phone sideways and lay it on the table, screen up — or hold it in your other hand, screen up.
 2. Set the **media volume** to 30–70% (the silent switch doesn't matter).
 3. Allow the microphone. Take your hand away for a moment — the game listens to the empty room.
-4. Wave your palm up and down **5–10 cm above the table**, beside the phone. The game fits the screen to your range, then shows the real ship following your palm — check the top and the bottom, and play (or recalibrate).
+4. Wave your palm up and down **5–10 cm above the table**, beside the phone — or, with the phone in your hand, move your palm, edge down, **5–10 cm from the phone's end** with the charging port (closer means lower). Don't cover the speaker or the microphone. The game fits the screen to your range, then shows the real ship following your palm — check the top and the bottom, and play (or recalibrate).
 5. Fly: dodge the rocks, stay in the middle for more points, catch power-ups.
 
 A game lasts a few minutes: the pace keeps growing, and a hand held in the air gets tired too — that's part of it.

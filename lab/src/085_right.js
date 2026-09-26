@@ -23,7 +23,18 @@ function buildRTrack(){ var tr=el('trH'); trackW=tr.getBoundingClientRect().widt
 function rightOri(){ if(el('rightIntro').classList.contains('hidden')) return; var up=window.innerHeight>window.innerWidth;
   el('rightOri').textContent=up?'Экран вертикально — можно начинать.':'Экран ещё горизонтальный. Поверни телефон вертикально; если экран не поворачивается — выключи блокировку поворота.';
   el('rightOri').className=up?'good':'bad'; el('rightRec').disabled=!up; el('rightPlayGo').disabled=!up; }
-function toRight(){ lastRec='recRight'; show('rightIntro'); rightOri(); }
+/* 27.09: поза. 'near' — разъём к себе (как было); 'away' — телефон вверх ногами, разъём наверху смотрит от игрока, ладонь справа
+   от ВЕРХНЕГО торца. Сидя поза «к себе» не играется (автор): разъём смотрит в грудь в 15–30 см, эхо тела глушит ладонь.
+   iPhone экран вверх ногами не поворачивает — экраны пробы и записи поворачиваю сам (body.flip). */
+var rpPose='near'; try{ var sp=localStorage.getItem('sonar_right_pose'); if(sp==='near'||sp==='away') rpPose=sp; }catch(e){}
+var RP_PNAME={near:'разъём к себе',away:'разъём от себя (телефон вверх ногами)'};
+function rpPoseLabel(){ var t='Поза: '+RP_PNAME[rpPose]; ['rightPose','rpPose'].forEach(function(id){ el(id).textContent=t; });
+  el('rightHow').textContent=rpPose==='away'?'Телефон вертикально, экраном вверх, ВВЕРХ НОГАМИ — разъём наверху, смотрит от тебя. Правая ладонь ребром, ладонью к телефону, справа от верхнего торца, на одной линии с ним, в 5–15 см. Экран пробы перевернётся сам.'
+    :'Телефон вертикально, экраном вверх, разъёмом к себе. Правая ладонь ребром, ладонью к телефону, справа от нижнего торца, на одной линии с ним, в 5–15 см.'; }
+function rpPicPose(){ var p=document.querySelector&&document.querySelector('#rightIntro .pic'); if(p&&p.classList) p.classList.toggle('away',rpPose==='away'); }
+function rpPoseNext(){ rpPose=rpPose==='near'?'away':'near'; try{ localStorage.setItem('sonar_right_pose',rpPose); }catch(e){} rpPoseLabel(); rpPicPose(); }
+function rpFlip(on){ if(document.body&&document.body.classList) document.body.classList.toggle('flip',!!on); }
+function toRight(){ lastRec='recRight'; rpFlip(false); show('rightIntro'); rightOri(); }
 window.addEventListener('resize',function(){ setTimeout(rightOri,80); });
 
 /* ── режимы управления пробы (27.09). Запись по метке 23:41: ладонь сбоку от разъёма слышна слабо — 7–12% энергии эха,
@@ -57,8 +68,9 @@ function rpButtons(v){ el('rpBtns').classList.toggle('hidden',!v); }
 function rightPlay(){
   show('rightPlay'); rpButtons(false); cancelAnimationFrame(RP.raf);
   RP={on:false,frames:[],gaps:0,marks:{},ship:[],map:null,phase:'prep',t0:0,lives:3,score:0,rocks:[],inv:0,spawn:0.6,last:0,x:0.5,present:false,dist:null,raf:0,wave:[],best:RP.best||0};
-  rpText('Готовлюсь','Убери руку. Подбираю громкость зонда.'); mode=null; rpDraw();
-  pickChannel().then(function(){ return autoLevel(); }).then(function(L){
+  RP.pose=rpPose; rpFlip(rpPose==='away'); mode=null; rpDraw();
+  (rpPose==='away'?(rpText('Переверни телефон','Разъём наверху, от себя. Ладонь — справа от верхнего торца.'),sleep(3500)):Promise.resolve()).then(function(){
+    rpText('Готовлюсь','Убери руку. Подбираю громкость зонда.'); return pickChannel(); }).then(function(){ return autoLevel(); }).then(function(L){
     if(L.snr<30){ setProbe('off'); rpText('Зонда почти не слышно',NOPROBE); rpButtons(true); return null; }
     RP.D=rpDSP(rpMode); RP.mode=rpMode; if(!RP.D){ RP.D=DSP2; RP.mode='game'; }
     RP.D.init(fs,'all'); RP.D.setCal(PHYS_CAL); mode='right'; RP.on=true; rpMark('empty'); RP.phase='empty';
@@ -108,7 +120,7 @@ function rpDraw(){ var cv=el('rpC'); if(!cv||!cv.getContext) return; var dpr=win
   c.fillText(RP.dist===null?'ладони не слышно':(RP.present?'':'(нет ладони) ')+'ладонь '+(RP.dist/10).toFixed(1).replace('.',',')+' см',W/2,H-10*dpr); }
 function rpSave(){ if(!RP.frames.length) return; var n=RP.frames.length*N, all=new Float32Array(n); RP.frames.forEach(function(f,j){ all.set(f,j*N); });
   var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
-  var meta={v:1,kind:'right-play',mode:RP.mode,map0:RP.map0,fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
+  var meta={v:1,kind:'right-play',mode:RP.mode,pose:RP.pose,map0:RP.map0,fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
     cal:PHYS_CAL,map:RP.map,marks:RP.marks,ship:RP.ship,score:RP.score,lives:RP.lives,samples:n,gaps:RP.gaps,peak:pk,
     orientation:{angle:(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0),w:window.innerWidth,h:window.innerHeight},
     units:'ship: [frame, x 0..1 across the screen, palm seen]; map: height mm (DSP2, PHYS_CAL) → screen, lo → 6%, hi → 94%',ua:navigator.userAgent,date:new Date().toISOString()};
@@ -118,11 +130,15 @@ function rpSave(){ if(!RP.frames.length) return; var n=RP.frames.length*N, all=n
   if(navigator.canShare){ try{ var fl=new File([b],name,{type:'audio/wav'}); if(navigator.canShare({files:[fl]})){ navigator.share({files:[fl],title:name}).catch(function(){}); return; } }catch(e){} }
   var a2=document.createElement('a'); a2.href=URL.createObjectURL(b); a2.download=name; document.body.appendChild(a2); a2.click(); setTimeout(function(){ a2.remove(); },1000); }
 el('goRight').addEventListener('click',function(){ boot().then(toRight).catch(fail); });
-el('rightRec').addEventListener('click',function(){ lastRec='recRight'; runRec('right'); });
+el('rightRec').addEventListener('click',function(){ lastRec='recRight';
+  if(rpPose!=='away'){ rpFlip(false); runRec('right'); return; }
+  rpFlip(true); show('recSide'); el('sdPort').style.display='none'; el('mkH').style.opacity=0; el('sdSay').textContent='Переверни телефон'; el('sdSub').textContent='Разъём наверху, от себя. Ладонь — справа от верхнего торца.'; el('sdClock').textContent='';
+  sleep(3500).then(function(){ runRec('right'); }); });
 el('rightPlayGo').addEventListener('click',function(){ lastRec='recRight'; rightPlay(); });
 el('rightBack').addEventListener('click',function(){ show('home'); });
 el('rightMode').addEventListener('click',rpModeNext); el('rpMode').addEventListener('click',rpModeNext); rpModeLabel();
+el('rightPose').addEventListener('click',rpPoseNext); el('rpPose').addEventListener('click',rpPoseNext); rpPoseLabel(); rpPicPose();
 el('rpAgain').addEventListener('click',function(){ rightPlay(); });
 el('rpSave').addEventListener('click',function(){ rpSave(); });
 el('rpStop').addEventListener('click',function(){ if(RP.phase==='play'){ RP.lives=0; return; } cancelAnimationFrame(RP.raf); RP.on=false; RP.phase=''; mode=null; setProbe('off'); rpText('Остановлено',''); rpButtons(true); });
-el('rpHome').addEventListener('click',function(){ cancelAnimationFrame(RP.raf); RP.on=false; RP.phase=''; mode=null; setProbe('off'); show('home'); });
+el('rpHome').addEventListener('click',function(){ cancelAnimationFrame(RP.raf); RP.on=false; RP.phase=''; mode=null; setProbe('off'); rpFlip(false); show('home'); });

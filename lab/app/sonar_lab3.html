@@ -58,7 +58,8 @@
   #sideIntro .pic{height:24vh;max-width:100%;margin:.2rem auto 0;display:block}
   #sideOri{font-family:"IBM Plex Mono",monospace;font-size:.8rem;margin:.2rem 0 .4rem}
   #recSide{flex-direction:column;align-items:stretch;gap:.6rem}
-  #rightIntro .pic{height:19vh;max-width:100%;margin:.2rem auto 0;display:block} #rightOri{font-family:"IBM Plex Mono",monospace;font-size:.8rem;margin:.2rem 0 .4rem}
+  #rightIntro .pic{height:16vh;max-width:100%;margin:.2rem auto 0;display:block} @media (max-height:600px){ #rightIntro .pic{display:none} } #rightIntro .pic.away{transform:scaleY(-1)} #rightIntro .pic.away text{display:none} #rightOri{font-family:"IBM Plex Mono",monospace;font-size:.8rem;margin:.2rem 0 .4rem}
+  body.flip #rightPlay,body.flip #recSide,body.flip #recDone{transform:rotate(180deg)}
   #rightPlay{padding:0;background:#04070A} #rpC{position:absolute;inset:0;width:100%;height:100%;display:block}
   #rpTop{position:absolute;left:0;right:0;top:calc(max(.8rem,env(safe-area-inset-top)) + 5.4rem);text-align:center;pointer-events:none;padding:0 1rem}
   #rpSay{font-size:2rem;font-weight:600} #rpSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
@@ -214,7 +215,7 @@
 <div class="screen hidden" id="rightIntro"><div class="two">
   <div class="col">
     <h1>Ладонь справа</h1>
-    <p>Телефон <b>вертикально</b>, экраном вверх, разъёмом к себе — в левой руке или на столе. Правая ладонь ребром (мизинец внизу), ладонью к телефону, <b>справа от нижнего торца, на одной линии с ним</b>, в 5–15 см. Дальше вправо — корабль правее.</p>
+    <p id="rightHow">Телефон <b>вертикально</b>, экраном вверх, разъёмом к себе — в левой руке или на столе. Правая ладонь ребром (мизинец внизу), ладонью к телефону, <b>справа от нижнего торца, на одной линии с ним</b>, в 5–15 см. Дальше вправо — корабль правее.</p>
     <svg class="pic" viewBox="0 0 200 170" aria-hidden="true">
       <rect x="40" y="6" width="62" height="120" rx="10" fill="#1b2630" stroke="#3A4A52"/><rect x="63" y="123" width="16" height="4" rx="2" fill="#8A9B96"/>
       <path d="M104,118 q8,6 0,14" fill="none" stroke="#3F92AB" stroke-width="2"/><path d="M112,114 q12,10 0,22" fill="none" stroke="#3F92AB" stroke-width="2" opacity=".6"/>
@@ -227,6 +228,7 @@
   <div class="col btns">
     <div id="rightOri"></div>
     <button id="rightPlayGo" class="big">Проба-игра</button>
+    <button id="rightPose" class="ghost">Поза: …</button>
     <button id="rightMode" class="ghost">Управление: …</button>
     <button id="rightRec" class="ghost">Запись по метке (16 с)</button>
     <button id="rightBack" class="ghost">Назад</button>
@@ -239,6 +241,7 @@
   <button id="rpStop" class="gbtn">Стоп</button>
   <div id="rpBtns" class="hidden">
     <button id="rpAgain" class="big">Ещё раз</button>
+    <button id="rpPose" class="ghost">Поза: …</button>
     <button id="rpMode" class="ghost">Управление: …</button>
     <button id="rpSave" class="ghost">Сохранить запись</button>
     <button id="rpHome" class="ghost">В начало</button>
@@ -825,7 +828,7 @@ function runRec(kind){ var long=kind==='long', dual=kind==='dual', right=kind===
       rec.frames.forEach(function(f,j){ all.set(f,j*N); });
       var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
       var so=(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0);
-      recMeta={v:4,kind:right?'right-portrait':dual?'dual-landscape':side?'side-portrait':long?'single-landscape-long':'single-landscape',port:orientSide(),dual_gain:0.25,fs:fs,N:N,kLo:kLo,kHi:kHi,
+      recMeta={v:4,pose:right?rpPose:undefined,kind:right?'right-portrait':dual?'dual-landscape':side?'side-portrait':long?'single-landscape-long':'single-landscape',port:orientSide(),dual_gain:0.25,fs:fs,N:N,kLo:kLo,kHi:kHi,
         hand:hand,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
         prom_db:prom,samples:n,gaps:rec.gaps,peak:pk,orientation:{angle:so,w:window.innerWidth,h:window.innerHeight},
         script:S.filter(function(s){return s.k!=='end';}).map(function(s){ return {k:s.k,t:s.t,H:s.d,probe:s.probe}; }),
@@ -968,7 +971,7 @@ el('sideBack').addEventListener('click',function(){ show('home'); });
 el('orientOk').addEventListener('click',function(){ goFlow(nextFlow); });
 el('orientBack').addEventListener('click',function(){ show('home'); });
 el('recAgain').addEventListener('click',function(){ if(lastRec==='recRight') toRight(); else if(lastRec==='recSide') toSide(); else if(lastRec==='recDual') viaOrient('dualIntro'); else viaOrient(lastRec); });
-el('toHome').addEventListener('click',function(){ show('home'); });
+el('toHome').addEventListener('click',function(){ if(document.body&&document.body.classList) document.body.classList.remove('flip'); show('home'); });
 el('save').addEventListener('click',function(){ var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; document.body.appendChild(a); a.click(); setTimeout(function(){ a.remove(); },1000); });
 el('share').addEventListener('click',function(){ navigator.share({files:[new File([blob],fname,{type:'audio/wav'})],title:fname}).catch(function(){}); });
 el('calGo').addEventListener('click',function(){ if(!CS.busy) quickStart(); });
@@ -1001,7 +1004,18 @@ function buildRTrack(){ var tr=el('trH'); trackW=tr.getBoundingClientRect().widt
 function rightOri(){ if(el('rightIntro').classList.contains('hidden')) return; var up=window.innerHeight>window.innerWidth;
   el('rightOri').textContent=up?'Экран вертикально — можно начинать.':'Экран ещё горизонтальный. Поверни телефон вертикально; если экран не поворачивается — выключи блокировку поворота.';
   el('rightOri').className=up?'good':'bad'; el('rightRec').disabled=!up; el('rightPlayGo').disabled=!up; }
-function toRight(){ lastRec='recRight'; show('rightIntro'); rightOri(); }
+/* 27.09: поза. 'near' — разъём к себе (как было); 'away' — телефон вверх ногами, разъём наверху смотрит от игрока, ладонь справа
+   от ВЕРХНЕГО торца. Сидя поза «к себе» не играется (автор): разъём смотрит в грудь в 15–30 см, эхо тела глушит ладонь.
+   iPhone экран вверх ногами не поворачивает — экраны пробы и записи поворачиваю сам (body.flip). */
+var rpPose='near'; try{ var sp=localStorage.getItem('sonar_right_pose'); if(sp==='near'||sp==='away') rpPose=sp; }catch(e){}
+var RP_PNAME={near:'разъём к себе',away:'разъём от себя (телефон вверх ногами)'};
+function rpPoseLabel(){ var t='Поза: '+RP_PNAME[rpPose]; ['rightPose','rpPose'].forEach(function(id){ el(id).textContent=t; });
+  el('rightHow').textContent=rpPose==='away'?'Телефон вертикально, экраном вверх, ВВЕРХ НОГАМИ — разъём наверху, смотрит от тебя. Правая ладонь ребром, ладонью к телефону, справа от верхнего торца, на одной линии с ним, в 5–15 см. Экран пробы перевернётся сам.'
+    :'Телефон вертикально, экраном вверх, разъёмом к себе. Правая ладонь ребром, ладонью к телефону, справа от нижнего торца, на одной линии с ним, в 5–15 см.'; }
+function rpPicPose(){ var p=document.querySelector&&document.querySelector('#rightIntro .pic'); if(p&&p.classList) p.classList.toggle('away',rpPose==='away'); }
+function rpPoseNext(){ rpPose=rpPose==='near'?'away':'near'; try{ localStorage.setItem('sonar_right_pose',rpPose); }catch(e){} rpPoseLabel(); rpPicPose(); }
+function rpFlip(on){ if(document.body&&document.body.classList) document.body.classList.toggle('flip',!!on); }
+function toRight(){ lastRec='recRight'; rpFlip(false); show('rightIntro'); rightOri(); }
 window.addEventListener('resize',function(){ setTimeout(rightOri,80); });
 
 /* ── режимы управления пробы (27.09). Запись по метке 23:41: ладонь сбоку от разъёма слышна слабо — 7–12% энергии эха,
@@ -1035,8 +1049,9 @@ function rpButtons(v){ el('rpBtns').classList.toggle('hidden',!v); }
 function rightPlay(){
   show('rightPlay'); rpButtons(false); cancelAnimationFrame(RP.raf);
   RP={on:false,frames:[],gaps:0,marks:{},ship:[],map:null,phase:'prep',t0:0,lives:3,score:0,rocks:[],inv:0,spawn:0.6,last:0,x:0.5,present:false,dist:null,raf:0,wave:[],best:RP.best||0};
-  rpText('Готовлюсь','Убери руку. Подбираю громкость зонда.'); mode=null; rpDraw();
-  pickChannel().then(function(){ return autoLevel(); }).then(function(L){
+  RP.pose=rpPose; rpFlip(rpPose==='away'); mode=null; rpDraw();
+  (rpPose==='away'?(rpText('Переверни телефон','Разъём наверху, от себя. Ладонь — справа от верхнего торца.'),sleep(3500)):Promise.resolve()).then(function(){
+    rpText('Готовлюсь','Убери руку. Подбираю громкость зонда.'); return pickChannel(); }).then(function(){ return autoLevel(); }).then(function(L){
     if(L.snr<30){ setProbe('off'); rpText('Зонда почти не слышно',NOPROBE); rpButtons(true); return null; }
     RP.D=rpDSP(rpMode); RP.mode=rpMode; if(!RP.D){ RP.D=DSP2; RP.mode='game'; }
     RP.D.init(fs,'all'); RP.D.setCal(PHYS_CAL); mode='right'; RP.on=true; rpMark('empty'); RP.phase='empty';
@@ -1086,7 +1101,7 @@ function rpDraw(){ var cv=el('rpC'); if(!cv||!cv.getContext) return; var dpr=win
   c.fillText(RP.dist===null?'ладони не слышно':(RP.present?'':'(нет ладони) ')+'ладонь '+(RP.dist/10).toFixed(1).replace('.',',')+' см',W/2,H-10*dpr); }
 function rpSave(){ if(!RP.frames.length) return; var n=RP.frames.length*N, all=new Float32Array(n); RP.frames.forEach(function(f,j){ all.set(f,j*N); });
   var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
-  var meta={v:1,kind:'right-play',mode:RP.mode,map0:RP.map0,fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
+  var meta={v:1,kind:'right-play',mode:RP.mode,pose:RP.pose,map0:RP.map0,fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
     cal:PHYS_CAL,map:RP.map,marks:RP.marks,ship:RP.ship,score:RP.score,lives:RP.lives,samples:n,gaps:RP.gaps,peak:pk,
     orientation:{angle:(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0),w:window.innerWidth,h:window.innerHeight},
     units:'ship: [frame, x 0..1 across the screen, palm seen]; map: height mm (DSP2, PHYS_CAL) → screen, lo → 6%, hi → 94%',ua:navigator.userAgent,date:new Date().toISOString()};
@@ -1096,14 +1111,18 @@ function rpSave(){ if(!RP.frames.length) return; var n=RP.frames.length*N, all=n
   if(navigator.canShare){ try{ var fl=new File([b],name,{type:'audio/wav'}); if(navigator.canShare({files:[fl]})){ navigator.share({files:[fl],title:name}).catch(function(){}); return; } }catch(e){} }
   var a2=document.createElement('a'); a2.href=URL.createObjectURL(b); a2.download=name; document.body.appendChild(a2); a2.click(); setTimeout(function(){ a2.remove(); },1000); }
 el('goRight').addEventListener('click',function(){ boot().then(toRight).catch(fail); });
-el('rightRec').addEventListener('click',function(){ lastRec='recRight'; runRec('right'); });
+el('rightRec').addEventListener('click',function(){ lastRec='recRight';
+  if(rpPose!=='away'){ rpFlip(false); runRec('right'); return; }
+  rpFlip(true); show('recSide'); el('sdPort').style.display='none'; el('mkH').style.opacity=0; el('sdSay').textContent='Переверни телефон'; el('sdSub').textContent='Разъём наверху, от себя. Ладонь — справа от верхнего торца.'; el('sdClock').textContent='';
+  sleep(3500).then(function(){ runRec('right'); }); });
 el('rightPlayGo').addEventListener('click',function(){ lastRec='recRight'; rightPlay(); });
 el('rightBack').addEventListener('click',function(){ show('home'); });
 el('rightMode').addEventListener('click',rpModeNext); el('rpMode').addEventListener('click',rpModeNext); rpModeLabel();
+el('rightPose').addEventListener('click',rpPoseNext); el('rpPose').addEventListener('click',rpPoseNext); rpPoseLabel(); rpPicPose();
 el('rpAgain').addEventListener('click',function(){ rightPlay(); });
 el('rpSave').addEventListener('click',function(){ rpSave(); });
 el('rpStop').addEventListener('click',function(){ if(RP.phase==='play'){ RP.lives=0; return; } cancelAnimationFrame(RP.raf); RP.on=false; RP.phase=''; mode=null; setProbe('off'); rpText('Остановлено',''); rpButtons(true); });
-el('rpHome').addEventListener('click',function(){ cancelAnimationFrame(RP.raf); RP.on=false; RP.phase=''; mode=null; setProbe('off'); show('home'); });
+el('rpHome').addEventListener('click',function(){ cancelAnimationFrame(RP.raf); RP.on=false; RP.phase=''; mode=null; setProbe('off'); rpFlip(false); show('home'); });
 
 
 /* ── ЖУРНАЛ ПАРТИИ: звук + что видела обработка + что происходило в игре ── */

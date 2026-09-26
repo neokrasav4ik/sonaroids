@@ -58,7 +58,8 @@
   #sideIntro .pic{height:24vh;max-width:100%;margin:.2rem auto 0;display:block}
   #sideOri{font-family:"IBM Plex Mono",monospace;font-size:.8rem;margin:.2rem 0 .4rem}
   #recSide{flex-direction:column;align-items:stretch;gap:.6rem}
-  #rightIntro .pic{height:19vh;max-width:100%;margin:.2rem auto 0;display:block} #rightOri{font-family:"IBM Plex Mono",monospace;font-size:.8rem;margin:.2rem 0 .4rem}
+  #rightIntro .pic{height:16vh;max-width:100%;margin:.2rem auto 0;display:block} @media (max-height:600px){ #rightIntro .pic{display:none} } #rightIntro .pic.away{transform:scaleY(-1)} #rightIntro .pic.away text{display:none} #rightOri{font-family:"IBM Plex Mono",monospace;font-size:.8rem;margin:.2rem 0 .4rem}
+  body.flip #rightPlay,body.flip #recSide,body.flip #recDone{transform:rotate(180deg)}
   #rightPlay{padding:0;background:#04070A} #rpC{position:absolute;inset:0;width:100%;height:100%;display:block}
   #rpTop{position:absolute;left:0;right:0;top:calc(max(.8rem,env(safe-area-inset-top)) + 5.4rem);text-align:center;pointer-events:none;padding:0 1rem}
   #rpSay{font-size:2rem;font-weight:600} #rpSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
@@ -214,7 +215,7 @@
 <div class="screen hidden" id="rightIntro"><div class="two">
   <div class="col">
     <h1>Ладонь справа</h1>
-    <p>Телефон <b>вертикально</b>, экраном вверх, разъёмом к себе — в левой руке или на столе. Правая ладонь ребром (мизинец внизу), ладонью к телефону, <b>справа от нижнего торца, на одной линии с ним</b>, в 5–15 см. Дальше вправо — корабль правее.</p>
+    <p id="rightHow">Телефон <b>вертикально</b>, экраном вверх, разъёмом к себе — в левой руке или на столе. Правая ладонь ребром (мизинец внизу), ладонью к телефону, <b>справа от нижнего торца, на одной линии с ним</b>, в 5–15 см. Дальше вправо — корабль правее.</p>
     <svg class="pic" viewBox="0 0 200 170" aria-hidden="true">
       <rect x="40" y="6" width="62" height="120" rx="10" fill="#1b2630" stroke="#3A4A52"/><rect x="63" y="123" width="16" height="4" rx="2" fill="#8A9B96"/>
       <path d="M104,118 q8,6 0,14" fill="none" stroke="#3F92AB" stroke-width="2"/><path d="M112,114 q12,10 0,22" fill="none" stroke="#3F92AB" stroke-width="2" opacity=".6"/>
@@ -227,6 +228,7 @@
   <div class="col btns">
     <div id="rightOri"></div>
     <button id="rightPlayGo" class="big">Проба-игра</button>
+    <button id="rightPose" class="ghost">Поза: …</button>
     <button id="rightMode" class="ghost">Управление: …</button>
     <button id="rightRec" class="ghost">Запись по метке (16 с)</button>
     <button id="rightBack" class="ghost">Назад</button>
@@ -239,6 +241,7 @@
   <button id="rpStop" class="gbtn">Стоп</button>
   <div id="rpBtns" class="hidden">
     <button id="rpAgain" class="big">Ещё раз</button>
+    <button id="rpPose" class="ghost">Поза: …</button>
     <button id="rpMode" class="ghost">Управление: …</button>
     <button id="rpSave" class="ghost">Сохранить запись</button>
     <button id="rpHome" class="ghost">В начало</button>

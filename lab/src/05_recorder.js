@@ -111,7 +111,7 @@ function runRec(kind){ var long=kind==='long', dual=kind==='dual', right=kind===
       rec.frames.forEach(function(f,j){ all.set(f,j*N); });
       var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
       var so=(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0);
-      recMeta={v:4,kind:right?'right-portrait':dual?'dual-landscape':side?'side-portrait':long?'single-landscape-long':'single-landscape',port:orientSide(),dual_gain:0.25,fs:fs,N:N,kLo:kLo,kHi:kHi,
+      recMeta={v:4,pose:right?rpPose:undefined,kind:right?'right-portrait':dual?'dual-landscape':side?'side-portrait':long?'single-landscape-long':'single-landscape',port:orientSide(),dual_gain:0.25,fs:fs,N:N,kLo:kLo,kHi:kHi,
         hand:hand,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
         prom_db:prom,samples:n,gaps:rec.gaps,peak:pk,orientation:{angle:so,w:window.innerWidth,h:window.innerHeight},
         script:S.filter(function(s){return s.k!=='end';}).map(function(s){ return {k:s.k,t:s.t,H:s.d,probe:s.probe}; }),

@@ -10,7 +10,7 @@ js=js.replace("function pickChannel(){","function pickChannel(){ if(globalThis._
 js=js.replace("function autoLevel(){","function autoLevel(){ if(globalThis.__fakeLevel) return globalThis.__fakeLevel();");
 js=js.replace("function setProbe(w){","function setProbe(w){ globalThis.__probe=w; if(globalThis.__noAudio) return;");
 js=js.replace("function promSub(frames,parity){","function promSub(frames,parity){ if(globalThis.__fakeProm) return globalThis.__fakeProm;");
-js=js.replace("el('gMenu').addEventListener","globalThis.__h={rpMode:function(){return rpMode;},rpModeNext:rpModeNext,runRec:runRec,rightPlay:rightPlay,rpSave:rpSave,onFrame:onFrame,rec:function(){return rec;},RP:function(){return RP;},meta:function(){return recMeta;},blob:function(){return blob;},fname:function(){return fname;},setFs:function(){ fs=48000; },toRight:toRight,mode:function(){return mode;}};\nel('gMenu').addEventListener");
+js=js.replace("el('gMenu').addEventListener","globalThis.__h={rpPose:function(){return rpPose;},rpPoseNext:rpPoseNext,rpMode:function(){return rpMode;},rpModeNext:rpModeNext,runRec:runRec,rightPlay:rightPlay,rpSave:rpSave,onFrame:onFrame,rec:function(){return rec;},RP:function(){return RP;},meta:function(){return recMeta;},blob:function(){return blob;},fname:function(){return fname;},setFs:function(){ fs=48000; },toRight:toRight,mode:function(){return mode;}};\nel('gMenu').addEventListener");
 let now=0; const timers=[]; let rafs=[];
 global.setTimeout=(f,ms)=>{ timers.push({t:now+(ms||0),f}); return timers.length; };
 global.requestAnimationFrame=f=>{ rafs.push(f); return rafs.length; }; global.cancelAnimationFrame=()=>{};
@@ -59,6 +59,14 @@ async function tick(dt){ const t1=now+dt*1000; while(now<t1){ now+=1000/60; feed
   const c2=pairs2.length>50?cor(pairs2.map(p=>p[0]),pairs2.map(p=>p[1])):NaN; need(c2>0.9,`только движение: корабль правее при ладони дальше, согласие ${c2.toFixed(3)}`);
   H.rpSave(); const fm=path.join(C.OUT,'right_play_motion_test.wav'); fs.writeFileSync(fm,Buffer.from(await H.RP().blob.arrayBuffer()));
   const wm=C.loadWav(fm); const Rm=E.report('right_play_motion_test.wav',wm.meta,wm.x); need(wm.meta.mode==='motion'&&Rm.match<0.01,`разбор в том же режиме сходится с кораблём: ${(Rm.match*100).toFixed(2)}% ширины`);
+  // 1в) поза «разъём от себя»: экран пробы перевёрнут (body.flip), сначала просьба перевернуть телефон, поза в записи
+  for(let i=0;i<3&&H.rpPose()!=='away';i++) H.rpPoseNext(); for(let i=0;i<5&&H.rpMode()!=='game';i++) H.rpModeNext();
+  H.rightPlay(); await tick(0.5); const flipSay=els.rpSay.textContent, flipped=body.classList.contains('flip');
+  for(let i=0;i<1200;i++){ await tick(0.1); if(H.RP().phase==='over') break; }
+  H.rpSave(); const fa=path.join(C.OUT,'right_play_away_test.wav'); fs.writeFileSync(fa,Buffer.from(await H.RP().blob.arrayBuffer())); const wa=C.loadWav(fa);
+  need(flipped&&/Переверни/.test(flipSay)&&H.RP().phase==='over'&&wa.meta.pose==='away'&&/от себя/.test(els.rpPose.textContent),`поза «разъём от себя»: экран перевёрнут, «${flipSay}», проба дошла до конца, в записи pose=${wa.meta.pose}`);
+  els.rpHome.click&&0; H.toRight(); need(!body.classList.contains('flip'),'на экране-подсказке переворот снят');
+  for(let i=0;i<3&&H.rpPose()!=='near';i++) H.rpPoseNext();
   // 2) запись по метке: ладонь идёт ровно по сценарию «Запись для меня» (100 ± 50 мм)
   const sc=t=>t<3?null:t<5?100:t<11?100+50*Math.sin(2*Math.PI*(t-5)/6):t<14?100:null;
   let rs=null; palm=t=>{ const r=H.rec(); if(!r.on) return null; if(rs===null) rs=t; return sc(t-rs); };

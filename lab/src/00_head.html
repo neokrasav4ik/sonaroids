@@ -58,7 +58,7 @@
   #sideIntro .pic{height:24vh;max-width:100%;margin:.2rem auto 0;display:block}
   #sideOri{font-family:"IBM Plex Mono",monospace;font-size:.8rem;margin:.2rem 0 .4rem}
   #recSide{flex-direction:column;align-items:stretch;gap:.6rem}
-  #rightIntro .pic{height:26vh;max-width:100%;margin:.2rem auto 0;display:block} #rightOri{font-family:"IBM Plex Mono",monospace;font-size:.8rem;margin:.2rem 0 .4rem}
+  #rightIntro .pic{height:19vh;max-width:100%;margin:.2rem auto 0;display:block} #rightOri{font-family:"IBM Plex Mono",monospace;font-size:.8rem;margin:.2rem 0 .4rem}
   #rightPlay{padding:0;background:#04070A} #rpC{position:absolute;inset:0;width:100%;height:100%;display:block}
   #rpTop{position:absolute;left:0;right:0;top:calc(max(.8rem,env(safe-area-inset-top)) + 5.4rem);text-align:center;pointer-events:none;padding:0 1rem}
   #rpSay{font-size:2rem;font-weight:600} #rpSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
@@ -227,6 +227,7 @@
   <div class="col btns">
     <div id="rightOri"></div>
     <button id="rightPlayGo" class="big">Проба-игра</button>
+    <button id="rightMode" class="ghost">Управление: …</button>
     <button id="rightRec" class="ghost">Запись по метке (16 с)</button>
     <button id="rightBack" class="ghost">Назад</button>
   </div>
@@ -238,6 +239,7 @@
   <button id="rpStop" class="gbtn">Стоп</button>
   <div id="rpBtns" class="hidden">
     <button id="rpAgain" class="big">Ещё раз</button>
+    <button id="rpMode" class="ghost">Управление: …</button>
     <button id="rpSave" class="ghost">Сохранить запись</button>
     <button id="rpHome" class="ghost">В начало</button>
   </div>

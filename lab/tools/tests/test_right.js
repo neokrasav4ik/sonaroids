@@ -10,7 +10,7 @@ js=js.replace("function pickChannel(){","function pickChannel(){ if(globalThis._
 js=js.replace("function autoLevel(){","function autoLevel(){ if(globalThis.__fakeLevel) return globalThis.__fakeLevel();");
 js=js.replace("function setProbe(w){","function setProbe(w){ globalThis.__probe=w; if(globalThis.__noAudio) return;");
 js=js.replace("function promSub(frames,parity){","function promSub(frames,parity){ if(globalThis.__fakeProm) return globalThis.__fakeProm;");
-js=js.replace("el('gMenu').addEventListener","globalThis.__h={runRec:runRec,rightPlay:rightPlay,rpSave:rpSave,onFrame:onFrame,rec:function(){return rec;},RP:function(){return RP;},meta:function(){return recMeta;},blob:function(){return blob;},fname:function(){return fname;},setFs:function(){ fs=48000; },toRight:toRight,mode:function(){return mode;}};\nel('gMenu').addEventListener");
+js=js.replace("el('gMenu').addEventListener","globalThis.__h={rpMode:function(){return rpMode;},rpModeNext:rpModeNext,runRec:runRec,rightPlay:rightPlay,rpSave:rpSave,onFrame:onFrame,rec:function(){return rec;},RP:function(){return RP;},meta:function(){return recMeta;},blob:function(){return blob;},fname:function(){return fname;},setFs:function(){ fs=48000; },toRight:toRight,mode:function(){return mode;}};\nel('gMenu').addEventListener");
 let now=0; const timers=[]; let rafs=[];
 global.setTimeout=(f,ms)=>{ timers.push({t:now+(ms||0),f}); return timers.length; };
 global.requestAnimationFrame=f=>{ rafs.push(f); return rafs.length; }; global.cancelAnimationFrame=()=>{};
@@ -20,7 +20,7 @@ const els={}; const mk=id=>els[id]||(els[id]={id,classList:{_h:new Set(),add(c){
   style:{},textContent:'',disabled:false,width:390,height:844,clientWidth:390,clientHeight:844,addEventListener(){},appendChild(){},getBoundingClientRect:()=>({width:360,height:300}),getContext:()=>mockCtx,querySelectorAll:()=>[],value:'90'});
 global.getComputedStyle=()=>({paddingTop:'0px',paddingRight:'0px',paddingBottom:'0px',paddingLeft:'0px',fontSize:'16px'});
 const body={classList:mk('body').classList,appendChild(){}};
-global.document={documentElement:{style:{}},body,getElementById:mk,createElement:()=>Object.assign(mk('x'+Math.random()),{remove(){},click(){}}),querySelectorAll:()=>[],querySelector:()=>null,addEventListener(){}};
+global.document={scripts:[{textContent:js}],documentElement:{style:{}},body,getElementById:mk,createElement:()=>Object.assign(mk('x'+Math.random()),{remove(){},click(){}}),querySelectorAll:()=>[],querySelector:()=>null,addEventListener(){}};
 global.window={innerWidth:390,innerHeight:844,devicePixelRatio:1,addEventListener(){},matchMedia:()=>({matches:false}),navigator:{}}; global.navigator={userAgent:'iPhone'};
 global.URL.createObjectURL=()=>'blob:x';
 global.localStorage={getItem:()=>null,setItem(){}}; global.screen={orientation:{angle:0}};
@@ -51,6 +51,14 @@ async function tick(dt){ const t1=now+dt*1000; while(now<t1){ now+=1000/60; feed
   fs.mkdirSync(C.OUT,{recursive:true}); const f1=path.join(C.OUT,'right_play_test.wav'); fs.writeFileSync(f1,Buffer.from(await b.arrayBuffer()));
   const w=C.loadWav(f1); need(w.meta.kind==='right-play'&&['empty','wave','count','play','over'].every(k=>w.meta.marks[k]!==undefined)&&w.meta.ship.length>100,'WAV: kind right-play, метки фаз, корабль по кадрам ('+w.meta.ship.length+')');
   const R=E.report('right_play_test.wav (через страницу)',w.meta,w.x); need(R.vis>95&&R.match<0.01&&R.edge<25,`разбор: ладонь видна ${R.vis.toFixed(0)}%, прогон против телефона ${(R.match*100).toFixed(2)}% ширины, у краёв ${R.edge.toFixed(0)}%`);
+  // 1б) тот же путь в режиме «только движение»: правка движка на странице применилась, корабль идёт за ладонью, разбор сходится
+  global.localStorage={getItem:()=>null,setItem(){}}; els.rightMode.textContent='';
+  const H2=globalThis.__h; for(let i=0;i<5&&H2.rpMode()!=='motion';i++) H2.rpModeNext();
+  const pairs2=[]; H.rightPlay(); for(let i=0;i<1200;i++){ await tick(0.1); const P2=H.RP(); if(P2.phase==='play'&&P2.present&&P2.dist!==null) pairs2.push([P2.dist,P2.x]); if(P2.phase==='over') break; }
+  const P2=H.RP(); need(P2.mode==='motion'&&P2.D!==undefined&&/только движение/.test(els.rpMode.textContent),'режим «только движение»: движок пробы '+(P2.mode)+', кнопка «'+els.rpMode.textContent+'»');
+  const c2=pairs2.length>50?cor(pairs2.map(p=>p[0]),pairs2.map(p=>p[1])):NaN; need(c2>0.9,`только движение: корабль правее при ладони дальше, согласие ${c2.toFixed(3)}`);
+  H.rpSave(); const fm=path.join(C.OUT,'right_play_motion_test.wav'); fs.writeFileSync(fm,Buffer.from(await H.RP().blob.arrayBuffer()));
+  const wm=C.loadWav(fm); const Rm=E.report('right_play_motion_test.wav',wm.meta,wm.x); need(wm.meta.mode==='motion'&&Rm.match<0.01,`разбор в том же режиме сходится с кораблём: ${(Rm.match*100).toFixed(2)}% ширины`);
   // 2) запись по метке: ладонь идёт ровно по сценарию «Запись для меня» (100 ± 50 мм)
   const sc=t=>t<3?null:t<5?100:t<11?100+50*Math.sin(2*Math.PI*(t-5)/6):t<14?100:null;
   let rs=null; palm=t=>{ const r=H.rec(); if(!r.on) return null; if(rs===null) rs=t; return sc(t-rs); };

@@ -26,6 +26,26 @@ function rightOri(){ if(el('rightIntro').classList.contains('hidden')) return; v
 function toRight(){ lastRec='recRight'; show('rightIntro'); rightOri(); }
 window.addEventListener('resize',function(){ setTimeout(rightOri,80); });
 
+/* ── режимы управления пробы (27.09). Запись по метке 23:41: ладонь сбоку от разъёма слышна слабо — 7–12% энергии эха,
+   остальное — рука и тело на 15–30 см. Быстрая часть (движение) идёт за меткой (0,978, масштаб 0,69), а положение — нет (−0,01,
+   держится на ~19 см при ладони на 10) и тянет корабль не туда. Три режима на пробу:
+   'game' — как в игре; 'near' — положение ищется только до 16 см (запись 23:41: по форме 0,870 → 0,963, ошибка 92 → 18 мм);
+   'motion' — только движение, положение не тянет (0,978); уход быстрой части гасится краями, как у мыши: ладонь ушла за край
+   хода — ход сдвигается за ней. Движок для пробы собирается из текста DSP2 на странице с правкой — сам DSP2 (общий с игрой) не меняется. */
+var RP_MODES=['game','near','motion'], RP_MNAME={game:'как в игре',near:'положение до 16 см',motion:'только движение (как мышь)'};
+var rpMode='game'; try{ var sm=localStorage.getItem('sonar_right_mode'); if(RP_MODES.indexOf(sm)>=0) rpMode=sm; }catch(e){}
+function rpModeLabel(){ var t='Управление: '+RP_MNAME[rpMode]; ['rightMode','rpMode'].forEach(function(id){ el(id).textContent=t; }); }
+function rpModeNext(){ rpMode=RP_MODES[(RP_MODES.indexOf(rpMode)+1)%RP_MODES.length]; try{ localStorage.setItem('sonar_right_mode',rpMode); }catch(e){} rpModeLabel(); }
+function rpPatch(s,m){ var a,b;
+  if(m==='near'){ a='var sw=0,sx=0; for(i=0;i<G;i++){'; b='var sw=0,sx=0; for(i=0;i<Math.min(G,Math.round(160/mm)-gA);i++){'; }
+  else if(m==='motion'){ a='if(!covered){ var up=eAvg>0&&x<100'; b='if(false){ var up=eAvg>0&&x<100'; }
+  else return s;
+  return s.split(a).length===2?s.replace(a,b):null; }
+function rpDSP(m){ if(m==='game') return DSP2; try{ var src=Array.prototype.map.call(document.scripts||[],function(x){ return x.textContent; }).join('\n');
+    var i=src.indexOf('var DSP2=(function(){'), j=src.indexOf('var Game=(function(){'); if(i<0||j<0) return null;
+    var s=rpPatch(src.slice(i,j),m); return s?new Function(s+'\nreturn DSP2;')():null; }catch(e){ return null; } }
+function rpWait(D){ return new Promise(function(r){ (function chk(){ var i=D.info(); if(i.noProbe) return r('noprobe'); if(i.ready) return r('ok'); setTimeout(chk,60); })(); }); }
+
 /* ── проба-игра ── */
 var RP={on:false,frames:[],gaps:0,marks:{},ship:[],map:null,phase:'',t0:0,lives:3,score:0,rocks:[],inv:0,spawn:0,last:0,x:0.5,present:false,dist:null,raf:0,best:0};
 var RP_MAX=Math.round(150*48000/512);
@@ -40,8 +60,9 @@ function rightPlay(){
   rpText('Готовлюсь','Убери руку. Подбираю громкость зонда.'); mode=null; rpDraw();
   pickChannel().then(function(){ return autoLevel(); }).then(function(L){
     if(L.snr<30){ setProbe('off'); rpText('Зонда почти не слышно',NOPROBE); rpButtons(true); return null; }
-    DSP2.init(fs,'all'); DSP2.setCal(PHYS_CAL); mode='right'; RP.on=true; rpMark('empty'); RP.phase='empty';
-    rpText('Убери руку','Слушаю пустую комнату.'); return waitReady(); }).then(function(st){
+    RP.D=rpDSP(rpMode); RP.mode=rpMode; if(!RP.D){ RP.D=DSP2; RP.mode='game'; }
+    RP.D.init(fs,'all'); RP.D.setCal(PHYS_CAL); mode='right'; RP.on=true; rpMark('empty'); RP.phase='empty';
+    rpText('Убери руку','Слушаю пустую комнату. Управление: '+RP_MNAME[RP.mode]+'.'); return rpWait(RP.D); }).then(function(st){
     if(!st) return;
     if(st==='noprobe'){ setProbe('off'); mode=null; RP.on=false; rpText('Зонда не слышно',NOPROBE); rpButtons(true); return; }
     return sleep(600).then(function(){ rpMark('wave'); RP.phase='wave'; RP.wave=[];
@@ -50,13 +71,14 @@ function rightPlay(){
       var w=RP.wave.slice().sort(function(a,b){return a-b;}), lo=50, hi=150;
       if(w.length>50){ lo=w[Math.floor(w.length*0.05)]; hi=w[Math.floor(w.length*0.95)]; }
       if(hi-lo<40){ var c=(hi+lo)/2; lo=c-20; hi=c+20; } if(hi-lo>140){ var c2=(hi+lo)/2; lo=c2-70; hi=c2+70; }
-      RP.map={lo:lo,hi:hi,n:w.length}; rpMark('count'); RP.phase='count';
+      RP.map={lo:lo,hi:hi,n:w.length}; RP.map0={lo:lo,hi:hi}; rpMark('count'); RP.phase='count';
       rpText('3','Ладонь дальше — корабль правее.');
       return sleep(1000).then(function(){ rpText('2',''); return sleep(1000); }).then(function(){ rpText('1',''); return sleep(1000); }); }).then(function(){
       rpMark('play'); RP.phase='play'; rpText('',''); RP.t0=performance.now(); RP.last=RP.t0; RP.raf=requestAnimationFrame(rpLoop); });
   }).catch(function(e){ rpText('Не вышло',(e&&e.message)||String(e)); rpButtons(true); });
 }
-function rpShipX(){ var m=RP.map; if(!m||RP.dist===null) return RP.x; var f=(RP.dist-m.lo)/(m.hi-m.lo); return 0.06+0.88*Math.max(0,Math.min(1,f)); }
+function rpShipX(){ var m=RP.map; if(!m||RP.dist===null) return RP.x;
+  if(RP.mode==='motion'){ var sp=m.hi-m.lo; if(RP.dist<m.lo){ m.lo=RP.dist; m.hi=m.lo+sp; } else if(RP.dist>m.hi){ m.hi=RP.dist; m.lo=m.hi-sp; } }   /* как мышь: край хода едет за ладонью */ var f=(RP.dist-m.lo)/(m.hi-m.lo); return 0.06+0.88*Math.max(0,Math.min(1,f)); }
 function rpLoop(now){
   if(RP.phase!=='play') return;
   var dt=Math.min(0.05,(now-RP.last)/1000); RP.last=now; var t=(now-RP.t0)/1000;
@@ -86,7 +108,7 @@ function rpDraw(){ var cv=el('rpC'); if(!cv||!cv.getContext) return; var dpr=win
   c.fillText(RP.dist===null?'ладони не слышно':(RP.present?'':'(нет ладони) ')+'ладонь '+(RP.dist/10).toFixed(1).replace('.',',')+' см',W/2,H-10*dpr); }
 function rpSave(){ if(!RP.frames.length) return; var n=RP.frames.length*N, all=new Float32Array(n); RP.frames.forEach(function(f,j){ all.set(f,j*N); });
   var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
-  var meta={v:1,kind:'right-play',fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
+  var meta={v:1,kind:'right-play',mode:RP.mode,map0:RP.map0,fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
     cal:PHYS_CAL,map:RP.map,marks:RP.marks,ship:RP.ship,score:RP.score,lives:RP.lives,samples:n,gaps:RP.gaps,peak:pk,
     orientation:{angle:(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0),w:window.innerWidth,h:window.innerHeight},
     units:'ship: [frame, x 0..1 across the screen, palm seen]; map: height mm (DSP2, PHYS_CAL) → screen, lo → 6%, hi → 94%',ua:navigator.userAgent,date:new Date().toISOString()};
@@ -99,6 +121,7 @@ el('goRight').addEventListener('click',function(){ boot().then(toRight).catch(fa
 el('rightRec').addEventListener('click',function(){ lastRec='recRight'; runRec('right'); });
 el('rightPlayGo').addEventListener('click',function(){ lastRec='recRight'; rightPlay(); });
 el('rightBack').addEventListener('click',function(){ show('home'); });
+el('rightMode').addEventListener('click',rpModeNext); el('rpMode').addEventListener('click',rpModeNext); rpModeLabel();
 el('rpAgain').addEventListener('click',function(){ rightPlay(); });
 el('rpSave').addEventListener('click',function(){ rpSave(); });
 el('rpStop').addEventListener('click',function(){ if(RP.phase==='play'){ RP.lives=0; return; } cancelAnimationFrame(RP.raf); RP.on=false; RP.phase=''; mode=null; setProbe('off'); rpText('Остановлено',''); rpButtons(true); });

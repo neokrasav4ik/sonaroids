@@ -120,8 +120,7 @@ function picture(fn,mirror){
 function sceneHand(id,t,f,away,waves,T,lay){
   var cm=Math.min(LH*0.024,LW*0.0135)*lay.k, o=[LW*lay.ox,LH*lay.oy+23.6*cm], labels=[];
   var HS={t:P.hand[1],h:P.hand[2],x:P.hand[0],y:'#9A7274'}, X0=-7.5*cm*PSC, Y0=-3.6*cm*PSC, Y1=3.6*cm*PSC, Zp=1.0*cm;
-  // the holding hand (v0.35, the maintainer: the phone lies in the palm, the thumb under it, the other fingers on top).
-  // Three looks for the sketch: 1 — fingers over the far long edge, 2 — over the short end, 3 — a clamp from the end
+  // the holding hand (v0.35, the maintainer: the phone lies in the palm, the thumb under it, the other fingers over the far long edge)
   var gx=X0, ph, j;
   box(gx-1.8*cm,gx+6.6*cm,Y0+0.3*cm,Y1-0.2*cm,-2.4*cm,-0.05*cm,o,HS.t,HS.x,HS.y);                      // the palm under the phone, wide
   for(j=0;j<4;j++) box(gx+0.1*cm+j*1.7*cm,gx+1.6*cm+j*1.7*cm,Y0-1.1*cm,Y0,-1.6*cm,Zp+0.9*cm,o,HS.t,HS.x,HS.y);   // fingers up the far side…

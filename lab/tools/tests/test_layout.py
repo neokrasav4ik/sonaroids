@@ -25,6 +25,9 @@ PSIZES=[(320,568,'SE-1'),(375,667,'SE'),(390,844,'14'),(430,932,'Pro Max')]
 PSETUP={
  'sideIntro':"lastRec='recSide'; show('sideIntro'); sideOri();",
  'recSide':"lastRec='recSide'; show('recSide'); buildHTrack(); el('mkH').style.left=xOf(40)+'px'; el('sdSay').textContent='Замри справа'; el('sdSub').textContent='Напротив метки, на том же расстоянии.'; el('sdClock').textContent='22.4 / 39 с';",
+ 'rightIntro':"lastRec='recRight'; show('rightIntro'); rightOri();",
+ 'rightPlay':"lastRec='recRight'; show('rightPlay'); rpText('Помаши ладонью','Справа от нижнего торца: ближе — дальше, от 5 до 15 см. Шесть секунд.'); rpButtons(true); rpDraw();",
+ 'recRight':"lastRec='recRight'; show('recSide'); el('sdPort').style.display='none'; buildRTrack(); el('mkH').style.left=xOfMM(100)+'px'; el('sdSay').textContent='Ладонь справа, 10 см'; el('sdSub').textContent='Ребром, ладонью к телефону, на одной линии с нижним торцом. Напротив метки.'; el('sdClock').textContent='4.1 / 16 с';",
  'sideDone':"lastRec='recSide'; show('recDone'); var st=el('stats'); ['длительность','разрывов потока','экран','зонд слышен','пик входа','размер'].forEach(function(k){ var r=document.createElement('div'); r.className='kv'; r.innerHTML='<span>'+k+'</span><b>39.0 с</b>'; st.appendChild(r); }); el('share').classList.remove('hidden'); fitScreen();",
 }
 bad=0

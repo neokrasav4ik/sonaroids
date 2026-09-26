@@ -77,15 +77,15 @@ function buildTracks(){
 }
 var recMeta=null, blob=null, fname='';
 /* kind: 'rec' — 16 с, 'long' — 1,5 мин, 'side' — вбок, телефон вертикально, 'dual' — два динамика (метка тоже по горизонтальной дорожке) */
-function runRec(kind){ var long=kind==='long', dual=kind==='dual', side=kind==='side'||dual, S=dual?SCRIPT_DUAL:kind==='side'?SCRIPT_SIDE:long?SCRIPT_LONG:SCRIPT, TOT=S[S.length-1].t;
+function runRec(kind){ var long=kind==='long', dual=kind==='dual', right=kind==='right', side=kind==='side'||dual||right, S=right?SCRIPT_RIGHT:dual?SCRIPT_DUAL:kind==='side'?SCRIPT_SIDE:long?SCRIPT_LONG:SCRIPT, TOT=S[S.length-1].t;
   var SAY=side?'sdSay':'say', SUB=side?'sdSub':'sub', CLK=side?'sdClock':'clock';
-  if(side){ show('recSide'); el('mkH').style.opacity=0; el('sdPort').style.display=dual?'none':''; } else { show('rec'); el('mkL').style.opacity=0; el('mkR').style.opacity=0; }
+  if(side){ show('recSide'); el('mkH').style.opacity=0; el('sdPort').style.display=(dual||right)?'none':''; } else { show('rec'); el('mkL').style.opacity=0; el('mkR').style.opacity=0; }
   el(SAY).textContent='Выбираю динамик'; el(SUB).textContent='Рука убрана.'; el(CLK).textContent='';
   mode=null; rec={on:false,frames:[],gaps:0};
   var prom;
   pickChannel().then(function(){ return autoLevel(); }).then(function(){
-    if(side) buildHTrack(dual?DUAL_A:0); else buildTracks(); mode='rec';
-    el(SUB).textContent=dual?'Телефон лежит горизонтально.':side?'Правая ладонь у разъёма.':'Рука будет '+(hand==='left'?'слева':'справа')+' от телефона'+(orientSide()?(hand===orientSide()?', у разъёма.':', у фронтальной камеры.'):'.');
+    if(right) buildRTrack(); else if(side) buildHTrack(dual?DUAL_A:0); else buildTracks(); mode='rec';
+    el(SUB).textContent=right?'Ладонь справа от нижнего торца.':dual?'Телефон лежит горизонтально.':side?'Правая ладонь у разъёма.':'Рука будет '+(hand==='left'?'слева':'справа')+' от телефона'+(orientSide()?(hand===orientSide()?', у разъёма.':', у фронтальной камеры.'):'.');
     return sleep(400).then(function(){ return collect(10); });
   }).then(function(fr){
     prom=promSub(fr,'all');
@@ -102,7 +102,7 @@ function runRec(kind){ var long=kind==='long', dual=kind==='dual', side=kind==='
         for(i=S.length-1;i>=0;i--) if(t>=S[i].t) break;
         if(i!==cur){ cur=i; var s=S[i]; if(s.k==='end'){ done(marks); return; }
           marks[s.k]=rec.frames.length*N; el(SAY).textContent=s.say; el(SUB).textContent=s.sub; if(s.probe) setProbe(s.probe); }
-        var h=S[cur].H(t); el(mk).style.opacity=h===null?0:1; if(h!==null){ if(side) el(mk).style.left=xOf(h)+'px'; else el(mk).style.top=yOf(h)+'px'; }
+        var h=S[cur].H(t); el(mk).style.opacity=h===null?0:1; if(h!==null){ if(right) el(mk).style.left=xOfMM(h)+'px'; else if(side) el(mk).style.left=xOf(h)+'px'; else el(mk).style.top=yOf(h)+'px'; }
         el(CLK).textContent=t.toFixed(1)+' / '+TOT+' с'; requestAnimationFrame(tick);
       })();
     }).then(function(marks){
@@ -111,14 +111,14 @@ function runRec(kind){ var long=kind==='long', dual=kind==='dual', side=kind==='
       rec.frames.forEach(function(f,j){ all.set(f,j*N); });
       var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
       var so=(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0);
-      recMeta={v:4,kind:dual?'dual-landscape':side?'side-portrait':long?'single-landscape-long':'single-landscape',port:orientSide(),dual_gain:0.25,fs:fs,N:N,kLo:kLo,kHi:kHi,
+      recMeta={v:4,kind:right?'right-portrait':dual?'dual-landscape':side?'side-portrait':long?'single-landscape-long':'single-landscape',port:orientSide(),dual_gain:0.25,fs:fs,N:N,kLo:kLo,kHi:kHi,
         hand:hand,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
         prom_db:prom,samples:n,gaps:rec.gaps,peak:pk,orientation:{angle:so,w:window.innerWidth,h:window.innerHeight},
         script:S.filter(function(s){return s.k!=='end';}).map(function(s){ return {k:s.k,t:s.t,H:s.d,probe:s.probe}; }),
-        marks:marks,units:dual?'target position of the palm along the phone in mm from its middle, + = to the right as the player sees it (phone flat, landscape); port — the end with the port, from the screen rotation':side?'target sideways offset of the palm in mm, + = to the right as the player sees it (phone upright, port towards the player)':'target height in mm above the table',ua:navigator.userAgent,date:new Date().toISOString()};
+        marks:marks,units:right?'target distance of the palm from the phone in mm (phone upright, port towards the player, palm to the right of the bottom end, level with it)':dual?'target position of the palm along the phone in mm from its middle, + = to the right as the player sees it (phone flat, landscape); port — the end with the port, from the screen rotation':side?'target sideways offset of the palm in mm, + = to the right as the player sees it (phone upright, port towards the player)':'target height in mm above the table',ua:navigator.userAgent,date:new Date().toISOString()};
       blob=wav(all,recMeta);
       var d=new Date(), z=function(x){ return (x<10?'0':'')+x; };
-      fname=(dual?'sonardual_':side?'sonarside_':long?'sonarlong_':'sonar1h_')+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+'.wav';
+      fname=(right?'sonar1r_':dual?'sonardual_':side?'sonarside_':long?'sonarlong_':'sonar1h_')+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+'.wav';
       showDone(pk,prom);
     });
   });
@@ -144,7 +144,8 @@ function showDone(pk,pr){
   function kv(k,v,c){ var r=document.createElement('div'); r.className='kv'; r.innerHTML='<span>'+k+'</span><b class="'+(c||'')+'">'+v+'</b>'; st.appendChild(r); }
   kv('длительность',(recMeta.samples/fs).toFixed(1)+' с');
   kv('разрывов потока',recMeta.gaps,recMeta.gaps===0?'good':'bad');
-  if(recMeta.kind==='dual-landscape'){ kv('разъём',recMeta.port==='right'?'справа':recMeta.port==='left'?'слева':'не знаю',recMeta.port?'good':'bad'); }
+  if(recMeta.kind==='right-portrait'){ var up2=recMeta.orientation.h>recMeta.orientation.w; kv('экран',up2?'вертикально':'горизонтально — поверни и запиши заново',up2?'good':'bad'); }
+  else if(recMeta.kind==='dual-landscape'){ kv('разъём',recMeta.port==='right'?'справа':recMeta.port==='left'?'слева':'не знаю',recMeta.port?'good':'bad'); }
   else if(recMeta.kind==='side-portrait'){ var up=recMeta.orientation.h>recMeta.orientation.w; kv('экран',up?'вертикально':'горизонтально — поверни и запиши заново',up?'good':'bad'); }
   else { var os=orientSide(); kv('сторона руки',(hand==='left'?'слева':'справа')+(os?(hand===os?' — у разъёма':' — у фронтальной камеры'):'')); }
   kv('зонд слышен',pr.toFixed(0)+' дБ',pr>=15?'good':'bad');

@@ -43,6 +43,7 @@ It works best on **iPhone**. On **Android** (Chrome) it depends on the phone's s
 - The echo is measured against the direct sound's own level; on phones whose speaker fades toward 20 kHz the band is equalized; if the phone drops a stretch of input, the direct sound is found again.
 - With the phone in the hand the whole echo picture sometimes jumps in time at once, with no gap in the input (by 256 samples on an iPhone, ~144 on a OnePlus). When the direct sound disappears, the sonar looks for a shifted copy of the whole response, gathered over a third of a second so that the moving palm's echo cancels out, and moves there. Only if there is none is the speaker taken as covered, and the game says so.
 - No separate calibration: before each game you take your hand away (the empty room), then wave — and the screen is fitted to your range.
+- The sonar hears one thing: how far the palm is. With one microphone (all Safari gives) a palm moved left or right by the same amount sounds the same; and a second speaker doesn't help — with the microphone open, the iPhone's other channel reaches the microphone about 60 times weaker and from the same place as the bottom speaker. The lab tried both in September 2026.
 
 Measurements, experiments and what didn't work: `lab/HANDOVER.md` (Russian).
 
@@ -58,9 +59,9 @@ A game is sent to the server not as a score but as the game itself: the layout n
 | `game/` | the published site: `index.html` sends visitors straight into the game, `play/` — the game (built file, icons, manifest, service worker), `proto/` — the style prototype (unlinked), `font.js`, `robots.txt` |
 | `server/` | the high-score server (api.sonaroids.app): `server.js`, backups, systemd unit, Caddy/nginx configs. Install: `server/README.md`, in Russian `docs/ru/server.md` |
 | `tests/` | the game's and the server's checks: `sh tests/run.sh` |
-| `lab/` | the sonar lab: the test app `lab/app/sonar_lab3.html` (published unlinked at `/lab/sonar_lab3.html`), its sources and offline benches; notes in Russian |
+| `lab/` | the sonar lab: the test app `lab/app/sonar_lab3.html` (published unlinked at `/lab/sonar_lab3.html`), its sources and offline benches, and recordings for trying new ways to steer (the phone upright, the palm to the side, two speakers); notes in Russian |
 | `font/` | the 5×7 pixel font (Latin and Cyrillic): `font5x7.txt` is the drawing, `make_font.py` packs it into `game/font.js` |
-| `promo/` | the GIFs, drawn by the game's own code: `sonaroids.gif` (above — both ways), `sonaroids_table.gif`, `sonaroids_hand.gif`, `sonaroids_both_table.gif`; all of them: `sh promo/make_all.sh` |
+| `promo/` | the GIFs, drawn by the game's own code: `sonaroids_both_table.gif` (above — both ways, with the table and the holding hand), `sonaroids.gif` (both ways, only the phones and the palms), `sonaroids_table.gif`, `sonaroids_hand.gif`; all of them: `sh promo/make_all.sh` |
 | `docs/` | the design document `design.md` (Russian original in `docs/ru/`), the server install guide in Russian |
 
 ### The game's code (`src/`)

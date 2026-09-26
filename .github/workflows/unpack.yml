@@ -1,0 +1,57 @@
+# Unpacks a release zip uploaded to the repository root (v0.35).
+# On a phone GitHub's "Add file → Upload files" cannot take a whole folder, but it takes one zip file.
+# Upload sonaroids_X.YY.zip (the archive as delivered: the repository's files at its top, or inside one folder)
+# into the root of main — this job lays its files over the repository, removes the zip, commits,
+# and then starts "Publish site" (a commit made by this job does not start other workflows by itself).
+# Files in .github/ are not taken from the zip (this job may not change workflows); files missing from the
+# zip stay as they are — a file removed in a release is removed by hand.
+name: Unpack uploaded zip
+
+on:
+  push:
+    branches: [main]
+    paths: ['*.zip']
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: unpack
+  cancel-in-progress: false
+
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Unpack
+        id: unpack
+        run: |
+          set -eu
+          z=$(ls -1 *.zip 2>/dev/null | head -n 1 || true)
+          if [ -z "$z" ]; then echo "no zip in the root"; echo "done=no" >> "$GITHUB_OUTPUT"; exit 0; fi
+          echo "unpacking $z"
+          rm -rf "$RUNNER_TEMP/u" && mkdir -p "$RUNNER_TEMP/u"
+          unzip -q "$z" -d "$RUNNER_TEMP/u"
+          root="$RUNNER_TEMP/u"
+          # the archive may hold one folder with everything inside (e.g. sonaroids_0.36/)
+          if [ ! -f "$root/VERSION" ] && [ "$(ls -A "$root" | wc -l)" = 1 ] && [ -d "$root/$(ls -A "$root")" ]; then root="$root/$(ls -A "$root")"; fi
+          rm -rf "$root/__MACOSX" "$root/.git" "$root/.github"
+          if [ ! -f "$root/VERSION" ] || [ ! -f "$root/build.py" ]; then echo "::error::$z does not look like a Sonaroids release (no VERSION or build.py at its top) — nothing changed"; exit 1; fi
+          find "$root" -name .DS_Store -delete
+          cp -a "$root/." .
+          rm -f *.zip
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Unpack $z (version $(cat VERSION))"
+          git push
+          echo "done=yes" >> "$GITHUB_OUTPUT"
+
+      - name: Publish the site
+        if: steps.unpack.outputs.done == 'yes'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --ref main

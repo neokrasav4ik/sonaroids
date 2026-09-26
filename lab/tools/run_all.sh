@@ -5,6 +5,7 @@ set -e
 cd "$(dirname "$0")"
 echo "== сборка совпадает с исходниками =="; python3 ../build.py --check
 echo; echo "== синтетика с текущим зондом =="; node synth_probe.js
+echo; echo "== длинная запись: стенд на синтетике =="; node eval_long.js --synth | tail -3
 echo; echo "== автоуровень =="; node tests/test_autolevel.js
 echo; echo "== подготовка без калибровки: норма =="; node tests/test_quick_start.js 44
 echo; echo "== подготовка: зонда почти не слышно =="; node tests/test_quick_start.js 20

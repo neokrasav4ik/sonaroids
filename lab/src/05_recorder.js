@@ -9,6 +9,15 @@ var SCRIPT=[
   {t:14, k:'away',  say:'Убери руку',              sub:'Совсем.', H:function(){return null;}, d:'—'},
   {t:16, k:'end'}
 ];
+/* 26.09: длинная запись — 4 круга по 22 с (веди за меткой 18 с, замри 4 с), 96 с всего. Зачем: уход за полторы минуты,
+   особенно когда телефон в руке (ладонь у торца всё время, пустая комната не обновляется). Разбор — tools/eval_long.js */
+var SCRIPT_LONG=(function(){ var s=[
+  {t:0, k:'empty', say:'Убери руку', sub:'Ничего рядом с телефоном. Снимаю пустую комнату.', H:function(){return null;}, d:'—'},
+  {t:3, k:'place', say:'Ладонь на 10 см', sub:'Как играешь: над столом сбоку или у торца, если телефон в руке.', H:function(){return 100;}, d:'100'}], t=5;
+  for(var n=1;n<=4;n++){ (function(t0,n){
+    s.push({t:t0, k:'move'+n, say:'Веди за меткой', sub:'Круг '+n+' из 4. Плавно.', H:function(t){return sn(t,t0);}, d:'100+50*sin(2pi(t-'+t0+')/6)'});
+    s.push({t:t0+18, k:'hold'+n, say:'Замри', sub:'Четыре секунды на 10 см.', H:function(){return 100;}, d:'100'}); })(t,n); t+=22; }
+  s.push({t:t, k:'away', say:'Убери руку', sub:'Совсем.', H:function(){return null;}, d:'—'}); s.push({t:t+3, k:'end'}); return s; })();
 var trackH=0;
 function yOf(v){ return (1-(v-30)/(170-30))*trackH; }
 function buildTracks(){
@@ -21,7 +30,7 @@ function buildTracks(){
     var k=document.createElement('div'); k.className='tick'; k.style.top=yOf(v)+'px'; tr.appendChild(k); });
 }
 var recMeta=null, blob=null, fname='';
-function runRec(){
+function runRec(long){ var S=long?SCRIPT_LONG:SCRIPT, TOT=S[S.length-1].t;
   show('rec'); el('mkL').style.opacity=0; el('mkR').style.opacity=0;
   el('say').textContent='Выбираю сторону'; el('sub').textContent='Рука убрана.'; el('clock').textContent='';
   mode=null; rec={on:false,frames:[],gaps:0};
@@ -42,11 +51,11 @@ function runRec(){
     return new Promise(function(done){
       (function tick(){
         var t=(performance.now()-t0)/1000,i;
-        for(i=SCRIPT.length-1;i>=0;i--) if(t>=SCRIPT[i].t) break;
-        if(i!==cur){ cur=i; var s=SCRIPT[i]; if(s.k==='end'){ done(marks); return; }
+        for(i=S.length-1;i>=0;i--) if(t>=S[i].t) break;
+        if(i!==cur){ cur=i; var s=S[i]; if(s.k==='end'){ done(marks); return; }
           marks[s.k]=rec.frames.length*N; el('say').textContent=s.say; el('sub').textContent=s.sub; }
-        var h=SCRIPT[cur].H(t); el(mk).style.opacity=h===null?0:1; if(h!==null) el(mk).style.top=yOf(h)+'px';
-        el('clock').textContent=t.toFixed(1)+' / 16 с'; requestAnimationFrame(tick);
+        var h=S[cur].H(t); el(mk).style.opacity=h===null?0:1; if(h!==null) el(mk).style.top=yOf(h)+'px';
+        el('clock').textContent=t.toFixed(1)+' / '+TOT+' с'; requestAnimationFrame(tick);
       })();
     }).then(function(marks){
       rec.on=false; setProbe('off'); mode=null;
@@ -54,14 +63,14 @@ function runRec(){
       rec.frames.forEach(function(f,j){ all.set(f,j*N); });
       var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
       var so=(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0);
-      recMeta={v:4,kind:'single-landscape',fs:fs,N:N,kLo:kLo,kHi:kHi,
+      recMeta={v:4,kind:long?'single-landscape-long':'single-landscape',fs:fs,N:N,kLo:kLo,kHi:kHi,
         hand:hand,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
         prom_db:prom,samples:n,gaps:rec.gaps,peak:pk,orientation:{angle:so,w:window.innerWidth,h:window.innerHeight},
-        script:SCRIPT.filter(function(s){return s.k!=='end';}).map(function(s){ return {k:s.k,t:s.t,H:s.d}; }),
+        script:S.filter(function(s){return s.k!=='end';}).map(function(s){ return {k:s.k,t:s.t,H:s.d}; }),
         marks:marks,units:'target height in mm above the table',ua:navigator.userAgent,date:new Date().toISOString()};
       blob=wav(all,recMeta);
       var d=new Date(), z=function(x){ return (x<10?'0':'')+x; };
-      fname='sonar1h_'+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+'.wav';
+      fname=(long?'sonarlong_':'sonar1h_')+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+'.wav';
       showDone(pk,prom);
     });
   });

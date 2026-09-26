@@ -13,11 +13,16 @@ function analyse(meta,x){ const D=C.makeDSP(C.bandOf(meta)); D.init(SR,'all'); D
   const edge=xs.length?100*xs.filter(v=>v<=0.0905||v>=0.9095).length/xs.length:NaN;
   const log=meta.log||[], ev=log.filter(e=>typeof e[1]==='string'), st=log.filter(e=>typeof e[1]==='number');
   const miss=ev.filter(e=>e[1].startsWith('miss:')).map(e=>Math.abs(+e[1].slice(5)));
-  const byF=new Map(rows.map(r=>[Math.round(r.t*SR/N),r])), dd=[]; st.forEach(s=>{ const r=byF.get(s[0]); if(r&&r.present&&s[4]) dd.push(Math.abs(X(r)-s[1])); }); dd.sort((a,b)=>a-b);
-  return {vis,jit,edge,dur:tP!==null?tO-tP:0,paddle:ev.filter(e=>e[1]==='paddle').length,bricks:ev.filter(e=>e[1]==='brick').length,miss,match:dd.length?dd[dd.length>>1]:NaN,span:m.hi-m.lo,waveN:m.n}; }
+  // сверка с телефоном: ракетка по кадрам экрана; с плавностью (с 27.09) — тот же фильтр, шаг экрана ~1/60 с (сверка приблизительная)
+  const sm=meta.smooth||{tau:0,db:0}, byF=new Map(rows.map(r=>[Math.round(r.t*SR/N),r])), dd=[]; let pf=null, px=null;
+  st.forEach(s=>{ const r=byF.get(s[0]); if(!(r&&r.present&&s[4])) return; const tg=X(r), aa=sm.tau>0?1-Math.exp(-(1/60)/sm.tau):1; pf=pf===null?tg:pf+aa*(tg-pf); if(px===null) px=s[1];
+    if(pf-px>sm.db) px=pf-sm.db; else if(px-pf>sm.db) px=pf+sm.db; dd.push(Math.abs(px-s[1])); }); dd.sort((a,b)=>a-b);
+  // дрожь ракетки на экране — по журналу (что видел игрок), кадры экрана ~60 в секунду, отклонение от среднего за 0,5 с
+  const sx=st.filter(s=>s[4]).map(s=>s[1]); let jitS=NaN; if(sx.length>80){ const k=31,h=15,d=[]; for(let i=h;i<sx.length-h;i++){ let a=0; for(let j=i-h;j<=i+h;j++) a+=sx[j]; d.push(sx[i]-a/k); } jitS=Math.sqrt(d.reduce((u,v)=>u+v*v,0)/d.length); }
+  return {sm,jitS,vis,jit,edge,dur:tP!==null?tO-tP:0,paddle:ev.filter(e=>e[1]==='paddle').length,bricks:ev.filter(e=>e[1]==='brick').length,miss,match:dd.length?dd[dd.length>>1]:NaN,span:m.hi-m.lo,waveN:m.n}; }
 function report(name,meta,x){ const R=analyse(meta,x), near=R.miss.filter(v=>v<0.14).length;
   console.log(`\n== ${name} == | счёт ${meta.score}, уровень ${meta.level}, игра ${R.dur.toFixed(0)} с | разъём ${meta.port==='left'?'слева':'справа'} | зонд: запас ${meta.probe&&meta.probe.snr_db?meta.probe.snr_db.toFixed(1):'—'} дБ`);
-  console.log(`  вся ширина — ${R.span.toFixed(0)} мм хода ладони (взмахов ${R.waveN} кадров) | ладонь видна ${R.vis.toFixed(1)}% | дрожь ракетки ${(R.jit*100).toFixed(2)}% ширины | у краёв ${R.edge.toFixed(1)}% | прогон против телефона ${(R.match*100).toFixed(2)}%`);
+  console.log(`  вся ширина — ${R.span.toFixed(0)} мм хода ладони (взмахов ${R.waveN} кадров) | ладонь видна ${R.vis.toFixed(1)}% | дрожь по сонару ${(R.jit*100).toFixed(2)}% ширины, на экране ${(R.jitS*100).toFixed(2)}% (плавность: ${R.sm.n||'нет'}) | у краёв ${R.edge.toFixed(1)}% | прогон против телефона ${(R.match*100).toFixed(2)}%${R.sm.tau>0||R.sm.db>0?' (приблизительно)':''}`);
   console.log(`  отбито ${R.paddle}, кирпичей ${R.bricks}, промахов ${R.miss.length}: ракетка была от мяча ${R.miss.map(v=>(v*100).toFixed(0)+'%').join(', ')||'—'} ширины (близко, < 14%: ${near})`);
   return R; }
 module.exports={analyse,report};

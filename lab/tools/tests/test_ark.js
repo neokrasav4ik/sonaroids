@@ -8,7 +8,7 @@ js=js.replace(/var WORKLET=`[\s\S]*?`;/,'');
 js=js.replace("function pickChannel(){","function pickChannel(){ if(globalThis.__fakePick) return globalThis.__fakePick();");
 js=js.replace("function autoLevel(){","function autoLevel(){ if(globalThis.__fakeLevel) return globalThis.__fakeLevel();");
 js=js.replace("function setProbe(w){","function setProbe(w){ globalThis.__probe=w; if(globalThis.__noAudio) return;");
-js=js.replace("el('gMenu').addEventListener","globalThis.__h={arkPlay:arkPlay,akSave:akSave,onFrame:onFrame,AK:function(){return AK;},setFs:function(){ fs=48000; },goFlow:goFlow};\nel('gMenu').addEventListener");
+js=js.replace("el('gMenu').addEventListener","globalThis.__h={akSm:function(){return akSm;},akSmNext:akSmNext,arkPlay:arkPlay,akSave:akSave,onFrame:onFrame,AK:function(){return AK;},setFs:function(){ fs=48000; },goFlow:goFlow};\nel('gMenu').addEventListener");
 let now=0; const timers=[]; let rafs=[];
 global.setTimeout=(f,ms)=>{ timers.push({t:now+(ms||0),f}); return timers.length; };
 global.requestAnimationFrame=f=>{ rafs.push(f); return rafs.length; }; global.cancelAnimationFrame=()=>{};
@@ -39,6 +39,7 @@ async function tick(dt){ const t1=now+dt*1000; while(now<t1){ now+=1000/60; feed
 (async()=>{
   let bad=0; const need=(ok,msg)=>{ console.log((ok?'ok  ':'FAIL')+'  '+msg); if(!ok) bad++; };
   H.goFlow('arkIntro'); need(!els.arkIntro.classList.contains('hidden'),'экран-подсказка открыт');
+  for(let i=0;i<4&&H.akSm()!==0;i++) H.akSmNext();                      // сначала без плавности — сверка точная
   H.arkPlay(); const seen=[], pairs=[];
   for(let i=0;i<1500;i++){ await tick(0.1); const A=H.AK(); if(seen[seen.length-1]!==A.phase) seen.push(A.phase); if(A.phase==='play'&&A.present&&A.dist!==null) pairs.push([A.dist,A.px]); if(A.phase==='over') break; }
   const A=H.AK(); need(seen.join(' → ').indexOf('empty → wave → count → play → over')>=0,'фазы: '+seen.join(' → '));
@@ -51,5 +52,11 @@ async function tick(dt){ const t1=now+dt*1000; while(now<t1){ now+=1000/60; feed
   H.akSave(); const f=path.join(C.OUT,'ark_test.wav'); fs.mkdirSync(C.OUT,{recursive:true}); fs.writeFileSync(f,Buffer.from(await A.blob.arrayBuffer()));
   const w=C.loadWav(f); need(w.meta.kind==='ark-play'&&/^sonarark_/.test(A.fname)&&w.meta.log.length>500,'запись: '+A.fname+', журнал '+w.meta.log.length+' строк');
   const R=E.report('ark_test.wav (через страницу)',w.meta,w.x); need(R.vis>95&&R.match<0.01&&R.paddle===nP,`разбор сходится с телефоном: ${(R.match*100).toFixed(2)}% ширины, отбито ${R.paddle}`);
+  // плавность «сильная»: ракетка ровнее сырой карты, игра идёт, разбор сходится приблизительно
+  for(let i=0;i<4&&H.akSm()!==2;i++) H.akSmNext(); tPlay=null; H.arkPlay();
+  for(let i=0;i<1500;i++){ await tick(0.1); if(H.AK().phase==='over') break; }
+  const A2=H.AK(); H.akSave(); const f2=path.join(C.OUT,'ark_smooth_test.wav'); fs.writeFileSync(f2,Buffer.from(await A2.blob.arrayBuffer())); const w2=C.loadWav(f2);
+  const R2=E.report('ark_smooth_test.wav (плавность сильная)',w2.meta,w2.x);
+  need(w2.meta.smooth&&w2.meta.smooth.tau===0.1&&/сильная/.test(els.akSmooth.textContent)&&R2.paddle>=5&&R2.match<0.02,`плавность «сильная»: в записи ${JSON.stringify(w2.meta.smooth)}, отбито ${R2.paddle}, сверка ${(R2.match*100).toFixed(2)}%`);
   console.log(bad?'ИТОГ: ПРОВАЛ':'ИТОГ: ok'); process.exitCode=bad?1:0;
 })();

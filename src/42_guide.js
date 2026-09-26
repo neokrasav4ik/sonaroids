@@ -129,7 +129,7 @@ function sceneHand(id,t,f,away,waves,T,lay){
   ph=phoneIso(o,cm,id==='phone'&&Math.floor(T*3)%2===0,typeof camEnd==='function'&&camEnd());
   for(j=0;j<4;j++) box(gx+0.1*cm+j*1.7*cm,gx+1.6*cm+j*1.7*cm,Y0-0.2*cm,Y0+(2.6-(j===3?0.7:0)-(j===0?0.3:0))*cm,Zp,Zp+0.9*cm,o,HS.t,HS.x,HS.y);   // …curled onto the top
   box(gx+1.0*cm,gx+5.4*cm,Y1-0.6*cm,Y1+1.2*cm,-1.9*cm,-0.2*cm,o,HS.t,HS.x,HS.y);                       // the thumb under the near edge
-  var al=1, gap=(5+5*f)*cm, dy=0;
+  var al=1, gap=(5+10*f)*cm, dy=0;                                                             // v0.39: 5–15 cm from the end (the maintainer: on the OnePlus it plays better a bit farther)
   if(id==='phone') dy=(1-ease(t/1.8))*28*cm;
   if(away>0){ var q=ease(away); dy=q*30*cm; gap+=q*6*cm; al=1-q; }
   var Za=-4.2*cm, Zb=4.4*cm, Kx=ph.X1+gap+2.8*cm, Ky=-2.0*cm+dy, D=[0,-1], NB=[1,0], PL=8.5*cm, Wx=Kx-D[0]*PL, Wy=Ky-D[1]*PL;   // a straight hand along the phone's end (v0.35, the maintainer): knuckles K, wrist W, fingers along D, back of the hand along NB
@@ -148,9 +148,9 @@ function sceneHand(id,t,f,away,waves,T,lay){
     box(Wx-1.0*cm,Wx+2.4*cm,Wy-0.8*cm,Wy+9*cm,Za+1.6*cm,Za+6.4*cm,o,HS.t,HS.x,HS.y,al);                 // forearm straight towards the player, along the phone's end
     box(Wx-1.0*cm,Wx+2.4*cm,Wy+9*cm,Wy+14*cm,Za+1.4*cm,Za+6.2*cm,o,HS.t,HS.x,HS.y,al*0.55);
   }
-  if(id==='wave'){ var rz=Zb+10.5*cm, r0=iso(ph.X1,0,rz,o), r5=iso(ph.X1+5*cm,0,rz,o), r10=iso(ph.X1+10*cm,0,rz,o);   // a 0–10 cm ruler from the port, above the picture
+  if(id==='wave'){ var rz=Zb+10.5*cm, r0=iso(ph.X1,0,rz,o), r5=iso(ph.X1+5*cm,0,rz,o), r10=iso(ph.X1+15*cm,0,rz,o);   // a 0–15 cm ruler from the port, above the picture (0–10 before v0.39)
     for(var x=r0[0];x<=r10[0];x+=2) R(P.soft,x,r0[1],1,1); R(P.soft,r0[0],r0[1]-2,1,5); R(P.soft,r5[0],r5[1]-2,1,5); R(P.soft,r10[0],r10[1]-2,1,5);
-    labels.push({x:r5[0]-2,y:r5[1]-11,t:'5',c:P.soft}); labels.push({x:r10[0]-2,y:r10[1]-11,t:'10 '+L('cm'),c:P.soft}); }
+    labels.push({x:r5[0]-2,y:r5[1]-11,t:'5',c:P.soft}); labels.push({x:r10[0]-2,y:r10[1]-11,t:'15 '+L('cm'),c:P.soft}); }
   labels.screen={ph:ph,o:o,cm:cm,f:f,T:T};
   if(id==='phone') portLabel(ph,o,labels);
   return labels;

@@ -50,8 +50,19 @@ function titles(t,s,col){ var y=topY(), mw=LW-SAFE.l-SAFE.r-24, cx0=Math.round((
 function btnW(labels){ var w=0; labels.forEach(function(s){ w=Math.max(w,PF.width(s)); }); return Math.max(Math.round(LW*0.2),Math.round((w+14)*1.16)); }
 function sideX(w){ return freeSide()==='left'?SAFE.l+Math.max(8,Math.round(LW*0.04)):LW-SAFE.r-Math.max(8,Math.round(LW*0.04))-w; }
 /* a column of buttons on the free side, vertically centred on y0 */
-function column(items,y0,x0){ var w=btnW(items.map(function(b){ return b[1]; })), h=BH, gap=10, y=Math.round(y0-(items.length*(h+gap)-gap)/2), x=x0===undefined?sideX(w):x0;
-  items.forEach(function(b){ button(b[0],b[1],x,y,w,h,b[2]||'',Math.floor(clock*2)%2===0); y+=h+gap; }); }
+function column(items,y0,x0){ var w=btnW(items.filter(function(b){ return b[2]!=='sound'; }).map(function(b){ return b[1]; })), h=BH, gap=10, y=Math.round(y0-(items.length*(h+gap)-gap)/2);
+  if(items.some(function(b){ return b[2]==='sound'; })) w=Math.max(w,soundW()); var x=x0===undefined?sideX(w):x0;
+  items.forEach(function(b){ if(b[2]==='sound') soundRow(x,y,w,h); else button(b[0],b[1],x,y,w,h,b[2]||'',Math.floor(clock*2)%2===0); y+=h+gap; }); }
+/* v0.36: the sound row in the menu and the pause — [ - | SOUNDS ▮▮▮▮▮▯▯▯ | + ]; the middle switches the sounds on and off */
+function soundW(){ return PF.width(L('sfx_off'))+6+Sfx.steps*4+2*Math.round(BH*0.9)+12; }
+function soundRow(x,y,w,h){ var on=Sfx.on(), n=Sfx.steps, lv=Sfx.lvl(), s=Math.round(h*0.9), ty=y+Math.round((h-7)/2);
+  R(P.bg,x,y,w,h); frame(x,y,w,h,P.line);
+  text('-',x+s/2,ty,P.text,'center',1,true); text('+',x+w-s/2,ty,P.text,'center',1,true); R(P.line,x+s,y+3,1,h-6); R(P.line,x+w-s,y+3,1,h-6);
+  BTN.push({id:'vol_dn',x:x,y:y,w:s,h:h}); BTN.push({id:'vol_up',x:x+w-s,y:y,w:s,h:h});
+  var lab=L(on?'sfx_row':'sfx_off'), tw=PF.width(lab), cw=tw+6+n*4, cx=x+s+Math.round((w-2*s-cw)/2);
+  text(lab,cx,ty,on?P.text:P.soft,'left',1,true);
+  for(var j=0;j<n;j++) R(on&&j<lv?P.band:P.line,cx+tw+6+j*4,ty,3,7);
+  BTN.push({id:'sfx',x:x+s,y:y,w:w-2*s,h:h}); }
 function nextBtn(id,label){ var w=btnW([label]); button(id,label,sideX(w),Math.round(LH*0.76),w,BH,'primary',Math.floor(scrT*2)%2===0); }   /* v0.35: lower, off the pictures */
 function ringAt(){ return freeSide()==='left'?[Math.round(LW*0.13),Math.round(LH*0.74)]:[Math.round(LW*0.87),Math.round(LH*0.74)]; }   /* v0.35: lower, under the two pictures */
 function ringUI(p,st){ var r=ringAt(), col=st==='wait'?P.soft:st==='ok'?P.band:P.bullet;
@@ -77,7 +88,7 @@ function sTitle(){ sky(DT,0.4); var y=Math.round(LH*0.3), cx0=freeSide()==='left
   var gs=L('source'), gw=PF.width(gs); text(gs,vx,vy-13,P.soft,vr?'right':'left'); BTN.push({id:'source',x:Math.max(0,(vr?vx-gw:vx)-6),y:vy-19,w:gw+12,h:PF.CAP+10});
   var sy=Math.round(LH*0.62+Math.sin(clock*1.3)*LH*0.08); drawShip(cx0-40,sy,clock,false);
   for(var i=0;i<3;i++){ var bx=cx0-20+((clock*90+i*40)%120); R(P.bullet,bx,sy,4,1); light(bx,sy,6*K,P.glowB,0.45); }
-  column([['play',L('play'),'primary'],['scores',L('scores')],['howto',L('howto')],['lang',L('lang')],['sfx',L(Sfx.on()?'sfx_on':'sfx_off')]],Math.round(LH*0.5));
+  column([['play',L('play'),'primary'],['scores',L('scores')],['howto',L('howto')],['lang',L('lang')],['sfx','','sound']],Math.round(LH*0.5));
   say('Sonaroids. '+L('play')); }
 function sSound(){ sky(DT,0.3); titles(L(direct?'volume_direct':'volume'),L('volume_s')); soundVolume(scrT); nextBtn('next',L('next')); stepSquares('sound'); }
 function inBrowser(){ var ua=navigator.userAgent||'', mob=/iPhone|iPad|iPod|Android/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1), pwa=false;
@@ -264,7 +275,7 @@ function sLinkIn(){ sky(DT,0.3); titles(L('link_in_t'),L('link_in_s')); nickFiel
   button(items[0][0],items[0][1],x,y0,w,BH,'primary',true); button(items[1][0],items[1][1],x+w+gap,y0,w,BH,'',false); }
 function sLinkDone(){ sky(DT,0.3); titles(L('link_ok_t'),L('link_ok_s').replace('{nick}',linkNick?' — '+linkNick:''));
   var w=btnW([L('next')]); button('link_done',L('next'),Math.round(LW/2-w/2),Math.round(LH*0.6),w,BH,'primary',true); }
-function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('paused')); column([['resume',L('resume'),'primary']].concat(pausedFrom==='play'?[['restart',L('restart')],['quit',L('quit')]]:[]).concat([['exit',L('exit')]]),Math.round(LH*0.52)); }
+function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('paused')); column([['resume',L('resume'),'primary']].concat(pausedFrom==='play'?[['restart',L('restart')],['quit',L('quit')]]:[]).concat([['exit',L('exit')],['sfx','','sound']]),Math.round(LH*0.55)); }
 /* v0.24 "start over" from the pause menu: straight into a countdown with the same calibration, or through calibration again */
 function sRestart(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('restart'),L('restart_s'));
   column([['rs_go',L('rs_go'),'primary'],['rs_cal',L('recal')],['rs_back',L('back')]],Math.round(LH*0.58)); }
@@ -280,7 +291,7 @@ function startPrepare(){
   prep={res:null,doneT:0}; acoustic=false;
   Sonar.prepare(function(stage){ if(stage==='room'){ var I=Sonar.info();
       Logs.setupStart({kind:'подготовка',cal:I.cal,autocenter:true,tune:'waves',asym:Tune.ASYM,field_auto:true,field_mm:+store.get('sonaroids_field','100')||100,
-        chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,prom:null,started:new Date().toISOString(),app:'sonaroids'}); } })
+        chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,prom:null,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids'}); } })
   .then(function(r){ prep.res=r; prep.doneT=scrT; if(!r.ok) Board.setup(r.why||'error'); if(r.ok){ acoustic=true; accSide=Sonar.chan(); var o=portOr(); if(o&&!handRel) handRel=accSide===o?'port':'camera'; handSaved=handSide(); store.set('sonaroids_hand',handSaved); } })
   .catch(function(){ prep.res={ok:false,why:'error'}; Board.setup('error'); });
 }
@@ -300,7 +311,7 @@ function startGame(){
   var y0=shipY===null?null:+(shipY/K).toFixed(3);
   g=Core.create(seed,Core.FH*(LW-SAFE.l)/LH,y0); Board.start(seed,g.FW,y0); nickAsked=false; acc=0; rockSpr={}; parts=[]; livesT=0; var I=Sonar.info();
   Logs.gameStart({core:Core.TAG,seed:seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:'frozen',asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
-    chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,started:new Date().toISOString(),app:'sonaroids'});
+    chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids'});
   Sfx.play('start'); go('play');
 }
 var ACT={
@@ -313,7 +324,7 @@ var ACT={
   /* a deep recalibration: forget the saved palm range, close the microphone and start from "put the phone down" */
   recal:function(){ onboarding=false; direct=false; store.set('sonaroids_field','100'); Sonar.restart(); booted=false; acoustic=false; go('phone'); },
   lang:function(){ lang=lang==='en'?'ru':'en'; store.set('sonaroids_lang',lang); },
-  sfx:function(){ Sfx.toggle(); },
+  sfx:function(){ Sfx.toggle(); }, vol_dn:function(){ Sfx.down(); }, vol_up:function(){ Sfx.up(); },
   start:function(){ ensure(startCount); },
   again:function(){ ensure(toAway); },                 // before every game: the empty room anew, then wave (v0.16: things drift over a game)
   menu:function(){ go('title'); },
@@ -349,7 +360,7 @@ var downOn=null;
 function btnAt(e){ var x=e.clientX*DPR/S, y=e.clientY*DPR/S;
   for(var i=BTN.length-1;i>=0;i--){ var b=BTN[i]; if(x>=b.x-4&&x<b.x+b.w+4&&y>=b.y-4&&y<b.y+b.h+4) return b.id; } return null; }
 cv.addEventListener('pointerdown',function(e){ downOn=btnAt(e); e.preventDefault(); },{passive:false});
-cv.addEventListener('pointerup',function(e){ var id=btnAt(e); if(id&&id===downOn&&ACT[id]){ if(id!=='allow'&&id!=='play'&&id!=='retry') Sfx.play('tap'); ACT[id](); } downOn=null; e.preventDefault(); },{passive:false});
+cv.addEventListener('pointerup',function(e){ var id=btnAt(e); if(id&&id===downOn&&ACT[id]){ if(id!=='allow'&&id!=='play'&&id!=='retry'&&id!=='sfx'&&id!=='vol_dn'&&id!=='vol_up') Sfx.play('tap'); ACT[id](); } downOn=null; e.preventDefault(); },{passive:false});
 cv.addEventListener('pointercancel',function(){ downOn=null; });
 ['gesturestart','gesturechange','gestureend','dblclick'].forEach(function(n){ document.addEventListener(n,function(e){ e.preventDefault(); },{passive:false}); });
 document.addEventListener('touchmove',function(e){ e.preventDefault(); },{passive:false});

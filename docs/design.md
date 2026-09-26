@@ -94,6 +94,7 @@ Prototype: `game/proto/` — the ship follows your finger.
   Since v0.30 the top corner, level with the score, carries "sonaroids.app" in lowercase, in the version number's font and colour; not a link. The corner is the one away from the menu button: right for a right hand, left for a left hand. The bottom left corner was tried first, but the ship flies over it at the very bottom. — decided 25 Sep
   How to show lives and shield without words (e.g. a glow around the ship) — to be decided on the skeleton. — open
 - **Sound:** event sounds only — shot, split, power-up, hit, level. Synthesised in code in the spirit of old consoles, everything below 6 kHz so it doesn't disturb the probe. **No background music.** — agreed
+  Volume (v0.36): a row in the menu and the pause, "- SOUNDS ▮▮▮▮▮▮▯▯ +" — 8 levels, the middle switches the sounds on and off, every change plays a short ping at the new level. The level acts after the compressor: level 6 (the default) is 2.25× louder than before, level 8 is 4×; with the microphone open iOS plays everything quieter, and at 50% media volume the sounds were not heard (the maintainer, 26 Sep). The guard that turns the sounds down when they flood the microphone stays; a level set by hand resets it. — agreed 26 Sep
 
 ## 7. Technology
 

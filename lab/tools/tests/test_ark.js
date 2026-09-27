@@ -9,7 +9,7 @@ js=js.replace(/var WORKLET=`[\s\S]*?`;/,'');
 js=js.replace("function pickChannel(){","function pickChannel(){ if(globalThis.__fakePick) return globalThis.__fakePick();");
 js=js.replace("function autoLevel(){","function autoLevel(){ if(globalThis.__fakeLevel) return globalThis.__fakeLevel();");
 js=js.replace("function setProbe(w){","function setProbe(w){ globalThis.__probe=w; if(globalThis.__noAudio) return;");
-js=js.replace("el('gMenu').addEventListener","globalThis.__h={ctl:function(){return {lock:akLock,pix:akPix,mag:akMag,range:AK_RANGES[akRange]};},akLockNext:akLockNext,akPixNext:akPixNext,akMagNext:akMagNext,akRangeNext:akRangeNext,arkPlay:arkPlay,akSave:akSave,onFrame:onFrame,AK:function(){return AK;},setFs:function(){ fs=48000; },goFlow:goFlow};\nel('gMenu').addEventListener");
+js=js.replace("el('gMenu').addEventListener","globalThis.__h={ctl:function(){return {lock:akLock,pix:akPix,mag:akMag,range:AK_RANGES[akRange],field:AK_FIELDS[akField]};},akFieldNext:akFieldNext,akLockNext:akLockNext,akPixNext:akPixNext,akMagNext:akMagNext,akRangeNext:akRangeNext,arkPlay:arkPlay,akSave:akSave,onFrame:onFrame,AK:function(){return AK;},setFs:function(){ fs=48000; },goFlow:goFlow};\nel('gMenu').addEventListener");
 let now=0; const timers=[]; let rafs=[];
 global.setTimeout=(f,ms)=>{ timers.push({t:now+(ms||0),f}); return timers.length; };
 global.requestAnimationFrame=f=>{ rafs.push(f); return rafs.length; }; global.cancelAnimationFrame=()=>{};
@@ -37,7 +37,9 @@ function palm(t){ const A=H.AK(); if(!A||A.phase==='prep'||A.phase==='empty'||A.
   if(tPlay===null) tPlay=t; if(t-tPlay>25) return dPrev;
   // цель — куда мяч придёт к ракетке (отражения от стен, кирпичи не учитываю); мяч летит вверх — держусь под ним
   const B=A.ball; let tx=B.x; if(B.vy>0){ const tt=(0.92-B.y)/B.vy; let xx=B.x+B.vx*tt; xx=((xx%2)+2)%2; tx=xx>1?2-xx:xx; }
-  const e=tx-A.px, want=1.2*e/0.82*(A.map.hi-A.map.lo), step=400*N/SR;
+  // поле (0.39k): ракетка ближе к точке падения (у «двух ракеток» их две), путь ракетки на поле — 0,82 или 0,42 ширины
+  const pads=A.pads||[A.px], P=pads.reduce((m,p)=>Math.abs(tx-p)<Math.abs(tx-m)?p:m,pads[0]), g=(A.field==='twin'||A.field==='funnel')?0.42:0.82;
+  const e=tx-P, want=1.2*e/g*(A.map.hi-A.map.lo), step=400*N/SR;
   dPrev=Math.max(45,Math.min(165,dPrev+Math.max(-step,Math.min(step,want)))); return dPrev; }
 function feed(){ const due=Math.floor(now/1000*SR/N); while(fed<due){ H.onFrame({data:{s:seq++,f:S.synthFrame(palm(fed*N/SR),fed*7+1)}}); fed++; } }
 async function tick(dt){ const t1=now+dt*1000; while(now<t1){ now+=1000/60; feed();
@@ -69,5 +71,13 @@ async function tick(dt){ const t1=now+dt*1000; while(now<t1){ now+=1000/60; feed
   const onGrid=w2.meta.log.filter(e=>typeof e[1]==='number').every(e=>Math.abs(e[1]*160-Math.round(e[1]*160))<0.02);
   const magT=w2.meta.log.filter(e=>typeof e[1]==='number'&&Math.abs(e[5]||0)>0.005).length;
   need(w2.meta.ctl&&w2.meta.ctl.lock&&w2.meta.ctl.pix&&w2.meta.ctl.mag&&/вкл/.test(els.arkMag.textContent)&&onGrid&&magT>0&&R2.paddle>=3&&R2.match<0.02,`замок, ретро-пиксели и магнит: ракетка на сетке 1/160 — ${onGrid?'да':'нет'}, магнит тянул ${magT} кадров, отбито ${R2.paddle}, сверка ${(R2.match*100).toFixed(2)}%`);
+  // поля 0.39k: две ракетки, воронка, ракетка сбоку — игра идёт, мяч отбивается, разбор сходится, путь ракетки короче
+  if(H.ctl().mag) H.akMagNext(); if(H.ctl().pix) H.akPixNext();
+  for(const want of ['twin','funnel','side']){ for(let i=0;i<4&&H.ctl().field!==want;i++) H.akFieldNext(); tPlay=null; tWave=null; H.arkPlay();
+    let pmin=9,pmax=-9; for(let i=0;i<1500;i++){ await tick(0.1); const Z=H.AK(); if(Z.phase==='play'&&Z.present){ pmin=Math.min(pmin,Z.px); pmax=Math.max(pmax,Z.px); } if(Z.phase==='over') break; }
+    const Z=H.AK(); H.akSave(); const fz=path.join(C.OUT,'ark_'+want+'_test.wav'); fs.writeFileSync(fz,Buffer.from(await Z.blob.arrayBuffer())); const wz=C.loadWav(fz);
+    const Rz=E.report('ark_'+want+'_test.wav',wz.meta,wz.x), lim=want==='side'?[0.09,0.91]:want==='twin'?[0.04,0.46]:[0.29,0.71];
+    need(wz.meta.field===want&&Z.phase==='over'&&Rz.paddle>=3&&Rz.match<0.02&&pmin>=lim[0]-1e-6&&pmax<=lim[1]+1e-6,`поле «${want}»: отбито ${Rz.paddle}, кирпичей ${Rz.bricks}, ракетка ${pmin.toFixed(2)}–${pmax.toFixed(2)} (путь ${lim.join('–')}), сверка ${(Rz.match*100).toFixed(2)}%`); }
+  for(let i=0;i<4&&H.ctl().field!=='classic';i++) H.akFieldNext();
   console.log(bad?'ИТОГ: ПРОВАЛ':'ИТОГ: ok'); process.exitCode=bad?1:0;
 })();

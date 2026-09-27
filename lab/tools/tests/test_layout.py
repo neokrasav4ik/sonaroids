@@ -20,6 +20,9 @@ SETUP={
  'recDual':"lastRec='recDual'; show('recSide'); buildHTrack(DUAL_A); el('mkH').style.left=xOf(60)+'px'; el('sdSay').textContent='Закрой пальцем верхний динамик'; el('sdSub').textContent='Узкая щель над экраном, у фронтальной камеры. Три секунды.'; el('sdClock').textContent='10.2 / 45 с';",
  'arkIntro':"lastRec='ark'; show('arkIntro');",
  'arkPlay':"lastRec='ark'; show('arkPlay'); AK.bricks=akBricks(2); AK.ball={x:0.42,y:0.62}; AK.px=0.55; AK.phase='play'; AK.present=true; AK.dist=92; AK.score=120; AK.lives=2; AK.level=2; akDraw(); akText('',''); ",
+ 'ark_twin':"lastRec='ark'; show('arkPlay'); AK.field='twin'; AK.bricks=akBricks(2); AK.ball={x:0.42,y:0.62}; AK.px=0.3; AK.pd=0.3; AK.phase='play'; AK.present=true; AK.dist=92; AK.score=120; AK.lives=2; AK.level=2; akDraw(); akText('',''); ",
+ 'ark_funnel':"lastRec='ark'; show('arkPlay'); AK.field='funnel'; AK.bricks=akBricks(2); AK.ball={x:0.42,y:0.62}; AK.px=0.45; AK.pd=0.45; AK.phase='play'; AK.present=true; AK.dist=92; AK.score=120; AK.lives=2; AK.level=2; akDraw(); akText('',''); ",
+ 'ark_side':"lastRec='ark'; show('arkPlay'); AK.field='side'; AK.bricks=akBricks(2); AK.ball={x:0.42,y:0.62}; AK.px=0.7; AK.pd=0.7; AK.phase='play'; AK.present=true; AK.dist=92; AK.score=120; AK.lives=2; AK.level=2; akDraw(); akText('',''); ",
  'arkOver':"lastRec='ark'; show('arkPlay'); AK.bricks=akBricks(1); AK.ball={x:0.42,y:0.62}; AK.px=0.55; AK.phase='over'; AK.score=120; AK.lives=0; AK.level=1; akDraw(); akText('Конец','счёт 120 · уровень 1 · лучший 120'); akButtons(true);",
  'menu':"show('game'); el('gPanel').classList.remove('hidden'); el('gLogI').textContent='Записано 150 с партии (последние 150 с). Журнал настройки: 120 с.'; fitScreen();",
 }

@@ -507,7 +507,7 @@ registerProcessor('cap2',Cap2);
 `;
 /* ── ОБРАБОТКА v2: быстрое смещение по фазе + абсолютная высота по центру эха, слитые вместе ── */
 var DSP2=(function(){
-  var N=512,C=343,fs,kLo,kHi,kc,ks,M,Pr,Pi,lam,mm,T,gA,gB,G,cosT,sinT,BAND_LO=null;   // BAND_LO — нижний край полосы зонда, если не 18,3 кГц (широкий зонд, с 0.39u; задаётся set('flo') до init)
+  var fzF=[],fzA=[],fzN=0,fzHold=0,frozen=false,frozenN=0,N=512,C=343,fs,kLo,kHi,kc,ks,M,Pr,Pi,lam,mm,T,gA,gB,G,cosT,sinT,BAND_LO=null;   // BAND_LO — нижний край полосы зонда, если не 18,3 кГц (широкий зонд, с 0.39u; задаётся set('flo') до init)
   var d0,dref,boot,bootN=30,prevH,hist,L=4,prom,noProbe,bgAcc,bgN,bgR,bgI,BG_N=40;
   var Es,hold,present,refr,Q_FLOOR=-28,T_ON=-16,T_INT=-30,HOLD_S=1.5,tauE=0.15,REFR_S=0.7,TAU_BG=2.0,TAU=1.5;
   var eqW=null,eqDb=0,EQ_ON=16,ACC_N=24,FINE_N=188,EQ_MAX=10,gN=null,drops=0,sinceDrop=1e9,covered=false,lastPeak=null,d0B=0,fineN=-1,fR=null,fI=null,refR=null,refI=null,acR=null,acI=null,acN=0,moveN=0,scanWait=0,relocks=0,eAvg=0,TE=3,E_FAST=12,ePres=0,why='',rngBuf=[],xBuf=[],centered=false,autoC=false,presN=0,x,fast,cal={k:0.75,o:1,s:0.8},eHold=null,lowN=0,resS=-99,resFloor=null,upN=0,warm=0,absBuf=[],ABS_MED=15,DEADB=5,DEADB_UP=15,dirS=null,lostN=0,lost=false;
@@ -521,7 +521,7 @@ var DSP2=(function(){
     cosT=new Float64Array(M*N); sinT=new Float64Array(M*N);
     for(q=0;q<M;q++){ var w=-2*Math.PI*ks[q]/N; for(var n=0;n<N;n++){ cosT[q*N+n]=Math.cos(w*n); sinT[q*N+n]=Math.sin(w*n); } }
     d0=null; dref=null; eqW=null; eqDb=0; gN=null; drops=0; sinceDrop=1e9; covered=false; lastPeak=null; d0B=0; fineN=-1; fR=null; fI=null; refR=null; refI=null; acR=null; acI=null; acN=0; moveN=0; scanWait=0; relocks=0; boot=[]; prevH=null; hist=[]; prom=null; noProbe=false;
-    bgAcc=null; bgN=0; bgR=null; bgI=null; Es=-80; hold=0; present=false; refr=0; x=null; fast=0; eHold=null; ePres=0; why=""; rngBuf=[]; xBuf=[]; centered=false; presN=0; lowN=0; resS=-99; resFloor=null; upN=0; warm=0; absBuf=[]; dirS=null; lostN=0; lost=false;
+    bgAcc=null; bgN=0; bgR=null; bgI=null; Es=-80; hold=0; present=false; refr=0; x=null; fast=0; eHold=null; ePres=0; why=""; rngBuf=[]; xBuf=[]; centered=false; presN=0; lowN=0; resS=-99; resFloor=null; upN=0; warm=0; absBuf=[]; dirS=null; lostN=0; lost=false; fzF=[]; fzA=[]; fzN=0; fzHold=0; frozen=false; frozenN=0;
   }
   function bandSpec(fr){
     var Hr=new Float64Array(M),Hi=new Float64Array(M),q,n;
@@ -655,8 +655,18 @@ var DSP2=(function(){
     var started=present&&!was;
     if(!present&&!covered){ var aB=1-Math.exp(-1/(TAU_BG*fpsF));      // без руки фон тихо обновляется
       for(i=0;i<G;i++){ bgR[i]+=aB*(h2[0][i]-bgR[i]); bgI[i]+=aB*(h2[1][i]-bgI[i]); } }
+    /* с 0.44 (27.09, Redmi, рука у фронтальной камеры): после подготовки рядом появилось неподвижное эхо (~7 см), которого не было в пустой
+       комнате, — абсолютная часть «застыла» на нём (дальность 6,5–8,2 см при руке, ходившей на 5–10 см), согласие частей 0,05, и она
+       тянула корабль к одной высоте («уводит»). Если за 2 с быстрая часть прошла ≥ 30 мм, а абсолютная — меньше 0,35 от этого, фон учится
+       и при руке (τ 10 с) ещё 10 с: движущаяся ладонь в фон не попадает (её эхо вращается по фазе и усредняется), неподвижное — уходит.
+       Прогон журналов подготовки: Redmi 0.10 → 0.29, остальные 15 — без изменений (14) или лучше; записи с меткой — те же до цифры */
+    else if(present&&!covered&&(frozen||fzHold>0)){ if(fzHold>0) fzHold--; var aP=1-Math.exp(-1/(10*fpsF));
+      for(i=0;i<G;i++){ bgR[i]+=aP*(h2[0][i]-bgR[i]); bgI[i]+=aP*(h2[1][i]-bgI[i]); } }
     if(E>T_INT) fast+=vel;                                   // сырое смещение — для калибровки
     if(!covered){ absBuf.push(abs); if(absBuf.length>ABS_MED) absBuf.shift(); }
+    if(present&&!covered){ fzF.push(fast*cal.s); fzA.push(abs); if(fzF.length>Math.round(2*fpsF)){ fzF.shift(); fzA.shift(); }
+      if(++fzN%10===0&&fzF.length>=Math.round(2*fpsF)){ var pf=Math.max.apply(null,fzF)-Math.min.apply(null,fzF), pa=Math.max.apply(null,fzA)-Math.min.apply(null,fzA);
+        frozen=pf>=30&&pa<0.35*pf; if(frozen){ fzHold=Math.round(10*fpsF); frozenN++; } } } else { fzF=[]; fzA=[]; frozen=false; fzHold=0; }
     var absM=absBuf.length>2?absBuf.slice().sort(function(p,q){return p-q;})[absBuf.length>>1]:abs;
     if((started&&!covered)||x===null){ x=abs; eAvg=0; }
     if(present){ if(E>T_INT) x+=cal.s*vel;
@@ -692,7 +702,7 @@ var DSP2=(function(){
   return {init:init,frame:frame,recenter:recenter,shift:shift,
     setCal:function(c){ cal.k=c.k; cal.o=c.o; cal.s=c.s; },
     set:function(k,v){ if(k==='flo') BAND_LO=v||null; if(k==='tint') T_INT=v; if(k==='tau') TAU=v; if(k==='absmed') ABS_MED=Math.max(1,Math.round(v)); if(k==='deadband') DEADB=Math.max(0,v); if(k==='autocenter') autoC=!!v; },
-    info:function(){ return {covered:covered,eq_db:eqDb,eq:!!eqW,relocks:relocks,drops:drops,d0:d0,prom:prom,noProbe:noProbe,lost:lost,ready:bgR!==null,mm:mm,centered:centered,band:[kLo,kHi],cal:{k:cal.k,o:cal.o,s:cal.s}}; }};
+    info:function(){ return {covered:covered,eq_db:eqDb,eq:!!eqW,relocks:relocks,drops:drops,d0:d0,prom:prom,noProbe:noProbe,lost:lost,ready:bgR!==null,mm:mm,centered:centered,band:[kLo,kHi],frozen:frozenN,cal:{k:cal.k,o:cal.o,s:cal.s}}; }};
 })();
 /* ── ИГРА: логика отдельно от рисования, чтобы её можно было проверить на записи ── */
 var Game=(function(){

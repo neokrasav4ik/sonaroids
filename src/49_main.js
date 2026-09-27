@@ -7,7 +7,7 @@ var store={get:function(k,d){ try{ var v=localStorage.getItem(k); return v===nul
 var lang=store.get('sonaroids_lang',((navigator.language||'').toLowerCase().indexOf('ru')===0?'ru':'en')); if(!STR[lang]) lang='en';
 function L(k){ return STR[lang][k]||k; }
 var PAUSE=3.5, AWAY_T0=0.6, AWAY_T1=2.8, WAVE_PAUSE=2.5,           // v0.16: more time to take the hand away, and the drawn hand leaves slower (0.6–2.8 s)
- STEPS=['lang','sound','phone','mic','probe','away','wave'];
+ STEPS=['sound','phone','mic','probe','away','wave'];
 var scr=null, scrT=0, clock=0, onboarding=false, direct=false, booted=false, errKind=null;
 var handSaved=store.get('sonaroids_hand',''), acoustic=false;
 var prep=null, T=null, caught=false, g=null, acc=0, countT=0, overT=0, shake=0, flash=0, rockSpr={}, best=+store.get('sonaroids_best','0')||0;
@@ -23,7 +23,9 @@ var scrPrev=null, diag=false, flips=0;                        // diag: the "logs
    on iPhone it is the port end, on a Redmi the front-camera end — there the palm is not heard by the port at all.
    handRel: 'port' | 'camera' | '' — kept per device once a wave has been caught. Before that: the louder probe channel says
    (it pointed at the camera end on the Redmi 9 times of 10), and if the palm is not heard at all while waving, the side flips */
-var handRel=store.get('sonaroids_rel',''), accSide=null, NOHAND_T=6, flipT=-9, seenT=0;
+/* v0.44: which end hears the hand is not remembered between launches any more — the browser picks the microphone (the port's or the front
+   camera's) anew each time, seemingly at random (Redmi, 27 Sep); the probe finds the end every time (startPrepare) */
+var handRel='', accSide=null, NOHAND_T=6, flipT=-9, seenT=0;
 function portOr(){ var a=null;
   try{ if(screen.orientation&&typeof screen.orientation.angle==='number') a=screen.orientation.angle; }catch(e){}
   if(a===null&&typeof window.orientation==='number') a=window.orientation;
@@ -85,7 +87,7 @@ function sTitle(){ sky(DT,0.4); var y=Math.round(LH*0.3);
   var items=[['play',L('play'),'primary'],['scores',L('scores')],['howto',L('howto')],['lang',L('lang')],['sfx','','sound']];
   var cw=colW(items), bx0=sideX(cw), a0=freeSide()==='left'?bx0+cw:SAFE.l, a1=freeSide()==='left'?LW-SAFE.r:bx0, cx0=Math.round((a0+a1)/2);
   text('SONAROIDS',cx0,y,P.band,'center',2);
-  if(/Android/i.test(navigator.userAgent)&&!APP){ var ay=para(L('android'),cx0,y+22,a1-a0-24,P.soft);          // v0.28: the landing page's note, now here
+  if(/Android/i.test(navigator.userAgent)&&!APP){ var ay=y+22;          // v0.44: the note «on Android it does not work on every phone» is gone — the app
     // v0.42: in an Android browser — a link to the app (the APK of the latest GitHub release); tapping downloads it
     var as=L('get_apk'), aw=PF.width(as); ay+=6; text(as,cx0,ay,P.band,'center'); R(P.band,cx0-aw/2,ay+PF.CAP+2,aw,1); BTN.push({id:'apk',x:cx0-aw/2-6,y:ay-6,w:aw+12,h:PF.CAP+12}); }
   var vr=freeSide()==='left', vx=vr?LW-SAFE.r-8:SAFE.l+8, vy=LH-SAFE.b-12;
@@ -136,7 +138,7 @@ function sWave(){ sky(DT,0.3); poolFill(1); var m=handSide()==='left', f=handFra
   // v0.21: tuning stops once the range is caught — the try-out screen shows exactly what the game will use (exploring the edges there widened the field)
   if(scrT>=WAVE_PAUSE&&!caught){ var e=Tune.step(T,DT,Sonar.state(),true,Sonar.shift); if(e) Logs.ev('подстройка',e); }
   if(T.ok&&!caught){ caught=true; caughtT=scrT; Sfx.play('ok'); store.set('sonaroids_seen','1'); Board.setup('caught',{t:scrT,flips:flips});
-    if(portOr()&&handRel) store.set('sonaroids_rel',handRel); handSaved=handSide(); store.set('sonaroids_hand',handSaved); }   // this end of the phone works: remember it
+    handSaved=handSide(); store.set('sonaroids_hand',handSaved); }   // this end of the phone works: remember it
   var stt=Sonar.state(); if((stt&&stt.present)||scrT<WAVE_PAUSE) seenT=Math.max(seenT,scrT);
   if(!caught&&scrT-seenT>NOHAND_T) flipSide();
   if(caught&&scrT-caughtT>=CAUGHT_SHOW){ sTry(); return; }
@@ -144,7 +146,15 @@ function sWave(){ sky(DT,0.3); poolFill(1); var m=handSide()==='left', f=handFra
   var st=scrT<WAVE_PAUSE?'wait':caught?'ok':'catch', dur=T.buf.length?T.buf[T.buf.length-1].t-T.buf[0].t:0;
   var wty=(scrT-flipT<4&&!caught)?titles(L('other_t'),L('other_s'),P.pick):titles(L('wave_t'),caught?L('wave_ok'):L('wave_s')); coveredLine(wty+2);
   ringUI(st==='wait'?scrT/WAVE_PAUSE:st==='ok'?1:Math.min(0.95,dur/5.2),st);
+  handBeacon();
   stepSquares('wave'); }
+/* v0.44: where to wave — the edge of the screen at the hand's end glows, with «wave here · at the camera / at the port» and, under it,
+   «other hand? turn the phone around»: the browser may pick the front camera's microphone, and then a right-handed player has the hand's end
+   on the left — turning the phone by 180° swaps everything round (the screen turns, the game follows) */
+function handBeacon(){ var m=handSide()==='left', a=0.55+0.35*Math.sin(clock*5), ex=m?0:LW-4;
+  lx.globalAlpha=a; R(P.band,ex,0,4,LH); lx.globalAlpha=a*0.45; R(P.band,m?4:LW-8,0,4,LH); lx.globalAlpha=a*0.2; R(P.band,m?8:LW-12,0,4,LH); lx.globalAlpha=1;
+  var o=portOr(), lab=L(!o?'here':camEnd()?'here_cam':'here_port'), x=m?SAFE.l+10:LW-SAFE.r-10, al=m?'left':'right', y=LH-SAFE.b-30;
+  text(lab,x,y,P.band,al); if(o) text(L('flip_hint'),x,y+12,P.soft,al); }
 /* v0.17: once the range is caught the table picture goes and the real ship at game size follows the palm —
    the player sees at once whether the calibration came out right. "Play", and under it "recalibrate" (the empty room anew, then wave) */
 var CAUGHT_SHOW=1.0, caughtT=0;
@@ -349,7 +359,7 @@ var ACT={
   allow:function(){ boot(toAway); },
   appupd:function(){ try{ APP.checkUpdate(); }catch(e){} setTimeout(function(){ location.reload(); },600); },
   probe_wide:function(){ toRoom('wide'); }, probe_norm:function(){ toRoom('normal'); },
-  play:function(){ onboarding=false; direct=false; ensure(toAway); },
+  play:function(){ if(store.get('sonaroids_seen','')!=='1'){ ACT.howto(); return; } onboarding=false; direct=false; ensure(toAway); },
   howto:function(){ onboarding=true; direct=false; go('sound'); },
   /* a deep recalibration: forget the saved palm range, close the microphone and start from "put the phone down" */
   recal:function(){ onboarding=false; direct=false; store.set('sonaroids_field','100'); Sonar.restart(); booted=false; acoustic=false; go('phone'); },
@@ -428,7 +438,7 @@ function loop(now){
 }
 resize(); Board.flush();
 if('serviceWorker' in navigator&&location.protocol==='https:') navigator.serviceWorker.register('sw.js').then(function(r){ r.update(); }).catch(function(){});   // works offline; checks for a new version on every launch
-if(store.get('sonaroids_seen','')!=='1'){ onboarding=true; go('lang'); } else go('title');
+go('title');   // always the menu first (0.44); a new player's first "Play" walks through the instruction
 requestAnimationFrame(loop);
 /* test hooks: headless tests drive the screens through these (harmless in the game) */
 window.__sonaroids={go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },

@@ -1,5 +1,5 @@
 /* Экшн-прототипы (27.09, 0.39m: слалом, ловец бомб, пещера) через код страницы: горизонтально 844×390, разъём справа, поддельные часы,
-   синтетический микрофон (eval_right.synthFrame — ладонь на расстоянии d мм), случайность зафиксирована. Ладонь: пустая комната →
+   синтетический микрофон (с 0.39n и трасса: цель — середина дороги впереди, канистра или объезд машины; eval_right.synthFrame — ладонь на расстоянии d мм), случайность зафиксирована. Ладонь: пустая комната →
    машет 100 ± 35 мм, пока подстройка (Tune) не поймает ход → в игре синтетический игрок ведёт ладонь к цели (ворота / ближайшая бомба /
    середина пещеры впереди) со скоростью руки ≤ 40 см/с. Проверяю: фазы, ход пойман, игра идёт и кончается, события, запись, разбор
    eval_arc.js сходится с телефоном, ладонь почти всё время в движении. */
@@ -36,6 +36,10 @@ function palm(t){ const A=H.ARC(); if(!A||A.phase==='prep'||A.phase==='empty'||A
   let ty=0.5;
   if(A.game==='slalom'){ const f=(A.flags||[]).filter(f=>f.st===0).sort((a,b)=>a.x-b.x)[0]; if(f) ty=f.y; }
   if(A.game==='bombs'){ const b=(A.bombs||[]).slice().sort((a,b)=>a.x-b.x)[0]; ty=b?b.y:A.by; }
+  if(A.game==='race'){ const px=0.32, r=(A.cols||[]).find(c=>c.x>=px+0.3); ty=r?r.c:0.5;
+    const can=(A.fcans||[]).filter(f=>f.x>px&&f.x<px+1.0).sort((a,b)=>a.x-b.x)[0]; if(can) ty=can.y;
+    const car=(A.cars||[]).filter(k=>k.x>px-0.05&&k.x<px+0.8&&Math.abs((k.y||0)-ty)<0.1).sort((a,b)=>a.x-b.x)[0];
+    if(car&&r){ const up=car.y-0.13, dn=car.y+0.13; ty=Math.abs(up-r.c)<Math.abs(dn-r.c)?up:dn; } }
   if(A.game==='cave'){ const c=(A.cols||[]).find(c=>c.x>=0.32+0.25); if(c) ty=c.c; }
   const want=(1-ty-0.06)/0.88, e=want-A.frac, step=400*N/SR;
   dPrev=Math.max(45,Math.min(175,dPrev+Math.max(-step,Math.min(step,0.25*e*A.T.field)))); return dPrev; }
@@ -45,7 +49,7 @@ async function tick(dt){ const t1=now+dt*1000; while(now<t1){ now+=1000/60; feed
   const rs=rafs; rafs=[]; rs.forEach(f=>f(now)); await null; await null; } }
 (async()=>{
   let bad=0; const need=(ok,msg)=>{ console.log((ok?'ok  ':'FAIL')+'  '+msg); if(!ok) bad++; };
-  for(const g of ['slalom','bombs','cave']){
+  for(const g of ['slalom','bombs','cave','race']){
     H.game(g); H.goFlow('arcIntro'); need(!els.arcIntro.classList.contains('hidden')&&/прототип/.test(els.acTitle.textContent),`${g}: экран-подсказка — ${els.acTitle.textContent}`);
     tWave=null; dPrev=100; H.arcPlay(); const seen=[];
     for(let i=0;i<1600;i++){ await tick(0.1); const A=H.ARC(); if(seen[seen.length-1]!==A.phase) seen.push(A.phase); if(A.phase==='over') break; }
@@ -54,7 +58,7 @@ async function tick(dt){ const t1=now+dt*1000; while(now<t1){ now+=1000/60; feed
     H.arcSave(); const f=path.join(C.OUT,'arc_'+g+'_test.wav'); fs.mkdirSync(C.OUT,{recursive:true}); fs.writeFileSync(f,Buffer.from(await A.blob.arrayBuffer()));
     const w=C.loadWav(f); need(w.meta.kind==='arc-play'&&w.meta.game===g&&new RegExp('^sonararc_'+g+'_').test(A.fname)&&w.meta.log.length>300,`${g}: запись ${A.fname}, журнал ${w.meta.log.length} строк`);
     const R=E.report('arc_'+g+'_test.wav (через страницу)',w.meta,w.x);
-    const good=g==='slalom'?(R.gate>=20&&R.finish===1):g==='bombs'?(R.caught>=10&&R.wave>=1):(R.hit<=3&&R.gate===0&&A.score>100);
+    const good=g==='slalom'?(R.gate>=20&&R.finish===1):g==='bombs'?(R.caught>=10&&R.wave>=1):g==='race'?(A.score>300&&R.fuel>=1):(R.hit<=3&&R.gate===0&&A.score>100);
     need(good&&R.vis>95&&R.match<0.005&&R.moving>25,`${g}: игра идёт (${w.meta.summary}), сверка ${(R.match*100).toFixed(2)}%, ладонь в движении ${R.moving.toFixed(0)}%`); }
   console.log(bad?'ИТОГ: ПРОВАЛ':'ИТОГ: ok'); process.exitCode=bad?1:0;
 })();

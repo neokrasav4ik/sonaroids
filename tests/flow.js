@@ -27,13 +27,15 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
   const shot=async n=>p.screenshot({path:path.join(OUT,n+'.png')});
   await shot('01_title');
   await p.evaluate(()=>__sonaroids.act.play()); t0=Date.now();
-  let logs={setup:null,game:null}, pausedOk=false, nickScreen=null, afterNick=null, restartOk=false, restartInfo='', healthyAfter=null, again=null, seen2=[], last2=null, caughtAt=null, startAt=null, range=null, follow=[], shots={};
+  let probeSeen=0, probeBtns=[]; let logs={setup:null,game:null}, pausedOk=false, nickScreen=null, afterNick=null, restartOk=false, restartInfo='', healthyAfter=null, again=null, seen2=[], last2=null, caughtAt=null, startAt=null, range=null, follow=[], shots={};
   while(T()<95){
     await p.waitForTimeout(100);
     const s=await p.evaluate(()=>{ const s=__sonaroids.state(), st=Sonar.state(); return {scr:s.scr,caught:s.caught,
       ok:s.prep&&s.prep.res&&s.prep.res.ok, T:s.T?{field:s.T.field,last:s.T.last}:null,
       hand:(st&&st.present&&s.T)?Tune.fracOf(s.T,st.height):null, ship:s.g?s.g.ship.y/s.g.FH:null, score:s.g?s.g.score:null, gstate:s.g?s.g.state:null}; });
     if(s.scr!==last){ seen.push(s.scr+'@'+T().toFixed(1)); last=s.scr; }
+    if(s.scr==='probe'){ if(!shots.probe){ shots.probe=1; await shot('01a_probe'); } probeSeen=(probeSeen||0)+1;   // v0.40: the probe choice before every game — normal (the synthetic microphone plays the normal probe)
+      const bb=await p.evaluate(()=>__sonaroids.btn().map(b=>b.id)); probeBtns=bb; await p.evaluate(()=>__sonaroids.act.probe_norm()); }
     if(s.scr==='away'&&T()>3&&!shots.away){ shots.away=1; await shot('02_away'); }
     if(s.scr==='wave'&&s.caught&&!caughtAt){ caughtAt=T(); }
     if(s.scr==='wave'&&s.caught&&T()>=16.5&&!startAt){ await shot('03_wave'); const r=s.T.last;
@@ -97,6 +99,8 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
   console.log(`getting-ready reports: ${setups.join(', ')||'NONE'}`);
   console.log(`phone note with the game: ${dv?JSON.stringify(dv):'NONE'}`);
   console.log(`menu in flight → pause with “end the game”: ${pausedOk?'yes':'NO'}; start over → play now: ${restartOk?'yes':'NO'} (${restartInfo})`);
-  const ok=boardOk&&devOk&&setups.includes('caught')&&pausedOk&&restartOk&&healthyAfter===false&&seen2.includes('away')&&seen2[seen2.length-1]==='wave'&&got&&caughtAt!==null&&range&&range[0]<0.12&&range[1]>0.8&&range[1]<0.95&&corr>0.95&&logs.setup&&logs.game&&m&&+m[1]<0.5&&!errors.length;
+  const probeOk=seen.some(x=>x.startsWith('probe@'))&&seen2.includes('probe')&&probeBtns.includes('probe_wide')&&probeBtns.includes('probe_norm');
+  console.log(`probe choice before every game: ${probeOk?'yes':'NO'} (buttons ${probeBtns.join(', ')})`);
+  const ok=probeOk&&boardOk&&devOk&&setups.includes('caught')&&pausedOk&&restartOk&&healthyAfter===false&&seen2.includes('away')&&seen2[seen2.length-1]==='wave'&&got&&caughtAt!==null&&range&&range[0]<0.12&&range[1]>0.8&&range[1]<0.95&&corr>0.95&&logs.setup&&logs.game&&m&&+m[1]<0.5&&!errors.length;
   console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;
 })();

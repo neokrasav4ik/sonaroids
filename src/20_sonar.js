@@ -4,7 +4,10 @@
    let us tell the left speaker from the right one: the louder one at the microphone is next to the charging port, and the port
    faces the playing hand. ── */
 var Sonar=(function(){
-  var N=512, F_LO=18300, F_HI=20500, fs=0, kLo, kHi, kc;
+  var N=512, F_LO=18300, F_HI=20500, fs=0, kLo, kHi, kc, band='normal', sS=null, sL=null, sR=null;
+  /* v0.40: the wide probe, 16–20.5 kHz — the player picks it before every game (the lab, 27 Sep: it follows the palm about twice as cleanly,
+     but children and animals may hear it). WIDE_CAL — fitted on the maintainer's wide recording against the marker (offset −1 mm) */
+  var BANDS={normal:18300,wide:16000}, WIDE_CAL={k:1.4,o:100-1.4*100,s:0.9};
   var ctx=null, stream=null, node=null, an=null, gSL, gSR, gL, gR, booted=false;
   var PROBE_G=0.25, PROBE_SNR=null, chan='right', active=false, lastSeq=-1, gaps=0, collector=null, last=null, lost=false;
   var listeners=[], peak=0, lastFrameAt=0, simIv=null, simStalled=false;
@@ -34,7 +37,7 @@ var Sonar=(function(){
       return ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([WORKLET],{type:'application/javascript'}))); })
     .then(function(){
       fs=ctx.sampleRate; var df=fs/N; kLo=Math.ceil(F_LO/df); kHi=Math.floor(F_HI/df); kc=Math.floor((kLo+kHi)/2);
-      var mg=ctx.createChannelMerger(2), sS=loopSrc(makeProbe('all')), sL=loopSrc(makeProbe(0)), sR=loopSrc(makeProbe(1));
+      var mg=ctx.createChannelMerger(2); sS=loopSrc(makeProbe('all')); sL=loopSrc(makeProbe(0)); sR=loopSrc(makeProbe(1));
       gSL=ctx.createGain(); gSR=ctx.createGain(); gL=ctx.createGain(); gR=ctx.createGain();
       [gSL,gSR,gL,gR].forEach(function(g){ g.gain.value=0; });
       sS.connect(gSL); sS.connect(gSR); sL.connect(gL); sR.connect(gR);
@@ -47,6 +50,11 @@ var Sonar=(function(){
       node.port.onmessage=onFrame; booted=true;
     });
   }
+  /* the probe band: new probes on the same volume knobs (the old ones stop); the echo processing takes the band in prepare() */
+  function setBand(b){ band=b==='wide'?'wide':'normal'; F_LO=BANDS[band]; if(!fs) return; var df=fs/N; kLo=Math.ceil(F_LO/df); kHi=Math.floor(F_HI/df); kc=Math.floor((kLo+kHi)/2);
+    if(!ctx||!sS) return; [sS,sL,sR].forEach(function(s){ try{ s.stop(); s.disconnect(); }catch(e){} });
+    sS=loopSrc(makeProbe('all')); sL=loopSrc(makeProbe(0)); sR=loopSrc(makeProbe(1)); sS.connect(gSL); sS.connect(gSR); sL.connect(gL); sR.connect(gR); sS.start(); sL.start(); sR.start(); }
+  function curCal(){ return band==='wide'?WIDE_CAL:PHYS_CAL; }
   function setProbe(w){                        // 'off' | 'dual' | 'single-left' | 'single-right'
     if(!ctx) return; var t=ctx.currentTime;
     gSL.gain.setTargetAtTime(w==='single-left'?PROBE_G:0,t,0.02);
@@ -112,8 +120,10 @@ var Sonar=(function(){
       // "barely heard": the probe itself is ~19 dB quieter than on a phone with sound on (the media volume at zero; on iPhone the silent switch
       // does not mute it). Not by signal-to-noise: a noisy room (24 Sep: 33 dB worked fine) and a palm moving nearby (its echo counts as "noise";
       // 24 Sep: after a game over the next start said "too quiet") both lower it. A probe too weak to read is caught by DSP2 ('noprobe')
-      if(PROBE_LVL<QUIET_LVL){ setProbe('off'); return {ok:false,why:'quiet',snr:L.snr,level:PROBE_LVL}; }
-      DSP2.init(fs,'all'); DSP2.setCal(PHYS_CAL); DSP2.set('autocenter',1); active=true; onStage&&onStage('room');
+      // the wide probe spreads the same power over about twice as many tones: each is ~3 dB quieter, so the bar moves with it
+      var lvlAdj=10*Math.log10((Math.floor(F_HI*N/fs)-Math.ceil(BANDS.normal*N/fs)+1)/(kHi-kLo+1));
+      if(PROBE_LVL<QUIET_LVL+lvlAdj){ setProbe('off'); return {ok:false,why:'quiet',snr:L.snr,level:PROBE_LVL}; }
+      DSP2.set('flo',band==='wide'?F_LO:null); DSP2.init(fs,'all'); DSP2.setCal(curCal()); DSP2.set('autocenter',1); active=true; onStage&&onStage('room');
       return waitReady().then(function(st){ if(st==='noprobe'){ active=false; setProbe('off'); return {ok:false,why:'noprobe'}; } return {ok:true,snr:L.snr}; });
     });
   }
@@ -144,13 +154,13 @@ var Sonar=(function(){
     if(simIv){ clearInterval(simIv); simIv=null; } simStalled=false;     // in simulation a re-opened microphone works again
     ctx=null; stream=null; node=null; an=null; booted=false; active=false; collector=null; lastSeq=-1; last=null; lost=false; lastFrameAt=0;
   }
-  return {boot:boot,prepare:prepare,simulate:simulate,healthy:healthy,restart:restart,simStall:function(v){ simStalled=!!v; },setProbe:setProbe,pause:pause,resume:resume,probeSNR:probeSNR,
+  return {boot:boot,prepare:prepare,setBand:setBand,band:function(){ return band; },simulate:simulate,healthy:healthy,restart:restart,simStall:function(v){ simStalled=!!v; },setProbe:setProbe,pause:pause,resume:resume,probeSNR:probeSNR,
     listen:function(f){ listeners.push(f); },
     state:function(){ return last; }, lost:function(){ return lost; }, clearLost:function(){ lost=false; },
     shift:function(d){ DSP2.shift(d); },
     peak:function(){ return peak; },
     /* what the browser really gave for the microphone: on Android the echo/noise/gain processing may stay on despite our request */
     micSettings:function(){ try{ var t=stream&&stream.getAudioTracks()[0]; if(!t) return null; var s=t.getSettings(), o={}; ['autoGainControl','echoCancellation','noiseSuppression','sampleRate','channelCount','latency','deviceId'].forEach(function(k){ if(s[k]!==undefined) o[k]=k==='deviceId'?String(s[k]).slice(0,8):s[k]; }); o.label=t.label; return o; }catch(e){ return null; } },
-    info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,probe_level:PROBE_LVL,f_lo:F_LO,cal:PHYS_CAL,gaps:gaps,booted:booted}; },
+    info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,probe_level:PROBE_LVL,f_lo:F_LO,band:band,cal:curCal(),gaps:gaps,booted:booted}; },
     chan:function(){ return chan; }, ctx:function(){ return ctx; }};
 })();

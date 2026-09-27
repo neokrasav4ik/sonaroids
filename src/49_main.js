@@ -7,7 +7,7 @@ var store={get:function(k,d){ try{ var v=localStorage.getItem(k); return v===nul
 var lang=store.get('sonaroids_lang',((navigator.language||'').toLowerCase().indexOf('ru')===0?'ru':'en')); if(!STR[lang]) lang='en';
 function L(k){ return STR[lang][k]||k; }
 var PAUSE=3.5, AWAY_T0=0.6, AWAY_T1=2.8, WAVE_PAUSE=2.5,           // v0.16: more time to take the hand away, and the drawn hand leaves slower (0.6–2.8 s)
- STEPS=['lang','sound','phone','mic','away','wave'];
+ STEPS=['lang','sound','phone','mic','probe','away','wave'];
 var scr=null, scrT=0, clock=0, onboarding=false, direct=false, booted=false, errKind=null;
 var handSaved=store.get('sonaroids_hand',''), acoustic=false;
 var prep=null, T=null, caught=false, g=null, acc=0, countT=0, overT=0, shake=0, flash=0, rockSpr={}, best=+store.get('sonaroids_best','0')||0;
@@ -103,6 +103,19 @@ function sPhone(){ sky(DT,0.3); var m=handSide()==='left';
 function sMic(){ sky(DT,0.3); var m=handSide()==='left';
   picture(function(){ return sceneBoth('away',scrT,0.5,0,true,clock); },m); titles(L('mic_t'),L('mic_s'));
   var w=btnW([L('allow')]); button('allow',L('allow'),sideX(w),Math.round(LH*0.76),w,BH,'primary',Math.floor(scrT*2)%2===0); stepSquares('mic'); }
+/* v0.40: two equal cards side by side (the maintainer's pick «A»): a wave sign, the name, what it gives, what it costs */
+var WARN='#FFB27A';
+function sProbe(){ sky(DT,0.3); titles(L('probe_t'),L('probe_s'));
+  var cw=Math.min(Math.round(LW*0.36),Math.round((LW-SAFE.l-SAFE.r-40)/2)), gap=Math.round(LW*0.05), ch=Math.round(LH*0.46), y=Math.round(LH*0.34);
+  var x0=Math.round((SAFE.l+LW-SAFE.r)/2-cw-gap/2);
+  [['probe_wide',x0,4,[['probe_wide1',P.soft],['probe_wide2',WARN]]],['probe_norm',x0+cw+gap,2.2,[['probe_norm1',P.soft],['probe_norm2',P.soft]]]].forEach(function(c){
+    var x=c[1]; R(P.bg,x,y,cw,ch); frame(x,y,cw,ch,P.line);
+    var wx=x+Math.round(cw*0.28), ww=Math.round(cw*0.44), wy=y+Math.round(ch*0.2);             // the wave sign: wide — taller, fewer bends
+    for(var i=0;i<ww;i++) R(P.band,wx+i,wy+Math.round(Math.sin(i/c[2])*(c[2]>3?4:2.5)),1,2);
+    var ty=y+Math.round(ch*0.36); text(L(c[0]),x+cw/2,ty,P.text,'center'); ty+=14;
+    c[3].forEach(function(q){ ty=para(L(q[0]),x+cw/2,ty,cw-10,q[1])+2; });
+    BTN.push({id:c[0],x:x,y:y,w:cw,h:ch}); });
+  stepSquares('probe'); }
 function sAway(){ sky(DT,0.3); var m=handSide()==='left', aw=Math.min(1,Math.max(0,(scrT-AWAY_T0)/(AWAY_T1-AWAY_T0)));
   picture(function(){ return sceneBoth('away',scrT,0.5,aw,scrT>PAUSE,clock); },m);
   var st=scrT<PAUSE?'wait':(prep&&prep.res&&prep.res.ok)?'ok':'listen';
@@ -305,7 +318,9 @@ var resumeAfterPrep=false;
 function ensure(then){ if(booted&&Sonar.healthy()) then(); else { Sonar.restart(); booted=false; boot(toAway); } }
 function boot(then){ Sonar.boot().then(function(){ booted=true; Sfx.play('tap'); then(); })
   .catch(function(e){ errKind=(e&&e.message&&/webaudio|worklet/.test(e.message))?'audio':'mic'; Board.setup(errKind==='mic'?'nomic':'noaudio'); go('nomic'); }); }
-function toAway(){ prep=null; go('away'); }
+/* v0.40 (27 Sep): before every game — the probe choice, no default: «wide» (cleaner control, children and animals may hear it) or «normal» (silent) */
+function toAway(){ prep=null; go('probe'); }
+function toRoom(b){ Sonar.setBand(b); prep=null; go('away'); }
 function toWave(){ T=Tune.create(+store.get('sonaroids_field','100')||100,true); caught=false; flips=0; flipT=-9; seenT=0; go('wave'); }
 function pauseGame(){ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; go('paused'); } }
 function startCount(){ if(resumeAfterPrep&&g&&g.state==='play'){ resumeAfterPrep=false; countT=3; go('count-resume'); return; }
@@ -321,8 +336,9 @@ function startGame(){
 var ACT={
   en:function(){ lang='en'; store.set('sonaroids_lang','en'); go('sound'); },
   ru:function(){ lang='ru'; store.set('sonaroids_lang','ru'); go('sound'); },
-  next:function(){ if(scr==='sound'){ if(direct) (booted?toAway():go('mic')); else go('phone'); } else if(scr==='phone') go(booted?'away':'mic'); },
+  next:function(){ if(scr==='sound'){ if(direct) (booted?toAway():go('mic')); else go('phone'); } else if(scr==='phone'){ if(booted) toAway(); else go('mic'); } },
   allow:function(){ boot(toAway); },
+  probe_wide:function(){ toRoom('wide'); }, probe_norm:function(){ toRoom('normal'); },
   play:function(){ onboarding=false; direct=false; ensure(toAway); },
   howto:function(){ onboarding=true; direct=false; go('sound'); },
   /* a deep recalibration: forget the saved palm range, close the microphone and start from "put the phone down" */
@@ -369,7 +385,7 @@ cv.addEventListener('pointercancel',function(){ downOn=null; });
 ['gesturestart','gesturechange','gestureend','dblclick'].forEach(function(n){ document.addEventListener(n,function(e){ e.preventDefault(); },{passive:false}); });
 document.addEventListener('touchmove',function(e){ e.preventDefault(); },{passive:false});
 document.addEventListener('visibilitychange',function(){
-  if(document.hidden){ Sonar.pause(); pauseGame(); if(scr==='away'||scr==='wave') go('title'); }   // getting ready starts over after a break
+  if(document.hidden){ Sonar.pause(); pauseGame(); if(scr==='away'||scr==='wave'||scr==='probe') go('title'); }   // getting ready starts over after a break
   else Sonar.resume(); });
 window.addEventListener('resize',function(){ setTimeout(resize,60); });
 window.addEventListener('orientationchange',function(){ setTimeout(resize,250); });
@@ -393,7 +409,7 @@ function loop(now){
   switch(scr){
     case 'lang': sLang(); break; case 'title': sTitle(); break;
     case 'sound': sSound(); break;
-    case 'phone': sPhone(); break; case 'mic': sMic(); break; case 'away': sAway(); break; case 'wave': sWave(); break;
+    case 'phone': sPhone(); break; case 'mic': sMic(); break; case 'probe': sProbe(); break; case 'away': sAway(); break; case 'wave': sWave(); break;
     case 'count': sCount(); break; case 'count-resume': sCountResume(); break; case 'play': sPlay(); break; case 'over': sOver(); break;
     case 'paused': sPaused(); break; case 'restart': sRestart(); break; case 'scores': sScores(); break; case 'nick': sNick(); break; case 'lost': sLost(); break; case 'nomic': sNomic(); break; case 'link': sLink(); break; case 'linkshow': sLinkShow(); break; case 'linkin': sLinkIn(); break; case 'linkdone': sLinkDone(); break;
   }

@@ -12,6 +12,8 @@ package app.sonaroids;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
@@ -21,6 +23,9 @@ import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
+import android.util.Base64;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
@@ -38,6 +43,10 @@ import android.widget.Toast;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -54,6 +63,8 @@ public class MainActivity extends Activity {
     AudioManager audio;
     PermissionRequest pending;
     long pausedAt = 0;
+    // files from the page (game logs): WebView cannot download blob: links or use the share sheet, so the page hands them over in pieces
+    OutputStream fileOut; Uri fileUri; File fileLegacy; final ArrayList<Uri> saved = new ArrayList<>(); final ArrayList<String> savedNames = new ArrayList<>();
     final Handler ui = new Handler(Looper.getMainLooper());
 
     @Override
@@ -207,5 +218,53 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface
         public void checkUpdate() { MainActivity.this.checkUpdate(true); }
+        /* saving a file from the page: fileBegin → fileChunk (base64, any number) → fileEnd; then shareFiles() opens the share sheet.
+           Android 10+: into Downloads/Sonaroids (no permission needed); older: the app's own folder. Returns false on failure */
+        @JavascriptInterface
+        public boolean fileBegin(String name, String mime) {
+            try {
+                fileUri = null; fileLegacy = null;
+                if (Build.VERSION.SDK_INT >= 29) {
+                    ContentValues cv = new ContentValues();
+                    cv.put(MediaStore.MediaColumns.DISPLAY_NAME, name);
+                    cv.put(MediaStore.MediaColumns.MIME_TYPE, mime);
+                    cv.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Sonaroids");
+                    cv.put(MediaStore.MediaColumns.IS_PENDING, 1);
+                    fileUri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
+                    fileOut = getContentResolver().openOutputStream(fileUri);
+                } else {
+                    File dir = getExternalFilesDir(null); fileLegacy = new File(dir, name); fileOut = new FileOutputStream(fileLegacy);
+                }
+                savedNames.add(name);
+                return fileOut != null;
+            } catch (Exception e) { fileOut = null; return false; }
+        }
+        @JavascriptInterface
+        public boolean fileChunk(String b64) {
+            try { fileOut.write(Base64.decode(b64, Base64.DEFAULT)); return true; } catch (Exception e) { return false; }
+        }
+        @JavascriptInterface
+        public boolean fileEnd() {
+            try {
+                fileOut.close(); fileOut = null;
+                if (fileUri != null) { ContentValues cv = new ContentValues(); cv.put(MediaStore.MediaColumns.IS_PENDING, 0); getContentResolver().update(fileUri, cv, null, null); saved.add(fileUri); }
+                return true;
+            } catch (Exception e) { return false; }
+        }
+        @JavascriptInterface
+        public void shareFiles() {
+            final ArrayList<Uri> list = new ArrayList<>(saved); final int n = savedNames.size(); saved.clear(); savedNames.clear();
+            ui.post(() -> {
+                Toast.makeText(MainActivity.this, (ru() ? "Сохранено в Загрузки/Sonaroids: " : "Saved to Downloads/Sonaroids: ") + n, Toast.LENGTH_LONG).show();
+                if (list.isEmpty()) return;
+                try {
+                    Intent i = new Intent(list.size() > 1 ? Intent.ACTION_SEND_MULTIPLE : Intent.ACTION_SEND);
+                    i.setType("audio/wav");
+                    if (list.size() > 1) i.putParcelableArrayListExtra(Intent.EXTRA_STREAM, list); else i.putExtra(Intent.EXTRA_STREAM, list.get(0));
+                    i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    startActivity(Intent.createChooser(i, ru() ? "Отправить журналы" : "Send the logs"));
+                } catch (Exception e) { }
+            });
+        }
     }
 }

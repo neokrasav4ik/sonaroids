@@ -66,6 +66,17 @@ var Logs=(function(){
     var files=[], st=stamp(), a=gameBlob(), b=setupBlob();
     try{ if(a) files.push(new File([a],'sonaroids_game_'+st+'.wav',{type:'audio/wav'})); if(b) files.push(new File([b],'sonaroids_setup_'+st+'.wav',{type:'audio/wav'})); }catch(e){}
     if(!files.length) return false;
+    // v0.42, the Android app: its WebView can neither share files nor download blob: links (the button «did nothing») —
+    // the app saves them itself (Downloads/Sonaroids) and opens the share sheet
+    var app=window.SonaroidsApp;
+    if(app&&app.fileBegin){ (function next(i){ if(i>=files.length){ try{ app.shareFiles(); }catch(e){} return; }
+        files[i].arrayBuffer().then(function(ab){ var u=new Uint8Array(ab), C=393216;
+          if(!app.fileBegin(files[i].name,'audio/wav')) return next(i+1);
+          for(var o=0;o<u.length;o+=C){ var part=u.subarray(o,Math.min(u.length,o+C)), s2='';
+            for(var j=0;j<part.length;j+=8192) s2+=String.fromCharCode.apply(null,part.subarray(j,Math.min(part.length,j+8192)));
+            if(!app.fileChunk(btoa(s2))) break; }
+          app.fileEnd(); next(i+1); }).catch(function(){ next(i+1); }); })(0);
+      return true; }
     if(navigator.canShare&&navigator.canShare({files:files})){ navigator.share({files:files,title:'Sonaroids logs'}).catch(function(){}); return true; }
     files.forEach(function(f){ var el=document.createElement('a'); el.href=URL.createObjectURL(f); el.download=f.name; document.body.appendChild(el); el.click(); setTimeout(function(){ el.remove(); },1000); });
     return true;

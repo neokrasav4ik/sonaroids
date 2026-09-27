@@ -85,7 +85,9 @@ function sTitle(){ sky(DT,0.4); var y=Math.round(LH*0.3);
   var items=[['play',L('play'),'primary'],['scores',L('scores')],['howto',L('howto')],['lang',L('lang')],['sfx','','sound']];
   var cw=colW(items), bx0=sideX(cw), a0=freeSide()==='left'?bx0+cw:SAFE.l, a1=freeSide()==='left'?LW-SAFE.r:bx0, cx0=Math.round((a0+a1)/2);
   text('SONAROIDS',cx0,y,P.band,'center',2);
-  if(/Android/i.test(navigator.userAgent)) para(L('android'),cx0,y+22,a1-a0-24,P.soft);          // v0.28: the landing page's note, now here
+  if(/Android/i.test(navigator.userAgent)&&!APP){ var ay=para(L('android'),cx0,y+22,a1-a0-24,P.soft);          // v0.28: the landing page's note, now here
+    // v0.42: in an Android browser — a link to the app (the APK of the latest GitHub release); tapping downloads it
+    var as=L('get_apk'), aw=PF.width(as); ay+=6; text(as,cx0,ay,P.band,'center'); R(P.band,cx0-aw/2,ay+PF.CAP+2,aw,1); BTN.push({id:'apk',x:cx0-aw/2-6,y:ay-6,w:aw+12,h:PF.CAP+12}); }
   var vr=freeSide()==='left', vx=vr?LW-SAFE.r-8:SAFE.l+8, vy=LH-SAFE.b-12;
   text(L('version')+' '+VERSION,vx,vy,P.soft,vr?'right':'left');   // for telling uploads apart
   // v0.41, the app: «check for updates» above the source link — the app's own update (a dialog from the shell) and a fresh page
@@ -371,6 +373,7 @@ var ACT={
   nick_later:function(){ nickField(false); nickMsg=''; go(nickFrom==='over'?'over':'scores'); },
   logs:function(){ Logs.share(); },
   ver:function(){ diag=!diag; },
+  apk:function(){ try{ window.open('https://github.com/neokrasav4ik/sonaroids/releases/latest/download/sonaroids.apk','_blank','noopener'); }catch(e){} },
   source:function(){ try{ window.open('https://github.com/neokrasav4ik/sonaroids','_blank','noopener'); }catch(e){} },
   retry:function(){ Sonar.clearLost(); ensure(toAway); },
   pause:function(){ pauseGame(); },

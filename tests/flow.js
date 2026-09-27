@@ -27,7 +27,7 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
   const shot=async n=>p.screenshot({path:path.join(OUT,n+'.png')});
   await shot('01_title');
   await p.evaluate(()=>__sonaroids.act.play()); t0=Date.now();
-  let probeSeen=0, probeBtns=[]; let logs={setup:null,game:null}, pausedOk=false, nickScreen=null, afterNick=null, restartOk=false, restartInfo='', healthyAfter=null, again=null, seen2=[], last2=null, caughtAt=null, startAt=null, range=null, follow=[], shots={};
+  let appShare=null, probeSeen=0, probeBtns=[]; let logs={setup:null,game:null}, pausedOk=false, nickScreen=null, afterNick=null, restartOk=false, restartInfo='', healthyAfter=null, again=null, seen2=[], last2=null, caughtAt=null, startAt=null, range=null, follow=[], shots={};
   while(T()<95){
     await p.waitForTimeout(100);
     const s=await p.evaluate(()=>{ const s=__sonaroids.state(), st=Sonar.state(); return {scr:s.scr,caught:s.caught,
@@ -65,6 +65,11 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
       await p.evaluate(()=>{ const el=document.querySelector('input'); el.value=' Tester_1 '; __sonaroids.act.nick_ok(); }); await p.waitForTimeout(400);
       afterNick=await p.evaluate(()=>__sonaroids.scr()+'|'+localStorage.getItem('sonaroids_nick'));
       logs=await p.evaluate(async()=>{ const f=async b=>b?Array.from(new Uint8Array(await b.arrayBuffer())):null; return {setup:await f(Logs.setupBlob()),game:await f(Logs.gameBlob())}; });
+      // v0.42: in the Android app the logs go through window.SonaroidsApp in base64 pieces — the app must get every byte
+      appShare=await p.evaluate(async()=>{ const got=[]; let cur=null, shared=0; window.SonaroidsApp={fileBegin:(n,m)=>{ cur={n,len:0}; got.push(cur); return true; },
+          fileChunk:b=>{ const d=atob(b); if(!cur.len) cur.head=d.slice(0,4); cur.len+=d.length; return true; },fileEnd:()=>true,shareFiles:()=>{ shared++; }};
+        Logs.share(); for(let i=0;i<100&&!shared;i++) await new Promise(r=>setTimeout(r,50)); delete window.SonaroidsApp;
+        const sz=async b=>b?(await b.arrayBuffer()).byteLength:0; return {got,shared,want:[await sz(Logs.gameBlob()),await sz(Logs.setupBlob())]}; });   // the logs keep growing while the page runs — sizes are compared loosely
       // a second game after the app was in the background (iOS takes the microphone away: no frames), with the palm still moving
       // next to the phone (24 Sep: this start said "too quiet"): "again" must re-open the microphone and get ready again
       await p.evaluate(()=>Sonar.simStall(true)); await p.waitForTimeout(1000); healthyAfter=await p.evaluate(()=>Sonar.healthy());
@@ -101,6 +106,8 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
   console.log(`menu in flight → pause with “end the game”: ${pausedOk?'yes':'NO'}; start over → play now: ${restartOk?'yes':'NO'} (${restartInfo})`);
   const probeOk=seen.some(x=>x.startsWith('probe@'))&&seen2.includes('probe')&&probeBtns.includes('probe_wide')&&probeBtns.includes('probe_norm');
   console.log(`probe choice before every game: ${probeOk?'yes':'NO'} (buttons ${probeBtns.join(', ')})`);
-  const ok=probeOk&&boardOk&&devOk&&setups.includes('caught')&&pausedOk&&restartOk&&healthyAfter===false&&seen2.includes('away')&&seen2[seen2.length-1]==='wave'&&got&&caughtAt!==null&&range&&range[0]<0.12&&range[1]>0.8&&range[1]<0.95&&corr>0.95&&logs.setup&&logs.game&&m&&+m[1]<0.5&&!errors.length;
+  const appOk=!!appShare&&appShare.shared===1&&appShare.got.length===2&&appShare.got.every((g,i)=>g.head==='RIFF'&&g.len>0.9*appShare.want[i]&&g.len<=appShare.want[i]*1.001+1);
+  console.log(`logs through the Android app: ${appOk?'yes':'NO'} (${appShare?appShare.got.map(g=>g.n.replace(/_\d.*/,'')+' '+(g.len/1024).toFixed(0)+' KB').join(', '):'—'})`);
+  const ok=appOk&&probeOk&&boardOk&&devOk&&setups.includes('caught')&&pausedOk&&restartOk&&healthyAfter===false&&seen2.includes('away')&&seen2[seen2.length-1]==='wave'&&got&&caughtAt!==null&&range&&range[0]<0.12&&range[1]>0.8&&range[1]<0.95&&corr>0.95&&logs.setup&&logs.game&&m&&+m[1]<0.5&&!errors.length;
   console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;
 })();

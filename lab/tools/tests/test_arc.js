@@ -1,0 +1,60 @@
+/* Экшн-прототипы (27.09, 0.39m: слалом, ловец бомб, пещера) через код страницы: горизонтально 844×390, разъём справа, поддельные часы,
+   синтетический микрофон (eval_right.synthFrame — ладонь на расстоянии d мм), случайность зафиксирована. Ладонь: пустая комната →
+   машет 100 ± 35 мм, пока подстройка (Tune) не поймает ход → в игре синтетический игрок ведёт ладонь к цели (ворота / ближайшая бомба /
+   середина пещеры впереди) со скоростью руки ≤ 40 см/с. Проверяю: фазы, ход пойман, игра идёт и кончается, события, запись, разбор
+   eval_arc.js сходится с телефоном, ладонь почти всё время в движении. */
+const C=require('../common'), fs=require('fs'), path=require('path'), S=require('../eval_right'), E=require('../eval_arc');
+let js=C.appJs();
+js=js.replace(/var WORKLET=`[\s\S]*?`;/,'');
+js=js.replace("function pickChannel(){","function pickChannel(){ if(globalThis.__fakePick) return globalThis.__fakePick();");
+js=js.replace("function autoLevel(){","function autoLevel(){ if(globalThis.__fakeLevel) return globalThis.__fakeLevel();");
+js=js.replace("function setProbe(w){","function setProbe(w){ globalThis.__probe=w; if(globalThis.__noAudio) return;");
+js=js.replace("el('gMenu').addEventListener","globalThis.__h={arcPlay:arcPlay,arcSave:arcSave,arcOpen:arcOpen,ARC:function(){return ARC;},game:function(g){ arcGame=g; },onFrame:onFrame,setFs:function(){ fs=48000; },goFlow:goFlow};\nel('gMenu').addEventListener");
+let now=0; const timers=[]; let rafs=[];
+global.setTimeout=(f,ms)=>{ timers.push({t:now+(ms||0),f}); return timers.length; };
+global.requestAnimationFrame=f=>{ rafs.push(f); return rafs.length; }; global.cancelAnimationFrame=()=>{};
+global.setInterval=()=>0; global.performance={now:()=>now};
+const mockCtx=new Proxy({measureText:(t)=>({width:String(t).length*10})},{get:(t,k)=>(k in t)?t[k]:(typeof k==='string'&&/^[a-z]/.test(k)?function(){}:undefined),set:(t,k,v)=>{t[k]=v;return true;}});
+const els={}; const mk=id=>els[id]||(els[id]={id,classList:{_h:new Set(),add(c){this._h.add(c);},remove(c){this._h.delete(c);},toggle(c,v){ if(v===undefined?!this._h.has(c):v) this._h.add(c); else this._h.delete(c); },contains(c){return this._h.has(c);}},
+  style:{},textContent:'',disabled:false,width:844,height:390,clientWidth:844,clientHeight:390,addEventListener(){},appendChild(){},getBoundingClientRect:()=>({width:844,height:390}),getContext:()=>mockCtx,querySelectorAll:()=>[],value:'90'});
+global.getComputedStyle=()=>({paddingTop:'0px',paddingRight:'0px',paddingBottom:'0px',paddingLeft:'0px',fontSize:'16px'});
+const body={classList:mk('body').classList,appendChild(){}};
+global.document={documentElement:{style:{}},body,getElementById:mk,createElement:()=>Object.assign(mk('x'+Math.random()),{remove(){},click(){}}),querySelectorAll:()=>[],querySelector:()=>null,addEventListener(){}};
+global.window={innerWidth:844,innerHeight:390,devicePixelRatio:1,addEventListener(){},matchMedia:()=>({matches:false}),navigator:{}}; global.navigator={userAgent:'iPhone'};
+global.URL.createObjectURL=()=>'blob:x';
+global.localStorage={getItem:()=>null,setItem(){}}; global.screen={orientation:{angle:90}};
+globalThis.__fakePick=()=>new Promise(r=>setTimeout(r,500)); globalThis.__noAudio=true;
+globalThis.__fakeLevel=()=>new Promise(r=>setTimeout(()=>r({snr:44,g:0.1,atMax:false}),400));
+// случайность повторяемая: углы запуска мяча и раскладка не должны менять итог проверки от прогона к прогону (27.09: без этого падала 1 раз из 6)
+let seed=12345; Math.random=()=>((seed=(seed*1664525+1013904223)>>>0)/4294967296);
+new Function(js)(); const H=globalThis.__h; H.setFs();
+const SR=48000, N=512; let fed=0, seq=0, tWave=null, dPrev=100;
+function palm(t){ const A=H.ARC(); if(!A||A.phase==='prep'||A.phase==='empty'||A.phase===''){ return null; }
+  if(A.phase==='wave'){ if(tWave===null) tWave=t; return (dPrev=100+35*Math.sin(2*Math.PI*(t-tWave)/2)); }
+  if(A.phase!=='play'||A.frac===null) return dPrev;
+  // цель по высоте экрана (0 — верх) → доля высоты по подстройке
+  let ty=0.5;
+  if(A.game==='slalom'){ const f=(A.flags||[]).filter(f=>f.st===0).sort((a,b)=>a.x-b.x)[0]; if(f) ty=f.y; }
+  if(A.game==='bombs'){ const b=(A.bombs||[]).slice().sort((a,b)=>a.x-b.x)[0]; ty=b?b.y:A.by; }
+  if(A.game==='cave'){ const c=(A.cols||[]).find(c=>c.x>=0.32+0.25); if(c) ty=c.c; }
+  const want=(1-ty-0.06)/0.88, e=want-A.frac, step=400*N/SR;
+  dPrev=Math.max(45,Math.min(175,dPrev+Math.max(-step,Math.min(step,0.25*e*A.T.field)))); return dPrev; }
+function feed(){ const due=Math.floor(now/1000*SR/N); while(fed<due){ H.onFrame({data:{s:seq++,f:S.synthFrame(palm(fed*N/SR),fed*7+1)}}); fed++; } }
+async function tick(dt){ const t1=now+dt*1000; while(now<t1){ now+=1000/60; feed();
+  for(let i=timers.length-1;i>=0;i--) if(timers[i].t<=now){ const f=timers[i].f; timers.splice(i,1); f(); }
+  const rs=rafs; rafs=[]; rs.forEach(f=>f(now)); await null; await null; } }
+(async()=>{
+  let bad=0; const need=(ok,msg)=>{ console.log((ok?'ok  ':'FAIL')+'  '+msg); if(!ok) bad++; };
+  for(const g of ['slalom','bombs','cave']){
+    H.game(g); H.goFlow('arcIntro'); need(!els.arcIntro.classList.contains('hidden')&&/прототип/.test(els.acTitle.textContent),`${g}: экран-подсказка — ${els.acTitle.textContent}`);
+    tWave=null; dPrev=100; H.arcPlay(); const seen=[];
+    for(let i=0;i<1600;i++){ await tick(0.1); const A=H.ARC(); if(seen[seen.length-1]!==A.phase) seen.push(A.phase); if(A.phase==='over') break; }
+    const A=H.ARC(); need(seen.join(' → ').indexOf('empty → wave → count → play → over')>=0&&A.T&&A.T.ok&&A.T.field>=50&&A.T.field<=120,`${g}: фазы ${seen.join(' → ')}, ход пойман: весь путь ${A.T&&A.T.field.toFixed(0)} мм`);
+    need(!els.acBtns.classList.contains('hidden'),`${g}: конец — ${els.acSay.textContent}: ${els.acSub.textContent}`);
+    H.arcSave(); const f=path.join(C.OUT,'arc_'+g+'_test.wav'); fs.mkdirSync(C.OUT,{recursive:true}); fs.writeFileSync(f,Buffer.from(await A.blob.arrayBuffer()));
+    const w=C.loadWav(f); need(w.meta.kind==='arc-play'&&w.meta.game===g&&new RegExp('^sonararc_'+g+'_').test(A.fname)&&w.meta.log.length>300,`${g}: запись ${A.fname}, журнал ${w.meta.log.length} строк`);
+    const R=E.report('arc_'+g+'_test.wav (через страницу)',w.meta,w.x);
+    const good=g==='slalom'?(R.gate>=20&&R.finish===1):g==='bombs'?(R.caught>=10&&R.wave>=1):(R.hit<=3&&R.gate===0&&A.score>100);
+    need(good&&R.vis>95&&R.match<0.005&&R.moving>25,`${g}: игра идёт (${w.meta.summary}), сверка ${(R.match*100).toFixed(2)}%, ладонь в движении ${R.moving.toFixed(0)}%`); }
+  console.log(bad?'ИТОГ: ПРОВАЛ':'ИТОГ: ok'); process.exitCode=bad?1:0;
+})();

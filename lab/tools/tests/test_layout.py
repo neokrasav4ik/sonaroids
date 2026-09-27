@@ -23,6 +23,12 @@ SETUP={
  'ark_twin':"lastRec='ark'; show('arkPlay'); AK.field='twin'; AK.bricks=akBricks(2); AK.ball={x:0.42,y:0.62}; AK.px=0.3; AK.pd=0.3; AK.phase='play'; AK.present=true; AK.dist=92; AK.score=120; AK.lives=2; AK.level=2; akDraw(); akText('',''); ",
  'ark_funnel':"lastRec='ark'; show('arkPlay'); AK.field='funnel'; AK.bricks=akBricks(2); AK.ball={x:0.42,y:0.62}; AK.px=0.45; AK.pd=0.45; AK.phase='play'; AK.present=true; AK.dist=92; AK.score=120; AK.lives=2; AK.level=2; akDraw(); akText('',''); ",
  'ark_side':"lastRec='ark'; show('arkPlay'); AK.field='side'; AK.bricks=akBricks(2); AK.ball={x:0.42,y:0.62}; AK.px=0.7; AK.pd=0.7; AK.phase='play'; AK.present=true; AK.dist=92; AK.score=120; AK.lives=2; AK.level=2; akDraw(); akText('',''); ",
+ 'probes':"show('probes');",
+ 'arcIntro':"lastRec='arc'; arcOpen('slalom');",
+ 'arc_slalom':"lastRec='arc'; show('arcPlay'); ARC.game='slalom'; ARC.T=null; arcInit(); ARC.flags=[{x:0.9,y:0.3,w:0.28,st:0},{x:1.8,y:0.72,w:0.28,st:0}]; ARC.trail=[0.5,0.48,0.46]; ARC.py=0.46; ARC.phase='play'; ARC.present=true; ARC.dist=92; ARC.t=12; akText('',''); arcDraw(); arcText('','');",
+ 'arc_bombs':"lastRec='arc'; show('arcPlay'); ARC.game='bombs'; arcInit(); ARC.bombs=[{x:0.9,y:0.3},{x:1.4,y:0.6}]; ARC.by=0.4; ARC.phase='play'; ARC.present=true; ARC.dist=92; ARC.score=24; arcDraw(); arcText('','');",
+ 'arc_cave':"lastRec='arc'; show('arcPlay'); ARC.game='cave'; arcInit(); ARC.ar=2.16; ARC.t=0; ARC.cols=[]; ARC_STEP.cave(0.001); ARC.phase='play'; ARC.present=true; ARC.dist=92; ARC.py=0.5; arcDraw(); arcText('','');",
+ 'arcOver':"lastRec='arc'; show('arcPlay'); ARC.game='bombs'; arcInit(); ARC.phase='over'; ARC.score=37; ARC.caught=20; arcDraw(); arcText('Финиш','поймано 20 · очки 37 · волна 2'); arcButtons(true);",
  'arkOver':"lastRec='ark'; show('arkPlay'); AK.bricks=akBricks(1); AK.ball={x:0.42,y:0.62}; AK.px=0.55; AK.phase='over'; AK.score=120; AK.lives=0; AK.level=1; akDraw(); akText('Конец','счёт 120 · уровень 1 · лучший 120'); akButtons(true);",
  'menu':"show('game'); el('gPanel').classList.remove('hidden'); el('gLogI').textContent='Записано 150 с партии (последние 150 с). Журнал настройки: 120 с.'; fitScreen();",
 }

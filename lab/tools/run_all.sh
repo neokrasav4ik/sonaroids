@@ -23,5 +23,6 @@ echo; echo "== два динамика: разбор на синтетике (д
 echo; echo "== два динамика через страницу: зонды по фазам, метка, WAV, разбор =="; o=$(node tests/test_dual_rec.js); echo "$o" | grep -E "^(ok|FAIL|ИТОГ)"
 echo; echo "== ладонь справа через страницу: проба-игра и запись по метке в портрете =="; o=$(node tests/test_right.js); echo "$o" | grep -E "^(ok|FAIL|ИТОГ)"
 echo; echo "== арканоид (прототип) через страницу: ракетка за ладонью, мяч, кирпичи, запись, разбор =="; o=$(node tests/test_ark.js); echo "$o" | grep -E "^(ok|FAIL|ИТОГ)"
+echo; echo "== экшн-прототипы через страницу: слалом, ловец бомб, пещера — подстройка как в Sonaroids, игра, запись, разбор =="; o=$(node tests/test_arc.js); echo "$o" | grep -E "^(ok|FAIL|ИТОГ)"
 echo; echo "== всё в один экран (Chromium; без playwright пропускается) =="; python3 tests/test_layout.py | tail -8
 echo; echo "== микрофон и звуковая сессия =="; node tests/test_mic_session.js

@@ -29,8 +29,11 @@
   p{margin:0 0 .6rem;color:var(--soft);font-size:.9rem;max-width:46ch}
   .small{font-size:.76rem}
   button{font-family:inherit;font-size:1rem;font-weight:500;color:var(--bg);background:var(--ink);touch-action:manipulation;
-    border:0;border-radius:2px;padding:.72em 1em;width:100%;cursor:pointer;margin:0;line-height:1.2}
-  button.big{font-size:1.15rem;padding:.85em 1em}
+    border:0;border-radius:3px;padding:.95em .8em;min-height:3.1rem;width:100%;cursor:pointer;margin:0;line-height:1.2}
+  /* 27.09 (0.39m): кнопки крупнее и в две колонки — «маленькие сложно нажимать» */
+  .btns.g2{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;align-content:center} .btns.g2>.big,.btns.g2>p,.btns.g2>.wide,.btns.g2>div{grid-column:1/-1}
+  .two.wideb{grid-template-columns:minmax(0,.8fr) minmax(0,1.35fr);gap:1.6rem}
+  button.big{font-size:1.2rem;padding:.95em 1em}
   button.ghost{background:transparent;color:var(--ink);border:1px solid var(--hair)}
   button:disabled{opacity:.35}
   /* две колонки: слева текст, справа кнопки */
@@ -54,6 +57,7 @@
   @media (orientation:portrait){ #portrait{display:flex} }
   /* 26.09: запись вбок — телефон вертикально, поэтому просьба повернуть на этих экранах не нужна (body.pok) */
   body.pok #portrait{display:none!important}
+  body.pok button{min-height:0;padding:.75em 1em}   /* старые пробы в портрете: кнопки прежнего размера — иначе не влезают на SE */
   @media (orientation:portrait){ body.pok .two{grid-template-columns:minmax(0,1fr);gap:1rem} body.pok .two .btns{order:1} }
   #sideIntro .pic{height:24vh;max-width:100%;margin:.2rem auto 0;display:block}
   #sideOri{font-family:"IBM Plex Mono",monospace;font-size:.8rem;margin:.2rem 0 .4rem}
@@ -64,12 +68,17 @@
   #akTop{position:absolute;left:0;right:0;top:30%;text-align:center;pointer-events:none;padding:0 1rem}
   #akSay{font-size:2rem;font-weight:600} #akSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
   #akBtns{position:absolute;left:calc(max(1rem,env(safe-area-inset-left)) + 1rem);top:50%;transform:translateY(-50%);width:15rem;display:flex;flex-direction:column;gap:.5rem}
-  #akStop{position:absolute;left:calc(max(.7rem,env(safe-area-inset-left)) + .3rem);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + 3.4rem);width:auto;padding:.5em .9em;font-size:.85rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
+  #akStop{position:absolute;left:calc(max(.7rem,env(safe-area-inset-left)) + .3rem);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + 3.4rem);width:auto;min-height:0;padding:.6em 1em;font-size:.9rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
+  #arcPlay{padding:0;background:#070a12} #acC{position:absolute;inset:0;width:100%;height:100%;display:block}
+  #acTop{position:absolute;left:0;right:0;top:30%;text-align:center;pointer-events:none;padding:0 1rem}
+  #acSay{font-size:2rem;font-weight:600} #acSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
+  #acBtns{position:absolute;left:calc(max(1rem,env(safe-area-inset-left)) + 1rem);top:50%;transform:translateY(-50%);width:15rem;display:flex;flex-direction:column;gap:.5rem}
+  #acStop{position:absolute;left:calc(max(.7rem,env(safe-area-inset-left)) + .3rem);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + 3.4rem);width:auto;min-height:0;padding:.6em 1em;font-size:.9rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
   #rightPlay{padding:0;background:#04070A} #rpC{position:absolute;inset:0;width:100%;height:100%;display:block}
   #rpTop{position:absolute;left:0;right:0;top:calc(max(.8rem,env(safe-area-inset-top)) + 5.4rem);text-align:center;pointer-events:none;padding:0 1rem}
   #rpSay{font-size:2rem;font-weight:600} #rpSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
   #rpBtns{position:absolute;left:1rem;right:1rem;bottom:calc(max(1rem,env(safe-area-inset-bottom)) + 2.4rem);display:flex;flex-direction:column;gap:.5rem}
-  #rpStop{position:absolute;left:calc(max(.7rem,env(safe-area-inset-left)) + .3rem);top:calc(max(.6rem,env(safe-area-inset-top)) + 2.2rem);width:auto;padding:.5em .9em;font-size:.85rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
+  #rpStop{position:absolute;left:calc(max(.7rem,env(safe-area-inset-left)) + .3rem);top:calc(max(.6rem,env(safe-area-inset-top)) + 2.2rem);width:auto;min-height:0;padding:.5em .9em;font-size:.85rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
   #sdCenter{flex:1;display:flex;flex-direction:column;justify-content:center;text-align:center}
   #sdSay{font-size:1.9rem;font-weight:600;line-height:1.2} #sdSub{color:var(--soft);font-size:1.05rem;margin-top:.5rem}
   #sdClock{font-family:"IBM Plex Mono",monospace;font-size:.9rem;color:var(--soft);margin-top:.7rem}
@@ -137,7 +146,7 @@
   <p>Поворачивай, пока держишь его в руке, — лёжа плашмя телефон ориентацию не меняет. Потом положи экраном вверх.</p>
 </div></div>
 
-<div class="screen" id="home"><div class="two">
+<div class="screen" id="home"><div class="two wideb">
   <div class="col">
     <h1>Сонар: астероиды</h1>
     <p>Корабль летит между астероидами. Его высота — твоя ладонь сбоку от лежащего телефона, у короткого края с микрофоном.</p>
@@ -145,18 +154,32 @@
     <div id="a2hs" class="note hidden"><b>На весь экран:</b> в Safari «Поделиться» → «На экран „Домой“» и запускай с иконки.</div>
     <div class="err hidden" id="err"></div>
   </div>
-  <div class="col btns">
+  <div class="col btns g2">
     <button id="goGame" class="big">Играть</button>
+    <button id="go_slalom" class="ghost">Слалом (прототип)</button>
+    <button id="go_bombs" class="ghost">Ловец бомб (прототип)</button>
+    <button id="go_cave" class="ghost">Пещера (прототип)</button>
+    <button id="goArk" class="ghost">Арканоид (прототип)</button>
     <button id="goRec" class="ghost">Запись для меня</button>
     <button id="goRecLong" class="ghost">Длинная запись (1,5 мин)</button>
-    <button id="goRecSide" class="ghost">Запись вбок (телефон вертикально)</button>
+    <button id="goProbes" class="ghost">Ещё: пробы, беззвучный…</button>
+    <button id="reload1" class="ghost">Перезагрузить</button>
+  </div>
+</div></div>
+
+<div class="screen hidden" id="probes"><div class="two wideb">
+  <div class="col">
+    <h1>Ещё</h1>
+    <p>Пробы других способов управления (26–27.09). Все закрыты — остаётся «разъёмом к ладони», как в игре. Оставлены, чтобы можно было повторить.</p>
+    <p class="small">Записи по метке (16 с или 1,5 мин) — на главном экране: присылаешь WAV, я проверяю механику на твоём сигнале.</p>
+  </div>
+  <div class="col btns g2">
+    <button id="goRecSide" class="ghost">Запись вбок (вертикально)</button>
     <button id="goRecDual" class="ghost">Два динамика</button>
-    <button id="goRight" class="ghost">Ладонь справа (телефон вертикально)</button>
-    <button id="goArk" class="ghost">Арканоид (прототип)</button>
-    <p class="small" style="margin:-.15rem 0 .2rem">По метке, 16 с или 1,5 мин — присылаешь WAV, я проверяю механику на твоём сигнале.</p>
-    <button id="silentT" class="ghost" style="font-size:.84rem">Беззвучный режим телефона: …</button>
+    <button id="goRight" class="ghost">Ладонь справа (вертикально)</button>
+    <button id="probesBack" class="ghost">Назад</button>
+    <button id="silentT" class="ghost wide" style="font-size:.9rem">Беззвучный режим телефона: …</button>
     <p id="silentP" class="small" style="margin:-.15rem 0 .2rem"></p>
-    <button id="reload1" class="ghost">Перезагрузить приложение</button>
   </div>
 </div></div>
 
@@ -254,13 +277,13 @@
   </div>
 </div>
 
-<div class="screen hidden" id="arkIntro"><div class="two">
+<div class="screen hidden" id="arkIntro"><div class="two wideb">
   <div class="col">
     <h1>Арканоид — прототип</h1>
     <p>Управление как в игре: телефон горизонтально, разъёмом к ладони — на столе (ладонь вверх-вниз над столом) или в руке (ладонь ребром к торцу и от него), 5–15 см. <b>Ладонь дальше от разъёма — ракетка дальше от него</b> (с полем «ракетка сбоку» — выше).</p>
     <p>Подстройка как в Sonaroids: сначала убери руку, потом помаши ладонью к разъёму и от него (5–15 см) — ракетка ходит за ней, секунд через пять ход пойман. Мяч запускается сам.</p>
   </div>
-  <div class="col btns">
+  <div class="col btns g2">
     <button id="arkGo" class="big">Играть</button>
     <button id="arkField" class="ghost">Поле: …</button>
     <button id="arkLock" class="ghost">Замок в покое: …</button>
@@ -279,6 +302,31 @@
     <button id="akSet" class="ghost">Настройки</button>
     <button id="akSave" class="ghost">Сохранить запись</button>
     <button id="akHome" class="ghost">В начало</button>
+  </div>
+</div>
+
+<div class="screen hidden" id="arcIntro"><div class="two">
+  <div class="col">
+    <h1 id="acTitle">Прототип</h1>
+    <p id="acIntro"></p>
+    <p>Управление и подстройка как в Sonaroids: телефон горизонтально, разъёмом к ладони. Сначала убери руку, потом помаши ладонью к разъёму и от него (5–15 см) — игрок сразу ходит за ней. <b>Ладонь дальше — выше.</b></p>
+    <p id="acBest" class="small"></p>
+  </div>
+  <div class="col btns">
+    <button id="acGo" class="big">Играть</button>
+    <button id="acBack" class="ghost">Назад</button>
+  </div>
+</div></div>
+
+<div class="screen hidden" id="arcPlay">
+  <canvas id="acC"></canvas>
+  <div id="acTop"><div id="acSay"></div><div id="acSub"></div></div>
+  <button id="acStop" class="gbtn">Стоп</button>
+  <div id="acBtns" class="hidden">
+    <button id="acAgain" class="big">Ещё раз</button>
+    <button id="acSave" class="ghost">Сохранить запись</button>
+    <button id="acSet" class="ghost">Об игре</button>
+    <button id="acHome" class="ghost">В начало</button>
   </div>
 </div>
 

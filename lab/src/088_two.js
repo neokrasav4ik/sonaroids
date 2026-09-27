@@ -64,7 +64,7 @@ function runTwo(){ var S=twoVar==='fist'?SCRIPT_FIST:SCRIPT_TWO, TOT=S[S.length-
       var n=rec.frames.length*N, all=new Float32Array(n); rec.frames.forEach(function(f,j){ all.set(f,j*N); });
       var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
       var so=(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0);
-      recMeta={v:4,kind:'two-portrait',variant:twoVar,fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
+      recMeta={v:4,kind:'two-portrait',variant:twoVar,fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
         prom_db:prom,samples:n,gaps:rec.gaps,peak:pk,orientation:{angle:so,w:window.innerWidth,h:window.innerHeight},
         script:S.filter(function(s){return s.k!=='end';}).map(function(s){ return {k:s.k,t:s.t,H:s.d}; }),
         marks:marks,units:'target distance of each palm (L, R — as the player sees them) from the bottom end of the phone in mm; phone flat, portrait, port towards the player',ua:navigator.userAgent,date:new Date().toISOString()};

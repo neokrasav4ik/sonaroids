@@ -21,12 +21,15 @@ var SCRIPT_DEPTH=[
   {t:61, k:'end'}
 ];
 /* широкий зонд: свой источник на тот же динамик, что выбрал pickChannel */
-function dpProbe(on){ if(typeof ctx==="undefined"||!ctx||!ctx.createBuffer) return;   /* стенд без звука */
-  if(!DP.g){ var df=fs/N, ks=[], k, n, q; for(k=Math.ceil(DEPTH_LO/df);k<=Math.floor(DEPTH_HI/df);k++) ks.push(k);
+function dpProbe(on){ dpSide(on?'single-'+chan:'off'); }
+/* 0.39u: широкий зонд — свой источник, отдельные уровни на левый и правый канал (выбор динамика, игра, записи) */
+function dpSide(w){ if(typeof ctx==="undefined"||!ctx||!ctx.createBuffer) return;   /* стенд без звука */
+  if(!DP.gl){ if(w==='off') return; var df=fs/N, ks=[], k, n, q; for(k=Math.ceil(DEPTH_LO/df);k<=Math.floor(DEPTH_HI/df);k++) ks.push(k);
     var M=ks.length, x=new Float64Array(N), mx=0; for(n=0;n<N;n++){ var s=0; for(q=0;q<M;q++) s+=Math.cos(2*Math.PI*ks[q]*n/N+Math.PI*q*q/M); x[n]=s; if(Math.abs(s)>mx) mx=Math.abs(s); }
     var buf=ctx.createBuffer(1,N,fs), d=buf.getChannelData(0); for(n=0;n<N;n++) d[n]=x[n]/mx*0.9;
-    DP.src=loopSrc(buf); DP.g=ctx.createGain(); DP.g.gain.value=0; DP.mg=ctx.createChannelMerger(2); DP.src.connect(DP.g); DP.g.connect(DP.mg,0,chan==='left'?0:1); DP.mg.connect(ctx.destination); DP.src.start(); }
-  DP.g.gain.setTargetAtTime(on?PROBE_G:0,ctx.currentTime,0.02); }
+    DP.src=loopSrc(buf); DP.gl=ctx.createGain(); DP.gr=ctx.createGain(); DP.gl.gain.value=0; DP.gr.gain.value=0; DP.mg=ctx.createChannelMerger(2);
+    DP.src.connect(DP.gl); DP.src.connect(DP.gr); DP.gl.connect(DP.mg,0,0); DP.gr.connect(DP.mg,0,1); DP.mg.connect(ctx.destination); DP.src.start(); }
+  var t=ctx.currentTime; DP.gl.gain.setTargetAtTime(w==='single-left'?PROBE_G:0,t,0.02); DP.gr.gain.setTargetAtTime(w==='single-right'?PROBE_G:0,t,0.02); }
 function dpAsk(){ return new Promise(function(r){ el('twAsk').classList.remove('hidden');
   function pick(v){ el('twAsk').classList.add('hidden'); el('twYes').onclick=null; el('twNo').onclick=null; r(v); }
   el('twYes').onclick=function(){ pick(true); }; el('twNo').onclick=function(){ pick(false); }; }); }
@@ -51,11 +54,11 @@ function runDepth(){ var S=SCRIPT_DEPTH, TOT=S[S.length-1].t;
         marks:marks,units:'target distance of each hand (L, R — as the player sees them) from the bottom end in mm; phone flat, portrait, port towards the player; wide probe 16–20.5 kHz',ua:navigator.userAgent,date:new Date().toISOString()};
       blob=wav(all,recMeta); var d=new Date(), z=function(x){ return (x<10?'0':'')+x; };
       fname='sonardepth_'+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+'.wav'; showDone(pk,prom); }); }).catch(function(e){ dpProbe(false); setProbe('off'); el('twSay').textContent='Не вышло'; el('twSub').textContent=(e&&e.message)||String(e); }); }
-/* 0.39t: широкий зонд для «Записи для меня» и длинной записи (переключатель на «Ещё»): одна запись разбирается и как широкая, и как узкая
+/* 0.39t: широкий зонд для «Записи для меня» и длинной записи; с 0.39u переключатель на главном экране и действует на всё — игру лабы, прототипы, записи: одна запись разбирается и как широкая, и как узкая
    (eval_recording.js --narrow) — ответ, даст ли широкий зонд лучшее управление в игре. И проверка писка: обычный / широкий / тишина. */
 var probeWide=false; try{ probeWide=localStorage.getItem('sonar_probe_wide')==='1'; }catch(e){}
-function pwLabel(){ el('pwToggle').textContent='Зонд записей по метке: '+(probeWide?'широкий 16–20,5 кГц':'обычный'); }
-function pwPlay(w){ if(w==='wide'){ setProbe('off'); dpProbe(true); } else if(w==='narrow'){ dpProbe(false); setProbe('single-'+chan); } else { dpProbe(false); setProbe('off'); }
+function pwLabel(){ el('pwToggle').textContent='Зонд: '+(probeWide?'широкий 16–20,5 кГц':'обычный 18,3–20,5 кГц'); }
+function pwPlay(w){ var keep=probeWide; if(w==='wide'){ probeWide=false; setProbe('off'); probeWide=keep; dpProbe(true); } else if(w==='narrow'){ dpProbe(false); probeWide=false; setProbe('single-'+chan); probeWide=keep; } else { dpProbe(false); setProbe('off'); }
   el('pwNow').textContent='Сейчас: '+(w==='wide'?'широкий, от 16 кГц':w==='narrow'?'обычный, как в игре':'тишина'); }
 el('pwToggle').addEventListener('click',function(){ probeWide=!probeWide; try{ localStorage.setItem('sonar_probe_wide',probeWide?'1':'0'); }catch(e){} pwLabel(); }); pwLabel();
 el('goPw').addEventListener('click',function(){ boot().then(function(){ show('pwCheck'); pwPlay('off'); }).catch(fail); });

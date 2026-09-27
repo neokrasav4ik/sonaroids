@@ -4,6 +4,10 @@
    там, где ладонь держится первую секунду после появления и во время отсчёта перед каждой партией.
    Пошаговая калибровка «низко — высоко — покачай» убрана: по ней чувствительность менялась от раза к разу в 1,7 раза. ── */
 var PHYS_CAL={k:1.17,o:100-1.17*110,s:0.9}, curCal=PHYS_CAL, calLive=false;
+/* 0.39u: калибровка широкого зонда — по записи 27.09 15:35 (широкий) против метки: k 1,4 и 100 мм при дальности 100 — смещение −1 мм, медиана 8 мм
+   (с PHYS_CAL было −14 мм); быстрая часть та же. Центровка и взмахи игры всё равно подстраивают середину и масштаб */
+var WIDE_CAL={k:1.4,o:100-1.4*100,s:0.9};
+function dspBand(D){ var w=bandLo()!==F_LO; D.set('flo',w?DEPTH_LO:null); return w?WIDE_CAL:PHYS_CAL; }
 function median(a){ var b=a.slice().sort(function(x,y){return x-y;}); return b.length?b[b.length>>1]:NaN; }
 function side(){ return hand==='left'?'слева':'справа'; }
 function waitReady(){ return new Promise(function(r){ (function chk(){ var i=DSP2.info(); if(i.noProbe) return r('noprobe'); if(i.ready) return r('ok'); setTimeout(chk,60); })(); }); }
@@ -17,7 +21,7 @@ function quickStart(){
   if(!calLive){ calLive=true; calLoop(); }
   pickChannel().then(function(){ return autoLevel(); }).then(function(L){
     if(L.snr<30){ setProbe('off'); CS.busy=false; calText('Готовлюсь','Зонда почти не слышно',NOPROBE); return null; }
-    DSP2.init(fs,'all'); DSP2.setCal(curCal); DSP2.set('autocenter',1); mode='cal'; slogStart('подготовка'); return waitReady(); }).then(function(st){
+    curCal=dspBand(DSP2); DSP2.init(fs,'all'); DSP2.setCal(curCal); DSP2.set('autocenter',1); mode='cal'; slogStart('подготовка'); return waitReady(); }).then(function(st){
     if(st===null||st===undefined) return;
     if(st==='noprobe'){ CS.busy=false; setProbe('off'); calText('Готовлюсь','Зонда не слышно',NOPROBE); return; }
     el('calS').textContent='Комната готова. Сейчас начнём.';

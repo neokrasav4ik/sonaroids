@@ -71,10 +71,13 @@ function boot(){
     booted=true;
   });
 }
+/* 0.39u: широкий зонд 16–20,5 кГц (переключатель «Зонд» на главном экране лабы) — одиночный зонд тогда играет широкий источник (090_depth.js) */
+function bandLo(){ return (typeof probeWide!=='undefined'&&probeWide)?DEPTH_LO:F_LO; }
 function setProbe(w){                          // 'off' | 'dual' | 'single-left' | 'single-right'
-  var t=ctx.currentTime;
-  gSL.gain.setTargetAtTime(w==='single-left'?PROBE_G:0,t,0.02);
-  gSR.gain.setTargetAtTime(w==='single-right'?PROBE_G:0,t,0.02);
+  var t=ctx.currentTime, wide=bandLo()!==F_LO&&w!=='dual';
+  if(typeof dpSide==='function') dpSide(wide?w:'off');
+  gSL.gain.setTargetAtTime(w==='single-left'&&!wide?PROBE_G:0,t,0.02);
+  gSR.gain.setTargetAtTime(w==='single-right'&&!wide?PROBE_G:0,t,0.02);
   gL.gain.setTargetAtTime(w==='dual'?0.25:0,t,0.02);
   gR.gain.setTargetAtTime(w==='dual'?0.25:0,t,0.02);
 }
@@ -116,7 +119,7 @@ function probeSNR(frames,fs,fLo,fHi){
 
 /* ── автоуровень: убавляю свой зонд до минимума с запасом — громкость в комнате почти не зависит от громкости телефона ── */
 var SNR_TARGET=48, G_MIN=0.015, G_MAX=0.3;
-function measureSNR(){ return sleep(350).then(function(){ return collect(8); }).then(function(fr){ return probeSNR(fr,fs,F_LO,20450); }); }
+function measureSNR(){ return sleep(350).then(function(){ return collect(8); }).then(function(fr){ return probeSNR(fr,fs,bandLo(),20450); }); }
 function autoLevel(){
   var tries=0;
   function step(){ return measureSNR().then(function(s){

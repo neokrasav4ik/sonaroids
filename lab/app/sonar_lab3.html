@@ -170,6 +170,7 @@
     <button id="goRecLong" class="ghost">Длинная запись (1,5 мин)</button>
     <button id="goProbes" class="ghost">Ещё: пробы, беззвучный…</button>
     <button id="reload1" class="ghost">Перезагрузить</button>
+    <button id="pwToggle" class="ghost wide">Зонд: …</button>
   </div>
 </div></div>
 
@@ -180,7 +181,6 @@
     <p class="small">Записи по метке (16 с или 1,5 мин) — на главном экране: присылаешь WAV, я проверяю механику на твоём сигнале.</p>
   </div>
   <div class="col btns g2">
-    <button id="pwToggle" class="ghost">Зонд записей: …</button>
     <button id="goPw" class="ghost">Проверка писка</button>
     <button id="goStereo" class="ghost">Стереомикрофон (проба)</button>
     <button id="go_bombs" class="ghost">Ловец бомб (прототип)</button>
@@ -507,12 +507,12 @@ registerProcessor('cap2',Cap2);
 `;
 /* ── ОБРАБОТКА v2: быстрое смещение по фазе + абсолютная высота по центру эха, слитые вместе ── */
 var DSP2=(function(){
-  var N=512,C=343,fs,kLo,kHi,kc,ks,M,Pr,Pi,lam,mm,T,gA,gB,G,cosT,sinT;
+  var N=512,C=343,fs,kLo,kHi,kc,ks,M,Pr,Pi,lam,mm,T,gA,gB,G,cosT,sinT,BAND_LO=null;   // BAND_LO — нижний край полосы зонда, если не 18,3 кГц (широкий зонд, с 0.39u; задаётся set('flo') до init)
   var d0,dref,boot,bootN=30,prevH,hist,L=4,prom,noProbe,bgAcc,bgN,bgR,bgI,BG_N=40;
   var Es,hold,present,refr,Q_FLOOR=-28,T_ON=-16,T_INT=-30,HOLD_S=1.5,tauE=0.15,REFR_S=0.7,TAU_BG=2.0,TAU=1.5;
   var eqW=null,eqDb=0,EQ_ON=16,ACC_N=24,FINE_N=188,EQ_MAX=10,gN=null,drops=0,sinceDrop=1e9,covered=false,lastPeak=null,d0B=0,fineN=-1,fR=null,fI=null,refR=null,refI=null,acR=null,acI=null,acN=0,moveN=0,scanWait=0,relocks=0,eAvg=0,TE=3,E_FAST=12,ePres=0,why='',rngBuf=[],xBuf=[],centered=false,autoC=false,presN=0,x,fast,cal={k:0.75,o:1,s:0.8},eHold=null,lowN=0,resS=-99,resFloor=null,upN=0,warm=0,absBuf=[],ABS_MED=15,DEADB=5,DEADB_UP=15,dirS=null,lostN=0,lost=false;
   function init(sampleRate,parity){
-    fs=sampleRate; var df=fs/N; kLo=Math.ceil(18300/df); kHi=Math.floor(20500/df); kc=Math.floor((kLo+kHi)/2);
+    fs=sampleRate; var df=fs/N; kLo=Math.ceil(18300/df); if(BAND_LO) kLo=Math.ceil(BAND_LO/df); kHi=Math.floor(20500/df); kc=Math.floor((kLo+kHi)/2);
     ks=[]; for(var k=kLo;k<=kHi;k++) if(parity===undefined||parity==='all'||k%2===parity) ks.push(k);
     M=ks.length; T=(parity===0||parity===1)?N/2:N;
     lam=C/(kc*df)*1000; mm=C/fs/2*1000; gA=Math.round(30/mm); gB=Math.round(300/mm); G=gB-gA;
@@ -691,8 +691,8 @@ var DSP2=(function(){
   function shift(d){ var i; cal.o+=d; for(i=0;i<absBuf.length;i++) absBuf[i]+=d; if(x!==null) x+=d; for(i=0;i<xBuf.length;i++) xBuf[i]+=d; centered=true; }
   return {init:init,frame:frame,recenter:recenter,shift:shift,
     setCal:function(c){ cal.k=c.k; cal.o=c.o; cal.s=c.s; },
-    set:function(k,v){ if(k==='tint') T_INT=v; if(k==='tau') TAU=v; if(k==='absmed') ABS_MED=Math.max(1,Math.round(v)); if(k==='deadband') DEADB=Math.max(0,v); if(k==='autocenter') autoC=!!v; },
-    info:function(){ return {covered:covered,eq_db:eqDb,eq:!!eqW,relocks:relocks,drops:drops,d0:d0,prom:prom,noProbe:noProbe,lost:lost,ready:bgR!==null,mm:mm,centered:centered,cal:{k:cal.k,o:cal.o,s:cal.s}}; }};
+    set:function(k,v){ if(k==='flo') BAND_LO=v||null; if(k==='tint') T_INT=v; if(k==='tau') TAU=v; if(k==='absmed') ABS_MED=Math.max(1,Math.round(v)); if(k==='deadband') DEADB=Math.max(0,v); if(k==='autocenter') autoC=!!v; },
+    info:function(){ return {covered:covered,eq_db:eqDb,eq:!!eqW,relocks:relocks,drops:drops,d0:d0,prom:prom,noProbe:noProbe,lost:lost,ready:bgR!==null,mm:mm,centered:centered,band:[kLo,kHi],cal:{k:cal.k,o:cal.o,s:cal.s}}; }};
 })();
 /* ── ИГРА: логика отдельно от рисования, чтобы её можно было проверить на записи ── */
 var Game=(function(){
@@ -818,10 +818,13 @@ function boot(){
     booted=true;
   });
 }
+/* 0.39u: широкий зонд 16–20,5 кГц (переключатель «Зонд» на главном экране лабы) — одиночный зонд тогда играет широкий источник (090_depth.js) */
+function bandLo(){ return (typeof probeWide!=='undefined'&&probeWide)?DEPTH_LO:F_LO; }
 function setProbe(w){                          // 'off' | 'dual' | 'single-left' | 'single-right'
-  var t=ctx.currentTime;
-  gSL.gain.setTargetAtTime(w==='single-left'?PROBE_G:0,t,0.02);
-  gSR.gain.setTargetAtTime(w==='single-right'?PROBE_G:0,t,0.02);
+  var t=ctx.currentTime, wide=bandLo()!==F_LO&&w!=='dual';
+  if(typeof dpSide==='function') dpSide(wide?w:'off');
+  gSL.gain.setTargetAtTime(w==='single-left'&&!wide?PROBE_G:0,t,0.02);
+  gSR.gain.setTargetAtTime(w==='single-right'&&!wide?PROBE_G:0,t,0.02);
   gL.gain.setTargetAtTime(w==='dual'?0.25:0,t,0.02);
   gR.gain.setTargetAtTime(w==='dual'?0.25:0,t,0.02);
 }
@@ -863,7 +866,7 @@ function probeSNR(frames,fs,fLo,fHi){
 
 /* ── автоуровень: убавляю свой зонд до минимума с запасом — громкость в комнате почти не зависит от громкости телефона ── */
 var SNR_TARGET=48, G_MIN=0.015, G_MAX=0.3;
-function measureSNR(){ return sleep(350).then(function(){ return collect(8); }).then(function(fr){ return probeSNR(fr,fs,F_LO,20450); }); }
+function measureSNR(){ return sleep(350).then(function(){ return collect(8); }).then(function(fr){ return probeSNR(fr,fs,bandLo(),20450); }); }
 function autoLevel(){
   var tries=0;
   function step(){ return measureSNR().then(function(s){
@@ -984,7 +987,7 @@ function runRec(kind){ var long=kind==='long', dual=kind==='dual', right=kind===
       el(SUB).textContent='Прибавь громкость, выключи беззвучный, отключи наушники, открой динамики. Сейчас '+prom.toFixed(0)+' дБ, нужно 15.';
       setProbe('off'); mode=null; return sleep(7000).then(function(){ show('home'); });
     }
-    var wideP=probeWide&&(kind==='rec'||kind==='long'); if(wideP){ setProbe('off'); dpProbe(true); }   /* 0.39t: широкий зонд для записи по метке */
+    var wideP=bandLo()!==F_LO;   /* 0.39t/u: широкий зонд — setProbe сам играет широкий */
     var mk=side?'mkH':(hand==='left')?'mkL':'mkR', marks={}, t0=performance.now(), cur=-1;
     rec.on=true;
     return new Promise(function(done){
@@ -997,7 +1000,7 @@ function runRec(kind){ var long=kind==='long', dual=kind==='dual', right=kind===
         el(CLK).textContent=t.toFixed(1)+' / '+TOT+' с'; requestAnimationFrame(tick);
       })();
     }).then(function(marks){
-      rec.on=false; setProbe('off'); if(wideP) dpProbe(false); mode=null;
+      rec.on=false; setProbe('off'); mode=null;
       var n=rec.frames.length*N, all=new Float32Array(n);
       rec.frames.forEach(function(f,j){ all.set(f,j*N); });
       var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
@@ -1065,7 +1068,7 @@ function handSide(){ hand=chan; try{ localStorage.setItem('sonar_hand',hand); }c
 try{ var hs=localStorage.getItem('sonar_hand'); if(hs==='left'||hs==='right'){ chan=hs; hand=hs; } }catch(e){}
 if(document.body&&document.body.classList) document.body.classList.toggle('hand-left',hand==='left');
 function bandLevel(){ var b=new Float32Array(an.frequencyBinCount); an.getFloatFrequencyData(b);
-  var bw=fs/2048,s=0; for(var i=Math.ceil(F_LO/bw);i<=Math.floor(20500/bw);i++) s+=Math.pow(10,b[i]/10); return s; }
+  var bw=fs/2048,s=0; for(var i=Math.ceil(bandLo()/bw);i<=Math.floor(20500/bw);i++) s+=Math.pow(10,b[i]/10); return s; }
 function pickChannel(){
   function meas(w){ setProbe(w); return sleep(350).then(function(){ var v=[],i=0; return new Promise(function(r){
     var iv=setInterval(function(){ v.push(bandLevel()); if(++i>=10){ clearInterval(iv); v.sort(function(a,b){return a-b;}); r(v[5]); } },20); }); }); }
@@ -1078,6 +1081,10 @@ function pickChannel(){
    там, где ладонь держится первую секунду после появления и во время отсчёта перед каждой партией.
    Пошаговая калибровка «низко — высоко — покачай» убрана: по ней чувствительность менялась от раза к разу в 1,7 раза. ── */
 var PHYS_CAL={k:1.17,o:100-1.17*110,s:0.9}, curCal=PHYS_CAL, calLive=false;
+/* 0.39u: калибровка широкого зонда — по записи 27.09 15:35 (широкий) против метки: k 1,4 и 100 мм при дальности 100 — смещение −1 мм, медиана 8 мм
+   (с PHYS_CAL было −14 мм); быстрая часть та же. Центровка и взмахи игры всё равно подстраивают середину и масштаб */
+var WIDE_CAL={k:1.4,o:100-1.4*100,s:0.9};
+function dspBand(D){ var w=bandLo()!==F_LO; D.set('flo',w?DEPTH_LO:null); return w?WIDE_CAL:PHYS_CAL; }
 function median(a){ var b=a.slice().sort(function(x,y){return x-y;}); return b.length?b[b.length>>1]:NaN; }
 function side(){ return hand==='left'?'слева':'справа'; }
 function waitReady(){ return new Promise(function(r){ (function chk(){ var i=DSP2.info(); if(i.noProbe) return r('noprobe'); if(i.ready) return r('ok'); setTimeout(chk,60); })(); }); }
@@ -1091,7 +1098,7 @@ function quickStart(){
   if(!calLive){ calLive=true; calLoop(); }
   pickChannel().then(function(){ return autoLevel(); }).then(function(L){
     if(L.snr<30){ setProbe('off'); CS.busy=false; calText('Готовлюсь','Зонда почти не слышно',NOPROBE); return null; }
-    DSP2.init(fs,'all'); DSP2.setCal(curCal); DSP2.set('autocenter',1); mode='cal'; slogStart('подготовка'); return waitReady(); }).then(function(st){
+    curCal=dspBand(DSP2); DSP2.init(fs,'all'); DSP2.setCal(curCal); DSP2.set('autocenter',1); mode='cal'; slogStart('подготовка'); return waitReady(); }).then(function(st){
     if(st===null||st===undefined) return;
     if(st==='noprobe'){ CS.busy=false; setProbe('off'); calText('Готовлюсь','Зонда не слышно',NOPROBE); return; }
     el('calS').textContent='Комната готова. Сейчас начнём.';
@@ -1413,7 +1420,7 @@ function arkPlay(){
   akNewBall(); akText('Готовлюсь','Убери руку. Подбираю громкость зонда.'); mode=null; akDraw();
   pickChannel().then(function(){ return autoLevel(); }).then(function(L){
     if(L.snr<30){ setProbe('off'); akText('Зонда почти не слышно',NOPROBE); akButtons(true); return null; }
-    DSP2.init(fs,'all'); DSP2.setCal(PHYS_CAL); mode='ark'; AK.on=true; akMark('empty'); AK.phase='empty';
+    var cal0=dspBand(DSP2); DSP2.init(fs,'all'); DSP2.setCal(cal0); mode='ark'; AK.on=true; akMark('empty'); AK.phase='empty';
     akText('Убери руку','Слушаю пустую комнату.'); return rpWait(DSP2); }).then(function(st){
     if(!st) return;
     if(st==='noprobe'){ setProbe('off'); mode=null; AK.on=false; akText('Зонда не слышно',NOPROBE); akButtons(true); return; }
@@ -1493,8 +1500,8 @@ function akDraw(){ var cv=el('akC'); if(!cv||!cv.getContext) return; var dpr=Mat
   c.fillText(AK.dist===null||AK.dist===undefined?'ладони не слышно':(AK.present?'':'(нет ладони) ')+'ладонь '+(AK.dist/10).toFixed(1).replace('.',',')+' см',SW/2,SH-6*dpr); }
 function akSave(){ if(!AK.frames.length) return; var n=AK.frames.length*N, all=new Float32Array(n); AK.frames.forEach(function(f,j){ all.set(f,j*N); });
   var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
-  var meta={v:3,kind:'ark-play',port:AK.port,field:AK.field,autocenter:true,tune:AK.T?{field:+AK.T.field.toFixed(2),asym:Tune.ASYM,shifts:AK.shifts}:null,ctl:{range:null,lock:AK.lock?AK_LOCK:null,pix:AK.pix?AK_PIX:null,mag:AK.mag?AK_MAG:null},fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
-    cal:PHYS_CAL,map:AK.map,marks:AK.marks,log:AK.log,score:AK.score,level:AK.level,lives:AK.lives,samples:n,gaps:AK.gaps,peak:pk,
+  var meta={v:3,kind:'ark-play',port:AK.port,field:AK.field,autocenter:true,tune:AK.T?{field:+AK.T.field.toFixed(2),asym:Tune.ASYM,shifts:AK.shifts}:null,ctl:{range:null,lock:AK.lock?AK_LOCK:null,pix:AK.pix?AK_PIX:null,mag:AK.mag?AK_MAG:null},fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
+    cal:DSP2.info().cal||PHYS_CAL,map:AK.map,marks:AK.marks,log:AK.log,score:AK.score,level:AK.level,lives:AK.lives,samples:n,gaps:AK.gaps,peak:pk,
     orientation:{angle:(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0),w:window.innerWidth,h:window.innerHeight},
     units:'log: [frame, paddle x 0..1 on the field (field: classic/twin — second paddle at x+0.5/funnel/side — the field turned 90°, x up the screen), ball x, ball y (0 top), palm seen] or [frame, event]; paddle x = 0.09+0.82·f, f from height (DSP2, PHYS_CAL) by map, mirrored if the port is on the left',
     ua:navigator.userAgent,date:new Date().toISOString()};
@@ -1554,7 +1561,7 @@ function arcPlay(){
   arcInit(); arcText('Готовлюсь','Убери руку. Подбираю громкость зонда.'); mode=null; arcDraw();
   pickChannel().then(function(){ return autoLevel(); }).then(function(L){
     if(L.snr<30){ setProbe('off'); arcText('Зонда почти не слышно',NOPROBE); arcButtons(true); return null; }
-    DSP2.init(fs,'all'); DSP2.setCal(PHYS_CAL); DSP2.set('autocenter',1); mode='arc'; ARC.on=true; arcMark('empty'); ARC.phase='empty';
+    var cal0=dspBand(DSP2); DSP2.init(fs,'all'); DSP2.setCal(cal0); DSP2.set('autocenter',1); mode='arc'; ARC.on=true; arcMark('empty'); ARC.phase='empty';
     arcText('Убери руку','Слушаю пустую комнату.'); return rpWait(DSP2); }).then(function(st){
     if(!st) return;
     if(st==='noprobe'){ setProbe('off'); mode=null; ARC.on=false; arcText('Зонда не слышно',NOPROBE); arcButtons(true); return; }
@@ -1701,8 +1708,8 @@ function arcDraw(){ var cv=el('acC'); if(!cv||!cv.getContext) return; var dpr=Ma
 function arcSave(){ if(!ARC.frames.length) return; var n=ARC.frames.length*N, all=new Float32Array(n); ARC.frames.forEach(function(f,j){ all.set(f,j*N); });
   var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
   var meta={v:1,kind:'arc-play',game:ARC.game,port:ARC.port,autocenter:true,tune:ARC.T?{field:+ARC.T.field.toFixed(2),asym:Tune.ASYM,shifts:ARC.shifts}:null,margin:ARC_M,
-    fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
-    cal:PHYS_CAL,marks:ARC.marks,log:ARC.log,score:ARC.score,summary:arcSummary(),samples:n,gaps:ARC.gaps,peak:pk,
+    fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
+    cal:DSP2.info().cal||PHYS_CAL,marks:ARC.marks,log:ARC.log,score:ARC.score,summary:arcSummary(),samples:n,gaps:ARC.gaps,peak:pk,
     orientation:{angle:(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0),w:window.innerWidth,h:window.innerHeight},
     units:'log: [frame, palm share of the height by Tune.fracOf (0 low … 1 high), player y (0 top … 1 bottom, eased 0.49 per 60 Hz frame), palm seen] or [frame, event]',
     ua:navigator.userAgent,date:new Date().toISOString()};
@@ -1787,7 +1794,7 @@ function runTwo(){ var S=twoVar==='fist'?SCRIPT_FIST:SCRIPT_TWO, TOT=S[S.length-
       var n=rec.frames.length*N, all=new Float32Array(n); rec.frames.forEach(function(f,j){ all.set(f,j*N); });
       var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
       var so=(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0);
-      recMeta={v:4,kind:'two-portrait',variant:twoVar,fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
+      recMeta={v:4,kind:'two-portrait',variant:twoVar,fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
         prom_db:prom,samples:n,gaps:rec.gaps,peak:pk,orientation:{angle:so,w:window.innerWidth,h:window.innerHeight},
         script:S.filter(function(s){return s.k!=='end';}).map(function(s){ return {k:s.k,t:s.t,H:s.d}; }),
         marks:marks,units:'target distance of each palm (L, R — as the player sees them) from the bottom end of the phone in mm; phone flat, portrait, port towards the player',ua:navigator.userAgent,date:new Date().toISOString()};
@@ -1839,7 +1846,7 @@ function runStereo(){ var S=SCRIPT_ST, TOT=S[S.length-1].t;
     ST.on=false; setProbe('off'); var I=stInfo(), D=stDiff(); try{ ST.stream.getTracks().forEach(function(t){ t.stop(); }); ST.node.disconnect(); }catch(e){}
     var n=ST.a.length*N, L=new Float32Array(n), R=new Float32Array(n); ST.a.forEach(function(f,j){ L.set(f,j*N); }); ST.b.forEach(function(f,j){ R.set(f,j*N); });
     var so=(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0);
-    recMeta={v:4,kind:'stereo-portrait',fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
+    recMeta={v:4,kind:'stereo-portrait',fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
       mic:I,diff:D,samples:n,channels:2,orientation:{angle:so,w:window.innerWidth,h:window.innerHeight},script:SCRIPT_ST.filter(function(s){return s.k!=='end';}).map(function(s){ return {k:s.k,t:s.t}; }),
       marks:ST.marks,units:'two input channels as the browser gave them (interleaved in the WAV); phone flat, portrait, port towards the player; the palm waves up and down to the left, right, beyond the top end, in front of the port',ua:navigator.userAgent,date:new Date().toISOString()};
     blob=wav2(L,R,recMeta); var d=new Date(), z=function(x){ return (x<10?'0':'')+x; };
@@ -1882,12 +1889,15 @@ var SCRIPT_DEPTH=[
   {t:61, k:'end'}
 ];
 /* широкий зонд: свой источник на тот же динамик, что выбрал pickChannel */
-function dpProbe(on){ if(typeof ctx==="undefined"||!ctx||!ctx.createBuffer) return;   /* стенд без звука */
-  if(!DP.g){ var df=fs/N, ks=[], k, n, q; for(k=Math.ceil(DEPTH_LO/df);k<=Math.floor(DEPTH_HI/df);k++) ks.push(k);
+function dpProbe(on){ dpSide(on?'single-'+chan:'off'); }
+/* 0.39u: широкий зонд — свой источник, отдельные уровни на левый и правый канал (выбор динамика, игра, записи) */
+function dpSide(w){ if(typeof ctx==="undefined"||!ctx||!ctx.createBuffer) return;   /* стенд без звука */
+  if(!DP.gl){ if(w==='off') return; var df=fs/N, ks=[], k, n, q; for(k=Math.ceil(DEPTH_LO/df);k<=Math.floor(DEPTH_HI/df);k++) ks.push(k);
     var M=ks.length, x=new Float64Array(N), mx=0; for(n=0;n<N;n++){ var s=0; for(q=0;q<M;q++) s+=Math.cos(2*Math.PI*ks[q]*n/N+Math.PI*q*q/M); x[n]=s; if(Math.abs(s)>mx) mx=Math.abs(s); }
     var buf=ctx.createBuffer(1,N,fs), d=buf.getChannelData(0); for(n=0;n<N;n++) d[n]=x[n]/mx*0.9;
-    DP.src=loopSrc(buf); DP.g=ctx.createGain(); DP.g.gain.value=0; DP.mg=ctx.createChannelMerger(2); DP.src.connect(DP.g); DP.g.connect(DP.mg,0,chan==='left'?0:1); DP.mg.connect(ctx.destination); DP.src.start(); }
-  DP.g.gain.setTargetAtTime(on?PROBE_G:0,ctx.currentTime,0.02); }
+    DP.src=loopSrc(buf); DP.gl=ctx.createGain(); DP.gr=ctx.createGain(); DP.gl.gain.value=0; DP.gr.gain.value=0; DP.mg=ctx.createChannelMerger(2);
+    DP.src.connect(DP.gl); DP.src.connect(DP.gr); DP.gl.connect(DP.mg,0,0); DP.gr.connect(DP.mg,0,1); DP.mg.connect(ctx.destination); DP.src.start(); }
+  var t=ctx.currentTime; DP.gl.gain.setTargetAtTime(w==='single-left'?PROBE_G:0,t,0.02); DP.gr.gain.setTargetAtTime(w==='single-right'?PROBE_G:0,t,0.02); }
 function dpAsk(){ return new Promise(function(r){ el('twAsk').classList.remove('hidden');
   function pick(v){ el('twAsk').classList.add('hidden'); el('twYes').onclick=null; el('twNo').onclick=null; r(v); }
   el('twYes').onclick=function(){ pick(true); }; el('twNo').onclick=function(){ pick(false); }; }); }
@@ -1912,11 +1922,11 @@ function runDepth(){ var S=SCRIPT_DEPTH, TOT=S[S.length-1].t;
         marks:marks,units:'target distance of each hand (L, R — as the player sees them) from the bottom end in mm; phone flat, portrait, port towards the player; wide probe 16–20.5 kHz',ua:navigator.userAgent,date:new Date().toISOString()};
       blob=wav(all,recMeta); var d=new Date(), z=function(x){ return (x<10?'0':'')+x; };
       fname='sonardepth_'+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+'.wav'; showDone(pk,prom); }); }).catch(function(e){ dpProbe(false); setProbe('off'); el('twSay').textContent='Не вышло'; el('twSub').textContent=(e&&e.message)||String(e); }); }
-/* 0.39t: широкий зонд для «Записи для меня» и длинной записи (переключатель на «Ещё»): одна запись разбирается и как широкая, и как узкая
+/* 0.39t: широкий зонд для «Записи для меня» и длинной записи; с 0.39u переключатель на главном экране и действует на всё — игру лабы, прототипы, записи: одна запись разбирается и как широкая, и как узкая
    (eval_recording.js --narrow) — ответ, даст ли широкий зонд лучшее управление в игре. И проверка писка: обычный / широкий / тишина. */
 var probeWide=false; try{ probeWide=localStorage.getItem('sonar_probe_wide')==='1'; }catch(e){}
-function pwLabel(){ el('pwToggle').textContent='Зонд записей по метке: '+(probeWide?'широкий 16–20,5 кГц':'обычный'); }
-function pwPlay(w){ if(w==='wide'){ setProbe('off'); dpProbe(true); } else if(w==='narrow'){ dpProbe(false); setProbe('single-'+chan); } else { dpProbe(false); setProbe('off'); }
+function pwLabel(){ el('pwToggle').textContent='Зонд: '+(probeWide?'широкий 16–20,5 кГц':'обычный 18,3–20,5 кГц'); }
+function pwPlay(w){ var keep=probeWide; if(w==='wide'){ probeWide=false; setProbe('off'); probeWide=keep; dpProbe(true); } else if(w==='narrow'){ dpProbe(false); probeWide=false; setProbe('single-'+chan); probeWide=keep; } else { dpProbe(false); setProbe('off'); }
   el('pwNow').textContent='Сейчас: '+(w==='wide'?'широкий, от 16 кГц':w==='narrow'?'обычный, как в игре':'тишина'); }
 el('pwToggle').addEventListener('click',function(){ probeWide=!probeWide; try{ localStorage.setItem('sonar_probe_wide',probeWide?'1':'0'); }catch(e){} pwLabel(); }); pwLabel();
 el('goPw').addEventListener('click',function(){ boot().then(function(){ show('pwCheck'); pwPlay('off'); }).catch(fail); });
@@ -1935,7 +1945,7 @@ function logStart(){
   var cap=LOG_SEC*fs;
   if(!LOG||!LOG.pcm||LOG.pcm.length!==cap) LOG={pcm:new Int16Array(cap)};
   LOG.on=true; LOG.f=0; LOG.clip=0; LOG.gaps=0; LOG.dsp=[]; LOG.ren=[]; LOG.ev=[]; LOG.t0=performance.now();
-  LOG.meta0={cal:curCal,cal_now:DSP2.info().cal,autocenter:true,tune:'waves',asym:ASYM,field_auto:gAutoField,field_mm:gSpan,diff:gDiff,span:gSpan,sfx:{on:gSfxOn,vol:sfxVol},chan:chan,hand:hand,probe_gain:PROBE_G,probe_snr:PROBE_SNR,f_lo:F_LO,
+  LOG.meta0={cal:curCal,cal_now:DSP2.info().cal,autocenter:true,tune:'waves',asym:ASYM,field_auto:gAutoField,field_mm:gSpan,diff:gDiff,span:gSpan,sfx:{on:gSfxOn,vol:sfxVol},chan:chan,hand:hand,probe_gain:PROBE_G,probe_snr:PROBE_SNR,f_lo:bandLo(),
     W:Math.round(G?G.W:0),H:Math.round(G?G.H:0),prom:DSP2.info().prom,started:new Date().toISOString()};
 }
 function logFrame(fr,r,gap){
@@ -2006,7 +2016,7 @@ function slogStart(kind){
   var cap=SLOG_SEC*fs;
   if(!SLOG||!SLOG.pcm||SLOG.pcm.length!==cap) SLOG={pcm:new Int16Array(cap)};
   var S=SLOG; S.on=true; S.f=0; S.clip=0; S.gaps=0; S.dsp=[]; S.ev=[]; S.pres=null; S.kind=kind;
-  S.meta0={kind:kind,cal:curCal,autocenter:true,tune:'waves',asym:ASYM,field_auto:gAutoField,field_mm:gSpan,chan:chan,hand:hand,probe_gain:PROBE_G,probe_snr:PROBE_SNR,f_lo:F_LO,prom:null,started:new Date().toISOString()};
+  S.meta0={kind:kind,cal:curCal,autocenter:true,tune:'waves',asym:ASYM,field_auto:gAutoField,field_mm:gSpan,chan:chan,hand:hand,probe_gain:PROBE_G,probe_snr:PROBE_SNR,f_lo:bandLo(),prom:null,started:new Date().toISOString()};
   slogEv('старт: '+kind);
 }
 function slogEv(k,x){ var S=SLOG; if(!S||!S.on) return; S.ev.push(x===undefined?[S.f,k]:[S.f,k,x]); }
@@ -2024,7 +2034,7 @@ function slogFrame(fr,r,gap){
 function slogInfo(){ if(!SLOG||!SLOG.f) return 'Журнала настройки пока нет.'; return 'Журнал настройки: '+(SLOG.f*N/fs).toFixed(0)+' с'+(SLOG.on?', пишется':'')+'.'; }
 function slogBlob(){
   var S=SLOG, n=S.f*N, pcm=S.pcm.slice(0,n), inf=DSP2.info();
-  var meta={v:1,kind:'setup-log',fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
+  var meta={v:1,kind:'setup-log',fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
     pcm:{bits:16,full_scale:1/LOG_SCALE},first_frame:0,frames:S.f,clipped:S.clip,gaps:S.gaps,setup:S.meta0,cal_now:DSP2.info().cal,
     dsp_info:{d0:inf.d0,prom:inf.prom,mm:inf.mm},ended:new Date().toISOString(),ua:navigator.userAgent,
     columns:{dsp:['frame','present','height_mm','abs_mm','range_mm','fast_mm','motion_db','echo_db','empty_floor_db','motion_smooth_db'],

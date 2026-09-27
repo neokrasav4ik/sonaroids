@@ -17,5 +17,5 @@ const shp=o=>{ const m=o.match(/по форме: ([\d.]+)/); return m?+m[1]:0; }
 const w=run([]), n=run(['--narrow']); console.log(w.split('\n').filter(l=>/по форме|полоса/.test(l)).join('\n')); console.log(n.split('\n').filter(l=>/по форме|полоса/.test(l)).join('\n'));
 need(shp(w)>0.97,`широкая полоса идёт за меткой: по форме ${shp(w)}`);
 need(shp(n)>0.97,`узкая полоса из той же записи тоже: по форме ${shp(n)}`);
-const js=C.appJs(); need(/sonar_probe_wide/.test(js)&&/id="pwNarrow"/.test(C.appHtml()),'в лабе: переключатель зонда для записей и проверка писка');
+const js=C.appJs(); need(/sonar_probe_wide/.test(js)&&/id="pwNarrow"/.test(C.appHtml())&&/id="pwToggle"/.test(C.appHtml()),'в лабе: переключатель зонда и проверка писка');
 console.log(bad?'ИТОГ: ПРОВАЛ':'ИТОГ: ok'); process.exitCode=bad?1:0;

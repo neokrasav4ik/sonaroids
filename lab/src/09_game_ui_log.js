@@ -7,7 +7,7 @@ function logStart(){
   var cap=LOG_SEC*fs;
   if(!LOG||!LOG.pcm||LOG.pcm.length!==cap) LOG={pcm:new Int16Array(cap)};
   LOG.on=true; LOG.f=0; LOG.clip=0; LOG.gaps=0; LOG.dsp=[]; LOG.ren=[]; LOG.ev=[]; LOG.t0=performance.now();
-  LOG.meta0={cal:curCal,cal_now:DSP2.info().cal,autocenter:true,tune:'waves',asym:ASYM,field_auto:gAutoField,field_mm:gSpan,diff:gDiff,span:gSpan,sfx:{on:gSfxOn,vol:sfxVol},chan:chan,hand:hand,probe_gain:PROBE_G,probe_snr:PROBE_SNR,f_lo:F_LO,
+  LOG.meta0={cal:curCal,cal_now:DSP2.info().cal,autocenter:true,tune:'waves',asym:ASYM,field_auto:gAutoField,field_mm:gSpan,diff:gDiff,span:gSpan,sfx:{on:gSfxOn,vol:sfxVol},chan:chan,hand:hand,probe_gain:PROBE_G,probe_snr:PROBE_SNR,f_lo:bandLo(),
     W:Math.round(G?G.W:0),H:Math.round(G?G.H:0),prom:DSP2.info().prom,started:new Date().toISOString()};
 }
 function logFrame(fr,r,gap){
@@ -78,7 +78,7 @@ function slogStart(kind){
   var cap=SLOG_SEC*fs;
   if(!SLOG||!SLOG.pcm||SLOG.pcm.length!==cap) SLOG={pcm:new Int16Array(cap)};
   var S=SLOG; S.on=true; S.f=0; S.clip=0; S.gaps=0; S.dsp=[]; S.ev=[]; S.pres=null; S.kind=kind;
-  S.meta0={kind:kind,cal:curCal,autocenter:true,tune:'waves',asym:ASYM,field_auto:gAutoField,field_mm:gSpan,chan:chan,hand:hand,probe_gain:PROBE_G,probe_snr:PROBE_SNR,f_lo:F_LO,prom:null,started:new Date().toISOString()};
+  S.meta0={kind:kind,cal:curCal,autocenter:true,tune:'waves',asym:ASYM,field_auto:gAutoField,field_mm:gSpan,chan:chan,hand:hand,probe_gain:PROBE_G,probe_snr:PROBE_SNR,f_lo:bandLo(),prom:null,started:new Date().toISOString()};
   slogEv('старт: '+kind);
 }
 function slogEv(k,x){ var S=SLOG; if(!S||!S.on) return; S.ev.push(x===undefined?[S.f,k]:[S.f,k,x]); }
@@ -96,7 +96,7 @@ function slogFrame(fr,r,gap){
 function slogInfo(){ if(!SLOG||!SLOG.f) return 'Журнала настройки пока нет.'; return 'Журнал настройки: '+(SLOG.f*N/fs).toFixed(0)+' с'+(SLOG.on?', пишется':'')+'.'; }
 function slogBlob(){
   var S=SLOG, n=S.f*N, pcm=S.pcm.slice(0,n), inf=DSP2.info();
-  var meta={v:1,kind:'setup-log',fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
+  var meta={v:1,kind:'setup-log',fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
     pcm:{bits:16,full_scale:1/LOG_SCALE},first_frame:0,frames:S.f,clipped:S.clip,gaps:S.gaps,setup:S.meta0,cal_now:DSP2.info().cal,
     dsp_info:{d0:inf.d0,prom:inf.prom,mm:inf.mm},ended:new Date().toISOString(),ua:navigator.userAgent,
     columns:{dsp:['frame','present','height_mm','abs_mm','range_mm','fast_mm','motion_db','echo_db','empty_floor_db','motion_smooth_db'],

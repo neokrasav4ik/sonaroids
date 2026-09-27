@@ -39,7 +39,7 @@ function runStereo(){ var S=SCRIPT_ST, TOT=S[S.length-1].t;
     ST.on=false; setProbe('off'); var I=stInfo(), D=stDiff(); try{ ST.stream.getTracks().forEach(function(t){ t.stop(); }); ST.node.disconnect(); }catch(e){}
     var n=ST.a.length*N, L=new Float32Array(n), R=new Float32Array(n); ST.a.forEach(function(f,j){ L.set(f,j*N); }); ST.b.forEach(function(f,j){ R.set(f,j*N); });
     var so=(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0);
-    recMeta={v:4,kind:'stereo-portrait',fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
+    recMeta={v:4,kind:'stereo-portrait',fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
       mic:I,diff:D,samples:n,channels:2,orientation:{angle:so,w:window.innerWidth,h:window.innerHeight},script:SCRIPT_ST.filter(function(s){return s.k!=='end';}).map(function(s){ return {k:s.k,t:s.t}; }),
       marks:ST.marks,units:'two input channels as the browser gave them (interleaved in the WAV); phone flat, portrait, port towards the player; the palm waves up and down to the left, right, beyond the top end, in front of the port',ua:navigator.userAgent,date:new Date().toISOString()};
     blob=wav2(L,R,recMeta); var d=new Date(), z=function(x){ return (x<10?'0':'')+x; };

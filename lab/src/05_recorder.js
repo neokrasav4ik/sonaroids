@@ -94,7 +94,7 @@ function runRec(kind){ var long=kind==='long', dual=kind==='dual', right=kind===
       el(SUB).textContent='Прибавь громкость, выключи беззвучный, отключи наушники, открой динамики. Сейчас '+prom.toFixed(0)+' дБ, нужно 15.';
       setProbe('off'); mode=null; return sleep(7000).then(function(){ show('home'); });
     }
-    var wideP=probeWide&&(kind==='rec'||kind==='long'); if(wideP){ setProbe('off'); dpProbe(true); }   /* 0.39t: широкий зонд для записи по метке */
+    var wideP=bandLo()!==F_LO;   /* 0.39t/u: широкий зонд — setProbe сам играет широкий */
     var mk=side?'mkH':(hand==='left')?'mkL':'mkR', marks={}, t0=performance.now(), cur=-1;
     rec.on=true;
     return new Promise(function(done){
@@ -107,7 +107,7 @@ function runRec(kind){ var long=kind==='long', dual=kind==='dual', right=kind===
         el(CLK).textContent=t.toFixed(1)+' / '+TOT+' с'; requestAnimationFrame(tick);
       })();
     }).then(function(marks){
-      rec.on=false; setProbe('off'); if(wideP) dpProbe(false); mode=null;
+      rec.on=false; setProbe('off'); mode=null;
       var n=rec.frames.length*N, all=new Float32Array(n);
       rec.frames.forEach(function(f,j){ all.set(f,j*N); });
       var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }

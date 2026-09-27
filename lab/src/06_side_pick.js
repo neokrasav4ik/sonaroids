@@ -13,7 +13,7 @@ function handSide(){ hand=chan; try{ localStorage.setItem('sonar_hand',hand); }c
 try{ var hs=localStorage.getItem('sonar_hand'); if(hs==='left'||hs==='right'){ chan=hs; hand=hs; } }catch(e){}
 if(document.body&&document.body.classList) document.body.classList.toggle('hand-left',hand==='left');
 function bandLevel(){ var b=new Float32Array(an.frequencyBinCount); an.getFloatFrequencyData(b);
-  var bw=fs/2048,s=0; for(var i=Math.ceil(F_LO/bw);i<=Math.floor(20500/bw);i++) s+=Math.pow(10,b[i]/10); return s; }
+  var bw=fs/2048,s=0; for(var i=Math.ceil(bandLo()/bw);i<=Math.floor(20500/bw);i++) s+=Math.pow(10,b[i]/10); return s; }
 function pickChannel(){
   function meas(w){ setProbe(w); return sleep(350).then(function(){ var v=[],i=0; return new Promise(function(r){
     var iv=setInterval(function(){ v.push(bandLevel()); if(++i>=10){ clearInterval(iv); v.sort(function(a,b){return a-b;}); r(v[5]); } },20); }); }); }

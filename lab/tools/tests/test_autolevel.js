@@ -13,6 +13,7 @@ function scenario(phoneVolDb,noiseAmp){
     function collect(n){ var k=PROBE_G/0.25*Math.pow(10,${phoneVolDb}/20), out=[], s=${Math.floor(Math.random()*1e6)};
       for(var i=0;i<n;i++){ var f=new Float32Array(512); for(var j=0;j<512;j++){ s=(s*1664525+1013904223)>>>0; f[j]=__base[i][j]*k+(s/4294967296-0.5)*${noiseAmp}; } out.push(f); }
       return Promise.resolve(out); }
+    function bandLo(){ return F_LO; }   // 0.39u: нижний край полосы (обычный зонд)
     ${grab('probeSNR')}
     ${grab('measureSNR')}
     ${grab('autoLevel')}

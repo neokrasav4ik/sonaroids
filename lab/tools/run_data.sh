@@ -1,16 +1,17 @@
 #!/bin/sh
 # Разбор всех присланных записей и журналов из одной папки. Запуск: sh tools/run_data.sh папка_с_wav
 # Записи по метке — eval_recording.js (с самокалибровкой и с калибровкой как в игре, --phys); журналы настройки — setup_log.py и replay_game.js;
-# журналы партий — game_log.py и replay_game.js; длинные записи по метке (sonarlong_*) — eval_long.js; записи вбок (sonarside_*, телефон вертикально) — eval_side.js; «два динамика» (sonardual_*) — eval_dual.js; «ладонь справа»: запись по метке (sonar1r_*) — eval_recording.js, проба-игра (sonarright_*) — eval_right.js; прототип Арканоида (sonarark_*) — eval_ark.js; экшн-прототипы (sonararc_*) — eval_arc.js; «две ладони» и «кулак и ладонь» (sonartwo_*, sonarfist_*) — eval_two.js. Журналы и лабы (sonar_*), и самой игры (sonaroids_*).
+# журналы партий — game_log.py и replay_game.js; длинные записи по метке (sonarlong_*) — eval_long.js; записи вбок (sonarside_*, телефон вертикально) — eval_side.js; «два динамика» (sonardual_*) — eval_dual.js; «ладонь справа»: запись по метке (sonar1r_*) — eval_recording.js, проба-игра (sonarright_*) — eval_right.js; прототип Арканоида (sonarark_*) — eval_ark.js; экшн-прототипы (sonararc_*) — eval_arc.js; «две ладони» и «кулак и ладонь» (sonartwo_*, sonarfist_*) — eval_two.js; стереомикрофон (sonarstereo_*) — eval_stereo.js. Журналы и лабы (sonar_*), и самой игры (sonaroids_*).
 cd "$(dirname "$0")"; D="$1"; [ -d "$D" ] || { echo "укажи папку с WAV"; exit 1; }
 R=$(ls "$D"/sonar1h_*.wav "$D"/sonar1r_*.wav "$D"/sonar_2*.wav 2>/dev/null | while read f; do grep -q -e '"single-landscape"' -e '"right-portrait"' "$f" && echo "$f"; done)
-RP=$(ls "$D"/sonarright_*.wav 2>/dev/null); AKF=$(ls "$D"/sonarark_*.wav 2>/dev/null); ARF=$(ls "$D"/sonararc_*.wav 2>/dev/null); TWF=$(ls "$D"/sonartwo_*.wav "$D"/sonarfist_*.wav 2>/dev/null)
+RP=$(ls "$D"/sonarright_*.wav 2>/dev/null); AKF=$(ls "$D"/sonarark_*.wav 2>/dev/null); ARF=$(ls "$D"/sonararc_*.wav 2>/dev/null); TWF=$(ls "$D"/sonartwo_*.wav "$D"/sonarfist_*.wav 2>/dev/null); STF=$(ls "$D"/sonarstereo_*.wav 2>/dev/null)
 L=$(ls "$D"/sonarlong_*.wav 2>/dev/null); SD=$(ls "$D"/sonarside_*.wav 2>/dev/null); DU=$(ls "$D"/sonardual_*.wav 2>/dev/null)
 G=$(ls "$D"/sonar_game_*.wav "$D"/sonaroids_game_*.wav 2>/dev/null); S=$(ls "$D"/sonar_setup_*.wav "$D"/sonaroids_setup_*.wav 2>/dev/null)
 [ -n "$R" ] && { echo "== записи по метке =="; node eval_recording.js $R; echo; echo "== записи по метке, калибровка как в игре =="; node eval_recording.js --phys $R; }
 [ -n "$AKF" ] && { echo; echo "== арканоид (прототип) =="; node eval_ark.js $AKF; }
 [ -n "$ARF" ] && { echo; echo "== экшн-прототипы: слалом, ловец бомб, пещера =="; node eval_arc.js $ARF; }
 [ -n "$TWF" ] && { echo; echo "== две ладони =="; node eval_two.js $TWF; }
+[ -n "$STF" ] && { echo; echo "== стереомикрофон =="; node eval_stereo.js $STF; }
 [ -n "$RP" ] && { echo; echo "== ладонь справа: проба-игра =="; node eval_right.js $RP; }
 [ -n "$DU" ] && { echo; echo "== два динамика: звучат ли каналы из разных торцов, есть ли вторая ось =="; node eval_dual.js $DU; }
 [ -n "$SD" ] && { echo; echo "== записи вбок (телефон вертикально): различает ли сонар лево и право =="; node eval_side.js $SD; }

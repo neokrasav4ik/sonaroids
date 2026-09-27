@@ -36,6 +36,8 @@ SETUP={
 # 26.09: запись вбок идёт с телефоном вертикально — её экраны проверяю в портрете
 PSIZES=[(320,568,'SE-1'),(375,667,'SE'),(390,844,'14'),(430,932,'Pro Max')]
 PSETUP={
+ 'stIntro':"lastRec='recSt'; show('stIntro');",
+ 'recSt':"lastRec='recSt'; show('recSt'); el('stSay').textContent='Ладонь справа'; el('stSub').textContent='Так же, с правой стороны. Качай вверх-вниз.'; el('stClock').textContent='11.2 / 30 с'; el('stInfo').innerHTML='каналов от браузера: <b>2</b> · в настройках: 2<br>каналы <b class=\"good\">разные</b>: сходство 0.912, разница уровней -3.1 дБ';",
  'twoIntro':"lastRec='recTwo'; show('twoIntro');",
  'recTwo':"lastRec='recTwo'; show('recTwo'); el('twSay').textContent='По очереди'; el('twSub').textContent='Одна к телефону — другая от него. За метками.'; el('twClock').textContent='21.3 / 63 с'; twoDraw(90,150);",
  'sideIntro':"lastRec='recSide'; show('sideIntro'); sideOri();",

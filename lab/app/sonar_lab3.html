@@ -72,6 +72,8 @@
   #recTwo{flex-direction:column;align-items:stretch;gap:.4rem} #twHead{text-align:center} #twSay{font-size:1.7rem;font-weight:600;line-height:1.2} #twSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
   #twClock{font-family:"IBM Plex Mono",monospace;font-size:.85rem;color:var(--soft);margin-top:.4rem} #twC{flex:1;width:100%;min-height:0;display:block}
   #twoIntro .pic{height:26vh;max-width:100%;margin:.2rem auto 0;display:block} @media (max-height:600px){ #twoIntro .pic{display:none} }
+  #recSt{flex-direction:column;justify-content:center;align-items:stretch;gap:1rem;text-align:center} #stSay{font-size:1.7rem;font-weight:600;line-height:1.2} #stSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
+  #stClock{font-family:"IBM Plex Mono",monospace;font-size:.85rem;color:var(--soft);margin-top:.4rem} #stInfo{font-size:.95rem;color:var(--soft);line-height:1.6} #stInfo b{color:var(--ink)}
   #arcPlay{padding:0;background:#070a12} #acC{position:absolute;inset:0;width:100%;height:100%;display:block}
   #acTop{position:absolute;left:0;right:0;top:30%;text-align:center;pointer-events:none;padding:0 1rem}
   #acSay{font-size:2rem;font-weight:600} #acSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
@@ -159,6 +161,7 @@
   </div>
   <div class="col btns g2">
     <button id="goGame" class="big">Играть</button>
+    <button id="goStereo" class="ghost">Стереомикрофон (проба)</button>
     <button id="goTwo" class="ghost">Две ладони (проба)</button>
     <button id="go_race" class="ghost">Трасса (прототип)</button>
     <button id="go_slalom" class="ghost">Слалом (прототип)</button>
@@ -365,6 +368,23 @@
   <canvas id="twC"></canvas>
 </div>
 
+<div class="screen hidden" id="stIntro"><div class="two">
+  <div class="col">
+    <h1>Стереомикрофон</h1>
+    <p>Проверяю, отдаёт ли браузер два разных микрофона. Если да — эхо от руки придёт в них по-разному, и появится вторая ось (лево/право).</p>
+    <p>Поверни телефон вертикально в руке и положи экраном вверх, <b>разъёмом к себе</b>. Ладонь над столом качай вверх-вниз там, где скажут: слева, справа, за верхним торцом, перед разъёмом. 30 с. Потом лучше перезагрузить лабу.</p>
+  </div>
+  <div class="col btns">
+    <button id="stGo" class="big">Лежит, начать</button>
+    <button id="stBack" class="ghost">Назад</button>
+  </div>
+</div></div>
+
+<div class="screen hidden" id="recSt">
+  <div id="stHead"><div id="stSay"></div><div id="stSub"></div><div id="stClock"></div></div>
+  <div id="stInfo"></div>
+</div>
+
 <div class="screen hidden" id="recDone"><div class="two">
   <div class="col">
     <h1>Запись готова</h1>
@@ -445,6 +465,15 @@ class Cap extends AudioWorkletProcessor{
     return true; }
 }
 registerProcessor('cap',Cap);
+/* 27.09 (0.39q): проба стереомикрофона — оба канала входа, кадр 512 отсчётов каждого, без смешивания */
+class Cap2 extends AudioWorkletProcessor{
+  constructor(){ super(); this.a=new Float32Array(512); this.b=new Float32Array(512); this.n=0; this.seq=0; }
+  process(inputs){ const i0=inputs[0]||[], x=i0[0], y=i0[1], len=x?x.length:128;
+    for(let i=0;i<len;i++){ this.a[this.n]=x?x[i]:0; this.b[this.n]=y?y[i]:(x?x[i]:0); this.n++;
+      if(this.n===512){ const A=this.a, B=this.b; this.port.postMessage({a:A,b:B,s:this.seq++,nch:i0.length},[A.buffer,B.buffer]); this.a=new Float32Array(512); this.b=new Float32Array(512); this.n=0; } }
+    return true; }
+}
+registerProcessor('cap2',Cap2);
 `;
 /* ── ОБРАБОТКА v2: быстрое смещение по фазе + абсолютная высота по центру эха, слитые вместе ── */
 var DSP2=(function(){
@@ -694,9 +723,9 @@ var N=512,fs,kLo,kHi,kc;
 var ctx,stream,node,an,gSL,gSR,gL,gR,booted=false, F_LO=18300, PROBE_G=0.25, PROBE_SNR=null;
 var mode=null,lastSeq=-1,gaps=0,collector=null;
 function sleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
-function show(id){ ['home','orient','rec','recDone','cal','game','sideIntro','recSide','dualIntro','rightIntro','rightPlay','arkIntro','arkPlay','arcIntro','arcPlay','probes','twoIntro','recTwo'].forEach(function(s){ el(s).classList.toggle('hidden',s!==id); });
+function show(id){ ['home','orient','rec','recDone','cal','game','sideIntro','recSide','dualIntro','rightIntro','rightPlay','arkIntro','arkPlay','arcIntro','arcPlay','probes','twoIntro','recTwo','stIntro','recSt'].forEach(function(s){ el(s).classList.toggle('hidden',s!==id); });
   /* запись вбок идёт с телефоном вертикально — на её экранах просьба повернуть не показывается */
-  if(document.body&&document.body.classList) document.body.classList.toggle('pok',id==='sideIntro'||id==='rightIntro'||id==='rightPlay'||id==='twoIntro'||id==='recTwo'||(id==='recDone'&&lastRec==='recTwo')||((id==='recSide'||id==='recDone')&&(lastRec==='recSide'||lastRec==='recRight'))); fitScreen(); }
+  if(document.body&&document.body.classList) document.body.classList.toggle('pok',id==='sideIntro'||id==='rightIntro'||id==='rightPlay'||id==='twoIntro'||id==='recTwo'||id==='stIntro'||id==='recSt'||(id==='recDone'&&(lastRec==='recTwo'||lastRec==='recSt'))||((id==='recSide'||id==='recDone')&&(lastRec==='recSide'||lastRec==='recRight'))); fitScreen(); }
 /* всё в один экран: если видимый экран (или открытое меню игры) не влезает по высоте или ширине — уменьшаю базовый шрифт, пока не влезет */
 function fitScreen(){ try{
   var root=document.documentElement; root.style.fontSize='';
@@ -976,6 +1005,7 @@ function showDone(pk,pr){
   kv('длительность',(recMeta.samples/fs).toFixed(1)+' с');
   kv('разрывов потока',recMeta.gaps,recMeta.gaps===0?'good':'bad');
   if(recMeta.kind==='right-portrait'){ var up2=recMeta.orientation.h>recMeta.orientation.w; kv('экран',up2?'вертикально':'горизонтально — поверни и запиши заново',up2?'good':'bad'); }
+  else if(recMeta.kind==='stereo-portrait'){ var dd=recMeta.diff; kv('каналов от браузера',String(recMeta.mic.nch||'—'),recMeta.mic.nch>=2?'good':'bad'); kv('каналы',dd?(dd.same?'одинаковые':'разные, сходство '+dd.corr.toFixed(3)):'—',dd&&!dd.same?'good':'bad'); }
   else if(recMeta.kind==='two-portrait'){ var up3=recMeta.orientation.h>recMeta.orientation.w; kv('экран',up3?'вертикально':'горизонтально — положи вертикально и запиши заново',up3?'good':'bad'); }
   else if(recMeta.kind==='dual-landscape'){ kv('разъём',recMeta.port==='right'?'справа':recMeta.port==='left'?'слева':'не знаю',recMeta.port?'good':'bad'); }
   else if(recMeta.kind==='side-portrait'){ var up=recMeta.orientation.h>recMeta.orientation.w; kv('экран',up?'вертикально':'горизонтально — поверни и запиши заново',up?'good':'bad'); }
@@ -1085,7 +1115,7 @@ el('sideGo').addEventListener('click',function(){ lastRec='recSide'; runRec('sid
 el('sideBack').addEventListener('click',function(){ show('home'); });
 el('orientOk').addEventListener('click',function(){ goFlow(nextFlow); });
 el('orientBack').addEventListener('click',function(){ show('home'); });
-el('recAgain').addEventListener('click',function(){ if(lastRec==='recTwo') toTwo(); else if(lastRec==='recRight') toRight(); else if(lastRec==='recSide') toSide(); else if(lastRec==='recDual') viaOrient('dualIntro'); else viaOrient(lastRec); });
+el('recAgain').addEventListener('click',function(){ if(lastRec==='recSt') toStereo(); else if(lastRec==='recTwo') toTwo(); else if(lastRec==='recRight') toRight(); else if(lastRec==='recSide') toSide(); else if(lastRec==='recDual') viaOrient('dualIntro'); else viaOrient(lastRec); });
 el('toHome').addEventListener('click',function(){ if(document.body&&document.body.classList) document.body.classList.remove('flip'); show('home'); });
 el('save').addEventListener('click',function(){ var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; document.body.appendChild(a); a.click(); setTimeout(function(){ a.remove(); },1000); });
 el('share').addEventListener('click',function(){ navigator.share({files:[new File([blob],fname,{type:'audio/wav'})],title:fname}).catch(function(){}); });
@@ -1735,6 +1765,67 @@ el('twoVar').addEventListener('click',function(){ twoVar=twoVar==='fist'?'two':'
 el('goTwo').addEventListener('click',function(){ boot().then(toTwo).catch(fail); });
 el('twoGo').addEventListener('click',function(){ lastRec='recTwo'; runTwo(); });
 el('twoBack').addEventListener('click',function(){ show('home'); });
+/* ── СТЕРЕОМИКРОФОН (с 27.09, 0.39q) ──
+   «Две ладони» показали: один микрофон слышит одну ось (расстояние) и признак «обе руки синхронно», но не лево/право.
+   Разные волны из одного динамика руки не разделят — обе отражают всё. Остаётся второй микрофон: эхо от руки придёт в два микрофона
+   с разной задержкой и силой, и по разнице видно, где рука. Проба: второй поток микрофона с просьбой о двух каналах
+   (channelCount 2, без обработки), запись обоих каналов по метке. Телефон лежит вертикально, разъёмом к игроку; ладонь над столом
+   качается вверх-вниз по очереди слева, справа, за верхним торцом, перед разъёмом. Разбор — tools/eval_stereo.js. Файл sonarstereo_*.wav
+   (два канала). На экране сразу видно, что отдал браузер: сколько каналов и различаются ли они. */
+var SCRIPT_ST=[
+  {t:0,  k:'empty', say:'Убери руку',               sub:'Снимаю пустую комнату.'},
+  {t:3,  k:'L',     say:'Ладонь слева от телефона', sub:'Над столом, напротив середины телефона. Качай вверх-вниз.'},
+  {t:9,  k:'R',     say:'Ладонь справа',            sub:'Так же, с правой стороны. Качай вверх-вниз.'},
+  {t:15, k:'T',     say:'За верхним торцом',        sub:'Над столом, за дальним от тебя концом телефона. Качай.'},
+  {t:21, k:'B',     say:'Перед разъёмом',           sub:'Между собой и разъёмом. Качай.'},
+  {t:27, k:'away',  say:'Убери руку',               sub:'Совсем.'},
+  {t:30, k:'end'}
+];
+var ST={on:false,a:[],b:[],nch:0,stream:null,node:null};
+function stInfo(){ var tr=ST.stream&&ST.stream.getAudioTracks()[0], st={}, cap={}; try{ st=tr.getSettings(); }catch(e){} try{ cap=tr.getCapabilities?tr.getCapabilities():{}; }catch(e){}
+  return {label:tr?tr.label:'',settings:st,caps:cap,nch:ST.nch}; }
+/* различаются ли каналы: корреляция и разница уровней по последней секунде */
+function stDiff(){ var n=Math.min(ST.a.length,94); if(n<10) return null; var sa=0,sb=0,sab=0,d=0;
+  for(var f=ST.a.length-n;f<ST.a.length;f++){ var A=ST.a[f], B=ST.b[f]; for(var i=0;i<512;i++){ sa+=A[i]*A[i]; sb+=B[i]*B[i]; sab+=A[i]*B[i]; d+=(A[i]-B[i])*(A[i]-B[i]); } }
+  return {corr:sab/Math.sqrt(sa*sb||1e-30),db:10*Math.log10((sb||1e-30)/(sa||1e-30)),same:d<1e-12*n*512}; }
+function stShow(){ var I=stInfo(), D=stDiff(); el('stInfo').innerHTML='каналов от браузера: <b>'+(I.nch||'—')+'</b> · в настройках: '+(I.settings.channelCount||'—')+
+    (I.caps&&I.caps.channelCount?' (можно '+JSON.stringify(I.caps.channelCount)+')':'')+'<br>'+(D?(D.same?'каналы <b class="bad">одинаковые</b> — это один микрофон':'каналы <b class="good">разные</b>: сходство '+D.corr.toFixed(3)+', разница уровней '+D.db.toFixed(1)+' дБ'):'')+(I.label?'<br><span class="small">'+I.label+'</span>':''); }
+function runStereo(){ var S=SCRIPT_ST, TOT=S[S.length-1].t;
+  show('recSt'); el('stSay').textContent='Открываю микрофон в стерео'; el('stSub').textContent='Рука убрана.'; el('stClock').textContent=''; el('stInfo').textContent='';
+  ST={on:false,a:[],b:[],nch:0,stream:null,node:null,marks:{}};
+  pickChannel().then(function(){ return autoLevel(); }).then(function(){ setProbe('single-'+chan);
+    return navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:{ideal:2}}}); }).then(function(s){
+    ST.stream=s; var src=ctx.createMediaStreamSource(s);
+    ST.node=new AudioWorkletNode(ctx,'cap2',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1],channelCount:2,channelCountMode:'explicit',channelInterpretation:'discrete'});
+    src.connect(ST.node); var mute=ctx.createGain(); mute.gain.value=0; ST.node.connect(mute); mute.connect(ctx.destination);
+    ST.node.port.onmessage=function(e){ var m=e.data; ST.nch=Math.max(ST.nch,m.nch); if(ST.on){ ST.a.push(m.a); ST.b.push(m.b); } else { ST.a.push(m.a); ST.b.push(m.b); if(ST.a.length>94){ ST.a.shift(); ST.b.shift(); } } };
+    return sleep(1200); }).then(function(){ stShow(); ST.a=[]; ST.b=[]; ST.on=true; var t0=performance.now(), cur=-1;
+    return new Promise(function(done){ (function tick(){ var t=(performance.now()-t0)/1000, i; for(i=S.length-1;i>=0;i--) if(t>=S[i].t) break;
+      if(i!==cur){ cur=i; var s=S[i]; if(s.k==='end'){ done(); return; } ST.marks[s.k]=ST.a.length*N; el('stSay').textContent=s.say; el('stSub').textContent=s.sub; stShow(); }
+      el('stClock').textContent=t.toFixed(1)+' / '+TOT+' с'; requestAnimationFrame(tick); })(); }); }).then(function(){
+    ST.on=false; setProbe('off'); var I=stInfo(), D=stDiff(); try{ ST.stream.getTracks().forEach(function(t){ t.stop(); }); ST.node.disconnect(); }catch(e){}
+    var n=ST.a.length*N, L=new Float32Array(n), R=new Float32Array(n); ST.a.forEach(function(f,j){ L.set(f,j*N); }); ST.b.forEach(function(f,j){ R.set(f,j*N); });
+    var so=(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0);
+    recMeta={v:4,kind:'stereo-portrait',fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
+      mic:I,diff:D,samples:n,channels:2,orientation:{angle:so,w:window.innerWidth,h:window.innerHeight},script:SCRIPT_ST.filter(function(s){return s.k!=='end';}).map(function(s){ return {k:s.k,t:s.t}; }),
+      marks:ST.marks,units:'two input channels as the browser gave them (interleaved in the WAV); phone flat, portrait, port towards the player; the palm waves up and down to the left, right, beyond the top end, in front of the port',ua:navigator.userAgent,date:new Date().toISOString()};
+    blob=wav2(L,R,recMeta); var d=new Date(), z=function(x){ return (x<10?'0':'')+x; };
+    fname='sonarstereo_'+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+'.wav';
+    var pk=0; for(var i=0;i<n;i++) pk=Math.max(pk,Math.abs(L[i]),Math.abs(R[i])); showDone(pk,PROBE_SNR||0);
+  }).catch(function(e){ setProbe('off'); el('stSay').textContent='Не вышло'; el('stSub').textContent=(e&&e.message)||String(e); });
+}
+/* WAV на два канала (float32, чередуются), метаданные — как у wav() */
+function wav2(L,R,meta){ var n=L.length, x=new Float32Array(2*n); for(var i=0;i<n;i++){ x[2*i]=L[i]; x[2*i+1]=R[i]; }
+  var txt=unescape(encodeURIComponent(JSON.stringify(meta))); if(txt.length%2) txt+=' ';
+  var infoLen=4+8+txt.length, dataLen=x.length*4, total=12+(8+18)+(8+4)+(8+infoLen)+(8+dataLen), b=new ArrayBuffer(total), v=new DataView(b), p=0;
+  function s4(q){ for(var i=0;i<4;i++) v.setUint8(p++,q.charCodeAt(i)); } function u32(q){ v.setUint32(p,q,true); p+=4; } function u16(q){ v.setUint16(p,q,true); p+=2; }
+  s4('RIFF'); u32(total-8); s4('WAVE'); s4('fmt '); u32(18); u16(3); u16(2); u32(fs); u32(fs*8); u16(8); u16(32); u16(0);
+  s4('fact'); u32(4); u32(n); s4('LIST'); u32(infoLen); s4('INFO'); s4('ICMT'); u32(txt.length); for(var k=0;k<txt.length;k++) v.setUint8(p++,txt.charCodeAt(k));
+  s4('data'); u32(dataLen); for(k=0;k<x.length;k++){ v.setFloat32(p,x[k],true); p+=4; } return new Blob([b],{type:'audio/wav'}); }
+function toStereo(){ lastRec='recSt'; show('stIntro'); }
+el('goStereo').addEventListener('click',function(){ boot().then(toStereo).catch(fail); });
+el('stGo').addEventListener('click',function(){ lastRec='recSt'; runStereo(); });
+el('stBack').addEventListener('click',function(){ show('home'); });
 
 
 /* ── ЖУРНАЛ ПАРТИИ: звук + что видела обработка + что происходило в игре ── */

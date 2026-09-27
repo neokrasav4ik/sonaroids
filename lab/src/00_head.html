@@ -72,6 +72,8 @@
   #recTwo{flex-direction:column;align-items:stretch;gap:.4rem} #twHead{text-align:center} #twSay{font-size:1.7rem;font-weight:600;line-height:1.2} #twSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
   #twClock{font-family:"IBM Plex Mono",monospace;font-size:.85rem;color:var(--soft);margin-top:.4rem} #twC{flex:1;width:100%;min-height:0;display:block}
   #twoIntro .pic{height:26vh;max-width:100%;margin:.2rem auto 0;display:block} @media (max-height:600px){ #twoIntro .pic{display:none} }
+  #recSt{flex-direction:column;justify-content:center;align-items:stretch;gap:1rem;text-align:center} #stSay{font-size:1.7rem;font-weight:600;line-height:1.2} #stSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
+  #stClock{font-family:"IBM Plex Mono",monospace;font-size:.85rem;color:var(--soft);margin-top:.4rem} #stInfo{font-size:.95rem;color:var(--soft);line-height:1.6} #stInfo b{color:var(--ink)}
   #arcPlay{padding:0;background:#070a12} #acC{position:absolute;inset:0;width:100%;height:100%;display:block}
   #acTop{position:absolute;left:0;right:0;top:30%;text-align:center;pointer-events:none;padding:0 1rem}
   #acSay{font-size:2rem;font-weight:600} #acSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
@@ -159,6 +161,7 @@
   </div>
   <div class="col btns g2">
     <button id="goGame" class="big">Играть</button>
+    <button id="goStereo" class="ghost">Стереомикрофон (проба)</button>
     <button id="goTwo" class="ghost">Две ладони (проба)</button>
     <button id="go_race" class="ghost">Трасса (прототип)</button>
     <button id="go_slalom" class="ghost">Слалом (прототип)</button>
@@ -363,6 +366,23 @@
 <div class="screen hidden" id="recTwo">
   <div id="twHead"><div id="twSay"></div><div id="twSub"></div><div id="twClock"></div></div>
   <canvas id="twC"></canvas>
+</div>
+
+<div class="screen hidden" id="stIntro"><div class="two">
+  <div class="col">
+    <h1>Стереомикрофон</h1>
+    <p>Проверяю, отдаёт ли браузер два разных микрофона. Если да — эхо от руки придёт в них по-разному, и появится вторая ось (лево/право).</p>
+    <p>Поверни телефон вертикально в руке и положи экраном вверх, <b>разъёмом к себе</b>. Ладонь над столом качай вверх-вниз там, где скажут: слева, справа, за верхним торцом, перед разъёмом. 30 с. Потом лучше перезагрузить лабу.</p>
+  </div>
+  <div class="col btns">
+    <button id="stGo" class="big">Лежит, начать</button>
+    <button id="stBack" class="ghost">Назад</button>
+  </div>
+</div></div>
+
+<div class="screen hidden" id="recSt">
+  <div id="stHead"><div id="stSay"></div><div id="stSub"></div><div id="stClock"></div></div>
+  <div id="stInfo"></div>
 </div>
 
 <div class="screen hidden" id="recDone"><div class="two">

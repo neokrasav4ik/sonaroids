@@ -13,7 +13,8 @@ const SR=48000, N=512, FR=SR/N, MMS=343e3/SR/2;          // мм расстоя�
 function probeSpec(flo){ const df=SR/N, kLo=Math.ceil(flo/df), kHi=Math.floor(20500/df), ks=[]; for(let k=kLo;k<=kHi;k++) ks.push(k);
   const M=ks.length, pr=new Float64Array(N); for(let n=0;n<N;n++){ let s=0; for(let q=0;q<M;q++) s+=Math.cos(2*Math.PI*ks[q]*n/N+Math.PI*q*q/M); pr[n]=s; }
   return ks.map(k=>{ let re=0,im=0; for(let n=0;n<N;n++){ re+=pr[n]*Math.cos(2*Math.PI*k*n/N); im-=pr[n]*Math.sin(2*Math.PI*k*n/N); } return {k,re,im}; }); }
-function analyse(meta,x,opt){ opt=opt||{}; const P=probeSpec((meta.probe&&meta.probe.f_lo)||18300), M=P.length, F=Math.floor(x.length/N);
+/* движущееся эхо по расстоянию (общая часть; её же берёт eval_stereo.js для каждого канала); t0 — задержка прямого сигнала (можно задать) */
+function motion(meta,x,t0fix){ const P=probeSpec((meta.probe&&meta.probe.f_lo)||18300), M=P.length, F=Math.floor(x.length/N);
   const cs=P.map(p=>Float64Array.from({length:N},(_,n)=>Math.cos(2*Math.PI*p.k*n/N))), sn=P.map(p=>Float64Array.from({length:N},(_,n)=>Math.sin(2*Math.PI*p.k*n/N)));
   // отклик по частотам, делённый на зонд
   const Hr=[],Hi=[]; for(let f=0;f<F;f++){ const o=f*N, hr=new Float64Array(M), hi=new Float64Array(M);
@@ -22,13 +23,15 @@ function analyse(meta,x,opt){ opt=opt||{}; const P=probeSpec((meta.probe&&meta.p
   // прямой сигнал — задержка пика отклика по пустой комнате (первые 2 с)
   const TAU=[]; for(let t=0;t<N;t+=0.25) TAU.push(t); const e0=Math.min(F,Math.round(2*FR)), avr=new Float64Array(M), avi=new Float64Array(M);
   for(let f=0;f<e0;f++) for(let q=0;q<M;q++){ avr[q]+=Hr[f][q]/e0; avi[q]+=Hi[f][q]/e0; }
-  let t0=0,best=-1; TAU.forEach(t=>{ let re=0,im=0; for(let q=0;q<M;q++){ const a=2*Math.PI*P[q].k*t/N; re+=avr[q]*Math.cos(a)-avi[q]*Math.sin(a); im+=avr[q]*Math.sin(a)+avi[q]*Math.cos(a); } const m=re*re+im*im; if(m>best){ best=m; t0=t; } });
+  let t0=0,best=-1; if(t0fix!==undefined){ t0=t0fix; best=1; } else TAU.forEach(t=>{ let re=0,im=0; for(let q=0;q<M;q++){ const a=2*Math.PI*P[q].k*t/N; re+=avr[q]*Math.cos(a)-avi[q]*Math.sin(a); im+=avr[q]*Math.sin(a)+avi[q]*Math.cos(a); } const m=re*re+im*im; if(m>best){ best=m; t0=t; } });
   // движущееся эхо: минус медленное среднее (0,5 с), по расстояниям 30–300 мм
   const R=[]; for(let mm=30;mm<=300;mm+=MMS) R.push(mm); const nR=R.length, a=1-Math.exp(-1/(0.5*FR)), mr=new Float64Array(M), mi=new Float64Array(M);
   const DR=[],DI=[]; for(let f=0;f<F;f++){ for(let q=0;q<M;q++){ if(f===0){ mr[q]=Hr[0][q]; mi[q]=Hi[0][q]; } mr[q]+=a*(Hr[f][q]-mr[q]); mi[q]+=a*(Hi[f][q]-mi[q]); }
     const dr=new Float64Array(nR), di=new Float64Array(nR);
     for(let j=0;j<nR;j++){ const t=t0+R[j]/MMS; let re=0,im=0; for(let q=0;q<M;q++){ const ang=2*Math.PI*P[q].k*t/N, c=Math.cos(ang), s=Math.sin(ang), vr=Hr[f][q]-mr[q], vi=Hi[f][q]-mi[q]; re+=vr*c-vi*s; im+=vr*s+vi*c; } dr[j]=re; di[j]=im; }
     DR.push(dr); DI.push(di); }
+  return {P,M,F,R,nR,DR,DI,t0}; }
+function analyse(meta,x,opt){ opt=opt||{}; const {F,R,nR,DR,DI,t0}=motion(meta,x);
   // скорость: окно 32 кадра (0,34 с), шаг 8; знак: + — к телефону (проверено на синтетике)
   const W=32, HOP=8, han=Float64Array.from({length:W},(_,i)=>0.5-0.5*Math.cos(2*Math.PI*i/(W-1))), VB=FR/W*343e3/(2*19400), win=[];
   for(let s=0;s+W<=F;s+=HOP){ const Ep=new Float64Array(nR), Em=new Float64Array(nR), Vs=new Float64Array(W/2);
@@ -77,7 +80,7 @@ function synth(variant){ const S=require('./eval_right'), js=C.appJs(), i=js.ind
     const list=fist?hand(L,!swapped).concat(hand(R,swapped)):[{d:L,a:0.22},{d:R,a:0.2}];
     x.set(S.synthMulti(list,f*7+3),f*N); }
   return {meta:{kind:'two-portrait',variant:fist?'fist':'two',marks,probe:{f_lo:+js.match(/F_LO=(\d+)/)[1]}},x}; }
-module.exports={analyse,report,synth};
+module.exports={analyse,report,synth,motion,probeSpec};
 if(require.main===module){ const args=process.argv.slice(2);
   if(args[0]==='--synth'){ const v=args[1]==='fist'?'fist':'two', {meta,x}=synth(v); report('синтетика по сценарию «'+(v==='fist'?'кулак и ладонь':'две ладони')+'»',meta,x,{img:path.join(C.OUT,'two_synth_'+v+'.ppm')}); }
   else for(const f of args){ const {meta,x}=C.loadWav(f); if(!meta||meta.kind!=='two-portrait'){ console.log(`\n== ${path.basename(f)} == не запись «двух ладоней» / «кулака и ладони» (kind ${meta&&meta.kind})`); continue; } report(path.basename(f),meta,x,{img:path.join(C.OUT,path.basename(f).replace(/\.wav$/,'.ppm'))}); } }

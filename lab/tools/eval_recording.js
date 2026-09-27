@@ -8,7 +8,8 @@
    - удержание: дрожь (СКО) и уход за 2 с, мм;
    - присутствие по фазам и моменты входа/выхода. */
 const C=require('./common');
-const args=process.argv.slice(2), phys=args.includes('--phys'), files=args.filter(a=>a!=='--phys');
+/* --narrow (с 0.39t): запись широким зондом (meta.probe.f_lo 16000) разобрать как узкую полосу игры 18,3–20,5 кГц — сравнение на одной записи */
+const args=process.argv.slice(2), phys=args.includes('--phys'), narrow=args.includes('--narrow'), files=args.filter(a=>a!=='--phys'&&a!=='--narrow');
 const calCompute=phys?(()=>{ const p=C.physCal(); return ()=>({k:p.k,o:p.o,s:p.s,r:NaN,how:'как в игре'}); })():C.calCompute();
 const sn=t=>100+50*Math.sin(2*Math.PI*(t-5)/6);
 const sd=a=>{ const m=a.reduce((u,v)=>u+v)/a.length; return Math.sqrt(a.reduce((u,v)=>u+(v-m)**2,0)/a.length); };
@@ -18,7 +19,7 @@ function shape(o){ const mv=o.filter(r=>r.t>=5.3&&r.t<11&&r.present), ts=mv.map(
     for(let i=0;i<n;i++){ sxy+=(g[i]-mg)*(hs[i]-mh); sxx+=(g[i]-mg)**2; syy+=(hs[i]-mh)**2; } const c=sxy/Math.sqrt(sxx*syy), k=sxy/sxx, b=mh-k*mg;
     if(!best||c>best.c){ const res=hs.map((h,i)=>Math.abs(h-(k*g[i]+b))/k).sort((u,v)=>u-v); best={c,shift:s,k,med:res[res.length>>1]}; } } return best; }
 for(const f of files){
-  const {meta,x}=C.loadWav(f), flo=C.bandOf(meta), DSP2=C.makeDSP(flo);
+  const {meta,x}=C.loadWav(f), wide=C.bandOf(meta)<18000, flo=narrow&&wide?18300:C.bandOf(meta), DSP2=narrow&&wide?C.makeDSP(18300,{lo:C.bandOf(meta),hi:20500}):C.makeDSP(flo);
   DSP2.init(48000,'all'); let o=C.pass(DSP2,x); const W=(a,b)=>o.filter(r=>r.t>=a&&r.t<b); const inf=DSP2.info();
   const cal=calCompute(W(9.2,9.8),W(6.2,6.8),W(5.2,11));
   DSP2.init(48000,'all'); DSP2.setCal(cal); o=C.pass(DSP2,x);

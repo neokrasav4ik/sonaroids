@@ -28,5 +28,6 @@ echo; echo "== две ладони: разбор синтетики (вмест�
 echo; echo "== две ладони через страницу: портрет, метки, WAV, разбор =="; o=$(node tests/test_two.js); echo "$o" | grep -E "^(ok|FAIL|ИТОГ)"
 echo; echo "== стереомикрофон: разбор на синтетике (второй микрофон вбок; один микрофон двумя каналами) =="; o=$(node tests/test_stereo.js); echo "$o" | grep -E "^(ok|FAIL|ИТОГ)"
 echo; echo "== ближняя и дальняя рука через страницу: широкий зонд, вопрос про писк, WAV, разбор (широкая полоса разделяет, узкая — нет) =="; o=$(node tests/test_depth.js); echo "$o" | grep -E "^(ok|FAIL|ИТОГ)"
+echo; echo "== широкий зонд для записи по метке: одна запись — и широкая, и узкая полоса (eval_recording --narrow) =="; o=$(node tests/test_wide.js); echo "$o" | grep -E "^(ok|FAIL|ИТОГ)"
 echo; echo "== всё в один экран (Chromium; без playwright пропускается) =="; python3 tests/test_layout.py | tail -8
 echo; echo "== микрофон и звуковая сессия =="; node tests/test_mic_session.js

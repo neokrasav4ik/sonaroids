@@ -94,6 +94,7 @@ function runRec(kind){ var long=kind==='long', dual=kind==='dual', right=kind===
       el(SUB).textContent='Прибавь громкость, выключи беззвучный, отключи наушники, открой динамики. Сейчас '+prom.toFixed(0)+' дБ, нужно 15.';
       setProbe('off'); mode=null; return sleep(7000).then(function(){ show('home'); });
     }
+    var wideP=probeWide&&(kind==='rec'||kind==='long'); if(wideP){ setProbe('off'); dpProbe(true); }   /* 0.39t: широкий зонд для записи по метке */
     var mk=side?'mkH':(hand==='left')?'mkL':'mkR', marks={}, t0=performance.now(), cur=-1;
     rec.on=true;
     return new Promise(function(done){
@@ -106,19 +107,19 @@ function runRec(kind){ var long=kind==='long', dual=kind==='dual', right=kind===
         el(CLK).textContent=t.toFixed(1)+' / '+TOT+' с'; requestAnimationFrame(tick);
       })();
     }).then(function(marks){
-      rec.on=false; setProbe('off'); mode=null;
+      rec.on=false; setProbe('off'); if(wideP) dpProbe(false); mode=null;
       var n=rec.frames.length*N, all=new Float32Array(n);
       rec.frames.forEach(function(f,j){ all.set(f,j*N); });
       var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
       var so=(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0);
       recMeta={v:4,pose:right?rpPose:undefined,kind:right?'right-portrait':dual?'dual-landscape':side?'side-portrait':long?'single-landscape-long':'single-landscape',port:orientSide(),dual_gain:0.25,fs:fs,N:N,kLo:kLo,kHi:kHi,
-        hand:hand,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
+        hand:hand,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:wideP?DEPTH_LO:F_LO,f_hi:wideP?DEPTH_HI:20500,loop:true},
         prom_db:prom,samples:n,gaps:rec.gaps,peak:pk,orientation:{angle:so,w:window.innerWidth,h:window.innerHeight},
         script:S.filter(function(s){return s.k!=='end';}).map(function(s){ return {k:s.k,t:s.t,H:s.d,probe:s.probe}; }),
         marks:marks,units:right?'target distance of the palm from the phone in mm (phone upright, port towards the player, palm to the right of the bottom end, level with it)':dual?'target position of the palm along the phone in mm from its middle, + = to the right as the player sees it (phone flat, landscape); port — the end with the port, from the screen rotation':side?'target sideways offset of the palm in mm, + = to the right as the player sees it (phone upright, port towards the player)':'target height in mm above the table',ua:navigator.userAgent,date:new Date().toISOString()};
       blob=wav(all,recMeta);
       var d=new Date(), z=function(x){ return (x<10?'0':'')+x; };
-      fname=(right?'sonar1r_':dual?'sonardual_':side?'sonarside_':long?'sonarlong_':'sonar1h_')+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+'.wav';
+      fname=(right?'sonar1r_':dual?'sonardual_':side?'sonarside_':long?'sonarlong_':'sonar1h_')+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+(wideP?'_wide':'')+'.wav';
       showDone(pk,prom);
     });
   });
@@ -151,6 +152,7 @@ function showDone(pk,pr){
   else if(recMeta.kind==='dual-landscape'){ kv('разъём',recMeta.port==='right'?'справа':recMeta.port==='left'?'слева':'не знаю',recMeta.port?'good':'bad'); }
   else if(recMeta.kind==='side-portrait'){ var up=recMeta.orientation.h>recMeta.orientation.w; kv('экран',up?'вертикально':'горизонтально — поверни и запиши заново',up?'good':'bad'); }
   else { var os=orientSide(); kv('сторона руки',(hand==='left'?'слева':'справа')+(os?(hand===os?' — у разъёма':' — у фронтальной камеры'):'')); }
+  if(recMeta.probe&&recMeta.probe.f_lo<18000) kv('зонд','широкий, от '+(recMeta.probe.f_lo/1000)+' кГц');
   kv('зонд слышен',pr.toFixed(0)+' дБ',pr>=15?'good':'bad');
   kv('пик входа',pk.toFixed(3),(pk>0.002&&pk<0.98)?'good':'bad');
   kv('размер',(blob.size/1048576).toFixed(1)+' МБ');

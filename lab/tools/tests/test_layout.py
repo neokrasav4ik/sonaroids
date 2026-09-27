@@ -30,6 +30,7 @@ SETUP={
  'arc_cave':"lastRec='arc'; show('arcPlay'); ARC.game='cave'; arcInit(); ARC.ar=2.16; ARC.t=0; ARC.cols=[]; ARC_STEP.cave(0.001); ARC.phase='play'; ARC.present=true; ARC.dist=92; ARC.py=0.5; arcDraw(); arcText('','');",
  'arc_race':"lastRec='arc'; show('arcPlay'); ARC.game='race'; arcInit(); ARC.ar=2.16; ARC.t=0; ARC_STEP.race(0.001); ARC.cars=[{x:1.1,lane:-0.2,v:0.4,sw:0},{x:1.7,lane:0.25,v:0.4,sw:0}]; ARC.fcans=[{x:1.4,lane:0.1}]; ARC_STEP.race(0.001); ARC.phase='play'; ARC.present=true; ARC.dist=92; ARC.py=0.5; ARC.fuel=70; ARC.v=0.9; arcDraw(); arcText('','');",
  'arcOver':"lastRec='arc'; show('arcPlay'); ARC.game='bombs'; arcInit(); ARC.phase='over'; ARC.score=37; ARC.caught=20; arcDraw(); arcText('Финиш','поймано 20 · очки 37 · волна 2'); arcButtons(true);",
+ 'pwCheck':"show('pwCheck');",
  'arkOver':"lastRec='ark'; show('arkPlay'); AK.bricks=akBricks(1); AK.ball={x:0.42,y:0.62}; AK.px=0.55; AK.phase='over'; AK.score=120; AK.lives=0; AK.level=1; akDraw(); akText('Конец','счёт 120 · уровень 1 · лучший 120'); akButtons(true);",
  'menu':"show('game'); el('gPanel').classList.remove('hidden'); el('gLogI').textContent='Записано 150 с партии (последние 150 с). Журнал настройки: 120 с.'; fitScreen();",
 }

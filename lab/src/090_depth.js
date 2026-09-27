@@ -51,6 +51,16 @@ function runDepth(){ var S=SCRIPT_DEPTH, TOT=S[S.length-1].t;
         marks:marks,units:'target distance of each hand (L, R — as the player sees them) from the bottom end in mm; phone flat, portrait, port towards the player; wide probe 16–20.5 kHz',ua:navigator.userAgent,date:new Date().toISOString()};
       blob=wav(all,recMeta); var d=new Date(), z=function(x){ return (x<10?'0':'')+x; };
       fname='sonardepth_'+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+'.wav'; showDone(pk,prom); }); }).catch(function(e){ dpProbe(false); setProbe('off'); el('twSay').textContent='Не вышло'; el('twSub').textContent=(e&&e.message)||String(e); }); }
+/* 0.39t: широкий зонд для «Записи для меня» и длинной записи (переключатель на «Ещё»): одна запись разбирается и как широкая, и как узкая
+   (eval_recording.js --narrow) — ответ, даст ли широкий зонд лучшее управление в игре. И проверка писка: обычный / широкий / тишина. */
+var probeWide=false; try{ probeWide=localStorage.getItem('sonar_probe_wide')==='1'; }catch(e){}
+function pwLabel(){ el('pwToggle').textContent='Зонд записей по метке: '+(probeWide?'широкий 16–20,5 кГц':'обычный'); }
+function pwPlay(w){ if(w==='wide'){ setProbe('off'); dpProbe(true); } else if(w==='narrow'){ dpProbe(false); setProbe('single-'+chan); } else { dpProbe(false); setProbe('off'); }
+  el('pwNow').textContent='Сейчас: '+(w==='wide'?'широкий, от 16 кГц':w==='narrow'?'обычный, как в игре':'тишина'); }
+el('pwToggle').addEventListener('click',function(){ probeWide=!probeWide; try{ localStorage.setItem('sonar_probe_wide',probeWide?'1':'0'); }catch(e){} pwLabel(); }); pwLabel();
+el('goPw').addEventListener('click',function(){ boot().then(function(){ show('pwCheck'); pwPlay('off'); }).catch(fail); });
+el('pwNarrow').addEventListener('click',function(){ pwPlay('narrow'); }); el('pwWide').addEventListener('click',function(){ pwPlay('wide'); });
+el('pwOff').addEventListener('click',function(){ pwPlay('off'); }); el('pwBack').addEventListener('click',function(){ pwPlay('off'); show('probes'); });
 function toDepth(){ lastRec='recDepth'; show('depthIntro'); }
 el('goDepth').addEventListener('click',function(){ boot().then(toDepth).catch(fail); });
 el('dpGo').addEventListener('click',function(){ lastRec='recDepth'; runDepth(); });

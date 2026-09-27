@@ -10,7 +10,12 @@ function grab(js,name){ const i=js.indexOf('function '+name+'('); if(i<0) throw 
 function dspSrc(){ const js=appJs(); return js.slice(js.indexOf('var DSP2=(function(){'),js.indexOf('var Game=(function(){')); }
 function gameSrc(){ const js=appJs(); return js.slice(js.indexOf('var Game=(function(){'),js.indexOf('(function(){\n"use strict";')); }
 /* движок обработки; flo — нижний край полосы: 18300 для нового зонда, 17750 для записей до 24.09 утра */
-function makeDSP(flo){ let s=dspSrc(); if(flo) s=s.replace('Math.ceil(18300/df)','Math.ceil('+flo+'/df)'); return new Function(s+'\nreturn DSP2;')(); }
+function makeDSP(flo,sub){ let s=dspSrc(); if(flo) s=s.replace('Math.ceil(18300/df)','Math.ceil('+flo+'/df)');
+  /* sub (с 0.39t): запись сделана широким зондом sub.lo…sub.hi Гц, а разобрать её надо как узкую полосу flo…20500 — частоты узкой полосы
+     лежат внутри широкой, но фазы зонда у них — от широкого (π·q²/M по всем его частотам): подставляю сдвиг номера и M широкого */
+  if(sub){ const df=48000/512, off=Math.ceil(flo/df)-Math.ceil(sub.lo/df), MW=Math.floor(sub.hi/df)-Math.ceil(sub.lo/df)+1, a='var ph=Math.PI*q*q/M;';
+    if(s.split(a).length!==2) throw new Error('makeDSP: не нашёл фазу зонда'); s=s.replace(a,'var ph=Math.PI*(q+'+off+')*(q+'+off+')/'+MW+';'); }
+  return new Function(s+'\nreturn DSP2;')(); }
 function makeGame(){ return new Function(gameSrc()+'\nreturn Game;')(); }
 /* калибровка по удержаниям и покачиванию — из приложения она убрана 24.09 (там теперь физика и центровка),
    а инструменты разбора ею по-прежнему оценивают записи по метке: самокалибровка по пикам синусоиды */

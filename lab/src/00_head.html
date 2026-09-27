@@ -180,6 +180,8 @@
     <p class="small">Записи по метке (16 с или 1,5 мин) — на главном экране: присылаешь WAV, я проверяю механику на твоём сигнале.</p>
   </div>
   <div class="col btns g2">
+    <button id="pwToggle" class="ghost">Зонд записей: …</button>
+    <button id="goPw" class="ghost">Проверка писка</button>
     <button id="goStereo" class="ghost">Стереомикрофон (проба)</button>
     <button id="go_bombs" class="ghost">Ловец бомб (прототип)</button>
     <button id="go_cave" class="ghost">Пещера (прототип)</button>
@@ -379,6 +381,20 @@
   <div class="col btns">
     <button id="dpGo" class="big">Лежит, начать</button>
     <button id="dpBack" class="ghost">Назад</button>
+  </div>
+</div></div>
+
+<div class="screen hidden" id="pwCheck"><div class="two">
+  <div class="col">
+    <h1>Проверка писка</h1>
+    <p>Зонд игры звучит на 18,3–20,5 кГц. Широкий — на 16–20,5 кГц: сонар с ним точнее по расстоянию (вдвое), но его могут слышать, особенно дети. Включай по очереди и спроси, слышно ли.</p>
+    <p id="pwNow" class="mono">Сейчас: тишина</p>
+  </div>
+  <div class="col btns">
+    <button id="pwNarrow" class="ghost">Обычный (как в игре)</button>
+    <button id="pwWide" class="ghost">Широкий (от 16 кГц)</button>
+    <button id="pwOff" class="ghost">Тишина</button>
+    <button id="pwBack" class="ghost">Назад</button>
   </div>
 </div></div>
 

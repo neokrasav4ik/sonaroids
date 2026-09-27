@@ -6,7 +6,7 @@ var N=512,fs,kLo,kHi,kc;
 var ctx,stream,node,an,gSL,gSR,gL,gR,booted=false, F_LO=18300, PROBE_G=0.25, PROBE_SNR=null;
 var mode=null,lastSeq=-1,gaps=0,collector=null;
 function sleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
-function show(id){ ['home','orient','rec','recDone','cal','game','sideIntro','recSide','dualIntro','rightIntro','rightPlay','arkIntro','arkPlay','arcIntro','arcPlay','probes','twoIntro','recTwo','stIntro','recSt','depthIntro'].forEach(function(s){ el(s).classList.toggle('hidden',s!==id); });
+function show(id){ ['home','orient','rec','recDone','cal','game','sideIntro','recSide','dualIntro','rightIntro','rightPlay','arkIntro','arkPlay','arcIntro','arcPlay','probes','twoIntro','recTwo','stIntro','recSt','depthIntro','pwCheck'].forEach(function(s){ el(s).classList.toggle('hidden',s!==id); });
   /* запись вбок идёт с телефоном вертикально — на её экранах просьба повернуть не показывается */
   if(document.body&&document.body.classList) document.body.classList.toggle('pok',id==='sideIntro'||id==='rightIntro'||id==='rightPlay'||id==='twoIntro'||id==='recTwo'||id==='stIntro'||id==='recSt'||id==='depthIntro'||(id==='recTwo'&&lastRec==='recDepth')||(id==='recDone'&&(lastRec==='recTwo'||lastRec==='recSt'||lastRec==='recDepth'))||((id==='recSide'||id==='recDone')&&(lastRec==='recSide'||lastRec==='recRight'))); fitScreen(); }
 /* всё в один экран: если видимый экран (или открытое меню игры) не влезает по высоте или ширине — уменьшаю базовый шрифт, пока не влезет */

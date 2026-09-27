@@ -145,6 +145,7 @@ function showDone(pk,pr){
   kv('длительность',(recMeta.samples/fs).toFixed(1)+' с');
   kv('разрывов потока',recMeta.gaps,recMeta.gaps===0?'good':'bad');
   if(recMeta.kind==='right-portrait'){ var up2=recMeta.orientation.h>recMeta.orientation.w; kv('экран',up2?'вертикально':'горизонтально — поверни и запиши заново',up2?'good':'bad'); }
+  else if(recMeta.kind==='two-portrait'){ var up3=recMeta.orientation.h>recMeta.orientation.w; kv('экран',up3?'вертикально':'горизонтально — положи вертикально и запиши заново',up3?'good':'bad'); }
   else if(recMeta.kind==='dual-landscape'){ kv('разъём',recMeta.port==='right'?'справа':recMeta.port==='left'?'слева':'не знаю',recMeta.port?'good':'bad'); }
   else if(recMeta.kind==='side-portrait'){ var up=recMeta.orientation.h>recMeta.orientation.w; kv('экран',up?'вертикально':'горизонтально — поверни и запиши заново',up?'good':'bad'); }
   else { var os=orientSide(); kv('сторона руки',(hand==='left'?'слева':'справа')+(os?(hand===os?' — у разъёма':' — у фронтальной камеры'):'')); }

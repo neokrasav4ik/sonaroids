@@ -69,6 +69,9 @@
   #akSay{font-size:2rem;font-weight:600} #akSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
   #akBtns{position:absolute;left:calc(max(1rem,env(safe-area-inset-left)) + 1rem);top:50%;transform:translateY(-50%);width:15rem;display:flex;flex-direction:column;gap:.5rem}
   #akStop{position:absolute;left:calc(max(.7rem,env(safe-area-inset-left)) + .3rem);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + 3.4rem);width:auto;min-height:0;padding:.6em 1em;font-size:.9rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
+  #recTwo{flex-direction:column;align-items:stretch;gap:.4rem} #twHead{text-align:center} #twSay{font-size:1.7rem;font-weight:600;line-height:1.2} #twSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
+  #twClock{font-family:"IBM Plex Mono",monospace;font-size:.85rem;color:var(--soft);margin-top:.4rem} #twC{flex:1;width:100%;min-height:0;display:block}
+  #twoIntro .pic{height:26vh;max-width:100%;margin:.2rem auto 0;display:block} @media (max-height:600px){ #twoIntro .pic{display:none} }
   #arcPlay{padding:0;background:#070a12} #acC{position:absolute;inset:0;width:100%;height:100%;display:block}
   #acTop{position:absolute;left:0;right:0;top:30%;text-align:center;pointer-events:none;padding:0 1rem}
   #acSay{font-size:2rem;font-weight:600} #acSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
@@ -156,6 +159,7 @@
   </div>
   <div class="col btns g2">
     <button id="goGame" class="big">Играть</button>
+    <button id="goTwo" class="ghost">Две ладони (проба)</button>
     <button id="go_race" class="ghost">Трасса (прототип)</button>
     <button id="go_slalom" class="ghost">Слалом (прототип)</button>
     <button id="goArk" class="ghost">Арканоид (прототип)</button>
@@ -334,6 +338,30 @@
 <div class="screen hidden" id="recSide">
   <div id="sdCenter"><div id="sdSay"></div><div id="sdSub"></div><div id="sdClock"></div></div>
   <div class="htrack" id="trH"><div id="mkH"></div><div id="sdPort">РАЗЪЁМ ↓</div></div>
+</div>
+
+<div class="screen hidden" id="twoIntro"><div class="two">
+  <div class="col">
+    <h1>Две ладони</h1>
+    <p>Поверни телефон вертикально, пока держишь его в руке, и положи на стол экраном вверх, <b>разъёмом к тебе</b>. Обе ладони чуть согнуты, пальцами к телефону, по бокам от разъёма — как «магические пассы».</p>
+    <p>Две метки на экране — куда поставить левую и правую ладонь: выше — ближе к телефону. Вместе, по очереди, по одной, на разных расстояниях. 63 с.</p>
+    <svg class="pic" viewBox="0 0 200 170" aria-hidden="true">
+      <rect x="72" y="4" width="56" height="92" rx="9" fill="#1b2630" stroke="#3A4A52"/><rect x="92" y="93" width="16" height="4" rx="2" fill="#8A9B96"/>
+      <path d="M86,106 q14,8 28,0" fill="none" stroke="#3F92AB" stroke-width="2"/><path d="M80,114 q20,12 40,0" fill="none" stroke="#3F92AB" stroke-width="2" opacity=".6"/>
+      <path d="M58,120 q10,-10 22,-4 l2,26 q-14,6 -26,-2z" fill="#E0B592" stroke="#9c7556"/><path d="M142,120 q-10,-10 -22,-4 l-2,26 q14,6 26,-2z" fill="#E0B592" stroke="#9c7556"/>
+      <path d="M68,152 l0,12 M64,158 l4,6 l4,-6 M68,112 l0,-6" stroke="#E7EDE9" stroke-width="1.5" fill="none"/><path d="M132,152 l0,12 M128,158 l4,6 l4,-6" stroke="#E7EDE9" stroke-width="1.5" fill="none"/>
+      <text x="100" y="168" fill="#8A9B96" font-size="8" text-anchor="middle">ты</text>
+    </svg>
+  </div>
+  <div class="col btns">
+    <button id="twoGo" class="big">Лежит, начать</button>
+    <button id="twoBack" class="ghost">Назад</button>
+  </div>
+</div></div>
+
+<div class="screen hidden" id="recTwo">
+  <div id="twHead"><div id="twSay"></div><div id="twSub"></div><div id="twClock"></div></div>
+  <canvas id="twC"></canvas>
 </div>
 
 <div class="screen hidden" id="recDone"><div class="two">

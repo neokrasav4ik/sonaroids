@@ -46,7 +46,13 @@ function report(name,meta,x){ const R=analyse(meta,x);
   console.log(`\n== ${name} == | режим ${R.mode} | счёт ${meta.score}, ударов ${R.hits}, полёт ${R.dur.toFixed(0)} с | зонд: запас ${meta.probe&&meta.probe.snr_db?meta.probe.snr_db.toFixed(1):'—'} дБ | экран ${meta.orientation&&meta.orientation.h>meta.orientation.w?'вертикально':'ГОРИЗОНТАЛЬНО'}`);
   console.log(`  весь экран — ${R.span.toFixed(0)} мм хода ладони (по взмахам: ${R.waveN} кадров) | ладонь видна в полёте ${R.vis.toFixed(1)}% | дрожь корабля ${(R.jit*100).toFixed(2)}% ширины | у краёв ${R.edge.toFixed(1)}% | прогон против телефона: ${(R.match*100).toFixed(2)}% ширины`);
   return R; }
-module.exports={synthFrame,analyse,report};
+/* несколько отражателей (с 0.39o, «две ладони»): list — [{d: мм, a: сила}], путь туда-обратно 2·d; прямой сигнал и комната как в synthFrame */
+function synthMulti(list,seed){ const S=synthInit(), out=new Float32Array(N), c=343e3/SR, dDir=37.3;
+  const paths=[{d:dDir,a:1},{d:dDir+62,a:0.35}]; list.forEach(p=>{ if(p&&p.d!==null) paths.push({d:dDir+2*p.d/c,a:(p.a||0.25)*(100/p.d)}); });
+  for(const p of paths) S.spec.forEach((s,q)=>{ const ang=-2*Math.PI*s.k*p.d/N, cc=Math.cos(ang), sn=Math.sin(ang), re=(s.re*cc-s.im*sn)*2/N*p.a, im=(s.re*sn+s.im*cc)*2/N*p.a, ct=S.cosT[q], st=S.sinT[q];
+    for(let n=0;n<N;n++) out[n]+=re*ct[n]-im*st[n]; });
+  let r=seed>>>0; for(let n=0;n<N;n++){ r=(r*1664525+1013904223)>>>0; out[n]+=(r/4294967296-0.5)*4e-4; } return out; }
+module.exports={synthFrame,synthMulti,synthInit,analyse,report};
 if(require.main===module){ for(const f of process.argv.slice(2)){ const {meta,x}=C.loadWav(f);
   if(!meta||meta.kind!=='right-play'){ console.log(`\n== ${path.basename(f)} == не проба «ладонь справа» (kind ${meta&&meta.kind}); запись по метке — eval_recording.js`); continue; }
   report(path.basename(f),meta,x); } }

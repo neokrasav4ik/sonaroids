@@ -36,6 +36,8 @@ SETUP={
 # 26.09: запись вбок идёт с телефоном вертикально — её экраны проверяю в портрете
 PSIZES=[(320,568,'SE-1'),(375,667,'SE'),(390,844,'14'),(430,932,'Pro Max')]
 PSETUP={
+ 'twoIntro':"lastRec='recTwo'; show('twoIntro');",
+ 'recTwo':"lastRec='recTwo'; show('recTwo'); el('twSay').textContent='По очереди'; el('twSub').textContent='Одна к телефону — другая от него. За метками.'; el('twClock').textContent='21.3 / 63 с'; twoDraw(90,150);",
  'sideIntro':"lastRec='recSide'; show('sideIntro'); sideOri();",
  'recSide':"lastRec='recSide'; show('recSide'); buildHTrack(); el('mkH').style.left=xOf(40)+'px'; el('sdSay').textContent='Замри справа'; el('sdSub').textContent='Напротив метки, на том же расстоянии.'; el('sdClock').textContent='22.4 / 39 с';",
  'rightIntro':"lastRec='recRight'; show('rightIntro'); rightOri();",

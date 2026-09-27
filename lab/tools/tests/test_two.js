@@ -8,7 +8,7 @@ js=js.replace("function pickChannel(){","function pickChannel(){ if(globalThis._
 js=js.replace("function autoLevel(){","function autoLevel(){ if(globalThis.__fakeLevel) return globalThis.__fakeLevel();");
 js=js.replace("function promSub(frames,parity){","function promSub(frames,parity){ if(globalThis.__fakeProm) return globalThis.__fakeProm;");
 js=js.replace("function setProbe(w){","function setProbe(w){ globalThis.__probe=w; if(globalThis.__noAudio) return;");
-js=js.replace("el('gMenu').addEventListener","globalThis.__h={runTwo:runTwo,toTwo:toTwo,onFrame:onFrame,setFs:function(){ fs=48000; },blob:function(){ return blob; },fname:function(){ return fname; },meta:function(){ return recMeta; },SC:SCRIPT_TWO};\nel('gMenu').addEventListener");
+js=js.replace("el('gMenu').addEventListener","globalThis.__h={runTwo:runTwo,toTwo:toTwo,onFrame:onFrame,setFs:function(){ fs=48000; },blob:function(){ return blob; },fname:function(){ return fname; },meta:function(){ return recMeta; },SC:SCRIPT_TWO,SF:SCRIPT_FIST,varNext:function(){ el('twoVar').click&&0; twoVar=twoVar==='fist'?'two':'fist'; twoVarLabel(); return twoVar; }};\nel('gMenu').addEventListener");
 let now=0; const timers=[]; let rafs=[];
 global.setTimeout=(f,ms)=>{ timers.push({t:now+(ms||0),f}); return timers.length; };
 global.requestAnimationFrame=f=>{ rafs.push(f); return rafs.length; }; global.cancelAnimationFrame=()=>{};
@@ -28,8 +28,9 @@ globalThis.__fakeLevel=()=>new Promise(r=>setTimeout(()=>r({snr:44,g:0.1,atMax:f
 let seed=12345; Math.random=()=>((seed=(seed*1664525+1013904223)>>>0)/4294967296);
 new Function(js)(); const H=globalThis.__h; H.setFs();
 const SR=48000, N=512; let fed=0, seq=0, tStart=null;
-function hands(t){ if(!els.recTwo||els.recTwo.classList.contains('hidden')||tStart===null) return [null,null]; const tt=t-tStart, S=H.SC; let k=S.length-1; while(k>0&&S[k].t>tt) k--; const s=S[k]; return [s.L?s.L(tt):null,s.R?s.R(tt):null]; }
-function feed(){ const due=Math.floor(now/1000*SR/N); while(fed<due){ const [L,R]=hands(fed*N/SR); H.onFrame({data:{s:seq++,f:S.synthMulti([{d:L,a:0.22},{d:R,a:0.2}],fed*7+1)}}); fed++; } }
+let VAR='two'; function hands(t){ if(!els.recTwo||els.recTwo.classList.contains('hidden')||tStart===null) return [null,null]; const tt=t-tStart, S=VAR==='fist'?H.SF:H.SC; let k=S.length-1; while(k>0&&S[k].t>tt) k--; const s=S[k]; return [s.L?s.L(tt):null,s.R?s.R(tt):null]; }
+function feed(){ const due=Math.floor(now/1000*SR/N); while(fed<due){ const t=fed*N/SR, [L,R]=hands(t), sw=VAR==='fist'&&tStart!==null&&t-tStart>=30, hand=(d,f)=>d===null?[]:f?[{d,a:0.12}]:[{d,a:0.2},{d:d-12,a:0.12},{d:d+10,a:0.1}];
+    const list=VAR==='fist'?hand(L,!sw).concat(hand(R,sw)):[{d:L,a:0.22},{d:R,a:0.2}]; H.onFrame({data:{s:seq++,f:S.synthMulti(list,fed*7+1)}}); fed++; } }
 async function tick(dt){ const t1=now+dt*1000; while(now<t1){ now+=1000/60; feed();
   for(let i=timers.length-1;i>=0;i--) if(timers[i].t<=now){ const f=timers[i].f; timers.splice(i,1); f(); }
   const rs=rafs; rafs=[]; rs.forEach(f=>f(now)); await null; await null; } }
@@ -43,5 +44,11 @@ async function tick(dt){ const t1=now+dt*1000; while(now<t1){ now+=1000/60; feed
   const A=E.report('two_test.wav (через страницу)',w.meta,w.x), g=k=>A.phases.find(p=>p.k===k);
   need(g('both')&&g('alt')&&g('alt').B>2*g('both').B,`вместе и по очереди различимы: B ${g('both').B.toFixed(2)} против ${g('alt').B.toFixed(2)}`);
   need(g('nl').blobs===2&&g('nr').blobs===2&&g('both').blobs===1,`на разных расстояниях — два пятна (${g('nl').blobs}, ${g('nr').blobs}), вместе — одно (${g('both').blobs})`);
+  // вариант «кулак и ладонь» (0.39p): кнопка варианта, свой сценарий, файл sonarfist_*, разбор узнаёт кулак и ладонь по силе эха при любой стороне
+  VAR=H.varNext(); tStart=null; H.toTwo(); need(/кулак и ладонь/.test(els.twoVar.textContent),'кнопка варианта: '+els.twoVar.textContent);
+  H.runTwo(); for(let i=0;i<700;i++){ await tick(0.1); if(tStart===null&&els.twClock.textContent&&!els.recTwo.classList.contains('hidden')) tStart=now/1000-parseFloat(els.twClock.textContent); if(!els.recDone.classList.contains('hidden')) break; }
+  const M2=H.meta(); need(M2.variant==='fist'&&['fL','pR','bothA','swap','pL','fR','bothB'].every(k=>M2.marks[k]!==undefined)&&/^sonarfist_/.test(H.fname()),`«кулак и ладонь»: метки ${Object.keys(M2.marks).join(',')}, файл ${H.fname()}`);
+  const f2=path.join(C.OUT,'fist_test.wav'); fs.writeFileSync(f2,Buffer.from(await H.blob().arrayBuffer())); const w2=C.loadWav(f2); const A2=E.report('fist_test.wav (через страницу)',w2.meta,w2.x);
+  const sn=A2.fist&&A2.fist.find(q=>q.k==='snr'); need(sn&&sn.x1>2&&sn.x2>2,`ладонь громче кулака при любой стороне: ${sn&&sn.x1.toFixed(1)} и ${sn&&sn.x2.toFixed(1)} дБ`);
   console.log(bad?'ИТОГ: ПРОВАЛ':'ИТОГ: ok'); process.exitCode=bad?1:0;
 })();

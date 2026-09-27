@@ -24,7 +24,7 @@ echo; echo "== два динамика через страницу: зонды �
 echo; echo "== ладонь справа через страницу: проба-игра и запись по метке в портрете =="; o=$(node tests/test_right.js); echo "$o" | grep -E "^(ok|FAIL|ИТОГ)"
 echo; echo "== арканоид (прототип) через страницу: ракетка за ладонью, мяч, кирпичи, запись, разбор =="; o=$(node tests/test_ark.js); echo "$o" | grep -E "^(ok|FAIL|ИТОГ)"
 echo; echo "== экшн-прототипы через страницу: слалом, ловец бомб, пещера — подстройка как в Sonaroids, игра, запись, разбор =="; o=$(node tests/test_arc.js); echo "$o" | grep -E "^(ok|FAIL|ИТОГ)"
-echo; echo "== две ладони: разбор синтетики (вместе / по очереди / на разных расстояниях) =="; o=$(node eval_two.js --synth); echo "$o" | grep -E "ВЫВОД"
+echo; echo "== две ладони: разбор синтетики (вместе / по очереди / на разных расстояниях) =="; o=$(node eval_two.js --synth; node eval_two.js --synth fist); echo "$o" | grep -E "ВЫВОД"
 echo; echo "== две ладони через страницу: портрет, метки, WAV, разбор =="; o=$(node tests/test_two.js); echo "$o" | grep -E "^(ok|FAIL|ИТОГ)"
 echo; echo "== всё в один экран (Chromium; без playwright пропускается) =="; python3 tests/test_layout.py | tail -8
 echo; echo "== микрофон и звуковая сессия =="; node tests/test_mic_session.js

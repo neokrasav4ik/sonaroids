@@ -344,7 +344,7 @@
   <div class="col">
     <h1>Две ладони</h1>
     <p>Поверни телефон вертикально, пока держишь его в руке, и положи на стол экраном вверх, <b>разъёмом к тебе</b>. Обе ладони чуть согнуты, пальцами к телефону, по бокам от разъёма — как «магические пассы».</p>
-    <p>Две метки на экране — куда поставить левую и правую ладонь: выше — ближе к телефону. Вместе, по очереди, по одной, на разных расстояниях. 63 с.</p>
+    <p>Две метки на экране — куда поставить левую и правую руку: выше — ближе к телефону. «Две ладони»: вместе, по очереди, по одной, на разных расстояниях, 63 с. «Кулак и ладонь»: по одной, вместе, потом руки меняются, 61 с.</p>
     <svg class="pic" viewBox="0 0 200 170" aria-hidden="true">
       <rect x="72" y="4" width="56" height="92" rx="9" fill="#1b2630" stroke="#3A4A52"/><rect x="92" y="93" width="16" height="4" rx="2" fill="#8A9B96"/>
       <path d="M86,106 q14,8 28,0" fill="none" stroke="#3F92AB" stroke-width="2"/><path d="M80,114 q20,12 40,0" fill="none" stroke="#3F92AB" stroke-width="2" opacity=".6"/>
@@ -355,6 +355,7 @@
   </div>
   <div class="col btns">
     <button id="twoGo" class="big">Лежит, начать</button>
+    <button id="twoVar" class="ghost">Вариант: …</button>
     <button id="twoBack" class="ghost">Назад</button>
   </div>
 </div></div>
@@ -1679,6 +1680,24 @@ var SCRIPT_TWO=[
   {t:60, k:'away',  say:'Убери руки',            sub:'Совсем.', L:null, R:null, d:'—'},
   {t:63, k:'end'}
 ];
+/* 27.09, вариант автора «кулак и ладонь»: руки различаются не местом, а «голосом» эха — кулак меньше и круглее (эхо слабее, собрано),
+   согнутая ладонь больше (эхо сильнее, пальцы дают разброс скорости). Проверка: по одной руке, потом руки меняются местами —
+   если «кулак» и «ладонь» различимы при любой стороне, руку можно узнать по эху. Метки L/R — как в «двух ладонях». */
+var SCRIPT_FIST=[
+  {t:0,  k:'empty', say:'Убери руки',                sub:'Ничего рядом с телефоном. Снимаю пустую комнату.', L:null, R:null, d:'—'},
+  {t:3,  k:'place', say:'Левая — кулак, правая — ладонь', sub:'Обе напротив меток. Кулак костяшками к телефону, ладонь чуть согнута.', L:twoK(TWO_M), R:twoK(TWO_M), d:'L=R=120'},
+  {t:6,  k:'fL',    say:'Двигай кулаком',            sub:'Левый кулак за меткой, правая ладонь замерла.', L:twoSin(6,2.7), R:twoK(TWO_M), d:'L=120+50sin(2pi(t-6)/2.7), R=120'},
+  {t:14, k:'pR',    say:'Двигай ладонью',            sub:'Правая ладонь за меткой, кулак замер.', L:twoK(TWO_M), R:twoSin(14,2.7), d:'L=120, R=120+50sin(2pi(t-14)/2.7)'},
+  {t:22, k:'bothA', say:'Оба вместе',                sub:'Кулак и ладонь за метками, одновременно.', L:twoSin(22,3), R:twoSin(22,3), d:'L=R=120+50sin(2pi(t-22)/3)'},
+  {t:30, k:'swap',  say:'Поменяй руки',              sub:'Теперь левая — ладонь, правая — кулак. Напротив меток.', L:twoK(TWO_M), R:twoK(TWO_M), d:'L=R=120'},
+  {t:34, k:'pL',    say:'Двигай ладонью',            sub:'Левая ладонь за меткой, кулак замер.', L:twoSin(34,2.7), R:twoK(TWO_M), d:'L=120+50sin(2pi(t-34)/2.7), R=120'},
+  {t:42, k:'fR',    say:'Двигай кулаком',            sub:'Правый кулак за меткой, ладонь замерла.', L:twoK(TWO_M), R:twoSin(42,2.7), d:'L=120, R=120+50sin(2pi(t-42)/2.7)'},
+  {t:50, k:'bothB', say:'Оба вместе',                sub:'Ладонь и кулак за метками, одновременно.', L:twoSin(50,3), R:twoSin(50,3), d:'L=R=120+50sin(2pi(t-50)/3)'},
+  {t:58, k:'away',  say:'Убери руки',                sub:'Совсем.', L:null, R:null, d:'—'},
+  {t:61, k:'end'}
+];
+var twoVar='two'; try{ if(localStorage.getItem('sonar_two_var')==='fist') twoVar='fist'; }catch(e){}
+function twoVarLabel(){ el('twoVar').textContent='Вариант: '+(twoVar==='fist'?'кулак и ладонь':'две ладони'); }
 var TWO_LO=40, TWO_HI=220;
 function twoDraw(L,R){ var cv=el('twC'); if(!cv||!cv.getContext) return; var dpr=Math.min(2,window.devicePixelRatio||1), w=cv.clientWidth||360, h=cv.clientHeight||300;
   if(cv.width!==Math.round(w*dpr)||cv.height!==Math.round(h*dpr)){ cv.width=Math.round(w*dpr); cv.height=Math.round(h*dpr); }
@@ -1690,7 +1709,7 @@ function twoDraw(L,R){ var cv=el('twC'); if(!cv||!cv.getContext) return; var dpr
   [[L,0.25,'левая'],[R,0.75,'правая']].forEach(function(q){ var x=W*q[1]; c.fillStyle='#253139'; c.fillRect(x-1,top,2,bot-top);
     if(q[0]!==null){ c.fillStyle='#3F92AB'; c.beginPath(); c.ellipse(x,Y(q[0]),W*0.09,0.03*H,0,0,6.283); c.fill(); }
     c.fillStyle='#E7EDE9'; c.textAlign='center'; c.fillText(q[2],x,H-4*dpr); }); }
-function runTwo(){ var S=SCRIPT_TWO, TOT=S[S.length-1].t;
+function runTwo(){ var S=twoVar==='fist'?SCRIPT_FIST:SCRIPT_TWO, TOT=S[S.length-1].t;
   show('recTwo'); el('twSay').textContent='Выбираю динамик'; el('twSub').textContent='Руки убраны.'; el('twClock').textContent=''; twoDraw(null,null);
   mode=null; rec={on:false,frames:[],gaps:0}; var prom;
   pickChannel().then(function(){ return autoLevel(); }).then(function(){ mode='rec'; el('twSub').textContent='Телефон лежит, разъём к тебе.'; return sleep(400).then(function(){ return collect(10); }); }).then(function(fr){
@@ -1705,13 +1724,14 @@ function runTwo(){ var S=SCRIPT_TWO, TOT=S[S.length-1].t;
       var n=rec.frames.length*N, all=new Float32Array(n); rec.frames.forEach(function(f,j){ all.set(f,j*N); });
       var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
       var so=(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0);
-      recMeta={v:4,kind:'two-portrait',fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
+      recMeta={v:4,kind:'two-portrait',variant:twoVar,fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
         prom_db:prom,samples:n,gaps:rec.gaps,peak:pk,orientation:{angle:so,w:window.innerWidth,h:window.innerHeight},
         script:S.filter(function(s){return s.k!=='end';}).map(function(s){ return {k:s.k,t:s.t,H:s.d}; }),
         marks:marks,units:'target distance of each palm (L, R — as the player sees them) from the bottom end of the phone in mm; phone flat, portrait, port towards the player',ua:navigator.userAgent,date:new Date().toISOString()};
       blob=wav(all,recMeta); var d=new Date(), z=function(x){ return (x<10?'0':'')+x; };
-      fname='sonartwo_'+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+'.wav'; showDone(pk,prom); }); }); }
-function toTwo(){ lastRec='recTwo'; show('twoIntro'); }
+      fname=(twoVar==='fist'?'sonarfist_':'sonartwo_')+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+'.wav'; showDone(pk,prom); }); }); }
+function toTwo(){ lastRec='recTwo'; twoVarLabel(); show('twoIntro'); }
+el('twoVar').addEventListener('click',function(){ twoVar=twoVar==='fist'?'two':'fist'; try{ localStorage.setItem('sonar_two_var',twoVar); }catch(e){} twoVarLabel(); });
 el('goTwo').addEventListener('click',function(){ boot().then(toTwo).catch(fail); });
 el('twoGo').addEventListener('click',function(){ lastRec='recTwo'; runTwo(); });
 el('twoBack').addEventListener('click',function(){ show('home'); });

@@ -9,7 +9,7 @@ js=js.replace(/var WORKLET=`[\s\S]*?`;/,'');
 js=js.replace("function pickChannel(){","function pickChannel(){ if(globalThis.__fakePick) return globalThis.__fakePick();");
 js=js.replace("function autoLevel(){","function autoLevel(){ if(globalThis.__fakeLevel) return globalThis.__fakeLevel();");
 js=js.replace("function setProbe(w){","function setProbe(w){ globalThis.__probe=w; if(globalThis.__noAudio) return;");
-js=js.replace("el('gMenu').addEventListener","globalThis.__h={ctl:function(){return {lock:akLock,pix:akPix,mag:akMag,range:AK_RANGES[akRange],field:AK_FIELDS[akField]};},akFieldNext:akFieldNext,akLockNext:akLockNext,akPixNext:akPixNext,akMagNext:akMagNext,akRangeNext:akRangeNext,arkPlay:arkPlay,akSave:akSave,onFrame:onFrame,AK:function(){return AK;},setFs:function(){ fs=48000; },goFlow:goFlow};\nel('gMenu').addEventListener");
+js=js.replace("el('gMenu').addEventListener","globalThis.__h={ctl:function(){return {lock:akLock,pix:akPix,mag:akMag,field:AK_FIELDS[akField]};},akFieldNext:akFieldNext,akLockNext:akLockNext,akPixNext:akPixNext,akMagNext:akMagNext,arkPlay:arkPlay,akSave:akSave,onFrame:onFrame,AK:function(){return AK;},setFs:function(){ fs=48000; },goFlow:goFlow};\nel('gMenu').addEventListener");
 let now=0; const timers=[]; let rafs=[];
 global.setTimeout=(f,ms)=>{ timers.push({t:now+(ms||0),f}); return timers.length; };
 global.requestAnimationFrame=f=>{ rafs.push(f); return rafs.length; }; global.cancelAnimationFrame=()=>{};
@@ -33,13 +33,15 @@ const SR=48000, N=512; let fed=0, seq=0, tPlay=null, tWave=null, dPrev=100;
    в нужную сторону (скорость руки ≤ 40 см/с; так же работает и с ускорением, где ракетка не стоит ровно «где ладонь»), потом замерла */
 function palm(t){ const A=H.AK(); if(!A||A.phase==='prep'||A.phase==='empty'||A.phase===''){ return null; }
   // с 0.39j: перед игрой ладонь подходит (как живая рука — сонар замечает ладонь по движению) и стоит там, где удобно, на 95 мм — это середина
-  if(A.phase!=='play'||!A.map){ if(tWave===null) tWave=t; return (dPrev=95+Math.max(0,55*(1-(t-tWave)/0.8))); }
+  // с 0.39l подстройка как в Sonaroids: машет 100 ± 35 мм (период 2 с), пока ход не пойман; в отсчёт держит 100 мм
+  if(A.phase==='wave'){ if(tWave===null) tWave=t; return (dPrev=100+35*Math.sin(2*Math.PI*(t-tWave)/2)); }
+  if(A.phase!=='play'||!A.map) return (dPrev=100);
   if(tPlay===null) tPlay=t; if(t-tPlay>25) return dPrev;
   // цель — куда мяч придёт к ракетке (отражения от стен, кирпичи не учитываю); мяч летит вверх — держусь под ним
   const B=A.ball; let tx=B.x; if(B.vy>0){ const tt=(0.92-B.y)/B.vy; let xx=B.x+B.vx*tt; xx=((xx%2)+2)%2; tx=xx>1?2-xx:xx; }
   // поле (0.39k): ракетка ближе к точке падения (у «двух ракеток» их две), путь ракетки на поле — 0,82 или 0,42 ширины
   const pads=A.pads||[A.px], P=pads.reduce((m,p)=>Math.abs(tx-p)<Math.abs(tx-m)?p:m,pads[0]), g=(A.field==='twin'||A.field==='funnel')?0.42:0.82;
-  const e=tx-P, want=1.2*e/g*(A.map.hi-A.map.lo), step=400*N/SR;
+  const e=tx-P, want=0.5*e/g*(A.map.hi-A.map.lo), step=400*N/SR;   // 0.39l: доля 0,5 за кадр — без раскачки (ракетка отстаёт на кадр экрана)
   dPrev=Math.max(45,Math.min(165,dPrev+Math.max(-step,Math.min(step,want)))); return dPrev; }
 function feed(){ const due=Math.floor(now/1000*SR/N); while(fed<due){ H.onFrame({data:{s:seq++,f:S.synthFrame(palm(fed*N/SR),fed*7+1)}}); fed++; } }
 async function tick(dt){ const t1=now+dt*1000; while(now<t1){ now+=1000/60; feed();
@@ -49,14 +51,14 @@ async function tick(dt){ const t1=now+dt*1000; while(now<t1){ now+=1000/60; feed
   let bad=0; const need=(ok,msg)=>{ console.log((ok?'ok  ':'FAIL')+'  '+msg); if(!ok) bad++; };
   H.goFlow('arkIntro'); need(!els.arkIntro.classList.contains('hidden'),'экран-подсказка открыт');
   // сначала прямо: ход 8 см, без замка, пикселей и магнита — сверка точная
-  if(H.ctl().lock) H.akLockNext(); if(H.ctl().pix) H.akPixNext(); if(H.ctl().mag) H.akMagNext(); for(let i=0;i<3&&H.ctl().range!==80;i++) H.akRangeNext();
+  if(H.ctl().lock) H.akLockNext(); if(H.ctl().pix) H.akPixNext(); if(H.ctl().mag) H.akMagNext(); 
   H.arkPlay(); const seen=[], pairs=[];
   for(let i=0;i<1500;i++){ await tick(0.1); const A=H.AK(); if(seen[seen.length-1]!==A.phase) seen.push(A.phase); if(A.phase==='play'&&A.present&&A.dist!==null) pairs.push([A.dist,A.px]); if(A.phase==='over') break; }
   const A=H.AK(); need(seen.join(' → ').indexOf('empty → wave → count → play → over')>=0,'фазы: '+seen.join(' → '));
-  need(A.port==='right'&&A.map&&Math.abs(A.map.hi-A.map.lo-80)<0.01&&Math.abs(A.map.mid-85)<10,`разъём справа, ход на всю ширину 8 см: ${A.map&&A.map.lo.toFixed(0)}–${A.map&&A.map.hi.toFixed(0)} мм, середина — где держали ладонь: ${A.map&&A.map.mid.toFixed(0)} (ладонь на 95 мм)`);
+  need(A.port==='right'&&A.T&&A.T.ok&&A.map.field>=50&&A.map.field<=120&&A.shifts.length>0,`разъём справа, ход пойман по взмахам (как в Sonaroids): весь путь ${A.map&&A.map.field.toFixed(0)} мм (махали на 70), сдвигов высоты ${A.shifts.length}`);
   const cor=(a,b)=>{ const n=a.length, ma=a.reduce((u,v)=>u+v)/n, mb=b.reduce((u,v)=>u+v)/n; let s=0,sa=0,sb=0; for(let i=0;i<n;i++){ s+=(a[i]-ma)*(b[i]-mb); sa+=(a[i]-ma)**2; sb+=(b[i]-mb)**2; } return s/Math.sqrt(sa*sb); };
   const inR=pairs.filter(p=>p[0]>A.map.lo+2&&p[0]<A.map.hi-2);                 // за пределами хода ракетка упирается в край — там согласие не меряю
-  const c=inR.length>50?cor(inR.map(p=>p[0]),inR.map(p=>p[1])):NaN; need(c>0.95,`ладонь дальше от разъёма — ракетка правее: согласие ${c.toFixed(3)} (внутри хода, ${inR.length} кадров)`);
+  const c=inR.length>50?cor(inR.map(p=>p[0]),inR.map(p=>p[1])):NaN; need(c>0.9,`ладонь дальше от разъёма — ракетка правее: согласие ${c.toFixed(3)} (внутри хода, ${inR.length} кадров)`);
   const ev=A.log.filter(e=>typeof e[1]==='string'), nP=ev.filter(e=>e[1]==='paddle').length, nB=ev.filter(e=>e[1]==='brick').length, nM=ev.filter(e=>e[1].startsWith('miss')).length;
   need(nP>=3&&nB>=3,`пока ладонь ведёт ракетку за мячом: отбито ${nP}, кирпичей ${nB}, уровень ${A.level}`);
   need(nM===3&&A.phase==='over'&&!els.akBtns.classList.contains('hidden'),`ладонь замерла — три промаха и конец (промахов ${nM}), кнопки видны`);

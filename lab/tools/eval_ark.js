@@ -9,11 +9,18 @@ const SR=48000, N=512;
    ход фиксированный, «замок в покое», ретро-пиксели; магнит — отдельно, в журнале шестым числом) */
 function stepper(meta){ const js=C.appJs(), src=C.grab(js,'akStep'), c=meta.ctl||{};
   return new Function('AK_LOCK','AK_PIX',src+'\nreturn akStep;')(c.lock||{v:0,db:0,dbMove:0,tau:0.04},c.pix||{step:1,hys:1}); }
-function analyse(meta,x){ const D=C.makeDSP(C.bandOf(meta)); D.init(SR,'all'); D.setCal(meta.cal); const rows=C.pass(D,x);
+/* подстройка игры (Tune из собранной лабы) — для записей 0.39l и новее (meta.tune): сдвиги высоты DSP2 в те же кадры, центровка как на телефоне */
+function tuneMod(){ const js=C.appJs(), i=js.indexOf('var Tune=(function(){'); return new Function(js.slice(i,js.indexOf('if(typeof module',i))+'\nreturn Tune;')(); }
+function replay(meta,x){ const D=C.makeDSP(C.bandOf(meta)); D.init(SR,'all'); D.setCal(meta.cal); if(meta.autocenter) D.set('autocenter',1);
+  const sh=(meta.tune&&meta.tune.shifts)||[], o=[]; let j=0;
+  for(let k=0;k<Math.floor(x.length/N);k++){ while(j<sh.length&&sh[j][0]<=k){ D.shift(sh[j][1]); j++; } const r=D.frame(x.subarray(k*N,(k+1)*N)); if(r) o.push(Object.assign({t:(k+1)*N/SR},r)); }
+  return o; }
+function analyse(meta,x){ const rows=replay(meta,x);
   const mk=meta.marks||{}, tP=mk.play!==undefined?mk.play/SR:null, tO=mk.over!==undefined?mk.over/SR:x.length/SR, m=meta.map;
   // поле (с 0.39k): путь ракетки на поле; сбоку — не зеркалится (ладонь дальше — ракетка выше при любом разъёме)
   const F=meta.field||'classic', G={classic:[0.09,0.82],twin:[0.04,0.42],funnel:[0.29,0.42],side:[0.09,0.82]}[F]||[0.09,0.82], port=F==='side'?'right':meta.port, fx=x=>G[0]+G[1]*(x-0.09)/0.82;
-  const X=r=>{ let f=Math.max(0,Math.min(1,(r.height-m.lo)/(m.hi-m.lo))); if(port==='left') f=1-f; return 0.09+0.82*f; };
+  const TU=meta.tune?tuneMod():null, TT=meta.tune?{field:meta.tune.field}:null, frac=h=>TT?TU.fracOf(TT,h):(h-m.lo)/(m.hi-m.lo);
+  const X=r=>{ let f=Math.max(0,Math.min(1,frac(r.height))); if(port==='left') f=1-f; return 0.09+0.82*f; };
   const fl=rows.filter(r=>tP!==null&&r.t>=tP&&r.t<tO), vis=fl.length?100*fl.filter(r=>r.present).length/fl.length:NaN, xs=fl.filter(r=>r.present).map(X), xf=xs.map(fx);
   let jit=NaN; if(xf.length>80){ const k=31,h=15,d=[]; for(let i=h;i<xf.length-h;i++){ let s=0; for(let j=i-h;j<=i+h;j++) s+=xf[j]; d.push(xf[i]-s/k); } jit=Math.sqrt(d.reduce((u,v)=>u+v*v,0)/d.length); }
   const edge=xs.length?100*xs.filter(v=>v<=0.0905||v>=0.9095).length/xs.length:NaN;
@@ -22,14 +29,14 @@ function analyse(meta,x){ const D=C.makeDSP(C.bandOf(meta)); D.init(SR,'all'); D
   // сверка с телефоном: ракетка по кадрам экрана той же функцией и настройками; шаг экрана ~1/60 с — с ускорением сверка приблизительная
   // (запись 0.39g с «плавностью» так не сверяется — там другой фильтр)
   const c=meta.ctl||{}, lock=!!c.lock, pix=!!c.pix, mag=!!c.mag, step=stepper(meta), byF=new Map(rows.map(r=>[Math.round(r.t*SR/N),r])), dd=[], S={p:null,last:null,v:0,q:null};
-  st.forEach(s=>{ const r=byF.get(s[0])||byF.get(s[0]-1); if(!(r&&r.present&&s[4])){ S.last=null; return; } const px=fx(step(S,r.height,1/60,m,port,lock,pix)); dd.push(Math.abs(px-s[1])); }); dd.sort((a,b)=>a-b);
+  st.forEach(s=>{ const r=byF.get(s[0])||byF.get(s[0]-1); if(!(r&&r.present&&s[4])){ S.last=null; return; } const px=fx(step(S,r.height,frac(r.height),1/60,port,lock,pix)); dd.push(Math.abs(px-s[1])); }); dd.sort((a,b)=>a-b);
   const magOn=mag?100*st.filter(s=>Math.abs(s[5]||0)>0.005).length/st.length:0;
   // дрожь ракетки на экране — по журналу (что видел игрок), кадры экрана ~60 в секунду, отклонение от среднего за 0,5 с
   const sx=st.filter(s=>s[4]).map(s=>s[1]); let jitS=NaN; if(sx.length>80){ const k=31,h=15,d=[]; for(let i=h;i<sx.length-h;i++){ let a=0; for(let j=i-h;j<=i+h;j++) a+=sx[j]; d.push(sx[i]-a/k); } jitS=Math.sqrt(d.reduce((u,v)=>u+v*v,0)/d.length); }
-  return {field:F,lock,pix,mag,magOn,range:c.range,jitS,vis,jit,edge,dur:tP!==null?tO-tP:0,paddle:ev.filter(e=>e[1]==='paddle').length,bricks:ev.filter(e=>e[1]==='brick').length,miss,match:dd.length?dd[dd.length>>1]:NaN,span:m.hi-m.lo,waveN:m.n}; }
+  return {tuned:!!meta.tune,field:F,lock,pix,mag,magOn,range:c.range,jitS,vis,jit,edge,dur:tP!==null?tO-tP:0,paddle:ev.filter(e=>e[1]==='paddle').length,bricks:ev.filter(e=>e[1]==='brick').length,miss,match:dd.length?dd[dd.length>>1]:NaN,span:m.hi-m.lo,waveN:m.n}; }
 function report(name,meta,x){ const R=analyse(meta,x), near=R.miss.filter(v=>v<0.14).length;
   console.log(`\n== ${name} == | счёт ${meta.score}, уровень ${meta.level}, игра ${R.dur.toFixed(0)} с | поле ${meta.field||'classic'} | разъём ${meta.port==='left'?'слева':'справа'} | зонд: запас ${meta.probe&&meta.probe.snr_db?meta.probe.snr_db.toFixed(1):'—'} дБ`);
-  console.log(`  вся ширина — ${R.span.toFixed(0)} мм хода ладони (взмахов ${R.waveN} кадров) | ладонь видна ${R.vis.toFixed(1)}% | дрожь по сонару ${(R.jit*100).toFixed(2)}% поля, на экране ${(R.jitS*100).toFixed(2)}% (ход ${R.range?R.range/10+' см':'по взмахам'}, замок ${R.lock?'вкл':'выкл'}, ретро-пиксели ${R.pix?'вкл':'выкл'}, магнит ${R.mag?'вкл — тянул '+R.magOn.toFixed(0)+'% времени':'выкл'}) | у краёв ${R.edge.toFixed(1)}% | прогон против телефона ${(R.match*100).toFixed(2)}%${R.lock?' (приблизительно)':''}`);
+  console.log(`  весь путь — ${R.span.toFixed(0)} мм хода ладони | ладонь видна ${R.vis.toFixed(1)}% | дрожь по сонару ${(R.jit*100).toFixed(2)}% поля, на экране ${(R.jitS*100).toFixed(2)}% (ход ${R.tuned?'по взмахам, как в Sonaroids':R.range?R.range/10+' см':'по взмахам'}, замок ${R.lock?'вкл':'выкл'}, ретро-пиксели ${R.pix?'вкл':'выкл'}, магнит ${R.mag?'вкл — тянул '+R.magOn.toFixed(0)+'% времени':'выкл'}) | у краёв ${R.edge.toFixed(1)}% | прогон против телефона ${(R.match*100).toFixed(2)}%${R.lock?' (приблизительно)':''}`);
   console.log(`  отбито ${R.paddle}, кирпичей ${R.bricks}, промахов ${R.miss.length}: ракетка была от мяча ${R.miss.map(v=>(v*100).toFixed(0)+'%').join(', ')||'—'} ширины (близко, < 14%: ${near})`);
   return R; }
 module.exports={analyse,report};

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Сборка приложения из частей src/ в app/sonar_lab3.html.
-Порядок частей важен: 00 открывает страницу, 01 открывает <script> и задаёт AudioWorklet,
+Порядок частей важен (с 0.39l подстройка по взмахам Tune берётся прямо из игры — ../../src/12_tune.js, для Арканоида): 00 открывает страницу, 01 открывает <script> и задаёт AudioWorklet,
 02 и 03 — модули верхнего уровня (DSP2, Game), 04–09 — одна общая обёртка (function(){ ... })(),
 которую закрывает 09 вместе с </script></body></html>.
 Запуск:  python3 build.py            — собрать в app/sonar_lab3.html
@@ -8,7 +8,7 @@
 """
 import os, sys, re, subprocess, tempfile
 HERE=os.path.dirname(os.path.abspath(__file__))
-ORDER=['00_head.html', '01_worklet.js', '02_dsp.js', '03_game_core.js', '04_audio_engine.js', '05_recorder.js', '06_side_pick.js', '07_calibration.js', '08_wiring.js', '085_right.js', '086_ark.js', '09_game_ui_log.js']
+ORDER=['00_head.html', '01_worklet.js', '02_dsp.js', '03_game_core.js', '04_audio_engine.js', '05_recorder.js', '06_side_pick.js', '07_calibration.js', '08_wiring.js', '085_right.js', '../../src/12_tune.js', '086_ark.js', '09_game_ui_log.js']
 def build():
     return "".join(open(os.path.join(HERE,'src',f),encoding='utf-8').read() for f in ORDER)
 def check_js(html):

@@ -38,7 +38,7 @@ var SCRIPT_FIST=[
 ];
 var twoVar='two'; try{ if(localStorage.getItem('sonar_two_var')==='fist') twoVar='fist'; }catch(e){}
 function twoVarLabel(){ el('twoVar').textContent='Вариант: '+(twoVar==='fist'?'кулак и ладонь':'две ладони'); }
-var TWO_LO=40, TWO_HI=220;
+var TWO_LO=40, TWO_HI=250;   /* 0.39s: до 25 см — для «ближней и дальней руки» */
 function twoDraw(L,R){ var cv=el('twC'); if(!cv||!cv.getContext) return; var dpr=Math.min(2,window.devicePixelRatio||1), w=cv.clientWidth||360, h=cv.clientHeight||300;
   if(cv.width!==Math.round(w*dpr)||cv.height!==Math.round(h*dpr)){ cv.width=Math.round(w*dpr); cv.height=Math.round(h*dpr); }
   var c=cv.getContext('2d'), W=cv.width, H=cv.height, top=0.06*H, bot=0.94*H, Y=function(v){ return top+(v-TWO_LO)/(TWO_HI-TWO_LO)*(bot-top); };

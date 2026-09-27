@@ -145,6 +145,7 @@ function showDone(pk,pr){
   kv('длительность',(recMeta.samples/fs).toFixed(1)+' с');
   kv('разрывов потока',recMeta.gaps,recMeta.gaps===0?'good':'bad');
   if(recMeta.kind==='right-portrait'){ var up2=recMeta.orientation.h>recMeta.orientation.w; kv('экран',up2?'вертикально':'горизонтально — поверни и запиши заново',up2?'good':'bad'); }
+  else if(recMeta.kind==='depth-portrait'){ var up4=recMeta.orientation.h>recMeta.orientation.w; kv('экран',up4?'вертикально':'горизонтально — запиши заново',up4?'good':'bad'); kv('широкий зонд',recMeta.audible?'слышно':'не слышно',recMeta.audible?'bad':'good'); }
   else if(recMeta.kind==='stereo-portrait'){ var dd=recMeta.diff; kv('каналов от браузера',String(recMeta.mic.nch||'—'),recMeta.mic.nch>=2?'good':'bad'); kv('каналы',dd?(dd.same?'одинаковые':'разные, сходство '+dd.corr.toFixed(3)):'—',dd&&!dd.same?'good':'bad'); }
   else if(recMeta.kind==='two-portrait'){ var up3=recMeta.orientation.h>recMeta.orientation.w; kv('экран',up3?'вертикально':'горизонтально — положи вертикально и запиши заново',up3?'good':'bad'); }
   else if(recMeta.kind==='dual-landscape'){ kv('разъём',recMeta.port==='right'?'справа':recMeta.port==='left'?'слева':'не знаю',recMeta.port?'good':'bad'); }

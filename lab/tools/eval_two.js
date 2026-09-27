@@ -10,15 +10,18 @@
    Запуск: node eval_two.js запись.wav [...] | node eval_two.js --synth — синтетическая запись по сценарию. */
 const C=require('./common'), fs=require('fs'), path=require('path');
 const SR=48000, N=512, FR=SR/N, MMS=343e3/SR/2;          // мм расстояния на отсчёт задержки (туда-обратно)
-function probeSpec(flo){ const df=SR/N, kLo=Math.ceil(flo/df), kHi=Math.floor(20500/df), ks=[]; for(let k=kLo;k<=kHi;k++) ks.push(k);
+function probeSpec(flo,fhi){ const df=SR/N, kLo=Math.ceil(flo/df), kHi=Math.floor((fhi||20500)/df), ks=[]; for(let k=kLo;k<=kHi;k++) ks.push(k);
   const M=ks.length, pr=new Float64Array(N); for(let n=0;n<N;n++){ let s=0; for(let q=0;q<M;q++) s+=Math.cos(2*Math.PI*ks[q]*n/N+Math.PI*q*q/M); pr[n]=s; }
   return ks.map(k=>{ let re=0,im=0; for(let n=0;n<N;n++){ re+=pr[n]*Math.cos(2*Math.PI*k*n/N); im-=pr[n]*Math.sin(2*Math.PI*k*n/N); } return {k,re,im}; }); }
 /* движущееся эхо по расстоянию (общая часть; её же берёт eval_stereo.js для каждого канала); t0 — задержка прямого сигнала (можно задать) */
-function motion(meta,x,t0fix){ const P=probeSpec((meta.probe&&meta.probe.f_lo)||18300), M=P.length, F=Math.floor(x.length/N);
+/* band — [от, до] Гц: взять только часть частот зонда (широкий зонд «ближней и дальней руки» можно разобрать и как узкий);
+   win — окно Ханна по частотам: боковые лепестки ниже (сильное эхо ближней руки меньше заслоняет дальнюю), главный — шире */
+function motion(meta,x,t0fix,band,win){ const pr0=meta.probe||{}; let P=probeSpec(pr0.f_lo||18300,pr0.f_hi||20500); if(band) P=P.filter(p=>p.k*SR/N>=band[0]&&p.k*SR/N<=band[1]);
+  const M=P.length, F=Math.floor(x.length/N), WQ=Float64Array.from({length:M},(_,q)=>win?0.5-0.5*Math.cos(2*Math.PI*(q+0.5)/M):1);
   const cs=P.map(p=>Float64Array.from({length:N},(_,n)=>Math.cos(2*Math.PI*p.k*n/N))), sn=P.map(p=>Float64Array.from({length:N},(_,n)=>Math.sin(2*Math.PI*p.k*n/N)));
   // отклик по частотам, делённый на зонд
   const Hr=[],Hi=[]; for(let f=0;f<F;f++){ const o=f*N, hr=new Float64Array(M), hi=new Float64Array(M);
-    for(let q=0;q<M;q++){ let re=0,im=0; const c=cs[q], s=sn[q]; for(let n=0;n<N;n++){ const v=x[o+n]; re+=v*c[n]; im-=v*s[n]; } const pr=P[q].re, pi=P[q].im, d=pr*pr+pi*pi; hr[q]=(re*pr+im*pi)/d; hi[q]=(im*pr-re*pi)/d; }
+    for(let q=0;q<M;q++){ let re=0,im=0; const c=cs[q], s=sn[q]; for(let n=0;n<N;n++){ const v=x[o+n]; re+=v*c[n]; im-=v*s[n]; } const pr=P[q].re, pi=P[q].im, d=pr*pr+pi*pi; hr[q]=WQ[q]*(re*pr+im*pi)/d; hi[q]=WQ[q]*(im*pr-re*pi)/d; }
     Hr.push(hr); Hi.push(hi); }
   // прямой сигнал — задержка пика отклика по пустой комнате (первые 2 с)
   const TAU=[]; for(let t=0;t<N;t+=0.25) TAU.push(t); const e0=Math.min(F,Math.round(2*FR)), avr=new Float64Array(M), avi=new Float64Array(M);

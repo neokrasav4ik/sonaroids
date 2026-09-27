@@ -8,8 +8,8 @@ const C=require('./common'), T=require('./eval_two'), path=require('path');
 const SR=48000, N=512, FR=SR/N;
 function split(x,ch){ if(ch!==2) return [x,x]; const n=x.length>>1, a=new Float32Array(n), b=new Float32Array(n); for(let i=0;i<n;i++){ a[i]=x[2*i]; b[i]=x[2*i+1]; } return [a,b]; }
 function analyse(meta,x){ const [a,b]=split(x,meta.channels||1); let sa=0,sb=0,sab=0,dd=0; for(let i=0;i<a.length;i++){ sa+=a[i]*a[i]; sb+=b[i]*b[i]; sab+=a[i]*b[i]; dd+=(a[i]-b[i])**2; }
-  const same=dd<1e-12*a.length, corr=sab/Math.sqrt(sa*sb||1e-30), db=10*Math.log10((sb||1e-30)/(sa||1e-30));
-  const res={same,corr,db,phases:[]}; if(same) return res;
+  const silent=sa===0||sb===0, same=silent||dd<1e-12*a.length, corr=sab/Math.sqrt(sa*sb||1e-30), db=10*Math.log10((sb||1e-30)/(sa||1e-30));
+  const res={same,silent,corr,db,phases:[]}; if(same) return res;
   const A=T.motion(meta,a), B=T.motion(meta,b,A.t0), B0=T.motion(meta,b); res.t0a=A.t0; res.t0b=B0.t0; const dDir=(B0.t0-A.t0)*343e3/SR/2;   // мм: разница прямого сигнала
   const mk=meta.marks||{}, keys=Object.keys(mk).sort((p,q)=>mk[p]-mk[q]), nR=A.nR, R=A.R;
   keys.forEach((k,i)=>{ const f0=Math.round(mk[k]/N+0.8*FR), f1=Math.round((i+1<keys.length?mk[keys[i+1]]:x.length/(meta.channels||1))/N-0.3*FR); if(f1-f0<20) return;
@@ -25,7 +25,7 @@ function analyse(meta,x){ const [a,b]=split(x,meta.channels||1); let sa=0,sb=0,s
 const NAME={empty:'пусто',L:'ладонь слева',R:'ладонь справа',T:'за верхним торцом',B:'перед разъёмом',away:'руки нет'};
 function report(name,meta,x){ const r=analyse(meta,x), mic=meta.mic||{};
   console.log(`\n== ${name} == | браузер: каналов ${mic.nch||'—'}, в настройках ${mic.settings&&mic.settings.channelCount||'—'}${mic.label?', «'+mic.label+'»':''}`);
-  console.log(`  каналы ${r.same?'ОДИНАКОВЫЕ — микрофон один, второй оси нет':'разные'}: сходство ${r.corr.toFixed(3)}, уровень B − A ${r.db.toFixed(1)} дБ${r.same?'':`, прямой сигнал A ${r.t0a.toFixed(2)} / B ${r.t0b.toFixed(2)} отсчёта`}`);
+  console.log(`  каналы${r.silent?': второй ПУСТОЙ (одни нули) — браузер отдал один микрофон, второй оси нет':r.same?' ОДИНАКОВЫЕ — микрофон один, второй оси нет':' разные'}: сходство ${r.corr.toFixed(3)}, уровень B − A ${r.db.toFixed(1)} дБ${r.same?'':`, прямой сигнал A ${r.t0a.toFixed(2)} / B ${r.t0b.toFixed(2)} отсчёта`}`);
   if(r.same) return r;
   r.phases.forEach(p=>console.log(`  ${(NAME[p.k]||p.k).padEnd(20)} путь B − A ${p.d.med.toFixed(0).padStart(4)} мм (${p.d.lo.toFixed(0)}…${p.d.hi.toFixed(0)}) | сила B − A ${p.l.med.toFixed(1).padStart(5)} дБ (${p.l.lo.toFixed(1)}…${p.l.hi.toFixed(1)}) | окон ${p.n}`));
   console.log(`  ВЫВОД: слева/справа — ${r.lr.path||r.lr.level?'РАЗЛИЧИМЫ ('+[r.lr.path?'по пути':'',r.lr.level?'по силе':''].filter(Boolean).join(', ')+')':'не различимы'}; за торцом/перед разъёмом — ${r.tb.path||r.tb.level?'различимы ('+[r.tb.path?'по пути':'',r.tb.level?'по силе':''].filter(Boolean).join(', ')+')':'не различимы'}`);

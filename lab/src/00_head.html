@@ -161,7 +161,7 @@
   </div>
   <div class="col btns g2">
     <button id="goGame" class="big">Играть</button>
-    <button id="goStereo" class="ghost">Стереомикрофон (проба)</button>
+    <button id="goDepth" class="ghost">Ближняя и дальняя рука</button>
     <button id="goTwo" class="ghost">Две ладони (проба)</button>
     <button id="go_race" class="ghost">Трасса (прототип)</button>
     <button id="go_slalom" class="ghost">Слалом (прототип)</button>
@@ -180,6 +180,7 @@
     <p class="small">Записи по метке (16 с или 1,5 мин) — на главном экране: присылаешь WAV, я проверяю механику на твоём сигнале.</p>
   </div>
   <div class="col btns g2">
+    <button id="goStereo" class="ghost">Стереомикрофон (проба)</button>
     <button id="go_bombs" class="ghost">Ловец бомб (прототип)</button>
     <button id="go_cave" class="ghost">Пещера (прототип)</button>
     <button id="goRecSide" class="ghost">Запись вбок (вертикально)</button>
@@ -365,8 +366,21 @@
 
 <div class="screen hidden" id="recTwo">
   <div id="twHead"><div id="twSay"></div><div id="twSub"></div><div id="twClock"></div></div>
+  <div id="twAsk" class="row hidden"><button id="twYes" class="ghost">Слышу писк</button><button id="twNo" class="ghost">Не слышу</button></div>
   <canvas id="twC"></canvas>
 </div>
+
+<div class="screen hidden" id="depthIntro"><div class="two">
+  <div class="col">
+    <h1>Ближняя и дальняя рука</h1>
+    <p>Один микрофон не слышит, где рука — слева или справа, но слышит, насколько далеко. Правило: <b>одна рука работает близко к телефону (6–10 см), другая — далеко (16–24 см)</b>. Проверяю, разделит ли сонар два пятна.</p>
+    <p>Телефон лежит вертикально, разъёмом к тебе (поверни его в руке, потом положи). Зонд здесь шире, от 16 кГц — сначала спрошу, слышно ли его. Две метки: выше — ближе к телефону. 61 с.</p>
+  </div>
+  <div class="col btns">
+    <button id="dpGo" class="big">Лежит, начать</button>
+    <button id="dpBack" class="ghost">Назад</button>
+  </div>
+</div></div>
 
 <div class="screen hidden" id="stIntro"><div class="two">
   <div class="col">

@@ -38,7 +38,7 @@ el('sideGo').addEventListener('click',function(){ lastRec='recSide'; runRec('sid
 el('sideBack').addEventListener('click',function(){ show('home'); });
 el('orientOk').addEventListener('click',function(){ goFlow(nextFlow); });
 el('orientBack').addEventListener('click',function(){ show('home'); });
-el('recAgain').addEventListener('click',function(){ if(lastRec==='recSt') toStereo(); else if(lastRec==='recTwo') toTwo(); else if(lastRec==='recRight') toRight(); else if(lastRec==='recSide') toSide(); else if(lastRec==='recDual') viaOrient('dualIntro'); else viaOrient(lastRec); });
+el('recAgain').addEventListener('click',function(){ if(lastRec==='recDepth') toDepth(); else if(lastRec==='recSt') toStereo(); else if(lastRec==='recTwo') toTwo(); else if(lastRec==='recRight') toRight(); else if(lastRec==='recSide') toSide(); else if(lastRec==='recDual') viaOrient('dualIntro'); else viaOrient(lastRec); });
 el('toHome').addEventListener('click',function(){ if(document.body&&document.body.classList) document.body.classList.remove('flip'); show('home'); });
 el('save').addEventListener('click',function(){ var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; document.body.appendChild(a); a.click(); setTimeout(function(){ a.remove(); },1000); });
 el('share').addEventListener('click',function(){ navigator.share({files:[new File([blob],fname,{type:'audio/wav'})],title:fname}).catch(function(){}); });

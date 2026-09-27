@@ -7,14 +7,15 @@
    Модуль отдаёт synthFrame(d,seed) — кадр синтетического микрофона с ладонью на расстоянии d мм (null — ладони нет); им пользуются стенды. */
 const C=require('./common'), path=require('path');
 const SR=48000, N=512;
-let SYN=null;
-function synthInit(){ if(SYN) return SYN; const js=C.appJs(), FLO=+js.match(/F_LO=(\d+)/)[1], df=SR/N, kLo=Math.ceil(FLO/df), kHi=Math.floor(20500/df), ks=[];
+let SYN=null; const SYNB={};
+/* band — [от, до] Гц для другого зонда (0.39s, широкий зонд «ближней и дальней руки»); без него — зонд лабы */
+function synthInit(band){ if(band){ const key=band.join('-'); if(SYNB[key]) return SYNB[key]; } else if(SYN) return SYN; const js=C.appJs(), FLO=band?band[0]:+js.match(/F_LO=(\d+)/)[1], df=SR/N, kLo=Math.ceil(FLO/df), kHi=Math.floor((band?band[1]:20500)/df), ks=[];
   for(let k=kLo;k<=kHi;k++) ks.push(k); const M=ks.length, pr=new Float64Array(N); let mx=0;
   for(let n=0;n<N;n++){ let s=0; for(let q=0;q<M;q++) s+=Math.cos(2*Math.PI*ks[q]*n/N+Math.PI*q*q/M); pr[n]=s; mx=Math.max(mx,Math.abs(s)); }
   for(let n=0;n<N;n++) pr[n]=pr[n]/mx*0.9*0.25;
   const spec=ks.map(k=>{ let re=0,im=0; for(let n=0;n<N;n++){ re+=pr[n]*Math.cos(2*Math.PI*k*n/N); im-=pr[n]*Math.sin(2*Math.PI*k*n/N); } return {k,re,im}; });
   const cosT=ks.map(k=>Float64Array.from({length:N},(_,n)=>Math.cos(2*Math.PI*k*n/N))), sinT=ks.map(k=>Float64Array.from({length:N},(_,n)=>Math.sin(2*Math.PI*k*n/N)));
-  return SYN={spec,cosT,sinT}; }
+  const R0={spec,cosT,sinT}; if(band){ SYNB[band.join('-')]=R0; return R0; } return SYN=R0; }
 /* прямой сигнал, отражение комнаты, ладонь — три точки (середина и края ребра), путь туда-обратно 2·d */
 function synthFrame(d,seed){ const S=synthInit(), out=new Float32Array(N), c=343e3/SR, dDir=37.3;
   const paths=[{d:dDir,a:1},{d:dDir+62,a:0.35}]; if(d!==null) [[0,0.25],[8,0.1],[-6,0.08]].forEach(([o,a])=>paths.push({d:dDir+2*(d+o)/c,a:a*(100/(d+o))}));
@@ -47,7 +48,7 @@ function report(name,meta,x){ const R=analyse(meta,x);
   console.log(`  весь экран — ${R.span.toFixed(0)} мм хода ладони (по взмахам: ${R.waveN} кадров) | ладонь видна в полёте ${R.vis.toFixed(1)}% | дрожь корабля ${(R.jit*100).toFixed(2)}% ширины | у краёв ${R.edge.toFixed(1)}% | прогон против телефона: ${(R.match*100).toFixed(2)}% ширины`);
   return R; }
 /* несколько отражателей (с 0.39o, «две ладони»): list — [{d: мм, a: сила}], путь туда-обратно 2·d; прямой сигнал и комната как в synthFrame */
-function synthMulti(list,seed){ const S=synthInit(), out=new Float32Array(N), c=343e3/SR, dDir=37.3;
+function synthMulti(list,seed,band){ const S=synthInit(band), out=new Float32Array(N), c=343e3/SR, dDir=37.3;
   const paths=[{d:dDir,a:1},{d:dDir+62,a:0.35}]; list.forEach(p=>{ if(p&&p.d!==null) paths.push({d:dDir+2*p.d/c,a:(p.a||0.25)*(100/p.d)}); });
   for(const p of paths) S.spec.forEach((s,q)=>{ const ang=-2*Math.PI*s.k*p.d/N, cc=Math.cos(ang), sn=Math.sin(ang), re=(s.re*cc-s.im*sn)*2/N*p.a, im=(s.re*sn+s.im*cc)*2/N*p.a, ct=S.cosT[q], st=S.sinT[q];
     for(let n=0;n<N;n++) out[n]+=re*ct[n]-im*st[n]; });

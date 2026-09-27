@@ -36,6 +36,8 @@ SETUP={
 # 26.09: запись вбок идёт с телефоном вертикально — её экраны проверяю в портрете
 PSIZES=[(320,568,'SE-1'),(375,667,'SE'),(390,844,'14'),(430,932,'Pro Max')]
 PSETUP={
+ 'depthIntro':"lastRec='recDepth'; show('depthIntro');",
+ 'depthAsk':"lastRec='recDepth'; show('recTwo'); el('twAsk').classList.remove('hidden'); el('twSay').textContent='Слышишь писк?'; el('twSub').textContent='Сейчас играет зонд пошире — от 16 кГц. Прислушайся пару секунд.'; twoDraw(null,null);",
  'stIntro':"lastRec='recSt'; show('stIntro');",
  'recSt':"lastRec='recSt'; show('recSt'); el('stSay').textContent='Ладонь справа'; el('stSub').textContent='Так же, с правой стороны. Качай вверх-вниз.'; el('stClock').textContent='11.2 / 30 с'; el('stInfo').innerHTML='каналов от браузера: <b>2</b> · в настройках: 2<br>каналы <b class=\"good\">разные</b>: сходство 0.912, разница уровней -3.1 дБ';",
  'twoIntro':"lastRec='recTwo'; show('twoIntro');",

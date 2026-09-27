@@ -8,4 +8,6 @@ const {meta,x}=E.synth(); const r=E.analyse(meta,x); const g=k=>r.phases.find(p=
 need(!r.same&&r.lr.path&&r.lr.level&&g('L').d.med>10&&g('R').d.med<-10,`второй микрофон вбок: слева путь B − A ${g('L').d.med.toFixed(0)} мм, справа ${g('R').d.med.toFixed(0)} мм — различимы`);
 const y=new Float32Array(x.length); for(let i=0;i<x.length;i+=2){ y[i]=x[i]; y[i+1]=x[i]; }
 const r2=E.analyse(meta,y); need(r2.same&&r2.phases.length===0,'один микрофон двумя одинаковыми каналами — «одинаковые», второй оси нет');
+// iPhone 27.09 14:41: два канала, второй — одни нули
+const z=new Float32Array(x.length); for(let i=0;i<x.length;i+=2) z[i]=x[i]; const r3=E.analyse(meta,z); need(r3.silent&&r3.same&&r3.phases.length===0,'второй канал пустой (как у iPhone) — «пустой», второй оси нет');
 console.log(bad?'ИТОГ: ПРОВАЛ':'ИТОГ: ok'); process.exitCode=bad?1:0;

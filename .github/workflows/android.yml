@@ -1,0 +1,99 @@
+# Builds the Android app (android/) and publishes it as the latest GitHub release: sonaroids.apk + app.json (v0.41).
+# The app is a thin shell over https://sonaroids.app/play/ — the game comes from the site, so a site update needs no new APK.
+# A new APK is built only when android/ changed since the last release (its hash is kept in app.json), or when started by hand.
+# The installed app reads app.json of the latest release on every launch and offers the new APK.
+#
+# Signing: with the repository secrets ANDROID_KEYSTORE_B64 (base64 of a .jks with the key alias "sonaroids") and ANDROID_KEYSTORE_PASS
+# every build is signed with the same key, and a new APK installs over the old one. Without them the build is signed with a throwaway
+# debug key — installing it needs the old app removed first.
+#
+# NOTE: the unpack job does not take files in .github/ from a zip — this file is added to the repository by hand, once.
+name: Android app
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Build even if android/ did not change'
+        type: boolean
+        default: true
+  workflow_run:
+    workflows: ['Unpack uploaded zip']
+    types: [completed]
+  push:
+    branches: [main]
+    paths: ['android/**']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Did android/ change since the last release?
+        id: need
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          h=$(find android -type f -not -path '*/build/*' -not -name '*.jks' | sort | xargs sha256sum | sha256sum | cut -c1-16)
+          echo "hash=$h" >> "$GITHUB_OUTPUT"
+          old=$(gh release download --pattern app.json --output - 2>/dev/null | python3 -c 'import sys,json; print(json.load(sys.stdin).get("src",""))' 2>/dev/null || true)
+          echo "android/ now $h, in the last release: ${old:-none}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.force }}" = "true" ]; then echo "go=yes" >> "$GITHUB_OUTPUT";
+          elif [ "$h" != "$old" ]; then echo "go=yes" >> "$GITHUB_OUTPUT"; else echo "go=no" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: actions/setup-java@v4
+        if: steps.need.outputs.go == 'yes'
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+        if: steps.need.outputs.go == 'yes'
+        with:
+          gradle-version: '8.7'
+
+      - name: Signing key
+        if: steps.need.outputs.go == 'yes'
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KS" ]; then echo "$KS" | base64 -d > android/app/release.jks; echo "signed with the repository key";
+          else echo "::warning::no ANDROID_KEYSTORE_B64 secret — signed with a throwaway debug key (remove the old app before installing)"; fi
+
+      - name: Build the APK
+        if: steps.need.outputs.go == 'yes'
+        env:
+          ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+        run: |
+          set -eu
+          v=$(cat VERSION)
+          gradle -p android assembleRelease -PappVersionCode=${{ github.run_number }} -PappVersionName="$v.${{ github.run_number }}" --no-daemon
+          mkdir -p out
+          cp android/app/build/outputs/apk/release/app-release.apk out/sonaroids.apk
+          rm -f android/app/release.jks
+          url="https://github.com/${{ github.repository }}/releases/latest/download/sonaroids.apk"
+          printf '{"versionCode":%s,"versionName":"%s","url":"%s","src":"%s","date":"%s"}\n' "${{ github.run_number }}" "$v.${{ github.run_number }}" "$url" "${{ steps.need.outputs.hash }}" "$(date -u +%FT%TZ)" > out/app.json
+          cat out/app.json
+
+      - name: Publish the release
+        if: steps.need.outputs.go == 'yes'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          v=$(cat VERSION)
+          gh release create "android-${{ github.run_number }}" out/sonaroids.apk out/app.json --target main --latest \
+            --title "Sonaroids for Android $v.${{ github.run_number }}" \
+            --notes "The Android app: a shell over sonaroids.app/play/ (the game updates from the site by itself). Install sonaroids.apk on the phone."

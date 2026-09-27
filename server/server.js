@@ -135,7 +135,7 @@ function postGame(b,now){
   return [200,{ok:true,score:g.score,level:g.level,ranks,here,listed,named}];
 }
 /* v0.29: how getting ready went — from every player, also those who never get to play; for server/stats.js only */
-const SETUP_RE=/^(caught|nocatch|quiet|noprobe|error|nomic|noaudio|lost)$/;
+const SETUP_RE=/^(caught|nocatch|quiet|loud|noprobe|error|nomic|noaudio|lost)$/;
 function postSetup(b,now){
   if(typeof b.pid!=='string'||!/^[0-9a-f]{32}$/.test(b.pid)) return [400,{ok:false,error:'pid'}];
   if(typeof b.result!=='string'||!SETUP_RE.test(b.result)) return [400,{ok:false,error:'result'}];

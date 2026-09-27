@@ -113,16 +113,32 @@ var Sonar=(function(){
   }
   function waitReady(){ return new Promise(function(r){ (function chk(){ var i=DSP2.info(); if(i.noProbe) return r('noprobe'); if(i.ready) return r('ok'); setTimeout(chk,60); })(); }); }
   /* getting ready, about 3 s with the hand away: side, probe level, the empty room. Resolves {ok} or {ok:false, why:'quiet'|'noprobe'} */
-  function prepare(onStage){
-    active=false; last=null; lost=false; PROBE_G=0.25;
+  /* v0.45: the media volume. The probe level per unit of our gain (PROBE_LVL) is, in effect, how loud the phone plays. The phones that
+     steered well had 0–14 dB (iPhone, Mi 9 Lite, two Android browsers); the maintainer's Redmi Note 10S in the app, with the media volume
+     pushed to 60%, had 34–37 dB — the speaker's own sound buried the palm's echo — and on it 20–30% plays fine, higher "swings".
+     So the app starts at 25% (if the volume is outside 20–30%) and moves it only when the measurement says so: above LOUD_LVL it turns down
+     towards VOL_TARGET (not below 2/15, the game's sounds must stay audible), below VOL_TARGET−VOL_OK it turns up (not above VOL_UP);
+     up to 4 tries, ~4 dB per 1/15 of the range. A browser cannot set the volume: above LOUD_LVL it asks to turn it down, as it asks
+     to turn it up when too quiet. */
+  var VOL_TARGET=10, VOL_OK=5, LOUD_LVL=24, VOL_DB=60, VOL_MIN=0.13, VOL_UP=0.5, volLog=[];
+  function fitVolume(vol,adj){ var n=0; volLog=[];
+    function step(L){ var v=vol.get(), lv=PROBE_LVL-adj; volLog.push({v:Math.round(v*100)/100,lvl:Math.round(PROBE_LVL*10)/10});
+      if(n>=4||(lv<=LOUD_LVL&&lv>=VOL_TARGET-VOL_OK)) return L;
+      var nv=Math.max(lv>LOUD_LVL?VOL_MIN:v,Math.min(lv>LOUD_LVL?v:VOL_UP,v+(VOL_TARGET-lv)/VOL_DB)); if(Math.abs(nv-v)<0.034) return L;
+      n++; vol.set(nv); PROBE_G=0.25; setProbe('single-'+chan); return sleep(250).then(autoLevel).then(step); }
+    return step; }
+  function prepare(onStage,vol){
+    active=false; last=null; lost=false; PROBE_G=0.25; volLog=[];
     onStage&&onStage('side');
-    return pickChannel().then(function(){ onStage&&onStage('level'); return autoLevel(); }).then(function(L){
+    var adj0=function(){ return 10*Math.log10((Math.floor(F_HI*N/fs)-Math.ceil(BANDS.normal*N/fs)+1)/(kHi-kLo+1)); };
+    return pickChannel().then(function(){ onStage&&onStage('level'); return autoLevel(); }).then(function(L){ return vol?fitVolume(vol,adj0())(L):L; }).then(function(L){
       // "barely heard": the probe itself is ~19 dB quieter than on a phone with sound on (the media volume at zero; on iPhone the silent switch
       // does not mute it). Not by signal-to-noise: a noisy room (24 Sep: 33 dB worked fine) and a palm moving nearby (its echo counts as "noise";
       // 24 Sep: after a game over the next start said "too quiet") both lower it. A probe too weak to read is caught by DSP2 ('noprobe')
       // the wide probe spreads the same power over about twice as many tones: each is ~3 dB quieter, so the bar moves with it
       var lvlAdj=10*Math.log10((Math.floor(F_HI*N/fs)-Math.ceil(BANDS.normal*N/fs)+1)/(kHi-kLo+1));
       if(PROBE_LVL<QUIET_LVL+lvlAdj){ setProbe('off'); return {ok:false,why:'quiet',snr:L.snr,level:PROBE_LVL}; }
+      if(!vol&&PROBE_LVL>LOUD_LVL+lvlAdj){ setProbe('off'); return {ok:false,why:'loud',snr:L.snr,level:PROBE_LVL}; }
       DSP2.set('flo',band==='wide'?F_LO:null); DSP2.init(fs,'all'); DSP2.setCal(curCal()); DSP2.set('autocenter',1); active=true; onStage&&onStage('room');
       return waitReady().then(function(st){ if(st==='noprobe'){ active=false; setProbe('off'); return {ok:false,why:'noprobe'}; } return {ok:true,snr:L.snr}; });
     });
@@ -132,7 +148,7 @@ var Sonar=(function(){
   var sim=null;
   function simulate(o){ sim=o; fs=o.fs||48000; var df=fs/N; kLo=Math.ceil(F_LO/df); kHi=Math.floor(F_HI/df); kc=Math.floor((kLo+kHi)/2); }
   function simBoot(){ if(booted) return Promise.resolve(); booted=true; var i=0, t0=performance.now(); lastSeq=-1;
-    simIv=setInterval(function(){ var due=Math.floor((performance.now()-t0)/1000*fs/N); if(simStalled){ i=due; return; } while(i<due){ onFrame({data:{f:sim.source(i),s:i}}); i++; } },10);
+    simIv=setInterval(function(){ var due=Math.floor((performance.now()-t0)/1000*fs/N); if(simStalled){ i=due; return; } while(i<due){ onFrame({data:{f:sim.source(i,PROBE_G),s:i}}); i++; } },10);
     return Promise.resolve(); }
   function pause(){ if(ctx){ setProbe('off'); } }
   function resume(){ if(ctx&&active){ if(ctx.state!=='running') ctx.resume().catch(function(){}); setProbe('single-'+chan); } }
@@ -161,6 +177,6 @@ var Sonar=(function(){
     peak:function(){ return peak; },
     /* what the browser really gave for the microphone: on Android the echo/noise/gain processing may stay on despite our request */
     micSettings:function(){ try{ var t=stream&&stream.getAudioTracks()[0]; if(!t) return null; var s=t.getSettings(), o={}; ['autoGainControl','echoCancellation','noiseSuppression','sampleRate','channelCount','latency','deviceId'].forEach(function(k){ if(s[k]!==undefined) o[k]=k==='deviceId'?String(s[k]).slice(0,8):s[k]; }); o.label=t.label; return o; }catch(e){ return null; } },
-    info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,probe_level:PROBE_LVL,f_lo:F_LO,band:band,cal:curCal(),gaps:gaps,booted:booted}; },
+    info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,probe_level:PROBE_LVL,vol_fit:volLog.slice(),f_lo:F_LO,band:band,cal:curCal(),gaps:gaps,booted:booted}; },
     chan:function(){ return chan; }, ctx:function(){ return ctx; }};
 })();

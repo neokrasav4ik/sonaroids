@@ -4,7 +4,7 @@
    median probe signal-to-noise, how often the band equalizer was on, how often the browser left noise suppression / echo cancelling on.
    Games from before v0.29 have no phone data; they are counted in the last row.
    Then the same kinds of phone by how getting ready went (every player, also those who never got to play):
-   caught — the palm range was caught; nocatch — left the wave step without it; quiet / noprobe — the probe too weak or not heard;
+   caught — the palm range was caught; nocatch — left the wave step without it; quiet / noprobe — the probe too weak or not heard; loud — the phone plays too loud (v0.45, browsers only);
    nomic — no microphone; lost — the probe went away mid-game; flips — the game suggested the other end of the phone. */
 const path=require('node:path');
 let DatabaseSync; try{ ({DatabaseSync}=require('node:sqlite')); }catch(e){ console.error('Node 22.13 or newer is needed (node:sqlite).'); process.exit(1); }
@@ -35,7 +35,7 @@ print(out);
 /* getting ready */
 const hasSetups=db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='setups'").get();
 const su=hasSetups?db.prepare('SELECT player, result, t, flips, dev FROM setups WHERE created>=?').all(Date.now()-days*86400000):[];
-const RES=['caught','nocatch','quiet','noprobe','nomic','noaudio','error','lost'], sg=new Map();
+const RES=['caught','nocatch','quiet','loud','noprobe','nomic','noaudio','error','lost'], sg=new Map();
 for(const r of su){ let d=null; try{ d=r.dev?JSON.parse(r.dev):null; }catch(e){} const k=kindOf(d);
   if(!sg.has(k)) sg.set(k,{n:0,players:new Set(),res:{},tc:[],fl:0}); const g=sg.get(k); g.n++; g.players.add(r.player); g.res[r.result]=(g.res[r.result]||0)+1;
   if(r.result==='caught'&&r.t!==null) g.tc.push(r.t); if(r.flips>0) g.fl++; }

@@ -8,7 +8,7 @@ var lang=store.get('sonaroids_lang',((navigator.language||'').toLowerCase().inde
 function L(k){ return STR[lang][k]||k; }
 var PAUSE=3.5, AWAY_T0=0.6, AWAY_T1=2.8, WAVE_PAUSE=2.5,           // v0.16: more time to take the hand away, and the drawn hand leaves slower (0.6–2.8 s)
  STEPS=['sound','phone','mic','probe','away','wave'];
-var scr=null, scrT=0, clock=0, onboarding=false, direct=false, booted=false, errKind=null;
+var scr=null, scrT=0, clock=0, onboarding=false, direct=false, dirLoud=false, booted=false, errKind=null;
 var handSaved=store.get('sonaroids_hand',''), acoustic=false;
 var prep=null, T=null, caught=false, g=null, acc=0, countT=0, overT=0, shake=0, flash=0, rockSpr={}, best=+store.get('sonaroids_best','0')||0;
 /* own sounds louder than this in the microphone are turned down (v0.19: 0.05, was 0.3). iPhone: peaks 0.007–0.013 with sounds on — never ducks */
@@ -100,7 +100,7 @@ function sTitle(){ sky(DT,0.4); var y=Math.round(LH*0.3);
   for(var i=0;i<3;i++){ var bx=cx0-20+((clock*90+i*40)%120); R(P.bullet,bx,sy,4,1); light(bx,sy,6*K,P.glowB,0.45); }
   column(items,Math.round(LH*0.5));
   say('Sonaroids. '+L('play')); }
-function sSound(){ sky(DT,0.3); titles(L(direct?'volume_direct':'volume'),L('volume_s')); soundVolume(scrT); nextBtn('next',L('next')); stepSquares('sound'); }
+function sSound(){ sky(DT,0.3); titles(L(direct?(dirLoud?'volume_loud':'volume_direct'):'volume'),L('volume_s')); soundVolume(scrT); nextBtn('next',L('next')); stepSquares('sound'); }
 /* v0.41: the Android app (android/, a WebView over this very page) gives a small native helper: media volume, audio route.
    In the browser it does not exist, and nothing changes there */
 var APP=(typeof window!=='undefined'&&window.SonaroidsApp)||null;
@@ -132,7 +132,7 @@ function sAway(){ sky(DT,0.3); var m=handSide()==='left', aw=Math.min(1,Math.max
   ringUI(st==='wait'?scrT/PAUSE:st==='ok'?1:Math.min(0.95,(scrT-PAUSE)/3.2),st);
   if(scrT>=PAUSE&&!prep) startPrepare();
   if(prep&&prep.res){ if(prep.res.ok){ if(scrT-prep.doneT>1.5) toWave(); }       // «the room is quiet» stays for 1.5 s
-    else { direct=true; onboarding=false; go('sound'); } }
+    else { direct=true; dirLoud=prep.res.why==='loud'; onboarding=false; go('sound'); } }
   stepSquares('away'); }
 function sWave(){ sky(DT,0.3); poolFill(1); var m=handSide()==='left', f=handFrac(), live=f!==null;
   // v0.21: tuning stops once the range is caught — the try-out screen shows exactly what the game will use (exploring the edges there widened the field)
@@ -323,11 +323,12 @@ function sRotate(){ lx.fillStyle=P.bg; lx.fillRect(0,0,LW,LH); var y=Math.round(
 /* ── actions ── */
 function startPrepare(){
   prep={res:null,doneT:0}; acoustic=false;
-  // v0.41, the app: «too quiet» is the most common failure (a fifth to two fifths of all tries) — the app can turn the media volume up itself
-  if(APP){ try{ if(APP.getVolume()<0.6) APP.setVolume(0.6); }catch(e){} }
+  // v0.45, the app: the media volume starts at 25% (the maintainer: 20–30% plays fine, higher «swings») and Sonar.prepare moves it until the probe is
+  // as loud as on the phones that steer well; in a browser too loud a phone gets «turn it down» (why 'loud'), as too quiet gets «turn it up»
+  var vol=null; if(APP){ try{ var v0=APP.getVolume(); if(v0<0.2||v0>0.3) APP.setVolume(0.25); vol={get:function(){ return APP.getVolume(); },set:function(v){ APP.setVolume(v); }}; }catch(e){ vol=null; } }
   Sonar.prepare(function(stage){ if(stage==='room'){ var I=Sonar.info();
       Logs.setupStart({kind:'подготовка',cal:I.cal,autocenter:true,tune:'waves',asym:Tune.ASYM,field_auto:true,field_mm:+store.get('sonaroids_field','100')||100,
-        chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,prom:null,sfx:Sfx.state(),started:new Date().toISOString(),app:APP?'sonaroids-android':'sonaroids',native:APP?(function(){ try{ return JSON.parse(APP.info()); }catch(e){ return null; } })():undefined}); } })
+        chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,prom:null,sfx:Sfx.state(),vol_fit:I.vol_fit,started:new Date().toISOString(),app:APP?'sonaroids-android':'sonaroids',native:APP?(function(){ try{ return JSON.parse(APP.info()); }catch(e){ return null; } })():undefined}); } },vol)
   .then(function(r){ prep.res=r; prep.doneT=scrT; if(!r.ok) Board.setup(r.why||'error'); if(r.ok){ acoustic=true; accSide=Sonar.chan(); var o=portOr(); if(o&&!handRel) handRel=accSide===o?'port':'camera'; handSaved=handSide(); store.set('sonaroids_hand',handSaved); } })
   .catch(function(){ prep.res={ok:false,why:'error'}; Board.setup('error'); });
 }

@@ -11,12 +11,14 @@ function makeSimSource(h, opts){
   ks.forEach(function(k){ var re=0,im=0; C[k]=new Float64Array(N); Sn[k]=new Float64Array(N);
     for(var n=0;n<N;n++){ C[k][n]=Math.cos(2*Math.PI*k*n/N); Sn[k][n]=Math.sin(2*Math.PI*k*n/N); re+=pr[n]*C[k][n]; im-=pr[n]*Sn[k][n]; } Pre[k]=re; Pim[k]=im; });
   var dDir=37.3, seed=12345, LEVEL=opts.scale===undefined?0.0141:opts.scale;
-  return function(i){
-    var t=(i+0.5)*N/SR, hh=h(t), paths=[{d:dDir,a:1},{d:dDir+62,a:0.35}], out=new Float32Array(N);
+  /* v0.45: g — the page's probe gain (the probe scales with it, the room noise does not; before, the probe level stood still whatever the gain,
+     so the page read 32 dB per unit of gain); opts.loud() — extra gain of the phone's speaker, for the media volume tests */
+  return function(i,g){
+    var gf=(g===undefined?1:g/0.25)*(opts.loud?opts.loud():1), t=(i+0.5)*N/SR, hh=h(t), paths=[{d:dDir,a:1},{d:dDir+62,a:0.35}], out=new Float32Array(N);
     if(hh!==null) paths.push({d:dDir+2*hh/1000/343*SR,a:0.25});
     paths.forEach(function(p){ ks.forEach(function(k){ var a=-2*Math.PI*k*p.d/N, c=Math.cos(a), sn=Math.sin(a), re=(Pre[k]*c-Pim[k]*sn)*2/N*p.a, im=(Pre[k]*sn+Pim[k]*c)*2/N*p.a;
       var Ck=C[k], Sk=Sn[k]; for(var n=0;n<N;n++) out[n]+=re*Ck[n]-im*Sk[n]; }); });
-    for(n=0;n<N;n++){ seed=(seed*1664525+1013904223)>>>0; out[n]=(out[n]+(seed/4294967296-0.5)*2e-3)*LEVEL;   /* noise ~57 dB under the probe per line, as on the iPhone in a quiet room */ }
+    for(n=0;n<N;n++){ seed=(seed*1664525+1013904223)>>>0; out[n]=(out[n]*gf+(seed/4294967296-0.5)*2e-3)*LEVEL;   /* noise ~57 dB under the probe per line, as on the iPhone in a quiet room */ }
     return out;
   };
 }

@@ -101,9 +101,9 @@ function scene(id,t,f,away,waves,T,lay){
    the one the side buttons change while the game plays; the silent switch does not mute it */
 var SPEAKER=['...11....','..111..1.','11111...1','11111.1.1','11111...1','..111..1.','...11....'];
 function soundVolume(t){ var k=Math.max(3,Math.round(LH/55)), cy=Math.round(LH*0.5), x2=Math.round(LW/2-13*k); bigBlit(SPEAKER,P.text,x2,cy-4*k,k);
-  var lvl=Math.min(5,Math.floor((t%3)*3)+1), bx=x2+11*k;
+  var lvl=Math.min(3,Math.floor((t%3)*3)+1), bx=x2+11*k;   // v0.45: the band marks 20–30% (bars 2–3 of 10), was 30–70%
   for(var j=0;j<10;j++){ var h=Math.round((3+j*1.1)*k*0.6), xb=bx+j*Math.round(k*1.6), yb=cy+3*k-h;
-    if(j>=2&&j<=6) R(P.band,xb-1,yb-1,Math.round(k)+2,h+2); R(j<lvl?P.text:P.line,xb,yb,Math.round(k),h); } }
+    if(j>=1&&j<=2) R(P.band,xb-1,yb-1,Math.round(k)+2,h+2); R(j<lvl?P.text:P.line,xb,yb,Math.round(k),h); } }
 /* draw a picture function into the side canvas and copy it onto the screen, mirrored when the port is on the left */
 function picture(fn,mirror){
   var keep=lx, pcx=pc.getContext('2d'); pcx.clearRect(0,0,LW,LH); lx=pcx; var labels;

@@ -144,3 +144,10 @@ vite.config.ts.timestamp-*
 
 # Python
 __pycache__/
+
+# Android build output (built on GitHub)
+android/.gradle/
+android/build/
+android/app/build/
+android/app/release.jks
+android/local.properties

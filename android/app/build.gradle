@@ -1,0 +1,41 @@
+plugins { id 'com.android.application' }
+
+// versionCode comes from the build number on GitHub (android.yml passes -PappVersionCode); the app compares it with app.json of the latest release
+def vCode = (project.findProperty('appVersionCode') ?: '1') as Integer
+def vName = (project.findProperty('appVersionName') ?: '0.41-dev') as String
+
+android {
+    namespace 'app.sonaroids'
+    compileSdk 34
+    defaultConfig {
+        applicationId 'app.sonaroids'
+        minSdk 24
+        targetSdk 34
+        versionCode vCode
+        versionName vName
+    }
+    // a fixed key from the repository's secrets (android.yml writes it to release.jks); without it the build is signed with a throwaway
+    // debug key, and such an APK can only be installed over itself after removing the old one
+    def ks = file('release.jks')
+    signingConfigs {
+        release {
+            if (ks.exists()) {
+                storeFile ks
+                storePassword System.getenv('ANDROID_KEYSTORE_PASS')
+                keyAlias 'sonaroids'
+                keyPassword System.getenv('ANDROID_KEYSTORE_PASS')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig ks.exists() ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+    lint { checkReleaseBuilds false; abortOnError false }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

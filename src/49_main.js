@@ -88,6 +88,8 @@ function sTitle(){ sky(DT,0.4); var y=Math.round(LH*0.3);
   if(/Android/i.test(navigator.userAgent)) para(L('android'),cx0,y+22,a1-a0-24,P.soft);          // v0.28: the landing page's note, now here
   var vr=freeSide()==='left', vx=vr?LW-SAFE.r-8:SAFE.l+8, vy=LH-SAFE.b-12;
   text(L('version')+' '+VERSION,vx,vy,P.soft,vr?'right':'left');   // for telling uploads apart
+  // v0.41, the app: «check for updates» above the source link — the app's own update (a dialog from the shell) and a fresh page
+  if(APP){ var us=L('app_upd'), uw=PF.width(us), uy=vy-26; text(us,vx,uy,P.band,vr?'right':'left'); BTN.push({id:'appupd',x:Math.max(0,(vr?vx-uw:vx)-6),y:uy-6,w:uw+12,h:PF.CAP+10}); }
   // v0.28: the site opens straight into the game; the source code link moved here from the landing page
   var gs=L('source'), gw=PF.width(gs); text(gs,vx,vy-13,P.soft,vr?'right':'left'); BTN.push({id:'source',x:Math.max(0,(vr?vx-gw:vx)-6),y:vy-19,w:gw+12,h:PF.CAP+10});
   var sy=Math.round(LH*0.62+Math.sin(clock*1.3)*LH*0.08); drawShip(cx0-40,sy,clock,false);
@@ -95,7 +97,10 @@ function sTitle(){ sky(DT,0.4); var y=Math.round(LH*0.3);
   column(items,Math.round(LH*0.5));
   say('Sonaroids. '+L('play')); }
 function sSound(){ sky(DT,0.3); titles(L(direct?'volume_direct':'volume'),L('volume_s')); soundVolume(scrT); nextBtn('next',L('next')); stepSquares('sound'); }
-function inBrowser(){ var ua=navigator.userAgent||'', mob=/iPhone|iPad|iPod|Android/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1), pwa=false;
+/* v0.41: the Android app (android/, a WebView over this very page) gives a small native helper: media volume, audio route.
+   In the browser it does not exist, and nothing changes there */
+var APP=(typeof window!=='undefined'&&window.SonaroidsApp)||null;
+function inBrowser(){ if(APP) return false; var ua=navigator.userAgent||'', mob=/iPhone|iPad|iPod|Android/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1), pwa=false;
   try{ pwa=!!(navigator.standalone||matchMedia('(display-mode: standalone)').matches); }catch(e){} return mob&&!pwa; }
 function sPhone(){ sky(DT,0.3); var m=handSide()==='left';
   picture(function(){ return sceneBoth('phone',scrT,0.5,0,false,clock); },m); titles(L('phone_t'),L(camEnd()?'phone_s_cam':'phone_s'));
@@ -213,7 +218,7 @@ function sPlay(){
 function devInfo(){ var ua=navigator.userAgent||'', ios=/iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1), and=/Android/.test(ua);
   var br=/SamsungBrowser/.test(ua)?'samsung':/YaBrowser|YaApp/.test(ua)?'yandex':/Edg|OPR|OPiOS|EdgiOS/.test(ua)?'other':/FxiOS|Firefox/.test(ua)?'firefox':/CriOS|Chrome/.test(ua)?'chrome':/Safari/.test(ua)?'safari':'other';
   var I=Sonar.info(), D=DSP2.info(), m=Sonar.micSettings()||{}, r=function(v,k){ return typeof v==='number'&&isFinite(v)?Math.round(v*k)/k:undefined; };
-  var pwa=false; try{ pwa=!!(navigator.standalone||matchMedia('(display-mode: standalone)').matches); }catch(e){}
+  var pwa=!!APP; try{ pwa=pwa||!!(navigator.standalone||matchMedia('(display-mode: standalone)').matches); }catch(e){}
   return {os:ios?'ios':and?'android':'other',br:br,pwa:pwa,lang:lang,fs:I.fs,snr:r(I.probe_snr,10),lvl:r(I.probe_level,10),gain:r(I.probe_gain,1000),
     eq:!!D.eq,eq_db:r(D.eq_db,10),relocks:D.relocks,drops:D.drops,side:handRel||undefined,ec:m.echoCancellation,ns:m.noiseSuppression,agc:m.autoGainControl}; }
 Board.devInfo(devInfo);
@@ -306,9 +311,11 @@ function sRotate(){ lx.fillStyle=P.bg; lx.fillRect(0,0,LW,LH); var y=Math.round(
 /* ── actions ── */
 function startPrepare(){
   prep={res:null,doneT:0}; acoustic=false;
+  // v0.41, the app: «too quiet» is the most common failure (a fifth to two fifths of all tries) — the app can turn the media volume up itself
+  if(APP){ try{ if(APP.getVolume()<0.6) APP.setVolume(0.6); }catch(e){} }
   Sonar.prepare(function(stage){ if(stage==='room'){ var I=Sonar.info();
       Logs.setupStart({kind:'подготовка',cal:I.cal,autocenter:true,tune:'waves',asym:Tune.ASYM,field_auto:true,field_mm:+store.get('sonaroids_field','100')||100,
-        chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,prom:null,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids'}); } })
+        chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,prom:null,sfx:Sfx.state(),started:new Date().toISOString(),app:APP?'sonaroids-android':'sonaroids',native:APP?(function(){ try{ return JSON.parse(APP.info()); }catch(e){ return null; } })():undefined}); } })
   .then(function(r){ prep.res=r; prep.doneT=scrT; if(!r.ok) Board.setup(r.why||'error'); if(r.ok){ acoustic=true; accSide=Sonar.chan(); var o=portOr(); if(o&&!handRel) handRel=accSide===o?'port':'camera'; handSaved=handSide(); store.set('sonaroids_hand',handSaved); } })
   .catch(function(){ prep.res={ok:false,why:'error'}; Board.setup('error'); });
 }
@@ -338,6 +345,7 @@ var ACT={
   ru:function(){ lang='ru'; store.set('sonaroids_lang','ru'); go('sound'); },
   next:function(){ if(scr==='sound'){ if(direct) (booted?toAway():go('mic')); else go('phone'); } else if(scr==='phone'){ if(booted) toAway(); else go('mic'); } },
   allow:function(){ boot(toAway); },
+  appupd:function(){ try{ APP.checkUpdate(); }catch(e){} setTimeout(function(){ location.reload(); },600); },
   probe_wide:function(){ toRoom('wide'); }, probe_norm:function(){ toRoom('normal'); },
   play:function(){ onboarding=false; direct=false; ensure(toAway); },
   howto:function(){ onboarding=true; direct=false; go('sound'); },

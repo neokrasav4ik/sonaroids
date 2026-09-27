@@ -1,0 +1,6 @@
+// Sonaroids for Android (v0.41, 27 Sep 2026): a thin native shell — a WebView over https://sonaroids.app/play/ plus a small helper
+// (media volume, audio route, app updates). The game itself comes from the site, so every site update reaches the app on its next launch.
+pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+rootProject.name = 'sonaroids'
+include ':app'

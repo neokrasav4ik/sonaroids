@@ -1,4 +1,5 @@
-/* Прототип Арканоида через код страницы (27.09): горизонтально 844×390, разъём справа (поворот 90°), поддельные часы, синтетический
+/* Прототип Арканоида через код страницы (27.09; случайность зафиксирована — итог одинаков от прогона к прогону; синтетический игрок
+   целится туда, куда придёт мяч, но играет средне — пороги проверяют механику, а не мастерство): горизонтально 844×390, разъём справа (поворот 90°), поддельные часы, синтетический
    микрофон (eval_right.synthFrame — ладонь на расстоянии d мм). Первые 25 с ладонь «играет хорошо» — ведёт ракетку за мячом
    (расстояние из положения мяча по карте хода), потом замирает у края. Проверяю: фазы, ракетка правее при ладони дальше,
    мяч отбивается, кирпичи бьются, промахи кончают игру, запись с журналом, разбор eval_ark.js сходится с телефоном. */
@@ -8,7 +9,7 @@ js=js.replace(/var WORKLET=`[\s\S]*?`;/,'');
 js=js.replace("function pickChannel(){","function pickChannel(){ if(globalThis.__fakePick) return globalThis.__fakePick();");
 js=js.replace("function autoLevel(){","function autoLevel(){ if(globalThis.__fakeLevel) return globalThis.__fakeLevel();");
 js=js.replace("function setProbe(w){","function setProbe(w){ globalThis.__probe=w; if(globalThis.__noAudio) return;");
-js=js.replace("el('gMenu').addEventListener","globalThis.__h={akSm:function(){return akSm;},akSmNext:akSmNext,arkPlay:arkPlay,akSave:akSave,onFrame:onFrame,AK:function(){return AK;},setFs:function(){ fs=48000; },goFlow:goFlow};\nel('gMenu').addEventListener");
+js=js.replace("el('gMenu').addEventListener","globalThis.__h={ctl:function(){return [akAcc,akPix];},akAccNext:akAccNext,akPixNext:akPixNext,arkPlay:arkPlay,akSave:akSave,onFrame:onFrame,AK:function(){return AK;},setFs:function(){ fs=48000; },goFlow:goFlow};\nel('gMenu').addEventListener");
 let now=0; const timers=[]; let rafs=[];
 global.setTimeout=(f,ms)=>{ timers.push({t:now+(ms||0),f}); return timers.length; };
 global.requestAnimationFrame=f=>{ rafs.push(f); return rafs.length; }; global.cancelAnimationFrame=()=>{};
@@ -24,14 +25,19 @@ global.URL.createObjectURL=()=>'blob:x';
 global.localStorage={getItem:()=>null,setItem(){}}; global.screen={orientation:{angle:90}};
 globalThis.__fakePick=()=>new Promise(r=>setTimeout(r,500)); globalThis.__noAudio=true;
 globalThis.__fakeLevel=()=>new Promise(r=>setTimeout(()=>r({snr:44,g:0.1,atMax:false}),400));
+// случайность повторяемая: углы запуска мяча и раскладка не должны менять итог проверки от прогона к прогону (27.09: без этого падала 1 раз из 6)
+let seed=12345; Math.random=()=>((seed=(seed*1664525+1013904223)>>>0)/4294967296);
 new Function(js)(); const H=globalThis.__h; H.setFs();
 const SR=48000, N=512; let fed=0, seq=0, tPlay=null, dPrev=100;
-/* ладонь: до взмахов нет; взмахи 58–142 мм; в игре первые 25 с — туда, где будет мяч (по карте хода, с ограничением скорости руки 40 см/с), потом замерла */
+/* ладонь: до взмахов нет; взмахи 58–142 мм; в игре первые 25 с «играет» как человек — смотрит, где ракетка и где мяч, и двигает руку
+   в нужную сторону (скорость руки ≤ 40 см/с; так же работает и с ускорением, где ракетка не стоит ровно «где ладонь»), потом замерла */
 function palm(t){ const A=H.AK(); if(!A||A.phase==='prep'||A.phase==='empty'||A.phase===''){ return null; }
   if(A.phase!=='play'||!A.map) return (dPrev=100+42*Math.sin(2*Math.PI*t/4));
   if(tPlay===null) tPlay=t; if(t-tPlay>25) return dPrev;
-  const b=A.ball, f=Math.max(0,Math.min(1,(b.x-0.09)/0.82)), want=A.map.lo+f*(A.map.hi-A.map.lo)+10;   // +10: высота DSP2 ≈ расстояние − 10 мм (PHYS_CAL)
-  const step=400*N/SR; dPrev+=Math.max(-step,Math.min(step,want-dPrev)); return dPrev; }
+  // цель — куда мяч придёт к ракетке (отражения от стен, кирпичи не учитываю); мяч летит вверх — держусь под ним
+  const B=A.ball; let tx=B.x; if(B.vy>0){ const tt=(0.92-B.y)/B.vy; let xx=B.x+B.vx*tt; xx=((xx%2)+2)%2; tx=xx>1?2-xx:xx; }
+  const e=tx-A.px, want=1.2*e/0.82*(A.map.hi-A.map.lo), step=400*N/SR;
+  dPrev=Math.max(45,Math.min(165,dPrev+Math.max(-step,Math.min(step,want)))); return dPrev; }
 function feed(){ const due=Math.floor(now/1000*SR/N); while(fed<due){ H.onFrame({data:{s:seq++,f:S.synthFrame(palm(fed*N/SR),fed*7+1)}}); fed++; } }
 async function tick(dt){ const t1=now+dt*1000; while(now<t1){ now+=1000/60; feed();
   for(let i=timers.length-1;i>=0;i--) if(timers[i].t<=now){ const f=timers[i].f; timers.splice(i,1); f(); }
@@ -39,7 +45,7 @@ async function tick(dt){ const t1=now+dt*1000; while(now<t1){ now+=1000/60; feed
 (async()=>{
   let bad=0; const need=(ok,msg)=>{ console.log((ok?'ok  ':'FAIL')+'  '+msg); if(!ok) bad++; };
   H.goFlow('arkIntro'); need(!els.arkIntro.classList.contains('hidden'),'экран-подсказка открыт');
-  for(let i=0;i<4&&H.akSm()!==0;i++) H.akSmNext();                      // сначала без плавности — сверка точная
+  if(H.ctl()[0]) H.akAccNext(); if(H.ctl()[1]) H.akPixNext();          // сначала прямо, без ускорения и пикселей — сверка точная
   H.arkPlay(); const seen=[], pairs=[];
   for(let i=0;i<1500;i++){ await tick(0.1); const A=H.AK(); if(seen[seen.length-1]!==A.phase) seen.push(A.phase); if(A.phase==='play'&&A.present&&A.dist!==null) pairs.push([A.dist,A.px]); if(A.phase==='over') break; }
   const A=H.AK(); need(seen.join(' → ').indexOf('empty → wave → count → play → over')>=0,'фазы: '+seen.join(' → '));
@@ -47,16 +53,17 @@ async function tick(dt){ const t1=now+dt*1000; while(now<t1){ now+=1000/60; feed
   const cor=(a,b)=>{ const n=a.length, ma=a.reduce((u,v)=>u+v)/n, mb=b.reduce((u,v)=>u+v)/n; let s=0,sa=0,sb=0; for(let i=0;i<n;i++){ s+=(a[i]-ma)*(b[i]-mb); sa+=(a[i]-ma)**2; sb+=(b[i]-mb)**2; } return s/Math.sqrt(sa*sb); };
   const c=pairs.length>50?cor(pairs.map(p=>p[0]),pairs.map(p=>p[1])):NaN; need(c>0.95,`ладонь дальше от разъёма — ракетка правее: согласие ${c.toFixed(3)}`);
   const ev=A.log.filter(e=>typeof e[1]==='string'), nP=ev.filter(e=>e[1]==='paddle').length, nB=ev.filter(e=>e[1]==='brick').length, nM=ev.filter(e=>e[1].startsWith('miss')).length;
-  need(nP>=8&&nB>=8,`пока ладонь ведёт ракетку за мячом: отбито ${nP}, кирпичей ${nB}, уровень ${A.level}`);
+  need(nP>=5&&nB>=5,`пока ладонь ведёт ракетку за мячом: отбито ${nP}, кирпичей ${nB}, уровень ${A.level}`);
   need(nM===3&&A.phase==='over'&&!els.akBtns.classList.contains('hidden'),`ладонь замерла — три промаха и конец (промахов ${nM}), кнопки видны`);
   H.akSave(); const f=path.join(C.OUT,'ark_test.wav'); fs.mkdirSync(C.OUT,{recursive:true}); fs.writeFileSync(f,Buffer.from(await A.blob.arrayBuffer()));
   const w=C.loadWav(f); need(w.meta.kind==='ark-play'&&/^sonarark_/.test(A.fname)&&w.meta.log.length>500,'запись: '+A.fname+', журнал '+w.meta.log.length+' строк');
   const R=E.report('ark_test.wav (через страницу)',w.meta,w.x); need(R.vis>95&&R.match<0.01&&R.paddle===nP,`разбор сходится с телефоном: ${(R.match*100).toFixed(2)}% ширины, отбито ${R.paddle}`);
-  // плавность «сильная»: ракетка ровнее сырой карты, игра идёт, разбор сходится приблизительно
-  for(let i=0;i<4&&H.akSm()!==2;i++) H.akSmNext(); tPlay=null; H.arkPlay();
+  // ускорение и ретро-пиксели: игра идёт, ракетка шагает по сетке, разбор той же функцией сходится
+  if(!H.ctl()[0]) H.akAccNext(); if(!H.ctl()[1]) H.akPixNext(); tPlay=null; H.arkPlay();
   for(let i=0;i<1500;i++){ await tick(0.1); if(H.AK().phase==='over') break; }
-  const A2=H.AK(); H.akSave(); const f2=path.join(C.OUT,'ark_smooth_test.wav'); fs.writeFileSync(f2,Buffer.from(await A2.blob.arrayBuffer())); const w2=C.loadWav(f2);
-  const R2=E.report('ark_smooth_test.wav (плавность сильная)',w2.meta,w2.x);
-  need(w2.meta.smooth&&w2.meta.smooth.tau===0.1&&/сильная/.test(els.akSmooth.textContent)&&R2.paddle>=5&&R2.match<0.02,`плавность «сильная»: в записи ${JSON.stringify(w2.meta.smooth)}, отбито ${R2.paddle}, сверка ${(R2.match*100).toFixed(2)}%`);
+  const A2=H.AK(); H.akSave(); const f2=path.join(C.OUT,'ark_ctl_test.wav'); fs.writeFileSync(f2,Buffer.from(await A2.blob.arrayBuffer())); const w2=C.loadWav(f2);
+  const R2=E.report('ark_ctl_test.wav (ускорение и ретро-пиксели)',w2.meta,w2.x);
+  const onGrid=w2.meta.log.filter(e=>typeof e[1]==='number').every(e=>Math.abs(e[1]*160-Math.round(e[1]*160))<0.02);
+  need(w2.meta.ctl&&w2.meta.ctl.acc&&w2.meta.ctl.pix&&/вкл/.test(els.akAcc.textContent)&&onGrid&&R2.paddle>=3&&R2.match<0.02,`ускорение и ретро-пиксели: ракетка на сетке 1/160 — ${onGrid?'да':'нет'}, отбито ${R2.paddle}, сверка ${(R2.match*100).toFixed(2)}%`);
   console.log(bad?'ИТОГ: ПРОВАЛ':'ИТОГ: ok'); process.exitCode=bad?1:0;
 })();

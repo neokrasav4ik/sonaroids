@@ -8,14 +8,29 @@
    Пишется звук (до 150 с), метки фаз, карта хода и по кадрам ракетка/мяч/события — sonarark_*.wav, разбор tools/eval_ark.js. */
 var AK={on:false,frames:[],gaps:0,marks:{},log:[],map:null,phase:'',raf:0,best:0};
 var AK_MAX=Math.round(150*48000/512), AK_COLS=12, AK_ROWS=6, AK_COLORS=['#f2a7c3','#e8b4f0','#c9b8e8','#9fd3f0','#a8e6cf','#ffd59e'];
-/* 27.09, запись 00:40: «в целом норм, но ракетка дёрганая, не хватало плавности». Показания доходят ровно (1–2 замера на кадр экрана),
-   дрожь ~1% ширины — в точках экрана та же, что у корабля Sonaroids, но ракетка — длинная гладкая планка на длинной стороне, и её видно.
-   Расчёт на записи: сглаживание 60 мс — дрожь −20%, +50 мс отставания; мёртвая зона (ракетка не отзывается на мелочь) — ещё −⅓ шевеления
-   в покое. Переключатель «Плавность»: нет / средняя (60 мс + 0,5% ширины) / сильная (100 мс + 0,7%) — выбрать рукой. */
-var AK_SM=[{n:'нет',tau:0,db:0},{n:'средняя',tau:0.06,db:0.005},{n:'сильная',tau:0.1,db:0.007}], akSm=1;
-try{ var sv=parseInt(localStorage.getItem('sonar_ark_smooth'),10); if(sv>=0&&sv<AK_SM.length) akSm=sv; }catch(e){}
-function akSmLabel(){ ['arkSmooth','akSmooth'].forEach(function(id){ el(id).textContent='Плавность: '+AK_SM[akSm].n; }); }
-function akSmNext(){ akSm=(akSm+1)%AK_SM.length; try{ localStorage.setItem('sonar_ark_smooth',String(akSm)); }catch(e){} akSmLabel(); }
+/* 27.09, запись 00:40: «норм, но ракетка дёрганая»; с плавностью (сглаживание) — «совсем некомфортно», без неё — «слишком отзывчиво
+   на каждое шевеление, управляется не так точно». Сглаживание отставанием отвергнуто. Два переключателя (выбор автора):
+   «Ускорение (как мышь)»: ракетка сдвигается на g·Δ хода ладони; g от 0,4 на медленных мелких движениях до 1,3 на быстрых
+   (скорость ладони 30 → 200 мм/с, сглажена 40 мс). Шевеление в покое на записи 00:40 — вдвое меньше, без отставания; ракетка
+   перестаёт стоять ровно «где ладонь» — как мышь, у края подстраивается.
+   «Ретро-пиксели»: ракетка шагает по сетке 1/160 ширины и сдвигается, только когда ушла дальше чем на ⅔ шага — спокойнее на вид,
+   отставания почти нет. Удар — там, где ракетку видно. */
+var AK_ACC={gmin:0.4,gmax:1.3,v0:30,v1:200,tau:0.04}, AK_PIX={step:1/160,hys:2/3};
+var akAcc=true, akPix=true;
+try{ var sa=localStorage.getItem('sonar_ark_acc'); if(sa==='0'||sa==='1') akAcc=sa==='1'; var sq=localStorage.getItem('sonar_ark_pix'); if(sq==='0'||sq==='1') akPix=sq==='1'; }catch(e){}
+function akCtlLabel(){ ['arkAcc','akAcc'].forEach(function(id){ el(id).textContent='Ускорение (как мышь): '+(akAcc?'вкл':'выкл'); });
+  ['arkPix','akPix'].forEach(function(id){ el(id).textContent='Ретро-пиксели: '+(akPix?'вкл':'выкл'); }); }
+function akAccNext(){ akAcc=!akAcc; try{ localStorage.setItem('sonar_ark_acc',akAcc?'1':'0'); }catch(e){} akCtlLabel(); }
+function akPixNext(){ akPix=!akPix; try{ localStorage.setItem('sonar_ark_pix',akPix?'1':'0'); }catch(e){} akCtlLabel(); }
+/* ракетка по шагу экрана: f — доля хода 0..1 (ускорение копит её само), q — что видно (ретро-пиксели). Чистая функция — её же гоняет eval_ark.js */
+function akStep(st,dist,dt,map,port,acc,pix){ var span=map.hi-map.lo;
+  if(st.f===null||st.last===null){ st.f=Math.max(0,Math.min(1,(dist-map.lo)/span)); st.last=dist; st.v=0; }
+  else if(acc){ var d=dist-st.last; st.last=dist; st.v+=(1-Math.exp(-dt/AK_ACC.tau))*(Math.abs(d)/Math.max(dt,1e-3)-st.v);
+    var k=Math.max(0,Math.min(1,(st.v-AK_ACC.v0)/(AK_ACC.v1-AK_ACC.v0))), g=AK_ACC.gmin+(AK_ACC.gmax-AK_ACC.gmin)*k; st.f=Math.max(0,Math.min(1,st.f+g*d/span)); }
+  else { st.last=dist; st.f=Math.max(0,Math.min(1,(dist-map.lo)/span)); }
+  var f=port==='left'?1-st.f:st.f, x=0.09+0.82*f;
+  if(pix){ var sp=AK_PIX.step; if(st.q===null||Math.abs(x-st.q)>sp*AK_PIX.hys) st.q=Math.round(x/sp)*sp; return st.q; }
+  st.q=x; return x; }
 function akFrame(f,gap,r){ if(!AK.on) return; if(AK.frames.length<AK_MAX){ if(gap) AK.gaps++; AK.frames.push(f); }
   if(r){ AK.present=r.present; if(r.present){ AK.dist=r.height; if(AK.phase==='wave') AK.wave.push(r.height); } } }
 function akMark(k){ AK.marks[k]=AK.frames.length*N; }
@@ -28,7 +43,7 @@ function akNewBall(){ AK.ball={x:AK.px,y:0.8,vx:0,vy:0,wait:1.0}; }
 function arkPlay(){
   show('arkPlay'); akButtons(false); cancelAnimationFrame(AK.raf);
   AK={on:false,frames:[],gaps:0,marks:{},log:[],map:null,phase:'prep',raf:0,best:AK.best||0,wave:[],present:false,dist:null,
-      px:0.5,pf:null,sm:akSm,lives:3,score:0,level:1,speed:0.62,bricks:akBricks(1),ball:null,port:orientSide()||'right'};
+      px:0.5,st:{f:null,last:null,v:0,q:null},acc:akAcc,pix:akPix,lives:3,score:0,level:1,speed:0.62,bricks:akBricks(1),ball:null,port:orientSide()||'right'};
   akNewBall(); akText('Готовлюсь','Убери руку. Подбираю громкость зонда.'); mode=null; akDraw();
   pickChannel().then(function(){ return autoLevel(); }).then(function(L){
     if(L.snr<30){ setProbe('off'); akText('Зонда почти не слышно',NOPROBE); akButtons(true); return null; }
@@ -53,8 +68,7 @@ function akLoop(now){
   if(AK.phase!=='play') return;
   var dt=Math.min(0.033,(now-AK.last)/1000); AK.last=now;
   var cv=el('akC'), ar=(cv.width||800)/(cv.height||400);                           // ширина/высота: мяч летит по-честному круглым
-  if(AK.present){ var tg=akPaddleX(), S=AK_SM[AK.sm], aa=S.tau>0?1-Math.exp(-dt/S.tau):1; AK.pf=AK.pf===null?tg:AK.pf+aa*(tg-AK.pf);
-    if(AK.pf-AK.px>S.db) AK.px=AK.pf-S.db; else if(AK.px-AK.pf>S.db) AK.px=AK.pf+S.db; }
+  if(AK.present&&AK.dist!==null&&AK.map) AK.px=akStep(AK.st,AK.dist,dt,AK.map,AK.port,AK.acc,AK.pix); else AK.st.last=null;   /* ладонь пропала — при возвращении ход подхватывается заново */
   var pw=0.16, py=0.92, B=AK.ball, br=0.018;
   if(B.wait>0){ B.wait-=dt; B.x=AK.px; B.y=py-0.05; if(B.wait<=0){ var a=(-0.35+0.7*Math.random()); B.vx=Math.sin(a)*AK.speed/ar; B.vy=-Math.cos(a)*AK.speed; } }
   else { var steps=3; for(var s=0;s<steps;s++){ B.x+=B.vx*dt/steps; B.y+=B.vy*dt/steps;
@@ -89,7 +103,7 @@ function akDraw(){ var cv=el('akC'); if(!cv||!cv.getContext) return; var dpr=Mat
   c.fillText(AK.dist===null||AK.dist===undefined?'ладони не слышно':(AK.present?'':'(нет ладони) ')+'ладонь '+(AK.dist/10).toFixed(1).replace('.',',')+' см',W/2,H-6*dpr); }
 function akSave(){ if(!AK.frames.length) return; var n=AK.frames.length*N, all=new Float32Array(n); AK.frames.forEach(function(f,j){ all.set(f,j*N); });
   var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
-  var meta={v:1,kind:'ark-play',port:AK.port,smooth:AK_SM[AK.sm],fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
+  var meta={v:2,kind:'ark-play',port:AK.port,ctl:{acc:AK.acc?AK_ACC:null,pix:AK.pix?AK_PIX:null},fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:F_LO,loop:true},
     cal:PHYS_CAL,map:AK.map,marks:AK.marks,log:AK.log,score:AK.score,level:AK.level,lives:AK.lives,samples:n,gaps:AK.gaps,peak:pk,
     orientation:{angle:(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0),w:window.innerWidth,h:window.innerHeight},
     units:'log: [frame, paddle x 0..1, ball x, ball y (0 top), palm seen] or [frame, event]; paddle x = 0.09+0.82·f, f from height (DSP2, PHYS_CAL) by map, mirrored if the port is on the left',
@@ -101,7 +115,7 @@ function akSave(){ if(!AK.frames.length) return; var n=AK.frames.length*N, all=n
 el('goArk').addEventListener('click',function(){ boot().then(function(){ lastRec='ark'; viaOrient('arkIntro'); }).catch(fail); });
 el('arkGo').addEventListener('click',function(){ arkPlay(); });
 el('arkBack').addEventListener('click',function(){ show('home'); });
-el('arkSmooth').addEventListener('click',akSmNext); el('akSmooth').addEventListener('click',akSmNext); akSmLabel();
+el('arkAcc').addEventListener('click',akAccNext); el('akAcc').addEventListener('click',akAccNext); el('arkPix').addEventListener('click',akPixNext); el('akPix').addEventListener('click',akPixNext); akCtlLabel();
 el('akAgain').addEventListener('click',function(){ arkPlay(); });
 el('akSave').addEventListener('click',function(){ akSave(); });
 el('akStop').addEventListener('click',function(){ if(AK.phase==='play'){ AK.lives=0; return; } cancelAnimationFrame(AK.raf); AK.on=false; AK.phase=''; mode=null; setProbe('off'); akText('Остановлено',''); akButtons(true); });

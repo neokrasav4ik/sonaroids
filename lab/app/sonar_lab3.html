@@ -889,7 +889,11 @@ function autoLevel(){
 }
 /* ── слышен ли каждый из двух зондов: пик прямого сигнала над остальной характеристикой ── */
 function promSub(frames,parity){
-  var ks=[],k,q,n; for(k=kLo;k<=kHi;k++) if(parity==='all'||k%2===parity) ks.push(k);
+  /* 0.46: with the wide probe playing, the check decodes the wide band with the wide probe's own tones and phases. Before, it decoded the
+     game's band with the game probe's phases — the wide probe's tones there have other phases, the peak smeared, and on the Mi 9 Lite the
+     recording refused to start even at 100% ("7–11 dB, need 15"), while the game with the same probe heard it at 33 dB */
+  var wideP=parity==='all'&&bandLo()!==F_LO, lo=wideP?Math.ceil(DEPTH_LO/(fs/N)):kLo, hi=wideP?Math.floor(DEPTH_HI/(fs/N)):kHi, kc=Math.floor((lo+hi)/2);
+  var ks=[],k,q,n; for(k=lo;k<=hi;k++) if(parity==='all'||k%2===parity) ks.push(k);
   var M=ks.length, T=(parity==='all')?N:N/2, acc=new Float64Array(T);
   frames.forEach(function(fr){
     var Hr=new Float64Array(M),Hi=new Float64Array(M);

@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='0.45';
+var VERSION='0.47';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -653,7 +653,8 @@ var Logs=(function(){
   function base(kind,L){ var I=Sonar.info();
     return {kind:kind,fs:I.fs,N:N,kLo:I.kLo,kHi:I.kHi,probe:{bins:'all',channel:I.chan,phase:'pi*q^2/M',peak:0.9,gain:I.probe_gain,snr_db:I.probe_snr,level_db:I.probe_level,f_lo:I.f_lo,loop:true},
       pcm:{bits:16,full_scale:1/L.scale},mic:Sonar.micSettings(),mic_peak:+Sonar.peak().toFixed(4),app:'sonaroids',version:typeof VERSION!=='undefined'?VERSION:null,ended:new Date().toISOString(),ua:navigator.userAgent}; }
-  function setupBlob(){ if(!S||!S.f) return null; var inf=DSP2.info(), m=base('setup-log',S);
+  /* v0.46: a setup stopped early has events but no sound — still worth sending */
+  function setupBlob(){ if(!S||(!S.f&&!S.ev.length)) return null; var inf=DSP2.info(), m=base('setup-log',S);
     m.v=1; m.first_frame=0; m.frames=S.f; m.clipped=S.clip; m.gaps=S.gaps; m.setup=S.meta0; m.cal_now=inf.cal; m.dsp_info={d0:inf.d0,prom:inf.prom,mm:inf.mm,eq:inf.eq,eq_db:inf.eq_db,relocks:inf.relocks,drops:inf.drops};
     m.columns={dsp:['frame','present','height_mm','abs_mm','range_mm','fast_mm','motion_db','echo_db','empty_floor_db','motion_smooth_db'],events:['frame','event','data']};
     return wav(S.pcm.slice(0,S.f*N),m,{dsp:S.dsp,render:[],events:S.ev}); }
@@ -1251,6 +1252,14 @@ function say(s){ if(s!==sayLast){ sayLast=s; var el=document.getElementById('say
 
 /* ── layout helpers (game pixels) ── */
 function topY(){ return SAFE.t+Math.max(8,Math.round(LH*0.05)); }
+/* v0.47: the version as a switch for the "logs" link on the title and the getting-ready screens too (it was only on the game-over screen) —
+   a setup that stopped ("too quiet", "too loud") or went badly can be sent right away. A tap on the version shows the link, another hides it.
+   top — at the top corner (the getting-ready screens: the bottom has the buttons, the ring and the "wave here" beacon), else at the bottom */
+function diagCorner(label,top){ var vr=freeSide()==='left', vx=vr?LW-SAFE.r-8:SAFE.l+8, vy=top?SAFE.t+8:LH-SAFE.b-12, vw=PF.width(label), al=vr?'right':'left';
+  text(label,vx,vy,diag?P.band:P.soft,al); var bx0=Math.max(0,(vr?vx-vw:vx)-8), bx1=Math.min(LW,(vr?vx:vx+vw)+8);
+  var by0=top?Math.max(0,vy-8):vy-19+PF.CAP+10; BTN.push({id:'ver',x:bx0,y:by0,w:bx1-bx0,h:Math.min(top?PF.CAP+16:PF.CAP+10,LH-by0)});   // at the bottom: not onto the source link above
+  if(diag&&Logs.has()){ var ls=L('logs'), lw=PF.width(ls), ly=top?vy+PF.CAP+12:vy, lx0=top?(vr?vx-lw:vx):(vr?vx-vw-16-lw:vx+vw+16);   // at the bottom — beside the version, in its line
+    text(ls,lx0,ly,P.band,'left'); R(P.band,lx0,ly+PF.CAP+2,lw,1); BTN.push({id:'logs',x:lx0-8,y:ly-6,w:lw+16,h:PF.CAP+12}); } }
 function titles(t,s,col){ var y=topY(), mw=LW-SAFE.l-SAFE.r-24, cx0=Math.round((SAFE.l+LW-SAFE.r)/2);
   PF.wrap(t,mw,1).forEach(function(l){ text(l,cx0,y,col||P.text,'center'); y+=10; });
   if(s){ y+=3; y=para(s,cx0,y,mw,P.soft); } say(t+(s?'. '+s:'')); return y; }
@@ -1296,7 +1305,7 @@ function sTitle(){ sky(DT,0.4); var y=Math.round(LH*0.3);
     // v0.42: in an Android browser — a link to the app (the APK of the latest GitHub release); tapping downloads it
     var as=L('get_apk'), aw=PF.width(as); ay+=6; text(as,cx0,ay,P.band,'center'); R(P.band,cx0-aw/2,ay+PF.CAP+2,aw,1); BTN.push({id:'apk',x:cx0-aw/2-6,y:ay-6,w:aw+12,h:PF.CAP+12}); }
   var vr=freeSide()==='left', vx=vr?LW-SAFE.r-8:SAFE.l+8, vy=LH-SAFE.b-12;
-  text(L('version')+' '+VERSION,vx,vy,P.soft,vr?'right':'left');   // for telling uploads apart
+  diagCorner(L('version')+' '+VERSION,false);   // for telling uploads apart; a tap shows the "logs" link (v0.47)
   // v0.41, the app: «check for updates» above the source link — the app's own update (a dialog from the shell) and a fresh page
   if(APP){ var us=L('app_upd'), uw=PF.width(us), uy=vy-26; text(us,vx,uy,P.band,vr?'right':'left'); BTN.push({id:'appupd',x:Math.max(0,(vr?vx-uw:vx)-6),y:uy-6,w:uw+12,h:PF.CAP+10}); }
   // v0.28: the site opens straight into the game; the source code link moved here from the landing page
@@ -1305,7 +1314,7 @@ function sTitle(){ sky(DT,0.4); var y=Math.round(LH*0.3);
   for(var i=0;i<3;i++){ var bx=cx0-20+((clock*90+i*40)%120); R(P.bullet,bx,sy,4,1); light(bx,sy,6*K,P.glowB,0.45); }
   column(items,Math.round(LH*0.5));
   say('Sonaroids. '+L('play')); }
-function sSound(){ sky(DT,0.3); titles(L(direct?(dirLoud?'volume_loud':'volume_direct'):'volume'),L('volume_s')); soundVolume(scrT); nextBtn('next',L('next')); stepSquares('sound'); }
+function sSound(){ sky(DT,0.3); titles(L(direct?(dirLoud?'volume_loud':'volume_direct'):'volume'),L('volume_s')); soundVolume(scrT); nextBtn('next',L('next')); stepSquares('sound'); diagCorner('V'+VERSION,true); }
 /* v0.41: the Android app (android/, a WebView over this very page) gives a small native helper: media volume, audio route.
    In the browser it does not exist, and nothing changes there */
 var APP=(typeof window!=='undefined'&&window.SonaroidsApp)||null;
@@ -1338,7 +1347,7 @@ function sAway(){ sky(DT,0.3); var m=handSide()==='left', aw=Math.min(1,Math.max
   if(scrT>=PAUSE&&!prep) startPrepare();
   if(prep&&prep.res){ if(prep.res.ok){ if(scrT-prep.doneT>1.5) toWave(); }       // «the room is quiet» stays for 1.5 s
     else { direct=true; dirLoud=prep.res.why==='loud'; onboarding=false; go('sound'); } }
-  stepSquares('away'); }
+  stepSquares('away');  diagCorner('V'+VERSION,true); }
 function sWave(){ sky(DT,0.3); poolFill(1); var m=handSide()==='left', f=handFrac(), live=f!==null;
   // v0.21: tuning stops once the range is caught — the try-out screen shows exactly what the game will use (exploring the edges there widened the field)
   if(scrT>=WAVE_PAUSE&&!caught){ var e=Tune.step(T,DT,Sonar.state(),true,Sonar.shift); if(e) Logs.ev('подстройка',e); }
@@ -1352,7 +1361,7 @@ function sWave(){ sky(DT,0.3); poolFill(1); var m=handSide()==='left', f=handFra
   var wty=(scrT-flipT<4&&!caught)?titles(L('other_t'),L('other_s'),P.pick):titles(L('wave_t'),caught?L('wave_ok'):L('wave_s')); coveredLine(wty+2);
   ringUI(st==='wait'?scrT/WAVE_PAUSE:st==='ok'?1:Math.min(0.95,dur/5.2),st);
   handBeacon();
-  stepSquares('wave'); }
+  stepSquares('wave');  diagCorner('V'+VERSION,true); }
 /* v0.44: where to wave — the edge of the screen at the hand's end glows, with «wave here · at the camera / at the port» and, under it,
    «other hand? turn the phone around»: the browser may pick the front camera's microphone, and then a right-handed player has the hand's end
    on the left — turning the phone by 180° swaps everything round (the screen turns, the game follows) */
@@ -1531,10 +1540,13 @@ function startPrepare(){
   // v0.45, the app: the media volume starts at 25% (the maintainer: 20–30% plays fine, higher «swings») and Sonar.prepare moves it until the probe is
   // as loud as on the phones that steer well; in a browser too loud a phone gets «turn it down» (why 'loud'), as too quiet gets «turn it up»
   var vol=null; if(APP){ try{ var v0=APP.getVolume(); if(v0<0.2||v0>0.3) APP.setVolume(0.25); vol={get:function(){ return APP.getVolume(); },set:function(v){ APP.setVolume(v); }}; }catch(e){ vol=null; } }
-  Sonar.prepare(function(stage){ if(stage==='room'){ var I=Sonar.info();
+  var logged=false; function slog(){ var I=Sonar.info(); logged=true;
       Logs.setupStart({kind:'подготовка',cal:I.cal,autocenter:true,tune:'waves',asym:Tune.ASYM,field_auto:true,field_mm:+store.get('sonaroids_field','100')||100,
-        chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,prom:null,sfx:Sfx.state(),vol_fit:I.vol_fit,started:new Date().toISOString(),app:APP?'sonaroids-android':'sonaroids',native:APP?(function(){ try{ return JSON.parse(APP.info()); }catch(e){ return null; } })():undefined}); } },vol)
-  .then(function(r){ prep.res=r; prep.doneT=scrT; if(!r.ok) Board.setup(r.why||'error'); if(r.ok){ acoustic=true; accSide=Sonar.chan(); var o=portOr(); if(o&&!handRel) handRel=accSide===o?'port':'camera'; handSaved=handSide(); store.set('sonaroids_hand',handSaved); } })
+        chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,prom:null,sfx:Sfx.state(),vol_fit:I.vol_fit,started:new Date().toISOString(),app:APP?'sonaroids-android':'sonaroids',native:APP?(function(){ try{ return JSON.parse(APP.info()); }catch(e){ return null; } })():undefined}); }
+  Sonar.prepare(function(stage){ if(stage==='room') slog(); },vol)
+  // v0.46: a setup stopped before the room step (too quiet, too loud) still leaves a setup log — the probe, its level and the volume steps —
+  // before, "send logs" after such a stop had nothing about it (Mi 9 Lite, 27 Sep: "too quiet" on the wide probe, no log to see why)
+  .then(function(r){ prep.res=r; prep.doneT=scrT; if(!r.ok){ Board.setup(r.why||'error'); if(!logged){ slog(); } var I=Sonar.info(); Logs.ev('не готово',{why:r.why||'error',level:I.probe_level===null?null:+(+I.probe_level).toFixed(1),snr:r.snr===undefined?null:+(+r.snr).toFixed(1)}); } if(r.ok){ acoustic=true; accSide=Sonar.chan(); var o=portOr(); if(o&&!handRel) handRel=accSide===o?'port':'camera'; handSaved=handSide(); store.set('sonaroids_hand',handSaved); } })
   .catch(function(){ prep.res={ok:false,why:'error'}; Board.setup('error'); });
 }
 /* make sure the microphone works before going on; if the phone took it away (the app was in the background), open it again —

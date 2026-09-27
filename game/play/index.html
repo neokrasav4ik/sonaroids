@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='0.47';
+var VERSION='0.48';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -1255,7 +1255,7 @@ function topY(){ return SAFE.t+Math.max(8,Math.round(LH*0.05)); }
 /* v0.47: the version as a switch for the "logs" link on the title and the getting-ready screens too (it was only on the game-over screen) —
    a setup that stopped ("too quiet", "too loud") or went badly can be sent right away. A tap on the version shows the link, another hides it.
    top — at the top corner (the getting-ready screens: the bottom has the buttons, the ring and the "wave here" beacon), else at the bottom */
-function diagCorner(label,top){ var vr=freeSide()==='left', vx=vr?LW-SAFE.r-8:SAFE.l+8, vy=top?SAFE.t+8:LH-SAFE.b-12, vw=PF.width(label), al=vr?'right':'left';
+function diagCorner(label,top,ty,flip,ax){ var vr=ty?(freeSide()!=='left')!==!!flip:freeSide()==='left',   /* under the menu button (ty) — its side; flip — the other side */ vx=ax!==undefined?ax:vr?LW-SAFE.r-8:SAFE.l+8, vy=top?(ty||SAFE.t+8):LH-SAFE.b-12, vw=PF.width(label), al=vr?'right':'left';
   text(label,vx,vy,diag?P.band:P.soft,al); var bx0=Math.max(0,(vr?vx-vw:vx)-8), bx1=Math.min(LW,(vr?vx:vx+vw)+8);
   var by0=top?Math.max(0,vy-8):vy-19+PF.CAP+10; BTN.push({id:'ver',x:bx0,y:by0,w:bx1-bx0,h:Math.min(top?PF.CAP+16:PF.CAP+10,LH-by0)});   // at the bottom: not onto the source link above
   if(diag&&Logs.has()){ var ls=L('logs'), lw=PF.width(ls), ly=top?vy+PF.CAP+12:vy, lx0=top?(vr?vx-lw:vx):(vr?vx-vw-16-lw:vx+vw+16);   // at the bottom — beside the version, in its line
@@ -1314,7 +1314,7 @@ function sTitle(){ sky(DT,0.4); var y=Math.round(LH*0.3);
   for(var i=0;i<3;i++){ var bx=cx0-20+((clock*90+i*40)%120); R(P.bullet,bx,sy,4,1); light(bx,sy,6*K,P.glowB,0.45); }
   column(items,Math.round(LH*0.5));
   say('Sonaroids. '+L('play')); }
-function sSound(){ sky(DT,0.3); titles(L(direct?(dirLoud?'volume_loud':'volume_direct'):'volume'),L('volume_s')); soundVolume(scrT); nextBtn('next',L('next')); stepSquares('sound'); diagCorner('V'+VERSION,true); }
+function sSound(){ sky(DT,0.3); titles(L(direct?(dirLoud?'volume_loud':'volume_direct'):'volume'),L('volume_s')); soundVolume(scrT); nextBtn('next',L('next')); stepSquares('sound'); }
 /* v0.41: the Android app (android/, a WebView over this very page) gives a small native helper: media volume, audio route.
    In the browser it does not exist, and nothing changes there */
 var APP=(typeof window!=='undefined'&&window.SonaroidsApp)||null;
@@ -1347,7 +1347,7 @@ function sAway(){ sky(DT,0.3); var m=handSide()==='left', aw=Math.min(1,Math.max
   if(scrT>=PAUSE&&!prep) startPrepare();
   if(prep&&prep.res){ if(prep.res.ok){ if(scrT-prep.doneT>1.5) toWave(); }       // «the room is quiet» stays for 1.5 s
     else { direct=true; dirLoud=prep.res.why==='loud'; onboarding=false; go('sound'); } }
-  stepSquares('away');  diagCorner('V'+VERSION,true); }
+  stepSquares('away');  }
 function sWave(){ sky(DT,0.3); poolFill(1); var m=handSide()==='left', f=handFrac(), live=f!==null;
   // v0.21: tuning stops once the range is caught — the try-out screen shows exactly what the game will use (exploring the edges there widened the field)
   if(scrT>=WAVE_PAUSE&&!caught){ var e=Tune.step(T,DT,Sonar.state(),true,Sonar.shift); if(e) Logs.ev('подстройка',e); }
@@ -1361,7 +1361,7 @@ function sWave(){ sky(DT,0.3); poolFill(1); var m=handSide()==='left', f=handFra
   var wty=(scrT-flipT<4&&!caught)?titles(L('other_t'),L('other_s'),P.pick):titles(L('wave_t'),caught?L('wave_ok'):L('wave_s')); coveredLine(wty+2);
   ringUI(st==='wait'?scrT/WAVE_PAUSE:st==='ok'?1:Math.min(0.95,dur/5.2),st);
   handBeacon();
-  stepSquares('wave');  diagCorner('V'+VERSION,true); }
+  stepSquares('wave');  }
 /* v0.44: where to wave — the edge of the screen at the hand's end glows, with «wave here · at the camera / at the port» and, under it,
    «other hand? turn the phone around»: the browser may pick the front camera's microphone, and then a right-handed player has the hand's end
    on the left — turning the phone by 180° swaps everything round (the screen turns, the game follows) */
@@ -1481,7 +1481,7 @@ function boardLine(){ var b=Board.last(); if(!b) return null;
 var tblBox=null, period='day', scoresFrom='title', nickFrom='title', nickAsked=false, nickMsg='', nickBusy=false, nickEl=null;
 function sScores(){ sky(DT,0.3); var c=Board.top(period);
   var nm=Board.nick(), items=[['p_day',L('p_day'),period==='day'?'primary':''],['p_week',L('p_week'),period==='week'?'primary':''],['p_all',L('p_all'),period==='all'?'primary':''],
-    ['name',nm?L('name')+': '+nm:L('name_set')],['link',L('link')],['sc_back',L('back')]], bw=btnW(items.map(function(q){ return q[1]; })), bx=sideX(bw), m=Math.max(10,Math.round(LW*0.03));
+    ['name',nm?L('name')+': '+nm:L('name_set')],['link',L('link')]], /* v0.48: «back» is the menu button in the corner (it goes back, as «back» did) */ bw=btnW(items.map(function(q){ return q[1]; })), bx=sideX(bw), m=Math.max(10,Math.round(LW*0.03));
   var x0=freeSide()==='left'?bx+bw+m:SAFE.l+m, x1=freeSide()==='left'?LW-SAFE.r-m:bx-m;          // the list takes the rest of the width
   tblBox=[x0,x1]; var y=topY(); text(L('scores')+' — '+L('p_'+period),x0,y,P.text); y+=16; say(L('scores')+', '+L('p_'+period));
   if(c.state==='loading') text(L('loading'),x0,y,P.soft); else if(c.state==='offline') text(L('offline'),x0,y,P.soft);
@@ -1652,8 +1652,24 @@ function loop(now){
     case 'count': sCount(); break; case 'count-resume': sCountResume(); break; case 'play': sPlay(); break; case 'over': sOver(); break;
     case 'paused': sPaused(); break; case 'restart': sRestart(); break; case 'scores': sScores(); break; case 'nick': sNick(); break; case 'lost': sLost(); break; case 'nomic': sNomic(); break; case 'link': sLink(); break; case 'linkshow': sLinkShow(); break; case 'linkin': sLinkIn(); break; case 'linkdone': sLinkDone(); break;
   }
+  chrome();
   present(scr==='play'?shake:0);
 }
+/* v0.48 (the maintainer): the menu button in the top corner on every screen but the menus themselves, and the version on every screen but
+   the flight — so "logs" (a tap on the version) is there during getting ready too. The corner is the free side's, as in flight (away from
+   the hand). In flight and its countdowns the button pauses; elsewhere it goes to the title screen. The version sits under the button;
+   the title and game-over screens keep their own version line at the bottom. */
+var NO_MENU={title:1,lang:1,paused:1,restart:1,play:1}, NO_VER={title:1,over:1,play:1,count:1,'count-resume':1,paused:1,restart:1};
+function chrome(){ if(LH>LW) return;
+  var s=BH-3, vr=freeSide()!=='left', x=vr?LW-Math.round(SAFE.r*0.5)-10-s:Math.round(SAFE.l*0.5)+10, y=SAFE.t+7;
+  if(!NO_MENU[scr]) iconButton(scr==='count'||scr==='count-resume'?'pause':scr==='scores'?'sc_back':'menu',x,y);
+  // the wave screen: the try-out ship flies up the free side's edge — the version goes to the other top corner (by the "wave here" beacon)
+  // the try-out ship flies up the left edge: there the version goes to the top right corner; on the scores screen the buttons' column
+  // starts right under the menu button — the version stands beside it
+  if(NO_VER[scr]) return;
+  if(scr==='wave'&&!vr) diagCorner('V'+VERSION,true,SAFE.t+8,true);
+  else if(scr==='scores') diagCorner('V'+VERSION,true,y+Math.round((s-PF.CAP)/2),false,vr?x-16:x+s+16);
+  else diagCorner('V'+VERSION,true,y+s+14); }
 resize(); Board.flush();
 if('serviceWorker' in navigator&&location.protocol==='https:') navigator.serviceWorker.register('sw.js').then(function(r){ r.update(); }).catch(function(){});   // works offline; checks for a new version on every launch
 go('title');   // always the menu first (0.44); a new player's first "Play" walks through the instruction

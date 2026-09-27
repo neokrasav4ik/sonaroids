@@ -37,7 +37,8 @@ const SCREENS=['lang','title','sound','phone','mic','probe','wave','wave-try','c
       const r=await p.evaluate(()=>({btn:__sonaroids.btn(),S:__sonaroids.S()}));
       const {LW,LH}=r.S;
       if(s==='wave-try'&&!(r.btn.some(q=>q.id==='start')&&r.btn.some(q=>q.id==='again'))) bad.push(`${w}x${h} ${lang} ${hand}: calibrated screen lacks play/recalibrate`);
-      if(s==='wave-try'){ const lane=r.S.shipLane; if(lane!==undefined&&r.btn.some(q=>q.x<lane&&q.x+q.w>lane-24)) bad.push(`${w}x${h} ${lang} ${hand}: button over the ship lane`); }
+      // v0.48: the menu button may sit over the lane's top — in flight the pause button stands in the very same place
+      if(s==='wave-try'){ const lane=r.S.shipLane; if(lane!==undefined&&r.btn.some(q=>q.id!=='menu'&&q.x<lane&&q.x+q.w>lane-24)) bad.push(`${w}x${h} ${lang} ${hand}: button over the ship lane (${r.btn.filter(q=>q.id!=='menu'&&q.x<lane&&q.x+q.w>lane-24).map(q=>q.id+'@'+q.x+','+q.y).join(' ')}; lane ${lane})`); }
       if(s==='play'&&!r.btn.some(q=>q.id==='pause')) bad.push(`${w}x${h} ${lang} ${hand}: no menu button in flight`);
       if(s==='scores'){ const b=await p.evaluate(()=>__sonaroids.board()); if(!b.tbl||r.btn.some(q=>q.x<b.tbl[1]&&q.x+q.w>b.tbl[0]-4)) bad.push(`${w}x${h} ${lang} ${hand}: the table runs under the buttons`); if(b.tbl&&b.tbl[1]-b.tbl[0]<130) bad.push(`${w}x${h} ${lang} ${hand}: the table is too narrow (${b.tbl[1]-b.tbl[0]} px)`); }
       if(s==='linkshow'){ await p.waitForTimeout(300); const lc=await p.evaluate(()=>__sonaroids.state().linkCode); if(lc!=='K7M4QX') bad.push(`${w}x${h} ${lang} ${hand}: the transfer code is ${JSON.stringify(lc)}`); }

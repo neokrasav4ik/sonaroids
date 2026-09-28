@@ -1,7 +1,8 @@
 /* v0.50: the app's own sound. A stand-in of the Android app: audioStart hands the page a MessagePort ("sonaroids-audio") and sends the
    synthetic microphone through it as the app does — "<seq>:<base64 int16 LE>", two frames per message, in real time; the probe gains the
    page sets go into the synthetic sound. With 'sonaroids_audio' = 'app' the game must get ready and catch a waving palm through that
-   path; the service screen «sound» must list the stand-in's microphones and switch the mode. Needs Playwright with Chromium.
+   path, after picking the microphone itself (v0.54: the stand-in's back microphone hears the probe 14 dB quieter — the bottom one must win
+   and be remembered); the service screen «sound» must list the stand-in's microphones and switch the mode. Needs Playwright with Chromium.
    Run: node tests/native_audio.js */
 let chromium; try{ ({chromium}=require('playwright')); }catch(e){ console.log('no playwright — skipped'); console.log('RESULT: ok'); process.exit(0); }
 const fs=require('fs'), path=require('path'), ROOT=path.join(__dirname,'..'), SRC=fs.readFileSync(path.join(__dirname,'sim_source.js'),'utf8');
@@ -13,10 +14,11 @@ const APPSTUB=`(function(){ var st={on:false,g:[0,0,0,0],probes:0,iv:null,frames
     audioDevices:function(){ return JSON.stringify({inputs:[{id:3,type:'builtin_mic',name:'M2101K7BNY',address:'bottom'},{id:4,type:'builtin_mic',name:'M2101K7BNY',address:'back'}],
       outputs:[{id:1,type:'earpiece',name:'x'},{id:2,type:'speaker',name:'x'}],mics:[{id:0,address:'bottom',desc:'bottom',type:'builtin_mic',location:1,pos_mm:[35,5,0]},{id:1,address:'back',desc:'back',type:'builtin_mic',location:1,pos_mm:[20,150,-8]}],unprocessed:false,sdk:33}); },
     audioStatus:function(){ return JSON.stringify({running:st.on,frames:st.frames,src:'voice',ch:1,mic_wanted:st.cfg?st.cfg.mic:-1,out_wanted:-1,error:'',in:{id:3,type:'builtin_mic',address:'bottom'},out:{id:2,type:'speaker'},active:[{id:0,address:'bottom',desc:'bottom',pos_mm:[35,5,0]}]}); },
+    audioSwitch:function(cfg){ var c=JSON.parse(cfg); st.cfg.mic=c.mic; st.cfg.src=c.src; st.switches=(st.switches||0)+1; return true; },
     audioStop:function(){ st.on=false; if(st.iv) clearInterval(st.iv); st.iv=null; },
     audioStart:function(cfg){ st.cfg=JSON.parse(cfg); var mc=new MessageChannel(), src=makeSimSource(function(t){ return window.__hand?window.__hand(t):null; }), i=0, t0=performance.now();
       st.on=true; setTimeout(function(){ window.postMessage('sonaroids-audio','*',[mc.port2]); },50);
-      st.iv=setInterval(function(){ var due=Math.floor((performance.now()-t0)/1000*48000/512); while(i+2<=due){ var g=Math.max(st.g[0],st.g[1],st.g[2],st.g[3]);
+      st.iv=setInterval(function(){ var due=Math.floor((performance.now()-t0)/1000*48000/512); while(i+2<=due){ var g=Math.max(st.g[0],st.g[1],st.g[2],st.g[3])*(st.cfg&&st.cfg.mic===4?0.2:1);   /* the back microphone hears the probe 14 dB quieter */
           var b=new Uint8Array(2048), dv=new DataView(b.buffer); for(var k=0;k<2;k++){ var f=src(i+k,g); for(var j=0;j<512;j++) dv.setInt16((k*512+j)*2,Math.max(-32768,Math.min(32767,Math.round(f[j]*32768))),true); }
           var s=''; for(var q=0;q<b.length;q++) s+=String.fromCharCode(b[q]); mc.port1.postMessage(i+':'+btoa(s)); i+=2; st.frames+=2; } },10);
       return true; } }; })();`;
@@ -29,7 +31,7 @@ const APPSTUB=`(function(){ var st={on:false,g:[0,0,0,0],probes:0,iv:null,frames
   await p.evaluate(()=>__sonaroids.act.play()); await p.waitForTimeout(400); await p.evaluate(()=>__sonaroids.act.probe_norm());
   const scr=()=>p.evaluate(()=>__sonaroids.scr());
   let s='', t0=Date.now(); while(Date.now()-t0<25000){ s=await scr(); if(s==='wave') break; await p.waitForTimeout(200); }
-  const info=await p.evaluate(()=>({audio:Sonar.info().audio,probes:__nat.probes,frames:__nat.frames,gain:Sonar.info().probe_gain,snr:Sonar.info().probe_snr,mic:Sonar.micSettings()}));
+  const info=await p.evaluate(()=>({auto:Sonar.info().auto_audio,stored:localStorage.getItem('sonaroids_autoaudio'),switches:__nat.switches,audio:Sonar.info().audio,probes:__nat.probes,frames:__nat.frames,gain:Sonar.info().probe_gain,snr:Sonar.info().probe_snr,mic:Sonar.micSettings()}));
   await p.evaluate(()=>{ window.__hand=t=>100+45*Math.sin(2*Math.PI*t/1.4); });
   let caught=false; t0=Date.now(); while(Date.now()-t0<25000){ caught=await p.evaluate(()=>__sonaroids.state().caught); if(caught) break; await p.waitForTimeout(250); }
   // the service screen
@@ -40,7 +42,9 @@ const APPSTUB=`(function(){ var st={on:false,g:[0,0,0,0],probes:0,iv:null,frames
   await p.evaluate(()=>{ Sfx&&0; }); await p.mouse.click(1,1);
   const modeAfter=await p.evaluate(()=>{ const q=__sonaroids.btn().find(x=>x.id==='aud:mic:3'); return q; });
   await b.close();
-  const ok=s==='wave'&&info.audio==='app'&&info.probes>=3&&info.frames>100&&info.mic&&info.mic.audio==='app'&&caught&&listed&&!errors.length;
+  const autoOk=!!(info.auto&&info.auto.tried.length===2&&info.auto.pick&&info.auto.pick.mic===3&&info.stored&&JSON.parse(info.stored).mic===3);
+  const ok=autoOk&&s==='wave'&&info.audio==='app'&&info.probes>=3&&info.frames>100&&info.mic&&info.mic.audio==='app'&&caught&&listed&&!errors.length;
+  console.log(`auto pick: tried ${info.auto&&info.auto.tried.map(r=>r.mic+'/'+r.src+' wander '+r.wander+' SNR '+r.snr).join(', ')} → mic ${info.auto&&info.auto.pick&&info.auto.pick.mic} (want 3), remembered ${info.stored} ${autoOk?'ok':'FAIL'}`);
   console.log(`through the app's sound: ready → ${s}, mode ${info.audio}, probes sent ${info.probes}, frames ${info.frames}, probe gain ${info.gain&&info.gain.toFixed(3)}, SNR ${info.snr&&info.snr.toFixed(1)} dB; palm caught ${caught}; service screen lists the microphones and the speaker ${listed}`+(errors.length?' | errors: '+[...new Set(errors)].join('; ').slice(0,400):''));
   console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;
 })();

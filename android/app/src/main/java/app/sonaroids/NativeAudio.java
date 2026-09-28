@@ -40,7 +40,7 @@ import java.util.List;
 class NativeAudio {
     static final int FS = 48000, N = 512;
     final AudioManager am; final WebView web; final Handler ui;
-    AudioRecord rec; AudioTrack trk; Thread recT, playT; volatile boolean run = false;
+    AudioRecord rec; AudioTrack trk; Thread recT, playT; volatile boolean run = false, recRun = false; long seq = 0;
     WebMessagePort port;
     volatile float[] pAll, pEven, pOdd;                           // the probes, 512 samples each, made by the page
     volatile float tAllL, tAllR, tEven, tOdd;                     // gain targets set by the page
@@ -57,36 +57,14 @@ class NativeAudio {
         stop();
         try {
             JSONObject c = new JSONObject(cfg == null || cfg.isEmpty() ? "{}" : cfg);
-            micWanted = c.optInt("mic", -1); outWanted = c.optInt("out", -1); channels = c.optInt("ch", 1) == 2 ? 2 : 1;
-            String s = c.optString("src", "auto");
+            outWanted = c.optInt("out", -1); channels = c.optInt("ch", 1) == 2 ? 2 : 1;
             // v0.52: the probe as media by default (as the WebView plays it). On the Mi 9 Lite as a game sound (USAGE_GAME) its level at the
             // microphone wandered by ~10% frame to frame in an empty room (0.8% through the WebView) — the empty room did not cancel out
             // (residual −12 dB against −33) and the palm was lost again and again
             String u = c.optString("usage", "media"); usageName = u;
             int usage = u.equals("game") ? AudioAttributes.USAGE_GAME : u.equals("unknown") ? AudioAttributes.USAGE_UNKNOWN : AudioAttributes.USAGE_MEDIA;
             int ctype = u.equals("game") ? AudioAttributes.CONTENT_TYPE_SONIFICATION : AudioAttributes.CONTENT_TYPE_MUSIC;
-            int src;
-            if (s.equals("voice")) src = MediaRecorder.AudioSource.VOICE_RECOGNITION;
-            else if (s.equals("mic")) src = MediaRecorder.AudioSource.MIC;
-            else if (s.equals("camcorder")) src = MediaRecorder.AudioSource.CAMCORDER;
-            // v0.53: «auto» is VOICE_RECOGNITION. On the Mi 9 Lite UNPROCESSED let the probe's level wander ~6% frame to frame in an empty
-            // room (the residual −13 dB, the palm lost now and then) while VOICE_RECOGNITION kept it at 0.9% (−36 dB), as the WebView (0.8%)
-            else if (s.equals("unprocessed")) src = MediaRecorder.AudioSource.UNPROCESSED;
-            else src = MediaRecorder.AudioSource.VOICE_RECOGNITION;
-            srcName = src == MediaRecorder.AudioSource.UNPROCESSED ? "unprocessed" : src == MediaRecorder.AudioSource.VOICE_RECOGNITION ? "voice"
-                : src == MediaRecorder.AudioSource.CAMCORDER ? "camcorder" : "mic";
-            int chIn = channels == 2 ? AudioFormat.CHANNEL_IN_STEREO : AudioFormat.CHANNEL_IN_MONO;
-            int minIn = AudioRecord.getMinBufferSize(FS, chIn, AudioFormat.ENCODING_PCM_16BIT);
-            rec = new AudioRecord(src, FS, chIn, AudioFormat.ENCODING_PCM_16BIT, Math.max(minIn * 2, 8 * N * 2 * channels));
-            if (rec.getState() != AudioRecord.STATE_INITIALIZED) { error = "record-init"; release(); return false; }
-            if (micWanted >= 0) { AudioDeviceInfo d = device(micWanted, AudioManager.GET_DEVICES_INPUTS); if (d != null) rec.setPreferredDevice(d); }
-            // v0.51: the source already asks for no processing (UNPROCESSED; VOICE_RECOGNITION — by Android's rules without noise suppression and
-            // gain control), but some phones attach noise suppression, gain control or echo cancelling to a recording anyway: switch them off
-            int sid = rec.getAudioSessionId(); StringBuilder fx = new StringBuilder();
-            fxNs = fxOff(NoiseSuppressor.isAvailable() ? NoiseSuppressor.create(sid) : null, "ns", NoiseSuppressor.isAvailable(), fx);
-            fxAgc = fxOff(AutomaticGainControl.isAvailable() ? AutomaticGainControl.create(sid) : null, "agc", AutomaticGainControl.isAvailable(), fx);
-            fxAec = fxOff(AcousticEchoCanceler.isAvailable() ? AcousticEchoCanceler.create(sid) : null, "aec", AcousticEchoCanceler.isAvailable(), fx);
-            fxState = fx.toString();
+            if (!openRec(c)) { release(); return false; }
 
             int minOut = AudioTrack.getMinBufferSize(FS, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_FLOAT);
             trk = new AudioTrack.Builder()
@@ -95,7 +73,7 @@ class NativeAudio {
                     .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO).build())
                 .setBufferSizeInBytes(Math.max(minOut * 2, 4 * N * 2 * 4)).setTransferMode(AudioTrack.MODE_STREAM).build();
             if (outWanted >= 0) { AudioDeviceInfo d = device(outWanted, AudioManager.GET_DEVICES_OUTPUTS); if (d != null) trk.setPreferredDevice(d); }
-            frames = 0; error = ""; run = true;
+            frames = 0; seq = 0; error = ""; run = true; recRun = true;
             rec.startRecording(); trk.play();
             playT = new Thread(this::playLoop, "sonar-play"); playT.start();
             // the port is made on the UI thread (WebView's rule); the recording thread starts once the page has its end
@@ -111,8 +89,51 @@ class NativeAudio {
         } catch (Exception e) { error = String.valueOf(e); release(); return false; }
     }
 
+    /* the recording: source and microphone from cfg (also used by switchInput) */
+    boolean openRec(JSONObject c) {
+        micWanted = c.optInt("mic", -1);
+        String s = c.optString("src", "auto");
+        int src;
+        if (s.equals("voice")) src = MediaRecorder.AudioSource.VOICE_RECOGNITION;
+        else if (s.equals("mic")) src = MediaRecorder.AudioSource.MIC;
+        else if (s.equals("camcorder")) src = MediaRecorder.AudioSource.CAMCORDER;
+        // v0.53: «auto» is VOICE_RECOGNITION. On the Mi 9 Lite UNPROCESSED let the probe's level wander ~6% frame to frame in an empty
+        // room (the residual −13 dB, the palm lost now and then) while VOICE_RECOGNITION kept it at 0.9% (−36 dB), as the WebView (0.8%)
+        else if (s.equals("unprocessed")) src = MediaRecorder.AudioSource.UNPROCESSED;
+        else src = MediaRecorder.AudioSource.VOICE_RECOGNITION;
+        srcName = src == MediaRecorder.AudioSource.UNPROCESSED ? "unprocessed" : src == MediaRecorder.AudioSource.VOICE_RECOGNITION ? "voice"
+            : src == MediaRecorder.AudioSource.CAMCORDER ? "camcorder" : "mic";
+        int chIn = channels == 2 ? AudioFormat.CHANNEL_IN_STEREO : AudioFormat.CHANNEL_IN_MONO;
+        int minIn = AudioRecord.getMinBufferSize(FS, chIn, AudioFormat.ENCODING_PCM_16BIT);
+        rec = new AudioRecord(src, FS, chIn, AudioFormat.ENCODING_PCM_16BIT, Math.max(minIn * 2, 8 * N * 2 * channels));
+        if (rec.getState() != AudioRecord.STATE_INITIALIZED) { error = "record-init"; return false; }
+        if (micWanted >= 0) { AudioDeviceInfo d = device(micWanted, AudioManager.GET_DEVICES_INPUTS); if (d != null) rec.setPreferredDevice(d); }
+        // v0.51: the source already asks for no processing (UNPROCESSED; VOICE_RECOGNITION — by Android's rules without noise suppression and
+        // gain control), but some phones attach noise suppression, gain control or echo cancelling to a recording anyway: switch them off
+        int sid = rec.getAudioSessionId(); StringBuilder fx = new StringBuilder();
+        fxNs = fxOff(NoiseSuppressor.isAvailable() ? NoiseSuppressor.create(sid) : null, "ns", NoiseSuppressor.isAvailable(), fx);
+        fxAgc = fxOff(AutomaticGainControl.isAvailable() ? AutomaticGainControl.create(sid) : null, "agc", AutomaticGainControl.isAvailable(), fx);
+        fxAec = fxOff(AcousticEchoCanceler.isAvailable() ? AcousticEchoCanceler.create(sid) : null, "aec", AcousticEchoCanceler.isAvailable(), fx);
+        fxState = fx.toString();
+        return true;
+    }
+
+    /* v0.54: another source or microphone without stopping the probe or the port — for the page's short test of the phone's options
+       during «take your hand away». The frames' numbering goes on; the first ones after a switch are the new recording's */
+    synchronized boolean switchInput(String cfg) {
+        if (!run) return false;
+        try {
+            recRun = false; try { if (recT != null) recT.join(500); } catch (Exception e) { }
+            recT = null; releaseRec();
+            if (!openRec(new JSONObject(cfg == null || cfg.isEmpty() ? "{}" : cfg))) return false;
+            rec.startRecording(); recRun = true;
+            recT = new Thread(this::recLoop, "sonar-rec"); recT.start();
+            return true;
+        } catch (Exception e) { error = "switch: " + e; return false; }
+    }
+
     synchronized void stop() {
-        run = false;
+        run = false; recRun = false;
         try { if (recT != null) recT.join(500); } catch (Exception e) { }
         try { if (playT != null) playT.join(500); } catch (Exception e) { }
         recT = null; playT = null;
@@ -132,22 +153,27 @@ class NativeAudio {
         return e;
     }
 
-    void release() {
+    void releaseRec() {
         for (AudioEffect e : new AudioEffect[]{fxNs, fxAgc, fxAec}) { try { if (e != null) e.release(); } catch (Exception x) { } }
         fxNs = null; fxAgc = null; fxAec = null;
         try { if (rec != null) { try { rec.stop(); } catch (Exception e) { } rec.release(); } } catch (Exception e) { }
+        rec = null;
+    }
+
+    void release() {
+        releaseRec();
         try { if (trk != null) { try { trk.pause(); trk.flush(); } catch (Exception e) { } trk.release(); } } catch (Exception e) { }
-        rec = null; trk = null;
+        trk = null;
     }
 
     /* two frames per message; a short read (the phone took the microphone away) ends the loop — the page sees no frames and asks again */
     void recLoop() {
         final int n = 2 * N * channels; short[] buf = new short[n]; ByteBuffer bb = ByteBuffer.allocate(n * 2).order(ByteOrder.LITTLE_ENDIAN);
-        long seq = 0;
-        while (run) {
+        final AudioRecord r0 = rec;
+        while (run && recRun) {
             int got = 0;
-            while (got < n && run) { int r = rec.read(buf, got, n - got); if (r <= 0) { error = "read " + r; run = false; break; } got += r; }
-            if (!run) break;
+            while (got < n && run && recRun) { int r = r0.read(buf, got, n - got); if (r <= 0) { if (recRun) { error = "read " + r; run = false; } break; } got += r; }
+            if (!run || !recRun) break;
             bb.clear(); bb.asShortBuffer().put(buf, 0, n);
             final String msg = seq + ":" + Base64.encodeToString(bb.array(), Base64.NO_WRAP);
             seq += 2; frames += 2;

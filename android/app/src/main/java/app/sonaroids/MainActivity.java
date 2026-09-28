@@ -18,7 +18,10 @@ import android.content.ContentValues;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
+import android.content.pm.PackageInstaller;
 import android.content.pm.PackageManager;
+import android.app.PendingIntent;
+import android.provider.Settings;
 import android.media.AudioDeviceInfo;
 import android.media.AudioManager;
 import android.net.Uri;
@@ -48,6 +51,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -174,9 +178,8 @@ public class MainActivity extends Activity {
                     if (remote > versionCode()) {
                         new AlertDialog.Builder(this)
                             .setTitle(ru() ? "Новая версия приложения" : "A new version of the app")
-                            .setMessage((ru() ? "Доступна версия " : "Version ") + name + (ru() ? ". Скачать и установить?" : " is available. Download and install it?"))
-                            .setPositiveButton(ru() ? "Скачать" : "Download", (d, w) -> {
-                                try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); } catch (Exception e) { } })
+                            .setMessage((ru() ? "Доступна версия " : "Version ") + name + (ru() ? ". Обновить сейчас?" : " is available. Update now?"))
+                            .setPositiveButton(ru() ? "Обновить" : "Update", (d, w) -> installUpdate(url))
                             .setNegativeButton(ru() ? "Потом" : "Later", null).show();
                     } else if (manual) {
                         Toast.makeText(this, (ru() ? "Приложение последней версии " : "The app is up to date ") + versionName(), Toast.LENGTH_SHORT).show();
@@ -186,6 +189,69 @@ public class MainActivity extends Activity {
                 if (manual) ui.post(() -> Toast.makeText(this, ru() ? "Не удалось проверить обновление" : "Could not check for updates", Toast.LENGTH_SHORT).show());
             }
         }).start();
+    }
+
+    /* v0.54: the update inside the app (it used to open the APK link in the browser, which downloaded it — sometimes twice — and left
+       the installing to the user). The app downloads the APK itself into an Android installer session and Android asks once:
+       «Install?». An app cannot install itself without that question. The first time Android also asks to allow installing from
+       this app (Settings → «install unknown apps»); after that — only «Install». Works when the new APK is signed with the same key. */
+    static final String ACTION_INSTALLED = "app.sonaroids.INSTALL_STATUS";
+    volatile boolean installing = false;
+
+    void installUpdate(final String url) {
+        if (installing) return;
+        if (Build.VERSION.SDK_INT >= 26 && !getPackageManager().canRequestPackageInstalls()) {
+            Toast.makeText(this, ru() ? "Разреши установку из этого приложения и нажми «Обновить» ещё раз" : "Allow installing from this app, then tap «Update» again", Toast.LENGTH_LONG).show();
+            try { startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + getPackageName()))); } catch (Exception e) { }
+            return;
+        }
+        installing = true;
+        Toast.makeText(this, ru() ? "Скачиваю обновление…" : "Downloading the update…", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            PackageInstaller.Session ses = null;
+            try {
+                HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+                c.setInstanceFollowRedirects(true); c.setConnectTimeout(15000); c.setReadTimeout(30000);
+                int code = c.getResponseCode();
+                for (int i = 0; i < 5 && code / 100 == 3; i++) { String loc = c.getHeaderField("Location"); c.disconnect(); c = (HttpURLConnection) new URL(loc).openConnection(); c.setConnectTimeout(15000); c.setReadTimeout(30000); code = c.getResponseCode(); }
+                if (code != 200) throw new Exception("HTTP " + code);
+                long len = c.getContentLengthLong();
+                PackageInstaller pi = getPackageManager().getPackageInstaller();
+                PackageInstaller.SessionParams sp = new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+                int id = pi.createSession(sp); ses = pi.openSession(id);
+                try (InputStream in = c.getInputStream(); OutputStream out = ses.openWrite("sonaroids.apk", 0, len > 0 ? len : -1)) {
+                    byte[] b = new byte[65536]; int n; while ((n = in.read(b)) > 0) out.write(b, 0, n);
+                    ses.fsync(out);
+                }
+                Intent back = new Intent(this, MainActivity.class).setAction(ACTION_INSTALLED);
+                int fl = PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0);
+                PendingIntent pend = PendingIntent.getActivity(this, 7, back, fl);
+                ses.commit(pend.getIntentSender()); ses.close(); ses = null;
+            } catch (final Exception e) {
+                try { if (ses != null) ses.abandon(); } catch (Exception x) { }
+                installing = false;
+                ui.post(() -> Toast.makeText(this, (ru() ? "Не удалось скачать обновление: " : "Could not download the update: ") + e.getMessage(), Toast.LENGTH_LONG).show());
+            }
+        }).start();
+    }
+
+    /* the installer's answer: «needs the user» → its confirmation screen; failure → a note (a different signing key needs the old app removed) */
+    @Override
+    protected void onNewIntent(Intent i) {
+        super.onNewIntent(i);
+        if (i == null || !ACTION_INSTALLED.equals(i.getAction())) return;
+        int st = i.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE);
+        if (st == PackageInstaller.STATUS_PENDING_USER_ACTION) {
+            Intent confirm = i.getParcelableExtra(Intent.EXTRA_INTENT);
+            if (confirm != null) { try { startActivity(confirm); } catch (Exception e) { } }
+            return;
+        }
+        installing = false;
+        if (st != PackageInstaller.STATUS_SUCCESS) {
+            String msg = i.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
+            Toast.makeText(this, (ru() ? "Обновление не установилось" : "The update did not install") + (msg != null ? ": " + msg : "")
+                + (st == PackageInstaller.STATUS_FAILURE_CONFLICT || st == PackageInstaller.STATUS_FAILURE_INCOMPATIBLE ? (ru() ? ". Удали приложение и поставь заново" : ". Remove the app and install it again") : ""), Toast.LENGTH_LONG).show();
+        }
     }
 
     /* window.SonaroidsApp — for the page (src/49_main.js, APP) */
@@ -232,6 +298,8 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface
         public void audioStop() { nat.stop(); }
+        @JavascriptInterface
+        public boolean audioSwitch(String cfg) { return nat.switchInput(cfg); }
         @JavascriptInterface
         public void audioProbe(String which, String b64) { nat.probe(which, b64); }
         @JavascriptInterface

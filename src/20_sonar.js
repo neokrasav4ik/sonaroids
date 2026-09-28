@@ -42,6 +42,7 @@ var Sonar=(function(){
     fs=48000; var df=fs/N; kLo=Math.ceil(F_LO/df); kHi=Math.floor(F_HI/df); kc=Math.floor((kLo+kHi)/2);
     var mic=lsGet('sonaroids_mic',''), out=lsGet('sonaroids_out','');
     natCfg={mic:mic===''?-1:+mic,out:out===''?-1:+out,src:lsGet('sonaroids_src','auto'),usage:lsGet('sonaroids_usage','media'),ch:1};
+    var au=autoPick(); if(natAuto()&&au){ natCfg.mic=au.mic; natCfg.src=au.src; }
     natProbes(); NATA.audioGains(0,0,0,0);
     return new Promise(function(res,rej){
       var to=setTimeout(function(){ window.removeEventListener('message',h); rej(new Error('no-mic')); },4000);
@@ -63,6 +64,48 @@ var Sonar=(function(){
   function openMic(){
     try{ if(navigator.audioSession) navigator.audioSession.type='auto'; }catch(e){}
     return navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:1}});
+  }
+  /* v0.54: the app picks the recording itself. Mi 9 Lite, 28 Sep: UNPROCESSED let the probe's level wander ~6% frame to frame in an empty
+     room (the palm lost now and then), VOICE_RECOGNITION held it at 0.9%; the back microphone heard the probe 14 dB quieter and could
+     not tell the palm's distance. On the Redmi the WebView sometimes records at the port, sometimes at the front camera. So, in the app's
+     mode with the source and the microphone left on «auto», getting ready tries each built-in microphone with VOICE_RECOGNITION (and
+     UNPROCESSED where the phone has it): ~0.25 s to settle, 0.5 s (48 frames) with the probe on and the hand away, and measures how steady
+     the probe is at the microphone (the frame-to-frame wander of its tones) and how loud (its line). Of those steady enough (under 3%) and not
+     clipping, the one with the best signal-to-noise wins; it is remembered (sonaroids_autoaudio) and used from the start next time, and tried again only after
+     a getting ready that failed, or from the service screen. The results go into the setup log (auto_audio). */
+  var autoLog=null, autoRetest=false;
+  function natAuto(){ return lsGet('sonaroids_mic','')===''&&lsGet('sonaroids_src','auto')==='auto'; }
+  function autoPick(){ try{ var j=JSON.parse(lsGet('sonaroids_autoaudio','')||'null'); return j&&typeof j.mic==='number'&&j.src?j:null; }catch(e){ return null; } }
+  function steadiness(frames){ var ks=[],k,n,t; for(k=kLo;k<=kHi;k++) ks.push(k); var K=ks.length, T=frames.length, re=[], im=[], mr=new Float64Array(K), mi=new Float64Array(K);
+    for(t=0;t<T;t++){ var r=new Float64Array(K), q=new Float64Array(K), f=frames[t];
+      for(var j=0;j<K;j++){ var w=2*Math.PI*ks[j]/N, sr=0, si=0; for(n=0;n<N;n++){ sr+=f[n]*Math.cos(w*n); si-=f[n]*Math.sin(w*n); } r[j]=sr; q[j]=si; mr[j]+=sr/T; mi[j]+=si/T; }
+      re.push(r); im.push(q); }
+    var dev=0, mag=0; for(var j2=0;j2<K;j2++){ mag+=Math.hypot(mr[j2],mi[j2]); for(t=0;t<T;t++) dev+=Math.hypot(re[t][j2]-mr[j2],im[t][j2]-mi[j2])/T; }
+    return mag>0?dev/mag:1; }
+  function audioTest(){
+    if(!natOn||!NATA.audioSwitch||!natAuto()) return Promise.resolve(null);
+    if(autoPick()&&!autoRetest) return Promise.resolve(null);
+    var dv={}; try{ dv=JSON.parse(NATA.audioDevices()); }catch(e){}
+    var mics=(dv.inputs||[]).filter(function(d){ return d.type==='builtin_mic'; }).map(function(d){ return d.id; }); if(!mics.length) mics=[-1];
+    var srcs=['voice'].concat(dv.unprocessed?['unprocessed']:[]), cands=[];
+    mics.forEach(function(m){ srcs.forEach(function(sc){ cands.push({mic:m,src:sc}); }); });
+    var res=[];
+    return cands.reduce(function(p,c){ return p.then(function(){
+      if(!NATA.audioSwitch(JSON.stringify({mic:c.mic,src:c.src,ch:1}))){ res.push({mic:c.mic,src:c.src,fail:true}); return; }
+      return sleep(250).then(function(){ return collect(48); }).then(function(fr){ var st=probeStats(fr,fs,F_LO,20450), rt=null;
+        try{ var S=JSON.parse(NATA.audioStatus()); rt=S.in?S.in.id:null; }catch(e){}
+        var pk=0; fr.forEach(function(f){ for(var j=0;j<f.length;j++){ var v=f[j]<0?-f[j]:f[j]; if(v>pk) pk=v; } });
+        res.push({mic:c.mic,src:c.src,routed:rt,wander:+steadiness(fr).toFixed(4),line:+(st.line-20*Math.log10(PROBE_G)).toFixed(1),snr:+st.snr.toFixed(1),peak:+pk.toFixed(3)}); }); }); },Promise.resolve())
+    // the media volume is set before this (the app, startPrepare), and every candidate hears the same probe at the same gain; the auto
+    // level that follows turns the probe down to the same signal-to-noise on whichever wins — so the pick goes by that ratio (SNR), not by
+    // loudness alone; a recording near clipping (peak ≥ 0.9, a loud phone) is not taken
+    .then(function(){ var ok=res.filter(function(r){ return !r.fail&&r.wander<0.03&&r.peak<0.9; }), pick;
+      if(ok.length) pick=ok.sort(function(a,b){ return b.snr-a.snr; })[0];
+      else pick=res.filter(function(r){ return !r.fail; }).sort(function(a,b){ return a.wander-b.wander; })[0];
+      autoLog={tried:res,pick:pick?{mic:pick.mic,src:pick.src}:null}; autoRetest=false;
+      if(!pick) return;
+      try{ localStorage.setItem('sonaroids_autoaudio',JSON.stringify({mic:pick.mic,src:pick.src})); }catch(e){}
+      natCfg.mic=pick.mic; natCfg.src=pick.src; NATA.audioSwitch(JSON.stringify({mic:pick.mic,src:pick.src,ch:1})); return sleep(250); });
   }
   /* microphone, audio context, probes. Must start from a tap (browsers unlock sound only on a user gesture) */
   function boot(){
@@ -176,16 +219,16 @@ var Sonar=(function(){
     active=false; last=null; lost=false; PROBE_G=0.25; volLog=[];
     onStage&&onStage('side');
     var adj0=function(){ return 10*Math.log10((Math.floor(F_HI*N/fs)-Math.ceil(BANDS.normal*N/fs)+1)/(kHi-kLo+1)); };
-    return pickChannel().then(function(){ onStage&&onStage('level'); return autoLevel(); }).then(function(L){ return vol?fitVolume(vol,adj0())(L):L; }).then(function(L){
+    return pickChannel().then(audioTest).then(function(){ onStage&&onStage('level'); return autoLevel(); }).then(function(L){ return vol?fitVolume(vol,adj0())(L):L; }).then(function(L){
       // "barely heard": the probe itself is ~19 dB quieter than on a phone with sound on (the media volume at zero; on iPhone the silent switch
       // does not mute it). Not by signal-to-noise: a noisy room (24 Sep: 33 dB worked fine) and a palm moving nearby (its echo counts as "noise";
       // 24 Sep: after a game over the next start said "too quiet") both lower it. A probe too weak to read is caught by DSP2 ('noprobe')
       // the wide probe spreads the same power over about twice as many tones: each is ~3 dB quieter, so the bar moves with it
       var lvlAdj=10*Math.log10((Math.floor(F_HI*N/fs)-Math.ceil(BANDS.normal*N/fs)+1)/(kHi-kLo+1));
-      if(PROBE_LVL<QUIET_LVL+lvlAdj){ setProbe('off'); return {ok:false,why:'quiet',snr:L.snr,level:PROBE_LVL}; }
+      if(PROBE_LVL<QUIET_LVL+lvlAdj){ setProbe('off'); autoRetest=true; return {ok:false,why:'quiet',snr:L.snr,level:PROBE_LVL}; }
       if(!vol&&PROBE_LVL>LOUD_LVL+lvlAdj){ setProbe('off'); return {ok:false,why:'loud',snr:L.snr,level:PROBE_LVL}; }
       DSP2.set('flo',band==='wide'?F_LO:null); DSP2.init(fs,'all'); DSP2.setCal(curCal()); DSP2.set('autocenter',1); active=true; onStage&&onStage('room');
-      return waitReady().then(function(st){ if(st==='noprobe'){ active=false; setProbe('off'); return {ok:false,why:'noprobe'}; } return {ok:true,snr:L.snr}; });
+      return waitReady().then(function(st){ if(st==='noprobe'){ active=false; setProbe('off'); autoRetest=true; return {ok:false,why:'noprobe'}; } return {ok:true,snr:L.snr}; });
     });
   }
   /* simulation for headless tests and demos: frames come from source(i) (Float32Array of 512) at real-time rate instead of the microphone;
@@ -225,7 +268,8 @@ var Sonar=(function(){
     /* what the browser really gave for the microphone: on Android the echo/noise/gain processing may stay on despite our request */
     micSettings:function(){ if(natOn){ try{ var st=JSON.parse(NATA.audioStatus()); return {audio:'app',src:st.src,usage:st.usage,fx:st.fx,mic_wanted:st.mic_wanted,out_wanted:st.out_wanted,in:st.in,out:st.out,active:st.active}; }catch(e){ return {audio:'app'}; } }
       try{ var t=stream&&stream.getAudioTracks()[0]; if(!t) return null; var s=t.getSettings(), o={}; ['autoGainControl','echoCancellation','noiseSuppression','sampleRate','channelCount','latency','deviceId'].forEach(function(k){ if(s[k]!==undefined) o[k]=k==='deviceId'?String(s[k]).slice(0,8):s[k]; }); o.label=t.label; return o; }catch(e){ return null; } },
-    info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,probe_level:PROBE_LVL,vol_fit:volLog.slice(),f_lo:F_LO,band:band,cal:curCal(),gaps:gaps,booted:booted,audio:natOn?'app':'browser'}; },
+    info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,probe_level:PROBE_LVL,vol_fit:volLog.slice(),f_lo:F_LO,band:band,cal:curCal(),gaps:gaps,booted:booted,audio:natOn?'app':'browser',auto_audio:autoLog}; },
+    audioRetest:function(){ autoRetest=true; try{ localStorage.removeItem('sonaroids_autoaudio'); }catch(e){} },
     native:function(){ return natOn; }, nativeAvail:natAvail,
     chan:function(){ return chan; }, ctx:function(){ return ctx; }};
 })();

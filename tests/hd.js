@@ -6,7 +6,7 @@ let chromium; try{ ({chromium}=require('playwright')); }catch(e){ console.log('n
 const path=require('path'), ROOT=path.join(__dirname,'..'), GAME='file://'+path.join(ROOT,'game','play','index.html');
 (async()=>{
   const b=await chromium.launch(); let bad=0; const rows=[];
-  const ids=['space','fairy','sea','sweet'];
+  const ids=['space','fairy'];
   for(const id of ids){
     const p=await b.newPage({viewport:{width:844,height:390},deviceScaleFactor:2}); const errors=[]; p.on('pageerror',e=>errors.push(e.message));
     await p.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_skin','${id}'); localStorage.setItem('sonaroids_gfx','hd');`);

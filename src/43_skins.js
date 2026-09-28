@@ -2,7 +2,7 @@
    the power-ups, the shots and says the colours of the bursts; the game's logic, sizes and hit circles stay the same. The menus, the texts
    and the getting-ready screens keep the game's own colours (P). 'space' is the game as it was. Chosen on the game's menu, kept in
    'sonaroids_skin'. ── */
-var SKIN_IDS=['space','fairy','sea','sweet'];
+var SKIN_IDS=['space','fairy'];   // v0.73: sea and sweets removed
 var noLight=false;                                                     // an off-screen preview draws no soft light
 /* a small pixel image made in memory, then turned into a canvas once */
 function Pix(w,h){ this.w=w; this.h=h; this.d=new Uint8ClampedArray(w*h*4); }
@@ -109,85 +109,12 @@ SKINS.fairy={id:'fairy', glow:false, ink:'#2d2350', motes:['#ffffff','#f4f3ff','
   bursts:function(){ return {rock:['#3d3a66','#5f5596','#8279b8','#ffb020'],ufo:['#4a2d7a','#8f6ad0','#e8187a'],ship:['#1f8a5a','#3fc486','#ff5a1f'],pick:['#b05a00','#ffb020']}; },
   shield:function(){ return '#2d2350'; }, mini:function(){ return ['#1f8a5a','#3fc486']; } };
 
-/* ═══ sea — a yellow submarine in a warm sea; puffer fish, a shark for the saucer, torpedoes, power-ups in bubbles ═══ */
-var SUB=['.........pp.......','.........p........','........yyyy......','.....yyyYYYYyy....','...yyYYYYYYYYYYy..','o.yYYwwYYwwYYYYYy.','oyyYYwwYYwwYYYYYYy','o.yYYYYYYYYYYYYYy.','...yydddddddddyy..'];
-var SUB_PAL={y:'#d9941e',Y:'#ffd23f',w:'#7fe8ff',p:'#8a9aa8',o:'#8a9aa8',d:'#b87a14'};
-var SHARK=['..........k.......','.........kk.......','....kkkkkkkkk....k','..kkmmmmmmmmmkk.kk','.kekmmmmmmmmmmmkkk','kkmmmmmmmmmmmmmkk.','.wwwwwwwwwwmmkk.kk','..wwwwwwww.....k..'];
-var SHARK_S=['.......k....','...kkkkkk..k','.kkmmmmmmkkk','kemmmmmmmmk.','.wwwwwwmkk.k','..wwww....k.'];
-SKINS.sea={id:'sea', glow:false, ink:'#0b2a44', motes:['#a8ecf5','#c4f4fa','#dff9fc'], moteDiv:700, moteUp:-3,
-  // v0.71: the water between light and mid blue only (the deep navy at the bottom swallowed the outlines)
-  paint:function(p,w,h){ vgradPix(p,['#86dcea','#6fd0e3','#5cc3dc','#4db4d4','#44a8cd']);
-    var ray=cH('#c8f4fa'); for(var y=0;y<h;y++) for(var x=0;x<w;x++){ var v=(x+y*0.45)%70; if(v<9&&bay(x,y)<0.4*(1-y/h)){ var c=p.get(x,y); p.put(x,y,mixc(c,ray,0.25)); } }
-    var s1=cH('#e8d79a'), s2=cH('#d9c688'), R2=srand(9);
-    for(x=0;x<w;x++){ var yy=Math.round(hill(x,w,h-9,3,4)); for(y=yy;y<h;y++) p.put(x,y,(x*3+y)%11?s1:s2); }
-    for(var i=0;i<Math.round(w/28);i++){ var wx=Math.round(R2()*w), hg=12+Math.round(R2()*22), c=cH(R2()<0.5?'#2aa876':'#1f8f66');
-      for(var j=0;j<hg;j++){ p.put(wx+Math.round(2*Math.sin(j/3)),h-8-j,c); p.put(wx+1+Math.round(2*Math.sin(j/3)),h-8-j,c); } }
-    for(i=0;i<Math.round(w/60);i++){ var cx=10+Math.round(R2()*(w-20)), cc=cH(['#ff8fa3','#ffa94d','#c38cff'][i%3]); for(var a=0;a<3;a++) for(var r=0;r<7;r++) p.put(cx+(a-1)*r*0.5,h-8-r,cc); } },
-  sky:function(dt,s){ skinSky(this,dt,s); },
-  rock:function(r,sz,seed){ var ramps=[['#a8561a','#e08a2c','#ffc24a','#ffe38a','#fff6c8'],['#b0406e','#e86e9c','#ff9ec2','#ffc9dc','#fff0f6'],['#2f6fb0','#4f9ae0','#7fc0ff','#b8dcff','#ecf6ff']];
-    var ramp=cHS(sz===0?ramps[0]:ramps[seed%3]), n=Math.ceil(r*3.4)+6, p=new Pix(n,n), c=Math.round(n*0.42), cy=n/2;
-    for(var a=0;a<360;a+=(r>6?30:60)){ var an=(a+15)*Math.PI/180; p.put(c+Math.cos(an)*(r+1.2),cy+Math.sin(an)*(r+1.2),ramp[0]); }
-    p.poly([[c+r-1,cy],[c+r+r*0.6,cy-r*0.5],[c+r+r*0.6,cy+r*0.5]],ramp[1]);                             // the tail behind, to the right
-    p.ball(c,cy,r,ramp,true); var ex=c-r*0.45, ey=cy-r*0.25;                                          // the eye looks left, at the player
-    if(r>6){ p.rect(ex-1,ey-1,3,3,[255,255,255]); p.rect(ex-1,ey,2,2,cH('#1a1a2a')); p.rect(c-r*0.85,cy+r*0.2,2,1,ramp[0]); } else p.put(ex,ey,cH('#1a1a2a'));
-    var ro=inkRock(p,this.ink); ro.ox=n/2-c; return ro; },
-  ship:function(x,y,t,blink){ if(blink) return; x=Math.round(x); y=Math.round(y);
-    [[-5,1,1],[-9,-1,1.6],[-14,2,1.2],[-19,0,2]].forEach(function(b,i){ var bx=x+b[0]-((t*20)%3), by=y+b[1]; lx.globalAlpha=0.8-i*0.15;
-      for(var a=0;a<8;a++) R('#ffffff',bx+Math.round(Math.cos(a*0.785)*b[2]),by+Math.round(Math.sin(a*0.785)*b[2]),1,1); }); lx.globalAlpha=1;
-    spr('sub',SUB,SUB_PAL,x-1,y-5,this.ink); },
-  ufo:function(ux,uy,big,hurt){ var m=big?SHARK:SHARK_S, pal=hurt?{w:'#ffffff'}:{k:'#2b4466',m:'#5a7aa6',w:'#e8f1ff',e:'#ffffff'};
-    spr('shark'+big+hurt,hurt?whiteMap(m):m,pal,ux-(big?9:6),uy-(big?4:3),this.ink); },
-  pick:function(x,y,type){ var c=mapCanvas('bubble',['...wwwww...','..w.....w..','.w.h.....w.','w.h.......w','w.........w','w.........w','w.........w','w.........w','.w.......w.','..w.....w..','...wwwww...'],{w:'#e8fdff',h:'#ffffff'});
-    var k='bubble|'+this.ink; if(!mapCache[k]) mapCache[k]=ink(c,this.ink); lx.drawImage(mapCache[k],x-6,y-6); shot([[x-3,y-3,6,6,'#ffd23f']],this.ink); blit(ICON[type],['#0b2a44'],x-3,y-3); },
-  bullet:function(x,y){ shot([[x-3,y,5,2,'#ffd23f'],[x+2,y,1,2,'#ff5a1f']],this.ink); },
-  ebullet:function(x,y){ shot([[x-1,y-1,3,3,'#ff2e4a']],this.ink); R('#ffc0c8',x,y,1,1); },
-  bursts:function(){ return {rock:['#0b2a44','#ffc24a','#ff9ec2','#ffffff'],ufo:['#2b4466','#5a7aa6','#ffffff'],ship:['#ffd23f','#d9941e','#0b2a44'],pick:['#ffd23f','#0b2a44']}; },
-  shield:function(){ return '#0b2a44'; }, mini:function(){ return ['#d9941e','#ffd23f']; } };
-
-/* ═══ sweet — a candy rocket in a pink sky with sprinkles; doughnut → cookie → sweets, a macaron saucer, sprinkles for shots ═══ */
-var SPR=['#ff5a8a','#ffd23f','#5ac8ff','#7ee07e','#b58cff','#ffffff'];
-var MACARON=['....pppppppppp....','..ppPPPPPPPPPPpp..','.pPPPPPPPPPPPPPPp.','rrrrrrrrrrrrrrrrrr','cccccccccccccccccc','rrrrrrrrrrrrrrrrrr','.pPPPPPPPPPPPPPPp.','..pppppppppppppp..'];
-var MACARON_S=['..pppppppp..','.pPPPPPPPPp.','rrrrrrrrrrrr','cccccccccccc','rrrrrrrrrrrr','.pPPPPPPPPp.'];
-SKINS.sweet={id:'sweet', glow:false, ink:'#4a1530', motes:['#ffffff','#fff7fb','#ffffff'], moteDiv:1600,
-  paint:function(p,w,h){ vgradPix(p,['#ffc9e3','#ffd6e8','#ffe2ea','#ffead9','#fff0cf']);
-    var R2=srand(11), cr=cH('#fff7fb');
-    for(var i=0;i<8;i++){ var cx=R2()*w, cy=h*(0.1+R2()*0.8), s=0.9+R2()*0.6;
-      [[-12,3,7],[-4,-2,9],[6,0,8],[14,4,5]].forEach(function(b){ for(var d=-w;d<=w;d+=w) p.disc(cx+d+b[0]*s,cy+b[1]*s,b[2]*s,cr); }); }
-    // sprinkles: sparse and pale, so the shots (bright sprinkles) stand out against them
-    for(i=0;i<Math.round(w*h/1400);i++){ var x=Math.floor(R2()*w), y=Math.floor(R2()*h), c=mixc(cH(SPR[i%5]),p.get(x,y),0.55); p.put(x,y,c); if(R2()<0.5) p.put(x+1,y,c); else p.put(x,y+1,c); } },
-  sky:function(dt,s){ skinSky(this,dt,s); },
-  rock:function(r,sz,seed){ var n=Math.ceil(r*2)+(sz===2?12:4), p=new Pix(n,n), c=n/2, R2=srand(seed*31+7);
-    if(sz===0){ p.ball(c,c,r,cHS(['#8a4a1c','#c47a3a','#e0a060','#f0c088','#ffe0b8']),true);                 // a doughnut with icing and sprinkles
-      var ic=cHS(seed%2?['#b0306a','#e0508c','#ff7fb4','#ffb3d4','#ffe0ee']:['#5a2f1c','#7a4028','#9a5a38','#c07a50','#e0a07a']);
-      for(var y=0;y<n;y++) for(var x=0;x<n;x++){ var dx=x+0.5-c, dy=y+0.5-c, d=Math.sqrt(dx*dx+dy*dy), an=Math.atan2(dy,dx);
-        if(d<r*(0.78+0.08*Math.sin(an*7))){ var lum=0.6+(-dx*0.62-dy*0.78)/r*0.45; p.put(x,y,ic[Math.max(1,Math.min(4,Math.floor(lum*4+bay(x,y)-0.5)))]); } }
-      for(var i=0;i<14;i++){ var a=R2()*6.28, dd=(0.42+R2()*0.3)*r, cc=cH(SPR[i%6]), px=c+Math.cos(a)*dd, py=c+Math.sin(a)*dd; p.put(px,py,cc); p.put(px+(i%2),py+1-(i%2),cc); }
-      var hr=r*0.3; for(y=0;y<n;y++) for(x=0;x<n;x++){ var q=Math.sqrt((x+0.5-c)*(x+0.5-c)+(y+0.5-c)*(y+0.5-c)); if(q<hr-1.2) p.clear(x,y); else if(q<hr) p.put(x,y,cH('#8a4a1c')); } }
-    else if(sz===1){ p.ball(c,c,r,cHS(['#8a5220','#c07a3a','#dea060','#f0c080','#ffe2b0']),true);          // a cookie with chocolate chips
-      for(i=0;i<6;i++){ var a2=R2()*6.28, d2=R2()*0.7*r; p.rect(c+Math.cos(a2)*d2,c+Math.sin(a2)*d2,2,2,cH('#5a2f14')); } }
-    else { var cc2=cH(['#ff5a8a','#5ac8ff','#7ee07e'][seed%3]), wr=mixc(cc2,[255,255,255],0.4);                   // a wrapped sweet
-      p.poly([[c-r,c],[c-r-4,c-3],[c-r-4,c+3]],wr); p.poly([[c+r,c],[c+r+4,c-3],[c+r+4,c+3]],wr);
-      for(y=0;y<n;y++) for(x=0;x<n;x++) if((x+0.5-c)*(x+0.5-c)+(y+0.5-c)*(y+0.5-c)<=r*r) p.put(x,y,Math.floor((x-y)/2)%2?cc2:[255,255,255]); p.put(c-2,c-2,[255,255,255]); }
-    return inkRock(p,this.ink); },
-  ship:function(x,y,t,blink){ if(blink) return; x=Math.round(x); y=Math.round(y); var fl=Math.floor(t*20)%3;
-    R('#ffd23f',x-4-fl,y-1,4+fl,3); R('#ff8a3d',x-3,y,2,1);
-    if(!mapCache.rocket){ var rows=SHIP_MAP.map(function(r,j){ return r.split('').map(function(ch,i){ return ch==='.'?'.':ch==='1'?'d':(Math.floor((i+j)/2)%2?'w':'r'); }).join(''); }); mapCanvas('rocket',rows,{d:'#b0104a',w:'#ffffff',r:'#ff3b6b'}); }
-    var k='rocket|'+this.ink; if(!mapCache[k]) mapCache[k]=ink(mapCache.rocket,this.ink); lx.drawImage(mapCache[k],x-1,y-6); R('#3aa8e0',x+9,y-1,2,3); },
-  ufo:function(ux,uy,big,hurt){ var m=big?MACARON:MACARON_S, pal=hurt?{w:'#ffffff'}:{p:'#8f5ad0',P:'#b98cff',r:'#a070e0',c:'#fff4e0'};
-    spr('mac'+big+hurt,hurt?whiteMap(m):m,pal,ux-(big?9:6),uy-(big?4:3),this.ink); },
-  pick:function(x,y,type){ R(this.ink,x-6,y-6,13,13); R('#ff3b6b',x-5,y-5,11,11); R('#ffffff',x-4,y-4,9,9); blit(ICON[type],['#d0104a'],x-3,y-3);
-    R('#7ee07e',x-1,y-8,1,3); R('#7ee07e',x+1,y-8,1,3); R('#7ee07e',x-2,y-8,1,1); R('#7ee07e',x+2,y-8,1,1); },
-  bullet:function(x,y){ shot([[x-2,y,4,1,['#ff2e6e','#e0a000','#1a9fe0','#2fb84a','#9a5cf0'][Math.floor(x/10)%5]]],this.ink); },
-  ebullet:function(x,y){ shot([[x-1,y-1,3,3,'#7a3a14']],this.ink); R('#c07a50',x-1,y-1,1,1); },
-  bursts:function(){ return {rock:['#8a4a1c','#c47a3a','#e0508c','#4a1530'],ufo:['#8f5ad0','#4a1530','#b98cff'],ship:['#d0104a','#4a1530','#e0a000'],pick:['#d0104a','#4a1530']}; },
-  shield:function(){ return '#4a1530'; }, mini:function(){ return ['#b0104a','#ff3b6b']; } };
+/* v0.73 (the maintainer): the sea and sweets skins are gone — «не интересно»; next: vector 80s, neon, notebook, maybe Game Boy */
 
 /* v0.71 (the maintainer: the getting-ready screens and all the others in the skin's style): every screen but the flight draws the chosen
    skin's sky under a dark veil — the texts, the buttons and the pictures stay readable on it — and the skin's accent colour takes the
    place of the game's teal on the buttons, rings, links and highlights. The games' screen keeps the game's own colours */
 SKINS.fairy.ui={veil:0.5,band:'#ffd23f',btn:'#e0a020',btnHi:'#ffd23f'};
-SKINS.sea.ui={veil:0.45,band:'#ffe066',btn:'#e0a020',btnHi:'#ffd23f'};
-SKINS.sweet.ui={veil:0.55,band:'#ff8fc0',btn:'#e0508c',btnHi:'#ff8fc0'};
 function uiColours(themed){ var u=themed&&SK&&SK.ui; P.band=u?u.band:P.band0; P.btn=u?u.btn:P.ship[1]; P.btnHi=u?u.btnHi:P.ship[2]; }
 function sky(dt,s){ if(!SK) return spaceSky(dt,s); SK.sky(dt,s); if(SK.ui){ lx.globalAlpha=SK.ui.veil; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; } }
 var skinId=(function(){ var s=null; try{ s=localStorage.getItem('sonaroids_skin'); }catch(e){} return SKIN_IDS.indexOf(s)>=0?s:'space'; })(), SK=SKINS[skinId];

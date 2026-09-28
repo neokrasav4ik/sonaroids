@@ -11,7 +11,7 @@ const SRC=fs.readFileSync(path.join(__dirname,'sim_source.js'),'utf8');
 const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) return 100+50*Math.sin(2*Math.PI*(t-9)/2); return 100+40*Math.sin(2*Math.PI*(t-20)/5); }`;
 (async()=>{
   const b=await chromium.launch(); const ctx=await b.newContext({viewport:{width:844,height:390},deviceScaleFactor:2});
-  // v0.70: SKIN=fairy|sea|sweet runs the same game in that skin (screenshots get the skin's name)
+  // v0.70: SKIN=fairy runs the same game in that skin (screenshots get the skin's name)
   const SKIN=process.env.SKIN||'';
   await ctx.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_lang','en'); localStorage.setItem('sonaroids_skin','${SKIN||'space'}'); localStorage.setItem('sonaroids_gfx','${process.env.GFX||'pixel'}'); ${SRC}; window.makeSimSource=makeSimSource; window.__scen=${SCEN}; window.SONAROIDS_API='https://api.test';`);
   const p=await ctx.newPage(); const errors=[]; p.on('pageerror',e=>errors.push(e.message));

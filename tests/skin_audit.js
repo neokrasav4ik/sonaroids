@@ -8,6 +8,7 @@
    Needs Playwright with Chromium. Run: node tests/skin_audit.js [--json out.json]; exits 1 if anything is unreadable. */
 let chromium; try{ ({chromium}=require('playwright')); }catch(e){ console.log('no playwright — skipped'); console.log('RESULT: ok'); process.exit(0); }
 const path=require('path'), fs=require('fs'), ROOT=path.join(__dirname,'..'), GAME=process.env.GAME||path.join(ROOT,'game','play','index.html');   // GAME=… audits another build
+const HD=process.env.HD==='1';   // v0.73: HD=1 audits the HD pictures (the same thresholds)
 function lin(c){ c/=255; return c<=0.04045?c/12.92:Math.pow((c+0.055)/1.055,2.4); }
 function lum(r,g,b){ return 0.2126*lin(r)+0.7152*lin(g)+0.0722*lin(b); }
 function lab(r,g,b){ let R=lin(r),G=lin(g),B=lin(b); let X=(R*0.4124+G*0.3576+B*0.1805)/0.95047, Y=R*0.2126+G*0.7152+B*0.0722, Z=(R*0.0193+G*0.1192+B*0.9505)/1.08883;
@@ -32,11 +33,13 @@ function analyse(o){ const W=o.w,H=o.h,d=o.d, op=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&d[
   return {tones:[med(edge),pc(body,0.25),pc(body,0.75)],bodyLab:lab(...mean(core.length?core:body)),n:body.length}; }   // the colour: the inside, without the outline
 (async()=>{
   const b=await chromium.launch(), p=await b.newPage({viewport:{width:844,height:390}});
+  // v0.73: a seeded Math.random, so the space sky (random stars and nebula) and the result are the same on every run
+  await p.addInitScript(()=>{ let q=12345; Math.random=()=>{ q=(q*1664525+1013904223)>>>0; return q/4294967296; }; });
   await p.goto('file://'+GAME); await p.waitForTimeout(500);
-  const ids=await p.evaluate(()=>__sonaroids.skinIds());
+  const ids=await p.evaluate(hd=>hd?__sonaroids.hdIds():__sonaroids.skinIds(),HD);
   const rows=[], json={}; let bad=0;
   for(const id of ids){
-    const o=await p.evaluate(i=>__sonaroids.skinProbe(i),id);
+    const o=await p.evaluate(([i,hd])=>hd?__sonaroids.hdProbe(i):__sonaroids.skinProbe(i),[id,HD]);
     const px=[]; for(let y=0;y<o.bgH;y+=2) for(let x=0;x<o.bgW;x+=3){ const i=(y*o.bgW+x)*4; px.push([o.bg[i],o.bg[i+1],o.bg[i+2]]); }
     const cl=clusters(px,6), main=cl.filter(q=>q.w>=0.05);
     const objs=[['rock L',o.rocks[0]],['rock M',o.rocks[1]],['rock S',o.rocks[2]],['ship',o.ship],['saucer',o.ufo],['saucer S',o.ufoS],['power-up',o.pick],['shot',o.bullet],['enemy shot',o.ebullet]];
@@ -50,11 +53,11 @@ function analyse(o){ const W=o.w,H=o.h,d=o.d, op=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&d[
       if(shotish) shotLab.push([name,a.bodyLab]);
       if(!ok) bad++;
       res[name]={cr:+worst.cr.toFixed(2),camo:+camo.toFixed(2),dE:Math.round(minDE),ok};
-      rows.push(`${id.padEnd(6)} ${name.padEnd(11)} CR ${worst.cr.toFixed(1).padStart(4)} camo ${String(Math.round(camo*100)).padStart(3)}% ΔE ${String(Math.round(minDE)).padStart(3)}  ${ok?'ok':'UNREADABLE'}`); }
+      rows.push(`${(id+(HD?' HD':'')).padEnd(9)} ${name.padEnd(11)} CR ${worst.cr.toFixed(1).padStart(4)} camo ${String(Math.round(camo*100)).padStart(3)}% ΔE ${String(Math.round(minDE)).padStart(3)}  ${ok?'ok':'UNREADABLE'}`); }
     // own vs enemy shots; shots vs the drifting motes of the sky
     if(shotLab.length===2){ const d=dE(shotLab[0][1],shotLab[1][1]); rows.push(`${id.padEnd(6)} own/enemy shots ΔE ${Math.round(d)} ${d>=40?'ok':'TOO ALIKE'}`); if(d<40) bad++; res.shots_apart=Math.round(d); }
-    const moteDE=Math.min(...(o.motes||[]).map(m=>Math.min(...shotLab.map(s=>dE(lab(...hex(m)),s[1])))));
-    if(isFinite(moteDE)){ rows.push(`${id.padEnd(6)} shots vs motes ΔE ${Math.round(moteDE)} ${moteDE>=30?'ok':'CONFUSABLE'}`); if(moteDE<30) bad++; res.motes=Math.round(moteDE); }
+    let moteDE=Infinity, moteW=''; (o.motes||[]).forEach(m=>shotLab.forEach(s=>{ const d=dE(lab(...hex(m)),s[1]); if(d<moteDE){ moteDE=d; moteW=m+' ~ '+s[0]; } }));
+    if(isFinite(moteDE)){ rows.push(`${id.padEnd(6)} shots vs motes ΔE ${Math.round(moteDE)} ${moteDE>=30?'ok':'CONFUSABLE ('+moteW+')'}`); if(moteDE<30) bad++; res.motes=Math.round(moteDE); }
     rows.push(`${id.padEnd(6)} sky: `+cl.map(q=>`${Math.round(q.w*100)}% L${(q.lum*100).toFixed(0)}`).join(' · ')); rows.push('');
     json[id]=res; }
   await b.close();

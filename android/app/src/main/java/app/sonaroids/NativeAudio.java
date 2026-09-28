@@ -3,7 +3,7 @@ package app.sonaroids;
 /* The app's own sound (v0.50, 28 Sep 2026). In a WebView the page gets whatever microphone Android picks — on the maintainer's Redmi Note 10S
    that is sometimes the one at the port and sometimes the one at the front camera, and it cannot be chosen from the page. Here the app
    records and plays itself, and the page only processes:
-   - the microphone: AudioRecord, 48 kHz, 16 bit, the least processed source the phone has (UNPROCESSED, else VOICE_RECOGNITION),
+   - the microphone: AudioRecord, 48 kHz, 16 bit, VOICE_RECOGNITION (by Android's rules without noise suppression and gain control; v0.53 — UNPROCESSED was unsteady on the Mi 9 Lite),
      on the microphone the page asks for (setPreferredDevice), else Android's own pick;
    - the probe: AudioTrack, 48 kHz stereo float, three looped 512-sample probes made by the page (all tones / even / odd) mixed with gains
      the page sets per channel — exactly what the page's Web Audio graph did;
@@ -69,7 +69,9 @@ class NativeAudio {
             if (s.equals("voice")) src = MediaRecorder.AudioSource.VOICE_RECOGNITION;
             else if (s.equals("mic")) src = MediaRecorder.AudioSource.MIC;
             else if (s.equals("camcorder")) src = MediaRecorder.AudioSource.CAMCORDER;
-            else if (s.equals("unprocessed") || unprocessedOk()) src = MediaRecorder.AudioSource.UNPROCESSED;
+            // v0.53: «auto» is VOICE_RECOGNITION. On the Mi 9 Lite UNPROCESSED let the probe's level wander ~6% frame to frame in an empty
+            // room (the residual −13 dB, the palm lost now and then) while VOICE_RECOGNITION kept it at 0.9% (−36 dB), as the WebView (0.8%)
+            else if (s.equals("unprocessed")) src = MediaRecorder.AudioSource.UNPROCESSED;
             else src = MediaRecorder.AudioSource.VOICE_RECOGNITION;
             srcName = src == MediaRecorder.AudioSource.UNPROCESSED ? "unprocessed" : src == MediaRecorder.AudioSource.VOICE_RECOGNITION ? "voice"
                 : src == MediaRecorder.AudioSource.CAMCORDER ? "camcorder" : "mic";

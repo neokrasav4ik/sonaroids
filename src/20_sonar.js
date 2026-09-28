@@ -71,22 +71,29 @@ var Sonar=(function(){
      mode with the source and the microphone left on «auto», getting ready tries each built-in microphone with VOICE_RECOGNITION (and
      UNPROCESSED where the phone has it): ~0.25 s to settle, 0.5 s (48 frames) with the probe on and the hand away, and measures how steady
      the probe is at the microphone (the frame-to-frame wander of its tones) and how loud (its line). Of those steady enough (under 3%) and not
-     clipping, the one with the best signal-to-noise wins; it is remembered (sonaroids_autoaudio) and used from the start next time, and tried again only after
+     clipping, the one with the best signal-to-noise wins, VOICE_RECOGNITION and the bottom microphone with a 6 dB head start (v0.55); it is remembered (sonaroids_autoaudio) and used from the start next time, and tried again only after
      a getting ready that failed, or from the service screen. The results go into the setup log (auto_audio). */
   var autoLog=null, autoRetest=false;
   function natAuto(){ return lsGet('sonaroids_mic','')===''&&lsGet('sonaroids_src','auto')==='auto'; }
-  function autoPick(){ try{ var j=JSON.parse(lsGet('sonaroids_autoaudio','')||'null'); return j&&typeof j.mic==='number'&&j.src?j:null; }catch(e){ return null; } }
+  function autoPick(){ try{ var j=JSON.parse(lsGet('sonaroids_autoaudio','')||'null'); return j&&typeof j.mic==='number'&&j.src&&j.v===2?j:null; }catch(e){ return null; } }   // v:2 — picks by v0.55's rules (v0.54's are tried again)
   function steadiness(frames){ var ks=[],k,n,t; for(k=kLo;k<=kHi;k++) ks.push(k); var K=ks.length, T=frames.length, re=[], im=[], mr=new Float64Array(K), mi=new Float64Array(K);
     for(t=0;t<T;t++){ var r=new Float64Array(K), q=new Float64Array(K), f=frames[t];
       for(var j=0;j<K;j++){ var w=2*Math.PI*ks[j]/N, sr=0, si=0; for(n=0;n<N;n++){ sr+=f[n]*Math.cos(w*n); si-=f[n]*Math.sin(w*n); } r[j]=sr; q[j]=si; mr[j]+=sr/T; mi[j]+=si/T; }
       re.push(r); im.push(q); }
-    var dev=0, mag=0; for(var j2=0;j2<K;j2++){ mag+=Math.hypot(mr[j2],mi[j2]); for(t=0;t<T;t++) dev+=Math.hypot(re[t][j2]-mr[j2],im[t][j2]-mi[j2])/T; }
-    return mag>0?dev/mag:1; }
+    // v0.55: the wander of the probe's level as a whole — each frame projected on the mean response (all its tones at once), so the noise,
+    // which differs tone by tone, averages out. v0.54 compared every tone on its own: at the test's signal-to-noise (~19 dB on the Mi 9 Lite
+    // at 27%) the noise alone gave 10% for both sources, and the test could not tell them apart
+    var mm=0, a=[]; for(var j2=0;j2<K;j2++) mm+=mr[j2]*mr[j2]+mi[j2]*mi[j2];
+    if(!(mm>0)) return 1;
+    for(t=0;t<T;t++){ var pr=0, pi=0; for(j2=0;j2<K;j2++){ pr+=re[t][j2]*mr[j2]+im[t][j2]*mi[j2]; pi+=im[t][j2]*mr[j2]-re[t][j2]*mi[j2]; } a.push(Math.hypot(pr,pi)/mm); }
+    var am=0, av=0; a.forEach(function(v){ am+=v/T; }); a.forEach(function(v){ av+=(v-am)*(v-am)/T; });
+    return am>0?Math.sqrt(av)/am:1; }
   function audioTest(){
     if(!natOn||!NATA.audioSwitch||!natAuto()) return Promise.resolve(null);
     if(autoPick()&&!autoRetest) return Promise.resolve(null);
     var dv={}; try{ dv=JSON.parse(NATA.audioDevices()); }catch(e){}
-    var mics=(dv.inputs||[]).filter(function(d){ return d.type==='builtin_mic'; }).map(function(d){ return d.id; }); if(!mics.length) mics=[-1];
+    var ins=(dv.inputs||[]).filter(function(d){ return d.type==='builtin_mic'; }), addr={}; ins.forEach(function(d){ addr[d.id]=String(d.address||'').toLowerCase(); });
+    var mics=ins.map(function(d){ return d.id; }); if(!mics.length) mics=[-1];
     var srcs=['voice'].concat(dv.unprocessed?['unprocessed']:[]), cands=[];
     mics.forEach(function(m){ srcs.forEach(function(sc){ cands.push({mic:m,src:sc}); }); });
     var res=[];
@@ -99,12 +106,17 @@ var Sonar=(function(){
     // the media volume is set before this (the app, startPrepare), and every candidate hears the same probe at the same gain; the auto
     // level that follows turns the probe down to the same signal-to-noise on whichever wins — so the pick goes by that ratio (SNR), not by
     // loudness alone; a recording near clipping (peak ≥ 0.9, a loud phone) is not taken
-    .then(function(){ var ok=res.filter(function(r){ return !r.fail&&r.wander<0.03&&r.peak<0.9; }), pick;
-      if(ok.length) pick=ok.sort(function(a,b){ return b.snr-a.snr; })[0];
+    // v0.55 (the maintainer, Mi 9 Lite 11:33: UNPROCESSED won by 0.1 dB and steered a little worse). On the Mi 9 Lite the empty room
+    // cancelled out far worse with UNPROCESSED (residual −12…−14 dB against −36 with VOICE_RECOGNITION and −33 through the browser),
+    // though the probe itself was as steady — something a 0.5 s test cannot see. So VOICE_RECOGNITION and the bottom microphone (by the
+    // port and the speaker) are preferred: another source or microphone must be 6 dB better in signal-to-noise to win
+    .then(function(){ var bonus=function(r){ return r.snr+(r.src==='voice'?6:0)+(addr[r.mic]==='bottom'?6:0); };
+      var ok=res.filter(function(r){ return !r.fail&&r.wander<0.03&&r.peak<0.9; }), pick;
+      if(ok.length) pick=ok.sort(function(a,b){ return bonus(b)-bonus(a); })[0];
       else pick=res.filter(function(r){ return !r.fail; }).sort(function(a,b){ return a.wander-b.wander; })[0];
       autoLog={tried:res,pick:pick?{mic:pick.mic,src:pick.src}:null}; autoRetest=false;
       if(!pick) return;
-      try{ localStorage.setItem('sonaroids_autoaudio',JSON.stringify({mic:pick.mic,src:pick.src})); }catch(e){}
+      try{ localStorage.setItem('sonaroids_autoaudio',JSON.stringify({mic:pick.mic,src:pick.src,v:2})); }catch(e){}
       natCfg.mic=pick.mic; natCfg.src=pick.src; NATA.audioSwitch(JSON.stringify({mic:pick.mic,src:pick.src,ch:1})); return sleep(250); });
   }
   /* microphone, audio context, probes. Must start from a tap (browsers unlock sound only on a user gesture) */

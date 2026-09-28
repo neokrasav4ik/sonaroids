@@ -72,6 +72,14 @@ function boot(){
   });
 }
 /* 0.39u: широкий зонд 16–20,5 кГц (переключатель «Зонд» на главном экране лабы) — одиночный зонд тогда играет широкий источник (090_depth.js) */
+/* 0.55: the lab inside the Android app (the service screen «ЗВУК» of the game → «ЛАБА»). A WebView can neither download blob: links nor
+   share files — the app takes the file in base64 pieces (window.SonaroidsApp.fileBegin/fileChunk/fileEnd), saves it to Downloads/Sonaroids
+   and opens the share sheet. Returns true when the app took it. */
+function labApp(b,name){ var A=window.SonaroidsApp; if(!A||!A.fileBegin) return false;
+  var r=new FileReader(); r.onload=function(){ var u=new Uint8Array(r.result), C=393216, i, j, s;
+    if(!A.fileBegin(name,'audio/wav')) return;
+    for(i=0;i<u.length;i+=C){ s=''; var e=Math.min(u.length,i+C); for(j=i;j<e;j++) s+=String.fromCharCode(u[j]); A.fileChunk(btoa(s)); }
+    A.fileEnd(); A.shareFiles(); }; r.readAsArrayBuffer(b); return true; }
 function bandLo(){ return (typeof probeWide!=='undefined'&&probeWide)?DEPTH_LO:F_LO; }
 function setProbe(w){                          // 'off' | 'dual' | 'single-left' | 'single-right'
   var t=ctx.currentTime, wide=bandLo()!==F_LO&&w!=='dual';

@@ -127,6 +127,7 @@ function rpSave(){ if(!RP.frames.length) return; var n=RP.frames.length*N, all=n
   var b=wav(all,meta), d=new Date(), z=function(x){ return (x<10?'0':'')+x; };
   var name='sonarright_'+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+'.wav';
   RP.blob=b; RP.fname=name;
+  if(labApp(b,name)) return;
   if(navigator.canShare){ try{ var fl=new File([b],name,{type:'audio/wav'}); if(navigator.canShare({files:[fl]})){ navigator.share({files:[fl],title:name}).catch(function(){}); return; } }catch(e){} }
   var a2=document.createElement('a'); a2.href=URL.createObjectURL(b); a2.download=name; document.body.appendChild(a2); a2.click(); setTimeout(function(){ a2.remove(); },1000); }
 el('goRight').addEventListener('click',function(){ boot().then(toRight).catch(fail); });

@@ -245,7 +245,8 @@ function devInfo(){ var ua=navigator.userAgent||'', ios=/iPhone|iPad|iPod/.test(
   var I=Sonar.info(), D=DSP2.info(), m=Sonar.micSettings()||{}, r=function(v,k){ return typeof v==='number'&&isFinite(v)?Math.round(v*k)/k:undefined; };
   var pwa=!!APP; try{ pwa=pwa||!!(navigator.standalone||matchMedia('(display-mode: standalone)').matches); }catch(e){}
   return {os:ios?'ios':and?'android':'other',br:br,pwa:pwa,lang:lang,fs:I.fs,snr:r(I.probe_snr,10),lvl:r(I.probe_level,10),gain:r(I.probe_gain,1000),
-    eq:!!D.eq,eq_db:r(D.eq_db,10),relocks:D.relocks,drops:D.drops,side:handRel||undefined,ec:m.echoCancellation,ns:m.noiseSuppression,agc:m.autoGainControl}; }
+    eq:!!D.eq,eq_db:r(D.eq_db,10),relocks:D.relocks,drops:D.drops,side:handRel||undefined,ec:m.echoCancellation,ns:m.noiseSuppression,agc:m.autoGainControl,
+    app:!!APP,audio:I.audio,src:m.src,vol:APP?(function(){ try{ return r(APP.getVolume(),100); }catch(e){ return undefined; } })():undefined,band:I.band}; }   // v0.55
 Board.devInfo(devInfo);
 function endGame(){ g.state='over'; overT=0; Logs.gameStop(); Board.finish(g.score); Board.flush(); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } go('over'); }
 function react(){ g.events.forEach(function(k){
@@ -418,9 +419,13 @@ var ACT={
 var downOn=null;
 function btnAt(e){ var x=e.clientX*DPR/S, y=e.clientY*DPR/S;
   for(var i=BTN.length-1;i>=0;i--){ var b=BTN[i]; if(x>=b.x-4&&x<b.x+b.w+4&&y>=b.y-4&&y<b.y+b.h+4) return b.id; } return null; }
-cv.addEventListener('pointerdown',function(e){ downOn=btnAt(e); e.preventDefault(); },{passive:false});
-cv.addEventListener('pointerup',function(e){ var id=btnAt(e); if(id&&id===downOn&&!ACT[id]&&id.indexOf('aud:')===0){ Sfx.play('tap'); audAct(id); } else if(id&&id===downOn&&ACT[id]){ if(id!=='allow'&&id!=='play'&&id!=='retry'&&id!=='sfx'&&id!=='vol_dn'&&id!=='vol_up') Sfx.play('tap'); ACT[id](); } downOn=null; e.preventDefault(); },{passive:false});
-cv.addEventListener('pointercancel',function(){ downOn=null; });
+/* v0.56 (the maintainer): the service links show after a long press on the version (0.7 s), not a tap — a player won't open them by chance */
+var verHold=null;
+cv.addEventListener('pointerdown',function(e){ downOn=btnAt(e); if(verHold){ clearTimeout(verHold); verHold=null; }
+  if(downOn==='ver') verHold=setTimeout(function(){ verHold=null; if(downOn==='ver'){ ACT.ver(); Sfx.play('tap'); downOn=null; } },700);
+  e.preventDefault(); },{passive:false});
+cv.addEventListener('pointerup',function(e){ if(verHold){ clearTimeout(verHold); verHold=null; } var id=btnAt(e); if(id==='ver'){ downOn=null; e.preventDefault(); return; } if(id&&id===downOn&&!ACT[id]&&id.indexOf('aud:')===0){ Sfx.play('tap'); audAct(id); } else if(id&&id===downOn&&ACT[id]){ if(id!=='allow'&&id!=='play'&&id!=='retry'&&id!=='sfx'&&id!=='vol_dn'&&id!=='vol_up') Sfx.play('tap'); ACT[id](); } downOn=null; e.preventDefault(); },{passive:false});
+cv.addEventListener('pointercancel',function(){ downOn=null; if(verHold){ clearTimeout(verHold); verHold=null; } });
 ['gesturestart','gesturechange','gestureend','dblclick'].forEach(function(n){ document.addEventListener(n,function(e){ e.preventDefault(); },{passive:false}); });
 document.addEventListener('touchmove',function(e){ e.preventDefault(); },{passive:false});
 document.addEventListener('visibilitychange',function(){
@@ -477,8 +482,10 @@ function sAudio(){ sky(DT,0.3); var A=window.SonaroidsApp;
   text(L('aud_mode'),x0,y+5,P.soft,'left'); x=x0+lw;
   x=chip('aud:mode:browser',L('aud_browser'),x,y,mode!=='app'); chip('aud:mode:app',L('aud_app'),x,y,mode==='app'); y+=PF.CAP+13;
   var ap=null; try{ ap=JSON.parse(store.get('sonaroids_autoaudio','')||'null'); }catch(e){}
-  text(L('aud_autotest'),x0,y+5,P.soft,'left'); x=x0+lw; text(ap?L('aud_mic')+' '+ap.mic+' '+String(ap.src).toUpperCase():L('aud_notyet'),x,y+5,P.text,'left');
-  chip('aud:retest:1',L('aud_retest'),x+PF.width(ap?L('aud_mic')+' '+ap.mic+' '+String(ap.src).toUpperCase():L('aud_notyet'))+12,y,false); y+=PF.CAP+13;
+  // v0.55: «test again» only when there is a pick; it forgets it — the test runs with the next getting ready (the text says so)
+  var apt=ap?L('aud_mic')+' '+ap.mic+' '+String(ap.src).toUpperCase():L(store.get('sonaroids_audio','browser')==='app'?'aud_nextgame':'aud_notyet');
+  text(L('aud_autotest'),x0,y+5,P.soft,'left'); x=x0+lw; text(apt,x,y+5,P.text,'left');
+  if(ap) chip('aud:retest:1',L('aud_retest'),x+PF.width(apt)+12,y,false); y+=PF.CAP+13;
   var src=store.get('sonaroids_src','auto'); text(L('aud_src'),x0,y+5,P.soft,'left'); x=x0+lw;
   ['auto','unprocessed','voice','mic','camcorder'].forEach(function(k){ x=chip('aud:src:'+k,k==='auto'?L('aud_auto'):k.toUpperCase(),x,y,src===k); }); y+=PF.CAP+13;
   var mic=audGet('sonaroids_mic'), ins=(audDev.inputs||[]).filter(function(d){ return d.type==='builtin_mic'; });
@@ -496,11 +503,15 @@ function sAudio(){ sky(DT,0.3); var A=window.SonaroidsApp;
       if(audSt.error) lines.push(String(audSt.error).toUpperCase().slice(0,40)); }
     else lines.push(mode==='app'?L('aud_idle'):L('aud_browser_now'));
   if(audDev.mics&&!audDev.mics.length) lines.push(L('aud_nopos'));
-  lines.forEach(function(l){ PF.wrap(l,LW-x0-SAFE.r-12,1).forEach(function(q){ text(q,x0,y,P.soft,'left'); y+=10; }); y+=2; }); say(L('aud_t')); }
+  lines.forEach(function(l){ PF.wrap(l,LW-x0-SAFE.r-12,1).forEach(function(q){ text(q,x0,y,P.soft,'left'); y+=10; }); y+=2; });
+  // v0.55: the lab inside the app (its stereo probe records through the app); Android's «back» returns to the game
+  var ls=L('aud_lab'), lw2=PF.width(ls), lx=LW-SAFE.r-12-lw2, ly=LH-SAFE.b-14; text(ls,lx,ly,P.band,'left'); R(P.band,lx,ly+PF.CAP+2,lw2,1); BTN.push({id:'aud:lab:1',x:lx-8,y:ly-5,w:lw2+16,h:PF.CAP+10});
+  say(L('aud_t')); }
 function audAct(id){ var p=id.split(':'), k=p[1], v=p.slice(2).join(':');
   if(k==='mode') store.set('sonaroids_audio',v); else if(k==='mic') store.set('sonaroids_mic',v); else if(k==='out') store.set('sonaroids_out',v);
   else if(k==='src') store.set('sonaroids_src',v); else if(k==='usage') store.set('sonaroids_usage',v);
   else if(k==='retest') Sonar.audioRetest();
+  else if(k==='lab'){ location.href='../lab/sonar_lab3.html'; return; }
   Sonar.restart(); booted=false; acoustic=false; audDev=null; }
 var NO_MENU={title:1,lang:1,paused:1,restart:1,play:1}, NO_VER={title:1,over:1,play:1,count:1,'count-resume':1,paused:1,restart:1};
 function chrome(){ if(LH>LW) return;

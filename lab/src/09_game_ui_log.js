@@ -66,6 +66,7 @@ function logSave(){
 function shareWav(b,prefix){
   var d=new Date(), z=function(x){ return (x<10?'0':'')+x; };
   var name=prefix+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+'.wav';
+  if(labApp(b,name)) return;
   var f=null; try{ f=new File([b],name,{type:'audio/wav'}); }catch(e){}
   if(f&&navigator.canShare&&navigator.canShare({files:[f]})){ navigator.share({files:[f],title:name}).catch(function(){}); return; }
   var a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=name; document.body.appendChild(a); a.click(); setTimeout(function(){ a.remove(); },1000);

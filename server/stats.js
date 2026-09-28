@@ -14,7 +14,7 @@ const cols=db.prepare('PRAGMA table_info(games)').all().map(c=>c.name);
 const rows=db.prepare(`SELECT player, score, ${cols.includes('dev')?'dev':'NULL AS dev'}, ${cols.includes('seen')?'seen':'NULL AS seen'} FROM games WHERE created>=?`)
   .all(Date.now()-days*86400000);
 
-const kindOf=d=>d?[d.os||'?',d.br||'?',d.model||''].join(' / ').replace(/ \/ $/,''):'(unknown)';
+const kindOf=d=>d?[d.os||'?',d.br||'?',d.model||''].join(' / ').replace(/ \/ $/,'')+(d.app?(d.audio==='app'?' [app, app sound]':' [app]'):''):'(unknown)';   // v0.55: the Android app apart
 const med=a=>{ a=a.filter(v=>v!==null&&v!==undefined&&isFinite(v)).sort((x,y)=>x-y); return a.length?a[Math.floor((a.length-1)/2)]:null; };
 const share=(a,k)=>{ const v=a.filter(d=>typeof d[k]==='boolean'); return v.length?Math.round(100*v.filter(d=>d[k]).length/v.length)+'%':'–'; };
 const groups=new Map();
@@ -23,10 +23,11 @@ for(const r of rows){ let d=null; try{ d=r.dev?JSON.parse(r.dev):null; }catch(e)
   if(!groups.has(key)) groups.set(key,{games:0,players:new Set(),score:[],seen:[],snr:[],devs:[]});
   const g=groups.get(key); g.games++; g.players.add(r.player); g.score.push(r.score); g.seen.push(r.seen); if(d){ g.snr.push(d.snr); g.devs.push(d); } }
 
-const out=[['phone','games','players','score','palm seen','probe SNR','EQ on','NS on','EC on']];
+const out=[['phone','games','players','score','palm seen','probe SNR','wide probe','media vol','EQ on','NS on','EC on']];
 [...groups.entries()].sort((a,b)=>(a[0].startsWith('(')-b[0].startsWith('('))||b[1].games-a[1].games).forEach(([k,g])=>{
   const s=med(g.seen), n=med(g.snr);
-  out.push([k,g.games,g.players.size,med(g.score)??'–',s===null?'–':Math.round(s*100)+'%',n===null?'–':n.toFixed(0)+' dB',share(g.devs,'eq'),share(g.devs,'ns'),share(g.devs,'ec')]); });
+  const wd=g.devs.filter(d=>d.band), vl=med(g.devs.map(d=>d.vol));
+  out.push([k,g.games,g.players.size,med(g.score)??'–',s===null?'–':Math.round(s*100)+'%',n===null?'–':n.toFixed(0)+' dB',wd.length?Math.round(100*wd.filter(d=>d.band==='wide').length/wd.length)+'%':'–',vl===null?'–':Math.round(vl*100)+'%',share(g.devs,'eq'),share(g.devs,'ns'),share(g.devs,'ec')]); });
 const print=out=>{ const w=out[0].map((_,i)=>Math.max(...out.map(r=>String(r[i]).length)));
 out.forEach((r,j)=>{ console.log(r.map((c,i)=>i?String(c).padStart(w[i]):String(c).padEnd(w[i])).join('  ')); if(!j) console.log(w.map(n=>'-'.repeat(n)).join('  ')); }); };
 console.log(`games, last ${days} days: ${rows.length}\n`);

@@ -96,8 +96,9 @@ function decodeHands(enc,b64){ let buf=Buffer.from(String(b64||''),'base64');
    os, br — coarse kinds; model — Android's own model name when Chrome gives it (e.g. SM-S938B), never on iPhone; pwa — started from the home screen;
    fs, snr, lvl, gain — sample rate, probe signal-to-noise and level (dB), probe gain; eq, eq_db — band equalizer; relocks, drops — input trouble;
    side — the hand's end of the phone; ec, ns, agc — echo cancelling, noise suppression, auto gain as the browser really set them. */
-const DEV_STR={os:/^(ios|android|other)$/,br:/^(safari|chrome|firefox|samsung|yandex|other)$/,model:/^[A-Za-z0-9 _.()+-]{1,32}$/,side:/^(port|camera)$/,lang:/^(en|ru)$/};
-const DEV_NUM={fs:[8000,192000],snr:[-50,150],lvl:[-150,50],gain:[0,1],eq_db:[-10,100],relocks:[0,1e6],drops:[0,1e6]}, DEV_BOOL=['pwa','eq','ec','ns','agc'];
+const DEV_STR={os:/^(ios|android|other)$/,br:/^(safari|chrome|firefox|samsung|yandex|other)$/,model:/^[A-Za-z0-9 _.()+-]{1,32}$/,side:/^(port|camera)$/,lang:/^(en|ru)$/,
+  audio:/^(app|browser)$/,src:/^(voice|unprocessed|mic|camcorder)$/,band:/^(normal|wide)$/};   // v0.55: the Android app — whose sound, which recording source, which probe
+const DEV_NUM={fs:[8000,192000],snr:[-50,150],lvl:[-150,50],gain:[0,1],eq_db:[-10,100],relocks:[0,1e6],drops:[0,1e6],vol:[0,1]}, DEV_BOOL=['pwa','eq','ec','ns','agc','app'];
 function cleanDev(d){ if(!d||typeof d!=='object'||Array.isArray(d)) return null; const o={};
   for(const k in DEV_STR) if(typeof d[k]==='string'&&DEV_STR[k].test(d[k])) o[k]=d[k];
   for(const k in DEV_NUM){ const v=d[k]; if(typeof v==='number'&&isFinite(v)&&v>=DEV_NUM[k][0]&&v<=DEV_NUM[k][1]) o[k]=Math.round(v*1000)/1000; }

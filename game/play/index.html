@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='0.54';
+var VERSION='0.56';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -493,22 +493,29 @@ var Sonar=(function(){
      mode with the source and the microphone left on «auto», getting ready tries each built-in microphone with VOICE_RECOGNITION (and
      UNPROCESSED where the phone has it): ~0.25 s to settle, 0.5 s (48 frames) with the probe on and the hand away, and measures how steady
      the probe is at the microphone (the frame-to-frame wander of its tones) and how loud (its line). Of those steady enough (under 3%) and not
-     clipping, the one with the best signal-to-noise wins; it is remembered (sonaroids_autoaudio) and used from the start next time, and tried again only after
+     clipping, the one with the best signal-to-noise wins, VOICE_RECOGNITION and the bottom microphone with a 6 dB head start (v0.55); it is remembered (sonaroids_autoaudio) and used from the start next time, and tried again only after
      a getting ready that failed, or from the service screen. The results go into the setup log (auto_audio). */
   var autoLog=null, autoRetest=false;
   function natAuto(){ return lsGet('sonaroids_mic','')===''&&lsGet('sonaroids_src','auto')==='auto'; }
-  function autoPick(){ try{ var j=JSON.parse(lsGet('sonaroids_autoaudio','')||'null'); return j&&typeof j.mic==='number'&&j.src?j:null; }catch(e){ return null; } }
+  function autoPick(){ try{ var j=JSON.parse(lsGet('sonaroids_autoaudio','')||'null'); return j&&typeof j.mic==='number'&&j.src&&j.v===2?j:null; }catch(e){ return null; } }   // v:2 — picks by v0.55's rules (v0.54's are tried again)
   function steadiness(frames){ var ks=[],k,n,t; for(k=kLo;k<=kHi;k++) ks.push(k); var K=ks.length, T=frames.length, re=[], im=[], mr=new Float64Array(K), mi=new Float64Array(K);
     for(t=0;t<T;t++){ var r=new Float64Array(K), q=new Float64Array(K), f=frames[t];
       for(var j=0;j<K;j++){ var w=2*Math.PI*ks[j]/N, sr=0, si=0; for(n=0;n<N;n++){ sr+=f[n]*Math.cos(w*n); si-=f[n]*Math.sin(w*n); } r[j]=sr; q[j]=si; mr[j]+=sr/T; mi[j]+=si/T; }
       re.push(r); im.push(q); }
-    var dev=0, mag=0; for(var j2=0;j2<K;j2++){ mag+=Math.hypot(mr[j2],mi[j2]); for(t=0;t<T;t++) dev+=Math.hypot(re[t][j2]-mr[j2],im[t][j2]-mi[j2])/T; }
-    return mag>0?dev/mag:1; }
+    // v0.55: the wander of the probe's level as a whole — each frame projected on the mean response (all its tones at once), so the noise,
+    // which differs tone by tone, averages out. v0.54 compared every tone on its own: at the test's signal-to-noise (~19 dB on the Mi 9 Lite
+    // at 27%) the noise alone gave 10% for both sources, and the test could not tell them apart
+    var mm=0, a=[]; for(var j2=0;j2<K;j2++) mm+=mr[j2]*mr[j2]+mi[j2]*mi[j2];
+    if(!(mm>0)) return 1;
+    for(t=0;t<T;t++){ var pr=0, pi=0; for(j2=0;j2<K;j2++){ pr+=re[t][j2]*mr[j2]+im[t][j2]*mi[j2]; pi+=im[t][j2]*mr[j2]-re[t][j2]*mi[j2]; } a.push(Math.hypot(pr,pi)/mm); }
+    var am=0, av=0; a.forEach(function(v){ am+=v/T; }); a.forEach(function(v){ av+=(v-am)*(v-am)/T; });
+    return am>0?Math.sqrt(av)/am:1; }
   function audioTest(){
     if(!natOn||!NATA.audioSwitch||!natAuto()) return Promise.resolve(null);
     if(autoPick()&&!autoRetest) return Promise.resolve(null);
     var dv={}; try{ dv=JSON.parse(NATA.audioDevices()); }catch(e){}
-    var mics=(dv.inputs||[]).filter(function(d){ return d.type==='builtin_mic'; }).map(function(d){ return d.id; }); if(!mics.length) mics=[-1];
+    var ins=(dv.inputs||[]).filter(function(d){ return d.type==='builtin_mic'; }), addr={}; ins.forEach(function(d){ addr[d.id]=String(d.address||'').toLowerCase(); });
+    var mics=ins.map(function(d){ return d.id; }); if(!mics.length) mics=[-1];
     var srcs=['voice'].concat(dv.unprocessed?['unprocessed']:[]), cands=[];
     mics.forEach(function(m){ srcs.forEach(function(sc){ cands.push({mic:m,src:sc}); }); });
     var res=[];
@@ -521,12 +528,17 @@ var Sonar=(function(){
     // the media volume is set before this (the app, startPrepare), and every candidate hears the same probe at the same gain; the auto
     // level that follows turns the probe down to the same signal-to-noise on whichever wins — so the pick goes by that ratio (SNR), not by
     // loudness alone; a recording near clipping (peak ≥ 0.9, a loud phone) is not taken
-    .then(function(){ var ok=res.filter(function(r){ return !r.fail&&r.wander<0.03&&r.peak<0.9; }), pick;
-      if(ok.length) pick=ok.sort(function(a,b){ return b.snr-a.snr; })[0];
+    // v0.55 (the maintainer, Mi 9 Lite 11:33: UNPROCESSED won by 0.1 dB and steered a little worse). On the Mi 9 Lite the empty room
+    // cancelled out far worse with UNPROCESSED (residual −12…−14 dB against −36 with VOICE_RECOGNITION and −33 through the browser),
+    // though the probe itself was as steady — something a 0.5 s test cannot see. So VOICE_RECOGNITION and the bottom microphone (by the
+    // port and the speaker) are preferred: another source or microphone must be 6 dB better in signal-to-noise to win
+    .then(function(){ var bonus=function(r){ return r.snr+(r.src==='voice'?6:0)+(addr[r.mic]==='bottom'?6:0); };
+      var ok=res.filter(function(r){ return !r.fail&&r.wander<0.03&&r.peak<0.9; }), pick;
+      if(ok.length) pick=ok.sort(function(a,b){ return bonus(b)-bonus(a); })[0];
       else pick=res.filter(function(r){ return !r.fail; }).sort(function(a,b){ return a.wander-b.wander; })[0];
       autoLog={tried:res,pick:pick?{mic:pick.mic,src:pick.src}:null}; autoRetest=false;
       if(!pick) return;
-      try{ localStorage.setItem('sonaroids_autoaudio',JSON.stringify({mic:pick.mic,src:pick.src})); }catch(e){}
+      try{ localStorage.setItem('sonaroids_autoaudio',JSON.stringify({mic:pick.mic,src:pick.src,v:2})); }catch(e){}
       natCfg.mic=pick.mic; natCfg.src=pick.src; NATA.audioSwitch(JSON.stringify({mic:pick.mic,src:pick.src,ch:1})); return sleep(250); });
   }
   /* microphone, audio context, probes. Must start from a tap (browsers unlock sound only on a user gesture) */
@@ -923,7 +935,7 @@ STR.en={
   probe_t:'CHOOSE THE PROBE', probe_s:'WITH THIS SOUND THE PHONE HEARS YOUR HAND', probe_wide:'WIDE', probe_wide1:'CLEANER CONTROL', probe_wide2:'CHILDREN AND PETS MAY HEAR IT',
   probe_norm:'NORMAL', probe_norm1:'SILENT', probe_norm2:'SLIGHTLY ROUGHER CONTROL',
   away_t:'TAKE YOUR HAND AWAY', away_s:'LISTENING TO THE EMPTY ROOM', away_ok:'THE ROOM IS QUIET',
-  aud_fx:'PHONE PROCESSING:', aud_src:'SOURCE', aud_usage:'PROBE AS', aud_media:'MEDIA', aud_game:'GAME', aud_autotest:'AUTO PICK', aud_notyet:'NOT DONE YET', aud_retest:'TEST AGAIN', aud_link:'SOUND', aud_t:'APP SOUND', aud_s:'WHERE THE GAME TAKES THE MICROPHONE FROM AND WHERE THE PROBE PLAYS', aud_mode:'SOUND', aud_browser:'BROWSER', aud_app:'APP', aud_mic:'MICROPHONE', aud_out:'SPEAKER', aud_auto:'AUTO', aud_speaker:'SPEAKER', aud_earpiece:'EARPIECE', aud_bottom:'BOTTOM', aud_top:'TOP', aud_back:'BACK', aud_now:'NOW:', aud_active:'RECORDING:', aud_idle:'THE MICROPHONE OPENS WITH THE GAME', aud_browser_now:'NOW THE SOUND GOES THROUGH THE BROWSER: ANDROID PICKS THE MICROPHONE', aud_nopos:'THE PHONE DOES NOT TELL WHERE ITS MICROPHONES ARE',
+  aud_fx:'PHONE PROCESSING:', aud_src:'SOURCE', aud_usage:'PROBE AS', aud_media:'MEDIA', aud_game:'GAME', aud_autotest:'AUTO PICK', aud_notyet:'NOT DONE YET', aud_retest:'TEST AGAIN', aud_lab:'LAB', aud_nextgame:'WITH THE NEXT GAME', aud_link:'SOUND', aud_t:'APP SOUND', aud_s:'WHERE THE GAME TAKES THE MICROPHONE FROM AND WHERE THE PROBE PLAYS', aud_mode:'SOUND', aud_browser:'BROWSER', aud_app:'APP', aud_mic:'MICROPHONE', aud_out:'SPEAKER', aud_auto:'AUTO', aud_speaker:'SPEAKER', aud_earpiece:'EARPIECE', aud_bottom:'BOTTOM', aud_top:'TOP', aud_back:'BACK', aud_now:'NOW:', aud_active:'RECORDING:', aud_idle:'THE MICROPHONE OPENS WITH THE GAME', aud_browser_now:'NOW THE SOUND GOES THROUGH THE BROWSER: ANDROID PICKS THE MICROPHONE', aud_nopos:'THE PHONE DOES NOT TELL WHERE ITS MICROPHONES ARE',
   wave_t:'WAVE YOUR PALM', wave_s:'5–10 CM ABOVE THE TABLE OR 5–15 CM FROM THE PHONE\'S END', wave_ok:'GOT YOUR RANGE', other_t:'WAVE ON THE OTHER SIDE', other_s:'THE PHONE DOES NOT HEAR THE PALM ON THIS SIDE', try_s:'THE SHIP FOLLOWS YOUR PALM — TRY THE TOP AND THE BOTTOM', cm:'CM',
   ring_wait:'GET READY', ring_listen:'LISTENING', ring_catch:'CATCHING THE RANGE', ring_ok:'DONE',
   start:'START', over:'GAME OVER', best:'BEST', again:'AGAIN', menu:'MENU', logs:'LOGS',
@@ -951,7 +963,7 @@ STR.ru={
   probe_t:'ВЫБЕРИ ЗОНД', probe_s:'ЭТИМ ЗВУКОМ ТЕЛЕФОН СЛЫШИТ ТВОЮ РУКУ', probe_wide:'ШИРОКИЙ', probe_wide1:'УПРАВЛЕНИЕ ЧИЩЕ', probe_wide2:'МОГУТ СЛЫШАТЬ ДЕТИ И ЖИВОТНЫЕ',
   probe_norm:'ОБЫЧНЫЙ', probe_norm1:'НЕ СЛЫШЕН', probe_norm2:'УПРАВЛЕНИЕ ЧУТЬ ГРУБЕЕ',
   away_t:'УБЕРИ РУКУ', away_s:'СЛУШАЮ ПУСТУЮ КОМНАТУ', away_ok:'КОМНАТА ТИХАЯ',
-  aud_fx:'ОБРАБОТКА ТЕЛЕФОНА:', aud_src:'ИСТОЧНИК', aud_usage:'ЗОНД КАК', aud_media:'МЕДИА', aud_game:'ИГРА', aud_autotest:'АВТОВЫБОР', aud_notyet:'ЕЩЁ НЕ ДЕЛАЛСЯ', aud_retest:'ПЕРЕПРОВЕРИТЬ', aud_link:'ЗВУК', aud_t:'ЗВУК ПРИЛОЖЕНИЯ', aud_s:'ОТКУДА ИГРА БЕРЁТ МИКРОФОН И КУДА ИГРАЕТ ЗОНД', aud_mode:'ЗВУК', aud_browser:'БРАУЗЕР', aud_app:'ПРИЛОЖЕНИЕ', aud_mic:'МИКРОФОН', aud_out:'ДИНАМИК', aud_auto:'АВТО', aud_speaker:'ДИНАМИК', aud_earpiece:'РАЗГОВОРНЫЙ', aud_bottom:'НИЗ', aud_top:'ВЕРХ', aud_back:'СЗАДИ', aud_now:'СЕЙЧАС:', aud_active:'ПИШУТ:', aud_idle:'МИКРОФОН ОТКРОЕТСЯ ПРИ ИГРЕ', aud_browser_now:'СЕЙЧАС ЗВУК ЧЕРЕЗ БРАУЗЕР: МИКРОФОН ВЫБИРАЕТ ANDROID', aud_nopos:'ТЕЛЕФОН НЕ СООБЩАЕТ, ГДЕ МИКРОФОНЫ',
+  aud_fx:'ОБРАБОТКА ТЕЛЕФОНА:', aud_src:'ИСТОЧНИК', aud_usage:'ЗОНД КАК', aud_media:'МЕДИА', aud_game:'ИГРА', aud_autotest:'АВТОВЫБОР', aud_notyet:'ЕЩЁ НЕ ДЕЛАЛСЯ', aud_retest:'ПЕРЕПРОВЕРИТЬ', aud_lab:'ЛАБА', aud_nextgame:'БУДЕТ ПРИ СЛЕДУЮЩЕЙ ИГРЕ', aud_link:'ЗВУК', aud_t:'ЗВУК ПРИЛОЖЕНИЯ', aud_s:'ОТКУДА ИГРА БЕРЁТ МИКРОФОН И КУДА ИГРАЕТ ЗОНД', aud_mode:'ЗВУК', aud_browser:'БРАУЗЕР', aud_app:'ПРИЛОЖЕНИЕ', aud_mic:'МИКРОФОН', aud_out:'ДИНАМИК', aud_auto:'АВТО', aud_speaker:'ДИНАМИК', aud_earpiece:'РАЗГОВОРНЫЙ', aud_bottom:'НИЗ', aud_top:'ВЕРХ', aud_back:'СЗАДИ', aud_now:'СЕЙЧАС:', aud_active:'ПИШУТ:', aud_idle:'МИКРОФОН ОТКРОЕТСЯ ПРИ ИГРЕ', aud_browser_now:'СЕЙЧАС ЗВУК ЧЕРЕЗ БРАУЗЕР: МИКРОФОН ВЫБИРАЕТ ANDROID', aud_nopos:'ТЕЛЕФОН НЕ СООБЩАЕТ, ГДЕ МИКРОФОНЫ',
   wave_t:'ПОМАШИ ЛАДОНЬЮ', wave_s:'5–10 СМ НАД СТОЛОМ ИЛИ 5–15 СМ ОТ ТОРЦА ТЕЛЕФОНА', wave_ok:'РАЗМАХ ПОЙМАН', other_t:'ПОМАШИ С ДРУГОЙ СТОРОНЫ', other_s:'С ЭТОЙ СТОРОНЫ ТЕЛЕФОН НЕ СЛЫШИТ ЛАДОНЬ', try_s:'КОРАБЛЬ ИДЁТ ЗА ЛАДОНЬЮ — ПРОВЕРЬ ВЕРХ И НИЗ', cm:'СМ',
   ring_wait:'ПРИГОТОВЬСЯ', ring_listen:'СЛУШАЮ', ring_catch:'ЛОВЛЮ РАЗМАХ', ring_ok:'ГОТОВО',
   start:'СТАРТ', over:'ИГРА ОКОНЧЕНА', best:'РЕКОРД', again:'ЕЩЁ РАЗ', menu:'МЕНЮ', logs:'ЖУРНАЛЫ',
@@ -1546,7 +1558,8 @@ function devInfo(){ var ua=navigator.userAgent||'', ios=/iPhone|iPad|iPod/.test(
   var I=Sonar.info(), D=DSP2.info(), m=Sonar.micSettings()||{}, r=function(v,k){ return typeof v==='number'&&isFinite(v)?Math.round(v*k)/k:undefined; };
   var pwa=!!APP; try{ pwa=pwa||!!(navigator.standalone||matchMedia('(display-mode: standalone)').matches); }catch(e){}
   return {os:ios?'ios':and?'android':'other',br:br,pwa:pwa,lang:lang,fs:I.fs,snr:r(I.probe_snr,10),lvl:r(I.probe_level,10),gain:r(I.probe_gain,1000),
-    eq:!!D.eq,eq_db:r(D.eq_db,10),relocks:D.relocks,drops:D.drops,side:handRel||undefined,ec:m.echoCancellation,ns:m.noiseSuppression,agc:m.autoGainControl}; }
+    eq:!!D.eq,eq_db:r(D.eq_db,10),relocks:D.relocks,drops:D.drops,side:handRel||undefined,ec:m.echoCancellation,ns:m.noiseSuppression,agc:m.autoGainControl,
+    app:!!APP,audio:I.audio,src:m.src,vol:APP?(function(){ try{ return r(APP.getVolume(),100); }catch(e){ return undefined; } })():undefined,band:I.band}; }   // v0.55
 Board.devInfo(devInfo);
 function endGame(){ g.state='over'; overT=0; Logs.gameStop(); Board.finish(g.score); Board.flush(); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } go('over'); }
 function react(){ g.events.forEach(function(k){
@@ -1719,9 +1732,13 @@ var ACT={
 var downOn=null;
 function btnAt(e){ var x=e.clientX*DPR/S, y=e.clientY*DPR/S;
   for(var i=BTN.length-1;i>=0;i--){ var b=BTN[i]; if(x>=b.x-4&&x<b.x+b.w+4&&y>=b.y-4&&y<b.y+b.h+4) return b.id; } return null; }
-cv.addEventListener('pointerdown',function(e){ downOn=btnAt(e); e.preventDefault(); },{passive:false});
-cv.addEventListener('pointerup',function(e){ var id=btnAt(e); if(id&&id===downOn&&!ACT[id]&&id.indexOf('aud:')===0){ Sfx.play('tap'); audAct(id); } else if(id&&id===downOn&&ACT[id]){ if(id!=='allow'&&id!=='play'&&id!=='retry'&&id!=='sfx'&&id!=='vol_dn'&&id!=='vol_up') Sfx.play('tap'); ACT[id](); } downOn=null; e.preventDefault(); },{passive:false});
-cv.addEventListener('pointercancel',function(){ downOn=null; });
+/* v0.56 (the maintainer): the service links show after a long press on the version (0.7 s), not a tap — a player won't open them by chance */
+var verHold=null;
+cv.addEventListener('pointerdown',function(e){ downOn=btnAt(e); if(verHold){ clearTimeout(verHold); verHold=null; }
+  if(downOn==='ver') verHold=setTimeout(function(){ verHold=null; if(downOn==='ver'){ ACT.ver(); Sfx.play('tap'); downOn=null; } },700);
+  e.preventDefault(); },{passive:false});
+cv.addEventListener('pointerup',function(e){ if(verHold){ clearTimeout(verHold); verHold=null; } var id=btnAt(e); if(id==='ver'){ downOn=null; e.preventDefault(); return; } if(id&&id===downOn&&!ACT[id]&&id.indexOf('aud:')===0){ Sfx.play('tap'); audAct(id); } else if(id&&id===downOn&&ACT[id]){ if(id!=='allow'&&id!=='play'&&id!=='retry'&&id!=='sfx'&&id!=='vol_dn'&&id!=='vol_up') Sfx.play('tap'); ACT[id](); } downOn=null; e.preventDefault(); },{passive:false});
+cv.addEventListener('pointercancel',function(){ downOn=null; if(verHold){ clearTimeout(verHold); verHold=null; } });
 ['gesturestart','gesturechange','gestureend','dblclick'].forEach(function(n){ document.addEventListener(n,function(e){ e.preventDefault(); },{passive:false}); });
 document.addEventListener('touchmove',function(e){ e.preventDefault(); },{passive:false});
 document.addEventListener('visibilitychange',function(){
@@ -1778,8 +1795,10 @@ function sAudio(){ sky(DT,0.3); var A=window.SonaroidsApp;
   text(L('aud_mode'),x0,y+5,P.soft,'left'); x=x0+lw;
   x=chip('aud:mode:browser',L('aud_browser'),x,y,mode!=='app'); chip('aud:mode:app',L('aud_app'),x,y,mode==='app'); y+=PF.CAP+13;
   var ap=null; try{ ap=JSON.parse(store.get('sonaroids_autoaudio','')||'null'); }catch(e){}
-  text(L('aud_autotest'),x0,y+5,P.soft,'left'); x=x0+lw; text(ap?L('aud_mic')+' '+ap.mic+' '+String(ap.src).toUpperCase():L('aud_notyet'),x,y+5,P.text,'left');
-  chip('aud:retest:1',L('aud_retest'),x+PF.width(ap?L('aud_mic')+' '+ap.mic+' '+String(ap.src).toUpperCase():L('aud_notyet'))+12,y,false); y+=PF.CAP+13;
+  // v0.55: «test again» only when there is a pick; it forgets it — the test runs with the next getting ready (the text says so)
+  var apt=ap?L('aud_mic')+' '+ap.mic+' '+String(ap.src).toUpperCase():L(store.get('sonaroids_audio','browser')==='app'?'aud_nextgame':'aud_notyet');
+  text(L('aud_autotest'),x0,y+5,P.soft,'left'); x=x0+lw; text(apt,x,y+5,P.text,'left');
+  if(ap) chip('aud:retest:1',L('aud_retest'),x+PF.width(apt)+12,y,false); y+=PF.CAP+13;
   var src=store.get('sonaroids_src','auto'); text(L('aud_src'),x0,y+5,P.soft,'left'); x=x0+lw;
   ['auto','unprocessed','voice','mic','camcorder'].forEach(function(k){ x=chip('aud:src:'+k,k==='auto'?L('aud_auto'):k.toUpperCase(),x,y,src===k); }); y+=PF.CAP+13;
   var mic=audGet('sonaroids_mic'), ins=(audDev.inputs||[]).filter(function(d){ return d.type==='builtin_mic'; });
@@ -1797,11 +1816,15 @@ function sAudio(){ sky(DT,0.3); var A=window.SonaroidsApp;
       if(audSt.error) lines.push(String(audSt.error).toUpperCase().slice(0,40)); }
     else lines.push(mode==='app'?L('aud_idle'):L('aud_browser_now'));
   if(audDev.mics&&!audDev.mics.length) lines.push(L('aud_nopos'));
-  lines.forEach(function(l){ PF.wrap(l,LW-x0-SAFE.r-12,1).forEach(function(q){ text(q,x0,y,P.soft,'left'); y+=10; }); y+=2; }); say(L('aud_t')); }
+  lines.forEach(function(l){ PF.wrap(l,LW-x0-SAFE.r-12,1).forEach(function(q){ text(q,x0,y,P.soft,'left'); y+=10; }); y+=2; });
+  // v0.55: the lab inside the app (its stereo probe records through the app); Android's «back» returns to the game
+  var ls=L('aud_lab'), lw2=PF.width(ls), lx=LW-SAFE.r-12-lw2, ly=LH-SAFE.b-14; text(ls,lx,ly,P.band,'left'); R(P.band,lx,ly+PF.CAP+2,lw2,1); BTN.push({id:'aud:lab:1',x:lx-8,y:ly-5,w:lw2+16,h:PF.CAP+10});
+  say(L('aud_t')); }
 function audAct(id){ var p=id.split(':'), k=p[1], v=p.slice(2).join(':');
   if(k==='mode') store.set('sonaroids_audio',v); else if(k==='mic') store.set('sonaroids_mic',v); else if(k==='out') store.set('sonaroids_out',v);
   else if(k==='src') store.set('sonaroids_src',v); else if(k==='usage') store.set('sonaroids_usage',v);
   else if(k==='retest') Sonar.audioRetest();
+  else if(k==='lab'){ location.href='../lab/sonar_lab3.html'; return; }
   Sonar.restart(); booted=false; acoustic=false; audDev=null; }
 var NO_MENU={title:1,lang:1,paused:1,restart:1,play:1}, NO_VER={title:1,over:1,play:1,count:1,'count-resume':1,paused:1,restart:1};
 function chrome(){ if(LH>LW) return;

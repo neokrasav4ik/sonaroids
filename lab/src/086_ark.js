@@ -157,6 +157,7 @@ function akSave(){ if(!AK.frames.length) return; var n=AK.frames.length*N, all=n
     ua:navigator.userAgent,date:new Date().toISOString()};
   var b=wav(all,meta), d=new Date(), z=function(x){ return (x<10?'0':'')+x; };
   var name='sonarark_'+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+'.wav'; AK.blob=b; AK.fname=name;
+  if(labApp(b,name)) return;
   if(navigator.canShare){ try{ var fl=new File([b],name,{type:'audio/wav'}); if(navigator.canShare({files:[fl]})){ navigator.share({files:[fl],title:name}).catch(function(){}); return; } }catch(e){} }
   var a2=document.createElement('a'); a2.href=URL.createObjectURL(b); a2.download=name; document.body.appendChild(a2); a2.click(); setTimeout(function(){ a2.remove(); },1000); }
 el('goArk').addEventListener('click',function(){ boot().then(function(){ lastRec='ark'; viaOrient('arkIntro'); }).catch(fail); });

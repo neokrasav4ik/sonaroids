@@ -19,4 +19,5 @@ echo; echo "== first open shows the menu (Chromium) =="; node tests/first_open.j
 echo; echo "== the media volume before getting ready (Chromium) =="; node tests/volume.js
 echo; echo "== the app's own sound: frames through the app, the service screen (Chromium) =="; node tests/native_audio.js
 echo; echo "== skins: every object readable on its sky (Chromium) =="; node tests/skin_audit.js
+echo; echo "== graphics: pixels / HD (Chromium) =="; node tests/hd.js
 echo; echo "== the whole game, synthetic microphone (Chromium) =="; node tests/flow.js

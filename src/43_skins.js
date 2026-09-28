@@ -189,9 +189,11 @@ SKINS.fairy.ui={veil:0.5,band:'#ffd23f',btn:'#e0a020',btnHi:'#ffd23f'};
 SKINS.sea.ui={veil:0.45,band:'#ffe066',btn:'#e0a020',btnHi:'#ffd23f'};
 SKINS.sweet.ui={veil:0.55,band:'#ff8fc0',btn:'#e0508c',btnHi:'#ff8fc0'};
 function uiColours(themed){ var u=themed&&SK&&SK.ui; P.band=u?u.band:P.band0; P.btn=u?u.btn:P.ship[1]; P.btnHi=u?u.btnHi:P.ship[2]; }
-function sky(dt,s){ if(!SK||SK.id==='space') return spaceSky(dt,s); SK.sky(dt,s); lx.globalAlpha=SK.ui.veil; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; }
+function sky(dt,s){ if(!SK) return spaceSky(dt,s); SK.sky(dt,s); if(SK.ui){ lx.globalAlpha=SK.ui.veil; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; } }
 var skinId=(function(){ var s=null; try{ s=localStorage.getItem('sonaroids_skin'); }catch(e){} return SKIN_IDS.indexOf(s)>=0?s:'space'; })(), SK=SKINS[skinId];
-function setSkin(id){ if(!SKINS[id]) return; skinId=id; SK=SKINS[id]; try{ localStorage.setItem('sonaroids_skin',id); }catch(e){} }
+function setSkin(id){ if(!SKINS[id]) return; skinId=id; SK=skinView(id); try{ localStorage.setItem('sonaroids_skin',id); }catch(e){} }
+/* v0.72: the pictures a skin is drawn with — its HD ones when HD is chosen and it has them (they share the pixel skin's menu colours) */
+function skinView(id){ if(typeof hdWanted==='function'&&hdWanted(id)){ var h=HDSK[id]; if(!h.ui&&SKINS[id].ui) h.ui=SKINS[id].ui; return h; } return SKINS[id]; }
 
 /* ── the demo flight behind the menus and in the games' cards: a few rocks drifting left, the ship bobbing and firing, now and then
    a saucer — drawn with any skin, on the screen or into an off-screen canvas ── */
@@ -199,11 +201,12 @@ var demo=null, demoSpr={};
 function demoMake(){ var R2=srand(5), d={rocks:[],shots:[],ufo:{x:LW*0.8,y:LH*0.35},t:0};
   for(var i=0;i<7;i++) d.rocks.push({x:LW*(0.3+R2()*0.8),y:LH*(0.12+R2()*0.76),sz:i%3===0?0:i%3===1?1:2,v:10+R2()*14,id:i});
   return d; }
-function demoRock(sk,sz,id){ var k=sk.id+':'+sz+':'+id+':'+K; if(!demoSpr[k]) demoSpr[k]=sk.rock(Math.max(3,Math.round(Core.R_SIZE[sz]*K)),sz,id*13+sz); return demoSpr[k]; }
+function demoRock(sk,sz,id){ var k=sk.id+(sk.hd?'hd'+hs:'')+':'+sz+':'+id+':'+K; if(!demoSpr[k]) demoSpr[k]=sk.rock(Math.max(3,Math.round(Core.R_SIZE[sz]*K)),sz,id*13+sz); return demoSpr[k]; }
 function drawDemo(sk,dt,shipX){ if(!demo||demo.LW!==LW){ demo=demoMake(); demo.LW=LW; } var d=demo; d.t+=dt;
   sk.sky(dt,0.5);
   d.rocks.forEach(function(r){ r.x-=r.v*K*dt; if(r.x<-20){ r.x=LW+20; r.y=LH*(0.12+Math.random()*0.76); }
-    var sp=demoRock(sk,r.sz,r.id), fr=sp.frames[Math.floor((d.t*2+r.id)%16)]; lx.drawImage(fr,Math.round(r.x-sp.size/2+(sp.ox||0)),Math.round(r.y-sp.size/2)); });
+    var sp=demoRock(sk,r.sz,r.id); if(sk.drawRock){ sp.rot=(sp.rot+(sp.vr||0)*dt+16)%16; sk.drawRock(sp,r.x,r.y); return; }
+    var fr=sp.frames[Math.floor((d.t*2+r.id)%16)]; lx.drawImage(fr,Math.round(r.x-sp.size/2+(sp.ox||0)),Math.round(r.y-sp.size/2)); });
   var sy=Math.round(LH*(0.5+0.18*Math.sin(d.t*0.9))), sx=Math.round(shipX===undefined?fx(Core.SHIP_X):shipX);
   if(Math.floor(d.t*6)!==Math.floor((d.t-dt)*6)) d.shots.push({x:sx+16,y:sy});
   d.shots=d.shots.filter(function(b){ b.x+=190*K*dt; return b.x<LW+10; }); d.shots.forEach(function(b){ sk.bullet(b.x,b.y); });

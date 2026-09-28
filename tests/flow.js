@@ -13,7 +13,7 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
   const b=await chromium.launch(); const ctx=await b.newContext({viewport:{width:844,height:390},deviceScaleFactor:2});
   // v0.70: SKIN=fairy|sea|sweet runs the same game in that skin (screenshots get the skin's name)
   const SKIN=process.env.SKIN||'';
-  await ctx.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_lang','en'); localStorage.setItem('sonaroids_skin','${SKIN||'space'}'); ${SRC}; window.makeSimSource=makeSimSource; window.__scen=${SCEN}; window.SONAROIDS_API='https://api.test';`);
+  await ctx.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_lang','en'); localStorage.setItem('sonaroids_skin','${SKIN||'space'}'); localStorage.setItem('sonaroids_gfx','${process.env.GFX||'pixel'}'); ${SRC}; window.makeSimSource=makeSimSource; window.__scen=${SCEN}; window.SONAROIDS_API='https://api.test';`);
   const p=await ctx.newPage(); const errors=[]; p.on('pageerror',e=>errors.push(e.message));
   // the leaderboard server, faked: games and names are caught here and checked below; every game "makes the table", no name yet
   const posted=[], nicks=[], setups=[];
@@ -26,7 +26,7 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
   await p.goto('file://'+path.join(ROOT,'game','play','index.html'));
   await p.evaluate(()=>{ Sonar.simulate({fs:48000,chan:'right',source:makeSimSource(window.__scen)}); });
   const seen=['title@0']; let last=null, t0=Date.now(); const T=()=>(Date.now()-t0)/1000;
-  const shot=async n=>p.screenshot({path:path.join(OUT,n+(SKIN?'_'+SKIN:'')+'.png')});
+  const shot=async n=>p.screenshot({path:path.join(OUT,n+(SKIN?'_'+SKIN:'')+(process.env.GFX==='hd'?'_hd':'')+'.png')});   // GFX=hd: the HD pictures
   await shot('01_title');
   await p.evaluate(()=>__sonaroids.act.play()); t0=Date.now();
   let appShare=null, probeSeen=0, probeBtns=[]; let logs={setup:null,game:null}, pausedOk=false, nickScreen=null, afterNick=null, restartOk=false, restartInfo='', healthyAfter=null, again=null, seen2=[], last2=null, caughtAt=null, startAt=null, range=null, follow=[], shots={};

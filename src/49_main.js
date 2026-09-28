@@ -111,20 +111,28 @@ function dissolve(a,b,t){ if(!mixC||mixC.width!==LW||mixC.height!==LH){ mixC=doc
   var o=demoC2(); var ox=o.getContext('2d'); ox.drawImage(a,0,0); ox.drawImage(mixC,0,0); return o; }
 var dC2=null; function demoC2(){ if(!dC2||dC2.width!==LW||dC2.height!==LH){ dC2=document.createElement('canvas'); dC2.width=LW; dC2.height=LH; } return dC2; }
 var prevC=null;
-function hubFrame(){ hubT+=DT; if(hubT>4){ hubT=0; hubPrev=hubSkin; var n; do{ n=Math.floor(Math.random()*SKIN_IDS.length); }while(n===hubSkin&&SKIN_IDS.length>1); hubSkin=n; hubFade=0; }
+function hubTick(){ hubT+=DT; if(hubT>4){ hubT=0; hubPrev=hubSkin; var n; do{ n=Math.floor(Math.random()*SKIN_IDS.length); }while(n===hubSkin&&SKIN_IDS.length>1); hubSkin=n; hubFade=0; } }
+function hubFrame(){ hubTick();
   hubFade=Math.min(1,hubFade+DT/0.6);
   if(hubFade<1&&hubPrev>=0){ var a=demoInto(SKINS[SKIN_IDS[hubPrev]],0);                     // the old skin, still…
     if(!prevC||prevC.width!==LW||prevC.height!==LH){ prevC=document.createElement('canvas'); prevC.width=LW; prevC.height=LH; }
     var pc2=prevC.getContext('2d'); pc2.clearRect(0,0,LW,LH); pc2.drawImage(a,0,0);
     var b=demoInto(SKINS[SKIN_IDS[hubSkin]],DT); return dissolve(prevC,b,hubFade); }           // …and the new one showing through, pixel by pixel
   return demoInto(SKINS[SKIN_IDS[hubSkin]],DT); }
+var hubTmp=null; function hubHdTmp(){ if(!hubTmp||hubTmp.width!==hdCv.width||hubTmp.height!==hdCv.height){ hubTmp=document.createElement('canvas'); hubTmp.width=hdCv.width; hubTmp.height=hdCv.height; } return hubTmp; }
 function hubCard(id,x,y,w,ih,img,name,sub,on){
-  R(P.bg,x,y,w,ih+26); if(img) lx.drawImage(img,x+2,y+2,w-4,ih);
+  R(P.bg,x,y,w,ih+26);
+  if(img&&img===hdCv){ var tc=hubHdTmp(); tc.getContext('2d').drawImage(hdCv,0,0); lx.clearRect(x+2,y+2,w-4,ih);   // v0.72, HD: the card cut into the pixel canvas, the
+    hx.save(); hx.setTransform(1,0,0,1,0,0); hx.drawImage(tc,Math.round((x+2)*hs),Math.round((y+2)*hs),Math.round((w-4)*hs),Math.round(ih*hs)); hx.restore(); }   // world drawn sharp under it
+  else if(img) lx.drawImage(img,x+2,y+2,w-4,ih);
   if(!on){ lx.globalAlpha=0.55; R(P.bg,x+2,y+2,w-4,ih); lx.globalAlpha=1; }
   frame(x,y,w,ih+26,on?P.band:P.line); if(on) frame(x-1,y-1,w+2,ih+28,P.band);
   text(name,x+w/2,y+ih+7,on?P.text:P.soft,'center'); if(sub) text(sub,x+w/2,y+ih+17,P.soft,'center');
   BTN.push({id:id,x:x,y:y,w:w,h:ih+26}); }
-function sHub(){ var fr=hubFrame(); lx.drawImage(fr,0,0); lx.globalAlpha=0.72; R(P.bg,0,0,LW,LH); lx.globalAlpha=1;
+function sHub(){ var fr;
+  if(hdWanted(SKIN_IDS[hubSkin])){ hubTick(); drawDemo(skinView(SKIN_IDS[hubSkin]),DT); fr=hdCv; }   // v0.72, HD: the demo on the HD canvas; the card shows it scaled down
+  else { fr=hubFrame(); lx.drawImage(fr,0,0); }
+  lx.globalAlpha=0.72; R(P.bg,0,0,LW,LH); lx.globalAlpha=1;
   var cx0=Math.round((SAFE.l+LW-SAFE.r)/2), y=SAFE.t+8, sub=LH>=200;
   text('SONAROIDS',cx0,y,P.band,'center',2); if(sub) text(L('hub_s'),cx0,y+19,P.soft,'center');
   // two rows under the cards: «play» (and, on a narrow screen, the sounds beside it), then «how to play», the language (and the sounds);
@@ -161,12 +169,14 @@ function skinRow(x,y,w,h){ var s=Math.round(h*0.9), ty=y+Math.round((h-7)/2);
   BTN.push({id:'skin_prev',x:x,y:y,w:s+6,h:h}); BTN.push({id:'skin_next',x:x+w-s-6,y:y,w:s+6,h:h}); BTN.push({id:'skin_next',x:x+s+6,y:y,w:w-2*s-12,h:h});
   var n=SKIN_IDS.length, i0=SKIN_IDS.indexOf(skinId), dx=Math.round(x+w/2-(n*6-2)/2); for(var i=0;i<n;i++) R(i===i0?P.band:P.line,dx+i*6,y+h+3,3,3); }
 function sTitle(){
-  var items=[['play',L('play'),'primary'],['scores',L('scores')],['howto',L('howto')],['skin','','skin'],['hub',L('all_games')]];
+  // v0.72: «graphics: pixels / HD» under the skin (a skin without HD pictures yet says «soon»)
+  var gl2=L('gfx')+': '+(gfxMode==='hd'?'HD'+(hdAvail(skinId)?'':' ('+L('soon')+')'):L('gfx_pixel'));
+  var items=[['play',L('play'),'primary'],['scores',L('scores')],['howto',L('howto')],['skin','','skin'],['gfx',gl2],['hub',L('all_games')]];
   var w=Math.max(btnW(items.filter(function(b){ return b[1]; }).map(function(b){ return b[1]; })),PF.width(L('skin')+': '+L('skin_'+SKIN_IDS.reduce(function(a,k){ return PF.width(L('skin_'+k))>PF.width(L('skin_'+a))?k:a; })))+2*Math.round(BH*0.9)+24);
   var bx0=sideX(w), band0=freeSide()==='left'?0:bx0-Math.max(8,Math.round(LW*0.04)), band1=freeSide()==='left'?bx0+w+Math.max(8,Math.round(LW*0.04)):LW;
   noLight=true; drawDemo(SK,DT,freeSide()==='left'?band1+16:SAFE.l+16); noLight=false;           // the ship flies beside the buttons' band; no soft light over the buttons
   lx.globalAlpha=0.55; R(P.bg,band0,0,band1-band0,LH); lx.globalAlpha=1;
-  var h=BH, gap=10, y=Math.round(LH*0.52-(items.length*(h+gap)-gap)/2);
+  var h=BH, gap=items.length>5?7:10, y=Math.round(LH*0.52-(items.length*(h+gap)-gap)/2);
   items.forEach(function(b){ if(b[2]==='skin') skinRow(bx0,y,w,h); else button(b[0],b[1],bx0,y,w,h,b[2]||'',Math.floor(clock*2)%2===0); y+=h+gap; });
   var a0=freeSide()==='left'?band1:SAFE.l, a1=freeSide()==='left'?LW-SAFE.r:band0, lsc=PF.width('SonaFly',2)<=a1-a0-12?2:1; text('SonaFly',Math.round((a0+a1)/2),Math.round(LH*0.16),P.band,'center',lsc);
   say('SonaFly. '+L('play')+'. '+L('skin')+': '+L('skin_'+skinId)); }
@@ -269,18 +279,19 @@ function sTry(){ followShip(); /* the sky is already drawn by sWave */ SK.ship(f
 function fx(x){ return x*K+SAFE.l; }
 /* rock pictures: 6 per size, drawn ahead of time (a few per frame on the calm screens) — drawing one mid-flight took a frame (v0.16) */
 var POOL_N=6, pool={K:0,list:[[],[],[]]};
-function poolFill(budget){ if(pool.K!==K||pool.skin!==skinId){ pool={K:K,skin:skinId,list:[[],[],[]]}; rockSpr={}; } for(var n=0;n<budget;n++){ var sz=[0,1,2].filter(function(i){ return pool.list[i].length<POOL_N; })[0]; if(sz===undefined) return;
+function poolFill(budget){ if(pool.K!==K||pool.skin!==SK||(SK.hd&&pool.hs!==hs)){ pool={K:K,skin:SK,hs:hs,list:[[],[],[]]}; rockSpr={}; } for(var n=0;n<budget;n++){ var sz=[0,1,2].filter(function(i){ return pool.list[i].length<POOL_N; })[0]; if(sz===undefined) return;
   pool.list[sz].push(SK.rock(Math.max(3,Math.round(Core.R_SIZE[sz]*K)),sz,pool.list[sz].length*17+sz)); } }   // v0.70: the skin's rocks
 function rockFromPool(r){ poolFill(0); var l=pool.list[r.sz]; if(!l||!l.length) return SK.rock(Math.max(3,Math.round(r.r*K)),r.sz,r.id);
-  var b=l[r.id%l.length]; return {frames:b.frames,size:b.size,ox:b.ox||0,rot:(r.id*5)%16,vr:b.vr===0?0:((r.id*7)%11-5)}; }
+  var b=l[r.id%l.length], o={}; for(var k in b) o[k]=b[k]; o.ox=b.ox||0; o.rot=(r.id*5)%16; o.vr=b.vr===0?0:((r.id*7)%11-5); return o; }
 function field(dt,speed){ poolFill(0); SK.sky(dt,speed);
   if(!g) return;
   if(g.state!=='play'){ g.bullets=[]; g.ebullets=[]; g.rocks.forEach(function(r){ r.x+=r.vx*dt; r.y+=r.vy*dt; }); if(g.ufo) g.ufo.x-=6*dt; }   // after the game: things drift on, for the look only
   g.rocks.forEach(function(r){ var sp=rockSpr[r.id]; if(!sp){ sp=rockSpr[r.id]=rockFromPool(r); }
-    sp.rot=(sp.rot+sp.vr*dt+16)%16; var fr=sp.frames[Math.floor(sp.rot)%16]; lx.drawImage(fr,Math.round(fx(r.x)-sp.size/2+(sp.ox||0)),Math.round(r.y*K-sp.size/2)); });
-  g.picks.forEach(function(p){ var x=Math.round(fx(p.x)), y=Math.round(p.y*K+Math.sin(clock*3)*2);
+    sp.rot=(sp.rot+sp.vr*dt+16)%16; if(SK.drawRock){ SK.drawRock(sp,fx(r.x),r.y*K); return; }
+    var fr=sp.frames[Math.floor(sp.rot)%16]; lx.drawImage(fr,Math.round(fx(r.x)-sp.size/2+(sp.ox||0)),Math.round(r.y*K-sp.size/2)); });
+  g.picks.forEach(function(p){ var x=fx(p.x), y=p.y*K+Math.sin(clock*3)*2; if(!SK.hd){ x=Math.round(x); y=Math.round(y); }
     SK.pick(x,y,p.type); });
-  if(g.ufo){ var u=g.ufo, big=u.kind==='big', ux=Math.round(fx(u.x)), uy=Math.round(u.y*K);
+  if(g.ufo){ var u=g.ufo, big=u.kind==='big', ux=SK.hd?fx(u.x):Math.round(fx(u.x)), uy=SK.hd?u.y*K:Math.round(u.y*K);
     var hurtNow=u.hitT>0&&Math.floor(clock*20)%2===0;                                                  // just hit: it flashes white
     SK.ufo(ux,uy,big,hurtNow); }
   g.ebullets.forEach(function(b){ SK.ebullet(fx(b.x),b.y*K); });
@@ -288,7 +299,7 @@ function field(dt,speed){ poolFill(0); SK.sky(dt,speed);
   if(g.state==='play'){ var sx=fx(g.ship.x), sy=g.ship.y*K;
     SK.ship(sx,sy,clock,g.ship.inv>0&&Math.floor(clock*14)%2===0);
     if(g.ship.shield>0&&(g.ship.shield>3||Math.floor(clock*8)%2)){                 // the shield: a ring of dots, blinking in its last 3 s
-      for(var a=0;a<28;a+=2){ var an=a/28*6.283+clock*2; R(SK.shield(),sx+7+Math.cos(an)*11,sy+Math.sin(an)*9,1,1); } light(sx+7,sy,16*K,P.glowP,0.25); }
+      if(SK.shieldRing) SK.shieldRing(sx,sy,clock); else { for(var a=0;a<28;a+=2){ var an=a/28*6.283+clock*2; R(SK.shield(),sx+7+Math.cos(an)*11,sy+Math.sin(an)*9,1,1); } } light(sx+7,sy,16*K,P.glowP,0.25); }
     if(livesT>0){ for(var i=0;i<g.lives;i++) blit(MINI,SK.mini(),sx-2+i*7,sy-14); } }   // lives: shown only for a moment after a hit
   drawParts(dt);
 }
@@ -468,6 +479,7 @@ var ACT={
   recal:function(){ onboarding=false; direct=false; store.set('sonaroids_field','100'); Sonar.restart(); booted=false; acoustic=false; go('phone'); },
   lefty:function(){ lefty=true; store.set('sonaroids_lefty','1'); turnShown=false; Logs.ev('играю левой'); seenT=scrT; },
   hub:function(){ go('hub'); }, hub_rocks:function(){ go('title'); }, hub_play:function(){ go('title'); }, hub_race:function(){ soonT=clock; Sfx.play('tap'); },
+  gfx:function(){ setGfx(gfxMode==='hd'?'pixel':'hd'); pool={K:0,list:[[],[],[]]}; },
   skin_prev:function(){ var i=SKIN_IDS.indexOf(skinId); setSkin(SKIN_IDS[(i+SKIN_IDS.length-1)%SKIN_IDS.length]); },
   skin_next:function(){ var i=SKIN_IDS.indexOf(skinId); setSkin(SKIN_IDS[(i+1)%SKIN_IDS.length]); },
   lang:function(){ lang=lang==='en'?'ru':'en'; store.set('sonaroids_lang',lang); },
@@ -541,6 +553,7 @@ function loop(now){
   DT=Math.min(0.05,Math.max(0,(now-lastNow)/1000)); lastNow=now; clock+=DT; scrT+=DT; BTN=[];
   if(LH>LW){ pauseGame(); sRotate(); present(0); return; }
   if(booted&&Sonar.lost()&&(scr==='wave'||scr==='count'||scr==='play'||scr==='over')){ if(g&&g.state==='play') Logs.gameStop(); Board.setup('lost'); go('lost'); }
+  hdFrame(scr==='hub'?hdWanted(SKIN_IDS[hubSkin]):!!SK.hd);   // v0.72: the HD world canvas under the pixel one
   uiColours(scr!=='hub');
   switch(scr){
     case 'lang': sLang(); break; case 'title': sTitle(); break; case 'hub': sHub(); break;
@@ -621,7 +634,7 @@ function chrome(){ if(LH>LW) return;
   if((scr==='wave'&&!vr)||scr==='title') diagCorner('V'+VERSION,true,SAFE.t+8,scr==='title'?vr===(freeSide()!=='left'):true);   // the game's screen: the corner away from its buttons
   else if(scr==='scores') diagCorner('V'+VERSION,true,y+Math.round((s-PF.CAP)/2),false,vr?x-16:x+s+16);
   else diagCorner('V'+VERSION,true,y+s+14); }
-resize(); Board.flush();
+SK=skinView(skinId); resize(); Board.flush();
 if('serviceWorker' in navigator&&location.protocol==='https:') navigator.serviceWorker.register('sw.js').then(function(r){ r.update(); }).catch(function(){});   // works offline; checks for a new version on every launch
 go('hub');   // v0.70: the games' screen first (always the menu first since 0.44; a new player's first "Play" walks through the instruction)
 requestAnimationFrame(loop);

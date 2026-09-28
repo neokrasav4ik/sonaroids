@@ -33,7 +33,7 @@ function resize(){
   css(cv); css(gl); gl.width=LW*2; gl.height=LH*2; glowDirty=false; tableC=null;   // soft light needs no fine detail: half a game pixel, scaled up smoothly
   var si={l:0,r:0,t:0,b:0}; try{ si=safeInsets(); }catch(e){}
   var u=DPR/S; SAFE={l:Math.ceil(si.l*u),r:Math.ceil(si.r*u),t:Math.ceil(si.t*u),b:Math.ceil(si.b*u)};
-  makeNebula(); makeStars();
+  makeNebula(); makeStars(); if(typeof hdCv!=='undefined'&&hdCv) hdSize();
 }
 function noise2(){ var g=[],N=16,i; for(i=0;i<N*N;i++) g.push(Math.random());
   return function(x,y){ var xi=Math.floor(x),yi=Math.floor(y),fx=x-xi,fy=y-yi; function v(a,b){ return g[((a%N+N)%N)+((b%N+N)%N)*N]; }
@@ -62,7 +62,7 @@ function glowSprite(rgb){ var c=glowSpr[rgb]; if(c) return c; c=document.createE
   g.addColorStop(0,'rgba('+rgb+',1)'); g.addColorStop(1,'rgba('+rgb+',0)'); x.fillStyle=g; x.fillRect(0,0,64,64); return glowSpr[rgb]=c; }
 function present(shake){
   var ox=0, oy=0; if(shake>0){ ox=Math.round(rnd(-1,1)*shake*6)*S/DPR; oy=Math.round(rnd(-1,1)*shake*6)*S/DPR; }
-  var tf=ox||oy?'translate('+ox+'px,'+oy+'px)':''; if(cv.style.transform!==tf){ cv.style.transform=tf; gl.style.transform=tf; }
+  var tf=ox||oy?'translate('+ox+'px,'+oy+'px)':''; if(cv.style.transform!==tf){ cv.style.transform=tf; gl.style.transform=tf; if(hdCv) hdCv.style.transform=tf; }
   if(glowDirty||lights.length){ gx.clearRect(0,0,gl.width,gl.height); gx.globalCompositeOperation='lighter';
     lights.forEach(function(L){ var r=L[2]*2; gx.globalAlpha=Math.min(1,L[4]); gx.drawImage(glowSprite(L[3]),L[0]*2-r,L[1]*2-r,2*r,2*r); });
     gx.globalAlpha=1; gx.globalCompositeOperation='source-over'; glowDirty=lights.length>0; }

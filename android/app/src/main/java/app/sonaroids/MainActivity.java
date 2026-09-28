@@ -192,7 +192,8 @@ public class MainActivity extends Activity {
     }
 
     /* v0.54: the update inside the app (it used to open the APK link in the browser, which downloaded it — sometimes twice — and left
-       the installing to the user). The app downloads the APK itself into an Android installer session and Android asks once:
+       the installing to the user). v0.57: the app downloads the APK itself and opens Android's installer screen on it (an installer
+       session, v0.54, fails on MIUI: "INSTALL_FAILED_INTERNAL_ERROR: Permission Denied"); Android asks once:
        «Install?». An app cannot install itself without that question. The first time Android also asks to allow installing from
        this app (Settings → «install unknown apps»); after that — only «Install». Works when the new APK is signed with the same key. */
     static final String ACTION_INSTALLED = "app.sonaroids.INSTALL_STATUS";
@@ -208,27 +209,27 @@ public class MainActivity extends Activity {
         installing = true;
         Toast.makeText(this, ru() ? "Скачиваю обновление…" : "Downloading the update…", Toast.LENGTH_SHORT).show();
         new Thread(() -> {
-            PackageInstaller.Session ses = null;
             try {
                 HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
                 c.setInstanceFollowRedirects(true); c.setConnectTimeout(15000); c.setReadTimeout(30000);
                 int code = c.getResponseCode();
                 for (int i = 0; i < 5 && code / 100 == 3; i++) { String loc = c.getHeaderField("Location"); c.disconnect(); c = (HttpURLConnection) new URL(loc).openConnection(); c.setConnectTimeout(15000); c.setReadTimeout(30000); code = c.getResponseCode(); }
                 if (code != 200) throw new Exception("HTTP " + code);
-                long len = c.getContentLengthLong();
-                PackageInstaller pi = getPackageManager().getPackageInstaller();
-                PackageInstaller.SessionParams sp = new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
-                int id = pi.createSession(sp); ses = pi.openSession(id);
-                try (InputStream in = c.getInputStream(); OutputStream out = ses.openWrite("sonaroids.apk", 0, len > 0 ? len : -1)) {
+                // v0.57: into the app's cache, then Android's own installer screen through ApkProvider (MIUI refuses installer sessions)
+                File f = ApkProvider.file(this);
+                try (InputStream in = c.getInputStream(); OutputStream out = new FileOutputStream(f)) {
                     byte[] b = new byte[65536]; int n; while ((n = in.read(b)) > 0) out.write(b, 0, n);
-                    ses.fsync(out);
                 }
-                Intent back = new Intent(this, MainActivity.class).setAction(ACTION_INSTALLED);
-                int fl = PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0);
-                PendingIntent pend = PendingIntent.getActivity(this, 7, back, fl);
-                ses.commit(pend.getIntentSender()); ses.close(); ses = null;
+                final Uri u = Uri.parse("content://" + ApkProvider.AUTH + "/sonaroids.apk");
+                ui.post(() -> {
+                    installing = false;
+                    try {
+                        Intent i = new Intent(Intent.ACTION_VIEW).setDataAndType(u, "application/vnd.android.package-archive")
+                            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(i);
+                    } catch (Exception e) { Toast.makeText(this, (ru() ? "Не удалось открыть установщик: " : "Could not open the installer: ") + e.getMessage(), Toast.LENGTH_LONG).show(); }
+                });
             } catch (final Exception e) {
-                try { if (ses != null) ses.abandon(); } catch (Exception x) { }
                 installing = false;
                 ui.post(() -> Toast.makeText(this, (ru() ? "Не удалось скачать обновление: " : "Could not download the update: ") + e.getMessage(), Toast.LENGTH_LONG).show());
             }

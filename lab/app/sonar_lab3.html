@@ -422,11 +422,11 @@
 
 <div class="screen hidden" id="stLive"><div class="two">
   <div class="col">
-    <canvas id="slCv" width="360" height="360" style="width:100%;max-width:360px;aspect-ratio:1"></canvas>
+    <canvas id="slCv" width="360" height="200" style="width:100%;max-width:420px;aspect-ratio:1.8"></canvas>
     <div id="slNums" style="margin-top:6px"></div>
   </div>
   <div class="col btns">
-    <p>Телефон лежит вертикально, разъёмом к себе. Качай ладонью вверх-вниз и, не переставая, веди её влево-вправо: точка — где ладонь (по горизонтали — лево/право, по вертикали — расстояние). Метки ниже подстраивают лево/право под твой телефон.</p>
+    <p>Телефон лежит вертикально, разъёмом к себе. Качай ладонью вверх-вниз и, не переставая, переводи её влево или вправо от телефона: точка и надпись показывают, с какой стороны ладонь. Для точности сначала нажми «Держу слева» и 3 с качай слева, потом так же справа.</p>
     <button id="slL" class="ghost">Держу слева (3 с)</button>
     <button id="slR" class="ghost">Держу справа (3 с)</button>
     <button id="slStop" class="big">Стоп</button>
@@ -783,7 +783,7 @@ var mode=null,lastSeq=-1,gaps=0,collector=null;
 function sleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
 function show(id){ ['home','orient','rec','recDone','cal','game','sideIntro','recSide','dualIntro','rightIntro','rightPlay','arkIntro','arkPlay','arcIntro','arcPlay','probes','twoIntro','recTwo','stIntro','recSt','stLive','depthIntro','pwCheck'].forEach(function(s){ el(s).classList.toggle('hidden',s!==id); });
   /* запись вбок идёт с телефоном вертикально — на её экранах просьба повернуть не показывается */
-  if(document.body&&document.body.classList) document.body.classList.toggle('pok',id==='sideIntro'||id==='rightIntro'||id==='rightPlay'||id==='twoIntro'||id==='recTwo'||id==='stIntro'||id==='recSt'||id==='depthIntro'||(id==='recTwo'&&lastRec==='recDepth')||(id==='recDone'&&(lastRec==='recTwo'||lastRec==='recSt'||lastRec==='recDepth'))||((id==='recSide'||id==='recDone')&&(lastRec==='recSide'||lastRec==='recRight'))); fitScreen(); }
+  if(document.body&&document.body.classList) document.body.classList.toggle('pok',id==='sideIntro'||id==='rightIntro'||id==='rightPlay'||id==='twoIntro'||id==='recTwo'||id==='stIntro'||id==='recSt'||id==='stLive'||id==='depthIntro'||(id==='recTwo'&&lastRec==='recDepth')||(id==='recDone'&&(lastRec==='recTwo'||lastRec==='recSt'||lastRec==='recDepth'))||((id==='recSide'||id==='recDone')&&(lastRec==='recSide'||lastRec==='recRight'))); fitScreen(); }
 /* всё в один экран: если видимый экран (или открытое меню игры) не влезает по высоте или ширине — уменьшаю базовый шрифт, пока не влезет */
 function fitScreen(){ try{
   var root=document.documentElement; root.style.fontSize='';
@@ -1999,23 +1999,31 @@ function StereoEcho(){
 }
 
 var SL={se:null,on:false,cal:{},hist:[],grab:null};
+/* 0.63 (the maintainer: «dots dance, nothing is clear»): one bar, left — middle — right, one dot (the median of the last half second
+   of live windows), the zone in big letters; the distance only as a number */
 function slDraw(){ var cv=el('slCv'), g=cv.getContext('2d'), W=cv.width, H=cv.height, o=SL.se&&SL.se.last();
-  g.fillStyle='#16152a'; g.fillRect(0,0,W,H); g.strokeStyle='#3a3552'; g.strokeRect(0.5,0.5,W-1,H-1); g.beginPath(); g.moveTo(W/2,0); g.lineTo(W/2,H); g.stroke();
-  g.fillStyle='#8a7fa0'; g.font='13px system-ui'; g.fillText('слева',8,H-8); g.textAlign='right'; g.fillText('справа',W-8,H-8); g.textAlign='left';
-  if(!SL.se||!SL.se.ready()){ g.fillStyle='#c9b8d6'; g.fillText('убери руку — слушаю пустую комнату',10,20); return; }
-  if(!o) return;
-  var act=o.act, cal=SL.cal, dL=cal.L?cal.L.d:-44, dR=cal.R?cal.R.d:-80, lL=cal.L?cal.L.l:-21, lR=cal.R?cal.R.l:-17;
-  var xd=(o.d-dL)/((dR-dL)||1), xl=(o.l-lL)/((lR-lL)||1), x=cal.L&&cal.R?(xd+xl)/2:xd; x=Math.max(-0.2,Math.min(1.2,x));
-  var y=Math.max(0,Math.min(1,(o.cA-30)/(250)));
-  SL.hist.push({x:x,y:y,act:act}); if(SL.hist.length>30) SL.hist.shift();
-  SL.hist.forEach(function(p,i){ if(!p.act) return; g.fillStyle='rgba(127,224,200,'+(0.1+0.6*i/SL.hist.length)+')'; g.beginPath(); g.arc(20+p.x*(W-40),H-20-p.y*(H-40),4,0,7); g.fill(); });
-  if(act){ g.fillStyle='#7fe0c8'; g.beginPath(); g.arc(20+x*(W-40),H-20-y*(H-40),10,0,7); g.fill(); }
-  el('slNums').innerHTML='путь B − A <b>'+o.d.toFixed(0)+'</b> мм · сила B − A <b>'+o.l.toFixed(1)+'</b> дБ · расстояние A <b>'+o.cA.toFixed(0)+'</b> мм'+(act?'':' · <span class="bad">ладонь не движется / не слышна</span>')+
-    '<br>метки: слева '+(cal.L?cal.L.d.toFixed(0)+' мм / '+cal.L.l.toFixed(1)+' дБ':'— (по умолчанию −44 мм)')+' · справа '+(cal.R?cal.R.d.toFixed(0)+' мм / '+cal.R.l.toFixed(1)+' дБ':'— (по умолчанию −80 мм)');
+  g.fillStyle='#16152a'; g.fillRect(0,0,W,H);
+  var y0=H*0.42, x0=24, x1=W-24;
+  g.fillStyle='#231f3a'; g.fillRect(x0,y0-18,x1-x0,36); g.strokeStyle='#4a3f63'; g.strokeRect(x0+0.5,y0-17.5,x1-x0-1,35);
+  g.strokeStyle='#3a3552'; [1/3,2/3].forEach(function(f){ g.beginPath(); g.moveTo(x0+f*(x1-x0),y0-18); g.lineTo(x0+f*(x1-x0),y0+18); g.stroke(); });
+  g.fillStyle='#8a7fa0'; g.font='14px system-ui'; g.textAlign='center';
+  g.fillText('слева',x0+(x1-x0)/6,y0+38); g.fillText('середина',x0+(x1-x0)/2,y0+38); g.fillText('справа',x0+5*(x1-x0)/6,y0+38);
+  if(!SL.se||!SL.se.ready()){ g.fillStyle='#c9b8d6'; g.font='18px system-ui'; g.fillText('убери руку…',W/2,H*0.2); g.textAlign='left'; return; }
+  if(!o){ g.textAlign='left'; return; }
+  var cal=SL.cal, dL=cal.L?cal.L.d:-44, dR=cal.R?cal.R.d:-80, lL=cal.L?cal.L.l:-21, lR=cal.R?cal.R.l:-17;
+  if(o!==SL.lastO){ SL.lastO=o; if(o.act){ var xd=(o.d-dL)/((dR-dL)||1), xl=(o.l-lL)/((lR-lL)||1); SL.hist.push(cal.L&&cal.R?(xd+xl)/2:xd); if(SL.hist.length>6) SL.hist.shift(); } else SL.hist=[]; }
+  var act=SL.hist.length>=3;
+  if(act){ var srt=SL.hist.slice().sort(function(p,q){ return p-q; }), x=Math.max(0,Math.min(1,srt[srt.length>>1])), zone=x<1/3?'СЛЕВА':x>2/3?'СПРАВА':'ПОСЕРЕДИНЕ';
+    g.fillStyle='#7fe0c8'; g.beginPath(); g.arc(x0+x*(x1-x0),y0,14,0,7); g.fill();
+    g.font='bold 30px system-ui'; g.fillText(zone,W/2,H*0.2); }
+  else { g.fillStyle='#c9b8d6'; g.font='18px system-ui'; g.fillText('качай ладонью вверх-вниз',W/2,H*0.2); }
+  g.textAlign='left';
+  el('slNums').innerHTML='расстояние <b>'+o.cA.toFixed(0)+'</b> мм · путь B − A <b>'+o.d.toFixed(0)+'</b> мм · сила B − A <b>'+o.l.toFixed(1)+'</b> дБ'+
+    '<br>метки: слева '+(cal.L?cal.L.d.toFixed(0)+' мм':'— (по умолчанию −44)')+' · справа '+(cal.R?cal.R.d.toFixed(0)+' мм':'— (по умолчанию −80)');
   if(SL.grab){ SL.grab.v.push(o); if(performance.now()-SL.grab.t0>3000){ var v=SL.grab.v.filter(function(q){ return q.act; }), med=function(a){ a=a.slice().sort(function(p,q){ return p-q; }); return a[a.length>>1]; };
       if(v.length>=4) SL.cal[SL.grab.k]={d:med(v.map(function(q){ return q.d; })),l:med(v.map(function(q){ return q.l; }))}; el('sl'+SL.grab.k).textContent=SL.grab.k==='L'?'Держу слева (3 с)':'Держу справа (3 с)'; SL.grab=null; } } }
 function runStereoLive(){ var src=el('stSrc')?el('stSrc').value:'camcorder';
-  show('stLive'); SL={se:null,on:true,cal:SL.cal||{},hist:[],grab:null}; el('slNums').textContent='';
+  show('stLive'); SL={se:null,on:true,cal:SL.cal||{},hist:[],grab:null,lastO:null}; el('slNums').textContent='';
   if(!stNative()){ el('slNums').innerHTML='<span class="bad">Только в приложении для Android</span>: браузер отдаёт один микрофон.'; return; }
   pickChannel().then(function(){ return autoLevel(); }).then(function(){ setProbe('single-'+chan); stLabMicOff(); SL.se=StereoEcho();
     return stNatStart(src,function(a,b){ if(SL.on&&SL.se) SL.se.push(a,b); }); }).then(function(){

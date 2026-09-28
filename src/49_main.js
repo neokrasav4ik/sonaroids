@@ -151,7 +151,34 @@ function sAway(){ sky(DT,0.3); var m=handSide()==='left', aw=Math.min(1,Math.max
   if(prep&&prep.res){ if(prep.res.ok){ if(scrT-prep.doneT>1.5) toWave(); }       // «the room is quiet» stays for 1.5 s
     else { direct=true; dirLoud=prep.res.why==='loud'; onboarding=false; go('sound'); } }
   stepSquares('away');  }
+/* v0.69: the probe plays from the front camera's end and that end is on the left — a right-handed player has to turn the phone round.
+   The screen goes dark: «turn the phone round, by 180° if you play with your right hand», the phone with two arrows round it, «round like a
+   wheel — don't flip it face down», and «I play left-handed» (remembered). Once the phone is turned, getting ready starts again from «take
+   your hand away»: the empty room and the probe's end are measured anew in the new position (the maintainer's sketch Б2, 28 Sep) */
+var lefty=store.get('sonaroids_lefty','')==='1', turnShown=false;
+function needTurn(){ return !lefty&&!!portOr()&&camEnd()&&handSide()==='left'; }
+function arcArrow(cx,cy,r,a0,a1,c){ var n=Math.ceil(Math.abs(a1-a0)*r*2)+2, i, a;
+  for(i=0;i<=n;i++){ a=a0+(a1-a0)*i/n; R(c,cx+Math.cos(a)*r,cy+Math.sin(a)*r,1,1); R(c,cx+Math.cos(a)*(r+1),cy+Math.sin(a)*(r+1),1,1); }
+  var sg=a1>a0?1:-1, tx=cx+Math.cos(a1)*r, ty=cy+Math.sin(a1)*r, dx=-Math.sin(a1)*sg, dy=Math.cos(a1)*sg, nx=Math.cos(a1), ny=Math.sin(a1), h=Math.max(6,r*0.2);
+  polyFill([[tx+dx*h,ty+dy*h],[tx+nx*h*0.62,ty+ny*h*0.62],[tx-nx*h*0.62,ty-ny*h*0.62]],c); }
+function turnOverlay(){ lx.globalAlpha=0.92; R(P.bg,0,0,LW,LH); lx.globalAlpha=1;
+  var cx=Math.round((SAFE.l+LW-SAFE.r)/2), mw=LW-SAFE.l-SAFE.r-2*56, y=topY(), sc=2;   // clear of the menu button and the version in the top corners
+  var lines=[L('turn_t'),L('turn_s'),L('turn_s2')]; if(lines.some(function(l){ return PF.width(l,sc)>mw; })) sc=1;                              // both lines the same size (the maintainer)
+  lines.forEach(function(l){ text(l,cx,y,P.text,'center',sc); y+=PF.CAP*sc+6; });
+  var bY=LH-SAFE.b-BH-6, hY=bY-16, r=Math.max(18,Math.min(Math.round((hY-y-8)/2)-2,Math.round(LH*0.2))), cy=Math.round(y+4+r+2);
+  var pw=Math.round(r*1.45), ph=Math.round(r*0.7), px=cx-Math.round(pw/2), py=cy-Math.round(ph/2);
+  R('#8a7aa8',px,py,pw,ph); R('#141226',px+3,py+2,pw-6,ph-4);                                // the phone from above, the camera end on the left (where it is now)
+  R(P.band,px+1,cy-1,1,2); for(var k=-2;k<=2;k++) R(P.bullet,px+pw-1,cy+k,1,1); R(P.ship[1],cx+Math.round(pw*0.15),cy-1,3,3);
+  arcArrow(cx,cy,r,Math.PI*1.12,Math.PI*1.86,P.band); arcArrow(cx,cy,r,Math.PI*0.12,Math.PI*0.86,P.band);
+  text(L('turn_h'),cx,hY,P.band,'center');
+  var w=btnW([L('lefty')]); button('lefty',L('lefty'),cx-Math.round(w/2),bY,w,BH,'');
+  say(L('turn_t')+'. '+L('turn_s')+' '+L('turn_s2')); }
+window.addEventListener('orientationchange',function(){ if(!turnShown) return; turnShown=false;
+  Logs.ev('разворот телефона'); prep=null; acoustic=false; handRel=''; accSide=null; go('away'); });
 function sWave(){ sky(DT,0.3); poolFill(1); var m=handSide()==='left', f=handFrac(), live=f!==null;
+  if(needTurn()&&!caught){ if(!turnShown) Logs.ev('просим развернуть',{hand:handSide(),rel:handRel}); turnShown=true; seenT=scrT; flipT=-9;
+    picture(function(){ return sceneBoth('wave',scrT,0.5,0,true,clock); },m); turnOverlay(); return; }
+  turnShown=false;
   // v0.21: tuning stops once the range is caught — the try-out screen shows exactly what the game will use (exploring the edges there widened the field)
   if(scrT>=WAVE_PAUSE&&!caught){ var e=Tune.step(T,DT,Sonar.state(),true,Sonar.shift); if(e) Logs.ev('подстройка',e); }
   if(T.ok&&!caught){ caught=true; caughtT=scrT; Sfx.play('ok'); store.set('sonaroids_seen','1'); Board.setup('caught',{t:scrT,flips:flips});
@@ -343,7 +370,10 @@ function startPrepare(){
   prep={res:null,doneT:0}; acoustic=false;
   // v0.45, the app: the media volume starts at 25% (the maintainer: 20–30% plays fine, higher «swings») and Sonar.prepare moves it until the probe is
   // as loud as on the phones that steer well; in a browser too loud a phone gets «turn it down» (why 'loud'), as too quiet gets «turn it up»
-  var vol=null; if(APP){ try{ var v0=APP.getVolume(); if(v0<0.2||v0>0.3) APP.setVolume(0.25); vol={get:function(){ return APP.getVolume(); },set:function(v){ APP.setVolume(v); }}; }catch(e){ vol=null; } }
+  // v0.68: «ГРОМКОСТЬ: НЕ ТРОГАТЬ» on the «ЗВУК» screen — the player's own media volume, no fitting and no «too loud» (the Redmi Note 10S
+  // was turned down to 13% by the fit, and its palm echo with it; at 50% it once got ready "perfectly")
+  var vol=null; if(APP){ try{ if(store.get('sonaroids_vol','auto')==='keep') vol={get:function(){ return APP.getVolume(); },set:function(){},keep:true};
+    else { var v0=APP.getVolume(); if(v0<0.2||v0>0.3) APP.setVolume(0.25); vol={get:function(){ return APP.getVolume(); },set:function(v){ APP.setVolume(v); }}; } }catch(e){ vol=null; } }
   var logged=false; function slog(){ var I=Sonar.info(); logged=true;
       Logs.setupStart({kind:'подготовка',cal:I.cal,autocenter:true,tune:'waves',asym:Tune.ASYM,field_auto:true,field_mm:+store.get('sonaroids_field','100')||100,
         chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,prom:null,sfx:Sfx.state(),vol_fit:I.vol_fit,auto_audio:I.auto_audio,route:I.route,settle:I.settle,started:new Date().toISOString(),app:APP?'sonaroids-android':'sonaroids',native:APP?(function(){ try{ return JSON.parse(APP.info()); }catch(e){ return null; } })():undefined}); }
@@ -385,6 +415,7 @@ var ACT={
   howto:function(){ onboarding=true; direct=false; go('sound'); },
   /* a deep recalibration: forget the saved palm range, close the microphone and start from "put the phone down" */
   recal:function(){ onboarding=false; direct=false; store.set('sonaroids_field','100'); Sonar.restart(); booted=false; acoustic=false; go('phone'); },
+  lefty:function(){ lefty=true; store.set('sonaroids_lefty','1'); turnShown=false; Logs.ev('играю левой'); seenT=scrT; },
   lang:function(){ lang=lang==='en'?'ru':'en'; store.set('sonaroids_lang',lang); },
   sfx:function(){ Sfx.toggle(); }, vol_dn:function(){ Sfx.down(); }, vol_up:function(){ Sfx.up(); },
   start:function(){ ensure(startCount); },
@@ -502,7 +533,9 @@ function sAudio(){ sky(DT,0.3); var A=window.SonaroidsApp;
   text(L('aud_out'),x0,y+5,P.soft,'left'); x=x0+lw; x=chip('aud:out:',L('aud_auto'),x,y,out==='');
   outs.forEach(function(d){ x=chip('aud:out:'+d.id,d.id+' '+(d.type==='speaker'?L('aud_speaker'):L('aud_earpiece')),x,y,out===String(d.id)); }); y+=PF.CAP+11;
   var us=store.get('sonaroids_usage','media'); text(L('aud_usage'),x0,y+5,P.soft,'left'); x=x0+lw;
-  x=chip('aud:usage:media',L('aud_media'),x,y,us==='media'); chip('aud:usage:game',L('aud_game'),x,y,us==='game'); y+=PF.CAP+11;
+  x=chip('aud:usage:media',L('aud_media'),x,y,us==='media'); x=chip('aud:usage:game',L('aud_game'),x,y,us==='game');
+  var kv=store.get('sonaroids_vol','auto'); x+=10; text(L('aud_vol'),x,y+5,P.soft,'left'); x+=PF.width(L('aud_vol'))+8;
+  x=chip('aud:vol:auto',L('aud_auto'),x,y,kv!=='keep'); chip('aud:vol:keep',L('aud_keep'),x,y,kv==='keep'); y+=PF.CAP+11;
   // v0.67: which end of the phone plays the probe (auto: the one the microphone hears louder); the hand's picture follows it
   var pe=store.get('sonaroids_probe_end','auto'); text(L('aud_end'),x0,y+5,P.soft,'left'); x=x0+lw;
   x=chip('aud:end:auto',L('aud_auto'),x,y,pe==='auto'); x=chip('aud:end:camera',L('aud_cam'),x,y,pe==='camera'); chip('aud:end:port',L('aud_port'),x,y,pe==='port'); y+=PF.CAP+11;
@@ -518,7 +551,7 @@ function sAudio(){ sky(DT,0.3); var A=window.SonaroidsApp;
   say(L('aud_t')); }
 function audAct(id){ var p=id.split(':'), k=p[1], v=p.slice(2).join(':');
   if(k==='mode') store.set('sonaroids_audio',v); else if(k==='mic') store.set('sonaroids_mic',v); else if(k==='out') store.set('sonaroids_out',v);
-  else if(k==='src') store.set('sonaroids_src',v); else if(k==='end') store.set('sonaroids_probe_end',v); else if(k==='usage') store.set('sonaroids_usage',v);
+  else if(k==='src') store.set('sonaroids_src',v); else if(k==='end') store.set('sonaroids_probe_end',v); else if(k==='vol') store.set('sonaroids_vol',v); else if(k==='usage') store.set('sonaroids_usage',v);
   else if(k==='retest') Sonar.audioRetest();
   else if(k==='lab'){ location.href='../lab/sonar_lab3.html'; return; }
   Sonar.restart(); booted=false; acoustic=false; audDev=null; }

@@ -293,7 +293,8 @@ var Sonar=(function(){
      up to 4 tries, ~4 dB per 1/15 of the range. A browser cannot set the volume: above LOUD_LVL it asks to turn it down, as it asks
      to turn it up when too quiet. */
   var VOL_TARGET=10, VOL_OK=5, LOUD_LVL=24, VOL_DB=60, VOL_MIN=0.13, VOL_UP=0.5, volLog=[];
-  function fitVolume(vol,adj){ var n=0;   // volLog is cleared by prepare: a second fit after the microphone test adds to it
+  function fitVolume(vol,adj){ var n=0;
+    if(vol.keep) return function(L){ volLog.push({v:Math.round(vol.get()*100)/100,lvl:Math.round(PROBE_LVL*10)/10,keep:true}); return L; };   // v0.68: «leave as is» on the «ЗВУК» screen   // volLog is cleared by prepare: a second fit after the microphone test adds to it
     function step(L){ var v=vol.get(), lv=PROBE_LVL-adj; volLog.push({v:Math.round(v*100)/100,lvl:Math.round(PROBE_LVL*10)/10});
       if(n>=4||(lv<=LOUD_LVL&&lv>=VOL_TARGET-VOL_OK)) return L;
       var nv=Math.max(lv>LOUD_LVL?VOL_MIN:v,Math.min(lv>LOUD_LVL?v:VOL_UP,v+(VOL_TARGET-lv)/VOL_DB)); if(Math.abs(nv-v)<0.034) return L;
@@ -307,7 +308,9 @@ var Sonar=(function(){
     // (−19 dB at 25%; it needed 50%) for the test to judge anything. If the test switched the microphone, the level and volume are fitted again
     var fit=function(L){ return vol?fitVolume(vol,adj0())(L):L; };
     return pickChannel().then(function(){ onStage&&onStage('level'); return autoLevel(); }).then(fit)
-    .then(function(L){ return audioTest().then(function(sw){ return sw?autoLevel().then(fit):L; }); }).then(function(L){
+    // v0.68: after the test reopened the recording, the probe's end is picked again with the microphone now in use — before, it was picked with
+    // the one Android gave at the start (the Redmi Note 10S: sometimes the back, sometimes the bottom), and the end looked random
+    .then(function(L){ return audioTest().then(function(sw){ return sw?pickChannel().then(autoLevel).then(fit):L; }); }).then(function(L){
       // "barely heard": the probe itself is ~19 dB quieter than on a phone with sound on (the media volume at zero; on iPhone the silent switch
       // does not mute it). Not by signal-to-noise: a noisy room (24 Sep: 33 dB worked fine) and a palm moving nearby (its echo counts as "noise";
       // 24 Sep: after a game over the next start said "too quiet") both lower it. A probe too weak to read is caught by DSP2 ('noprobe')

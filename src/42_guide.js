@@ -86,8 +86,9 @@ function scene(id,t,f,away,waves,T,lay){
     var by0=Math.max(0,Math.floor(Math.min(c4[0][1],c4[1][1],c4[2][1],c4[3][1]))), by1=Math.min(LH,Math.ceil(Math.max(c4[0][1],c4[1][1],c4[2][1],c4[3][1])));
     lx.fillStyle=P.neb[0];
     for(var y2=by0;y2<by1;y2++) for(var x2=bx0;x2<bx1;x2++){ var q1=unIso(x2,y2,o), ex=(q1[0]-sc[0])/rx, ey=(q1[1]-sc[1])/ry; if(ex*ex+ey*ey<1&&bay(x2,y2)<dens) lx.fillRect(x2,y2,1,1); } }
+  // v0.69: the waves from both ends of the phone, alike (the maintainer: the palm is heard at either end)
   if(waves) for(var i=0;i<3;i++){ var rr=((T*6+i*4.5)%13.5)*cm+1*cm;
-    for(var a=-1.4;a<=1.4;a+=0.05){ var pp=iso(ph.X1+Math.cos(a)*rr,Math.sin(a)*rr,0,o); R(P.bullet,pp[0],pp[1],1,1); } }
+    for(var a=-1.4;a<=1.4;a+=0.05){ var pp=iso(ph.X1+Math.cos(a)*rr,Math.sin(a)*rr,0,o), pq=iso(ph.X0-Math.cos(a)*rr,Math.sin(a)*rr,0,o); R(P.bullet,pp[0],pp[1],1,1); R(P.bullet,pq[0],pq[1],1,1); } }
   if(id==='wave'){ var rX=Xa+hw+8.5*cm, rY=Yb-12*cm, b0=iso(rX,rY,0,o), b5=iso(rX,rY,Z5,o), b15=iso(rX,rY,Z15,o);         // a 5–15 cm ruler
     dots(b0[0],b0[1],b15[1],P.soft); R(P.soft,b5[0]-3,b5[1],7,1); R(P.soft,b15[0]-3,b15[1],7,1);
     labels.push({x:b15[0]+6,y:b15[1]-3,t:'10 '+L('cm'),c:P.soft});   /* v0.31: the numbers say 5–10 (plays better, the maintainer); the ruler and tuning are unchanged */ labels.push({x:b5[0]+6,y:b5[1]-3,t:'5 '+L('cm'),c:P.soft}); }
@@ -121,7 +122,7 @@ function sceneHand(id,t,f,away,waves,T,lay){
   var cm=Math.min(LH*0.024,LW*0.0135)*lay.k, o=[LW*lay.ox,LH*lay.oy+23.6*cm], labels=[];
   var HS={t:P.hand[1],h:P.hand[2],x:P.hand[0],y:'#9A7274'}, X0=-7.5*cm*PSC, Y0=-3.6*cm*PSC, Y1=3.6*cm*PSC, Zp=1.0*cm;
   // the holding hand (v0.35, the maintainer: the phone lies in the palm, the thumb under it, the other fingers over the far long edge)
-  var gx=X0, ph, j;
+  var gx=-2.4*cm, ph, j;   // v0.69: the phone held in the middle (the maintainer: a hand at the end covers its microphone)
   box(gx-1.8*cm,gx+6.6*cm,Y0+0.3*cm,Y1-0.2*cm,-2.4*cm,-0.05*cm,o,HS.t,HS.x,HS.y);                      // the palm under the phone, wide
   for(j=0;j<4;j++) box(gx+0.1*cm+j*1.7*cm,gx+1.6*cm+j*1.7*cm,Y0-1.1*cm,Y0,-1.6*cm,Zp+0.9*cm,o,HS.t,HS.x,HS.y);   // fingers up the far side…
   box(gx-2.0*cm,gx+5.4*cm,Y1-1.4*cm,Y1+9*cm,-7.4*cm,-2.0*cm,o,HS.t,HS.x,HS.y);                          // forearm towards the player and down
@@ -134,7 +135,7 @@ function sceneHand(id,t,f,away,waves,T,lay){
   if(away>0){ var q=ease(away); dy=q*30*cm; gap+=q*6*cm; al=1-q; }
   var Za=-4.2*cm, Zb=4.4*cm, Kx=ph.X1+gap+2.8*cm, Ky=-2.0*cm+dy, D=[0,-1], NB=[1,0], PL=8.5*cm, Wx=Kx-D[0]*PL, Wy=Ky-D[1]*PL;   // a straight hand along the phone's end (v0.35, the maintainer): knuckles K, wrist W, fingers along D, back of the hand along NB
   if(waves) for(var i=0;i<3;i++){ var rr=((T*6+i*4.5)%13.5)*cm+1*cm;
-    for(var a=-1.2;a<=1.2;a+=0.06){ var pp=iso(ph.X1+Math.cos(a)*rr,0,Zp/2+Math.sin(a)*rr*0.8,o); if(Math.cos(a)*rr<gap) R(P.bullet,pp[0],pp[1],1,1); } }
+    for(var a=-1.2;a<=1.2;a+=0.06){ var pp=iso(ph.X1+Math.cos(a)*rr,0,Zp/2+Math.sin(a)*rr*0.8,o), pq=iso(ph.X0-Math.cos(a)*rr,0,Zp/2+Math.sin(a)*rr*0.8,o); if(Math.cos(a)*rr<gap) R(P.bullet,pp[0],pp[1],1,1); R(P.bullet,pq[0],pq[1],1,1); } }
   if(al>0){ var fz=[2.9,0.6,-1.7,-3.9], fh=[1.5,1.5,1.45,1.3], L2=[7.6,8.6,8.0,6.2], k;            // index … little finger, top to bottom
     for(k=3;k>=0;k--) slab(Kx-D[0]*0.6*cm,Ky-D[1]*0.6*cm,D,NB,(L2[k]+0.6)*cm,fz[k]*cm,(fz[k]+fh[k])*cm,0.9*cm,0.5*cm,o,HS.t,HS.h,al);
     if(al>0.5) for(k=0;k<3;k++){ var g0=iso(Kx,Ky,fz[k]*cm-0.4*cm,o), g1=iso(Kx+D[0]*(Math.min(L2[k],L2[k+1])-0.3)*cm,Ky+D[1]*(Math.min(L2[k],L2[k+1])-0.3)*cm,fz[k]*cm-0.4*cm,o);   // the lines between the fingers

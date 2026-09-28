@@ -48,7 +48,7 @@ const APPSTUB=`(function(){ var st={on:false,g:[0,0,0,0],probes:0,iv:null,frames
   await p.evaluate(()=>{ __sonaroids.act.audio(); }); await p.waitForTimeout(400);
   const ids=await p.evaluate(()=>__sonaroids.btn().map(q=>q.id));
   await p.screenshot({path:path.join(ROOT,'tests','out','audio_screen.png')});
-  const listed=ids.includes('aud:mic:3')&&ids.includes('aud:mic:4')&&ids.includes('aud:out:2')&&ids.includes('aud:mode:browser')&&ids.includes('aud:end:camera')&&ids.includes('aud:end:port');   // v0.67: the probe's end
+  const listed=ids.includes('aud:mic:3')&&ids.includes('aud:mic:4')&&ids.includes('aud:out:2')&&ids.includes('aud:mode:browser')&&ids.includes('aud:end:camera')&&ids.includes('aud:end:port')&&ids.includes('aud:vol:keep');   // v0.67: the probe's end
   await p.evaluate(()=>{ Sfx&&0; }); await p.mouse.click(1,1);
   const modeAfter=await p.evaluate(()=>{ const q=__sonaroids.btn().find(x=>x.id==='aud:mic:3'); return q; });
   // v0.64: with nothing chosen, the app's own sound is the default

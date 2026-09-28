@@ -83,6 +83,17 @@ var Sonar=(function(){
      the probe at the microphone fell by 13.5 dB and changed shape, the empty room learnt before it no longer matched and a constant false
      "echo" of +44 dB sat at 79 mm — the palm was heard at both ends and steering was "terrible". Started with the microphone from the
      beginning (17:57) its sound stayed steady */
+  /* v0.67: wait until the probe at the microphone holds still — two measurements in a row (~0.13 s each, 0.15 s apart) within 0.3 dB, at
+     most 3 s. The Redmi Note 10S (19:35): the recording reopened on the bottom microphone kept drifting — the probe fell 5 dB and changed
+     shape in the first half second of the empty room; the room learnt during the drift never matched (a constant false echo of +28 dB) and
+     the palm was not heard at all. The time it took goes into the setup log (settle_ms) */
+  var settleLog=null;
+  function settle(){ var t0=performance.now(), prev=null, n=0, steps=[];
+    function step(){ return collect(6).then(function(fr){ var lv=probeStats(fr,fs,F_LO,20450).line; steps.push(+lv.toFixed(1));
+      if(prev!==null&&Math.abs(lv-prev)<0.3) n++; else n=0; prev=lv;
+      if(n>=2||performance.now()-t0>3000){ settleLog={ms:Math.round(performance.now()-t0),db:steps}; return; }
+      return sleep(150).then(step); }); }
+    return step(); }
   function natReopen(){ var p=natPort; natPort=null; if(p){ try{ p.onmessage=null; p.close(); }catch(e){} }
     return natOpen().then(function(){ return sleep(300); }); }
   function makeProbe(parity){
@@ -256,7 +267,13 @@ var Sonar=(function(){
   /* which side the palm is on: the speaker whose probe is louder at the microphone */
   function bandLevel(){ var b=new Float32Array(an.frequencyBinCount); an.getFloatFrequencyData(b);
     var bw=fs/2048, s=0; for(var i=Math.ceil(F_LO/bw);i<=Math.floor(F_HI/bw);i++) s+=Math.pow(10,b[i]/10); return s; }
+  /* v0.67: the probe's end chosen by hand on the «ЗВУК» screen ('sonaroids_probe_end': 'auto' | 'camera' | 'port'). The game takes a
+     channel for the speaker on that side of the screen (as the hand's side does); the rotation says which side the port is on */
+  function portNow(){ var a=null; try{ if(screen.orientation&&typeof screen.orientation.angle==='number') a=screen.orientation.angle; }catch(e){}
+    if(a===null&&typeof window.orientation==='number') a=window.orientation; return a===90?'right':(a===270||a===-90)?'left':null; }
   function pickChannel(){
+    var end=lsGet('sonaroids_probe_end','auto'), po=portNow();
+    if(!sim&&end!=='auto'&&po){ chan=end==='port'?po:(po==='left'?'right':'left'); setProbe('single-'+chan); return sleep(300).then(function(){ return chan; }); }
     if(sim) return sleep(700).then(function(){ chan=sim.chan||'right'; return chan; });
     function meas(w){ setProbe(w);
       // v0.50: the app's sound has no analyser — the probe's own line power over 8 frames (probeStats), which measures the same thing
@@ -298,8 +315,10 @@ var Sonar=(function(){
       var lvlAdj=10*Math.log10((Math.floor(F_HI*N/fs)-Math.ceil(BANDS.normal*N/fs)+1)/(kHi-kLo+1));
       if(PROBE_LVL<QUIET_LVL+lvlAdj){ setProbe('off'); autoRetest=true; return {ok:false,why:'quiet',snr:L.snr,level:PROBE_LVL}; }
       if(!vol&&PROBE_LVL>LOUD_LVL+lvlAdj){ setProbe('off'); return {ok:false,why:'loud',snr:L.snr,level:PROBE_LVL}; }
+      // v0.67: in the app, the empty room is learnt only once the probe at the microphone holds still (settle)
+      return (natOn?settle():Promise.resolve()).then(function(){
       DSP2.set('flo',band==='wide'?F_LO:null); DSP2.init(fs,'all'); DSP2.setCal(curCal()); DSP2.set('autocenter',1); active=true; onStage&&onStage('room');
-      return waitReady().then(function(st){ if(st==='noprobe'){ active=false; setProbe('off'); autoRetest=true; return {ok:false,why:'noprobe'}; } return {ok:true,snr:L.snr}; });
+      return waitReady().then(function(st){ if(st==='noprobe'){ active=false; setProbe('off'); autoRetest=true; return {ok:false,why:'noprobe'}; } return {ok:true,snr:L.snr}; }); });
     });
   }
   /* simulation for headless tests and demos: frames come from source(i) (Float32Array of 512) at real-time rate instead of the microphone;
@@ -337,9 +356,9 @@ var Sonar=(function(){
     shift:function(d){ DSP2.shift(d); },
     peak:function(){ return peak; },
     /* what the browser really gave for the microphone: on Android the echo/noise/gain processing may stay on despite our request */
-    micSettings:function(){ if(natOn){ try{ var st=JSON.parse(NATA.audioStatus()); return {audio:'app',src:st.src,usage:st.usage,fx:st.fx,mic_wanted:st.mic_wanted,out_wanted:st.out_wanted,in:st.in,out:st.out,active:st.active}; }catch(e){ return {audio:'app'}; } }
+    micSettings:function(){ if(natOn){ try{ var st=JSON.parse(NATA.audioStatus()); return {audio:'app',probe_end:lsGet('sonaroids_probe_end','auto'),src:st.src,usage:st.usage,fx:st.fx,mic_wanted:st.mic_wanted,out_wanted:st.out_wanted,in:st.in,out:st.out,active:st.active}; }catch(e){ return {audio:'app'}; } }
       try{ var t=stream&&stream.getAudioTracks()[0]; if(!t) return null; var s=t.getSettings(), o={}; ['autoGainControl','echoCancellation','noiseSuppression','sampleRate','channelCount','latency','deviceId'].forEach(function(k){ if(s[k]!==undefined) o[k]=k==='deviceId'?String(s[k]).slice(0,8):s[k]; }); o.label=t.label; return o; }catch(e){ return null; } },
-    info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,probe_level:PROBE_LVL,vol_fit:volLog.slice(),f_lo:F_LO,band:band,cal:curCal(),gaps:gaps,booted:booted,audio:natOn?'app':'browser',auto_audio:autoLog,routes:routeLog.slice(),route:routeKey}; },
+    info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,probe_level:PROBE_LVL,vol_fit:volLog.slice(),f_lo:F_LO,band:band,cal:curCal(),gaps:gaps,booted:booted,audio:natOn?'app':'browser',auto_audio:autoLog,routes:routeLog.slice(),route:routeKey,settle:settleLog}; },
     audioRetest:function(){ autoRetest=true; try{ localStorage.removeItem('sonaroids_autoaudio'); }catch(e){} },
     native:function(){ return natOn; }, nativeAvail:natAvail,
     chan:function(){ return chan; }, ctx:function(){ return ctx; }};

@@ -15,6 +15,7 @@ import android.media.AudioDeviceInfo;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioRecord;
+import android.media.AudioRouting;
 import android.media.AudioTrack;
 import android.media.MediaRecorder;
 import android.media.MicrophoneInfo;
@@ -35,6 +36,7 @@ import org.json.JSONObject;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.ArrayList;
 import java.util.List;
 
 class NativeAudio {
@@ -47,6 +49,18 @@ class NativeAudio {
     volatile long frames = 0; volatile String error = "";
     AudioEffect fxNs, fxAgc, fxAec; String fxState = "";               // v0.51: the phone's own voice processing, switched off explicitly
     String srcName = "", usageName = ""; int micWanted = -1, outWanted = -1, channels = 1;
+    /* v0.64: every change of the recording's or the probe's route, as Android reports it (the Redmi Note 10S moved the recording to the
+       front microphone while a game was getting ready, even with the bottom one asked for). The page takes them with the status and logs them */
+    final ArrayList<String> routes = new ArrayList<>(); long t0 = System.currentTimeMillis();
+    final AudioRouting.OnRoutingChangedListener onRoute = r -> {
+        try {
+            AudioDeviceInfo d = r.getRoutedDevice(); JSONObject j = new JSONObject();
+            j.put("t", System.currentTimeMillis() - t0); j.put("kind", r instanceof AudioRecord ? "in" : "out"); j.put("mode", NativeAudio.this.am.getMode());
+            if (d != null) j.put("dev", dev(d));
+            if (r instanceof AudioRecord && Build.VERSION.SDK_INT >= 28) { JSONArray a = new JSONArray(); for (MicrophoneInfo m : ((AudioRecord) r).getActiveMicrophones()) a.put(m.getAddress()); j.put("active", a); }
+            synchronized (routes) { routes.add(j.toString()); while (routes.size() > 40) routes.remove(0); }
+        } catch (Exception e) { }
+    };
 
     NativeAudio(AudioManager am, WebView web, Handler ui) { this.am = am; this.web = web; this.ui = ui; }
 
@@ -55,6 +69,7 @@ class NativeAudio {
     /* cfg: {"mic": device id or -1, "out": device id or -1, "src": "auto"|"unprocessed"|"voice"|"mic"|"camcorder", "ch": 1|2} */
     synchronized boolean start(String cfg) {
         stop();
+        t0 = System.currentTimeMillis(); synchronized (routes) { routes.clear(); }
         try {
             JSONObject c = new JSONObject(cfg == null || cfg.isEmpty() ? "{}" : cfg);
             outWanted = c.optInt("out", -1); channels = c.optInt("ch", 1) == 2 ? 2 : 1;
@@ -72,7 +87,11 @@ class NativeAudio {
                 .setAudioFormat(new AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_FLOAT).setSampleRate(FS)
                     .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO).build())
                 .setBufferSizeInBytes(Math.max(minOut * 2, 4 * N * 2 * 4)).setTransferMode(AudioTrack.MODE_STREAM).build();
-            if (outWanted >= 0) { AudioDeviceInfo d = device(outWanted, AudioManager.GET_DEVICES_OUTPUTS); if (d != null) trk.setPreferredDevice(d); }
+            // v0.64: on «auto» the loudspeaker is asked for explicitly: a media sound goes there anyway, but a phone that moved the
+            // recording to the front may move the probe to the earpiece with it (the palm's echo from there is far too weak)
+            AudioDeviceInfo od = outWanted >= 0 ? device(outWanted, AudioManager.GET_DEVICES_OUTPUTS) : speaker();
+            if (od != null) trk.setPreferredDevice(od);
+            trk.addOnRoutingChangedListener(onRoute, ui);
             frames = 0; seq = 0; error = ""; run = true; recRun = true;
             rec.startRecording(); trk.play();
             playT = new Thread(this::playLoop, "sonar-play"); playT.start();
@@ -108,6 +127,7 @@ class NativeAudio {
         rec = new AudioRecord(src, FS, chIn, AudioFormat.ENCODING_PCM_16BIT, Math.max(minIn * 2, 8 * N * 2 * channels));
         if (rec.getState() != AudioRecord.STATE_INITIALIZED) { error = "record-init"; return false; }
         if (micWanted >= 0) { AudioDeviceInfo d = device(micWanted, AudioManager.GET_DEVICES_INPUTS); if (d != null) rec.setPreferredDevice(d); }
+        rec.addOnRoutingChangedListener(onRoute, ui);
         // v0.51: the source already asks for no processing (UNPROCESSED; VOICE_RECOGNITION — by Android's rules without noise suppression and
         // gain control), but some phones attach noise suppression, gain control or echo cancelling to a recording anyway: switch them off
         int sid = rec.getAudioSessionId(); StringBuilder fx = new StringBuilder();
@@ -156,13 +176,13 @@ class NativeAudio {
     void releaseRec() {
         for (AudioEffect e : new AudioEffect[]{fxNs, fxAgc, fxAec}) { try { if (e != null) e.release(); } catch (Exception x) { } }
         fxNs = null; fxAgc = null; fxAec = null;
-        try { if (rec != null) { try { rec.stop(); } catch (Exception e) { } rec.release(); } } catch (Exception e) { }
+        try { if (rec != null) { try { rec.removeOnRoutingChangedListener(onRoute); } catch (Exception e) { } try { rec.stop(); } catch (Exception e) { } rec.release(); } } catch (Exception e) { }
         rec = null;
     }
 
     void release() {
         releaseRec();
-        try { if (trk != null) { try { trk.pause(); trk.flush(); } catch (Exception e) { } trk.release(); } } catch (Exception e) { }
+        try { if (trk != null) { try { trk.removeOnRoutingChangedListener(onRoute); } catch (Exception e) { } try { trk.pause(); trk.flush(); } catch (Exception e) { } trk.release(); } } catch (Exception e) { }
         trk = null;
     }
 
@@ -209,6 +229,8 @@ class NativeAudio {
     }
 
     void gains(double allL, double allR, double even, double odd) { tAllL = (float) allL; tAllR = (float) allR; tEven = (float) even; tOdd = (float) odd; }
+
+    AudioDeviceInfo speaker() { for (AudioDeviceInfo d : am.getDevices(AudioManager.GET_DEVICES_OUTPUTS)) if (d.getType() == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER) return d; return null; }
 
     AudioDeviceInfo device(int id, int kind) { for (AudioDeviceInfo d : am.getDevices(kind)) if (d.getId() == id) return d; return null; }
 
@@ -261,7 +283,8 @@ class NativeAudio {
         try {
             JSONObject j = new JSONObject();
             j.put("running", run); j.put("frames", frames); j.put("src", srcName); j.put("usage", usageName); j.put("ch", channels); j.put("mic_wanted", micWanted); j.put("out_wanted", outWanted);
-            j.put("error", error); j.put("fx", fxState);
+            j.put("error", error); j.put("fx", fxState); j.put("mode", am.getMode());
+            synchronized (routes) { if (!routes.isEmpty()) { JSONArray a = new JSONArray(); for (String x : routes) a.put(new JSONObject(x)); j.put("routes", a); routes.clear(); } }
             AudioRecord r = rec; AudioTrack t = trk;
             if (r != null) { AudioDeviceInfo d = r.getRoutedDevice(); if (d != null) j.put("in", dev(d));
                 if (Build.VERSION.SDK_INT >= 28) { try { JSONArray a = new JSONArray(); List<MicrophoneInfo> l = r.getActiveMicrophones(); for (MicrophoneInfo m : l) a.put(mic(m)); j.put("active", a); } catch (Exception e) { } } }

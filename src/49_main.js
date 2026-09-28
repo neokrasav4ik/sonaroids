@@ -484,12 +484,12 @@ function chip(id,label,x,y,on){ var w=PF.width(label)+12, h=PF.CAP+10; R(on?P.ba
 function sAudio(){ sky(DT,0.3); var A=window.SonaroidsApp;
   if(!audDev||scrT-audT>2){ audT=scrT; try{ audDev=JSON.parse(A.audioDevices()); }catch(e){ audDev={}; } try{ audSt=Sonar.native()?JSON.parse(A.audioStatus()):null; }catch(e){ audSt=null; } }
   titles(L('aud_t'),L('aud_s'));
-  var x0=Math.round(LW*0.1), y=Math.round(LH*0.22), mode=store.get('sonaroids_audio','browser'), lw=Math.max(PF.width(L('aud_autotest')),PF.width(L('aud_mode')),PF.width(L('aud_mic')),PF.width(L('aud_out')),PF.width(L('aud_src')),PF.width(L('aud_usage')))+10, x;
+  var x0=Math.round(LW*0.1), y=Math.round(LH*0.22), mode=store.get('sonaroids_audio','app'), lw=Math.max(PF.width(L('aud_autotest')),PF.width(L('aud_mode')),PF.width(L('aud_mic')),PF.width(L('aud_out')),PF.width(L('aud_src')),PF.width(L('aud_usage')))+10, x;
   text(L('aud_mode'),x0,y+5,P.soft,'left'); x=x0+lw;
   x=chip('aud:mode:browser',L('aud_browser'),x,y,mode!=='app'); chip('aud:mode:app',L('aud_app'),x,y,mode==='app'); y+=PF.CAP+13;
   var ap=null; try{ ap=JSON.parse(store.get('sonaroids_autoaudio','')||'null'); }catch(e){}
   // v0.55: «test again» only when there is a pick; it forgets it — the test runs with the next getting ready (the text says so)
-  var apt=ap?L('aud_mic')+' '+ap.mic+' '+String(ap.src).toUpperCase():L(store.get('sonaroids_audio','browser')==='app'?'aud_nextgame':'aud_notyet');
+  var apt=ap?L('aud_mic')+' '+ap.mic+' '+String(ap.src).toUpperCase():L(store.get('sonaroids_audio','app')==='app'?'aud_nextgame':'aud_notyet');
   text(L('aud_autotest'),x0,y+5,P.soft,'left'); x=x0+lw; text(apt,x,y+5,P.text,'left');
   if(ap) chip('aud:retest:1',L('aud_retest'),x+PF.width(apt)+12,y,false); y+=PF.CAP+13;
   var src=store.get('sonaroids_src','auto'); text(L('aud_src'),x0,y+5,P.soft,'left'); x=x0+lw;

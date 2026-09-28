@@ -13,8 +13,9 @@ const APPSTUB=`(function(){ var st={on:false,g:[0,0,0,0],probes:0,iv:null,frames
     audioGains:function(a,b,c,d){ st.g=[a,b,c,d]; },
     audioDevices:function(){ return JSON.stringify({inputs:[{id:3,type:'builtin_mic',name:'M2101K7BNY',address:'bottom'},{id:4,type:'builtin_mic',name:'M2101K7BNY',address:'back'}],
       outputs:[{id:1,type:'earpiece',name:'x'},{id:2,type:'speaker',name:'x'}],mics:[{id:0,address:'bottom',desc:'bottom',type:'builtin_mic',location:1,pos_mm:[35,5,0]},{id:1,address:'back',desc:'back',type:'builtin_mic',location:1,pos_mm:[20,150,-8]}],unprocessed:false,sdk:33}); },
-    audioStatus:function(){ return JSON.stringify({running:st.on,frames:st.frames,src:'voice',ch:1,mic_wanted:st.cfg?st.cfg.mic:-1,out_wanted:-1,error:'',in:{id:3,type:'builtin_mic',address:'bottom'},out:{id:2,type:'speaker'},active:[{id:0,address:'bottom',desc:'bottom',pos_mm:[35,5,0]}]}); },
-    audioSwitch:function(cfg){ var c=JSON.parse(cfg); st.cfg.mic=c.mic; st.cfg.src=c.src; st.switches=(st.switches||0)+1; return true; },
+    audioStatus:function(){ var m=st.moved?4:(st.cfg&&st.cfg.mic>=0?st.cfg.mic:3), a=m===4?'back':'bottom', r=st.moved&&!st.told?[{t:1234,kind:'in',dev:{id:4,type:'builtin_mic',address:'back'},mode:0}]:undefined; if(r) st.told=true;
+      return JSON.stringify({running:st.on,frames:st.frames,src:'voice',ch:1,mic_wanted:st.cfg?st.cfg.mic:-1,out_wanted:-1,error:'',mode:0,in:{id:m,type:'builtin_mic',address:a},out:{id:2,type:'speaker'},active:[{id:0,address:a,desc:a}],routes:r}); },
+    audioSwitch:function(cfg){ var c=JSON.parse(cfg); st.cfg.mic=c.mic; st.cfg.src=c.src; st.switches=(st.switches||0)+1; st.moved=false; return true; },   /* v0.64: asked again, the phone obeys */
     audioStop:function(){ st.on=false; if(st.iv) clearInterval(st.iv); st.iv=null; },
     audioStart:function(cfg){ st.cfg=JSON.parse(cfg); var mc=new MessageChannel(), src=makeSimSource(function(t){ return window.__hand?window.__hand(t):null; }), i=0, t0=performance.now();
       st.on=true; setTimeout(function(){ window.postMessage('sonaroids-audio','*',[mc.port2]); },50);
@@ -34,6 +35,10 @@ const APPSTUB=`(function(){ var st={on:false,g:[0,0,0,0],probes:0,iv:null,frames
   const info=await p.evaluate(()=>({auto:Sonar.info().auto_audio,stored:localStorage.getItem('sonaroids_autoaudio'),switches:__nat.switches,audio:Sonar.info().audio,probes:__nat.probes,frames:__nat.frames,gain:Sonar.info().probe_gain,snr:Sonar.info().probe_snr,mic:Sonar.micSettings()}));
   await p.evaluate(()=>{ window.__hand=t=>100+45*Math.sin(2*Math.PI*t/1.4); });
   let caught=false; t0=Date.now(); while(Date.now()-t0<25000){ caught=await p.evaluate(()=>__sonaroids.state().caught); if(caught) break; await p.waitForTimeout(250); }
+  // v0.64: the phone moves the recording to another microphone by itself (the Redmi Note 10S): the page must log it and ask for its own again
+  await p.evaluate(()=>{ __nat.moved=true; __nat.switches=0; }); await p.waitForTimeout(2600);
+  const back=await p.evaluate(()=>({mic:__nat.cfg.mic,sw:__nat.switches,log:Sonar.info().routes.map(r=>r[1]+(r[2]!==undefined?' '+JSON.stringify(r[2]):''))}));
+  const backOk=back.mic===3&&back.sw>=1&&back.log.some(x=>/^android/.test(x))&&back.log.some(x=>/^верну микрофон/.test(x));
   // the service screen
   await p.evaluate(()=>{ __sonaroids.act.audio(); }); await p.waitForTimeout(400);
   const ids=await p.evaluate(()=>__sonaroids.btn().map(q=>q.id));
@@ -41,10 +46,17 @@ const APPSTUB=`(function(){ var st={on:false,g:[0,0,0,0],probes:0,iv:null,frames
   const listed=ids.includes('aud:mic:3')&&ids.includes('aud:mic:4')&&ids.includes('aud:out:2')&&ids.includes('aud:mode:browser');
   await p.evaluate(()=>{ Sfx&&0; }); await p.mouse.click(1,1);
   const modeAfter=await p.evaluate(()=>{ const q=__sonaroids.btn().find(x=>x.id==='aud:mic:3'); return q; });
+  // v0.64: with nothing chosen, the app's own sound is the default
+  const p2=await ctx.newPage(); await p2.addInitScript(()=>{ localStorage.removeItem('sonaroids_audio'); });
+  await p2.goto('file://'+path.join(ROOT,'game','play','index.html')); await p2.waitForTimeout(300);
+  await p2.evaluate(()=>__sonaroids.act.play()); await p2.waitForTimeout(400); await p2.evaluate(()=>__sonaroids.act.probe_norm());
+  let def=''; t0=Date.now(); while(Date.now()-t0<15000){ def=await p2.evaluate(()=>Sonar.info().booted?Sonar.info().audio:''); if(def) break; await p2.waitForTimeout(200); }
   await b.close();
   const autoOk=!!(info.auto&&info.auto.tried.length===2&&info.auto.pick&&info.auto.pick.mic===3&&info.stored&&JSON.parse(info.stored).mic===3);
-  const ok=autoOk&&s==='wave'&&info.audio==='app'&&info.probes>=3&&info.frames>100&&info.mic&&info.mic.audio==='app'&&caught&&listed&&!errors.length;
+  const ok=autoOk&&backOk&&def==='app'&&s==='wave'&&info.audio==='app'&&info.probes>=3&&info.frames>100&&info.mic&&info.mic.audio==='app'&&caught&&listed&&!errors.length;
   console.log(`auto pick: tried ${info.auto&&info.auto.tried.map(r=>r.mic+'/'+r.src+' wander '+r.wander+' SNR '+r.snr).join(', ')} → mic ${info.auto&&info.auto.pick&&info.auto.pick.mic} (want 3), remembered ${info.stored} ${autoOk?'ok':'FAIL'}`);
   console.log(`through the app's sound: ready → ${s}, mode ${info.audio}, probes sent ${info.probes}, frames ${info.frames}, probe gain ${info.gain&&info.gain.toFixed(3)}, SNR ${info.snr&&info.snr.toFixed(1)} dB; palm caught ${caught}; service screen lists the microphones and the speaker ${listed}`+(errors.length?' | errors: '+[...new Set(errors)].join('; ').slice(0,400):''));
+  console.log(`the phone moved the recording to mic 4: logged and asked back → mic ${back.mic} (want 3), switches ${back.sw} ${backOk?'ok':'FAIL'}\n  ${back.log.join('\n  ')}`);
+  console.log(`nothing chosen: the sound goes through ${def||'?'} (want app) ${def==='app'?'ok':'FAIL'}`);
   console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;
 })();

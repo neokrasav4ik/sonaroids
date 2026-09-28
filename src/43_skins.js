@@ -31,6 +31,19 @@ function srand(seed){ var s=seed>>>0||1; return function(){ s=(s*1664525+1013904
 var mapCache={};
 function mapCanvas(key,rows,pal){ if(mapCache[key]) return mapCache[key]; var w=0; rows.forEach(function(r){ w=Math.max(w,r.length); }); var p=new Pix(w,rows.length), P2={};
   for(var k in pal) if(pal[k]) P2[k]=cH(pal[k]); p.map(rows,P2,0,0); return mapCache[key]=p.canvas(); }
+/* v0.71 (the readability audit, tests/skin_audit.js): on a light or mid sky every object gets a 1-pixel dark outline — the way pixel
+   games keep things apart from any background. ink(canvas) is that canvas one pixel larger each way with the outline behind it */
+function ink(c,col){ var w=c.width, h=c.height, s=c.getContext('2d').getImageData(0,0,w,h).data, o=document.createElement('canvas'); o.width=w+2; o.height=h+2;
+  var ox=o.getContext('2d'), im=ox.createImageData(w+2,h+2), d=im.data, k=cH(col), A=function(x,y){ return x>=0&&y>=0&&x<w&&y<h&&s[(y*w+x)*4+3]>128; };
+  for(var y=0;y<h+2;y++) for(var x=0;x<w+2;x++){ var o4=(y*(w+2)+x)*4, sx=x-1, sy=y-1;
+    if(A(sx,sy)){ var i=(sy*w+sx)*4; d[o4]=s[i]; d[o4+1]=s[i+1]; d[o4+2]=s[i+2]; d[o4+3]=255; }
+    else if(A(sx-1,sy)||A(sx+1,sy)||A(sx,sy-1)||A(sx,sy+1)||A(sx-1,sy-1)||A(sx+1,sy-1)||A(sx-1,sy+1)||A(sx+1,sy+1)){ d[o4]=k[0]; d[o4+1]=k[1]; d[o4+2]=k[2]; d[o4+3]=255; } }
+  ox.putImageData(im,0,0); return o; }
+/* a sprite from rows with the skin's outline, drawn with its top-left corner (of the rows) at x, y */
+function spr(key,rows,pal,x,y,col){ var k=key+'|'+col; if(!mapCache[k]) mapCache[k]=ink(mapCanvas(key,rows,pal),col); lx.drawImage(mapCache[k],Math.round(x)-1,Math.round(y)-1); }
+/* a small solid shape (a shot) with the outline: rects [x,y,w,h,colour] drawn over their own dark border */
+function shot(parts,col){ parts.forEach(function(q){ R(col,q[0]-1,q[1]-1,q[2]+2,q[3]+2); }); parts.forEach(function(q){ R(q[4],q[0],q[1],q[2],q[3]); }); }
+function inkRock(p,col){ var cv=ink(p.canvas(),col), fr=[]; for(var i=0;i<16;i++) fr.push(cv); return {frames:fr,size:cv.width,rot:0,vr:0}; }
 function whiteMap(rows){ return rows.map(function(r){ return r.replace(/[^.]/g,'w'); }); }
 /* a sky: a canvas twice the screen's width drifting left (as the nebula does), made once per screen size, plus drifting motes */
 function skySheet(sk){ var key=LW+'x'+LH; if(sk._sheet&&sk._sheet.key===key) return sk._sheet;
@@ -48,7 +61,7 @@ function hill(x,w,base,amp,seed){ var a=2*Math.PI*x/w; return base+amp*(0.6*Math
 var SKINS={};
 /* ═══ space — the game as it was ═══ */
 SKINS.space={id:'space', glow:true,
-  sky:function(dt,s){ sky(dt,s); },
+  sky:function(dt,s){ spaceSky(dt,s); },
   rock:function(r){ return makeRock(r); },
   ship:function(x,y,t,blink){ drawShip(x,y,t,blink); },
   ufo:function(ux,uy,big,hurt){ blit(big?UFO_BIG:UFO_SMALL,hurt?[P.text,P.text,P.text,P.text]:P.ufo,ux-(big?9:6),uy-(big?4:2));
@@ -65,7 +78,7 @@ var DRAGON=['...........h.h....','..www.....gGgGg...','.wWWWw...gGGGGGg..','.wWW
 var DRAGON_PAL={g:'#1f8a5a',G:'#3fc486',L:'#fff1a6',w:'#c86fb6',W:'#ff9ed8',e:'#ffffff',k:'#1a1a2a',h:'#ffd23f',y:'#ff8a5a'};
 var BAT=['k................k','kk.....k..k.....kk','kmk....kkkk....kmk','kmmkk.kkkkkk.kkmmk','kmmmmkkekkekkmmmmk','.kmm.kkkkkkkk.mmk.','..k...kkkkkk...k..','.......k..k.......'];
 var BAT_S=['k..........k','kk..k..k..kk','kmkkkkkkkkmk','kmmkekkekmmk','.km.kkkk.mk.','....k..k....'];
-SKINS.fairy={id:'fairy', glow:false, motes:['#ffffff','#fff6b0','#ffd6ec'], moteDiv:1400, moteH:0.8,
+SKINS.fairy={id:'fairy', glow:false, ink:'#2d2350', motes:['#ffffff','#f4f3ff','#ffffff'], moteDiv:1400, moteH:0.8,
   paint:function(p,w,h){ vgradPix(p,['#6ec3ff','#8fd3ff','#b6e3ff','#d9eeff','#ffe3f1']);
     var R2=srand(4), cl=cH('#d2ecff');
     for(var i=0;i<9;i++){ var cx=R2()*w, cy=h*(0.08+R2()*0.55), s=0.8+R2()*0.7;
@@ -83,27 +96,28 @@ SKINS.fairy={id:'fairy', glow:false, motes:['#ffffff','#fff6b0','#ffd6ec'], mote
     if(r>=12){ var d=cH('#3d3a66'), wh=[255,255,255];                                                 // a grumpy face and a tiny lightning on the big ones
       [-4,3].forEach(function(ex){ p.rect(c+ex,c+1,2,3,d); p.put(c+ex,c+1,wh); }); p.rect(c-6,c-2,3,1,d); p.put(c-4,c-1,d); p.rect(c+4,c-2,3,1,d); p.put(c+4,c-1,d); p.rect(c-1,c+6,3,1,d);
       [[2,0],[1,1],[0,2],[1,2],[2,2],[1,3],[0,4]].forEach(function(q){ p.put(c+q[0]-1,c+r*0.8+q[1],cH('#ffe066')); }); }
-    var cv=p.canvas(), fr=[]; for(var i=0;i<16;i++) fr.push(cv); return {frames:fr,size:n,rot:0,vr:0}; },
+    return inkRock(p,this.ink); },
   ship:function(x,y,t,blink){ if(blink) return; x=Math.round(x); y=Math.round(y);
-    for(var i=0;i<5;i++){ lx.globalAlpha=0.9-i*0.15; R('#fff3a6',x-3-i*2,y+3+(i%2)+Math.round(Math.sin(t*9+i)),1,1); } lx.globalAlpha=1;
-    lx.drawImage(mapCanvas('dragon',DRAGON,DRAGON_PAL),x-1,y-7); },
+    for(var i=0;i<5;i++){ lx.globalAlpha=0.9-i*0.15; R('#ff8a3d',x-3-i*2,y+3+(i%2)+Math.round(Math.sin(t*9+i)),1,1); } lx.globalAlpha=1;
+    spr('dragon',DRAGON,DRAGON_PAL,x-1,y-7,this.ink); },
   ufo:function(ux,uy,big,hurt){ var m=big?BAT:BAT_S, flap=Math.floor(clock*6)%2, pal=hurt?{w:'#ffffff'}:{k:'#4a2d7a',m:flap?'#8f6ad0':'#6f4aa8',e:'#ffe066'};
-    lx.drawImage(mapCanvas('bat'+big+hurt+flap,hurt?whiteMap(m):m,pal),ux-(big?9:6),uy-(big?4:3)); },
+    spr('bat'+big+hurt+flap,hurt?whiteMap(m):m,pal,ux-(big?9:6),uy-(big?4:3),this.ink); },
   pick:function(x,y,type){ var c=mapCanvas('coin',['..yyyyyyy..','.yYYYYYYYy.','yYYYYYYYYYy','yYYYYYYYYYy','yYYYYYYYYYy','yYYYYYYYYYy','yYYYYYYYYYy','yYYYYYYYYYy','yYYYYYYYYYy','.yYYYYYYYy.','..yyyyyyy..'],{y:'#ffb020',Y:'#fff3c0'});
-    lx.drawImage(c,x-5,y-5); blit(ICON[type],['#e0902a'],x-3,y-3); if(Math.floor(clock*4)%2) R('#ffffff',x+6,y-6,1,1); },
-  bullet:function(x,y){ R('#ff8a3d',x-3,y-1,5,3); R('#ffd23f',x-2,y,4,1); R('#fff6c8',x+1,y,1,1); },
-  ebullet:function(x,y){ R('#ff5ab4',x,y,1,1); R('#ffb3dc',x-1,y,1,1); R('#ffb3dc',x+1,y,1,1); R('#ffb3dc',x,y-1,1,1); R('#ffb3dc',x,y+1,1,1); },
-  bursts:function(){ return {rock:['#ffffff','#d0cbef','#a9a2d6','#ffe066'],ufo:['#8f6ad0','#4a2d7a','#ffe066'],ship:['#3fc486','#fff1a6','#ff9ed8'],pick:['#ffd23f','#ffffff']}; },
-  shield:function(){ return '#ffd23f'; }, mini:function(){ return ['#1f8a5a','#3fc486']; } };
+    var k='coin|'+this.ink; if(!mapCache[k]) mapCache[k]=ink(c,this.ink); lx.drawImage(mapCache[k],x-6,y-6); blit(ICON[type],['#b05a00'],x-3,y-3); },
+  bullet:function(x,y){ shot([[x-3,y-1,5,3,'#ff5a1f'],[x-2,y,4,1,'#ffd23f']],this.ink); },
+  ebullet:function(x,y){ shot([[x-1,y-1,3,3,'#e8187a']],this.ink); R('#ffb3dc',x,y,1,1); },
+  bursts:function(){ return {rock:['#3d3a66','#5f5596','#8279b8','#ffb020'],ufo:['#4a2d7a','#8f6ad0','#e8187a'],ship:['#1f8a5a','#3fc486','#ff5a1f'],pick:['#b05a00','#ffb020']}; },
+  shield:function(){ return '#2d2350'; }, mini:function(){ return ['#1f8a5a','#3fc486']; } };
 
 /* ═══ sea — a yellow submarine in a warm sea; puffer fish, a shark for the saucer, torpedoes, power-ups in bubbles ═══ */
 var SUB=['.........pp.......','.........p........','........yyyy......','.....yyyYYYYyy....','...yyYYYYYYYYYYy..','o.yYYwwYYwwYYYYYy.','oyyYYwwYYwwYYYYYYy','o.yYYYYYYYYYYYYYy.','...yydddddddddyy..'];
 var SUB_PAL={y:'#d9941e',Y:'#ffd23f',w:'#7fe8ff',p:'#8a9aa8',o:'#8a9aa8',d:'#b87a14'};
 var SHARK=['..........k.......','.........kk.......','....kkkkkkkkk....k','..kkmmmmmmmmmkk.kk','.kekmmmmmmmmmmmkkk','kkmmmmmmmmmmmmmkk.','.wwwwwwwwwwmmkk.kk','..wwwwwwww.....k..'];
 var SHARK_S=['.......k....','...kkkkkk..k','.kkmmmmmmkkk','kemmmmmmmmk.','.wwwwwwmkk.k','..wwww....k.'];
-SKINS.sea={id:'sea', glow:false, motes:['#bff6ff','#e8fdff','#ffffff'], moteDiv:700, moteUp:-3,
-  paint:function(p,w,h){ vgradPix(p,['#5fe0e8','#3cc4dc','#27a3cf','#1d86bf','#1a74b0']);
-    var ray=cH('#bff6ff'); for(var y=0;y<h;y++) for(var x=0;x<w;x++){ var v=(x+y*0.45)%70; if(v<9&&bay(x,y)<0.5*(1-y/h)){ var c=p.get(x,y); p.put(x,y,mixc(c,ray,0.35)); } }
+SKINS.sea={id:'sea', glow:false, ink:'#0b2a44', motes:['#a8ecf5','#c4f4fa','#dff9fc'], moteDiv:700, moteUp:-3,
+  // v0.71: the water between light and mid blue only (the deep navy at the bottom swallowed the outlines)
+  paint:function(p,w,h){ vgradPix(p,['#86dcea','#6fd0e3','#5cc3dc','#4db4d4','#44a8cd']);
+    var ray=cH('#c8f4fa'); for(var y=0;y<h;y++) for(var x=0;x<w;x++){ var v=(x+y*0.45)%70; if(v<9&&bay(x,y)<0.4*(1-y/h)){ var c=p.get(x,y); p.put(x,y,mixc(c,ray,0.25)); } }
     var s1=cH('#e8d79a'), s2=cH('#d9c688'), R2=srand(9);
     for(x=0;x<w;x++){ var yy=Math.round(hill(x,w,h-9,3,4)); for(y=yy;y<h;y++) p.put(x,y,(x*3+y)%11?s1:s2); }
     for(var i=0;i<Math.round(w/28);i++){ var wx=Math.round(R2()*w), hg=12+Math.round(R2()*22), c=cH(R2()<0.5?'#2aa876':'#1f8f66');
@@ -116,25 +130,25 @@ SKINS.sea={id:'sea', glow:false, motes:['#bff6ff','#e8fdff','#ffffff'], moteDiv:
     p.poly([[c+r-1,cy],[c+r+r*0.6,cy-r*0.5],[c+r+r*0.6,cy+r*0.5]],ramp[1]);                             // the tail behind, to the right
     p.ball(c,cy,r,ramp,true); var ex=c-r*0.45, ey=cy-r*0.25;                                          // the eye looks left, at the player
     if(r>6){ p.rect(ex-1,ey-1,3,3,[255,255,255]); p.rect(ex-1,ey,2,2,cH('#1a1a2a')); p.rect(c-r*0.85,cy+r*0.2,2,1,ramp[0]); } else p.put(ex,ey,cH('#1a1a2a'));
-    var cv=p.canvas(), fr=[]; for(var i=0;i<16;i++) fr.push(cv); return {frames:fr,size:n,rot:0,vr:0,ox:n/2-c}; },
+    var ro=inkRock(p,this.ink); ro.ox=n/2-c; return ro; },
   ship:function(x,y,t,blink){ if(blink) return; x=Math.round(x); y=Math.round(y);
     [[-5,1,1],[-9,-1,1.6],[-14,2,1.2],[-19,0,2]].forEach(function(b,i){ var bx=x+b[0]-((t*20)%3), by=y+b[1]; lx.globalAlpha=0.8-i*0.15;
       for(var a=0;a<8;a++) R('#ffffff',bx+Math.round(Math.cos(a*0.785)*b[2]),by+Math.round(Math.sin(a*0.785)*b[2]),1,1); }); lx.globalAlpha=1;
-    lx.drawImage(mapCanvas('sub',SUB,SUB_PAL),x-1,y-5); },
-  ufo:function(ux,uy,big,hurt){ var m=big?SHARK:SHARK_S, pal=hurt?{w:'#ffffff'}:{k:'#3d5a80',m:'#6f8fb8',w:'#e8f1ff',e:'#ffffff'};
-    lx.drawImage(mapCanvas('shark'+big+hurt,hurt?whiteMap(m):m,pal),ux-(big?9:6),uy-(big?4:3)); },
+    spr('sub',SUB,SUB_PAL,x-1,y-5,this.ink); },
+  ufo:function(ux,uy,big,hurt){ var m=big?SHARK:SHARK_S, pal=hurt?{w:'#ffffff'}:{k:'#2b4466',m:'#5a7aa6',w:'#e8f1ff',e:'#ffffff'};
+    spr('shark'+big+hurt,hurt?whiteMap(m):m,pal,ux-(big?9:6),uy-(big?4:3),this.ink); },
   pick:function(x,y,type){ var c=mapCanvas('bubble',['...wwwww...','..w.....w..','.w.h.....w.','w.h.......w','w.........w','w.........w','w.........w','w.........w','.w.......w.','..w.....w..','...wwwww...'],{w:'#e8fdff',h:'#ffffff'});
-    lx.drawImage(c,x-5,y-5); blit(ICON[type],['#ffe066'],x-3,y-3); },
-  bullet:function(x,y){ R('#e8f1ff',x-3,y,5,2); R('#ff7a3d',x+2,y,1,2); R('#8a9aa8',x-4,y,1,1); },
-  ebullet:function(x,y){ R('#ff7a9a',x-1,y,1,1); R('#ff7a9a',x+1,y,1,1); R('#ff7a9a',x,y-1,1,1); R('#ff7a9a',x,y+1,1,1); },
-  bursts:function(){ return {rock:['#ffffff','#e8fdff','#ffe38a','#ffc24a'],ufo:['#6f8fb8','#e8f1ff','#ffffff'],ship:['#ffd23f','#d9941e','#ffffff'],pick:['#ffe066','#ffffff']}; },
-  shield:function(){ return '#e8fdff'; }, mini:function(){ return ['#d9941e','#ffd23f']; } };
+    var k='bubble|'+this.ink; if(!mapCache[k]) mapCache[k]=ink(c,this.ink); lx.drawImage(mapCache[k],x-6,y-6); shot([[x-3,y-3,6,6,'#ffd23f']],this.ink); blit(ICON[type],['#0b2a44'],x-3,y-3); },
+  bullet:function(x,y){ shot([[x-3,y,5,2,'#ffd23f'],[x+2,y,1,2,'#ff5a1f']],this.ink); },
+  ebullet:function(x,y){ shot([[x-1,y-1,3,3,'#ff2e4a']],this.ink); R('#ffc0c8',x,y,1,1); },
+  bursts:function(){ return {rock:['#0b2a44','#ffc24a','#ff9ec2','#ffffff'],ufo:['#2b4466','#5a7aa6','#ffffff'],ship:['#ffd23f','#d9941e','#0b2a44'],pick:['#ffd23f','#0b2a44']}; },
+  shield:function(){ return '#0b2a44'; }, mini:function(){ return ['#d9941e','#ffd23f']; } };
 
 /* ═══ sweet — a candy rocket in a pink sky with sprinkles; doughnut → cookie → sweets, a macaron saucer, sprinkles for shots ═══ */
 var SPR=['#ff5a8a','#ffd23f','#5ac8ff','#7ee07e','#b58cff','#ffffff'];
 var MACARON=['....pppppppppp....','..ppPPPPPPPPPPpp..','.pPPPPPPPPPPPPPPp.','rrrrrrrrrrrrrrrrrr','cccccccccccccccccc','rrrrrrrrrrrrrrrrrr','.pPPPPPPPPPPPPPPp.','..pppppppppppppp..'];
 var MACARON_S=['..pppppppp..','.pPPPPPPPPp.','rrrrrrrrrrrr','cccccccccccc','rrrrrrrrrrrr','.pPPPPPPPPp.'];
-SKINS.sweet={id:'sweet', glow:false, motes:['#ffffff','#fff7fb','#ffd23f'], moteDiv:1600,
+SKINS.sweet={id:'sweet', glow:false, ink:'#4a1530', motes:['#ffffff','#fff7fb','#ffffff'], moteDiv:1600,
   paint:function(p,w,h){ vgradPix(p,['#ffc9e3','#ffd6e8','#ffe2ea','#ffead9','#fff0cf']);
     var R2=srand(11), cr=cH('#fff7fb');
     for(var i=0;i<8;i++){ var cx=R2()*w, cy=h*(0.1+R2()*0.8), s=0.9+R2()*0.6;
@@ -154,20 +168,28 @@ SKINS.sweet={id:'sweet', glow:false, motes:['#ffffff','#fff7fb','#ffd23f'], mote
     else { var cc2=cH(['#ff5a8a','#5ac8ff','#7ee07e'][seed%3]), wr=mixc(cc2,[255,255,255],0.4);                   // a wrapped sweet
       p.poly([[c-r,c],[c-r-4,c-3],[c-r-4,c+3]],wr); p.poly([[c+r,c],[c+r+4,c-3],[c+r+4,c+3]],wr);
       for(y=0;y<n;y++) for(x=0;x<n;x++) if((x+0.5-c)*(x+0.5-c)+(y+0.5-c)*(y+0.5-c)<=r*r) p.put(x,y,Math.floor((x-y)/2)%2?cc2:[255,255,255]); p.put(c-2,c-2,[255,255,255]); }
-    var cv=p.canvas(), fr=[]; for(i=0;i<16;i++) fr.push(cv); return {frames:fr,size:n,rot:0,vr:0}; },
+    return inkRock(p,this.ink); },
   ship:function(x,y,t,blink){ if(blink) return; x=Math.round(x); y=Math.round(y); var fl=Math.floor(t*20)%3;
     R('#ffd23f',x-4-fl,y-1,4+fl,3); R('#ff8a3d',x-3,y,2,1);
     if(!mapCache.rocket){ var rows=SHIP_MAP.map(function(r,j){ return r.split('').map(function(ch,i){ return ch==='.'?'.':ch==='1'?'d':(Math.floor((i+j)/2)%2?'w':'r'); }).join(''); }); mapCanvas('rocket',rows,{d:'#b0104a',w:'#ffffff',r:'#ff3b6b'}); }
-    lx.drawImage(mapCache.rocket,x,y-5); R('#7fd8ff',x+9,y-1,2,3); },
+    var k='rocket|'+this.ink; if(!mapCache[k]) mapCache[k]=ink(mapCache.rocket,this.ink); lx.drawImage(mapCache[k],x-1,y-6); R('#3aa8e0',x+9,y-1,2,3); },
   ufo:function(ux,uy,big,hurt){ var m=big?MACARON:MACARON_S, pal=hurt?{w:'#ffffff'}:{p:'#8f5ad0',P:'#b98cff',r:'#a070e0',c:'#fff4e0'};
-    lx.drawImage(mapCanvas('mac'+big+hurt,hurt?whiteMap(m):m,pal),ux-(big?9:6),uy-(big?4:3)); },
-  pick:function(x,y,type){ R('#ff5a8a',x-5,y-5,11,11); R('#ffffff',x-4,y-4,9,9); blit(ICON[type],['#ff5a8a'],x-3,y-3);
+    spr('mac'+big+hurt,hurt?whiteMap(m):m,pal,ux-(big?9:6),uy-(big?4:3),this.ink); },
+  pick:function(x,y,type){ R(this.ink,x-6,y-6,13,13); R('#ff3b6b',x-5,y-5,11,11); R('#ffffff',x-4,y-4,9,9); blit(ICON[type],['#d0104a'],x-3,y-3);
     R('#7ee07e',x-1,y-8,1,3); R('#7ee07e',x+1,y-8,1,3); R('#7ee07e',x-2,y-8,1,1); R('#7ee07e',x+2,y-8,1,1); },
-  bullet:function(x,y){ R(SPR[Math.floor(x/10)%5],x-2,y,4,1); },
-  ebullet:function(x,y){ R('#6b3a1c',x-1,y-1,3,2); },
-  bursts:function(){ return {rock:['#e0a060','#c47a3a','#ff7fb4','#ffd23f','#5ac8ff'],ufo:['#b98cff','#fff4e0','#8f5ad0'],ship:['#ff3b6b','#ffffff','#ffd23f'],pick:['#ff5a8a','#ffffff']}; },
-  shield:function(){ return '#ff5a8a'; }, mini:function(){ return ['#b0104a','#ff3b6b']; } };
+  bullet:function(x,y){ shot([[x-2,y,4,1,['#ff2e6e','#e0a000','#1a9fe0','#2fb84a','#9a5cf0'][Math.floor(x/10)%5]]],this.ink); },
+  ebullet:function(x,y){ shot([[x-1,y-1,3,3,'#7a3a14']],this.ink); R('#c07a50',x-1,y-1,1,1); },
+  bursts:function(){ return {rock:['#8a4a1c','#c47a3a','#e0508c','#4a1530'],ufo:['#8f5ad0','#4a1530','#b98cff'],ship:['#d0104a','#4a1530','#e0a000'],pick:['#d0104a','#4a1530']}; },
+  shield:function(){ return '#4a1530'; }, mini:function(){ return ['#b0104a','#ff3b6b']; } };
 
+/* v0.71 (the maintainer: the getting-ready screens and all the others in the skin's style): every screen but the flight draws the chosen
+   skin's sky under a dark veil — the texts, the buttons and the pictures stay readable on it — and the skin's accent colour takes the
+   place of the game's teal on the buttons, rings, links and highlights. The games' screen keeps the game's own colours */
+SKINS.fairy.ui={veil:0.5,band:'#ffd23f',btn:'#e0a020',btnHi:'#ffd23f'};
+SKINS.sea.ui={veil:0.45,band:'#ffe066',btn:'#e0a020',btnHi:'#ffd23f'};
+SKINS.sweet.ui={veil:0.55,band:'#ff8fc0',btn:'#e0508c',btnHi:'#ff8fc0'};
+function uiColours(themed){ var u=themed&&SK&&SK.ui; P.band=u?u.band:P.band0; P.btn=u?u.btn:P.ship[1]; P.btnHi=u?u.btnHi:P.ship[2]; }
+function sky(dt,s){ if(!SK||SK.id==='space') return spaceSky(dt,s); SK.sky(dt,s); lx.globalAlpha=SK.ui.veil; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; }
 var skinId=(function(){ var s=null; try{ s=localStorage.getItem('sonaroids_skin'); }catch(e){} return SKIN_IDS.indexOf(s)>=0?s:'space'; })(), SK=SKINS[skinId];
 function setSkin(id){ if(!SKINS[id]) return; skinId=id; SK=SKINS[id]; try{ localStorage.setItem('sonaroids_skin',id); }catch(e){} }
 
@@ -191,3 +213,21 @@ function drawDemo(sk,dt,shipX){ if(!demo||demo.LW!==LW){ demo=demoMake(); demo.L
 var demoC=null;
 function demoInto(sk,dt){ if(!demoC||demoC.width!==LW||demoC.height!==LH){ demoC=document.createElement('canvas'); demoC.width=LW; demoC.height=LH; }
   var keep=lx; lx=demoC.getContext('2d'); lx.imageSmoothingEnabled=false; noLight=true; try{ drawDemo(sk,dt); } finally { lx=keep; noLight=false; } return demoC; }
+/* v0.71: for the readability audit (tests/skin_audit.js): the skin's sky sheet and each of its pictures drawn alone, as pixels */
+function skinProbe(id){ var sk=SKINS[id], out={}, keep=lx, oldSK=SK;
+  function grab(w,h,fn){ var c=document.createElement('canvas'); c.width=w; c.height=h; lx=c.getContext('2d'); lx.imageSmoothingEnabled=false; noLight=true;
+    try{ fn(); } finally { lx=keep; noLight=false; } return Array.from(lx.canvas===c?[]:c.getContext('2d').getImageData(0,0,w,h).data); }
+  var sh=(id==='space')?null:skySheet(sk);
+  if(sh){ out.bg=Array.from(sh.c.getContext('2d').getImageData(0,0,sh.c.width,sh.c.height).data); out.bgW=sh.c.width; out.bgH=sh.c.height; }
+  else { out.bg=grab(LW,LH,function(){ sky(0,0); }); out.bgW=LW; out.bgH=LH; }
+  out.motes=sk.motes||P.stars;
+  out.rocks=[0,1,2].map(function(sz){ var r=sk.rock(Math.max(3,Math.round(Core.R_SIZE[sz]*K)),sz,sz*17+3), c=r.frames[0], d=c.getContext('2d').getImageData(0,0,c.width,c.height).data; return {w:c.width,h:c.height,d:Array.from(d)}; });
+  function obj(w,h,fn){ return {w:w,h:h,d:grab(w,h,fn)}; }
+  out.ship=obj(40,24,function(){ sk.ship(20,12,0.3,false); });
+  out.ufo=obj(30,16,function(){ sk.ufo(15,8,true,false); });
+  out.ufoS=obj(24,14,function(){ sk.ufo(12,7,false,false); });
+  out.pick=obj(20,20,function(){ sk.pick(10,10,'shield'); });
+  out.bullet=obj(12,6,function(){ sk.bullet(6,3); });
+  out.ebullet=obj(8,8,function(){ sk.ebullet(4,4); });
+  out.bursts=sk.bursts(); out.shield=sk.shield();
+  return out; }

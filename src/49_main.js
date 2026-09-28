@@ -49,7 +49,7 @@ function topY(){ return SAFE.t+Math.max(8,Math.round(LH*0.05)); }
 /* v0.47: the version as a switch for the "logs" link on the title and the getting-ready screens too (it was only on the game-over screen) —
    a setup that stopped ("too quiet", "too loud") or went badly can be sent right away. A tap on the version shows the link, another hides it.
    top — at the top corner (the getting-ready screens: the bottom has the buttons, the ring and the "wave here" beacon), else at the bottom */
-function diagCorner(label,top,ty,flip,ax){ var vr=ty?(freeSide()!=='left')!==!!flip:freeSide()==='left',   /* under the menu button (ty) — its side; flip — the other side */ vx=ax!==undefined?ax:vr?LW-SAFE.r-8:SAFE.l+8, vy=top?(ty||SAFE.t+8):LH-SAFE.b-12, vw=PF.width(label), al=vr?'right':'left';
+function diagCorner(label,top,ty,flip,ax){ var vr=ty?(freeSide()!=='left')!==!!flip:(flip!==undefined?!!flip:freeSide()==='left'),   /* at the bottom: flip true — always the right corner (the games' screen, v0.71) */   /* under the menu button (ty) — its side; flip — the other side */ vx=ax!==undefined?ax:vr?LW-SAFE.r-8:SAFE.l+8, vy=top?(ty||SAFE.t+8):LH-SAFE.b-12, vw=PF.width(label), al=vr?'right':'left';
   text(label,vx,vy,diag?P.band:P.soft,al); var bx0=Math.max(0,(vr?vx-vw:vx)-8), bx1=Math.min(LW,(vr?vx:vx+vw)+8);
   var by0=top?Math.max(0,vy-8):vy-4; BTN.push({id:'ver',x:bx0,y:by0,w:bx1-bx0,h:Math.min(top?PF.CAP+16:PF.CAP+10,LH-by0)});
   if(top&&diag&&Logs.has()){ var ls=L('logs'), lw=PF.width(ls), ly=vy+PF.CAP+12, lx0=vr?vx-lw:vx;
@@ -98,7 +98,7 @@ function sLang(){ sky(DT,0.3); var y=Math.round(LH*0.3); text('SONAROIDS',LW/2,y
   if(inBrowser()){ text(STR.ru.fullscr,LW/2,Math.round(LH*0.68),P.soft,'center'); text(STR.en.fullscr,LW/2,Math.round(LH*0.68)+12,P.soft,'center'); }
   say('Sonaroids. English / Русский'); stepSquares('lang'); }
 /* ── v0.70: the games' screen (the maintainer's sketch «A», background «4», 28 Sep): SONAROIDS, the games as cards side by side —
-   SonaRocks and SonaRace («soon»); a card's picture changes its skin every ~4 s with a pixel dissolve, and the whole screen behind is
+   SonaFly and SonaRace («soon»); a card's picture changes its skin every ~4 s with a pixel dissolve, and the whole screen behind is
    the chosen card's current skin, dimmed. Under the cards «Play», then «how to play», the language and the sounds; the version, the source
    and the app's update at the bottom. No high scores here (the maintainer) ── */
 var hubSkin=Math.max(0,SKIN_IDS.indexOf(skinId)), hubPrev=-1, hubT=0, hubFade=1, raceImgs=null, raceI=0, soonT=-9, fadeMasks={};
@@ -133,7 +133,7 @@ function sHub(){ var fr=hubFrame(); lx.drawImage(fr,0,0); lx.globalAlpha=0.72; R
   var vy=LH-SAFE.b-12, rowY=vy-8-BH-(diag?16:0), playY=rowY-8-BH, top=y+(sub?31:20), lab=24;
   var ih=Math.max(24,playY-8-lab-top), cw=Math.min(Math.round(ih*LW/LH),Math.round((LW-SAFE.l-SAFE.r-40)/2)), gap=16;
   ih=Math.round(cw*LH/LW); var cx=Math.round(cx0-cw-gap/2), ty=Math.round(top+(playY-8-lab-top-ih)/2);
-  hubCard('hub_rocks',cx,ty,cw,ih,fr,'SonaRocks','',true);
+  hubCard('hub_rocks',cx,ty,cw,ih,fr,'SonaFly','',true);
   if(!raceImgs&&typeof RACE_THUMBS!=='undefined'){ raceImgs=RACE_THUMBS.map(function(u){ var im=new Image(); im.src=u; return im; }); }
   raceI=Math.floor((clock+2)/4)%((raceImgs&&raceImgs.length)||1);
   var ri=raceImgs&&raceImgs[raceI]&&raceImgs[raceI].complete?raceImgs[raceI]:null;
@@ -142,16 +142,17 @@ function sHub(){ var fr=hubFrame(); lx.drawImage(fr,0,0); lx.globalAlpha=0.72; R
     var x2=Math.round(cx0-bw-4); button('howto',L('howto'),x2,rowY,bw,BH,''); button('lang',L('lang'),x2+bw+8,rowY,bw,BH,''); }
   else { button('hub_play',L('play'),cx0-Math.round(pw/2),playY,pw,BH,'primary',Math.floor(clock*2)%2===0);
     var tw=bw*2+sw+16, bx=Math.round(cx0-tw/2); button('howto',L('howto'),bx,rowY,bw,BH,''); button('lang',L('lang'),bx+bw+8,rowY,bw,BH,''); soundRow(bx+2*bw+16,rowY,sw,BH); }
-  var vr=freeSide()==='left', vx=vr?LW-SAFE.r-8:SAFE.l+8;
-  diagCorner(L('version')+' '+VERSION,false);                              // a long press shows the service links (logs, sound, lab)
-  var gs=L('source'), gw=PF.width(gs), vw0=PF.width(L('version')+' '+VERSION), gx=vr?vx-vw0-32:vx+vw0+32;
-  text(gs,gx,vy,P.soft,vr?'right':'left'); BTN.push({id:'source',x:Math.max(0,(vr?gx-gw:gx)-6),y:vy-4,w:gw+12,h:Math.min(PF.CAP+10,LH-vy+4)});
-  // the app's update and, in an Android browser, the app's download — at the top corners
-  if(APP){ var us=L('app_upd'), uw=PF.width(us), ux=vr?LW-SAFE.r-8:SAFE.l+8, uy=SAFE.t+8; text(us,ux,uy,P.band,vr?'right':'left'); BTN.push({id:'appupd',x:Math.max(0,(vr?ux-uw:ux)-6),y:uy-6,w:uw+12,h:PF.CAP+10}); }
+  // v0.71 (the maintainer): the source bottom left, the app's update bottom centre, the version bottom right (a long press on it shows the
+  // service links: logs, sound, lab)
+  var vr=freeSide()==='left';
+  diagCorner(L('version')+' '+VERSION,false,undefined,true);
+  var gs=L('source'), gw=PF.width(gs), gx=SAFE.l+8;
+  text(gs,gx,vy,P.soft,'left'); BTN.push({id:'source',x:Math.max(0,gx-6),y:vy-4,w:gw+12,h:Math.min(PF.CAP+10,LH-vy+4)});
+  if(APP){ var us=L('app_upd'), uw=PF.width(us), ux=Math.round(cx0-uw/2); text(us,ux,vy,P.band,'left'); BTN.push({id:'appupd',x:ux-6,y:vy-4,w:uw+12,h:Math.min(PF.CAP+10,LH-vy+4)}); }
   if(/Android/i.test(navigator.userAgent)&&!APP){ var as=L('get_apk'), aw=PF.width(as), ax=vr?LW-SAFE.r-8-aw:SAFE.l+8, ay=SAFE.t+8;
     text(as,ax,ay,P.band,'left'); R(P.band,ax,ay+PF.CAP+2,aw,1); BTN.push({id:'apk',x:ax-6,y:ay-6,w:aw+12,h:PF.CAP+12}); }
-  say('Sonaroids. SonaRocks. '+L('play')); }
-/* ── the game's own screen (SonaRocks): the chosen skin flies behind, the buttons on the free side over a dim band:
+  say('Sonaroids. SonaFly. '+L('play')); }
+/* ── the game's own screen (SonaFly): the chosen skin flies behind, the buttons on the free side over a dim band:
    play, high scores, how to play, «◀ skin: … ▶» (the picture changes at once), «← all games» ── */
 function skinRow(x,y,w,h){ var s=Math.round(h*0.9), ty=y+Math.round((h-7)/2);
   R(P.bg,x,y,w,h); frame(x,y,w,h,P.band);
@@ -167,8 +168,8 @@ function sTitle(){
   lx.globalAlpha=0.55; R(P.bg,band0,0,band1-band0,LH); lx.globalAlpha=1;
   var h=BH, gap=10, y=Math.round(LH*0.52-(items.length*(h+gap)-gap)/2);
   items.forEach(function(b){ if(b[2]==='skin') skinRow(bx0,y,w,h); else button(b[0],b[1],bx0,y,w,h,b[2]||'',Math.floor(clock*2)%2===0); y+=h+gap; });
-  var a0=freeSide()==='left'?band1:SAFE.l, a1=freeSide()==='left'?LW-SAFE.r:band0, lsc=PF.width('SonaRocks',2)<=a1-a0-12?2:1; text('SonaRocks',Math.round((a0+a1)/2),Math.round(LH*0.16),P.band,'center',lsc);
-  say('SonaRocks. '+L('play')+'. '+L('skin')+': '+L('skin_'+skinId)); }
+  var a0=freeSide()==='left'?band1:SAFE.l, a1=freeSide()==='left'?LW-SAFE.r:band0, lsc=PF.width('SonaFly',2)<=a1-a0-12?2:1; text('SonaFly',Math.round((a0+a1)/2),Math.round(LH*0.16),P.band,'center',lsc);
+  say('SonaFly. '+L('play')+'. '+L('skin')+': '+L('skin_'+skinId)); }
 function sSound(){ sky(DT,0.3); titles(L(direct?(dirLoud?'volume_loud':'volume_direct'):'volume'),L('volume_s')); soundVolume(scrT); nextBtn('next',L('next')); stepSquares('sound'); }
 /* v0.41: the Android app (android/, a WebView over this very page) gives a small native helper: media volume, audio route.
    In the browser it does not exist, and nothing changes there */
@@ -540,6 +541,7 @@ function loop(now){
   DT=Math.min(0.05,Math.max(0,(now-lastNow)/1000)); lastNow=now; clock+=DT; scrT+=DT; BTN=[];
   if(LH>LW){ pauseGame(); sRotate(); present(0); return; }
   if(booted&&Sonar.lost()&&(scr==='wave'||scr==='count'||scr==='play'||scr==='over')){ if(g&&g.state==='play') Logs.gameStop(); Board.setup('lost'); go('lost'); }
+  uiColours(scr!=='hub');
   switch(scr){
     case 'lang': sLang(); break; case 'title': sTitle(); break; case 'hub': sHub(); break;
     case 'sound': sSound(); break;
@@ -624,7 +626,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:') navigator.service
 go('hub');   // v0.70: the games' screen first (always the menu first since 0.44; a new player's first "Play" walks through the instruction)
 requestAnimationFrame(loop);
 /* test hooks: headless tests drive the screens through these (harmless in the game) */
-window.__sonaroids={go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },
+window.__sonaroids={skinProbe:skinProbe,skinIds:function(){ return SKIN_IDS.slice(); },go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },
   setBooted:function(v){ booted=v; },
   board:function(){ return {tbl:tblBox,nick:nickEl?{shown:nickEl.style.display!=='none',rect:nickEl.getBoundingClientRect().toJSON()}:null}; },
   side:function(){ return {hand:handSide(),rel:handRel,cam:camEnd(),stored:store.get('sonaroids_rel',''),say:sayLast}; }, wave:function(){ toWave(); },

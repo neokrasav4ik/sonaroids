@@ -9,6 +9,7 @@ var P={bg:'#1B1A2E', neb:['#2A2440','#3C2B4F','#4A2F4A'], stars:['#5A4C6E','#B89
   rock:['#2A2233','#4C3E57','#7A6380','#B08FA5','#EBCBD0'],
   ship:['#1F5E52','#2F8F7C','#7FE0C8','#E9FFF8'], flame:['#FF7A7A','#FFB86B','#FFF1C9'], bullet:'#FFB86B', glowB:'255,184,107',
   pick:'#FFE66D', glowP:'255,230,109', ufo:['#4B2F80','#7B55C7','#B48CFF','#EADFFF'], ebullet:'#FF7A7A', text:'#FFF3EA', soft:'#C9A9B6', line:'#4A3A57', band:'#7FE0C8', hit:'#FF7A7A', hand:['#6E4D57','#C99A94','#F3CDBF']};
+P.btn=P.ship[1]; P.btnHi=P.ship[2]; P.band0=P.band;
 var PIXH=215;
 var cv=document.getElementById('cv'), lc=cv, lx=cv.getContext('2d');                          // the visible canvas is the low-resolution one
 var gl=document.getElementById('glow'), gx=gl.getContext('2d'), glowDirty=false, glowSpr={};
@@ -47,7 +48,7 @@ function makeNebula(){
   c.putImageData(im,0,0);
 }
 function makeStars(){ stars=[]; for(var i=0;i<Math.round(LW*LH/420);i++) stars.push({x:Math.random()*LW,y:Math.random()*LH,z:Math.random(),tw:Math.random()*6}); }
-function sky(dt,speed){                                             // nebula and stars drift left; speed 0…1
+function spaceSky(dt,speed){                                        // nebula and stars drift left; speed 0…1 (v0.71: sky() draws the chosen skin's)
   nebX=(nebX+3*K*dt*speed)%LW;
   stars.forEach(function(s){ s.x-=(4+s.z*s.z*30)*K*dt*speed; if(s.x<0){ s.x+=LW; s.y=Math.random()*LH; } });
   lx.fillStyle=P.bg; lx.fillRect(0,0,LW,LH);
@@ -85,7 +86,7 @@ function iconButton(id,x,y){ var s=BH-3; R(P.bg,x,y,s,s); frame(x,y,s,s,P.line);
   BTN.push({id:id,x:x-4,y:y-4,w:s+8,h:s+8}); }
 function button(id,label,x,y,w,h,kind,on){
   var hot=kind==='primary', blink=hot&&on;
-  R(hot?(blink?P.ship[2]:P.ship[1]):P.bg,x,y,w,h); frame(x,y,w,h,hot?P.ship[2]:P.line);
+  R(hot?(blink?P.btnHi:P.btn):P.bg,x,y,w,h); frame(x,y,w,h,hot?P.btnHi:P.line);   // v0.71: the primary button in the skin's accent
   text(label,x+w/2,y+Math.round((h-7)/2),hot?P.bg:P.text,'center',1,true);
   BTN.push({id:id,x:x,y:y,w:w,h:h});
 }

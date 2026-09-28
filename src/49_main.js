@@ -464,24 +464,30 @@ function loop(now){
    are (Android 9+ tells the position), what is really in use now. A change closes the microphone: the next «Play» opens it anew. */
 var audDev=null, audSt=null, audT=0;
 function audGet(k){ return store.get(k,''); }
-function audLabel(m){ var p=m.pos_mm, where=''; if(p&&audDev&&audDev.mics&&audDev.mics.length>1){ var ys=audDev.mics.filter(function(q){ return q.pos_mm; }).map(function(q){ return q.pos_mm[1]; }),
+var AUD_ADDR={bottom:'aud_bottom',back:'aud_back',top:'aud_top',front:'aud_top'};
+function audLabel(m){ var p=m.pos_mm, where='', ad=String(m.address||'').toLowerCase(); if(AUD_ADDR[ad]) return L(AUD_ADDR[ad]);
+  if(p&&audDev&&audDev.mics&&audDev.mics.length>1){ var ys=audDev.mics.filter(function(q){ return q.pos_mm; }).map(function(q){ return q.pos_mm[1]; }),
     lo=Math.min.apply(null,ys), hi=Math.max.apply(null,ys); where=p[2]<0?L('aud_back'):(hi-lo>20?(p[1]<=lo+(hi-lo)/2?L('aud_bottom'):L('aud_top')):''); }
   return (where?where+' ':'')+(m.desc?String(m.desc).toUpperCase().slice(0,14):''); }
 function chip(id,label,x,y,on){ var w=PF.width(label)+12, h=PF.CAP+10; R(on?P.band:P.bg,x,y,w,h); frame(x,y,w,h,on?P.band:P.line); text(label,x+6,y+5,on?P.bg:P.text,'left',1,on); BTN.push({id:id,x:x,y:y,w:w,h:h}); return x+w+6; }
 function sAudio(){ sky(DT,0.3); var A=window.SonaroidsApp;
   if(!audDev||scrT-audT>2){ audT=scrT; try{ audDev=JSON.parse(A.audioDevices()); }catch(e){ audDev={}; } try{ audSt=Sonar.native()?JSON.parse(A.audioStatus()):null; }catch(e){ audSt=null; } }
   titles(L('aud_t'),L('aud_s'));
-  var x0=Math.round(LW*0.14), y=Math.round(LH*0.3), mode=store.get('sonaroids_audio','browser'), lw=Math.max(PF.width(L('aud_mode')),PF.width(L('aud_mic')),PF.width(L('aud_out')))+10, x;
+  var x0=Math.round(LW*0.1), y=Math.round(LH*0.24), mode=store.get('sonaroids_audio','browser'), lw=Math.max(PF.width(L('aud_mode')),PF.width(L('aud_mic')),PF.width(L('aud_out')),PF.width(L('aud_src')),PF.width(L('aud_usage')))+10, x;
   text(L('aud_mode'),x0,y+5,P.soft,'left'); x=x0+lw;
   x=chip('aud:mode:browser',L('aud_browser'),x,y,mode!=='app'); chip('aud:mode:app',L('aud_app'),x,y,mode==='app'); y+=PF.CAP+16;
+  var src=store.get('sonaroids_src','auto'); text(L('aud_src'),x0,y+5,P.soft,'left'); x=x0+lw;
+  ['auto','unprocessed','voice','mic','camcorder'].forEach(function(k){ x=chip('aud:src:'+k,k==='auto'?L('aud_auto'):k.toUpperCase(),x,y,src===k); }); y+=PF.CAP+16;
   var mic=audGet('sonaroids_mic'), ins=(audDev.inputs||[]).filter(function(d){ return d.type==='builtin_mic'; });
   text(L('aud_mic'),x0,y+5,P.soft,'left'); x=x0+lw; x=chip('aud:mic:',L('aud_auto'),x,y,mic==='');
   ins.forEach(function(d){ var mm=(audDev.mics||[]).filter(function(m){ return m.address&&m.address===d.address; })[0], lb=d.id+(mm?' '+audLabel(mm):(d.address?' '+String(d.address).toUpperCase().slice(0,10):''));
     if(x+PF.width(lb)+12>LW-SAFE.r-8){ x=x0+lw; y+=PF.CAP+14; } x=chip('aud:mic:'+d.id,lb,x,y,mic===String(d.id)); }); y+=PF.CAP+16;
   var out=audGet('sonaroids_out'), outs=(audDev.outputs||[]).filter(function(d){ return d.type==='speaker'||d.type==='earpiece'; });
   text(L('aud_out'),x0,y+5,P.soft,'left'); x=x0+lw; x=chip('aud:out:',L('aud_auto'),x,y,out==='');
-  outs.forEach(function(d){ x=chip('aud:out:'+d.id,d.id+' '+(d.type==='speaker'?L('aud_speaker'):L('aud_earpiece')),x,y,out===String(d.id)); }); y+=PF.CAP+18;
-  var lines=[]; if(audSt){ lines.push(L('aud_now')+' '+String(audSt.src||'').toUpperCase()+(audSt.in?', '+L('aud_mic')+' '+audSt.in.id+' '+String(audSt.in.address||'').toUpperCase():'')+(audSt.out?', '+L('aud_out')+' '+audSt.out.id+' '+(audSt.out.type==='speaker'?L('aud_speaker'):String(audSt.out.type).toUpperCase()):''));
+  outs.forEach(function(d){ x=chip('aud:out:'+d.id,d.id+' '+(d.type==='speaker'?L('aud_speaker'):L('aud_earpiece')),x,y,out===String(d.id)); }); y+=PF.CAP+16;
+  var us=store.get('sonaroids_usage','media'); text(L('aud_usage'),x0,y+5,P.soft,'left'); x=x0+lw;
+  x=chip('aud:usage:media',L('aud_media'),x,y,us==='media'); chip('aud:usage:game',L('aud_game'),x,y,us==='game'); y+=PF.CAP+18;
+  var lines=[]; if(audSt){ lines.push(L('aud_now')+' '+String(audSt.src||'').toUpperCase()+(audSt.usage?' '+String(audSt.usage).toUpperCase():'')+(audSt.in?', '+L('aud_mic')+' '+audSt.in.id+' '+String(audSt.in.address||'').toUpperCase():'')+(audSt.out?', '+L('aud_out')+' '+audSt.out.id+' '+(audSt.out.type==='speaker'?L('aud_speaker'):String(audSt.out.type).toUpperCase()):''));
       if(audSt.active&&audSt.active.length) lines.push(L('aud_active')+' '+audSt.active.map(function(m){ return audLabel(m)||m.id; }).join(', '));
       if(audSt.fx) lines.push(L('aud_fx')+' '+String(audSt.fx).toUpperCase());
       if(audSt.error) lines.push(String(audSt.error).toUpperCase().slice(0,40)); }
@@ -490,6 +496,7 @@ function sAudio(){ sky(DT,0.3); var A=window.SonaroidsApp;
   lines.forEach(function(l){ PF.wrap(l,LW-x0-SAFE.r-12,1).forEach(function(q){ text(q,x0,y,P.soft,'left'); y+=10; }); y+=2; }); say(L('aud_t')); }
 function audAct(id){ var p=id.split(':'), k=p[1], v=p.slice(2).join(':');
   if(k==='mode') store.set('sonaroids_audio',v); else if(k==='mic') store.set('sonaroids_mic',v); else if(k==='out') store.set('sonaroids_out',v);
+  else if(k==='src') store.set('sonaroids_src',v); else if(k==='usage') store.set('sonaroids_usage',v);
   Sonar.restart(); booted=false; acoustic=false; audDev=null; }
 var NO_MENU={title:1,lang:1,paused:1,restart:1,play:1}, NO_VER={title:1,over:1,play:1,count:1,'count-resume':1,paused:1,restart:1};
 function chrome(){ if(LH>LW) return;

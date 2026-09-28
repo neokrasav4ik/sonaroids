@@ -46,7 +46,7 @@ class NativeAudio {
     volatile float tAllL, tAllR, tEven, tOdd;                     // gain targets set by the page
     volatile long frames = 0; volatile String error = "";
     AudioEffect fxNs, fxAgc, fxAec; String fxState = "";               // v0.51: the phone's own voice processing, switched off explicitly
-    String srcName = ""; int micWanted = -1, outWanted = -1, channels = 1;
+    String srcName = "", usageName = ""; int micWanted = -1, outWanted = -1, channels = 1;
 
     NativeAudio(AudioManager am, WebView web, Handler ui) { this.am = am; this.web = web; this.ui = ui; }
 
@@ -59,6 +59,12 @@ class NativeAudio {
             JSONObject c = new JSONObject(cfg == null || cfg.isEmpty() ? "{}" : cfg);
             micWanted = c.optInt("mic", -1); outWanted = c.optInt("out", -1); channels = c.optInt("ch", 1) == 2 ? 2 : 1;
             String s = c.optString("src", "auto");
+            // v0.52: the probe as media by default (as the WebView plays it). On the Mi 9 Lite as a game sound (USAGE_GAME) its level at the
+            // microphone wandered by ~10% frame to frame in an empty room (0.8% through the WebView) — the empty room did not cancel out
+            // (residual −12 dB against −33) and the palm was lost again and again
+            String u = c.optString("usage", "media"); usageName = u;
+            int usage = u.equals("game") ? AudioAttributes.USAGE_GAME : u.equals("unknown") ? AudioAttributes.USAGE_UNKNOWN : AudioAttributes.USAGE_MEDIA;
+            int ctype = u.equals("game") ? AudioAttributes.CONTENT_TYPE_SONIFICATION : AudioAttributes.CONTENT_TYPE_MUSIC;
             int src;
             if (s.equals("voice")) src = MediaRecorder.AudioSource.VOICE_RECOGNITION;
             else if (s.equals("mic")) src = MediaRecorder.AudioSource.MIC;
@@ -82,8 +88,7 @@ class NativeAudio {
 
             int minOut = AudioTrack.getMinBufferSize(FS, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_FLOAT);
             trk = new AudioTrack.Builder()
-                .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
+                .setAudioAttributes(new AudioAttributes.Builder().setUsage(usage).setContentType(ctype).build())
                 .setAudioFormat(new AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_FLOAT).setSampleRate(FS)
                     .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO).build())
                 .setBufferSizeInBytes(Math.max(minOut * 2, 4 * N * 2 * 4)).setTransferMode(AudioTrack.MODE_STREAM).build();
@@ -227,7 +232,7 @@ class NativeAudio {
     String status() {
         try {
             JSONObject j = new JSONObject();
-            j.put("running", run); j.put("frames", frames); j.put("src", srcName); j.put("ch", channels); j.put("mic_wanted", micWanted); j.put("out_wanted", outWanted);
+            j.put("running", run); j.put("frames", frames); j.put("src", srcName); j.put("usage", usageName); j.put("ch", channels); j.put("mic_wanted", micWanted); j.put("out_wanted", outWanted);
             j.put("error", error); j.put("fx", fxState);
             AudioRecord r = rec; AudioTrack t = trk;
             if (r != null) { AudioDeviceInfo d = r.getRoutedDevice(); if (d != null) j.put("in", dev(d));

@@ -14,6 +14,20 @@ var SCRIPT_ST=[
   {t:27, k:'away',  say:'Убери руку',               sub:'Совсем.'},
   {t:30, k:'end'}
 ];
+/* 0.62: «запись с проводкой» — слева / над серединой / справа (качая), потом медленно слева направо и обратно (период 5 с) на трёх
+   высотах за точкой, бегущей по экрану (tools/eval_sweep.js) */
+var SCRIPT_SW=[
+  {t:0,  k:'empty', say:'Убери руку',                sub:'Снимаю пустую комнату.'},
+  {t:3,  k:'Lw',    say:'Ладонь слева от телефона',  sub:'10 см над столом, напротив середины телефона. Качай вверх-вниз.'},
+  {t:8,  k:'Cw',    say:'Ладонь над серединой',      sub:'Прямо над телефоном, 10–15 см. Качай вверх-вниз.'},
+  {t:13, k:'Rw',    say:'Ладонь справа',             sub:'10 см над столом. Качай вверх-вниз.'},
+  {t:18, k:'S1',    say:'Веди ладонь за точкой',     sub:'10 см над столом: медленно слева направо и обратно, продолжая качать вверх-вниз.', sweep:true},
+  {t:28, k:'S2',    say:'То же, ниже',               sub:'5 см над столом, качая.', sweep:true},
+  {t:38, k:'S3',    say:'То же, выше',               sub:'15 см над столом, качая.', sweep:true},
+  {t:48, k:'away',  say:'Убери руку',                sub:'Совсем.'},
+  {t:51, k:'end'}
+];
+var SW_PERIOD=5;
 var ST={on:false,a:[],b:[],nch:0,stream:null,node:null};
 /* 0.55: inside the Android app the stereo comes from the app's own recording (AudioRecord, two channels, the source picked on the intro
    screen: CAMCORDER is the one phones most often record with two microphones), not from the WebView — a WebView gives one channel.
@@ -45,7 +59,7 @@ function stDiff(){ var n=Math.min(ST.a.length,94); if(n<10) return null; var sa=
   return {corr:sab/Math.sqrt(sa*sb||1e-30),db:10*Math.log10((sb||1e-30)/(sa||1e-30)),same:d<1e-12*n*512,silent:sa<1e-12&&sb<1e-12}; }
 function stShow(){ var I=stInfo(), D=stDiff(); el('stInfo').innerHTML='каналов от браузера: <b>'+(I.nch||'—')+'</b> · в настройках: '+(I.settings.channelCount||'—')+
     (I.caps&&I.caps.channelCount?' (можно '+JSON.stringify(I.caps.channelCount)+')':'')+'<br>'+(D?(D.silent?'<b class="bad">тишина в обоих каналах</b> — запись не идёт':D.same?'каналы <b class="bad">одинаковые</b> — это один микрофон':'каналы <b class="good">разные</b>: сходство '+D.corr.toFixed(3)+', разница уровней '+D.db.toFixed(1)+' дБ'):'')+(I.label?'<br><span class="small">'+I.label+'</span>':''); }
-function runStereo(){ var S=SCRIPT_ST, TOT=S[S.length-1].t;
+function runStereo(mode){ var sweep=mode==='sweep', S=sweep?SCRIPT_SW:SCRIPT_ST, TOT=S[S.length-1].t; if(el('stBar')) el('stBar').style.display='none';
   show('recSt'); el('stSay').textContent='Открываю микрофон в стерео'; el('stSub').textContent='Рука убрана.'; el('stClock').textContent=''; el('stInfo').textContent='';
   ST={on:false,a:[],b:[],nch:0,stream:null,node:null,marks:{}};
   var natSrc=stNative()&&el('stSrc')?el('stSrc').value:'';
@@ -60,16 +74,17 @@ function runStereo(){ var S=SCRIPT_ST, TOT=S[S.length-1].t;
     ST.node.port.onmessage=function(e){ var m=e.data; ST.nch=Math.max(ST.nch,m.nch); if(ST.on){ ST.a.push(m.a); ST.b.push(m.b); } else { ST.a.push(m.a); ST.b.push(m.b); if(ST.a.length>94){ ST.a.shift(); ST.b.shift(); } } };
     return sleep(1200); }).then(function(){ stShow(); ST.a=[]; ST.b=[]; ST.on=true; var t0=performance.now(), cur=-1;
     return new Promise(function(done){ (function tick(){ var t=(performance.now()-t0)/1000, i; for(i=S.length-1;i>=0;i--) if(t>=S[i].t) break;
-      if(i!==cur){ cur=i; var s=S[i]; if(s.k==='end'){ done(); return; } ST.marks[s.k]=ST.a.length*N; el('stSay').textContent=s.say; el('stSub').textContent=s.sub; stShow(); }
+      if(i!==cur){ cur=i; var s=S[i]; if(s.k==='end'){ done(); return; } ST.marks[s.k]=ST.a.length*N; el('stSay').textContent=s.say; el('stSub').textContent=s.sub; stShow(); if(el('stBar')) el('stBar').style.display=s.sweep?'':'none'; }
+      if(S[i].sweep&&el('stDot')){ var ph=(t-S[i].t)/SW_PERIOD; el('stDot').style.left=(50-45*Math.cos(2*Math.PI*ph))+'%'; }
       el('stClock').textContent=t.toFixed(1)+' / '+TOT+' с'; requestAnimationFrame(tick); })(); }); }).then(function(){
     ST.on=false; setProbe('off'); var I=stInfo(), D=stDiff(); if(ST.nat){ stNatStop(); stLabMicOn(); } else try{ ST.stream.getTracks().forEach(function(t){ t.stop(); }); ST.node.disconnect(); }catch(e){}
     var n=ST.a.length*N, L=new Float32Array(n), R=new Float32Array(n); ST.a.forEach(function(f,j){ L.set(f,j*N); }); ST.b.forEach(function(f,j){ R.set(f,j*N); });
     var so=(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0);
-    recMeta={v:4,kind:'stereo-portrait',fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
-      mic:I,diff:D,samples:n,channels:2,orientation:{angle:so,w:window.innerWidth,h:window.innerHeight},script:SCRIPT_ST.filter(function(s){return s.k!=='end';}).map(function(s){ return {k:s.k,t:s.t}; }),
+    recMeta={v:4,kind:sweep?'stereo-sweep':'stereo-portrait',sweep_period:sweep?SW_PERIOD:undefined,fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
+      mic:I,diff:D,samples:n,channels:2,orientation:{angle:so,w:window.innerWidth,h:window.innerHeight},script:S.filter(function(s){return s.k!=='end';}).map(function(s){ return {k:s.k,t:s.t}; }),
       marks:ST.marks,units:'two input channels as the browser gave them (interleaved in the WAV); phone flat, portrait, port towards the player; the palm waves up and down to the left, right, beyond the top end, in front of the port',ua:navigator.userAgent,date:new Date().toISOString()};
     blob=wav2(L,R,recMeta); var d=new Date(), z=function(x){ return (x<10?'0':'')+x; };
-    fname='sonarstereo_'+(ST.nat?ST.nat+'_':'')+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+'.wav';
+    fname=(sweep?'sonarsweep_':'sonarstereo_')+(ST.nat?ST.nat+'_':'')+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+'.wav';
     var pk=0; for(var i=0;i<n;i++) pk=Math.max(pk,Math.abs(L[i]),Math.abs(R[i])); showDone(pk,PROBE_SNR||0);
   }).catch(function(e){ setProbe('off'); if(ST.nat){ stNatStop(); stLabMicOn(); } el('stSay').textContent='Не вышло'; el('stSub').textContent=(e&&e.message)||String(e); });
 }
@@ -83,5 +98,5 @@ function wav2(L,R,meta){ var n=L.length, x=new Float32Array(2*n); for(var i=0;i<
   s4('data'); u32(dataLen); for(k=0;k<x.length;k++){ v.setFloat32(p,x[k],true); p+=4; } return new Blob([b],{type:'audio/wav'}); }
 function toStereo(){ lastRec='recSt'; if(el('stSrcRow')) el('stSrcRow').style.display=stNative()?'':'none'; show('stIntro'); }
 el('goStereo').addEventListener('click',function(){ boot().then(toStereo).catch(fail); });
-el('stGo').addEventListener('click',function(){ lastRec='recSt'; runStereo(); });
+el('stGo').addEventListener('click',function(){ lastRec='recSt'; runStereo('probe'); });
 el('stBack').addEventListener('click',function(){ show('home'); });

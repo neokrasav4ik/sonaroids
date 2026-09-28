@@ -408,14 +408,30 @@
   <div class="col btns">
     <div id="stSrcRow" style="display:none">Запись в приложении: <select id="stSrc"><option value="camcorder">CAMCORDER (чаще стерео)</option><option value="unprocessed">UNPROCESSED</option><option value="mic">MIC</option><option value="voice">VOICE</option></select></div>
     <button id="stGo" class="big">Лежит, начать</button>
+    <button id="stLiveGo" class="ghost">Стерео вживую (прототип)</button>
+    <button id="stSweepGo" class="ghost">Запись с проводкой (51 с)</button>
     <button id="stBack" class="ghost">Назад</button>
   </div>
 </div></div>
 
 <div class="screen hidden" id="recSt">
   <div id="stHead"><div id="stSay"></div><div id="stSub"></div><div id="stClock"></div></div>
+  <div id="stBar" style="display:none;position:relative;height:28px;margin:10px 4%;border:1px solid #4a3f63;border-radius:14px"><div id="stDot" style="position:absolute;top:3px;width:22px;height:22px;margin-left:-11px;border-radius:11px;background:#7fe0c8;left:5%"></div></div>
   <div id="stInfo"></div>
 </div>
+
+<div class="screen hidden" id="stLive"><div class="two">
+  <div class="col">
+    <canvas id="slCv" width="360" height="360" style="width:100%;max-width:360px;aspect-ratio:1"></canvas>
+    <div id="slNums" style="margin-top:6px"></div>
+  </div>
+  <div class="col btns">
+    <p>Телефон лежит вертикально, разъёмом к себе. Качай ладонью вверх-вниз и, не переставая, веди её влево-вправо: точка — где ладонь (по горизонтали — лево/право, по вертикали — расстояние). Метки ниже подстраивают лево/право под твой телефон.</p>
+    <button id="slL" class="ghost">Держу слева (3 с)</button>
+    <button id="slR" class="ghost">Держу справа (3 с)</button>
+    <button id="slStop" class="big">Стоп</button>
+  </div>
+</div></div>
 
 <div class="screen hidden" id="recDone"><div class="two">
   <div class="col">
@@ -765,7 +781,7 @@ var N=512,fs,kLo,kHi,kc;
 var ctx,stream,node,an,gSL,gSR,gL,gR,booted=false, F_LO=18300, PROBE_G=0.25, PROBE_SNR=null;
 var mode=null,lastSeq=-1,gaps=0,collector=null;
 function sleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
-function show(id){ ['home','orient','rec','recDone','cal','game','sideIntro','recSide','dualIntro','rightIntro','rightPlay','arkIntro','arkPlay','arcIntro','arcPlay','probes','twoIntro','recTwo','stIntro','recSt','depthIntro','pwCheck'].forEach(function(s){ el(s).classList.toggle('hidden',s!==id); });
+function show(id){ ['home','orient','rec','recDone','cal','game','sideIntro','recSide','dualIntro','rightIntro','rightPlay','arkIntro','arkPlay','arcIntro','arcPlay','probes','twoIntro','recTwo','stIntro','recSt','stLive','depthIntro','pwCheck'].forEach(function(s){ el(s).classList.toggle('hidden',s!==id); });
   /* запись вбок идёт с телефоном вертикально — на её экранах просьба повернуть не показывается */
   if(document.body&&document.body.classList) document.body.classList.toggle('pok',id==='sideIntro'||id==='rightIntro'||id==='rightPlay'||id==='twoIntro'||id==='recTwo'||id==='stIntro'||id==='recSt'||id==='depthIntro'||(id==='recTwo'&&lastRec==='recDepth')||(id==='recDone'&&(lastRec==='recTwo'||lastRec==='recSt'||lastRec==='recDepth'))||((id==='recSide'||id==='recDone')&&(lastRec==='recSide'||lastRec==='recRight'))); fitScreen(); }
 /* всё в один экран: если видимый экран (или открытое меню игры) не влезает по высоте или ширине — уменьшаю базовый шрифт, пока не влезет */
@@ -1851,6 +1867,20 @@ var SCRIPT_ST=[
   {t:27, k:'away',  say:'Убери руку',               sub:'Совсем.'},
   {t:30, k:'end'}
 ];
+/* 0.62: «запись с проводкой» — слева / над серединой / справа (качая), потом медленно слева направо и обратно (период 5 с) на трёх
+   высотах за точкой, бегущей по экрану (tools/eval_sweep.js) */
+var SCRIPT_SW=[
+  {t:0,  k:'empty', say:'Убери руку',                sub:'Снимаю пустую комнату.'},
+  {t:3,  k:'Lw',    say:'Ладонь слева от телефона',  sub:'10 см над столом, напротив середины телефона. Качай вверх-вниз.'},
+  {t:8,  k:'Cw',    say:'Ладонь над серединой',      sub:'Прямо над телефоном, 10–15 см. Качай вверх-вниз.'},
+  {t:13, k:'Rw',    say:'Ладонь справа',             sub:'10 см над столом. Качай вверх-вниз.'},
+  {t:18, k:'S1',    say:'Веди ладонь за точкой',     sub:'10 см над столом: медленно слева направо и обратно, продолжая качать вверх-вниз.', sweep:true},
+  {t:28, k:'S2',    say:'То же, ниже',               sub:'5 см над столом, качая.', sweep:true},
+  {t:38, k:'S3',    say:'То же, выше',               sub:'15 см над столом, качая.', sweep:true},
+  {t:48, k:'away',  say:'Убери руку',                sub:'Совсем.'},
+  {t:51, k:'end'}
+];
+var SW_PERIOD=5;
 var ST={on:false,a:[],b:[],nch:0,stream:null,node:null};
 /* 0.55: inside the Android app the stereo comes from the app's own recording (AudioRecord, two channels, the source picked on the intro
    screen: CAMCORDER is the one phones most often record with two microphones), not from the WebView — a WebView gives one channel.
@@ -1882,7 +1912,7 @@ function stDiff(){ var n=Math.min(ST.a.length,94); if(n<10) return null; var sa=
   return {corr:sab/Math.sqrt(sa*sb||1e-30),db:10*Math.log10((sb||1e-30)/(sa||1e-30)),same:d<1e-12*n*512,silent:sa<1e-12&&sb<1e-12}; }
 function stShow(){ var I=stInfo(), D=stDiff(); el('stInfo').innerHTML='каналов от браузера: <b>'+(I.nch||'—')+'</b> · в настройках: '+(I.settings.channelCount||'—')+
     (I.caps&&I.caps.channelCount?' (можно '+JSON.stringify(I.caps.channelCount)+')':'')+'<br>'+(D?(D.silent?'<b class="bad">тишина в обоих каналах</b> — запись не идёт':D.same?'каналы <b class="bad">одинаковые</b> — это один микрофон':'каналы <b class="good">разные</b>: сходство '+D.corr.toFixed(3)+', разница уровней '+D.db.toFixed(1)+' дБ'):'')+(I.label?'<br><span class="small">'+I.label+'</span>':''); }
-function runStereo(){ var S=SCRIPT_ST, TOT=S[S.length-1].t;
+function runStereo(mode){ var sweep=mode==='sweep', S=sweep?SCRIPT_SW:SCRIPT_ST, TOT=S[S.length-1].t; if(el('stBar')) el('stBar').style.display='none';
   show('recSt'); el('stSay').textContent='Открываю микрофон в стерео'; el('stSub').textContent='Рука убрана.'; el('stClock').textContent=''; el('stInfo').textContent='';
   ST={on:false,a:[],b:[],nch:0,stream:null,node:null,marks:{}};
   var natSrc=stNative()&&el('stSrc')?el('stSrc').value:'';
@@ -1897,16 +1927,17 @@ function runStereo(){ var S=SCRIPT_ST, TOT=S[S.length-1].t;
     ST.node.port.onmessage=function(e){ var m=e.data; ST.nch=Math.max(ST.nch,m.nch); if(ST.on){ ST.a.push(m.a); ST.b.push(m.b); } else { ST.a.push(m.a); ST.b.push(m.b); if(ST.a.length>94){ ST.a.shift(); ST.b.shift(); } } };
     return sleep(1200); }).then(function(){ stShow(); ST.a=[]; ST.b=[]; ST.on=true; var t0=performance.now(), cur=-1;
     return new Promise(function(done){ (function tick(){ var t=(performance.now()-t0)/1000, i; for(i=S.length-1;i>=0;i--) if(t>=S[i].t) break;
-      if(i!==cur){ cur=i; var s=S[i]; if(s.k==='end'){ done(); return; } ST.marks[s.k]=ST.a.length*N; el('stSay').textContent=s.say; el('stSub').textContent=s.sub; stShow(); }
+      if(i!==cur){ cur=i; var s=S[i]; if(s.k==='end'){ done(); return; } ST.marks[s.k]=ST.a.length*N; el('stSay').textContent=s.say; el('stSub').textContent=s.sub; stShow(); if(el('stBar')) el('stBar').style.display=s.sweep?'':'none'; }
+      if(S[i].sweep&&el('stDot')){ var ph=(t-S[i].t)/SW_PERIOD; el('stDot').style.left=(50-45*Math.cos(2*Math.PI*ph))+'%'; }
       el('stClock').textContent=t.toFixed(1)+' / '+TOT+' с'; requestAnimationFrame(tick); })(); }); }).then(function(){
     ST.on=false; setProbe('off'); var I=stInfo(), D=stDiff(); if(ST.nat){ stNatStop(); stLabMicOn(); } else try{ ST.stream.getTracks().forEach(function(t){ t.stop(); }); ST.node.disconnect(); }catch(e){}
     var n=ST.a.length*N, L=new Float32Array(n), R=new Float32Array(n); ST.a.forEach(function(f,j){ L.set(f,j*N); }); ST.b.forEach(function(f,j){ R.set(f,j*N); });
     var so=(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0);
-    recMeta={v:4,kind:'stereo-portrait',fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
-      mic:I,diff:D,samples:n,channels:2,orientation:{angle:so,w:window.innerWidth,h:window.innerHeight},script:SCRIPT_ST.filter(function(s){return s.k!=='end';}).map(function(s){ return {k:s.k,t:s.t}; }),
+    recMeta={v:4,kind:sweep?'stereo-sweep':'stereo-portrait',sweep_period:sweep?SW_PERIOD:undefined,fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
+      mic:I,diff:D,samples:n,channels:2,orientation:{angle:so,w:window.innerWidth,h:window.innerHeight},script:S.filter(function(s){return s.k!=='end';}).map(function(s){ return {k:s.k,t:s.t}; }),
       marks:ST.marks,units:'two input channels as the browser gave them (interleaved in the WAV); phone flat, portrait, port towards the player; the palm waves up and down to the left, right, beyond the top end, in front of the port',ua:navigator.userAgent,date:new Date().toISOString()};
     blob=wav2(L,R,recMeta); var d=new Date(), z=function(x){ return (x<10?'0':'')+x; };
-    fname='sonarstereo_'+(ST.nat?ST.nat+'_':'')+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+'.wav';
+    fname=(sweep?'sonarsweep_':'sonarstereo_')+(ST.nat?ST.nat+'_':'')+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+'.wav';
     var pk=0; for(var i=0;i<n;i++) pk=Math.max(pk,Math.abs(L[i]),Math.abs(R[i])); showDone(pk,PROBE_SNR||0);
   }).catch(function(e){ setProbe('off'); if(ST.nat){ stNatStop(); stLabMicOn(); } el('stSay').textContent='Не вышло'; el('stSub').textContent=(e&&e.message)||String(e); });
 }
@@ -1920,8 +1951,83 @@ function wav2(L,R,meta){ var n=L.length, x=new Float32Array(2*n); for(var i=0;i<
   s4('data'); u32(dataLen); for(k=0;k<x.length;k++){ v.setFloat32(p,x[k],true); p+=4; } return new Blob([b],{type:'audio/wav'}); }
 function toStereo(){ lastRec='recSt'; if(el('stSrcRow')) el('stSrcRow').style.display=stNative()?'':'none'; show('stIntro'); }
 el('goStereo').addEventListener('click',function(){ boot().then(toStereo).catch(fail); });
-el('stGo').addEventListener('click',function(){ lastRec='recSt'; runStereo(); });
+el('stGo').addEventListener('click',function(){ lastRec='recSt'; runStereo('probe'); });
 el('stBack').addEventListener('click',function(){ show('home'); });
+/* ── СТЕРЕО ВЖИВУЮ и ЗАПИСЬ С ПРОВОДКОЙ (с 28.09, 0.62) ──
+   Mi 9 Lite в приложении (14:28–14:32) отдал два разных микрофона: в CAMCORDER и UNPROCESSED ладонь слева и справа различимы —
+   разница путей эха до двух микрофонов B − A около −40…−44 мм слева и −80 мм справа (tools/eval_stereo.js). Две пробы:
+   1) «Стерео вживую» — то же, что считает eval_stereo, но сразу: по движущемуся эху каждого канала (минус среднее за 0,5 с, дальности
+      30–300 мм, окно 16 кадров, шаг 8) — где эхо в A и в B и насколько B слабее; точка на экране: по горизонтали — лево/право
+      (разница путей и сил, пересчитанная по двум меткам «держу слева» / «держу справа»), по вертикали — расстояние в канале A.
+      Ладонью надо качать: неподвижная ладонь для этой меры пропадает (как в eval_stereo).
+   2) «Запись с проводкой» — ладонь по меткам: слева, над серединой, справа (качая), потом медленно слева направо и обратно на трёх
+      высотах за бегущей по экрану точкой. Файл sonarsweep_<источник>_*.wav, разбор — tools/eval_sweep.js: меняется ли разница плавно.
+   Обе — только в приложении для Android (браузер даёт один микрофон). */
+function StereoEcho(){
+  var lo=bandLo(), hi=lo===F_LO?20500:DEPTH_HI, df=fs/N, ks=[], k, q, n, j;
+  for(k=Math.ceil(lo/df);k<=Math.floor(hi/df);k++) ks.push(k);
+  var M=ks.length, C=[], S=[], Pr=new Float64Array(M), Pi=new Float64Array(M);
+  for(q=0;q<M;q++){ var c=new Float32Array(N), s=new Float32Array(N); for(n=0;n<N;n++){ c[n]=Math.cos(2*Math.PI*ks[q]*n/N); s[n]=Math.sin(2*Math.PI*ks[q]*n/N); } C.push(c); S.push(s);
+    Pr[q]=Math.cos(Math.PI*q*q/M); Pi[q]=Math.sin(Math.PI*q*q/M); }
+  var MMS=343e3/fs/2, R=[]; for(var mm=30;mm<=300;mm+=MMS) R.push(mm); var nR=R.length, FPS=fs/N, EMPTY=Math.round(2*FPS), W=16, HOP=8;
+  var aM=1-Math.exp(-1/(0.5*FPS));
+  function chan(){ return {avr:new Float64Array(M),avi:new Float64Array(M),mr:new Float64Array(M),mi:new Float64Array(M),t0:0,cr:null,ci:null,ring:[]}; }
+  var A=chan(), B=chan(), nf=0, dDir=0, out=null, floor=null, nw=0;
+  function spec(x,ch,hr,hi){ for(var q2=0;q2<M;q2++){ var re=0,im=0,c2=C[q2],s2=S[q2]; for(var n2=0;n2<N;n2++){ re+=x[n2]*c2[n2]; im-=x[n2]*s2[n2]; } hr[q2]=re*Pr[q2]+im*Pi[q2]; hi[q2]=im*Pr[q2]-re*Pi[q2]; } }
+  function locate(ch,ref){ var best=-1, t0=0; for(var t=0;t<N;t+=0.25){ var re=0,im=0; for(var q2=0;q2<M;q2++){ var a=2*Math.PI*ks[q2]*t/N; re+=ch.avr[q2]*Math.cos(a)-ch.avi[q2]*Math.sin(a); im+=ch.avr[q2]*Math.sin(a)+ch.avi[q2]*Math.cos(a); } var m=re*re+im*im; if(m>best){ best=m; t0=t; } }
+    ch.t0=t0; var tr=ref===undefined?t0:ref; ch.cr=[]; ch.ci=[]; for(var j2=0;j2<nR;j2++){ var cr=new Float64Array(M), ci=new Float64Array(M), tt=tr+R[j2]/MMS; for(var q3=0;q3<M;q3++){ var ang=2*Math.PI*ks[q3]*tt/N; cr[q3]=Math.cos(ang); ci[q3]=Math.sin(ang); } ch.cr.push(cr); ch.ci.push(ci); }
+    for(var q4=0;q4<M;q4++){ ch.mr[q4]=ch.avr[q4]; ch.mi[q4]=ch.avi[q4]; } }
+  var hR=new Float64Array(M), hI=new Float64Array(M);   // not hr/hi: «hi» is the band's top above (var hoisting)
+  function step(ch,x){ var hr=hR, hi=hI; spec(x,ch,hr,hi);
+    if(nf<EMPTY){ for(var q2=0;q2<M;q2++){ ch.avr[q2]+=hr[q2]/EMPTY; ch.avi[q2]+=hi[q2]/EMPTY; } return; }
+    var E=new Float64Array(nR);
+    for(var q3=0;q3<M;q3++){ ch.mr[q3]+=aM*(hr[q3]-ch.mr[q3]); ch.mi[q3]+=aM*(hi[q3]-ch.mi[q3]); }
+    for(var j2=0;j2<nR;j2++){ var re=0,im=0, cr=ch.cr[j2], ci=ch.ci[j2]; for(var q4=0;q4<M;q4++){ var vr=hr[q4]-ch.mr[q4], vi=hi[q4]-ch.mi[q4]; re+=vr*cr[q4]-vi*ci[q4]; im+=vr*ci[q4]+vi*cr[q4]; } E[j2]=re*re+im*im; }
+    ch.ring.push(E); if(ch.ring.length>W) ch.ring.shift(); }
+  function sum(ch){ var e=0,c=0; ch.ring.forEach(function(E){ for(var j2=0;j2<nR;j2++){ e+=E[j2]; c+=E[j2]*R[j2]; } }); return {e:e,c:e>0?c/e:NaN}; }
+  return {
+    ready:function(){ return nf>EMPTY+W; },
+    push:function(a,b){ step(A,a); step(B,b); nf++;
+      // as in eval_stereo: both channels' distances counted from channel A's direct sound, then the difference of the direct sounds taken off
+      if(nf===EMPTY){ locate(A); locate(B,A.t0); dDir=(B.t0-A.t0)*MMS; }
+      if(nf>EMPTY+W&&(nf-EMPTY)%HOP===0){ var sa=sum(A), sb=sum(B); out={t:nf/FPS,eA:sa.e,eB:sb.e,cA:sa.c,cB:sb.c,d:sb.c-sa.c-dDir,l:10*Math.log10((sb.e||1e-30)/(sa.e||1e-30))};
+        // active: the moving echo stands 6 dB over the quiet level — the lowest window so far, creeping up ~25% per 10 s so that a louder
+        // room is followed (a percentile of the recent windows fails when the palm waves the whole time: the «quiet» is then the palm itself)
+        var e2=sa.e+sb.e; floor=floor===null?e2:Math.min(floor*1.002,e2); nw++; out.act=nw>=8&&e2>4*floor; return out; } return null; },
+    last:function(){ return out; },
+    info:function(){ return {M:M,band:[lo,hi],t0A:A.t0,t0B:B.t0,dDir:dDir}; } };
+}
+
+var SL={se:null,on:false,cal:{},hist:[],grab:null};
+function slDraw(){ var cv=el('slCv'), g=cv.getContext('2d'), W=cv.width, H=cv.height, o=SL.se&&SL.se.last();
+  g.fillStyle='#16152a'; g.fillRect(0,0,W,H); g.strokeStyle='#3a3552'; g.strokeRect(0.5,0.5,W-1,H-1); g.beginPath(); g.moveTo(W/2,0); g.lineTo(W/2,H); g.stroke();
+  g.fillStyle='#8a7fa0'; g.font='13px system-ui'; g.fillText('слева',8,H-8); g.textAlign='right'; g.fillText('справа',W-8,H-8); g.textAlign='left';
+  if(!SL.se||!SL.se.ready()){ g.fillStyle='#c9b8d6'; g.fillText('убери руку — слушаю пустую комнату',10,20); return; }
+  if(!o) return;
+  var act=o.act, cal=SL.cal, dL=cal.L?cal.L.d:-44, dR=cal.R?cal.R.d:-80, lL=cal.L?cal.L.l:-21, lR=cal.R?cal.R.l:-17;
+  var xd=(o.d-dL)/((dR-dL)||1), xl=(o.l-lL)/((lR-lL)||1), x=cal.L&&cal.R?(xd+xl)/2:xd; x=Math.max(-0.2,Math.min(1.2,x));
+  var y=Math.max(0,Math.min(1,(o.cA-30)/(250)));
+  SL.hist.push({x:x,y:y,act:act}); if(SL.hist.length>30) SL.hist.shift();
+  SL.hist.forEach(function(p,i){ if(!p.act) return; g.fillStyle='rgba(127,224,200,'+(0.1+0.6*i/SL.hist.length)+')'; g.beginPath(); g.arc(20+p.x*(W-40),H-20-p.y*(H-40),4,0,7); g.fill(); });
+  if(act){ g.fillStyle='#7fe0c8'; g.beginPath(); g.arc(20+x*(W-40),H-20-y*(H-40),10,0,7); g.fill(); }
+  el('slNums').innerHTML='путь B − A <b>'+o.d.toFixed(0)+'</b> мм · сила B − A <b>'+o.l.toFixed(1)+'</b> дБ · расстояние A <b>'+o.cA.toFixed(0)+'</b> мм'+(act?'':' · <span class="bad">ладонь не движется / не слышна</span>')+
+    '<br>метки: слева '+(cal.L?cal.L.d.toFixed(0)+' мм / '+cal.L.l.toFixed(1)+' дБ':'— (по умолчанию −44 мм)')+' · справа '+(cal.R?cal.R.d.toFixed(0)+' мм / '+cal.R.l.toFixed(1)+' дБ':'— (по умолчанию −80 мм)');
+  if(SL.grab){ SL.grab.v.push(o); if(performance.now()-SL.grab.t0>3000){ var v=SL.grab.v.filter(function(q){ return q.act; }), med=function(a){ a=a.slice().sort(function(p,q){ return p-q; }); return a[a.length>>1]; };
+      if(v.length>=4) SL.cal[SL.grab.k]={d:med(v.map(function(q){ return q.d; })),l:med(v.map(function(q){ return q.l; }))}; el('sl'+SL.grab.k).textContent=SL.grab.k==='L'?'Держу слева (3 с)':'Держу справа (3 с)'; SL.grab=null; } } }
+function runStereoLive(){ var src=el('stSrc')?el('stSrc').value:'camcorder';
+  show('stLive'); SL={se:null,on:true,cal:SL.cal||{},hist:[],grab:null}; el('slNums').textContent='';
+  if(!stNative()){ el('slNums').innerHTML='<span class="bad">Только в приложении для Android</span>: браузер отдаёт один микрофон.'; return; }
+  pickChannel().then(function(){ return autoLevel(); }).then(function(){ setProbe('single-'+chan); stLabMicOff(); SL.se=StereoEcho();
+    return stNatStart(src,function(a,b){ if(SL.on&&SL.se) SL.se.push(a,b); }); }).then(function(){
+    (function tick(){ if(!SL.on) return; slDraw(); requestAnimationFrame(tick); })(); })
+  .catch(function(e){ el('slNums').innerHTML='<span class="bad">Не вышло: '+((e&&e.message)||e)+'</span>'; });
+}
+function stopStereoLive(){ SL.on=false; setProbe('off'); stNatStop(); stLabMicOn(); show('stIntro'); }
+el('stLiveGo').addEventListener('click',function(){ runStereoLive(); });
+el('slStop').addEventListener('click',stopStereoLive);
+el('slL').addEventListener('click',function(){ if(SL.se&&SL.se.ready()){ SL.grab={k:'L',t0:performance.now(),v:[]}; el('slL').textContent='Держи слева… качай'; } });
+el('slR').addEventListener('click',function(){ if(SL.se&&SL.se.ready()){ SL.grab={k:'R',t0:performance.now(),v:[]}; el('slR').textContent='Держи справа… качай'; } });
+el('stSweepGo').addEventListener('click',function(){ lastRec='recSt'; runStereo('sweep'); });
 /* ── БЛИЖНЯЯ И ДАЛЬНЯЯ РУКА (с 27.09, 0.39s) ──
    Один микрофон не слышит лево/право (2.7ж, 2.7з: стерео на iPhone в браузере — второй канал пустой), но слышит расстояние. Правило
    вместо направления: одна рука работает БЛИЗКО к телефону (6–10 см), другая ДАЛЕКО (16–24 см) — два пятна по расстоянию = две оси.

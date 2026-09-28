@@ -408,14 +408,30 @@
   <div class="col btns">
     <div id="stSrcRow" style="display:none">Запись в приложении: <select id="stSrc"><option value="camcorder">CAMCORDER (чаще стерео)</option><option value="unprocessed">UNPROCESSED</option><option value="mic">MIC</option><option value="voice">VOICE</option></select></div>
     <button id="stGo" class="big">Лежит, начать</button>
+    <button id="stLiveGo" class="ghost">Стерео вживую (прототип)</button>
+    <button id="stSweepGo" class="ghost">Запись с проводкой (51 с)</button>
     <button id="stBack" class="ghost">Назад</button>
   </div>
 </div></div>
 
 <div class="screen hidden" id="recSt">
   <div id="stHead"><div id="stSay"></div><div id="stSub"></div><div id="stClock"></div></div>
+  <div id="stBar" style="display:none;position:relative;height:28px;margin:10px 4%;border:1px solid #4a3f63;border-radius:14px"><div id="stDot" style="position:absolute;top:3px;width:22px;height:22px;margin-left:-11px;border-radius:11px;background:#7fe0c8;left:5%"></div></div>
   <div id="stInfo"></div>
 </div>
+
+<div class="screen hidden" id="stLive"><div class="two">
+  <div class="col">
+    <canvas id="slCv" width="360" height="360" style="width:100%;max-width:360px;aspect-ratio:1"></canvas>
+    <div id="slNums" style="margin-top:6px"></div>
+  </div>
+  <div class="col btns">
+    <p>Телефон лежит вертикально, разъёмом к себе. Качай ладонью вверх-вниз и, не переставая, веди её влево-вправо: точка — где ладонь (по горизонтали — лево/право, по вертикали — расстояние). Метки ниже подстраивают лево/право под твой телефон.</p>
+    <button id="slL" class="ghost">Держу слева (3 с)</button>
+    <button id="slR" class="ghost">Держу справа (3 с)</button>
+    <button id="slStop" class="big">Стоп</button>
+  </div>
+</div></div>
 
 <div class="screen hidden" id="recDone"><div class="two">
   <div class="col">

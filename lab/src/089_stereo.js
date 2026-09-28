@@ -30,6 +30,11 @@ function stNatStart(src,onFrames){ var A=window.SonaroidsApp; return new Promise
           onFrames(a,b); } }; res(); }
     window.addEventListener('message',h);
     if(!A.audioStart(JSON.stringify({mic:-1,out:-1,src:src,ch:2}))){ clearTimeout(to); window.removeEventListener('message',h); rej(new Error('приложение не открыло запись')); } }); }
+/* 0.61: the Mi 9 Lite gave pure silence in both channels on all three sources (14:13–14:16) while the lab's own WebView microphone was
+   still open: Android silences a second recording of the same app (the WebView's voice-call capture wins). So the lab's microphone is
+   closed for the stereo recording and opened again afterwards. */
+function stLabMicOff(){ try{ stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){} }
+function stLabMicOn(){ return openMic().then(function(s){ stream=s; var src=ctx.createMediaStreamSource(s); try{ src.connect(an); }catch(e){} try{ src.connect(node); }catch(e){} }).catch(function(){}); }
 function stNatStop(){ try{ window.SonaroidsApp.audioStop(); }catch(e){} try{ STN.onmessage=null; STN.close(); }catch(e){} STN=null; }
 function stInfo(){ if(ST.nat){ var j={}; try{ j=JSON.parse(window.SonaroidsApp.audioStatus()); }catch(e){} return {label:'app:'+ST.nat,settings:{channelCount:j.ch},caps:{},nch:ST.nch,app:j}; }
   var tr=ST.stream&&ST.stream.getAudioTracks()[0], st={}, cap={}; try{ st=tr.getSettings(); }catch(e){} try{ cap=tr.getCapabilities?tr.getCapabilities():{}; }catch(e){}
@@ -37,16 +42,16 @@ function stInfo(){ if(ST.nat){ var j={}; try{ j=JSON.parse(window.SonaroidsApp.a
 /* различаются ли каналы: корреляция и разница уровней по последней секунде */
 function stDiff(){ var n=Math.min(ST.a.length,94); if(n<10) return null; var sa=0,sb=0,sab=0,d=0;
   for(var f=ST.a.length-n;f<ST.a.length;f++){ var A=ST.a[f], B=ST.b[f]; for(var i=0;i<512;i++){ sa+=A[i]*A[i]; sb+=B[i]*B[i]; sab+=A[i]*B[i]; d+=(A[i]-B[i])*(A[i]-B[i]); } }
-  return {corr:sab/Math.sqrt(sa*sb||1e-30),db:10*Math.log10((sb||1e-30)/(sa||1e-30)),same:d<1e-12*n*512}; }
+  return {corr:sab/Math.sqrt(sa*sb||1e-30),db:10*Math.log10((sb||1e-30)/(sa||1e-30)),same:d<1e-12*n*512,silent:sa<1e-12&&sb<1e-12}; }
 function stShow(){ var I=stInfo(), D=stDiff(); el('stInfo').innerHTML='каналов от браузера: <b>'+(I.nch||'—')+'</b> · в настройках: '+(I.settings.channelCount||'—')+
-    (I.caps&&I.caps.channelCount?' (можно '+JSON.stringify(I.caps.channelCount)+')':'')+'<br>'+(D?(D.same?'каналы <b class="bad">одинаковые</b> — это один микрофон':'каналы <b class="good">разные</b>: сходство '+D.corr.toFixed(3)+', разница уровней '+D.db.toFixed(1)+' дБ'):'')+(I.label?'<br><span class="small">'+I.label+'</span>':''); }
+    (I.caps&&I.caps.channelCount?' (можно '+JSON.stringify(I.caps.channelCount)+')':'')+'<br>'+(D?(D.silent?'<b class="bad">тишина в обоих каналах</b> — запись не идёт':D.same?'каналы <b class="bad">одинаковые</b> — это один микрофон':'каналы <b class="good">разные</b>: сходство '+D.corr.toFixed(3)+', разница уровней '+D.db.toFixed(1)+' дБ'):'')+(I.label?'<br><span class="small">'+I.label+'</span>':''); }
 function runStereo(){ var S=SCRIPT_ST, TOT=S[S.length-1].t;
   show('recSt'); el('stSay').textContent='Открываю микрофон в стерео'; el('stSub').textContent='Рука убрана.'; el('stClock').textContent=''; el('stInfo').textContent='';
   ST={on:false,a:[],b:[],nch:0,stream:null,node:null,marks:{}};
   var natSrc=stNative()&&el('stSrc')?el('stSrc').value:'';
   pickChannel().then(function(){ return autoLevel(); }).then(function(){ setProbe('single-'+chan);
     if(natSrc){ ST.nat=natSrc; var push=function(a,b){ ST.nch=2; ST.a.push(a); ST.b.push(b); if(!ST.on&&ST.a.length>94){ ST.a.shift(); ST.b.shift(); } };
-      return stNatStart(natSrc,push).then(function(){ return sleep(1200); }); }
+      stLabMicOff(); return stNatStart(natSrc,push).then(function(){ return sleep(1200); }); }
     return navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:{ideal:2}}}); }).then(function(s){
     if(ST.nat) return;
     ST.stream=s; var src=ctx.createMediaStreamSource(s);
@@ -57,7 +62,7 @@ function runStereo(){ var S=SCRIPT_ST, TOT=S[S.length-1].t;
     return new Promise(function(done){ (function tick(){ var t=(performance.now()-t0)/1000, i; for(i=S.length-1;i>=0;i--) if(t>=S[i].t) break;
       if(i!==cur){ cur=i; var s=S[i]; if(s.k==='end'){ done(); return; } ST.marks[s.k]=ST.a.length*N; el('stSay').textContent=s.say; el('stSub').textContent=s.sub; stShow(); }
       el('stClock').textContent=t.toFixed(1)+' / '+TOT+' с'; requestAnimationFrame(tick); })(); }); }).then(function(){
-    ST.on=false; setProbe('off'); var I=stInfo(), D=stDiff(); if(ST.nat) stNatStop(); else try{ ST.stream.getTracks().forEach(function(t){ t.stop(); }); ST.node.disconnect(); }catch(e){}
+    ST.on=false; setProbe('off'); var I=stInfo(), D=stDiff(); if(ST.nat){ stNatStop(); stLabMicOn(); } else try{ ST.stream.getTracks().forEach(function(t){ t.stop(); }); ST.node.disconnect(); }catch(e){}
     var n=ST.a.length*N, L=new Float32Array(n), R=new Float32Array(n); ST.a.forEach(function(f,j){ L.set(f,j*N); }); ST.b.forEach(function(f,j){ R.set(f,j*N); });
     var so=(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0);
     recMeta={v:4,kind:'stereo-portrait',fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
@@ -66,7 +71,7 @@ function runStereo(){ var S=SCRIPT_ST, TOT=S[S.length-1].t;
     blob=wav2(L,R,recMeta); var d=new Date(), z=function(x){ return (x<10?'0':'')+x; };
     fname='sonarstereo_'+(ST.nat?ST.nat+'_':'')+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+'.wav';
     var pk=0; for(var i=0;i<n;i++) pk=Math.max(pk,Math.abs(L[i]),Math.abs(R[i])); showDone(pk,PROBE_SNR||0);
-  }).catch(function(e){ setProbe('off'); if(ST.nat) stNatStop(); el('stSay').textContent='Не вышло'; el('stSub').textContent=(e&&e.message)||String(e); });
+  }).catch(function(e){ setProbe('off'); if(ST.nat){ stNatStop(); stLabMicOn(); } el('stSay').textContent='Не вышло'; el('stSub').textContent=(e&&e.message)||String(e); });
 }
 /* WAV на два канала (float32, чередуются), метаданные — как у wav() */
 function wav2(L,R,meta){ var n=L.length, x=new Float32Array(2*n); for(var i=0;i<n;i++){ x[2*i]=L[i]; x[2*i+1]=R[i]; }

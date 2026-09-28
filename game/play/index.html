@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='0.69';
+var VERSION='0.70';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -1016,7 +1016,7 @@ STR.en={
   probe_t:'CHOOSE THE PROBE', probe_s:'WITH THIS SOUND THE PHONE HEARS YOUR HAND', probe_wide:'WIDE', probe_wide1:'CLEANER CONTROL', probe_wide2:'CHILDREN AND PETS MAY HEAR IT',
   probe_norm:'NORMAL', probe_norm1:'SILENT', probe_norm2:'SLIGHTLY ROUGHER CONTROL',
   away_t:'TAKE YOUR HAND AWAY', away_s:'LISTENING TO THE EMPTY ROOM', away_ok:'THE ROOM IS QUIET',
-  aud_fx:'PHONE PROCESSING:', aud_src:'SOURCE', aud_usage:'PROBE AS', aud_end:'PROBE FROM', turn_t:'TURN THE PHONE ROUND', turn_s:'BY 180° IF YOU PLAY', turn_s2:'WITH YOUR RIGHT HAND', turn_h:'ROUND LIKE A WHEEL — DON\'T FLIP IT FACE DOWN', lefty:'I PLAY LEFT-HANDED', aud_vol:'VOLUME', aud_keep:'LEAVE AS IS', aud_cam:'CAMERA END', aud_port:'PORT END', aud_media:'MEDIA', aud_game:'GAME', aud_autotest:'AUTO PICK', aud_notyet:'NOT DONE YET', aud_retest:'TEST AGAIN', aud_lab:'LAB', aud_nextgame:'WITH THE NEXT GAME', aud_link:'SOUND', aud_t:'APP SOUND', aud_s:'WHERE THE GAME TAKES THE MICROPHONE FROM AND WHERE THE PROBE PLAYS', aud_mode:'SOUND', aud_browser:'BROWSER', aud_app:'APP', aud_mic:'MICROPHONE', aud_out:'SPEAKER', aud_auto:'AUTO', aud_speaker:'SPEAKER', aud_earpiece:'EARPIECE', aud_bottom:'BOTTOM', aud_top:'TOP', aud_back:'BACK', aud_now:'NOW:', aud_active:'RECORDING:', aud_idle:'THE MICROPHONE OPENS WITH THE GAME', aud_browser_now:'NOW THE SOUND GOES THROUGH THE BROWSER: ANDROID PICKS THE MICROPHONE', aud_nopos:'THE PHONE DOES NOT TELL WHERE ITS MICROPHONES ARE',
+  aud_fx:'PHONE PROCESSING:', aud_src:'SOURCE', aud_usage:'PROBE AS', aud_end:'PROBE FROM', turn_t:'TURN THE PHONE ROUND', hub_s:'GAMES YOU PLAY WITH YOUR PALM', soon:'SOON', all_games:'← ALL GAMES', skin:'SKIN', skin_space:'SPACE', skin_fairy:'FAIRY TALE', skin_sea:'UNDER WATER', skin_sweet:'SWEETS', turn_s:'BY 180° IF YOU PLAY', turn_s2:'WITH YOUR RIGHT HAND', turn_h:'ROUND LIKE A WHEEL — DON\'T FLIP IT FACE DOWN', lefty:'I PLAY LEFT-HANDED', aud_vol:'VOLUME', aud_keep:'LEAVE AS IS', aud_cam:'CAMERA END', aud_port:'PORT END', aud_media:'MEDIA', aud_game:'GAME', aud_autotest:'AUTO PICK', aud_notyet:'NOT DONE YET', aud_retest:'TEST AGAIN', aud_lab:'LAB', aud_nextgame:'WITH THE NEXT GAME', aud_link:'SOUND', aud_t:'APP SOUND', aud_s:'WHERE THE GAME TAKES THE MICROPHONE FROM AND WHERE THE PROBE PLAYS', aud_mode:'SOUND', aud_browser:'BROWSER', aud_app:'APP', aud_mic:'MICROPHONE', aud_out:'SPEAKER', aud_auto:'AUTO', aud_speaker:'SPEAKER', aud_earpiece:'EARPIECE', aud_bottom:'BOTTOM', aud_top:'TOP', aud_back:'BACK', aud_now:'NOW:', aud_active:'RECORDING:', aud_idle:'THE MICROPHONE OPENS WITH THE GAME', aud_browser_now:'NOW THE SOUND GOES THROUGH THE BROWSER: ANDROID PICKS THE MICROPHONE', aud_nopos:'THE PHONE DOES NOT TELL WHERE ITS MICROPHONES ARE',
   wave_t:'WAVE YOUR PALM', wave_s:'5–10 CM ABOVE THE TABLE OR 5–15 CM FROM THE PHONE\'S END', wave_ok:'GOT YOUR RANGE', other_t:'WAVE ON THE OTHER SIDE', other_s:'THE PHONE DOES NOT HEAR THE PALM ON THIS SIDE', try_s:'THE SHIP FOLLOWS YOUR PALM — TRY THE TOP AND THE BOTTOM', cm:'CM',
   ring_wait:'GET READY', ring_listen:'LISTENING', ring_catch:'CATCHING THE RANGE', ring_ok:'DONE',
   start:'START', over:'GAME OVER', best:'BEST', again:'AGAIN', menu:'MENU', logs:'LOGS',
@@ -1044,7 +1044,7 @@ STR.ru={
   probe_t:'ВЫБЕРИ ЗОНД', probe_s:'ЭТИМ ЗВУКОМ ТЕЛЕФОН СЛЫШИТ ТВОЮ РУКУ', probe_wide:'ШИРОКИЙ', probe_wide1:'УПРАВЛЕНИЕ ЧИЩЕ', probe_wide2:'МОГУТ СЛЫШАТЬ ДЕТИ И ЖИВОТНЫЕ',
   probe_norm:'ОБЫЧНЫЙ', probe_norm1:'НЕ СЛЫШЕН', probe_norm2:'УПРАВЛЕНИЕ ЧУТЬ ГРУБЕЕ',
   away_t:'УБЕРИ РУКУ', away_s:'СЛУШАЮ ПУСТУЮ КОМНАТУ', away_ok:'КОМНАТА ТИХАЯ',
-  aud_fx:'ОБРАБОТКА ТЕЛЕФОНА:', aud_src:'ИСТОЧНИК', aud_usage:'ЗОНД КАК', aud_end:'ЗОНД ИЗ', turn_t:'РАЗВЕРНИ ТЕЛЕФОН', turn_s:'НА 180°, ЕСЛИ ИГРАЕШЬ', turn_s2:'ПРАВОЙ РУКОЙ', turn_h:'ПО КРУГУ, КАК РУЛЬ — НЕ ПЕРЕВОРАЧИВАЙ ЭКРАНОМ ВНИЗ', lefty:'ИГРАЮ ЛЕВОЙ РУКОЙ', aud_vol:'ГРОМКОСТЬ', aud_keep:'НЕ ТРОГАТЬ', aud_cam:'У КАМЕРЫ', aud_port:'У РАЗЪЁМА', aud_media:'МЕДИА', aud_game:'ИГРА', aud_autotest:'АВТОВЫБОР', aud_notyet:'ЕЩЁ НЕ ДЕЛАЛСЯ', aud_retest:'ПЕРЕПРОВЕРИТЬ', aud_lab:'ЛАБА', aud_nextgame:'БУДЕТ ПРИ СЛЕДУЮЩЕЙ ИГРЕ', aud_link:'ЗВУК', aud_t:'ЗВУК ПРИЛОЖЕНИЯ', aud_s:'ОТКУДА ИГРА БЕРЁТ МИКРОФОН И КУДА ИГРАЕТ ЗОНД', aud_mode:'ЗВУК', aud_browser:'БРАУЗЕР', aud_app:'ПРИЛОЖЕНИЕ', aud_mic:'МИКРОФОН', aud_out:'ДИНАМИК', aud_auto:'АВТО', aud_speaker:'ДИНАМИК', aud_earpiece:'РАЗГОВОРНЫЙ', aud_bottom:'НИЗ', aud_top:'ВЕРХ', aud_back:'СЗАДИ', aud_now:'СЕЙЧАС:', aud_active:'ПИШУТ:', aud_idle:'МИКРОФОН ОТКРОЕТСЯ ПРИ ИГРЕ', aud_browser_now:'СЕЙЧАС ЗВУК ЧЕРЕЗ БРАУЗЕР: МИКРОФОН ВЫБИРАЕТ ANDROID', aud_nopos:'ТЕЛЕФОН НЕ СООБЩАЕТ, ГДЕ МИКРОФОНЫ',
+  aud_fx:'ОБРАБОТКА ТЕЛЕФОНА:', aud_src:'ИСТОЧНИК', aud_usage:'ЗОНД КАК', aud_end:'ЗОНД ИЗ', turn_t:'РАЗВЕРНИ ТЕЛЕФОН', hub_s:'ИГРЫ, КОТОРЫМИ УПРАВЛЯЕТ ЛАДОНЬ', soon:'СКОРО', all_games:'← ВСЕ ИГРЫ', skin:'СКИН', skin_space:'КОСМОС', skin_fairy:'СКАЗКА', skin_sea:'ПОД ВОДОЙ', skin_sweet:'СЛАДОСТИ', turn_s:'НА 180°, ЕСЛИ ИГРАЕШЬ', turn_s2:'ПРАВОЙ РУКОЙ', turn_h:'ПО КРУГУ, КАК РУЛЬ — НЕ ПЕРЕВОРАЧИВАЙ ЭКРАНОМ ВНИЗ', lefty:'ИГРАЮ ЛЕВОЙ РУКОЙ', aud_vol:'ГРОМКОСТЬ', aud_keep:'НЕ ТРОГАТЬ', aud_cam:'У КАМЕРЫ', aud_port:'У РАЗЪЁМА', aud_media:'МЕДИА', aud_game:'ИГРА', aud_autotest:'АВТОВЫБОР', aud_notyet:'ЕЩЁ НЕ ДЕЛАЛСЯ', aud_retest:'ПЕРЕПРОВЕРИТЬ', aud_lab:'ЛАБА', aud_nextgame:'БУДЕТ ПРИ СЛЕДУЮЩЕЙ ИГРЕ', aud_link:'ЗВУК', aud_t:'ЗВУК ПРИЛОЖЕНИЯ', aud_s:'ОТКУДА ИГРА БЕРЁТ МИКРОФОН И КУДА ИГРАЕТ ЗОНД', aud_mode:'ЗВУК', aud_browser:'БРАУЗЕР', aud_app:'ПРИЛОЖЕНИЕ', aud_mic:'МИКРОФОН', aud_out:'ДИНАМИК', aud_auto:'АВТО', aud_speaker:'ДИНАМИК', aud_earpiece:'РАЗГОВОРНЫЙ', aud_bottom:'НИЗ', aud_top:'ВЕРХ', aud_back:'СЗАДИ', aud_now:'СЕЙЧАС:', aud_active:'ПИШУТ:', aud_idle:'МИКРОФОН ОТКРОЕТСЯ ПРИ ИГРЕ', aud_browser_now:'СЕЙЧАС ЗВУК ЧЕРЕЗ БРАУЗЕР: МИКРОФОН ВЫБИРАЕТ ANDROID', aud_nopos:'ТЕЛЕФОН НЕ СООБЩАЕТ, ГДЕ МИКРОФОНЫ',
   wave_t:'ПОМАШИ ЛАДОНЬЮ', wave_s:'5–10 СМ НАД СТОЛОМ ИЛИ 5–15 СМ ОТ ТОРЦА ТЕЛЕФОНА', wave_ok:'РАЗМАХ ПОЙМАН', other_t:'ПОМАШИ С ДРУГОЙ СТОРОНЫ', other_s:'С ЭТОЙ СТОРОНЫ ТЕЛЕФОН НЕ СЛЫШИТ ЛАДОНЬ', try_s:'КОРАБЛЬ ИДЁТ ЗА ЛАДОНЬЮ — ПРОВЕРЬ ВЕРХ И НИЗ', cm:'СМ',
   ring_wait:'ПРИГОТОВЬСЯ', ring_listen:'СЛУШАЮ', ring_catch:'ЛОВЛЮ РАЗМАХ', ring_ok:'ГОТОВО',
   start:'СТАРТ', over:'ИГРА ОКОНЧЕНА', best:'РЕКОРД', again:'ЕЩЁ РАЗ', menu:'МЕНЮ', logs:'ЖУРНАЛЫ',
@@ -1118,7 +1118,7 @@ function sky(dt,speed){                                             // nebula an
   var t=performance.now()/1000;
   stars.forEach(function(s){ var i=s.z<0.5?0:s.z<0.85?1:2; if(i===2&&Math.sin(t*3+s.tw)>0.6) i=1; lx.fillStyle=P.stars[i]; lx.fillRect(Math.round(s.x),Math.round(s.y),1,1); });
 }
-function light(x,y,rad,rgb,a){ lights.push([x,y,rad,rgb,a]); }
+function light(x,y,rad,rgb,a){ if(noLight) return; lights.push([x,y,rad,rgb,a]); }
 /* a soft light sprite per colour, made once: drawing it is much cheaper than a new gradient per light per frame */
 function glowSprite(rgb){ var c=glowSpr[rgb]; if(c) return c; c=document.createElement('canvas'); c.width=c.height=64; var x=c.getContext('2d'), g=x.createRadialGradient(32,32,0,32,32,32);
   g.addColorStop(0,'rgba('+rgb+',1)'); g.addColorStop(1,'rgba('+rgb+',0)'); x.fillStyle=g; x.fillRect(0,0,64,64); return glowSpr[rgb]=c; }
@@ -1393,6 +1393,206 @@ function sceneBoth(id,t,f,away,waves,T){
   var a=scene(id,t,f,away,waves,T,SPLIT_T), b=sceneHand(id,t,f,away,waves,T,SPLIT_H), out=a.concat(b);
   out.screens=[a.screen,b.screen]; out.push({x:Math.round(LW*0.515),y:Math.round(LH*0.55),t:L('or'),c:P.soft,a:'center'}); return out;
 }
+/* ── SKINS (v0.70, the maintainer's sketches of 28 Sep): the same game, other pictures. A skin draws the sky, the rocks, the ship, the saucer,
+   the power-ups, the shots and says the colours of the bursts; the game's logic, sizes and hit circles stay the same. The menus, the texts
+   and the getting-ready screens keep the game's own colours (P). 'space' is the game as it was. Chosen on the game's menu, kept in
+   'sonaroids_skin'. ── */
+var SKIN_IDS=['space','fairy','sea','sweet'];
+var noLight=false;                                                     // an off-screen preview draws no soft light
+/* a small pixel image made in memory, then turned into a canvas once */
+function Pix(w,h){ this.w=w; this.h=h; this.d=new Uint8ClampedArray(w*h*4); }
+Pix.prototype.put=function(x,y,c){ x=Math.round(x); y=Math.round(y); if(x<0||y<0||x>=this.w||y>=this.h) return; var o=(y*this.w+x)*4; this.d[o]=c[0]; this.d[o+1]=c[1]; this.d[o+2]=c[2]; this.d[o+3]=255; };
+Pix.prototype.clear=function(x,y){ x=Math.round(x); y=Math.round(y); if(x<0||y<0||x>=this.w||y>=this.h) return; this.d[(y*this.w+x)*4+3]=0; };
+Pix.prototype.get=function(x,y){ var o=(y*this.w+x)*4; return [this.d[o],this.d[o+1],this.d[o+2]]; };
+Pix.prototype.rect=function(x,y,w,h,c){ for(var j=Math.round(y);j<Math.round(y+h);j++) for(var i=Math.round(x);i<Math.round(x+w);i++) this.put(i,j,c); };
+Pix.prototype.disc=function(cx,cy,r,c){ for(var y=Math.floor(cy-r)-1;y<=cy+r+1;y++) for(var x=Math.floor(cx-r)-1;x<=cx+r+1;x++) if((x+0.5-cx)*(x+0.5-cx)+(y+0.5-cy)*(y+0.5-cy)<=r*r) this.put(x,y,c); };
+/* a lit ball on a 5-step ramp with ordered dithering, the game's look (rim: the darkest step at the edge) */
+Pix.prototype.ball=function(cx,cy,r,ramp,rim,k){ k=k===undefined?0.6:k; var n=ramp.length-1;
+  for(var y=Math.floor(cy-r)-1;y<=cy+r+1;y++) for(var x=Math.floor(cx-r)-1;x<=cx+r+1;x++){ var dx=(x+0.5-cx)/r, dy=(y+0.5-cy)/r, d=Math.sqrt(dx*dx+dy*dy);
+    if(d>1) continue; var lum=0.55+(-dx*0.62-dy*0.78)*k*d+(1-d)*0.2, i=Math.max(1,Math.min(n,Math.floor(lum*n+(bay(x,y)-0.5)*0.9+0.5)));
+    if(rim&&d>1-1.3/r) i=0; this.put(x,y,ramp[i]); } };
+Pix.prototype.poly=function(pts,c){ var y0=Math.floor(Math.min.apply(null,pts.map(function(p){ return p[1]; }))), y1=Math.ceil(Math.max.apply(null,pts.map(function(p){ return p[1]; })));
+  for(var y=y0;y<=y1;y++){ var py=y+0.5, xs=[]; for(var a=0,b=pts.length-1;a<pts.length;b=a++){ var A=pts[a], B=pts[b]; if((A[1]>py)!==(B[1]>py)) xs.push(A[0]+(py-A[1])*(B[0]-A[0])/(B[1]-A[1])); }
+    xs.sort(function(p,q){ return p-q; }); for(var k=0;k+1<xs.length;k+=2) for(var x=Math.ceil(xs[k]-0.5);x<=Math.floor(xs[k+1]-0.5);x++) this.put(x,y,c); } };
+Pix.prototype.map=function(rows,pal,x,y){ for(var j=0;j<rows.length;j++) for(var i=0;i<rows[j].length;i++){ var c=pal[rows[j][i]]; if(c) this.put(x+i,y+j,c); } };
+Pix.prototype.canvas=function(){ var c=document.createElement('canvas'); c.width=this.w; c.height=this.h; var x=c.getContext('2d'), im=x.createImageData(this.w,this.h); im.data.set(this.d); x.putImageData(im,0,0); return c; };
+function cH(s){ return hex(s); }
+function cHS(a){ return a.map(hex); }
+function mixc(a,b,t){ return [Math.round(a[0]+(b[0]-a[0])*t),Math.round(a[1]+(b[1]-a[1])*t),Math.round(a[2]+(b[2]-a[2])*t)]; }
+/* a vertical gradient through colour stops, ordered-dithered between neighbours */
+function vgradPix(p,stops){ var S=cHS(stops), n=S.length-1; for(var y=0;y<p.h;y++){ var t=y/(p.h-1)*n, i=Math.min(n-1,Math.floor(t)), f=t-i; for(var x=0;x<p.w;x++) p.put(x,y,f>bay(x,y)?S[i+1]:S[i]); } }
+function srand(seed){ var s=seed>>>0||1; return function(){ s=(s*1664525+1013904223)>>>0; return s/4294967296; }; }
+/* a sprite drawn from rows once per colour set and kept */
+var mapCache={};
+function mapCanvas(key,rows,pal){ if(mapCache[key]) return mapCache[key]; var w=0; rows.forEach(function(r){ w=Math.max(w,r.length); }); var p=new Pix(w,rows.length), P2={};
+  for(var k in pal) if(pal[k]) P2[k]=cH(pal[k]); p.map(rows,P2,0,0); return mapCache[key]=p.canvas(); }
+function whiteMap(rows){ return rows.map(function(r){ return r.replace(/[^.]/g,'w'); }); }
+/* a sky: a canvas twice the screen's width drifting left (as the nebula does), made once per screen size, plus drifting motes */
+function skySheet(sk){ var key=LW+'x'+LH; if(sk._sheet&&sk._sheet.key===key) return sk._sheet;
+  var w=LW*2, p=new Pix(w,LH); sk.paint(p,w,LH); var sh={key:key,c:p.canvas(),x:0,motes:[]};
+  var R2=srand(7); for(var i=0;i<Math.round(LW*LH/(sk.moteDiv||900));i++) sh.motes.push({x:R2()*LW,y:R2()*LH*(sk.moteH||1),z:R2(),tw:R2()*6});
+  return sk._sheet=sh; }
+function skinSky(sk,dt,speed){ var sh=skySheet(sk); sh.x=(sh.x+3*K*dt*speed*(sk.skySpeed||1))%(LW*2);
+  lx.drawImage(sh.c,-Math.floor(sh.x),0); lx.drawImage(sh.c,LW*2-Math.floor(sh.x),0);
+  var t=performance.now()/1000;
+  sh.motes.forEach(function(m){ m.x-=(4+m.z*m.z*20)*K*dt*speed; m.y+=(sk.moteUp||0)*K*dt*(0.5+m.z); if(m.x<0){ m.x+=LW; m.y=Math.random()*LH*(sk.moteH||1); } if(m.y<0) m.y+=LH*(sk.moteH||1);
+    var c=sk.motes[m.z<0.6?0:1]; if(Math.sin(t*3+m.tw)>0.7) c=sk.motes[2]||c; R(c,Math.round(m.x),Math.round(m.y),1,1); }); }
+/* hills that wrap round the sheet's width: a sum of sines with whole periods */
+function hill(x,w,base,amp,seed){ var a=2*Math.PI*x/w; return base+amp*(0.6*Math.sin(a*3+seed)+0.3*Math.sin(a*7+seed*2)+0.15*Math.sin(a*13+seed*3)); }
+
+var SKINS={};
+/* ═══ space — the game as it was ═══ */
+SKINS.space={id:'space', glow:true,
+  sky:function(dt,s){ sky(dt,s); },
+  rock:function(r){ return makeRock(r); },
+  ship:function(x,y,t,blink){ drawShip(x,y,t,blink); },
+  ufo:function(ux,uy,big,hurt){ blit(big?UFO_BIG:UFO_SMALL,hurt?[P.text,P.text,P.text,P.text]:P.ufo,ux-(big?9:6),uy-(big?4:2));
+    if(Math.floor(clock*6)%2){ R(P.ufo[3],ux-(big?5:3),uy+1,1,1); R(P.ufo[3],ux+(big?4:2),uy+1,1,1); } light(ux,uy,(big?22:16)*K,hex(P.ufo[2]).join(','),0.35); },
+  pick:function(x,y,type){ R(P.pick,x-5,y-5,11,11); R(P.bg,x-4,y-4,9,9); blit(ICON[type],[P.pick],x-3,y-3); light(x,y,14*K,P.glowP,0.35); },
+  bullet:function(x,y){ R(P.bullet,x-2,y,4,1); light(x,y,6*K,P.glowB,0.45); },
+  ebullet:function(x,y){ R(P.ebullet,x-1,y-1,2,2); light(x,y,7*K,hex(P.ebullet).join(','),0.5); },
+  bursts:function(){ return {rock:P.rock.slice(2).concat([P.flame[1]]),ufo:P.ufo,ship:P.ship.concat(P.flame),pick:[P.pick,P.text]}; },
+  shield:function(){ return P.pick; }, mini:function(){ return [P.ship[1],P.ship[2]]; } };
+
+/* ═══ fairy — a little dragon over a fairy-tale land by day; grumpy storm clouds, a bat for the saucer, fireballs, gold coins ═══ */
+var DRAGON=['...........h.h....','..www.....gGgGg...','.wWWWw...gGGGGGg..','.wWWWWw.gGGGekGGg.','..wWWWWwgGGGGGGGGy','...wwWWgGGGGGGggg.',
+  'g...wwgGGGLLLg....','Gg..gGGGGLLLLg....','.GggGGGGLLLLg.....','..GGGGGGGLLg......','....gGg.gGg.......','....gg...gg.......'];
+var DRAGON_PAL={g:'#1f8a5a',G:'#3fc486',L:'#fff1a6',w:'#c86fb6',W:'#ff9ed8',e:'#ffffff',k:'#1a1a2a',h:'#ffd23f',y:'#ff8a5a'};
+var BAT=['k................k','kk.....k..k.....kk','kmk....kkkk....kmk','kmmkk.kkkkkk.kkmmk','kmmmmkkekkekkmmmmk','.kmm.kkkkkkkk.mmk.','..k...kkkkkk...k..','.......k..k.......'];
+var BAT_S=['k..........k','kk..k..k..kk','kmkkkkkkkkmk','kmmkekkekmmk','.km.kkkk.mk.','....k..k....'];
+SKINS.fairy={id:'fairy', glow:false, motes:['#ffffff','#fff6b0','#ffd6ec'], moteDiv:1400, moteH:0.8,
+  paint:function(p,w,h){ vgradPix(p,['#6ec3ff','#8fd3ff','#b6e3ff','#d9eeff','#ffe3f1']);
+    var R2=srand(4), cl=cH('#d2ecff');
+    for(var i=0;i<9;i++){ var cx=R2()*w, cy=h*(0.08+R2()*0.55), s=0.8+R2()*0.7;
+      [[-14,3,7],[-5,-2,10],[7,0,9],[16,4,6]].forEach(function(b){ for(var d=-w;d<=w;d+=w) p.disc(cx+d+b[0]*s,cy+b[1]*s,b[2]*s,cl); }); }
+    var hl=cH('#c7b5f0'), hl2=cH('#bca8ea'), c1=cH('#b3a0e6'), c2=cH('#9f8ad8'), roof=cH('#f5a8d4'), gr=cH('#9fe0a0'), grl=cH('#c8f5b8');
+    for(var x=0;x<w;x++){ var y1=Math.round(hill(x,w,h-20,7,1)); for(var y=y1;y<h;y++) p.put(x,y,(x+y)%17?hl:hl2); }
+    [w*0.3,w*0.8].forEach(function(cx){ cx=Math.round(cx); var base=Math.round(hill(cx,w,h-20,7,1))+2;             // two castles far away
+      p.rect(cx-14,base-14,36,18,c1); for(var i=0;i<36;i+=4) p.rect(cx-14+i,base-16,2,2,c1); p.rect(cx+1,base-8,6,12,c2);
+      [[-18,7,26],[-3,8,34],[16,7,24]].forEach(function(t){ p.rect(cx+t[0],base-t[2],t[1],t[2]+4,c1); p.poly([[cx+t[0]-1,base-t[2]],[cx+t[0]+t[1]/2,base-t[2]-11],[cx+t[0]+t[1]+1,base-t[2]]],roof); }); });
+    for(x=0;x<w;x++){ var y2=Math.round(hill(x,w,h-9,4,2.5)); for(y=y2;y<h;y++) p.put(x,y,y>y2+1?gr:grl); } },
+  sky:function(dt,s){ skinSky(this,dt,s); },
+  rock:function(r,sz,seed){ var ramp=cHS(['#3f3670','#5f5596','#8279b8','#a9a2d6','#d0cbef']), n=Math.ceil(r*2.6)+4, p=new Pix(n,n), c=n/2;
+    var B=[[-0.55,0.15,0.55],[0,-0.2,0.7],[0.5,0.1,0.55],[0.1,0.35,0.5],[-0.3,0.4,0.4]];
+    B.forEach(function(b){ p.ball(c+b[0]*r,c+b[1]*r,b[2]*r+1,ramp,true); }); B.forEach(function(b){ p.ball(c+b[0]*r,c+b[1]*r,b[2]*r,ramp,false); });
+    if(r>=12){ var d=cH('#3d3a66'), wh=[255,255,255];                                                 // a grumpy face and a tiny lightning on the big ones
+      [-4,3].forEach(function(ex){ p.rect(c+ex,c+1,2,3,d); p.put(c+ex,c+1,wh); }); p.rect(c-6,c-2,3,1,d); p.put(c-4,c-1,d); p.rect(c+4,c-2,3,1,d); p.put(c+4,c-1,d); p.rect(c-1,c+6,3,1,d);
+      [[2,0],[1,1],[0,2],[1,2],[2,2],[1,3],[0,4]].forEach(function(q){ p.put(c+q[0]-1,c+r*0.8+q[1],cH('#ffe066')); }); }
+    var cv=p.canvas(), fr=[]; for(var i=0;i<16;i++) fr.push(cv); return {frames:fr,size:n,rot:0,vr:0}; },
+  ship:function(x,y,t,blink){ if(blink) return; x=Math.round(x); y=Math.round(y);
+    for(var i=0;i<5;i++){ lx.globalAlpha=0.9-i*0.15; R('#fff3a6',x-3-i*2,y+3+(i%2)+Math.round(Math.sin(t*9+i)),1,1); } lx.globalAlpha=1;
+    lx.drawImage(mapCanvas('dragon',DRAGON,DRAGON_PAL),x-1,y-7); },
+  ufo:function(ux,uy,big,hurt){ var m=big?BAT:BAT_S, flap=Math.floor(clock*6)%2, pal=hurt?{w:'#ffffff'}:{k:'#4a2d7a',m:flap?'#8f6ad0':'#6f4aa8',e:'#ffe066'};
+    lx.drawImage(mapCanvas('bat'+big+hurt+flap,hurt?whiteMap(m):m,pal),ux-(big?9:6),uy-(big?4:3)); },
+  pick:function(x,y,type){ var c=mapCanvas('coin',['..yyyyyyy..','.yYYYYYYYy.','yYYYYYYYYYy','yYYYYYYYYYy','yYYYYYYYYYy','yYYYYYYYYYy','yYYYYYYYYYy','yYYYYYYYYYy','yYYYYYYYYYy','.yYYYYYYYy.','..yyyyyyy..'],{y:'#ffb020',Y:'#fff3c0'});
+    lx.drawImage(c,x-5,y-5); blit(ICON[type],['#e0902a'],x-3,y-3); if(Math.floor(clock*4)%2) R('#ffffff',x+6,y-6,1,1); },
+  bullet:function(x,y){ R('#ff8a3d',x-3,y-1,5,3); R('#ffd23f',x-2,y,4,1); R('#fff6c8',x+1,y,1,1); },
+  ebullet:function(x,y){ R('#ff5ab4',x,y,1,1); R('#ffb3dc',x-1,y,1,1); R('#ffb3dc',x+1,y,1,1); R('#ffb3dc',x,y-1,1,1); R('#ffb3dc',x,y+1,1,1); },
+  bursts:function(){ return {rock:['#ffffff','#d0cbef','#a9a2d6','#ffe066'],ufo:['#8f6ad0','#4a2d7a','#ffe066'],ship:['#3fc486','#fff1a6','#ff9ed8'],pick:['#ffd23f','#ffffff']}; },
+  shield:function(){ return '#ffd23f'; }, mini:function(){ return ['#1f8a5a','#3fc486']; } };
+
+/* ═══ sea — a yellow submarine in a warm sea; puffer fish, a shark for the saucer, torpedoes, power-ups in bubbles ═══ */
+var SUB=['.........pp.......','.........p........','........yyyy......','.....yyyYYYYyy....','...yyYYYYYYYYYYy..','o.yYYwwYYwwYYYYYy.','oyyYYwwYYwwYYYYYYy','o.yYYYYYYYYYYYYYy.','...yydddddddddyy..'];
+var SUB_PAL={y:'#d9941e',Y:'#ffd23f',w:'#7fe8ff',p:'#8a9aa8',o:'#8a9aa8',d:'#b87a14'};
+var SHARK=['..........k.......','.........kk.......','....kkkkkkkkk....k','..kkmmmmmmmmmkk.kk','.kekmmmmmmmmmmmkkk','kkmmmmmmmmmmmmmkk.','.wwwwwwwwwwmmkk.kk','..wwwwwwww.....k..'];
+var SHARK_S=['.......k....','...kkkkkk..k','.kkmmmmmmkkk','kemmmmmmmmk.','.wwwwwwmkk.k','..wwww....k.'];
+SKINS.sea={id:'sea', glow:false, motes:['#bff6ff','#e8fdff','#ffffff'], moteDiv:700, moteUp:-3,
+  paint:function(p,w,h){ vgradPix(p,['#5fe0e8','#3cc4dc','#27a3cf','#1d86bf','#1a74b0']);
+    var ray=cH('#bff6ff'); for(var y=0;y<h;y++) for(var x=0;x<w;x++){ var v=(x+y*0.45)%70; if(v<9&&bay(x,y)<0.5*(1-y/h)){ var c=p.get(x,y); p.put(x,y,mixc(c,ray,0.35)); } }
+    var s1=cH('#e8d79a'), s2=cH('#d9c688'), R2=srand(9);
+    for(x=0;x<w;x++){ var yy=Math.round(hill(x,w,h-9,3,4)); for(y=yy;y<h;y++) p.put(x,y,(x*3+y)%11?s1:s2); }
+    for(var i=0;i<Math.round(w/28);i++){ var wx=Math.round(R2()*w), hg=12+Math.round(R2()*22), c=cH(R2()<0.5?'#2aa876':'#1f8f66');
+      for(var j=0;j<hg;j++){ p.put(wx+Math.round(2*Math.sin(j/3)),h-8-j,c); p.put(wx+1+Math.round(2*Math.sin(j/3)),h-8-j,c); } }
+    for(i=0;i<Math.round(w/60);i++){ var cx=10+Math.round(R2()*(w-20)), cc=cH(['#ff8fa3','#ffa94d','#c38cff'][i%3]); for(var a=0;a<3;a++) for(var r=0;r<7;r++) p.put(cx+(a-1)*r*0.5,h-8-r,cc); } },
+  sky:function(dt,s){ skinSky(this,dt,s); },
+  rock:function(r,sz,seed){ var ramps=[['#a8561a','#e08a2c','#ffc24a','#ffe38a','#fff6c8'],['#b0406e','#e86e9c','#ff9ec2','#ffc9dc','#fff0f6'],['#2f6fb0','#4f9ae0','#7fc0ff','#b8dcff','#ecf6ff']];
+    var ramp=cHS(sz===0?ramps[0]:ramps[seed%3]), n=Math.ceil(r*3.4)+6, p=new Pix(n,n), c=Math.round(n*0.42), cy=n/2;
+    for(var a=0;a<360;a+=(r>6?30:60)){ var an=(a+15)*Math.PI/180; p.put(c+Math.cos(an)*(r+1.2),cy+Math.sin(an)*(r+1.2),ramp[0]); }
+    p.poly([[c+r-1,cy],[c+r+r*0.6,cy-r*0.5],[c+r+r*0.6,cy+r*0.5]],ramp[1]);                             // the tail behind, to the right
+    p.ball(c,cy,r,ramp,true); var ex=c-r*0.45, ey=cy-r*0.25;                                          // the eye looks left, at the player
+    if(r>6){ p.rect(ex-1,ey-1,3,3,[255,255,255]); p.rect(ex-1,ey,2,2,cH('#1a1a2a')); p.rect(c-r*0.85,cy+r*0.2,2,1,ramp[0]); } else p.put(ex,ey,cH('#1a1a2a'));
+    var cv=p.canvas(), fr=[]; for(var i=0;i<16;i++) fr.push(cv); return {frames:fr,size:n,rot:0,vr:0,ox:n/2-c}; },
+  ship:function(x,y,t,blink){ if(blink) return; x=Math.round(x); y=Math.round(y);
+    [[-5,1,1],[-9,-1,1.6],[-14,2,1.2],[-19,0,2]].forEach(function(b,i){ var bx=x+b[0]-((t*20)%3), by=y+b[1]; lx.globalAlpha=0.8-i*0.15;
+      for(var a=0;a<8;a++) R('#ffffff',bx+Math.round(Math.cos(a*0.785)*b[2]),by+Math.round(Math.sin(a*0.785)*b[2]),1,1); }); lx.globalAlpha=1;
+    lx.drawImage(mapCanvas('sub',SUB,SUB_PAL),x-1,y-5); },
+  ufo:function(ux,uy,big,hurt){ var m=big?SHARK:SHARK_S, pal=hurt?{w:'#ffffff'}:{k:'#3d5a80',m:'#6f8fb8',w:'#e8f1ff',e:'#ffffff'};
+    lx.drawImage(mapCanvas('shark'+big+hurt,hurt?whiteMap(m):m,pal),ux-(big?9:6),uy-(big?4:3)); },
+  pick:function(x,y,type){ var c=mapCanvas('bubble',['...wwwww...','..w.....w..','.w.h.....w.','w.h.......w','w.........w','w.........w','w.........w','w.........w','.w.......w.','..w.....w..','...wwwww...'],{w:'#e8fdff',h:'#ffffff'});
+    lx.drawImage(c,x-5,y-5); blit(ICON[type],['#ffe066'],x-3,y-3); },
+  bullet:function(x,y){ R('#e8f1ff',x-3,y,5,2); R('#ff7a3d',x+2,y,1,2); R('#8a9aa8',x-4,y,1,1); },
+  ebullet:function(x,y){ R('#ff7a9a',x-1,y,1,1); R('#ff7a9a',x+1,y,1,1); R('#ff7a9a',x,y-1,1,1); R('#ff7a9a',x,y+1,1,1); },
+  bursts:function(){ return {rock:['#ffffff','#e8fdff','#ffe38a','#ffc24a'],ufo:['#6f8fb8','#e8f1ff','#ffffff'],ship:['#ffd23f','#d9941e','#ffffff'],pick:['#ffe066','#ffffff']}; },
+  shield:function(){ return '#e8fdff'; }, mini:function(){ return ['#d9941e','#ffd23f']; } };
+
+/* ═══ sweet — a candy rocket in a pink sky with sprinkles; doughnut → cookie → sweets, a macaron saucer, sprinkles for shots ═══ */
+var SPR=['#ff5a8a','#ffd23f','#5ac8ff','#7ee07e','#b58cff','#ffffff'];
+var MACARON=['....pppppppppp....','..ppPPPPPPPPPPpp..','.pPPPPPPPPPPPPPPp.','rrrrrrrrrrrrrrrrrr','cccccccccccccccccc','rrrrrrrrrrrrrrrrrr','.pPPPPPPPPPPPPPPp.','..pppppppppppppp..'];
+var MACARON_S=['..pppppppp..','.pPPPPPPPPp.','rrrrrrrrrrrr','cccccccccccc','rrrrrrrrrrrr','.pPPPPPPPPp.'];
+SKINS.sweet={id:'sweet', glow:false, motes:['#ffffff','#fff7fb','#ffd23f'], moteDiv:1600,
+  paint:function(p,w,h){ vgradPix(p,['#ffc9e3','#ffd6e8','#ffe2ea','#ffead9','#fff0cf']);
+    var R2=srand(11), cr=cH('#fff7fb');
+    for(var i=0;i<8;i++){ var cx=R2()*w, cy=h*(0.1+R2()*0.8), s=0.9+R2()*0.6;
+      [[-12,3,7],[-4,-2,9],[6,0,8],[14,4,5]].forEach(function(b){ for(var d=-w;d<=w;d+=w) p.disc(cx+d+b[0]*s,cy+b[1]*s,b[2]*s,cr); }); }
+    // sprinkles: sparse and pale, so the shots (bright sprinkles) stand out against them
+    for(i=0;i<Math.round(w*h/1400);i++){ var x=Math.floor(R2()*w), y=Math.floor(R2()*h), c=mixc(cH(SPR[i%5]),p.get(x,y),0.55); p.put(x,y,c); if(R2()<0.5) p.put(x+1,y,c); else p.put(x,y+1,c); } },
+  sky:function(dt,s){ skinSky(this,dt,s); },
+  rock:function(r,sz,seed){ var n=Math.ceil(r*2)+(sz===2?12:4), p=new Pix(n,n), c=n/2, R2=srand(seed*31+7);
+    if(sz===0){ p.ball(c,c,r,cHS(['#8a4a1c','#c47a3a','#e0a060','#f0c088','#ffe0b8']),true);                 // a doughnut with icing and sprinkles
+      var ic=cHS(seed%2?['#b0306a','#e0508c','#ff7fb4','#ffb3d4','#ffe0ee']:['#5a2f1c','#7a4028','#9a5a38','#c07a50','#e0a07a']);
+      for(var y=0;y<n;y++) for(var x=0;x<n;x++){ var dx=x+0.5-c, dy=y+0.5-c, d=Math.sqrt(dx*dx+dy*dy), an=Math.atan2(dy,dx);
+        if(d<r*(0.78+0.08*Math.sin(an*7))){ var lum=0.6+(-dx*0.62-dy*0.78)/r*0.45; p.put(x,y,ic[Math.max(1,Math.min(4,Math.floor(lum*4+bay(x,y)-0.5)))]); } }
+      for(var i=0;i<14;i++){ var a=R2()*6.28, dd=(0.42+R2()*0.3)*r, cc=cH(SPR[i%6]), px=c+Math.cos(a)*dd, py=c+Math.sin(a)*dd; p.put(px,py,cc); p.put(px+(i%2),py+1-(i%2),cc); }
+      var hr=r*0.3; for(y=0;y<n;y++) for(x=0;x<n;x++){ var q=Math.sqrt((x+0.5-c)*(x+0.5-c)+(y+0.5-c)*(y+0.5-c)); if(q<hr-1.2) p.clear(x,y); else if(q<hr) p.put(x,y,cH('#8a4a1c')); } }
+    else if(sz===1){ p.ball(c,c,r,cHS(['#8a5220','#c07a3a','#dea060','#f0c080','#ffe2b0']),true);          // a cookie with chocolate chips
+      for(i=0;i<6;i++){ var a2=R2()*6.28, d2=R2()*0.7*r; p.rect(c+Math.cos(a2)*d2,c+Math.sin(a2)*d2,2,2,cH('#5a2f14')); } }
+    else { var cc2=cH(['#ff5a8a','#5ac8ff','#7ee07e'][seed%3]), wr=mixc(cc2,[255,255,255],0.4);                   // a wrapped sweet
+      p.poly([[c-r,c],[c-r-4,c-3],[c-r-4,c+3]],wr); p.poly([[c+r,c],[c+r+4,c-3],[c+r+4,c+3]],wr);
+      for(y=0;y<n;y++) for(x=0;x<n;x++) if((x+0.5-c)*(x+0.5-c)+(y+0.5-c)*(y+0.5-c)<=r*r) p.put(x,y,Math.floor((x-y)/2)%2?cc2:[255,255,255]); p.put(c-2,c-2,[255,255,255]); }
+    var cv=p.canvas(), fr=[]; for(i=0;i<16;i++) fr.push(cv); return {frames:fr,size:n,rot:0,vr:0}; },
+  ship:function(x,y,t,blink){ if(blink) return; x=Math.round(x); y=Math.round(y); var fl=Math.floor(t*20)%3;
+    R('#ffd23f',x-4-fl,y-1,4+fl,3); R('#ff8a3d',x-3,y,2,1);
+    if(!mapCache.rocket){ var rows=SHIP_MAP.map(function(r,j){ return r.split('').map(function(ch,i){ return ch==='.'?'.':ch==='1'?'d':(Math.floor((i+j)/2)%2?'w':'r'); }).join(''); }); mapCanvas('rocket',rows,{d:'#b0104a',w:'#ffffff',r:'#ff3b6b'}); }
+    lx.drawImage(mapCache.rocket,x,y-5); R('#7fd8ff',x+9,y-1,2,3); },
+  ufo:function(ux,uy,big,hurt){ var m=big?MACARON:MACARON_S, pal=hurt?{w:'#ffffff'}:{p:'#8f5ad0',P:'#b98cff',r:'#a070e0',c:'#fff4e0'};
+    lx.drawImage(mapCanvas('mac'+big+hurt,hurt?whiteMap(m):m,pal),ux-(big?9:6),uy-(big?4:3)); },
+  pick:function(x,y,type){ R('#ff5a8a',x-5,y-5,11,11); R('#ffffff',x-4,y-4,9,9); blit(ICON[type],['#ff5a8a'],x-3,y-3);
+    R('#7ee07e',x-1,y-8,1,3); R('#7ee07e',x+1,y-8,1,3); R('#7ee07e',x-2,y-8,1,1); R('#7ee07e',x+2,y-8,1,1); },
+  bullet:function(x,y){ R(SPR[Math.floor(x/10)%5],x-2,y,4,1); },
+  ebullet:function(x,y){ R('#6b3a1c',x-1,y-1,3,2); },
+  bursts:function(){ return {rock:['#e0a060','#c47a3a','#ff7fb4','#ffd23f','#5ac8ff'],ufo:['#b98cff','#fff4e0','#8f5ad0'],ship:['#ff3b6b','#ffffff','#ffd23f'],pick:['#ff5a8a','#ffffff']}; },
+  shield:function(){ return '#ff5a8a'; }, mini:function(){ return ['#b0104a','#ff3b6b']; } };
+
+var skinId=(function(){ var s=null; try{ s=localStorage.getItem('sonaroids_skin'); }catch(e){} return SKIN_IDS.indexOf(s)>=0?s:'space'; })(), SK=SKINS[skinId];
+function setSkin(id){ if(!SKINS[id]) return; skinId=id; SK=SKINS[id]; try{ localStorage.setItem('sonaroids_skin',id); }catch(e){} }
+
+/* ── the demo flight behind the menus and in the games' cards: a few rocks drifting left, the ship bobbing and firing, now and then
+   a saucer — drawn with any skin, on the screen or into an off-screen canvas ── */
+var demo=null, demoSpr={};
+function demoMake(){ var R2=srand(5), d={rocks:[],shots:[],ufo:{x:LW*0.8,y:LH*0.35},t:0};
+  for(var i=0;i<7;i++) d.rocks.push({x:LW*(0.3+R2()*0.8),y:LH*(0.12+R2()*0.76),sz:i%3===0?0:i%3===1?1:2,v:10+R2()*14,id:i});
+  return d; }
+function demoRock(sk,sz,id){ var k=sk.id+':'+sz+':'+id+':'+K; if(!demoSpr[k]) demoSpr[k]=sk.rock(Math.max(3,Math.round(Core.R_SIZE[sz]*K)),sz,id*13+sz); return demoSpr[k]; }
+function drawDemo(sk,dt,shipX){ if(!demo||demo.LW!==LW){ demo=demoMake(); demo.LW=LW; } var d=demo; d.t+=dt;
+  sk.sky(dt,0.5);
+  d.rocks.forEach(function(r){ r.x-=r.v*K*dt; if(r.x<-20){ r.x=LW+20; r.y=LH*(0.12+Math.random()*0.76); }
+    var sp=demoRock(sk,r.sz,r.id), fr=sp.frames[Math.floor((d.t*2+r.id)%16)]; lx.drawImage(fr,Math.round(r.x-sp.size/2+(sp.ox||0)),Math.round(r.y-sp.size/2)); });
+  var sy=Math.round(LH*(0.5+0.18*Math.sin(d.t*0.9))), sx=Math.round(shipX===undefined?fx(Core.SHIP_X):shipX);
+  if(Math.floor(d.t*6)!==Math.floor((d.t-dt)*6)) d.shots.push({x:sx+16,y:sy});
+  d.shots=d.shots.filter(function(b){ b.x+=190*K*dt; return b.x<LW+10; }); d.shots.forEach(function(b){ sk.bullet(b.x,b.y); });
+  var u=d.ufo; u.x-=6*K*dt; if(u.x<-30) u.x=LW+60; sk.ufo(Math.round(u.x),Math.round(u.y+Math.sin(d.t*1.7)*6),true,false);
+  sk.ship(sx,sy,d.t,false); }
+/* a demo frame of skin sk into an off-screen canvas at the screen's size (for the games' cards and the games' screen background) */
+var demoC=null;
+function demoInto(sk,dt){ if(!demoC||demoC.width!==LW||demoC.height!==LH){ demoC=document.createElement('canvas'); demoC.width=LW; demoC.height=LH; }
+  var keep=lx; lx=demoC.getContext('2d'); lx.imageSmoothingEnabled=false; noLight=true; try{ drawDemo(sk,dt); } finally { lx=keep; noLight=false; } return demoC; }
+/* v0.70: SonaRace («soon») — five of its look sketches, 160×72, for its card on the games' screen (made by the race sketches, not by the game) */
+var RACE_THUMBS=[
+'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAABICAMAAABGBg7wAAAASFBMVEX/////0j/08dC/6P9vz1pswkpitkIW1rCykyx9f4pKo/8Plns/nDpPmjg+ijT/b6D/WlroSD91d4KyPz8vfTI0crJaLQwaGiII+BwnAAAEAElEQVR42u2aC3OcIBCAV7S5eBHv1pDk///TAioCLvLQaDMNM3ZuGApfln2xAC+6/dHtX/wNv4C/gL+A/xugCPQjAujvWsCu6QTVD9DqNrQtwpWATdNpQq8fFZlpgBdKUPIJ7vdj6zW0/m9VSakr3ZiEH57/sRsQ/gjZuA8INtsoSoBljJa61g5aPY41Es4Vn9MPNpklxHnMKHUl/E7wC9wMDi3ZpLGMY4Ti40b4ZwOu9G8RJUxjNJ8U/si3NefjeECgyIwQcRyv+RTi+ZEEaDLZXivdXq8NdUirnwKuqrqWXyWjy3WAHh+zRTkBQq8c9xwG1XciINgyYzPl9KP/6vv+S/6ztu6seE0DVuuB0kn48Tekfkx3a7SeNvCMeE0DwmpgN4YDuz+ofindyfE6dYs1IHcTBEti22SfVDceCyg6D9DwDSwqs89PqtuO1wcYiZjiwZIgDJb8CDLmAlISxkOtmI/xwEkQHI5U9bO68ZvcDGKRYRDd8C2AcACZn1AcCQhZCCwyGo8GRMyWGdscjaWAdvycfRYChNYyY6PAjPm7XAA4LWSdMcziS7e90DIPQq6EIRcQ9DZG9Yw56b2dRGCmvWAWICUBai22dOM6T4yT2fLf8Bh+0AbM9xqEq/B1NTIJBu2ghdbOeBFyyN6fur1vOvO0TabiMuh4D62d8eZ52uezruX3DLglyPLiSCbEQws7gtYECH3Ab7rqEpt7FZdHNNgRtExWH3TsWmWSc1i33jP9dVBAZuyv76Xq9NvnlpjRsaXbOqssRgb5gZ7RVaytiJQ6NypjeXH8cHZmwuxAn1y/AefoubUken4YwmRjzGTMiZ3O6NIjK9LBgM7HdmRzu87UmLikffh+u+n2lgi8sxa96NnHXbcPcknbD9xudS2/W5oocW/92cjmfq9r+d3pbbIUbAKEPmWTD7humLd5AiTWHZQEF8JQOWUoOUukWbeem1h3MA4DlqoUY345JbzJcMgVw7zN1rpD3IqL4mbxb1jXx9x0E0p8DB54J4eRJaHkLHvopSFGMsXsPCZa0hWxGyUyrQotCZnqF6/riabJvFHazKggSOYF+OmLLzhWEvfUup1AEqhjQPmNpSi48gruHryQp2xMDmPqfnClg/lXXhg8qFA3RZAeJZq5cu1fOGbHZQidRsErIgDmOOFuLgzvdzlIqN9YWUDHMPImForvGMDVNqMpfcxnhhLDUPqWUN/uRHJcNjvp1Ga0Cyn6yzmPA2rPaPrFqLahc/Tg3DWf827GvWNRtDx4jl7d550B6N6x6BcC5788Esl3LJNhnQvYRJ6cTJr6GAk17emAGQkC56c/Lpvf+0TGV5e9fit8cnKikfCC+PvD3g8+fuoDx7+rJDlXgsrnAQAAAABJRU5ErkJggg==',
+'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAABICAMAAABGBg7wAAAAS1BMVEX////z2Zvp+/+/6P+48fWP6PDpzIj/0j/ZvXjNsXOao60uxNY8xG5Ko/+PmKMfnlr/b2Gza/+ykyw0crKyTkSKWit9S7J6SioaGiKoMZ0yAAAEhElEQVR42s1agXarIAy91taqddJu69b//9IHCIoQJFD7Vs48p6MJuSQhCbG4uON02Rh/8yXeG97FAfgnCH6vKU78rYJ+k5zYDwGQbz+ETB4n3tX3FoBvDe9yAZP0cDyqP76QgD7JeVi+1LzHFMDTQqU+VE1VyRkmPElfafrDsr8tTqMAtf70wfJGAZ4sx0RuRjPJOS0HI/Tzk5JmGdxFlMDIxo4HQ67JGsOsZMFuTFG58GZQlnoWOQuU0Pq+H/teYVwB8VjsGo4sZRVHfYGUaUIuBS3w4m5yMi4lYN7YUU5odBqfGsDRwqf3ZSQeLrPPGEc7bLJIgJOnHNcWiQlYxgTP4tMQUyxqYu0za/8hWUAYYkuAZQvwKYhVel9yYo0oxYIqh9pOGHhrfEqJGWswJ1DCHsFnlLgvSBSwx/H1IxBdYygCifw9buFb7BysMVSVKNAk8re0jS+AuKxxb9t8eyFzS0jjIyCqNYZWWIC0lKESLWGvvC2h5+DTEEOQQ9tuS7mLNhCLLBdEYMwJS+RIu0Mt0CakSBW3QULIcliu/rZVGpXSEk4KvgtiEx8YkIH8sAg2NVLK8iA+1PPwqICskOF6csq6IMDMGAjIHx91LR/4KgXfqSYPZ6nZgeeAOZ/rWj4gVWoAfnTyn+vVZQQzxyFCjXBEPMsAPHeum1mqrw89vmaAqyjJsC5ZInloEifz86zHZ0dSddPoDcCgMEtbd6XBxjMkK5g4GPIYe/DSvWtiIF/MEyEHnHSv14rBewIfawpIpvspMOkMhnJlxR0DicICiXRvqeQ6pWowYTQShbz4R0xtpvu5vCw2kxstQN6igiqMKhybSD5YNsbFB9qHGjdwJUsGunBsqJMwanIU6g9k6C+qcpYMQZbnDvX3VY9vFj6ynmDFAkTKRprRnb5e61o+V+Iw0PrbjGBcX0nEUgIguqVOnvtD0RDmF8DYOXC663UPmbcejyB3+fgSvQrsGtixzq3yq46VRjmZfpfEk1sf9KybPp4Ir2RgCgMUA1/qBhMcTGZ6GuNnnocvpzW1GiX4epTZt6hXVVDRrczAoPa6Vdkgg+sDklkmB58nUVTP9BaJKsc7WKZUys+ZM0DTrcoESVSJZC2EdDMybt3GNCqGIp/kRAxYe7HKOJCN4tbrVuU1URyJPzc9fkbqNIJu8wSNKUpi2xZ3olfB5Hara/ncyGiLQFmoytSSN4EQIDrqYu8WKwbcqzBFT7NXpMC/Io/pIip3YshrR62KFPiXqDHjRRZnYuD3u8m7ql9grnpi+4C8i5abqgN8ZEwCijENBIXqNLdZTflxo1TXx7ZccYKimPAx3/otd0Hay2B9pgykuFPvPtq8iLMKt0HulkoYyj3OTXeviUnwlJDJrtPdSwMnqgyXJiaYr9+EWwWRRyvqpJMSXpw+bOBRE0I4UYiRcRYlPAMh4cbCsVIj7kNGFYR99CTcBEJUZo4XDYRP7f2TgOBdumjE9otM9ySZOvKFPwkgJoT0ste4MXZZbzbb/iCxz3pu+b8vSPyn+rT8cvCGmFYT/wAo+PDawnn2qAAAAABJRU5ErkJggg==',
+'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAABICAMAAABGBg7wAAAAM1BMVEX///+/9eCu7tT/4Gb/wtz/s9O/6P+f3MR61/85x5r/eri1jP+ynUdVlrJ/YrIoi2xrSnoM6O5yAAAD80lEQVR42s1ai5aqMAwcLVBNd+/6/197aUApkKYpgsKx6O6BMiSZvFpcr5fL5XreM06O74KT47vi5Ph6gOfGd8XmNyPgEyix7U5C07Rtj/GcLAbaNgLsB+F8LAa94MWBs7EYCbh2UPSpWEwLeHGodhICEf8mIn3+EN5mcQgr+fEg7a4A0ICPvDp/eJ/FIUjwWIb5uwiMjL+OZjE1GYCNNk/U7YW/vD6/e5fFyMFjquTvHTVblJ9z77EYjQKwaTRroU+wmFR4A1UyVkiRJkfH4oX8IMkwJz/mB9yhsRgl+TFVSJ6B+SFZ2H4spsYCsA98ohS99wfH4lR+0+9HHI8FRCq8M8IOsdg5C3+d67p+YK1o5HTN0cjMjziPbNfOxN8RoPNibBmm57x2E38JxRhV8n8/jo8fX7DLLbk3MAXRwtUk218cfjgM9KG6rBGUuP+CHcz8HYxcrvCRIr7ZfXpl1G6F9C/w8W+KM2ZbnLm0OYsTy+bPZnm1bQhd148wLw5q5RcBTqx5Q17rMQKE59/D/4aMuk+cVXyrFGRkTTFGzH3dKOLs9f7R0+fRnxKAMc5kMvtJv2KOVCu7lx9GPgQyND+qe3I5Jf1K9U6trc1q4aRGFhyRWByY7W8kSS0Vll6X6u6Hlb9DSqfakfyAdaQR3puDXcZpV8ivB2iSWTq9GDdrX7Fof5iebZhQld+Q99YZSaajIl6b/Pl35+Ovwv4S7VTRTMCXC5HJH/d71/XjrkysZEdVfnSl5ayRpLeNAOFzpZGaNaFKzSCT/OY2+HL+zL/1A0tZHdU5eyQZnWJUaQ7so+yy6SeVc/S6eERcYRFU+8Ub/k9iYqXTp6JhIF+G2/tXaQaJ3fKhtiqOkL1Dgr3AxZLO6r9W8nPuSqSsULwN89nNgS2WCJ2yiKJc1fKnHuDU9zapWI6/3Di1VeCLMFa006TCwnb+clO8us61xeo0ylvSU/mpvqoa1904Zn3GWYwp+fv91oxQL79CWxegXVdmKCczpdeNlWNMPvuvDMrBTKudMe9HHb5+Xk5lV/H9Jbu9cKjslnzi742P35jIrrO4sebfcc0y9vSret23W9f14yb2RjAo18xES+8HpGkDOYDwuVqiwt+GYOmNkle5vIT4SpTl90ky2wtCrW9zmzziso/DiXIu8yiu2GrnZbfd2n+28Pe50kREn99xgnUhmruSTfoLO57IJL94Ye+f/cFoaJbbjhpLYhhBW2miw/Hxauesk/uUzbO2+/beLWIlvdZmp0gzbF/64t6tJ8fJ+zQS0if2bpnOTrJ65/3xe7csuw0yXtO54/durc/OnWjv1kHnEM69AzO3zn2aHZjOfYPFO5z/A4+PdQ8ANL6KAAAAAElFTkSuQmCC',
+'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAABICAMAAABGBg7wAAAAP1BMVEX/////5oC/6P//zACO4I9f0G9GtlGysrKprbX/igD/OzCyjwAvjzove/+/aACyKSIfijojXL8UaywhVrIiIiInrNfWAAADTklEQVR42u1a2XKjMBDsgEOUibzRbvz/37o6uCx0M7Lz4KHI1hYUblqt1owGXKbffWD65YEXgy8GXww+lEEiQJ9PY5BsxN8WwgXoSQzOAGMXxRZsLPIxCHEfTCyyycXHZ1h0V97Gt9HcoOOJs5hEIGCfPuowDBuAyWcoHb0YDOC7mfOmWZQ6pvWfeCgLsA+DgfG9XodBnznWdocFKLswGMC3ALxKUOljujEY1N/P1caPNJZT9itSaRF0YDCITwjpYp7QboVZz4fOYtEQVMpqmMGQFqoEWAiymcF39a6KnV60RwmLiBmS51nGbTMC9KDu/juOURabGFSGQW8+WYDHe6mIqThAQa0a9E0/zGDh+CYACjTN4oAfcetvQ9gvmyHBEtTLBwvx5WmmPgyWj2/2TvRgEDUcndAh2igkOosPhTpEehYtZWSkejv80nx/PURKjBQlaty1ADI/PL8SUXzpmrL31OoQMfQ40pBjh055JBJaPwixgQHhZ86gc344p1RYLu4z5BbZB2qPoucgMgLqnz52I7FmuQDxLQeVCBGo8eDPwNblKuYCrTr0GTxnZQkzBRoHwqZURODBl/bS3JNcjR/wQ5xZplCeFmekAwy6wB8gPEex7HGkdGVrN7zS8wjQL1Hni+3AvkYbX43Z0MrqB2x8yPBAIVd5Rd9hHIdBn+N0NiO6q/GPSkJIrIfVfMW54Z0BQrbnlPmkaK9DomHQJ0rHXt70a9/0nwbubMT2dWI5zwyQZKkIpTTbf03UYdlwRQXAb7cF/S3L50mr+pzoYnuLQYDIiLWpqGUoDu/siCGDYdtf5Ch4aGIK9AHI1026hGscnAII1i4fHUhbbbeVPuauZqIQa6IvLr9PG3w6RNqH7jOLrVEY5+LzjzkkS69ldjJKgNvlZluqlGTCMSjZ/BDpPltBd6izDiPrYdkO/FzZTD390PHka6x0z8vWhpc+frhicVnFmoIDFQuEYVB280O7GCx5mWHRToK6dw71J8/pEN48QGMjvCJcV7E+y3bz4AHfzVz/mmN1RvuFQIZFbL28B3x55BiUuZ5V528WVE1fvWad4WFQlfdHa62Th8EKP1SqbvXhY1D1sU4+Bkv9UNY5J9Mszn0T8/p+8HnxHz0tHkthIKxsAAAAAElFTkSuQmCC',
+'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAABICAMAAABGBg7wAAAAM1BMVEX/9N736tCP1sT/0Wbgz66Gzrxfrps8uJL1ol3yf38unn6ykkdsjP8gb1ipWVlMYrI9Ok9x7A8yAAAGAUlEQVR42p1aC3ubMAy0aI64Wbf2///aEWxAb5t6X9cmgH2cpJP8KMvesLgNxy8s6r7ggeuR8Ia4J3ifi3pm7xj6PvtlMuKwwX7ENY66p3jQs0HFW7gUOI+YF8TsG6HMDAMkN2GGwakO4Jm/THhF6oO452kYj6YYPCyfEoHFdxt1AXPeCd/Evj8Vb1j5DG7Fg4xizMV8FMcqiuNBL3pfHnT8InojH9R9lZue9Ho674o5jAGpuKeDoWftv16v5xpd2zrbmqNEtdYZ8fKv9CCZdO83wGcgY6U3Ksptat0R4iBfifNAkzIdtH+83gBX71ph+ErhjlM7wGUnP5WZ520dNFfWd/M8RTdFYF0b+Uh9ULoPyyRItcb5Ungrlk4bp/CCyAGuaYfNffwotk+5Au9LbAkaQ7jRjoP88M25+2BGBzHjnx0fkcF3RktHhkHnb4qfgQ7CL0DkF0GkF9Kw2q+f7f+fn47Q1QXd5+pxXJK80Uw6UOHIvh8f7WdSwMFHx3yquzIrBvhIRMgJ8OMRYkSegTrs4kXs59b8YkF3WcL252Nvfx5u6EwVj6EPfu5N5fZtsJA/YjTW4+9Ha0Z+2ofcrzVAdVsHKDxypyPFdyI7/iIH2IWWlsjr3JIfFiAXVTR7rRYfSVAymqn/H+kkxtMhFONWaACVdHWAMPxRSYgqvoFtPhz5oGprx8eaZfAw1RS+wMxl0geNDnLF7Ay/8a2xPnOqyPs7eAmmuxjpYDz3QMe8Cv7GpFUmkOQbnZIJAY6C1Z1zLeP861CjONsgjl6DBssqZVLkhWal4etyS/5NlITKWfInM8OgMOfDVd9wjqnt15QHc1jyWzuC5WIxDNWIPorlpo7lhlvLMeaeoyNhEB/VWO9ImpFF0j1lPujpzDIK0R4LVaPrbUqzK5ej0MZwCC65ern1aenTqUOPbBdkLVFDK+OysriKJbRtjJgO+mRtHN5NnESp2MoD379IvIEHhZIIOD8tq15vWFfyRDL0T2VlnL42kdJNyWc+bnDs0nQj0T5HWdpTpZaZ6FCCzV771+qyfxe+Rc2BxrEmxpXPB4UIxawqfabPz1K2n08fn3bFzI9PZpl9h/wkl7tzd4DlES8VMhajgbrYU+HFQ5gaSbszuRVAn3X8bHOOn+2/bI3wFMaYiXqzzhXPbs3pvEPepkTL+pD5yc6DVqfJUdocfwIYv7E6UKvp4dQX5DNJD+IJ4uur/cRR0L96vdqPPwfy5j87PsgyEjOLPOAsdoBfDzaGS2EH+HpMFSZan9N1WmQh/v21t++HFE0yPvr3tbe/j2w+yy40/sD3ukbrKMJDT4Rsju9zUslfDIikW/nfnY1EzaIXGVFKrPWgdjzHJREfgy3CZLNL1z13EllaNBz44G895ptTYpIhyp7qFt4kuaGSzyBM/P52n/gg0ebQ3Zr3eWS3wlkKHS7RhmaeXomIjatia9H44As1lvHBgO3fOlPmlama4azus9WIfd8Gg83ckENK61A7SdOp01/p5gweG0tjBiER0r0IdnP8yuBFelIZQm+rE0GkmJkE2XRGCt0lHBrdtZZoBjx2loZJEJzlVS/u9D2/tSyuhFw8IXN9tlQsATo7I8i3Y/fKVte2729luiE60SF82/OaWMy+pFfgG5wNgZv26IzG9xo1CwJpWoR+1q+oxWxe/MXxEa+Xr95cu5hy0u5XhR2fAH+tg/IuLRfH6hYuiNYEcKxy2quvtiMzJtoCN3fcJeqzSxo3ZJldFPRp7B3lDMo9Fu62dinXyEVJjgwgPf6AA2GcbzuujwshTGDZRUGpZSVNpneOgdl24GpbGH12zwNrcKhuB1WGW9kzp4bc3HHurXSAy34qKIh8QQeffZW5DdL4XRFnt3PzZ+17LK9nt7HrF/645c5hyUhAGkAjR9fuVBOIdiqohQCiI2cOQI+ce6eyevo1jtwse37ZTwUtLBOMjvVcJsZoBpGxCF4f4KJDVhfsVFDap0RYRm8wt7Kx1weuFLAv3VLSH+ACUTBGiDAZq/Q7PDw2eGPv3FSRTpqeqPyNHGImC2fj/AdTA1f50vyv6AAAAABJRU5ErkJggg=='];
 /* ── SCREENS AND THE GAME LOOP ──
    First launch: language → sound volume → put the phone down → microphone → take your hand away → wave → game.
    Later launches: title → take your hand away → wave → game. After each command a pause ring fills (1.5 s),
@@ -1492,26 +1692,78 @@ function sLang(){ sky(DT,0.3); var y=Math.round(LH*0.3); text('SONAROIDS',LW/2,y
   // v0.31: in a phone's browser (not launched from the home screen) — full screen needs the home screen; both languages, none is chosen yet
   if(inBrowser()){ text(STR.ru.fullscr,LW/2,Math.round(LH*0.68),P.soft,'center'); text(STR.en.fullscr,LW/2,Math.round(LH*0.68)+12,P.soft,'center'); }
   say('Sonaroids. English / Русский'); stepSquares('lang'); }
-function sTitle(){ sky(DT,0.4); var y=Math.round(LH*0.3);
-  // v0.38: the title and the Android note are centred in the space beside the buttons (the note used to run in between them)
-  var items=[['play',L('play'),'primary'],['scores',L('scores')],['howto',L('howto')],['lang',L('lang')],['sfx','','sound']];
-  var cw=colW(items), bx0=sideX(cw), a0=freeSide()==='left'?bx0+cw:SAFE.l, a1=freeSide()==='left'?LW-SAFE.r:bx0, cx0=Math.round((a0+a1)/2);
-  text('SONAROIDS',cx0,y,P.band,'center',2);
-  if(/Android/i.test(navigator.userAgent)&&!APP){ var ay=y+22;          // v0.44: the note «on Android it does not work on every phone» is gone — the app
-    // v0.42: in an Android browser — a link to the app (the APK of the latest GitHub release); tapping downloads it
-    var as=L('get_apk'), aw=PF.width(as); ay+=6; text(as,cx0,ay,P.band,'center'); R(P.band,cx0-aw/2,ay+PF.CAP+2,aw,1); BTN.push({id:'apk',x:cx0-aw/2-6,y:ay-6,w:aw+12,h:PF.CAP+12}); }
-  var vr=freeSide()==='left', vx=vr?LW-SAFE.r-8:SAFE.l+8, vy=LH-SAFE.b-12;
-  diagCorner(L('version')+' '+VERSION,false);   // for telling uploads apart; a tap shows the "logs" link (v0.47)
-  // v0.41, the app: «check for updates» above the source link — the app's own update (a dialog from the shell) and a fresh page
-  if(APP){ var us=L('app_upd'), uw=PF.width(us), uy=vy-32; text(us,vx,uy,P.band,vr?'right':'left'); BTN.push({id:'appupd',x:Math.max(0,(vr?vx-uw:vx)-6),y:uy-6,w:uw+12,h:PF.CAP+10}); }
-  // v0.28: the site opens straight into the game; the source code link moved here from the landing page
-  // v0.51 (the maintainer: the finger missed): the source link and the version in one line, 32 px apart
+/* ── v0.70: the games' screen (the maintainer's sketch «A», background «4», 28 Sep): SONAROIDS, the games as cards side by side —
+   SonaRocks and SonaRace («soon»); a card's picture changes its skin every ~4 s with a pixel dissolve, and the whole screen behind is
+   the chosen card's current skin, dimmed. Under the cards «Play», then «how to play», the language and the sounds; the version, the source
+   and the app's update at the bottom. No high scores here (the maintainer) ── */
+var hubSkin=Math.max(0,SKIN_IDS.indexOf(skinId)), hubPrev=-1, hubT=0, hubFade=1, raceImgs=null, raceI=0, soonT=-9, fadeMasks={};
+function fadeMask(l){ if(fadeMasks[l]) return fadeMasks[l]; var c=document.createElement('canvas'); c.width=4; c.height=4; var x=c.getContext('2d');
+  for(var y=0;y<4;y++) for(var i=0;i<4;i++) if(bay(i,y)<l/16){ x.fillStyle='#fff'; x.fillRect(i,y,1,1); } return fadeMasks[l]=x.createPattern(c,'repeat'); }
+var mixC=null;
+function dissolve(a,b,t){ if(!mixC||mixC.width!==LW||mixC.height!==LH){ mixC=document.createElement('canvas'); mixC.width=LW; mixC.height=LH; }
+  var m=mixC.getContext('2d'); m.globalCompositeOperation='source-over'; m.clearRect(0,0,LW,LH); m.drawImage(b,0,0);
+  m.globalCompositeOperation='destination-in'; m.fillStyle=fadeMask(Math.round(Math.max(0,Math.min(1,t))*16)); m.fillRect(0,0,LW,LH); m.globalCompositeOperation='source-over';
+  var o=demoC2(); var ox=o.getContext('2d'); ox.drawImage(a,0,0); ox.drawImage(mixC,0,0); return o; }
+var dC2=null; function demoC2(){ if(!dC2||dC2.width!==LW||dC2.height!==LH){ dC2=document.createElement('canvas'); dC2.width=LW; dC2.height=LH; } return dC2; }
+var prevC=null;
+function hubFrame(){ hubT+=DT; if(hubT>4){ hubT=0; hubPrev=hubSkin; var n; do{ n=Math.floor(Math.random()*SKIN_IDS.length); }while(n===hubSkin&&SKIN_IDS.length>1); hubSkin=n; hubFade=0; }
+  hubFade=Math.min(1,hubFade+DT/0.6);
+  if(hubFade<1&&hubPrev>=0){ var a=demoInto(SKINS[SKIN_IDS[hubPrev]],0);                     // the old skin, still…
+    if(!prevC||prevC.width!==LW||prevC.height!==LH){ prevC=document.createElement('canvas'); prevC.width=LW; prevC.height=LH; }
+    var pc2=prevC.getContext('2d'); pc2.clearRect(0,0,LW,LH); pc2.drawImage(a,0,0);
+    var b=demoInto(SKINS[SKIN_IDS[hubSkin]],DT); return dissolve(prevC,b,hubFade); }           // …and the new one showing through, pixel by pixel
+  return demoInto(SKINS[SKIN_IDS[hubSkin]],DT); }
+function hubCard(id,x,y,w,ih,img,name,sub,on){
+  R(P.bg,x,y,w,ih+26); if(img) lx.drawImage(img,x+2,y+2,w-4,ih);
+  if(!on){ lx.globalAlpha=0.55; R(P.bg,x+2,y+2,w-4,ih); lx.globalAlpha=1; }
+  frame(x,y,w,ih+26,on?P.band:P.line); if(on) frame(x-1,y-1,w+2,ih+28,P.band);
+  text(name,x+w/2,y+ih+7,on?P.text:P.soft,'center'); if(sub) text(sub,x+w/2,y+ih+17,P.soft,'center');
+  BTN.push({id:id,x:x,y:y,w:w,h:ih+26}); }
+function sHub(){ var fr=hubFrame(); lx.drawImage(fr,0,0); lx.globalAlpha=0.72; R(P.bg,0,0,LW,LH); lx.globalAlpha=1;
+  var cx0=Math.round((SAFE.l+LW-SAFE.r)/2), y=SAFE.t+8, sub=LH>=200;
+  text('SONAROIDS',cx0,y,P.band,'center',2); if(sub) text(L('hub_s'),cx0,y+19,P.soft,'center');
+  // two rows under the cards: «play» (and, on a narrow screen, the sounds beside it), then «how to play», the language (and the sounds);
+  // with the service links shown (a long press on the version) everything moves up a line to make room for them
+  var bw=btnW([L('howto'),L('lang')]), sw=soundW(), pw=btnW([L('play')]), narrow=bw*2+sw+16>LW-SAFE.l-SAFE.r-16;
+  var vy=LH-SAFE.b-12, rowY=vy-8-BH-(diag?16:0), playY=rowY-8-BH, top=y+(sub?31:20), lab=24;
+  var ih=Math.max(24,playY-8-lab-top), cw=Math.min(Math.round(ih*LW/LH),Math.round((LW-SAFE.l-SAFE.r-40)/2)), gap=16;
+  ih=Math.round(cw*LH/LW); var cx=Math.round(cx0-cw-gap/2), ty=Math.round(top+(playY-8-lab-top-ih)/2);
+  hubCard('hub_rocks',cx,ty,cw,ih,fr,'SonaRocks','',true);
+  if(!raceImgs&&typeof RACE_THUMBS!=='undefined'){ raceImgs=RACE_THUMBS.map(function(u){ var im=new Image(); im.src=u; return im; }); }
+  raceI=Math.floor((clock+2)/4)%((raceImgs&&raceImgs.length)||1);
+  var ri=raceImgs&&raceImgs[raceI]&&raceImgs[raceI].complete?raceImgs[raceI]:null;
+  hubCard('hub_race',cx+cw+gap,ty,cw,ih,ri,'SonaRace',clock-soonT<1.5&&Math.floor(clock*6)%2?'':L('soon'),false);
+  if(narrow){ var t1=pw+8+sw, x1=Math.round(cx0-t1/2); button('hub_play',L('play'),x1,playY,pw,BH,'primary',Math.floor(clock*2)%2===0); soundRow(x1+pw+8,playY,sw,BH);
+    var x2=Math.round(cx0-bw-4); button('howto',L('howto'),x2,rowY,bw,BH,''); button('lang',L('lang'),x2+bw+8,rowY,bw,BH,''); }
+  else { button('hub_play',L('play'),cx0-Math.round(pw/2),playY,pw,BH,'primary',Math.floor(clock*2)%2===0);
+    var tw=bw*2+sw+16, bx=Math.round(cx0-tw/2); button('howto',L('howto'),bx,rowY,bw,BH,''); button('lang',L('lang'),bx+bw+8,rowY,bw,BH,''); soundRow(bx+2*bw+16,rowY,sw,BH); }
+  var vr=freeSide()==='left', vx=vr?LW-SAFE.r-8:SAFE.l+8;
+  diagCorner(L('version')+' '+VERSION,false);                              // a long press shows the service links (logs, sound, lab)
   var gs=L('source'), gw=PF.width(gs), vw0=PF.width(L('version')+' '+VERSION), gx=vr?vx-vw0-32:vx+vw0+32;
   text(gs,gx,vy,P.soft,vr?'right':'left'); BTN.push({id:'source',x:Math.max(0,(vr?gx-gw:gx)-6),y:vy-4,w:gw+12,h:Math.min(PF.CAP+10,LH-vy+4)});
-  var sy=Math.round(LH*0.62+Math.sin(clock*1.3)*LH*0.08); drawShip(cx0-40,sy,clock,false);
-  for(var i=0;i<3;i++){ var bx=cx0-20+((clock*90+i*40)%120); R(P.bullet,bx,sy,4,1); light(bx,sy,6*K,P.glowB,0.45); }
-  column(items,Math.round(LH*0.5));
-  say('Sonaroids. '+L('play')); }
+  // the app's update and, in an Android browser, the app's download — at the top corners
+  if(APP){ var us=L('app_upd'), uw=PF.width(us), ux=vr?LW-SAFE.r-8:SAFE.l+8, uy=SAFE.t+8; text(us,ux,uy,P.band,vr?'right':'left'); BTN.push({id:'appupd',x:Math.max(0,(vr?ux-uw:ux)-6),y:uy-6,w:uw+12,h:PF.CAP+10}); }
+  if(/Android/i.test(navigator.userAgent)&&!APP){ var as=L('get_apk'), aw=PF.width(as), ax=vr?LW-SAFE.r-8-aw:SAFE.l+8, ay=SAFE.t+8;
+    text(as,ax,ay,P.band,'left'); R(P.band,ax,ay+PF.CAP+2,aw,1); BTN.push({id:'apk',x:ax-6,y:ay-6,w:aw+12,h:PF.CAP+12}); }
+  say('Sonaroids. SonaRocks. '+L('play')); }
+/* ── the game's own screen (SonaRocks): the chosen skin flies behind, the buttons on the free side over a dim band:
+   play, high scores, how to play, «◀ skin: … ▶» (the picture changes at once), «← all games» ── */
+function skinRow(x,y,w,h){ var s=Math.round(h*0.9), ty=y+Math.round((h-7)/2);
+  R(P.bg,x,y,w,h); frame(x,y,w,h,P.band);
+  polyFill([[x+s/2+2,y+h/2-4],[x+s/2+2,y+h/2+4],[x+s/2-3,y+h/2]],P.band); polyFill([[x+w-s/2-2,y+h/2-4],[x+w-s/2-2,y+h/2+4],[x+w-s/2+3,y+h/2]],P.band);
+  text(L('skin')+': '+L('skin_'+skinId),x+w/2,ty,P.text,'center',1,true);
+  BTN.push({id:'skin_prev',x:x,y:y,w:s+6,h:h}); BTN.push({id:'skin_next',x:x+w-s-6,y:y,w:s+6,h:h}); BTN.push({id:'skin_next',x:x+s+6,y:y,w:w-2*s-12,h:h});
+  var n=SKIN_IDS.length, i0=SKIN_IDS.indexOf(skinId), dx=Math.round(x+w/2-(n*6-2)/2); for(var i=0;i<n;i++) R(i===i0?P.band:P.line,dx+i*6,y+h+3,3,3); }
+function sTitle(){
+  var items=[['play',L('play'),'primary'],['scores',L('scores')],['howto',L('howto')],['skin','','skin'],['hub',L('all_games')]];
+  var w=Math.max(btnW(items.filter(function(b){ return b[1]; }).map(function(b){ return b[1]; })),PF.width(L('skin')+': '+L('skin_'+SKIN_IDS.reduce(function(a,k){ return PF.width(L('skin_'+k))>PF.width(L('skin_'+a))?k:a; })))+2*Math.round(BH*0.9)+24);
+  var bx0=sideX(w), band0=freeSide()==='left'?0:bx0-Math.max(8,Math.round(LW*0.04)), band1=freeSide()==='left'?bx0+w+Math.max(8,Math.round(LW*0.04)):LW;
+  noLight=true; drawDemo(SK,DT,freeSide()==='left'?band1+16:SAFE.l+16); noLight=false;           // the ship flies beside the buttons' band; no soft light over the buttons
+  lx.globalAlpha=0.55; R(P.bg,band0,0,band1-band0,LH); lx.globalAlpha=1;
+  var h=BH, gap=10, y=Math.round(LH*0.52-(items.length*(h+gap)-gap)/2);
+  items.forEach(function(b){ if(b[2]==='skin') skinRow(bx0,y,w,h); else button(b[0],b[1],bx0,y,w,h,b[2]||'',Math.floor(clock*2)%2===0); y+=h+gap; });
+  var a0=freeSide()==='left'?band1:SAFE.l, a1=freeSide()==='left'?LW-SAFE.r:band0, lsc=PF.width('SonaRocks',2)<=a1-a0-12?2:1; text('SonaRocks',Math.round((a0+a1)/2),Math.round(LH*0.16),P.band,'center',lsc);
+  say('SonaRocks. '+L('play')+'. '+L('skin')+': '+L('skin_'+skinId)); }
 function sSound(){ sky(DT,0.3); titles(L(direct?(dirLoud?'volume_loud':'volume_direct'):'volume'),L('volume_s')); soundVolume(scrT); nextBtn('next',L('next')); stepSquares('sound'); }
 /* v0.41: the Android app (android/, a WebView over this very page) gives a small native helper: media volume, audio route.
    In the browser it does not exist, and nothing changes there */
@@ -1599,7 +1851,7 @@ function handBeacon(){ var m=handSide()==='left', a=0.55+0.35*Math.sin(clock*5),
 var CAUGHT_SHOW=1.0, caughtT=0;
 function followShip(){ var f=handFrac(); if(f!==null) lastHand=f;
   var ty=(Core.FH-Core.MARGIN-(lastHand===null?0.5:lastHand)*(Core.FH-2*Core.MARGIN))*K; shipY=shipY===null?ty:shipY+(ty-shipY)*0.49; return f!==null; }
-function sTry(){ followShip(); /* the sky is already drawn by sWave */ drawShip(fx(Core.SHIP_X),shipY,clock,false);
+function sTry(){ followShip(); /* the sky is already drawn by sWave */ SK.ship(fx(Core.SHIP_X),shipY,clock,false);
   titles(L('wave_ok'),L('try_s'));
   // buttons on the free side, but never over the ship's lane (it flies at the left edge of the field)
   var items=[['start',L('play'),'primary'],['again',L('recal')]], bw=btnW(items.map(function(q){ return q[1]; })), lane=Math.round(fx(Core.SHIP_X))+34;
@@ -1611,33 +1863,31 @@ function sTry(){ followShip(); /* the sky is already drawn by sWave */ drawShip(
 function fx(x){ return x*K+SAFE.l; }
 /* rock pictures: 6 per size, drawn ahead of time (a few per frame on the calm screens) — drawing one mid-flight took a frame (v0.16) */
 var POOL_N=6, pool={K:0,list:[[],[],[]]};
-function poolFill(budget){ if(pool.K!==K){ pool={K:K,list:[[],[],[]]}; } for(var n=0;n<budget;n++){ var sz=[0,1,2].filter(function(i){ return pool.list[i].length<POOL_N; })[0]; if(sz===undefined) return;
-  pool.list[sz].push(makeRock(Math.max(3,Math.round(Core.R_SIZE[sz]*K)))); } }
-function rockFromPool(r){ poolFill(0); var l=pool.list[r.sz]; if(!l||!l.length) return makeRock(Math.max(3,Math.round(r.r*K)));
-  var b=l[r.id%l.length]; return {frames:b.frames,size:b.size,rot:(r.id*5)%16,vr:((r.id*7)%11-5)}; }
-function field(dt,speed){ sky(dt,speed);
+function poolFill(budget){ if(pool.K!==K||pool.skin!==skinId){ pool={K:K,skin:skinId,list:[[],[],[]]}; rockSpr={}; } for(var n=0;n<budget;n++){ var sz=[0,1,2].filter(function(i){ return pool.list[i].length<POOL_N; })[0]; if(sz===undefined) return;
+  pool.list[sz].push(SK.rock(Math.max(3,Math.round(Core.R_SIZE[sz]*K)),sz,pool.list[sz].length*17+sz)); } }   // v0.70: the skin's rocks
+function rockFromPool(r){ poolFill(0); var l=pool.list[r.sz]; if(!l||!l.length) return SK.rock(Math.max(3,Math.round(r.r*K)),r.sz,r.id);
+  var b=l[r.id%l.length]; return {frames:b.frames,size:b.size,ox:b.ox||0,rot:(r.id*5)%16,vr:b.vr===0?0:((r.id*7)%11-5)}; }
+function field(dt,speed){ poolFill(0); SK.sky(dt,speed);
   if(!g) return;
   if(g.state!=='play'){ g.bullets=[]; g.ebullets=[]; g.rocks.forEach(function(r){ r.x+=r.vx*dt; r.y+=r.vy*dt; }); if(g.ufo) g.ufo.x-=6*dt; }   // after the game: things drift on, for the look only
   g.rocks.forEach(function(r){ var sp=rockSpr[r.id]; if(!sp){ sp=rockSpr[r.id]=rockFromPool(r); }
-    sp.rot=(sp.rot+sp.vr*dt+16)%16; var fr=sp.frames[Math.floor(sp.rot)%16]; lx.drawImage(fr,Math.round(fx(r.x)-sp.size/2),Math.round(r.y*K-sp.size/2)); });
+    sp.rot=(sp.rot+sp.vr*dt+16)%16; var fr=sp.frames[Math.floor(sp.rot)%16]; lx.drawImage(fr,Math.round(fx(r.x)-sp.size/2+(sp.ox||0)),Math.round(r.y*K-sp.size/2)); });
   g.picks.forEach(function(p){ var x=Math.round(fx(p.x)), y=Math.round(p.y*K+Math.sin(clock*3)*2);
-    R(P.pick,x-5,y-5,11,11); R(P.bg,x-4,y-4,9,9); blit(ICON[p.type],[P.pick],x-3,y-3); light(x,y,14*K,P.glowP,0.35); });
+    SK.pick(x,y,p.type); });
   if(g.ufo){ var u=g.ufo, big=u.kind==='big', ux=Math.round(fx(u.x)), uy=Math.round(u.y*K);
     var hurtNow=u.hitT>0&&Math.floor(clock*20)%2===0;                                                  // just hit: it flashes white
-    blit(big?UFO_BIG:UFO_SMALL,hurtNow?[P.text,P.text,P.text,P.text]:P.ufo,ux-(big?9:6),uy-(big?4:2));
-    if(Math.floor(clock*6)%2){ R(P.ufo[3],ux-(big?5:3),uy+1,1,1); R(P.ufo[3],ux+(big?4:2),uy+1,1,1); }
-    light(ux,uy,(big?22:16)*K,hex(P.ufo[2]).join(','),0.35); }
-  g.ebullets.forEach(function(b){ R(P.ebullet,fx(b.x)-1,b.y*K-1,2,2); light(fx(b.x),b.y*K,7*K,hex(P.ebullet).join(','),0.5); });
-  g.bullets.forEach(function(b){ R(P.bullet,fx(b.x)-2,b.y*K,4,1); light(fx(b.x),b.y*K,6*K,P.glowB,0.45); });
+    SK.ufo(ux,uy,big,hurtNow); }
+  g.ebullets.forEach(function(b){ SK.ebullet(fx(b.x),b.y*K); });
+  g.bullets.forEach(function(b){ SK.bullet(fx(b.x),b.y*K); });
   if(g.state==='play'){ var sx=fx(g.ship.x), sy=g.ship.y*K;
-    drawShip(sx,sy,clock,g.ship.inv>0&&Math.floor(clock*14)%2===0);
+    SK.ship(sx,sy,clock,g.ship.inv>0&&Math.floor(clock*14)%2===0);
     if(g.ship.shield>0&&(g.ship.shield>3||Math.floor(clock*8)%2)){                 // the shield: a ring of dots, blinking in its last 3 s
-      for(var a=0;a<28;a+=2){ var an=a/28*6.283+clock*2; R(P.pick,sx+7+Math.cos(an)*11,sy+Math.sin(an)*9,1,1); } light(sx+7,sy,16*K,P.glowP,0.25); }
-    if(livesT>0){ for(var i=0;i<g.lives;i++) blit(MINI,[P.ship[1],P.ship[2]],sx-2+i*7,sy-14); } }   // lives: shown only for a moment after a hit
+      for(var a=0;a<28;a+=2){ var an=a/28*6.283+clock*2; R(SK.shield(),sx+7+Math.cos(an)*11,sy+Math.sin(an)*9,1,1); } light(sx+7,sy,16*K,P.glowP,0.25); }
+    if(livesT>0){ for(var i=0;i<g.lives;i++) blit(MINI,SK.mini(),sx-2+i*7,sy-14); } }   // lives: shown only for a moment after a hit
   drawParts(dt);
 }
 function sCount(){ countT-=DT; poolFill(2); followShip();
-  sky(DT,0.6); drawShip(fx(Core.SHIP_X),shipY,clock,false);
+  SK.sky(DT,0.6); SK.ship(fx(Core.SHIP_X),shipY,clock,false);
   var n=Math.max(1,Math.ceil(countT)), cx0=Math.round(LW/2), cy0=Math.round(LH/2);
   ring(cx0,cy0,13,1-(countT-Math.floor(countT)),P.band); text(String(n),cx0,cy0-3,P.text,'center'); say(String(n));
   if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.play('tick');
@@ -1677,12 +1927,12 @@ Board.devInfo(devInfo);
 function endGame(){ g.state='over'; overT=0; Logs.gameStop(); Board.finish(g.score); Board.flush(); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } go('over'); }
 function react(){ g.events.forEach(function(k){
   if(k==='fire'){ if(Math.random()<0.5) Sfx.play('fire'); } else if(k!=='crash') Sfx.play(k); });
-  (g.gone||[]).forEach(function(r){ burst(fx(r.x),r.y*K,8+Math.round(r.r*K),P.rock.slice(2).concat([P.flame[1]]),50*K); delete rockSpr[r.id]; shake=Math.max(shake,0.08+r.r*0.004); });
-  (g.fx||[]).forEach(function(f){ if(f.ufo){ burst(fx(f.x),f.y*K,40,P.ufo,90*K); shake=0.35; } else if(f.pick) burst(fx(f.x),f.y*K,14,[P.pick,P.text],50*K); });
-  if(g.events.indexOf('ufo_hit')>=0&&g.ufo){ burst(fx(g.ufo.x),g.ufo.y*K,14,[P.text].concat(P.ufo.slice(1)),60*K); shake=Math.max(shake,0.12); }
-  if(g.events.indexOf('shield')>=0) burst(fx(g.ship.x)+6,g.ship.y*K,20,[P.pick,P.text],60*K);
+  var BU=SK.bursts(); (g.gone||[]).forEach(function(r){ burst(fx(r.x),r.y*K,8+Math.round(r.r*K),BU.rock,50*K); delete rockSpr[r.id]; shake=Math.max(shake,0.08+r.r*0.004); });
+  (g.fx||[]).forEach(function(f){ if(f.ufo){ burst(fx(f.x),f.y*K,40,BU.ufo,90*K); shake=0.35; } else if(f.pick) burst(fx(f.x),f.y*K,14,BU.pick,50*K); });
+  if(g.events.indexOf('ufo_hit')>=0&&g.ufo){ burst(fx(g.ufo.x),g.ufo.y*K,14,[P.text].concat(BU.ufo),60*K); shake=Math.max(shake,0.12); }
+  if(g.events.indexOf('shield')>=0) burst(fx(g.ship.x)+6,g.ship.y*K,20,BU.pick,60*K);
   if((g.fx||[]).some(function(f){ return f.pick==='life'; })) livesT=1.8;                  // a life taken: the lives show for a moment
-  if(g.events.indexOf('hit')>=0||g.events.indexOf('over')>=0){ flash=0.25; shake=0.4; livesT=1.8; burst(fx(g.ship.x)+6,g.ship.y*K,26,P.ship.concat(P.flame),70*K); }
+  if(g.events.indexOf('hit')>=0||g.events.indexOf('over')>=0){ flash=0.25; shake=0.4; livesT=1.8; burst(fx(g.ship.x)+6,g.ship.y*K,26,BU.ship,70*K); }
 }
 function sOver(){ overT+=DT;                       // no tuning here: it is done on the wave screen before every game (24 Sep)
   field(DT,0.3); var cx0=freeSide()==='left'?Math.round(LW*0.6):Math.round(LW*0.4), y=Math.round(LH*0.3);
@@ -1811,6 +2061,9 @@ var ACT={
   /* a deep recalibration: forget the saved palm range, close the microphone and start from "put the phone down" */
   recal:function(){ onboarding=false; direct=false; store.set('sonaroids_field','100'); Sonar.restart(); booted=false; acoustic=false; go('phone'); },
   lefty:function(){ lefty=true; store.set('sonaroids_lefty','1'); turnShown=false; Logs.ev('играю левой'); seenT=scrT; },
+  hub:function(){ go('hub'); }, hub_rocks:function(){ go('title'); }, hub_play:function(){ go('title'); }, hub_race:function(){ soonT=clock; Sfx.play('tap'); },
+  skin_prev:function(){ var i=SKIN_IDS.indexOf(skinId); setSkin(SKIN_IDS[(i+SKIN_IDS.length-1)%SKIN_IDS.length]); },
+  skin_next:function(){ var i=SKIN_IDS.indexOf(skinId); setSkin(SKIN_IDS[(i+1)%SKIN_IDS.length]); },
   lang:function(){ lang=lang==='en'?'ru':'en'; store.set('sonaroids_lang',lang); },
   sfx:function(){ Sfx.toggle(); }, vol_dn:function(){ Sfx.down(); }, vol_up:function(){ Sfx.up(); },
   start:function(){ ensure(startCount); },
@@ -1883,7 +2136,7 @@ function loop(now){
   if(LH>LW){ pauseGame(); sRotate(); present(0); return; }
   if(booted&&Sonar.lost()&&(scr==='wave'||scr==='count'||scr==='play'||scr==='over')){ if(g&&g.state==='play') Logs.gameStop(); Board.setup('lost'); go('lost'); }
   switch(scr){
-    case 'lang': sLang(); break; case 'title': sTitle(); break;
+    case 'lang': sLang(); break; case 'title': sTitle(); break; case 'hub': sHub(); break;
     case 'sound': sSound(); break;
     case 'phone': sPhone(); break; case 'mic': sMic(); break; case 'probe': sProbe(); break; case 'away': sAway(); break; case 'wave': sWave(); break;
     case 'count': sCount(); break; case 'count-resume': sCountResume(); break; case 'play': sPlay(); break; case 'over': sOver(); break;
@@ -1950,7 +2203,7 @@ function audAct(id){ var p=id.split(':'), k=p[1], v=p.slice(2).join(':');
   else if(k==='retest') Sonar.audioRetest();
   else if(k==='lab'){ location.href='../lab/sonar_lab3.html'; return; }
   Sonar.restart(); booted=false; acoustic=false; audDev=null; }
-var NO_MENU={title:1,lang:1,paused:1,restart:1,play:1}, NO_VER={title:1,over:1,play:1,count:1,'count-resume':1,paused:1,restart:1};
+var NO_MENU={hub:1,title:1,lang:1,paused:1,restart:1,play:1}, NO_VER={hub:1,over:1,play:1,count:1,'count-resume':1,paused:1,restart:1};
 function chrome(){ if(LH>LW) return;
   var s=BH-3, vr=freeSide()!=='left', x=vr?LW-Math.round(SAFE.r*0.5)-10-s:Math.round(SAFE.l*0.5)+10, y=SAFE.t+7;
   if(!NO_MENU[scr]) iconButton(scr==='count'||scr==='count-resume'?'pause':scr==='scores'?'sc_back':'menu',x,y);
@@ -1958,12 +2211,12 @@ function chrome(){ if(LH>LW) return;
   // the try-out ship flies up the left edge: there the version goes to the top right corner; on the scores screen the buttons' column
   // starts right under the menu button — the version stands beside it
   if(NO_VER[scr]) return;
-  if(scr==='wave'&&!vr) diagCorner('V'+VERSION,true,SAFE.t+8,true);
+  if((scr==='wave'&&!vr)||scr==='title') diagCorner('V'+VERSION,true,SAFE.t+8,scr==='title'?vr===(freeSide()!=='left'):true);   // the game's screen: the corner away from its buttons
   else if(scr==='scores') diagCorner('V'+VERSION,true,y+Math.round((s-PF.CAP)/2),false,vr?x-16:x+s+16);
   else diagCorner('V'+VERSION,true,y+s+14); }
 resize(); Board.flush();
 if('serviceWorker' in navigator&&location.protocol==='https:') navigator.serviceWorker.register('sw.js').then(function(r){ r.update(); }).catch(function(){});   // works offline; checks for a new version on every launch
-go('title');   // always the menu first (0.44); a new player's first "Play" walks through the instruction
+go('hub');   // v0.70: the games' screen first (always the menu first since 0.44; a new player's first "Play" walks through the instruction)
 requestAnimationFrame(loop);
 /* test hooks: headless tests drive the screens through these (harmless in the game) */
 window.__sonaroids={go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },

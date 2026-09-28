@@ -55,7 +55,7 @@ function sky(dt,speed){                                             // nebula an
   var t=performance.now()/1000;
   stars.forEach(function(s){ var i=s.z<0.5?0:s.z<0.85?1:2; if(i===2&&Math.sin(t*3+s.tw)>0.6) i=1; lx.fillStyle=P.stars[i]; lx.fillRect(Math.round(s.x),Math.round(s.y),1,1); });
 }
-function light(x,y,rad,rgb,a){ lights.push([x,y,rad,rgb,a]); }
+function light(x,y,rad,rgb,a){ if(noLight) return; lights.push([x,y,rad,rgb,a]); }
 /* a soft light sprite per colour, made once: drawing it is much cheaper than a new gradient per light per frame */
 function glowSprite(rgb){ var c=glowSpr[rgb]; if(c) return c; c=document.createElement('canvas'); c.width=c.height=64; var x=c.getContext('2d'), g=x.createRadialGradient(32,32,0,32,32,32);
   g.addColorStop(0,'rgba('+rgb+',1)'); g.addColorStop(1,'rgba('+rgb+',0)'); x.fillStyle=g; x.fillRect(0,0,64,64); return glowSpr[rgb]=c; }

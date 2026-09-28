@@ -97,26 +97,78 @@ function sLang(){ sky(DT,0.3); var y=Math.round(LH*0.3); text('SONAROIDS',LW/2,y
   // v0.31: in a phone's browser (not launched from the home screen) — full screen needs the home screen; both languages, none is chosen yet
   if(inBrowser()){ text(STR.ru.fullscr,LW/2,Math.round(LH*0.68),P.soft,'center'); text(STR.en.fullscr,LW/2,Math.round(LH*0.68)+12,P.soft,'center'); }
   say('Sonaroids. English / Русский'); stepSquares('lang'); }
-function sTitle(){ sky(DT,0.4); var y=Math.round(LH*0.3);
-  // v0.38: the title and the Android note are centred in the space beside the buttons (the note used to run in between them)
-  var items=[['play',L('play'),'primary'],['scores',L('scores')],['howto',L('howto')],['lang',L('lang')],['sfx','','sound']];
-  var cw=colW(items), bx0=sideX(cw), a0=freeSide()==='left'?bx0+cw:SAFE.l, a1=freeSide()==='left'?LW-SAFE.r:bx0, cx0=Math.round((a0+a1)/2);
-  text('SONAROIDS',cx0,y,P.band,'center',2);
-  if(/Android/i.test(navigator.userAgent)&&!APP){ var ay=y+22;          // v0.44: the note «on Android it does not work on every phone» is gone — the app
-    // v0.42: in an Android browser — a link to the app (the APK of the latest GitHub release); tapping downloads it
-    var as=L('get_apk'), aw=PF.width(as); ay+=6; text(as,cx0,ay,P.band,'center'); R(P.band,cx0-aw/2,ay+PF.CAP+2,aw,1); BTN.push({id:'apk',x:cx0-aw/2-6,y:ay-6,w:aw+12,h:PF.CAP+12}); }
-  var vr=freeSide()==='left', vx=vr?LW-SAFE.r-8:SAFE.l+8, vy=LH-SAFE.b-12;
-  diagCorner(L('version')+' '+VERSION,false);   // for telling uploads apart; a tap shows the "logs" link (v0.47)
-  // v0.41, the app: «check for updates» above the source link — the app's own update (a dialog from the shell) and a fresh page
-  if(APP){ var us=L('app_upd'), uw=PF.width(us), uy=vy-32; text(us,vx,uy,P.band,vr?'right':'left'); BTN.push({id:'appupd',x:Math.max(0,(vr?vx-uw:vx)-6),y:uy-6,w:uw+12,h:PF.CAP+10}); }
-  // v0.28: the site opens straight into the game; the source code link moved here from the landing page
-  // v0.51 (the maintainer: the finger missed): the source link and the version in one line, 32 px apart
+/* ── v0.70: the games' screen (the maintainer's sketch «A», background «4», 28 Sep): SONAROIDS, the games as cards side by side —
+   SonaRocks and SonaRace («soon»); a card's picture changes its skin every ~4 s with a pixel dissolve, and the whole screen behind is
+   the chosen card's current skin, dimmed. Under the cards «Play», then «how to play», the language and the sounds; the version, the source
+   and the app's update at the bottom. No high scores here (the maintainer) ── */
+var hubSkin=Math.max(0,SKIN_IDS.indexOf(skinId)), hubPrev=-1, hubT=0, hubFade=1, raceImgs=null, raceI=0, soonT=-9, fadeMasks={};
+function fadeMask(l){ if(fadeMasks[l]) return fadeMasks[l]; var c=document.createElement('canvas'); c.width=4; c.height=4; var x=c.getContext('2d');
+  for(var y=0;y<4;y++) for(var i=0;i<4;i++) if(bay(i,y)<l/16){ x.fillStyle='#fff'; x.fillRect(i,y,1,1); } return fadeMasks[l]=x.createPattern(c,'repeat'); }
+var mixC=null;
+function dissolve(a,b,t){ if(!mixC||mixC.width!==LW||mixC.height!==LH){ mixC=document.createElement('canvas'); mixC.width=LW; mixC.height=LH; }
+  var m=mixC.getContext('2d'); m.globalCompositeOperation='source-over'; m.clearRect(0,0,LW,LH); m.drawImage(b,0,0);
+  m.globalCompositeOperation='destination-in'; m.fillStyle=fadeMask(Math.round(Math.max(0,Math.min(1,t))*16)); m.fillRect(0,0,LW,LH); m.globalCompositeOperation='source-over';
+  var o=demoC2(); var ox=o.getContext('2d'); ox.drawImage(a,0,0); ox.drawImage(mixC,0,0); return o; }
+var dC2=null; function demoC2(){ if(!dC2||dC2.width!==LW||dC2.height!==LH){ dC2=document.createElement('canvas'); dC2.width=LW; dC2.height=LH; } return dC2; }
+var prevC=null;
+function hubFrame(){ hubT+=DT; if(hubT>4){ hubT=0; hubPrev=hubSkin; var n; do{ n=Math.floor(Math.random()*SKIN_IDS.length); }while(n===hubSkin&&SKIN_IDS.length>1); hubSkin=n; hubFade=0; }
+  hubFade=Math.min(1,hubFade+DT/0.6);
+  if(hubFade<1&&hubPrev>=0){ var a=demoInto(SKINS[SKIN_IDS[hubPrev]],0);                     // the old skin, still…
+    if(!prevC||prevC.width!==LW||prevC.height!==LH){ prevC=document.createElement('canvas'); prevC.width=LW; prevC.height=LH; }
+    var pc2=prevC.getContext('2d'); pc2.clearRect(0,0,LW,LH); pc2.drawImage(a,0,0);
+    var b=demoInto(SKINS[SKIN_IDS[hubSkin]],DT); return dissolve(prevC,b,hubFade); }           // …and the new one showing through, pixel by pixel
+  return demoInto(SKINS[SKIN_IDS[hubSkin]],DT); }
+function hubCard(id,x,y,w,ih,img,name,sub,on){
+  R(P.bg,x,y,w,ih+26); if(img) lx.drawImage(img,x+2,y+2,w-4,ih);
+  if(!on){ lx.globalAlpha=0.55; R(P.bg,x+2,y+2,w-4,ih); lx.globalAlpha=1; }
+  frame(x,y,w,ih+26,on?P.band:P.line); if(on) frame(x-1,y-1,w+2,ih+28,P.band);
+  text(name,x+w/2,y+ih+7,on?P.text:P.soft,'center'); if(sub) text(sub,x+w/2,y+ih+17,P.soft,'center');
+  BTN.push({id:id,x:x,y:y,w:w,h:ih+26}); }
+function sHub(){ var fr=hubFrame(); lx.drawImage(fr,0,0); lx.globalAlpha=0.72; R(P.bg,0,0,LW,LH); lx.globalAlpha=1;
+  var cx0=Math.round((SAFE.l+LW-SAFE.r)/2), y=SAFE.t+8, sub=LH>=200;
+  text('SONAROIDS',cx0,y,P.band,'center',2); if(sub) text(L('hub_s'),cx0,y+19,P.soft,'center');
+  // two rows under the cards: «play» (and, on a narrow screen, the sounds beside it), then «how to play», the language (and the sounds);
+  // with the service links shown (a long press on the version) everything moves up a line to make room for them
+  var bw=btnW([L('howto'),L('lang')]), sw=soundW(), pw=btnW([L('play')]), narrow=bw*2+sw+16>LW-SAFE.l-SAFE.r-16;
+  var vy=LH-SAFE.b-12, rowY=vy-8-BH-(diag?16:0), playY=rowY-8-BH, top=y+(sub?31:20), lab=24;
+  var ih=Math.max(24,playY-8-lab-top), cw=Math.min(Math.round(ih*LW/LH),Math.round((LW-SAFE.l-SAFE.r-40)/2)), gap=16;
+  ih=Math.round(cw*LH/LW); var cx=Math.round(cx0-cw-gap/2), ty=Math.round(top+(playY-8-lab-top-ih)/2);
+  hubCard('hub_rocks',cx,ty,cw,ih,fr,'SonaRocks','',true);
+  if(!raceImgs&&typeof RACE_THUMBS!=='undefined'){ raceImgs=RACE_THUMBS.map(function(u){ var im=new Image(); im.src=u; return im; }); }
+  raceI=Math.floor((clock+2)/4)%((raceImgs&&raceImgs.length)||1);
+  var ri=raceImgs&&raceImgs[raceI]&&raceImgs[raceI].complete?raceImgs[raceI]:null;
+  hubCard('hub_race',cx+cw+gap,ty,cw,ih,ri,'SonaRace',clock-soonT<1.5&&Math.floor(clock*6)%2?'':L('soon'),false);
+  if(narrow){ var t1=pw+8+sw, x1=Math.round(cx0-t1/2); button('hub_play',L('play'),x1,playY,pw,BH,'primary',Math.floor(clock*2)%2===0); soundRow(x1+pw+8,playY,sw,BH);
+    var x2=Math.round(cx0-bw-4); button('howto',L('howto'),x2,rowY,bw,BH,''); button('lang',L('lang'),x2+bw+8,rowY,bw,BH,''); }
+  else { button('hub_play',L('play'),cx0-Math.round(pw/2),playY,pw,BH,'primary',Math.floor(clock*2)%2===0);
+    var tw=bw*2+sw+16, bx=Math.round(cx0-tw/2); button('howto',L('howto'),bx,rowY,bw,BH,''); button('lang',L('lang'),bx+bw+8,rowY,bw,BH,''); soundRow(bx+2*bw+16,rowY,sw,BH); }
+  var vr=freeSide()==='left', vx=vr?LW-SAFE.r-8:SAFE.l+8;
+  diagCorner(L('version')+' '+VERSION,false);                              // a long press shows the service links (logs, sound, lab)
   var gs=L('source'), gw=PF.width(gs), vw0=PF.width(L('version')+' '+VERSION), gx=vr?vx-vw0-32:vx+vw0+32;
   text(gs,gx,vy,P.soft,vr?'right':'left'); BTN.push({id:'source',x:Math.max(0,(vr?gx-gw:gx)-6),y:vy-4,w:gw+12,h:Math.min(PF.CAP+10,LH-vy+4)});
-  var sy=Math.round(LH*0.62+Math.sin(clock*1.3)*LH*0.08); drawShip(cx0-40,sy,clock,false);
-  for(var i=0;i<3;i++){ var bx=cx0-20+((clock*90+i*40)%120); R(P.bullet,bx,sy,4,1); light(bx,sy,6*K,P.glowB,0.45); }
-  column(items,Math.round(LH*0.5));
-  say('Sonaroids. '+L('play')); }
+  // the app's update and, in an Android browser, the app's download — at the top corners
+  if(APP){ var us=L('app_upd'), uw=PF.width(us), ux=vr?LW-SAFE.r-8:SAFE.l+8, uy=SAFE.t+8; text(us,ux,uy,P.band,vr?'right':'left'); BTN.push({id:'appupd',x:Math.max(0,(vr?ux-uw:ux)-6),y:uy-6,w:uw+12,h:PF.CAP+10}); }
+  if(/Android/i.test(navigator.userAgent)&&!APP){ var as=L('get_apk'), aw=PF.width(as), ax=vr?LW-SAFE.r-8-aw:SAFE.l+8, ay=SAFE.t+8;
+    text(as,ax,ay,P.band,'left'); R(P.band,ax,ay+PF.CAP+2,aw,1); BTN.push({id:'apk',x:ax-6,y:ay-6,w:aw+12,h:PF.CAP+12}); }
+  say('Sonaroids. SonaRocks. '+L('play')); }
+/* ── the game's own screen (SonaRocks): the chosen skin flies behind, the buttons on the free side over a dim band:
+   play, high scores, how to play, «◀ skin: … ▶» (the picture changes at once), «← all games» ── */
+function skinRow(x,y,w,h){ var s=Math.round(h*0.9), ty=y+Math.round((h-7)/2);
+  R(P.bg,x,y,w,h); frame(x,y,w,h,P.band);
+  polyFill([[x+s/2+2,y+h/2-4],[x+s/2+2,y+h/2+4],[x+s/2-3,y+h/2]],P.band); polyFill([[x+w-s/2-2,y+h/2-4],[x+w-s/2-2,y+h/2+4],[x+w-s/2+3,y+h/2]],P.band);
+  text(L('skin')+': '+L('skin_'+skinId),x+w/2,ty,P.text,'center',1,true);
+  BTN.push({id:'skin_prev',x:x,y:y,w:s+6,h:h}); BTN.push({id:'skin_next',x:x+w-s-6,y:y,w:s+6,h:h}); BTN.push({id:'skin_next',x:x+s+6,y:y,w:w-2*s-12,h:h});
+  var n=SKIN_IDS.length, i0=SKIN_IDS.indexOf(skinId), dx=Math.round(x+w/2-(n*6-2)/2); for(var i=0;i<n;i++) R(i===i0?P.band:P.line,dx+i*6,y+h+3,3,3); }
+function sTitle(){
+  var items=[['play',L('play'),'primary'],['scores',L('scores')],['howto',L('howto')],['skin','','skin'],['hub',L('all_games')]];
+  var w=Math.max(btnW(items.filter(function(b){ return b[1]; }).map(function(b){ return b[1]; })),PF.width(L('skin')+': '+L('skin_'+SKIN_IDS.reduce(function(a,k){ return PF.width(L('skin_'+k))>PF.width(L('skin_'+a))?k:a; })))+2*Math.round(BH*0.9)+24);
+  var bx0=sideX(w), band0=freeSide()==='left'?0:bx0-Math.max(8,Math.round(LW*0.04)), band1=freeSide()==='left'?bx0+w+Math.max(8,Math.round(LW*0.04)):LW;
+  noLight=true; drawDemo(SK,DT,freeSide()==='left'?band1+16:SAFE.l+16); noLight=false;           // the ship flies beside the buttons' band; no soft light over the buttons
+  lx.globalAlpha=0.55; R(P.bg,band0,0,band1-band0,LH); lx.globalAlpha=1;
+  var h=BH, gap=10, y=Math.round(LH*0.52-(items.length*(h+gap)-gap)/2);
+  items.forEach(function(b){ if(b[2]==='skin') skinRow(bx0,y,w,h); else button(b[0],b[1],bx0,y,w,h,b[2]||'',Math.floor(clock*2)%2===0); y+=h+gap; });
+  var a0=freeSide()==='left'?band1:SAFE.l, a1=freeSide()==='left'?LW-SAFE.r:band0, lsc=PF.width('SonaRocks',2)<=a1-a0-12?2:1; text('SonaRocks',Math.round((a0+a1)/2),Math.round(LH*0.16),P.band,'center',lsc);
+  say('SonaRocks. '+L('play')+'. '+L('skin')+': '+L('skin_'+skinId)); }
 function sSound(){ sky(DT,0.3); titles(L(direct?(dirLoud?'volume_loud':'volume_direct'):'volume'),L('volume_s')); soundVolume(scrT); nextBtn('next',L('next')); stepSquares('sound'); }
 /* v0.41: the Android app (android/, a WebView over this very page) gives a small native helper: media volume, audio route.
    In the browser it does not exist, and nothing changes there */
@@ -204,7 +256,7 @@ function handBeacon(){ var m=handSide()==='left', a=0.55+0.35*Math.sin(clock*5),
 var CAUGHT_SHOW=1.0, caughtT=0;
 function followShip(){ var f=handFrac(); if(f!==null) lastHand=f;
   var ty=(Core.FH-Core.MARGIN-(lastHand===null?0.5:lastHand)*(Core.FH-2*Core.MARGIN))*K; shipY=shipY===null?ty:shipY+(ty-shipY)*0.49; return f!==null; }
-function sTry(){ followShip(); /* the sky is already drawn by sWave */ drawShip(fx(Core.SHIP_X),shipY,clock,false);
+function sTry(){ followShip(); /* the sky is already drawn by sWave */ SK.ship(fx(Core.SHIP_X),shipY,clock,false);
   titles(L('wave_ok'),L('try_s'));
   // buttons on the free side, but never over the ship's lane (it flies at the left edge of the field)
   var items=[['start',L('play'),'primary'],['again',L('recal')]], bw=btnW(items.map(function(q){ return q[1]; })), lane=Math.round(fx(Core.SHIP_X))+34;
@@ -216,33 +268,31 @@ function sTry(){ followShip(); /* the sky is already drawn by sWave */ drawShip(
 function fx(x){ return x*K+SAFE.l; }
 /* rock pictures: 6 per size, drawn ahead of time (a few per frame on the calm screens) — drawing one mid-flight took a frame (v0.16) */
 var POOL_N=6, pool={K:0,list:[[],[],[]]};
-function poolFill(budget){ if(pool.K!==K){ pool={K:K,list:[[],[],[]]}; } for(var n=0;n<budget;n++){ var sz=[0,1,2].filter(function(i){ return pool.list[i].length<POOL_N; })[0]; if(sz===undefined) return;
-  pool.list[sz].push(makeRock(Math.max(3,Math.round(Core.R_SIZE[sz]*K)))); } }
-function rockFromPool(r){ poolFill(0); var l=pool.list[r.sz]; if(!l||!l.length) return makeRock(Math.max(3,Math.round(r.r*K)));
-  var b=l[r.id%l.length]; return {frames:b.frames,size:b.size,rot:(r.id*5)%16,vr:((r.id*7)%11-5)}; }
-function field(dt,speed){ sky(dt,speed);
+function poolFill(budget){ if(pool.K!==K||pool.skin!==skinId){ pool={K:K,skin:skinId,list:[[],[],[]]}; rockSpr={}; } for(var n=0;n<budget;n++){ var sz=[0,1,2].filter(function(i){ return pool.list[i].length<POOL_N; })[0]; if(sz===undefined) return;
+  pool.list[sz].push(SK.rock(Math.max(3,Math.round(Core.R_SIZE[sz]*K)),sz,pool.list[sz].length*17+sz)); } }   // v0.70: the skin's rocks
+function rockFromPool(r){ poolFill(0); var l=pool.list[r.sz]; if(!l||!l.length) return SK.rock(Math.max(3,Math.round(r.r*K)),r.sz,r.id);
+  var b=l[r.id%l.length]; return {frames:b.frames,size:b.size,ox:b.ox||0,rot:(r.id*5)%16,vr:b.vr===0?0:((r.id*7)%11-5)}; }
+function field(dt,speed){ poolFill(0); SK.sky(dt,speed);
   if(!g) return;
   if(g.state!=='play'){ g.bullets=[]; g.ebullets=[]; g.rocks.forEach(function(r){ r.x+=r.vx*dt; r.y+=r.vy*dt; }); if(g.ufo) g.ufo.x-=6*dt; }   // after the game: things drift on, for the look only
   g.rocks.forEach(function(r){ var sp=rockSpr[r.id]; if(!sp){ sp=rockSpr[r.id]=rockFromPool(r); }
-    sp.rot=(sp.rot+sp.vr*dt+16)%16; var fr=sp.frames[Math.floor(sp.rot)%16]; lx.drawImage(fr,Math.round(fx(r.x)-sp.size/2),Math.round(r.y*K-sp.size/2)); });
+    sp.rot=(sp.rot+sp.vr*dt+16)%16; var fr=sp.frames[Math.floor(sp.rot)%16]; lx.drawImage(fr,Math.round(fx(r.x)-sp.size/2+(sp.ox||0)),Math.round(r.y*K-sp.size/2)); });
   g.picks.forEach(function(p){ var x=Math.round(fx(p.x)), y=Math.round(p.y*K+Math.sin(clock*3)*2);
-    R(P.pick,x-5,y-5,11,11); R(P.bg,x-4,y-4,9,9); blit(ICON[p.type],[P.pick],x-3,y-3); light(x,y,14*K,P.glowP,0.35); });
+    SK.pick(x,y,p.type); });
   if(g.ufo){ var u=g.ufo, big=u.kind==='big', ux=Math.round(fx(u.x)), uy=Math.round(u.y*K);
     var hurtNow=u.hitT>0&&Math.floor(clock*20)%2===0;                                                  // just hit: it flashes white
-    blit(big?UFO_BIG:UFO_SMALL,hurtNow?[P.text,P.text,P.text,P.text]:P.ufo,ux-(big?9:6),uy-(big?4:2));
-    if(Math.floor(clock*6)%2){ R(P.ufo[3],ux-(big?5:3),uy+1,1,1); R(P.ufo[3],ux+(big?4:2),uy+1,1,1); }
-    light(ux,uy,(big?22:16)*K,hex(P.ufo[2]).join(','),0.35); }
-  g.ebullets.forEach(function(b){ R(P.ebullet,fx(b.x)-1,b.y*K-1,2,2); light(fx(b.x),b.y*K,7*K,hex(P.ebullet).join(','),0.5); });
-  g.bullets.forEach(function(b){ R(P.bullet,fx(b.x)-2,b.y*K,4,1); light(fx(b.x),b.y*K,6*K,P.glowB,0.45); });
+    SK.ufo(ux,uy,big,hurtNow); }
+  g.ebullets.forEach(function(b){ SK.ebullet(fx(b.x),b.y*K); });
+  g.bullets.forEach(function(b){ SK.bullet(fx(b.x),b.y*K); });
   if(g.state==='play'){ var sx=fx(g.ship.x), sy=g.ship.y*K;
-    drawShip(sx,sy,clock,g.ship.inv>0&&Math.floor(clock*14)%2===0);
+    SK.ship(sx,sy,clock,g.ship.inv>0&&Math.floor(clock*14)%2===0);
     if(g.ship.shield>0&&(g.ship.shield>3||Math.floor(clock*8)%2)){                 // the shield: a ring of dots, blinking in its last 3 s
-      for(var a=0;a<28;a+=2){ var an=a/28*6.283+clock*2; R(P.pick,sx+7+Math.cos(an)*11,sy+Math.sin(an)*9,1,1); } light(sx+7,sy,16*K,P.glowP,0.25); }
-    if(livesT>0){ for(var i=0;i<g.lives;i++) blit(MINI,[P.ship[1],P.ship[2]],sx-2+i*7,sy-14); } }   // lives: shown only for a moment after a hit
+      for(var a=0;a<28;a+=2){ var an=a/28*6.283+clock*2; R(SK.shield(),sx+7+Math.cos(an)*11,sy+Math.sin(an)*9,1,1); } light(sx+7,sy,16*K,P.glowP,0.25); }
+    if(livesT>0){ for(var i=0;i<g.lives;i++) blit(MINI,SK.mini(),sx-2+i*7,sy-14); } }   // lives: shown only for a moment after a hit
   drawParts(dt);
 }
 function sCount(){ countT-=DT; poolFill(2); followShip();
-  sky(DT,0.6); drawShip(fx(Core.SHIP_X),shipY,clock,false);
+  SK.sky(DT,0.6); SK.ship(fx(Core.SHIP_X),shipY,clock,false);
   var n=Math.max(1,Math.ceil(countT)), cx0=Math.round(LW/2), cy0=Math.round(LH/2);
   ring(cx0,cy0,13,1-(countT-Math.floor(countT)),P.band); text(String(n),cx0,cy0-3,P.text,'center'); say(String(n));
   if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.play('tick');
@@ -282,12 +332,12 @@ Board.devInfo(devInfo);
 function endGame(){ g.state='over'; overT=0; Logs.gameStop(); Board.finish(g.score); Board.flush(); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } go('over'); }
 function react(){ g.events.forEach(function(k){
   if(k==='fire'){ if(Math.random()<0.5) Sfx.play('fire'); } else if(k!=='crash') Sfx.play(k); });
-  (g.gone||[]).forEach(function(r){ burst(fx(r.x),r.y*K,8+Math.round(r.r*K),P.rock.slice(2).concat([P.flame[1]]),50*K); delete rockSpr[r.id]; shake=Math.max(shake,0.08+r.r*0.004); });
-  (g.fx||[]).forEach(function(f){ if(f.ufo){ burst(fx(f.x),f.y*K,40,P.ufo,90*K); shake=0.35; } else if(f.pick) burst(fx(f.x),f.y*K,14,[P.pick,P.text],50*K); });
-  if(g.events.indexOf('ufo_hit')>=0&&g.ufo){ burst(fx(g.ufo.x),g.ufo.y*K,14,[P.text].concat(P.ufo.slice(1)),60*K); shake=Math.max(shake,0.12); }
-  if(g.events.indexOf('shield')>=0) burst(fx(g.ship.x)+6,g.ship.y*K,20,[P.pick,P.text],60*K);
+  var BU=SK.bursts(); (g.gone||[]).forEach(function(r){ burst(fx(r.x),r.y*K,8+Math.round(r.r*K),BU.rock,50*K); delete rockSpr[r.id]; shake=Math.max(shake,0.08+r.r*0.004); });
+  (g.fx||[]).forEach(function(f){ if(f.ufo){ burst(fx(f.x),f.y*K,40,BU.ufo,90*K); shake=0.35; } else if(f.pick) burst(fx(f.x),f.y*K,14,BU.pick,50*K); });
+  if(g.events.indexOf('ufo_hit')>=0&&g.ufo){ burst(fx(g.ufo.x),g.ufo.y*K,14,[P.text].concat(BU.ufo),60*K); shake=Math.max(shake,0.12); }
+  if(g.events.indexOf('shield')>=0) burst(fx(g.ship.x)+6,g.ship.y*K,20,BU.pick,60*K);
   if((g.fx||[]).some(function(f){ return f.pick==='life'; })) livesT=1.8;                  // a life taken: the lives show for a moment
-  if(g.events.indexOf('hit')>=0||g.events.indexOf('over')>=0){ flash=0.25; shake=0.4; livesT=1.8; burst(fx(g.ship.x)+6,g.ship.y*K,26,P.ship.concat(P.flame),70*K); }
+  if(g.events.indexOf('hit')>=0||g.events.indexOf('over')>=0){ flash=0.25; shake=0.4; livesT=1.8; burst(fx(g.ship.x)+6,g.ship.y*K,26,BU.ship,70*K); }
 }
 function sOver(){ overT+=DT;                       // no tuning here: it is done on the wave screen before every game (24 Sep)
   field(DT,0.3); var cx0=freeSide()==='left'?Math.round(LW*0.6):Math.round(LW*0.4), y=Math.round(LH*0.3);
@@ -416,6 +466,9 @@ var ACT={
   /* a deep recalibration: forget the saved palm range, close the microphone and start from "put the phone down" */
   recal:function(){ onboarding=false; direct=false; store.set('sonaroids_field','100'); Sonar.restart(); booted=false; acoustic=false; go('phone'); },
   lefty:function(){ lefty=true; store.set('sonaroids_lefty','1'); turnShown=false; Logs.ev('играю левой'); seenT=scrT; },
+  hub:function(){ go('hub'); }, hub_rocks:function(){ go('title'); }, hub_play:function(){ go('title'); }, hub_race:function(){ soonT=clock; Sfx.play('tap'); },
+  skin_prev:function(){ var i=SKIN_IDS.indexOf(skinId); setSkin(SKIN_IDS[(i+SKIN_IDS.length-1)%SKIN_IDS.length]); },
+  skin_next:function(){ var i=SKIN_IDS.indexOf(skinId); setSkin(SKIN_IDS[(i+1)%SKIN_IDS.length]); },
   lang:function(){ lang=lang==='en'?'ru':'en'; store.set('sonaroids_lang',lang); },
   sfx:function(){ Sfx.toggle(); }, vol_dn:function(){ Sfx.down(); }, vol_up:function(){ Sfx.up(); },
   start:function(){ ensure(startCount); },
@@ -488,7 +541,7 @@ function loop(now){
   if(LH>LW){ pauseGame(); sRotate(); present(0); return; }
   if(booted&&Sonar.lost()&&(scr==='wave'||scr==='count'||scr==='play'||scr==='over')){ if(g&&g.state==='play') Logs.gameStop(); Board.setup('lost'); go('lost'); }
   switch(scr){
-    case 'lang': sLang(); break; case 'title': sTitle(); break;
+    case 'lang': sLang(); break; case 'title': sTitle(); break; case 'hub': sHub(); break;
     case 'sound': sSound(); break;
     case 'phone': sPhone(); break; case 'mic': sMic(); break; case 'probe': sProbe(); break; case 'away': sAway(); break; case 'wave': sWave(); break;
     case 'count': sCount(); break; case 'count-resume': sCountResume(); break; case 'play': sPlay(); break; case 'over': sOver(); break;
@@ -555,7 +608,7 @@ function audAct(id){ var p=id.split(':'), k=p[1], v=p.slice(2).join(':');
   else if(k==='retest') Sonar.audioRetest();
   else if(k==='lab'){ location.href='../lab/sonar_lab3.html'; return; }
   Sonar.restart(); booted=false; acoustic=false; audDev=null; }
-var NO_MENU={title:1,lang:1,paused:1,restart:1,play:1}, NO_VER={title:1,over:1,play:1,count:1,'count-resume':1,paused:1,restart:1};
+var NO_MENU={hub:1,title:1,lang:1,paused:1,restart:1,play:1}, NO_VER={hub:1,over:1,play:1,count:1,'count-resume':1,paused:1,restart:1};
 function chrome(){ if(LH>LW) return;
   var s=BH-3, vr=freeSide()!=='left', x=vr?LW-Math.round(SAFE.r*0.5)-10-s:Math.round(SAFE.l*0.5)+10, y=SAFE.t+7;
   if(!NO_MENU[scr]) iconButton(scr==='count'||scr==='count-resume'?'pause':scr==='scores'?'sc_back':'menu',x,y);
@@ -563,12 +616,12 @@ function chrome(){ if(LH>LW) return;
   // the try-out ship flies up the left edge: there the version goes to the top right corner; on the scores screen the buttons' column
   // starts right under the menu button — the version stands beside it
   if(NO_VER[scr]) return;
-  if(scr==='wave'&&!vr) diagCorner('V'+VERSION,true,SAFE.t+8,true);
+  if((scr==='wave'&&!vr)||scr==='title') diagCorner('V'+VERSION,true,SAFE.t+8,scr==='title'?vr===(freeSide()!=='left'):true);   // the game's screen: the corner away from its buttons
   else if(scr==='scores') diagCorner('V'+VERSION,true,y+Math.round((s-PF.CAP)/2),false,vr?x-16:x+s+16);
   else diagCorner('V'+VERSION,true,y+s+14); }
 resize(); Board.flush();
 if('serviceWorker' in navigator&&location.protocol==='https:') navigator.serviceWorker.register('sw.js').then(function(r){ r.update(); }).catch(function(){});   // works offline; checks for a new version on every launch
-go('title');   // always the menu first (0.44); a new player's first "Play" walks through the instruction
+go('hub');   // v0.70: the games' screen first (always the menu first since 0.44; a new player's first "Play" walks through the instruction)
 requestAnimationFrame(loop);
 /* test hooks: headless tests drive the screens through these (harmless in the game) */
 window.__sonaroids={go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },

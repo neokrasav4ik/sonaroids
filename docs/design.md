@@ -41,9 +41,9 @@ Rejected: "diagram" (top and side views) and "in-game" (a height rail at the scr
 Each screen is a picture and one or two lines. A command appears, a pause ring fills (about 1.5 s), and only then the game starts listening.
 
 1. **Language:** ENGLISH / РУССКИЙ. Only on first launch; later in the menu. — agreed
-2. **Sound — one command:** "Set the volume to 30–70%", with "with the volume buttons" under it. A speaker and a 10-step scale with 3–7 lit. — agreed 24 Sep
+2. **Sound — one command:** "Set the volume to 20–30%", with "with the volume buttons" under it. A speaker and a 10-step scale with 3–7 lit. — agreed 24 Sep
    Checked on the maintainer's iPhone on 24 Sep: the probe follows the **media** volume (the one the side buttons change while the game plays); silent mode does **not** mute it, media volume at zero does. So the "turn off silent mode" and "ringer volume" screens are gone.
-   If the probe is not heard at the "take your hand away" step, the command becomes more direct: "The volume is too low — turn it up to 30–70%". "Not heard" is decided by how loud the probe itself is, not by signal-to-noise. The auto-level adjusts the exact probe level, hence the wide range.
+   If the probe is not heard at the "take your hand away" step, the command becomes more direct: "The volume is too low — turn it up to 20–30%". "Not heard" is decided by how loud the probe itself is, not by signal-to-noise. The auto-level adjusts the exact probe level, hence the wide range.
 3. **Put the phone down:** screen up, charging port towards the hand you'll play with. The microphone is next to the port, so the phone actually decides the side; the app verifies it acoustically. Buttons move to the free-hand side. — agreed
 4. **Microphone permission** — the system prompt, preceded by one line saying why.
 5. **"Take your hand away"** — 2 seconds: probe level and the empty room.

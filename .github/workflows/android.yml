@@ -79,7 +79,7 @@ jobs:
         run: |
           set -eu
           v=$(cat VERSION)
-          gradle -p android assembleRelease -PappVersionCode=${{ github.run_number }} -PappVersionName="$v.${{ github.run_number }}" --no-daemon
+          gradle -p android assembleRelease -PappVersionCode=${{ github.run_number }} -PappVersionName="build ${{ github.run_number }}" --no-daemon
           mkdir -p out
           cp android/app/build/outputs/apk/release/app-release.apk out/sonaroids.apk
           rm -f android/app/release.jks

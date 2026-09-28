@@ -17,9 +17,9 @@ const APPSTUB=`(function(){ var st={on:false,g:[0,0,0,0],probes:0,iv:null,frames
       return JSON.stringify({running:st.on,frames:st.frames,src:'voice',ch:1,mic_wanted:st.cfg?st.cfg.mic:-1,out_wanted:-1,error:'',mode:0,in:{id:m,type:'builtin_mic',address:a},out:{id:2,type:'speaker'},active:[{id:0,address:a,desc:a}],routes:r}); },
     audioSwitch:function(cfg){ var c=JSON.parse(cfg); st.cfg.mic=c.mic; st.cfg.src=c.src; st.switches=(st.switches||0)+1; st.moved=false; return true; },   /* v0.64: asked again, the phone obeys */
     audioStop:function(){ st.on=false; if(st.iv) clearInterval(st.iv); st.iv=null; },
-    audioStart:function(cfg){ st.cfg=JSON.parse(cfg); var mc=new MessageChannel(), src=makeSimSource(function(t){ return window.__hand?window.__hand(t):null; }), i=0, t0=performance.now();
+    audioStart:function(cfg){ if(st.iv) clearInterval(st.iv); st.cfg=JSON.parse(cfg); st.starts=(st.starts||0)+1; st.moved=false;   /* v0.65: the page reopens the recording to set a microphone */ var mc=new MessageChannel(), src=makeSimSource(function(t){ return window.__hand?window.__hand(t):null; }), i=0, t0=performance.now();
       st.on=true; setTimeout(function(){ window.postMessage('sonaroids-audio','*',[mc.port2]); },50);
-      st.iv=setInterval(function(){ var due=Math.floor((performance.now()-t0)/1000*48000/512); while(i+2<=due){ var g=Math.max(st.g[0],st.g[1],st.g[2],st.g[3])*(st.cfg&&st.cfg.mic===4?0.2:1);   /* the back microphone hears the probe 14 dB quieter */
+      st.iv=setInterval(function(){ var due=Math.floor((performance.now()-t0)/1000*48000/512); while(i+2<=due){ var g=Math.max(st.g[0],st.g[1],st.g[2],st.g[3])*(st.cfg&&st.cfg.mic===4&&!window.__same?0.2:1)*(st.drop||1);   /* the back microphone hears the probe 14 dB quieter */
           var b=new Uint8Array(2048), dv=new DataView(b.buffer); for(var k=0;k<2;k++){ var f=src(i+k,g); for(var j=0;j<512;j++) dv.setInt16((k*512+j)*2,Math.max(-32768,Math.min(32767,Math.round(f[j]*32768))),true); }
           var s=''; for(var q=0;q<b.length;q++) s+=String.fromCharCode(b[q]); mc.port1.postMessage(i+':'+btoa(s)); i+=2; st.frames+=2; } },10);
       return true; } }; })();`;
@@ -36,9 +36,14 @@ const APPSTUB=`(function(){ var st={on:false,g:[0,0,0,0],probes:0,iv:null,frames
   await p.evaluate(()=>{ window.__hand=t=>100+45*Math.sin(2*Math.PI*t/1.4); });
   let caught=false; t0=Date.now(); while(Date.now()-t0<25000){ caught=await p.evaluate(()=>__sonaroids.state().caught); if(caught) break; await p.waitForTimeout(250); }
   // v0.64: the phone moves the recording to another microphone by itself (the Redmi Note 10S): the page must log it and ask for its own again
-  await p.evaluate(()=>{ __nat.moved=true; __nat.switches=0; }); await p.waitForTimeout(2600);
-  const back=await p.evaluate(()=>({mic:__nat.cfg.mic,sw:__nat.switches,log:Sonar.info().routes.map(r=>r[1]+(r[2]!==undefined?' '+JSON.stringify(r[2]):''))}));
+  await p.evaluate(()=>{ __nat.moved=true; __nat.starts=0; }); await p.waitForTimeout(2600);
+  const back=await p.evaluate(()=>({mic:__nat.cfg.mic,sw:__nat.starts,log:Sonar.info().routes.map(r=>r[1]+(r[2]!==undefined?' '+JSON.stringify(r[2]):''))}));
   const backOk=back.mic===3&&back.sw>=1&&back.log.some(x=>/^android/.test(x))&&back.log.some(x=>/^верну микрофон/.test(x));
+  // v0.65: an unreported change — the probe at the microphone falls by 14 dB and stays there: logged as a jump
+  await p.evaluate(()=>{ __nat.drop=0.2; }); await p.waitForTimeout(3600);
+  const jump=await p.evaluate(()=>Sonar.info().routes.filter(r=>r[1]==='скачок зонда').map(r=>r[2].db));
+  await p.evaluate(()=>{ __nat.drop=1; });
+  const jumpOk=jump.length>=1&&jump[0]<-10;
   // the service screen
   await p.evaluate(()=>{ __sonaroids.act.audio(); }); await p.waitForTimeout(400);
   const ids=await p.evaluate(()=>__sonaroids.btn().map(q=>q.id));
@@ -51,12 +56,20 @@ const APPSTUB=`(function(){ var st={on:false,g:[0,0,0,0],probes:0,iv:null,frames
   await p2.goto('file://'+path.join(ROOT,'game','play','index.html')); await p2.waitForTimeout(300);
   await p2.evaluate(()=>__sonaroids.act.play()); await p2.waitForTimeout(400); await p2.evaluate(()=>__sonaroids.act.probe_norm());
   let def=''; t0=Date.now(); while(Date.now()-t0<15000){ def=await p2.evaluate(()=>Sonar.info().booted?Sonar.info().audio:''); if(def) break; await p2.waitForTimeout(200); }
+  // v0.65: both microphones sound the same (the phone does not switch them): no microphone is asked for
+  const p3=await ctx.newPage(); await p3.addInitScript(()=>{ window.__same=true; localStorage.removeItem('sonaroids_autoaudio'); });
+  await p3.goto('file://'+path.join(ROOT,'game','play','index.html')); await p3.waitForTimeout(300);
+  await p3.evaluate(()=>__sonaroids.act.play()); await p3.waitForTimeout(400); await p3.evaluate(()=>__sonaroids.act.probe_norm());
+  let same=null; t0=Date.now(); while(Date.now()-t0<25000){ same=await p3.evaluate(()=>Sonar.info().auto_audio); if(same) break; await p3.waitForTimeout(250); }
+  const sameOk=!!(same&&same.same&&same.pick&&same.pick.mic===-1);
   await b.close();
   const autoOk=!!(info.auto&&info.auto.tried.length===2&&info.auto.pick&&info.auto.pick.mic===3&&info.stored&&JSON.parse(info.stored).mic===3);
-  const ok=autoOk&&backOk&&def==='app'&&s==='wave'&&info.audio==='app'&&info.probes>=3&&info.frames>100&&info.mic&&info.mic.audio==='app'&&caught&&listed&&!errors.length;
+  const ok=autoOk&&backOk&&jumpOk&&sameOk&&def==='app'&&s==='wave'&&info.audio==='app'&&info.probes>=3&&info.frames>100&&info.mic&&info.mic.audio==='app'&&caught&&listed&&!errors.length;
   console.log(`auto pick: tried ${info.auto&&info.auto.tried.map(r=>r.mic+'/'+r.src+' wander '+r.wander+' SNR '+r.snr).join(', ')} → mic ${info.auto&&info.auto.pick&&info.auto.pick.mic} (want 3), remembered ${info.stored} ${autoOk?'ok':'FAIL'}`);
   console.log(`through the app's sound: ready → ${s}, mode ${info.audio}, probes sent ${info.probes}, frames ${info.frames}, probe gain ${info.gain&&info.gain.toFixed(3)}, SNR ${info.snr&&info.snr.toFixed(1)} dB; palm caught ${caught}; service screen lists the microphones and the speaker ${listed}`+(errors.length?' | errors: '+[...new Set(errors)].join('; ').slice(0,400):''));
-  console.log(`the phone moved the recording to mic 4: logged and asked back → mic ${back.mic} (want 3), switches ${back.sw} ${backOk?'ok':'FAIL'}\n  ${back.log.join('\n  ')}`);
+  console.log(`the phone moved the recording to mic 4: logged and asked back (the recording reopened) → mic ${back.mic} (want 3), reopened ${back.sw} ${backOk?'ok':'FAIL'}\n  ${back.log.join('\n  ')}`);
+  console.log(`the probe fell 14 dB unreported: logged ${JSON.stringify(jump)} dB ${jumpOk?'ok':'FAIL'}`);
+  console.log(`both microphones sound the same: pick ${same&&same.pick&&same.pick.mic} (want -1, Android's own), tried ${same&&same.tried.map(r=>r.mic+' line '+r.line+' SNR '+r.snr).join(' / ')} ${sameOk?'ok':'FAIL'}`);
   console.log(`nothing chosen: the sound goes through ${def||'?'} (want app) ${def==='app'?'ok':'FAIL'}`);
   console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;
 })();

@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='0.64';
+var VERSION='0.65';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -457,13 +457,14 @@ var Sonar=(function(){
     var seq=+d.slice(0,c), bin=atob(d.slice(c+1)), ch=natCfg&&natCfg.ch===2?2:1, n=bin.length>>1, nf=Math.floor(n/ch/N), f, i, j, v;
     for(i=0;i<nf;i++){ f=new Float32Array(N);
       for(j=0;j<N;j++){ var o=((i*N+j)*ch)<<1; v=bin.charCodeAt(o)|(bin.charCodeAt(o+1)<<8); if(v>=32768) v-=65536; f[j]=v/32768; }
+      lastFr.push(f); if(lastFr.length>4) lastFr.shift();
       onFrame({data:{f:f,s:seq+i}}); }
     routeWatch(); }
   /* v0.64: where the sound really goes, once a second. The Redmi Note 10S moved the recording to the front microphone while getting ready,
      even with the bottom one asked for. Every change (the recording's device, the microphones in use, the probe's output, the phone's audio
      mode) and every route Android reports goes into the setup and game logs ('маршрут'); if the recording left the microphone asked for,
      it is asked for again (up to 3 times per getting ready) */
-  var routeKey=null, routeT=0, reasserts=0, routeLog=[], testing=false;
+  var routeKey=null, routeT=0, reasserts=0, routeLog=[], testing=false, lastFr=[], refLv=null, jumpN=0;
   function rlog(k,x){ routeLog.push(x===undefined?[Math.round(performance.now()),k]:[Math.round(performance.now()),k,x]); if(routeLog.length>40) routeLog.shift();
     if(typeof Logs!=='undefined'){ Logs.ev('маршрут: '+k,x); Logs.gameEv('маршрут: '+k,x); } }
   function routeName(S){ var a=S.active&&S.active.length?S.active.map(function(m){ return m.address||m.id; }).join('+'):'';
@@ -472,8 +473,12 @@ var Sonar=(function(){
     var S; try{ S=JSON.parse(NATA.audioStatus()); }catch(e){ return; }
     (S.routes||[]).forEach(function(r){ rlog('android',{t:r.t,kind:r.kind,dev:r.dev?r.dev.id+'/'+r.dev.type+(r.dev.address?'/'+r.dev.address:''):null,active:r.active,mode:r.mode}); });
     var k=routeName(S); if(k!==routeKey){ routeKey=k; rlog(testing?'тест':'сейчас',k); }
-    if(!testing&&natCfg&&natCfg.mic>=0&&S.in&&S.in.id!==natCfg.mic&&reasserts<3){ reasserts++; rlog('верну микрофон',natCfg.mic);
-      try{ NATA.audioSwitch(JSON.stringify({mic:natCfg.mic,src:natCfg.src,ch:1})); }catch(e){} } }
+    if(!testing&&natCfg&&natCfg.mic>=0&&S.in&&S.in.id!==natCfg.mic&&reasserts<3){ reasserts++; rlog('верну микрофон',natCfg.mic); natReopen().catch(function(){}); return; }
+    // v0.65: a change Android does not report — the probe at the microphone jumps by more than 8 dB for two checks in a row (the Redmi, 18:39: −13.5 dB)
+    if(active&&!testing&&lastFr.length===4){ var lv=probeStats(lastFr,fs,F_LO,20450).line-20*Math.log10(PROBE_G);
+      if(refLv===null){ refLv=lv; jumpN=0; }
+      else if(Math.abs(lv-refLv)>8){ if(++jumpN>=2){ rlog('скачок зонда',{db:+(lv-refLv).toFixed(1)}); refLv=lv; jumpN=0; } }
+      else jumpN=0; } }
   function natBoot(){
     NATA=window.SonaroidsApp; var AC=window.AudioContext||window.webkitAudioContext;
     try{ if(AC){ ctx=new AC(); if(ctx.state==='suspended') ctx.resume(); } }catch(e){ ctx=null; }   // only for the game's sounds
@@ -482,6 +487,10 @@ var Sonar=(function(){
     natCfg={mic:mic===''?-1:+mic,out:out===''?-1:+out,src:lsGet('sonaroids_src','auto'),usage:lsGet('sonaroids_usage','media'),ch:1};
     var au=autoPick(); if(natAuto()&&au){ natCfg.mic=au.mic; natCfg.src=au.src; }
     natProbes(); NATA.audioGains(0,0,0,0); routeKey=null; reasserts=0; testing=false;
+    return natOpen();
+  }
+  /* the app's recording and probe (re)started with natCfg; resolves once the page has the frames' port */
+  function natOpen(){
     return new Promise(function(res,rej){
       var to=setTimeout(function(){ window.removeEventListener('message',h); rej(new Error('no-mic')); },4000);
       function h(e){ if(e.data!=='sonaroids-audio'||!e.ports||!e.ports[0]) return; window.removeEventListener('message',h); clearTimeout(to);
@@ -491,6 +500,13 @@ var Sonar=(function(){
       if(!ok){ clearTimeout(to); window.removeEventListener('message',h); rej(new Error('no-mic')); }
     });
   }
+  /* v0.65: a microphone is set by opening the recording anew, not by switching it inside a running one. The Redmi Note 10S (28 Sep 18:39)
+     answered a switch with the same sound on both of its microphones and then, ~10 s later and unreported, moved the recording by itself:
+     the probe at the microphone fell by 13.5 dB and changed shape, the empty room learnt before it no longer matched and a constant false
+     "echo" of +44 dB sat at 79 mm — the palm was heard at both ends and steering was "terrible". Started with the microphone from the
+     beginning (17:57) its sound stayed steady */
+  function natReopen(){ var p=natPort; natPort=null; if(p){ try{ p.onmessage=null; p.close(); }catch(e){} }
+    return natOpen().then(function(){ return sleep(300); }); }
   function makeProbe(parity){
     var ks=[],k,n,q; for(k=kLo;k<=kHi;k++) if(parity==='all'||k%2===parity) ks.push(k);
     var M=ks.length, x=new Float64Array(N), mx=0;
@@ -564,11 +580,15 @@ var Sonar=(function(){
       // nothing steady (the probe too quiet to judge: the OnePlus at 25%, 28 Sep 18:01 — every wander 3–54% at SNR 10–13 dB, and the
       // «least unsteady» back microphone with UNPROCESSED won by chance): VOICE_RECOGNITION on the loudest microphone, not remembered — tried again next time
       else pick=res.filter(function(r){ return !r.fail&&r.src==='voice'; }).sort(function(a,b){ return b.snr-a.snr; })[0]||res.filter(function(r){ return !r.fail; })[0];
+      // v0.65: every microphone sounding the same (the Redmi: line 33.1 / 33.1 dB, SNR 32.1 / 32.4, wander 0.39 / 0.38%) — the phone does not
+      // switch them at all; then no microphone is asked for (Android's own), and none is switched to later
+      var vs=res.filter(function(r){ return !r.fail&&r.src==='voice'; }), same=vs.length>=2&&vs.every(function(r){ return Math.abs(r.line-vs[0].line)<0.5&&Math.abs(r.snr-vs[0].snr)<1; });
+      if(same) pick={mic:-1,src:'voice'};
       var sure=voice.length>0||ok.length>0;
-      autoLog={tried:res,pick:pick?{mic:pick.mic,src:pick.src}:null,sure:sure}; autoRetest=!sure;
+      autoLog={tried:res,pick:pick?{mic:pick.mic,src:pick.src}:null,sure:sure,same:same}; autoRetest=!sure;
       if(!pick) return false;
       if(sure) try{ localStorage.setItem('sonaroids_autoaudio',JSON.stringify({mic:pick.mic,src:pick.src,v:3})); }catch(e){}
-      natCfg.mic=pick.mic; natCfg.src=pick.src; NATA.audioSwitch(JSON.stringify({mic:pick.mic,src:pick.src,ch:1})); return sleep(250).then(function(){ return true; }); });
+      natCfg.mic=pick.mic; natCfg.src=pick.src; return natReopen().then(function(){ return true; }); });
   }
   /* microphone, audio context, probes. Must start from a tap (browsers unlock sound only on a user gesture) */
   function boot(){
@@ -679,7 +699,7 @@ var Sonar=(function(){
       n++; vol.set(nv); PROBE_G=0.25; setProbe('single-'+chan); return sleep(250).then(autoLevel).then(step); }
     return step; }
   function prepare(onStage,vol){
-    active=false; last=null; lost=false; PROBE_G=0.25; volLog=[]; reasserts=0;
+    active=false; last=null; lost=false; PROBE_G=0.25; volLog=[]; reasserts=0; refLv=null; jumpN=0;
     onStage&&onStage('side');
     var adj0=function(){ return 10*Math.log10((Math.floor(F_HI*N/fs)-Math.ceil(BANDS.normal*N/fs)+1)/(kHi-kLo+1)); };
     // v0.64: the microphones are tried after the volume is fitted, not before: at the start volume the OnePlus heard the probe too weakly
@@ -735,7 +755,7 @@ var Sonar=(function(){
     /* what the browser really gave for the microphone: on Android the echo/noise/gain processing may stay on despite our request */
     micSettings:function(){ if(natOn){ try{ var st=JSON.parse(NATA.audioStatus()); return {audio:'app',src:st.src,usage:st.usage,fx:st.fx,mic_wanted:st.mic_wanted,out_wanted:st.out_wanted,in:st.in,out:st.out,active:st.active}; }catch(e){ return {audio:'app'}; } }
       try{ var t=stream&&stream.getAudioTracks()[0]; if(!t) return null; var s=t.getSettings(), o={}; ['autoGainControl','echoCancellation','noiseSuppression','sampleRate','channelCount','latency','deviceId'].forEach(function(k){ if(s[k]!==undefined) o[k]=k==='deviceId'?String(s[k]).slice(0,8):s[k]; }); o.label=t.label; return o; }catch(e){ return null; } },
-    info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,probe_level:PROBE_LVL,vol_fit:volLog.slice(),f_lo:F_LO,band:band,cal:curCal(),gaps:gaps,booted:booted,audio:natOn?'app':'browser',auto_audio:autoLog,routes:routeLog.slice()}; },
+    info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,probe_level:PROBE_LVL,vol_fit:volLog.slice(),f_lo:F_LO,band:band,cal:curCal(),gaps:gaps,booted:booted,audio:natOn?'app':'browser',auto_audio:autoLog,routes:routeLog.slice(),route:routeKey}; },
     audioRetest:function(){ autoRetest=true; try{ localStorage.removeItem('sonaroids_autoaudio'); }catch(e){} },
     native:function(){ return natOn; }, nativeAvail:natAvail,
     chan:function(){ return chan; }, ctx:function(){ return ctx; }};
@@ -1692,7 +1712,7 @@ function startPrepare(){
   var vol=null; if(APP){ try{ var v0=APP.getVolume(); if(v0<0.2||v0>0.3) APP.setVolume(0.25); vol={get:function(){ return APP.getVolume(); },set:function(v){ APP.setVolume(v); }}; }catch(e){ vol=null; } }
   var logged=false; function slog(){ var I=Sonar.info(); logged=true;
       Logs.setupStart({kind:'подготовка',cal:I.cal,autocenter:true,tune:'waves',asym:Tune.ASYM,field_auto:true,field_mm:+store.get('sonaroids_field','100')||100,
-        chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,prom:null,sfx:Sfx.state(),vol_fit:I.vol_fit,auto_audio:I.auto_audio,started:new Date().toISOString(),app:APP?'sonaroids-android':'sonaroids',native:APP?(function(){ try{ return JSON.parse(APP.info()); }catch(e){ return null; } })():undefined}); }
+        chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,prom:null,sfx:Sfx.state(),vol_fit:I.vol_fit,auto_audio:I.auto_audio,route:I.route,started:new Date().toISOString(),app:APP?'sonaroids-android':'sonaroids',native:APP?(function(){ try{ return JSON.parse(APP.info()); }catch(e){ return null; } })():undefined}); }
   Sonar.prepare(function(stage){ if(stage==='room') slog(); },vol)
   // v0.46: a setup stopped before the room step (too quiet, too loud) still leaves a setup log — the probe, its level and the volume steps —
   // before, "send logs" after such a stop had nothing about it (Mi 9 Lite, 27 Sep: "too quiet" on the wide probe, no log to see why)

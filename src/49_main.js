@@ -346,7 +346,7 @@ function startPrepare(){
   var vol=null; if(APP){ try{ var v0=APP.getVolume(); if(v0<0.2||v0>0.3) APP.setVolume(0.25); vol={get:function(){ return APP.getVolume(); },set:function(v){ APP.setVolume(v); }}; }catch(e){ vol=null; } }
   var logged=false; function slog(){ var I=Sonar.info(); logged=true;
       Logs.setupStart({kind:'подготовка',cal:I.cal,autocenter:true,tune:'waves',asym:Tune.ASYM,field_auto:true,field_mm:+store.get('sonaroids_field','100')||100,
-        chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,prom:null,sfx:Sfx.state(),vol_fit:I.vol_fit,auto_audio:I.auto_audio,started:new Date().toISOString(),app:APP?'sonaroids-android':'sonaroids',native:APP?(function(){ try{ return JSON.parse(APP.info()); }catch(e){ return null; } })():undefined}); }
+        chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,prom:null,sfx:Sfx.state(),vol_fit:I.vol_fit,auto_audio:I.auto_audio,route:I.route,started:new Date().toISOString(),app:APP?'sonaroids-android':'sonaroids',native:APP?(function(){ try{ return JSON.parse(APP.info()); }catch(e){ return null; } })():undefined}); }
   Sonar.prepare(function(stage){ if(stage==='room') slog(); },vol)
   // v0.46: a setup stopped before the room step (too quiet, too loud) still leaves a setup log — the probe, its level and the volume steps —
   // before, "send logs" after such a stop had nothing about it (Mi 9 Lite, 27 Sep: "too quiet" on the wide probe, no log to see why)

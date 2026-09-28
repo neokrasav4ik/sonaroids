@@ -53,7 +53,7 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.force }}" = "true" ]; then echo "go=yes" >> "$GITHUB_OUTPUT";
           elif [ "$h" != "$old" ]; then echo "go=yes" >> "$GITHUB_OUTPUT"; else echo "go=no" >> "$GITHUB_OUTPUT"; fi
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         if: steps.need.outputs.go == 'yes'
         with:
           distribution: temurin
@@ -95,5 +95,5 @@ jobs:
           set -eu
           v=$(cat VERSION)
           gh release create "android-${{ github.run_number }}" out/sonaroids.apk out/app.json --target main --latest \
-            --title "Sonaroids for Android $v.${{ github.run_number }}" \
+            --title "Sonaroids for Android, build ${{ github.run_number }}" \
             --notes "The Android app: a shell over sonaroids.app/play/ (the game updates from the site by itself). Install sonaroids.apk on the phone."

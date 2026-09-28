@@ -18,6 +18,10 @@ import android.media.AudioRecord;
 import android.media.AudioTrack;
 import android.media.MediaRecorder;
 import android.media.MicrophoneInfo;
+import android.media.audiofx.AcousticEchoCanceler;
+import android.media.audiofx.AudioEffect;
+import android.media.audiofx.AutomaticGainControl;
+import android.media.audiofx.NoiseSuppressor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
@@ -41,6 +45,7 @@ class NativeAudio {
     volatile float[] pAll, pEven, pOdd;                           // the probes, 512 samples each, made by the page
     volatile float tAllL, tAllR, tEven, tOdd;                     // gain targets set by the page
     volatile long frames = 0; volatile String error = "";
+    AudioEffect fxNs, fxAgc, fxAec; String fxState = "";               // v0.51: the phone's own voice processing, switched off explicitly
     String srcName = ""; int micWanted = -1, outWanted = -1, channels = 1;
 
     NativeAudio(AudioManager am, WebView web, Handler ui) { this.am = am; this.web = web; this.ui = ui; }
@@ -67,6 +72,13 @@ class NativeAudio {
             rec = new AudioRecord(src, FS, chIn, AudioFormat.ENCODING_PCM_16BIT, Math.max(minIn * 2, 8 * N * 2 * channels));
             if (rec.getState() != AudioRecord.STATE_INITIALIZED) { error = "record-init"; release(); return false; }
             if (micWanted >= 0) { AudioDeviceInfo d = device(micWanted, AudioManager.GET_DEVICES_INPUTS); if (d != null) rec.setPreferredDevice(d); }
+            // v0.51: the source already asks for no processing (UNPROCESSED; VOICE_RECOGNITION — by Android's rules without noise suppression and
+            // gain control), but some phones attach noise suppression, gain control or echo cancelling to a recording anyway: switch them off
+            int sid = rec.getAudioSessionId(); StringBuilder fx = new StringBuilder();
+            fxNs = fxOff(NoiseSuppressor.isAvailable() ? NoiseSuppressor.create(sid) : null, "ns", NoiseSuppressor.isAvailable(), fx);
+            fxAgc = fxOff(AutomaticGainControl.isAvailable() ? AutomaticGainControl.create(sid) : null, "agc", AutomaticGainControl.isAvailable(), fx);
+            fxAec = fxOff(AcousticEchoCanceler.isAvailable() ? AcousticEchoCanceler.create(sid) : null, "aec", AcousticEchoCanceler.isAvailable(), fx);
+            fxState = fx.toString();
 
             int minOut = AudioTrack.getMinBufferSize(FS, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_FLOAT);
             trk = new AudioTrack.Builder()
@@ -102,7 +114,20 @@ class NativeAudio {
         if (p != null) ui.post(() -> { try { p.close(); } catch (Exception e) { } });
     }
 
+    /* an effect the phone offers for this recording: switched off; the state goes into the status ("ns:off agc:none …") */
+    AudioEffect fxOff(AudioEffect e, String name, boolean avail, StringBuilder log) {
+        String st;
+        if (!avail) st = "none";
+        else if (e == null) st = "fail";
+        else { try { boolean was = e.getEnabled(); e.setEnabled(false); st = (was ? "was-on," : "") + (e.getEnabled() ? "on" : "off"); } catch (Exception x) { st = "err"; } }
+        if (log.length() > 0) log.append(' ');
+        log.append(name).append(':').append(st);
+        return e;
+    }
+
     void release() {
+        for (AudioEffect e : new AudioEffect[]{fxNs, fxAgc, fxAec}) { try { if (e != null) e.release(); } catch (Exception x) { } }
+        fxNs = null; fxAgc = null; fxAec = null;
         try { if (rec != null) { try { rec.stop(); } catch (Exception e) { } rec.release(); } } catch (Exception e) { }
         try { if (trk != null) { try { trk.pause(); trk.flush(); } catch (Exception e) { } trk.release(); } } catch (Exception e) { }
         rec = null; trk = null;
@@ -203,7 +228,7 @@ class NativeAudio {
         try {
             JSONObject j = new JSONObject();
             j.put("running", run); j.put("frames", frames); j.put("src", srcName); j.put("ch", channels); j.put("mic_wanted", micWanted); j.put("out_wanted", outWanted);
-            j.put("error", error);
+            j.put("error", error); j.put("fx", fxState);
             AudioRecord r = rec; AudioTrack t = trk;
             if (r != null) { AudioDeviceInfo d = r.getRoutedDevice(); if (d != null) j.put("in", dev(d));
                 if (Build.VERSION.SDK_INT >= 28) { try { JSONArray a = new JSONArray(); List<MicrophoneInfo> l = r.getActiveMicrophones(); for (MicrophoneInfo m : l) a.put(mic(m)); j.put("active", a); } catch (Exception e) { } } }

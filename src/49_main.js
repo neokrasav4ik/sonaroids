@@ -51,12 +51,12 @@ function topY(){ return SAFE.t+Math.max(8,Math.round(LH*0.05)); }
    top — at the top corner (the getting-ready screens: the bottom has the buttons, the ring and the "wave here" beacon), else at the bottom */
 function diagCorner(label,top,ty,flip,ax){ var vr=ty?(freeSide()!=='left')!==!!flip:freeSide()==='left',   /* under the menu button (ty) — its side; flip — the other side */ vx=ax!==undefined?ax:vr?LW-SAFE.r-8:SAFE.l+8, vy=top?(ty||SAFE.t+8):LH-SAFE.b-12, vw=PF.width(label), al=vr?'right':'left';
   text(label,vx,vy,diag?P.band:P.soft,al); var bx0=Math.max(0,(vr?vx-vw:vx)-8), bx1=Math.min(LW,(vr?vx:vx+vw)+8);
-  var by0=top?Math.max(0,vy-8):vy-19+PF.CAP+10; BTN.push({id:'ver',x:bx0,y:by0,w:bx1-bx0,h:Math.min(top?PF.CAP+16:PF.CAP+10,LH-by0)});   // at the bottom: not onto the source link above
-  if(diag&&Logs.has()){ var ls=L('logs'), lw=PF.width(ls), ly=top?vy+PF.CAP+12:vy, lx0=top?(vr?vx-lw:vx):(vr?vx-vw-16-lw:vx+vw+16);   // at the bottom — beside the version, in its line
-    text(ls,lx0,ly,P.band,'left'); R(P.band,lx0,ly+PF.CAP+2,lw,1); BTN.push({id:'logs',x:lx0-8,y:ly-6,w:lw+16,h:PF.CAP+12}); }
+  var by0=top?Math.max(0,vy-8):vy-4; BTN.push({id:'ver',x:bx0,y:by0,w:bx1-bx0,h:Math.min(top?PF.CAP+16:PF.CAP+10,LH-by0)});
+  if(diag&&Logs.has()){ var ls=L('logs'), lw=PF.width(ls), ly=top?vy+PF.CAP+12:vy-16, lx0=vr?vx-lw:vx;   // at the bottom — the line above the version (v0.51)
+    text(ls,lx0,ly,P.band,'left'); R(P.band,lx0,ly+PF.CAP+2,lw,1); BTN.push({id:'logs',x:lx0-8,y:top?ly-6:ly-4,w:lw+16,h:top?PF.CAP+12:PF.CAP+8}); }
   // v0.50: in the app, on the title screen — «sound»: the app's own sound, the microphone and the speaker (a service screen for trying phones)
-  if(!top&&diag&&Sonar.nativeAvail()){ var as=L('aud_link'), aw=PF.width(as), left=diag&&Logs.has()?(vr?vx-vw-16-PF.width(L('logs')):vx+vw+16+PF.width(L('logs'))):(vr?vx-vw:vx+vw), ax0=vr?left-16-aw:left+16;
-    text(as,ax0,vy,P.band,'left'); R(P.band,ax0,vy+PF.CAP+2,aw,1); BTN.push({id:'audio',x:ax0-8,y:vy-3,w:aw+16,h:Math.min(PF.CAP+10,LH-vy+3)}); } }
+  if(!top&&diag&&Sonar.nativeAvail()){ var as=L('aud_link'), aw=PF.width(as), ay=vy-16, lg=Logs.has()?PF.width(L('logs'))+24:0, ax0=vr?vx-lg-aw:vx+lg;
+    text(as,ax0,ay,P.band,'left'); R(P.band,ax0,ay+PF.CAP+2,aw,1); BTN.push({id:'audio',x:ax0-8,y:ay-4,w:aw+16,h:PF.CAP+8}); } }
 function titles(t,s,col){ var y=topY(), mw=LW-SAFE.l-SAFE.r-24, cx0=Math.round((SAFE.l+LW-SAFE.r)/2);
   PF.wrap(t,mw,1).forEach(function(l){ text(l,cx0,y,col||P.text,'center'); y+=10; });
   if(s){ y+=3; y=para(s,cx0,y,mw,P.soft); } say(t+(s?'. '+s:'')); return y; }
@@ -104,9 +104,11 @@ function sTitle(){ sky(DT,0.4); var y=Math.round(LH*0.3);
   var vr=freeSide()==='left', vx=vr?LW-SAFE.r-8:SAFE.l+8, vy=LH-SAFE.b-12;
   diagCorner(L('version')+' '+VERSION,false);   // for telling uploads apart; a tap shows the "logs" link (v0.47)
   // v0.41, the app: «check for updates» above the source link — the app's own update (a dialog from the shell) and a fresh page
-  if(APP){ var us=L('app_upd'), uw=PF.width(us), uy=vy-26; text(us,vx,uy,P.band,vr?'right':'left'); BTN.push({id:'appupd',x:Math.max(0,(vr?vx-uw:vx)-6),y:uy-6,w:uw+12,h:PF.CAP+10}); }
+  if(APP){ var us=L('app_upd'), uw=PF.width(us), uy=vy-32; text(us,vx,uy,P.band,vr?'right':'left'); BTN.push({id:'appupd',x:Math.max(0,(vr?vx-uw:vx)-6),y:uy-6,w:uw+12,h:PF.CAP+10}); }
   // v0.28: the site opens straight into the game; the source code link moved here from the landing page
-  var gs=L('source'), gw=PF.width(gs); text(gs,vx,vy-13,P.soft,vr?'right':'left'); BTN.push({id:'source',x:Math.max(0,(vr?vx-gw:vx)-6),y:vy-19,w:gw+12,h:PF.CAP+10});
+  // v0.51 (the maintainer: the finger missed): the source link and the version in one line, 32 px apart
+  var gs=L('source'), gw=PF.width(gs), vw0=PF.width(L('version')+' '+VERSION), gx=vr?vx-vw0-32:vx+vw0+32;
+  text(gs,gx,vy,P.soft,vr?'right':'left'); BTN.push({id:'source',x:Math.max(0,(vr?gx-gw:gx)-6),y:vy-4,w:gw+12,h:Math.min(PF.CAP+10,LH-vy+4)});
   var sy=Math.round(LH*0.62+Math.sin(clock*1.3)*LH*0.08); drawShip(cx0-40,sy,clock,false);
   for(var i=0;i<3;i++){ var bx=cx0-20+((clock*90+i*40)%120); R(P.bullet,bx,sy,4,1); light(bx,sy,6*K,P.glowB,0.45); }
   column(items,Math.round(LH*0.5));
@@ -481,6 +483,7 @@ function sAudio(){ sky(DT,0.3); var A=window.SonaroidsApp;
   outs.forEach(function(d){ x=chip('aud:out:'+d.id,d.id+' '+(d.type==='speaker'?L('aud_speaker'):L('aud_earpiece')),x,y,out===String(d.id)); }); y+=PF.CAP+18;
   var lines=[]; if(audSt){ lines.push(L('aud_now')+' '+String(audSt.src||'').toUpperCase()+(audSt.in?', '+L('aud_mic')+' '+audSt.in.id+' '+String(audSt.in.address||'').toUpperCase():'')+(audSt.out?', '+L('aud_out')+' '+audSt.out.id+' '+(audSt.out.type==='speaker'?L('aud_speaker'):String(audSt.out.type).toUpperCase()):''));
       if(audSt.active&&audSt.active.length) lines.push(L('aud_active')+' '+audSt.active.map(function(m){ return audLabel(m)||m.id; }).join(', '));
+      if(audSt.fx) lines.push(L('aud_fx')+' '+String(audSt.fx).toUpperCase());
       if(audSt.error) lines.push(String(audSt.error).toUpperCase().slice(0,40)); }
     else lines.push(mode==='app'?L('aud_idle'):L('aud_browser_now'));
   if(audDev.mics&&!audDev.mics.length) lines.push(L('aud_nopos'));

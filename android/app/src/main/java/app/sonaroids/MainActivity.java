@@ -7,7 +7,8 @@ package app.sonaroids;
    - window.SonaroidsApp for the page: media volume (the most common failure is «too quiet»), the audio route, app info, update check;
    - the screen stays on, landscape, full screen;
    - app updates: on every launch (and on request from the page) it reads app.json of the latest GitHub release; a newer build → a dialog
-     that opens the APK download. After a long pause on the title screen the page is reloaded, so a site update arrives without a restart. */
+     that opens the APK download. After a long pause on the title screen the page is reloaded, so a site update arrives without a restart.
+   - v0.50: its own sound (NativeAudio): the page may record and play through the app — then the microphone and the speaker can be picked. */
 
 import android.Manifest;
 import android.app.Activity;
@@ -61,6 +62,7 @@ public class MainActivity extends Activity {
 
     WebView web;
     AudioManager audio;
+    NativeAudio nat;
     PermissionRequest pending;
     long pausedAt = 0;
     // files from the page (game logs): WebView cannot download blob: links or use the share sheet, so the page hands them over in pieces
@@ -83,6 +85,7 @@ public class MainActivity extends Activity {
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setUserAgentString(s.getUserAgentString() + " SonaroidsApp/" + versionName());
         web.setBackgroundColor(0xFF1B1A2E);
+        nat = new NativeAudio(audio, web, ui);
         web.addJavascriptInterface(new Bridge(), "SonaroidsApp");
         web.setWebViewClient(new WebViewClient() {
             @Override
@@ -129,7 +132,10 @@ public class MainActivity extends Activity {
     public void onWindowFocusChanged(boolean f) { super.onWindowFocusChanged(f); if (f) immersive(); }
 
     @Override
-    protected void onPause() { super.onPause(); pausedAt = SystemClock.elapsedRealtime(); web.onPause(); }
+    protected void onPause() { super.onPause(); pausedAt = SystemClock.elapsedRealtime(); nat.stop(); web.onPause(); }   // the page sees no frames and asks for the microphone again
+
+    @Override
+    protected void onDestroy() { nat.stop(); super.onDestroy(); }
 
     @Override
     protected void onResume() {
@@ -218,6 +224,22 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface
         public void checkUpdate() { MainActivity.this.checkUpdate(true); }
+        /* v0.50, the app's own sound (NativeAudio): start → the page gets a MessagePort ("sonaroids-audio") with the microphone frames */
+        @JavascriptInterface
+        public boolean audioStart(String cfg) {
+            if (!hasMic()) { ui.post(() -> requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_MIC)); return false; }
+            return nat.start(cfg);
+        }
+        @JavascriptInterface
+        public void audioStop() { nat.stop(); }
+        @JavascriptInterface
+        public void audioProbe(String which, String b64) { nat.probe(which, b64); }
+        @JavascriptInterface
+        public void audioGains(double allL, double allR, double even, double odd) { nat.gains(allL, allR, even, odd); }
+        @JavascriptInterface
+        public String audioDevices() { return nat.devices(); }
+        @JavascriptInterface
+        public String audioStatus() { return nat.status(); }
         /* saving a file from the page: fileBegin → fileChunk (base64, any number) → fileEnd; then shareFiles() opens the share sheet.
            Android 10+: into Downloads/Sonaroids (no permission needed); older: the app's own folder. Returns false on failure */
         @JavascriptInterface

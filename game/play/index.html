@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='0.48';
+var VERSION='0.50';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -435,6 +435,45 @@ var Sonar=(function(){
   var listeners=[], peak=0, lastFrameAt=0, simIv=null, simStalled=false;
   var PHYS_CAL={k:1.17,o:100-1.17*110,s:0.9};   // mm of palm height per mm of echo range, and per unit of the fast (phase) part — from the lab
   function sleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
+  /* v0.50: the app's own sound. In the Android app (window.SonaroidsApp.audioStart) the app can record and play itself — then the microphone
+     and the speaker can be picked (a WebView gets whatever microphone Android gives it: on the Redmi sometimes the port's, sometimes the
+     front camera's). The page keeps doing all the processing; only where the frames come from and where the probe goes change.
+     'sonaroids_audio': 'app' | 'browser' (default: the browser, until the app's sound is tried on phones); 'sonaroids_mic' / 'sonaroids_out':
+     the device ids to use, '' — Android's pick; 'sonaroids_src': the recording source. */
+  var NATA=null, natPort=null, natOn=false, natCfg=null;
+  function lsGet(k,d){ try{ var v=localStorage.getItem(k); return v===null?d:v; }catch(e){ return d; } }
+  function natAvail(){ var A=typeof window!=='undefined'&&window.SonaroidsApp; return !!(A&&A.audioStart); }
+  function natWanted(){ return natAvail()&&lsGet('sonaroids_audio','browser')==='app'; }
+  function f32b64(a){ var b=new Uint8Array(new Float32Array(a).buffer), s='', i; for(i=0;i<b.length;i++) s+=String.fromCharCode(b[i]); return btoa(s); }
+  function probeData(parity){
+    var ks=[],k,n,q; for(k=kLo;k<=kHi;k++) if(parity==='all'||k%2===parity) ks.push(k);
+    var M=ks.length, x=new Float64Array(N), mx=0;
+    for(n=0;n<N;n++){ var s=0; for(q=0;q<M;q++) s+=Math.cos(2*Math.PI*ks[q]*n/N+Math.PI*q*q/M); x[n]=s; if(Math.abs(s)>mx) mx=Math.abs(s); }
+    var d=new Float32Array(N); for(n=0;n<N;n++) d[n]=x[n]/mx*0.9; return d;
+  }
+  function natProbes(){ NATA.audioProbe('all',f32b64(probeData('all'))); NATA.audioProbe('even',f32b64(probeData(0))); NATA.audioProbe('odd',f32b64(probeData(1))); }
+  /* a message: "<seq>:<base64 of int16 LE>", two frames (interleaved if stereo — the first channel is used) */
+  function natMsg(e){ var d=e.data; if(typeof d!=='string') return; var c=d.indexOf(':'); if(c<0) return;
+    var seq=+d.slice(0,c), bin=atob(d.slice(c+1)), ch=natCfg&&natCfg.ch===2?2:1, n=bin.length>>1, nf=Math.floor(n/ch/N), f, i, j, v;
+    for(i=0;i<nf;i++){ f=new Float32Array(N);
+      for(j=0;j<N;j++){ var o=((i*N+j)*ch)<<1; v=bin.charCodeAt(o)|(bin.charCodeAt(o+1)<<8); if(v>=32768) v-=65536; f[j]=v/32768; }
+      onFrame({data:{f:f,s:seq+i}}); } }
+  function natBoot(){
+    NATA=window.SonaroidsApp; var AC=window.AudioContext||window.webkitAudioContext;
+    try{ if(AC){ ctx=new AC(); if(ctx.state==='suspended') ctx.resume(); } }catch(e){ ctx=null; }   // only for the game's sounds
+    fs=48000; var df=fs/N; kLo=Math.ceil(F_LO/df); kHi=Math.floor(F_HI/df); kc=Math.floor((kLo+kHi)/2);
+    var mic=lsGet('sonaroids_mic',''), out=lsGet('sonaroids_out','');
+    natCfg={mic:mic===''?-1:+mic,out:out===''?-1:+out,src:lsGet('sonaroids_src','auto'),ch:1};
+    natProbes(); NATA.audioGains(0,0,0,0);
+    return new Promise(function(res,rej){
+      var to=setTimeout(function(){ window.removeEventListener('message',h); rej(new Error('no-mic')); },4000);
+      function h(e){ if(e.data!=='sonaroids-audio'||!e.ports||!e.ports[0]) return; window.removeEventListener('message',h); clearTimeout(to);
+        natPort=e.ports[0]; natPort.onmessage=natMsg; natOn=true; booted=true; lastSeq=-1; lastFrameAt=performance.now(); res(); }
+      window.addEventListener('message',h);
+      var ok=false; try{ ok=NATA.audioStart(JSON.stringify(natCfg)); }catch(e){ ok=false; }
+      if(!ok){ clearTimeout(to); window.removeEventListener('message',h); rej(new Error('no-mic')); }
+    });
+  }
   function makeProbe(parity){
     var ks=[],k,n,q; for(k=kLo;k<=kHi;k++) if(parity==='all'||k%2===parity) ks.push(k);
     var M=ks.length, x=new Float64Array(N), mx=0;
@@ -451,6 +490,7 @@ var Sonar=(function(){
   function boot(){
     if(sim) return simBoot();
     if(booted) return Promise.resolve();
+    if(natWanted()) return natBoot();
     var AC=window.AudioContext||window.webkitAudioContext;
     if(!AC) return Promise.reject(new Error('no-webaudio'));
     if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)) return Promise.reject(new Error('no-mic'));
@@ -474,10 +514,12 @@ var Sonar=(function(){
   }
   /* the probe band: new probes on the same volume knobs (the old ones stop); the echo processing takes the band in prepare() */
   function setBand(b){ band=b==='wide'?'wide':'normal'; F_LO=BANDS[band]; if(!fs) return; var df=fs/N; kLo=Math.ceil(F_LO/df); kHi=Math.floor(F_HI/df); kc=Math.floor((kLo+kHi)/2);
+    if(natOn){ natProbes(); return; }
     if(!ctx||!sS) return; [sS,sL,sR].forEach(function(s){ try{ s.stop(); s.disconnect(); }catch(e){} });
     sS=loopSrc(makeProbe('all')); sL=loopSrc(makeProbe(0)); sR=loopSrc(makeProbe(1)); sS.connect(gSL); sS.connect(gSR); sL.connect(gL); sR.connect(gR); sS.start(); sL.start(); sR.start(); }
   function curCal(){ return band==='wide'?WIDE_CAL:PHYS_CAL; }
   function setProbe(w){                        // 'off' | 'dual' | 'single-left' | 'single-right'
+    if(natOn){ try{ NATA.audioGains(w==='single-left'?PROBE_G:0,w==='single-right'?PROBE_G:0,w==='dual'?0.25:0,w==='dual'?0.25:0); }catch(e){} return; }
     if(!ctx) return; var t=ctx.currentTime;
     gSL.gain.setTargetAtTime(w==='single-left'?PROBE_G:0,t,0.02);
     gSR.gain.setTargetAtTime(w==='single-right'?PROBE_G:0,t,0.02);
@@ -528,7 +570,10 @@ var Sonar=(function(){
     var bw=fs/2048, s=0; for(var i=Math.ceil(F_LO/bw);i<=Math.floor(F_HI/bw);i++) s+=Math.pow(10,b[i]/10); return s; }
   function pickChannel(){
     if(sim) return sleep(700).then(function(){ chan=sim.chan||'right'; return chan; });
-    function meas(w){ setProbe(w); return sleep(350).then(function(){ var v=[],i=0; return new Promise(function(r){
+    function meas(w){ setProbe(w);
+      // v0.50: the app's sound has no analyser — the probe's own line power over 8 frames (probeStats), which measures the same thing
+      if(natOn) return sleep(350).then(function(){ return collect(8); }).then(function(fr){ return probeStats(fr,fs,F_LO,F_HI).line; });
+      return sleep(350).then(function(){ var v=[],i=0; return new Promise(function(r){
       var iv=setInterval(function(){ v.push(bandLevel()); if(++i>=10){ clearInterval(iv); v.sort(function(a,b){return a-b;}); r(v[5]); } },20); }); }); }
     return meas('single-left').then(function(Lv){ return meas('single-right').then(function(Rv){
       chan=(Lv>=Rv)?'left':'right'; setProbe('single-'+chan); return chan; }); });
@@ -572,14 +617,15 @@ var Sonar=(function(){
   function simBoot(){ if(booted) return Promise.resolve(); booted=true; var i=0, t0=performance.now(); lastSeq=-1;
     simIv=setInterval(function(){ var due=Math.floor((performance.now()-t0)/1000*fs/N); if(simStalled){ i=due; return; } while(i<due){ onFrame({data:{f:sim.source(i,PROBE_G),s:i}}); i++; } },10);
     return Promise.resolve(); }
-  function pause(){ if(ctx){ setProbe('off'); } }
-  function resume(){ if(ctx&&active){ if(ctx.state!=='running') ctx.resume().catch(function(){}); setProbe('single-'+chan); } }
+  function pause(){ if(ctx||natOn){ setProbe('off'); } }
+  function resume(){ if(natOn&&active){ setProbe('single-'+chan); return; } if(ctx&&active){ if(ctx.state!=='running') ctx.resume().catch(function(){}); setProbe('single-'+chan); } }
   /* Is the microphone still with us? When the app goes to the background iOS takes the microphone away (the island's mic light goes out)
      and does not give it back by itself (24 Sep). Signs: the track has ended or is muted, the audio context is not running,
      or no frames for half a second. Then the game has to ask for the microphone again — from a tap. */
   function healthy(){
     if(!booted) return false;
     if(sim) return !simStalled&&performance.now()-lastFrameAt<600;
+    if(natOn) return performance.now()-lastFrameAt<600;
     var tr=stream?stream.getAudioTracks():[];
     if(!tr.length||tr.some(function(t){ return t.readyState!=='live'||t.muted; })) return false;
     return ctx&&ctx.state==='running'&&performance.now()-lastFrameAt<600;
@@ -589,6 +635,7 @@ var Sonar=(function(){
     try{ if(stream) stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
     try{ if(node){ node.port.onmessage=null; node.disconnect(); } }catch(e){}
     try{ if(ctx) ctx.close(); }catch(e){}
+    if(natOn||natPort){ try{ NATA.audioStop(); }catch(e){} try{ natPort.onmessage=null; natPort.close(); }catch(e){} natPort=null; natOn=false; }
     if(simIv){ clearInterval(simIv); simIv=null; } simStalled=false;     // in simulation a re-opened microphone works again
     ctx=null; stream=null; node=null; an=null; booted=false; active=false; collector=null; lastSeq=-1; last=null; lost=false; lastFrameAt=0;
   }
@@ -598,8 +645,10 @@ var Sonar=(function(){
     shift:function(d){ DSP2.shift(d); },
     peak:function(){ return peak; },
     /* what the browser really gave for the microphone: on Android the echo/noise/gain processing may stay on despite our request */
-    micSettings:function(){ try{ var t=stream&&stream.getAudioTracks()[0]; if(!t) return null; var s=t.getSettings(), o={}; ['autoGainControl','echoCancellation','noiseSuppression','sampleRate','channelCount','latency','deviceId'].forEach(function(k){ if(s[k]!==undefined) o[k]=k==='deviceId'?String(s[k]).slice(0,8):s[k]; }); o.label=t.label; return o; }catch(e){ return null; } },
-    info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,probe_level:PROBE_LVL,vol_fit:volLog.slice(),f_lo:F_LO,band:band,cal:curCal(),gaps:gaps,booted:booted}; },
+    micSettings:function(){ if(natOn){ try{ var st=JSON.parse(NATA.audioStatus()); return {audio:'app',src:st.src,mic_wanted:st.mic_wanted,out_wanted:st.out_wanted,in:st.in,out:st.out,active:st.active}; }catch(e){ return {audio:'app'}; } }
+      try{ var t=stream&&stream.getAudioTracks()[0]; if(!t) return null; var s=t.getSettings(), o={}; ['autoGainControl','echoCancellation','noiseSuppression','sampleRate','channelCount','latency','deviceId'].forEach(function(k){ if(s[k]!==undefined) o[k]=k==='deviceId'?String(s[k]).slice(0,8):s[k]; }); o.label=t.label; return o; }catch(e){ return null; } },
+    info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,probe_level:PROBE_LVL,vol_fit:volLog.slice(),f_lo:F_LO,band:band,cal:curCal(),gaps:gaps,booted:booted,audio:natOn?'app':'browser'}; },
+    native:function(){ return natOn; }, nativeAvail:natAvail,
     chan:function(){ return chan; }, ctx:function(){ return ctx; }};
 })();
 /* ── LOGS, for analysis on a computer (the lab's tools read them: replay_game.js, setup_log.py, game_log.py).
@@ -830,6 +879,7 @@ STR.en={
   probe_t:'CHOOSE THE PROBE', probe_s:'WITH THIS SOUND THE PHONE HEARS YOUR HAND', probe_wide:'WIDE', probe_wide1:'CLEANER CONTROL', probe_wide2:'CHILDREN AND PETS MAY HEAR IT',
   probe_norm:'NORMAL', probe_norm1:'SILENT', probe_norm2:'SLIGHTLY ROUGHER CONTROL',
   away_t:'TAKE YOUR HAND AWAY', away_s:'LISTENING TO THE EMPTY ROOM', away_ok:'THE ROOM IS QUIET',
+  aud_link:'SOUND', aud_t:'APP SOUND', aud_s:'WHERE THE GAME TAKES THE MICROPHONE FROM AND WHERE THE PROBE PLAYS', aud_mode:'SOUND', aud_browser:'BROWSER', aud_app:'APP', aud_mic:'MICROPHONE', aud_out:'SPEAKER', aud_auto:'AUTO', aud_speaker:'SPEAKER', aud_earpiece:'EARPIECE', aud_bottom:'BOTTOM', aud_top:'TOP', aud_back:'BACK', aud_now:'NOW:', aud_active:'RECORDING:', aud_idle:'THE MICROPHONE OPENS WITH THE GAME', aud_browser_now:'NOW THE SOUND GOES THROUGH THE BROWSER: ANDROID PICKS THE MICROPHONE', aud_nopos:'THE PHONE DOES NOT TELL WHERE ITS MICROPHONES ARE',
   wave_t:'WAVE YOUR PALM', wave_s:'5–10 CM ABOVE THE TABLE OR 5–15 CM FROM THE PHONE\'S END', wave_ok:'GOT YOUR RANGE', other_t:'WAVE ON THE OTHER SIDE', other_s:'THE PHONE DOES NOT HEAR THE PALM ON THIS SIDE', try_s:'THE SHIP FOLLOWS YOUR PALM — TRY THE TOP AND THE BOTTOM', cm:'CM',
   ring_wait:'GET READY', ring_listen:'LISTENING', ring_catch:'CATCHING THE RANGE', ring_ok:'DONE',
   start:'START', over:'GAME OVER', best:'BEST', again:'AGAIN', menu:'MENU', logs:'LOGS',
@@ -857,6 +907,7 @@ STR.ru={
   probe_t:'ВЫБЕРИ ЗОНД', probe_s:'ЭТИМ ЗВУКОМ ТЕЛЕФОН СЛЫШИТ ТВОЮ РУКУ', probe_wide:'ШИРОКИЙ', probe_wide1:'УПРАВЛЕНИЕ ЧИЩЕ', probe_wide2:'МОГУТ СЛЫШАТЬ ДЕТИ И ЖИВОТНЫЕ',
   probe_norm:'ОБЫЧНЫЙ', probe_norm1:'НЕ СЛЫШЕН', probe_norm2:'УПРАВЛЕНИЕ ЧУТЬ ГРУБЕЕ',
   away_t:'УБЕРИ РУКУ', away_s:'СЛУШАЮ ПУСТУЮ КОМНАТУ', away_ok:'КОМНАТА ТИХАЯ',
+  aud_link:'ЗВУК', aud_t:'ЗВУК ПРИЛОЖЕНИЯ', aud_s:'ОТКУДА ИГРА БЕРЁТ МИКРОФОН И КУДА ИГРАЕТ ЗОНД', aud_mode:'ЗВУК', aud_browser:'БРАУЗЕР', aud_app:'ПРИЛОЖЕНИЕ', aud_mic:'МИКРОФОН', aud_out:'ДИНАМИК', aud_auto:'АВТО', aud_speaker:'ДИНАМИК', aud_earpiece:'РАЗГОВОРНЫЙ', aud_bottom:'НИЗ', aud_top:'ВЕРХ', aud_back:'СЗАДИ', aud_now:'СЕЙЧАС:', aud_active:'ПИШУТ:', aud_idle:'МИКРОФОН ОТКРОЕТСЯ ПРИ ИГРЕ', aud_browser_now:'СЕЙЧАС ЗВУК ЧЕРЕЗ БРАУЗЕР: МИКРОФОН ВЫБИРАЕТ ANDROID', aud_nopos:'ТЕЛЕФОН НЕ СООБЩАЕТ, ГДЕ МИКРОФОНЫ',
   wave_t:'ПОМАШИ ЛАДОНЬЮ', wave_s:'5–10 СМ НАД СТОЛОМ ИЛИ 5–15 СМ ОТ ТОРЦА ТЕЛЕФОНА', wave_ok:'РАЗМАХ ПОЙМАН', other_t:'ПОМАШИ С ДРУГОЙ СТОРОНЫ', other_s:'С ЭТОЙ СТОРОНЫ ТЕЛЕФОН НЕ СЛЫШИТ ЛАДОНЬ', try_s:'КОРАБЛЬ ИДЁТ ЗА ЛАДОНЬЮ — ПРОВЕРЬ ВЕРХ И НИЗ', cm:'СМ',
   ring_wait:'ПРИГОТОВЬСЯ', ring_listen:'СЛУШАЮ', ring_catch:'ЛОВЛЮ РАЗМАХ', ring_ok:'ГОТОВО',
   start:'СТАРТ', over:'ИГРА ОКОНЧЕНА', best:'РЕКОРД', again:'ЕЩЁ РАЗ', menu:'МЕНЮ', logs:'ЖУРНАЛЫ',
@@ -1259,7 +1310,10 @@ function diagCorner(label,top,ty,flip,ax){ var vr=ty?(freeSide()!=='left')!==!!f
   text(label,vx,vy,diag?P.band:P.soft,al); var bx0=Math.max(0,(vr?vx-vw:vx)-8), bx1=Math.min(LW,(vr?vx:vx+vw)+8);
   var by0=top?Math.max(0,vy-8):vy-19+PF.CAP+10; BTN.push({id:'ver',x:bx0,y:by0,w:bx1-bx0,h:Math.min(top?PF.CAP+16:PF.CAP+10,LH-by0)});   // at the bottom: not onto the source link above
   if(diag&&Logs.has()){ var ls=L('logs'), lw=PF.width(ls), ly=top?vy+PF.CAP+12:vy, lx0=top?(vr?vx-lw:vx):(vr?vx-vw-16-lw:vx+vw+16);   // at the bottom — beside the version, in its line
-    text(ls,lx0,ly,P.band,'left'); R(P.band,lx0,ly+PF.CAP+2,lw,1); BTN.push({id:'logs',x:lx0-8,y:ly-6,w:lw+16,h:PF.CAP+12}); } }
+    text(ls,lx0,ly,P.band,'left'); R(P.band,lx0,ly+PF.CAP+2,lw,1); BTN.push({id:'logs',x:lx0-8,y:ly-6,w:lw+16,h:PF.CAP+12}); }
+  // v0.50: in the app, on the title screen — «sound»: the app's own sound, the microphone and the speaker (a service screen for trying phones)
+  if(!top&&diag&&Sonar.nativeAvail()){ var as=L('aud_link'), aw=PF.width(as), left=diag&&Logs.has()?(vr?vx-vw-16-PF.width(L('logs')):vx+vw+16+PF.width(L('logs'))):(vr?vx-vw:vx+vw), ax0=vr?left-16-aw:left+16;
+    text(as,ax0,vy,P.band,'left'); R(P.band,ax0,vy+PF.CAP+2,aw,1); BTN.push({id:'audio',x:ax0-8,y:vy-3,w:aw+16,h:Math.min(PF.CAP+10,LH-vy+3)}); } }
 function titles(t,s,col){ var y=topY(), mw=LW-SAFE.l-SAFE.r-24, cx0=Math.round((SAFE.l+LW-SAFE.r)/2);
   PF.wrap(t,mw,1).forEach(function(l){ text(l,cx0,y,col||P.text,'center'); y+=10; });
   if(s){ y+=3; y=para(s,cx0,y,mw,P.soft); } say(t+(s?'. '+s:'')); return y; }
@@ -1600,6 +1654,7 @@ var ACT={
   link_done:function(){ period='all'; go('scores'); },
   nick_later:function(){ nickField(false); nickMsg=''; go(nickFrom==='over'?'over':'scores'); },
   logs:function(){ Logs.share(); },
+  audio:function(){ audDev=null; go('audio'); },
   ver:function(){ diag=!diag; },
   apk:function(){ try{ window.open('https://github.com/neokrasav4ik/sonaroids/releases/latest/download/sonaroids.apk','_blank','noopener'); }catch(e){} },
   source:function(){ try{ window.open('https://github.com/neokrasav4ik/sonaroids','_blank','noopener'); }catch(e){} },
@@ -1619,7 +1674,7 @@ var downOn=null;
 function btnAt(e){ var x=e.clientX*DPR/S, y=e.clientY*DPR/S;
   for(var i=BTN.length-1;i>=0;i--){ var b=BTN[i]; if(x>=b.x-4&&x<b.x+b.w+4&&y>=b.y-4&&y<b.y+b.h+4) return b.id; } return null; }
 cv.addEventListener('pointerdown',function(e){ downOn=btnAt(e); e.preventDefault(); },{passive:false});
-cv.addEventListener('pointerup',function(e){ var id=btnAt(e); if(id&&id===downOn&&ACT[id]){ if(id!=='allow'&&id!=='play'&&id!=='retry'&&id!=='sfx'&&id!=='vol_dn'&&id!=='vol_up') Sfx.play('tap'); ACT[id](); } downOn=null; e.preventDefault(); },{passive:false});
+cv.addEventListener('pointerup',function(e){ var id=btnAt(e); if(id&&id===downOn&&!ACT[id]&&id.indexOf('aud:')===0){ Sfx.play('tap'); audAct(id); } else if(id&&id===downOn&&ACT[id]){ if(id!=='allow'&&id!=='play'&&id!=='retry'&&id!=='sfx'&&id!=='vol_dn'&&id!=='vol_up') Sfx.play('tap'); ACT[id](); } downOn=null; e.preventDefault(); },{passive:false});
 cv.addEventListener('pointercancel',function(){ downOn=null; });
 ['gesturestart','gesturechange','gestureend','dblclick'].forEach(function(n){ document.addEventListener(n,function(e){ e.preventDefault(); },{passive:false}); });
 document.addEventListener('touchmove',function(e){ e.preventDefault(); },{passive:false});
@@ -1650,7 +1705,7 @@ function loop(now){
     case 'sound': sSound(); break;
     case 'phone': sPhone(); break; case 'mic': sMic(); break; case 'probe': sProbe(); break; case 'away': sAway(); break; case 'wave': sWave(); break;
     case 'count': sCount(); break; case 'count-resume': sCountResume(); break; case 'play': sPlay(); break; case 'over': sOver(); break;
-    case 'paused': sPaused(); break; case 'restart': sRestart(); break; case 'scores': sScores(); break; case 'nick': sNick(); break; case 'lost': sLost(); break; case 'nomic': sNomic(); break; case 'link': sLink(); break; case 'linkshow': sLinkShow(); break; case 'linkin': sLinkIn(); break; case 'linkdone': sLinkDone(); break;
+    case 'audio': sAudio(); break; case 'paused': sPaused(); break; case 'restart': sRestart(); break; case 'scores': sScores(); break; case 'nick': sNick(); break; case 'lost': sLost(); break; case 'nomic': sNomic(); break; case 'link': sLink(); break; case 'linkshow': sLinkShow(); break; case 'linkin': sLinkIn(); break; case 'linkdone': sLinkDone(); break;
   }
   chrome();
   present(scr==='play'?shake:0);
@@ -1659,6 +1714,37 @@ function loop(now){
    the flight — so "logs" (a tap on the version) is there during getting ready too. The corner is the free side's, as in flight (away from
    the hand). In flight and its countdowns the button pauses; elsewhere it goes to the title screen. The version sits under the button;
    the title and game-over screens keep their own version line at the bottom. */
+/* v0.50: the app's sound — a service screen (in the app; the title screen, a tap on the version, then «sound»). Where the game's sound comes
+   from (the browser or the app itself), and in the app's mode which microphone and which speaker; the phone's microphones with where they
+   are (Android 9+ tells the position), what is really in use now. A change closes the microphone: the next «Play» opens it anew. */
+var audDev=null, audSt=null, audT=0;
+function audGet(k){ return store.get(k,''); }
+function audLabel(m){ var p=m.pos_mm, where=''; if(p&&audDev&&audDev.mics&&audDev.mics.length>1){ var ys=audDev.mics.filter(function(q){ return q.pos_mm; }).map(function(q){ return q.pos_mm[1]; }),
+    lo=Math.min.apply(null,ys), hi=Math.max.apply(null,ys); where=p[2]<0?L('aud_back'):(hi-lo>20?(p[1]<=lo+(hi-lo)/2?L('aud_bottom'):L('aud_top')):''); }
+  return (where?where+' ':'')+(m.desc?String(m.desc).toUpperCase().slice(0,14):''); }
+function chip(id,label,x,y,on){ var w=PF.width(label)+12, h=PF.CAP+10; R(on?P.band:P.bg,x,y,w,h); frame(x,y,w,h,on?P.band:P.line); text(label,x+6,y+5,on?P.bg:P.text,'left',1,on); BTN.push({id:id,x:x,y:y,w:w,h:h}); return x+w+6; }
+function sAudio(){ sky(DT,0.3); var A=window.SonaroidsApp;
+  if(!audDev||scrT-audT>2){ audT=scrT; try{ audDev=JSON.parse(A.audioDevices()); }catch(e){ audDev={}; } try{ audSt=Sonar.native()?JSON.parse(A.audioStatus()):null; }catch(e){ audSt=null; } }
+  titles(L('aud_t'),L('aud_s'));
+  var x0=Math.round(LW*0.14), y=Math.round(LH*0.3), mode=store.get('sonaroids_audio','browser'), lw=Math.max(PF.width(L('aud_mode')),PF.width(L('aud_mic')),PF.width(L('aud_out')))+10, x;
+  text(L('aud_mode'),x0,y+5,P.soft,'left'); x=x0+lw;
+  x=chip('aud:mode:browser',L('aud_browser'),x,y,mode!=='app'); chip('aud:mode:app',L('aud_app'),x,y,mode==='app'); y+=PF.CAP+16;
+  var mic=audGet('sonaroids_mic'), ins=(audDev.inputs||[]).filter(function(d){ return d.type==='builtin_mic'; });
+  text(L('aud_mic'),x0,y+5,P.soft,'left'); x=x0+lw; x=chip('aud:mic:',L('aud_auto'),x,y,mic==='');
+  ins.forEach(function(d){ var mm=(audDev.mics||[]).filter(function(m){ return m.address&&m.address===d.address; })[0], lb=d.id+(mm?' '+audLabel(mm):(d.address?' '+String(d.address).toUpperCase().slice(0,10):''));
+    if(x+PF.width(lb)+12>LW-SAFE.r-8){ x=x0+lw; y+=PF.CAP+14; } x=chip('aud:mic:'+d.id,lb,x,y,mic===String(d.id)); }); y+=PF.CAP+16;
+  var out=audGet('sonaroids_out'), outs=(audDev.outputs||[]).filter(function(d){ return d.type==='speaker'||d.type==='earpiece'; });
+  text(L('aud_out'),x0,y+5,P.soft,'left'); x=x0+lw; x=chip('aud:out:',L('aud_auto'),x,y,out==='');
+  outs.forEach(function(d){ x=chip('aud:out:'+d.id,d.id+' '+(d.type==='speaker'?L('aud_speaker'):L('aud_earpiece')),x,y,out===String(d.id)); }); y+=PF.CAP+18;
+  var lines=[]; if(audSt){ lines.push(L('aud_now')+' '+String(audSt.src||'').toUpperCase()+(audSt.in?', '+L('aud_mic')+' '+audSt.in.id+' '+String(audSt.in.address||'').toUpperCase():'')+(audSt.out?', '+L('aud_out')+' '+audSt.out.id+' '+(audSt.out.type==='speaker'?L('aud_speaker'):String(audSt.out.type).toUpperCase()):''));
+      if(audSt.active&&audSt.active.length) lines.push(L('aud_active')+' '+audSt.active.map(function(m){ return audLabel(m)||m.id; }).join(', '));
+      if(audSt.error) lines.push(String(audSt.error).toUpperCase().slice(0,40)); }
+    else lines.push(mode==='app'?L('aud_idle'):L('aud_browser_now'));
+  if(audDev.mics&&!audDev.mics.length) lines.push(L('aud_nopos'));
+  lines.forEach(function(l){ PF.wrap(l,LW-x0-SAFE.r-12,1).forEach(function(q){ text(q,x0,y,P.soft,'left'); y+=10; }); y+=2; }); say(L('aud_t')); }
+function audAct(id){ var p=id.split(':'), k=p[1], v=p.slice(2).join(':');
+  if(k==='mode') store.set('sonaroids_audio',v); else if(k==='mic') store.set('sonaroids_mic',v); else if(k==='out') store.set('sonaroids_out',v);
+  Sonar.restart(); booted=false; acoustic=false; audDev=null; }
 var NO_MENU={title:1,lang:1,paused:1,restart:1,play:1}, NO_VER={title:1,over:1,play:1,count:1,'count-resume':1,paused:1,restart:1};
 function chrome(){ if(LH>LW) return;
   var s=BH-3, vr=freeSide()!=='left', x=vr?LW-Math.round(SAFE.r*0.5)-10-s:Math.round(SAFE.l*0.5)+10, y=SAFE.t+7;

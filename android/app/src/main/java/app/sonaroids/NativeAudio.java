@@ -1,0 +1,214 @@
+package app.sonaroids;
+
+/* The app's own sound (v0.50, 28 Sep 2026). In a WebView the page gets whatever microphone Android picks — on the maintainer's Redmi Note 10S
+   that is sometimes the one at the port and sometimes the one at the front camera, and it cannot be chosen from the page. Here the app
+   records and plays itself, and the page only processes:
+   - the microphone: AudioRecord, 48 kHz, 16 bit, the least processed source the phone has (UNPROCESSED, else VOICE_RECOGNITION),
+     on the microphone the page asks for (setPreferredDevice), else Android's own pick;
+   - the probe: AudioTrack, 48 kHz stereo float, three looped 512-sample probes made by the page (all tones / even / odd) mixed with gains
+     the page sets per channel — exactly what the page's Web Audio graph did;
+   - the frames go to the page through a WebMessagePort, two frames (1024 samples) per message: "<seq>:<base64 of int16 LE>".
+   Everything the game does with the sound (echo processing, logs) stays in the page, one code for the browser and the app. */
+
+import android.media.AudioAttributes;
+import android.media.AudioDeviceInfo;
+import android.media.AudioFormat;
+import android.media.AudioManager;
+import android.media.AudioRecord;
+import android.media.AudioTrack;
+import android.media.MediaRecorder;
+import android.media.MicrophoneInfo;
+import android.net.Uri;
+import android.os.Build;
+import android.os.Handler;
+import android.util.Base64;
+import android.webkit.WebMessage;
+import android.webkit.WebMessagePort;
+import android.webkit.WebView;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.List;
+
+class NativeAudio {
+    static final int FS = 48000, N = 512;
+    final AudioManager am; final WebView web; final Handler ui;
+    AudioRecord rec; AudioTrack trk; Thread recT, playT; volatile boolean run = false;
+    WebMessagePort port;
+    volatile float[] pAll, pEven, pOdd;                           // the probes, 512 samples each, made by the page
+    volatile float tAllL, tAllR, tEven, tOdd;                     // gain targets set by the page
+    volatile long frames = 0; volatile String error = "";
+    String srcName = ""; int micWanted = -1, outWanted = -1, channels = 1;
+
+    NativeAudio(AudioManager am, WebView web, Handler ui) { this.am = am; this.web = web; this.ui = ui; }
+
+    boolean unprocessedOk() { return "true".equals(am.getProperty(AudioManager.PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED)); }
+
+    /* cfg: {"mic": device id or -1, "out": device id or -1, "src": "auto"|"unprocessed"|"voice"|"mic"|"camcorder", "ch": 1|2} */
+    synchronized boolean start(String cfg) {
+        stop();
+        try {
+            JSONObject c = new JSONObject(cfg == null || cfg.isEmpty() ? "{}" : cfg);
+            micWanted = c.optInt("mic", -1); outWanted = c.optInt("out", -1); channels = c.optInt("ch", 1) == 2 ? 2 : 1;
+            String s = c.optString("src", "auto");
+            int src;
+            if (s.equals("voice")) src = MediaRecorder.AudioSource.VOICE_RECOGNITION;
+            else if (s.equals("mic")) src = MediaRecorder.AudioSource.MIC;
+            else if (s.equals("camcorder")) src = MediaRecorder.AudioSource.CAMCORDER;
+            else if (s.equals("unprocessed") || unprocessedOk()) src = MediaRecorder.AudioSource.UNPROCESSED;
+            else src = MediaRecorder.AudioSource.VOICE_RECOGNITION;
+            srcName = src == MediaRecorder.AudioSource.UNPROCESSED ? "unprocessed" : src == MediaRecorder.AudioSource.VOICE_RECOGNITION ? "voice"
+                : src == MediaRecorder.AudioSource.CAMCORDER ? "camcorder" : "mic";
+            int chIn = channels == 2 ? AudioFormat.CHANNEL_IN_STEREO : AudioFormat.CHANNEL_IN_MONO;
+            int minIn = AudioRecord.getMinBufferSize(FS, chIn, AudioFormat.ENCODING_PCM_16BIT);
+            rec = new AudioRecord(src, FS, chIn, AudioFormat.ENCODING_PCM_16BIT, Math.max(minIn * 2, 8 * N * 2 * channels));
+            if (rec.getState() != AudioRecord.STATE_INITIALIZED) { error = "record-init"; release(); return false; }
+            if (micWanted >= 0) { AudioDeviceInfo d = device(micWanted, AudioManager.GET_DEVICES_INPUTS); if (d != null) rec.setPreferredDevice(d); }
+
+            int minOut = AudioTrack.getMinBufferSize(FS, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_FLOAT);
+            trk = new AudioTrack.Builder()
+                .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
+                .setAudioFormat(new AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_FLOAT).setSampleRate(FS)
+                    .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO).build())
+                .setBufferSizeInBytes(Math.max(minOut * 2, 4 * N * 2 * 4)).setTransferMode(AudioTrack.MODE_STREAM).build();
+            if (outWanted >= 0) { AudioDeviceInfo d = device(outWanted, AudioManager.GET_DEVICES_OUTPUTS); if (d != null) trk.setPreferredDevice(d); }
+            frames = 0; error = ""; run = true;
+            rec.startRecording(); trk.play();
+            playT = new Thread(this::playLoop, "sonar-play"); playT.start();
+            // the port is made on the UI thread (WebView's rule); the recording thread starts once the page has its end
+            ui.post(() -> {
+                try {
+                    WebMessagePort[] ch = web.createWebMessageChannel();
+                    port = ch[0];
+                    web.postWebMessage(new WebMessage("sonaroids-audio", new WebMessagePort[]{ch[1]}), Uri.parse("https://sonaroids.app"));
+                    recT = new Thread(this::recLoop, "sonar-rec"); recT.start();
+                } catch (Exception e) { error = "port: " + e; }
+            });
+            return true;
+        } catch (Exception e) { error = String.valueOf(e); release(); return false; }
+    }
+
+    synchronized void stop() {
+        run = false;
+        try { if (recT != null) recT.join(500); } catch (Exception e) { }
+        try { if (playT != null) playT.join(500); } catch (Exception e) { }
+        recT = null; playT = null;
+        release();
+        final WebMessagePort p = port; port = null;
+        if (p != null) ui.post(() -> { try { p.close(); } catch (Exception e) { } });
+    }
+
+    void release() {
+        try { if (rec != null) { try { rec.stop(); } catch (Exception e) { } rec.release(); } } catch (Exception e) { }
+        try { if (trk != null) { try { trk.pause(); trk.flush(); } catch (Exception e) { } trk.release(); } } catch (Exception e) { }
+        rec = null; trk = null;
+    }
+
+    /* two frames per message; a short read (the phone took the microphone away) ends the loop — the page sees no frames and asks again */
+    void recLoop() {
+        final int n = 2 * N * channels; short[] buf = new short[n]; ByteBuffer bb = ByteBuffer.allocate(n * 2).order(ByteOrder.LITTLE_ENDIAN);
+        long seq = 0;
+        while (run) {
+            int got = 0;
+            while (got < n && run) { int r = rec.read(buf, got, n - got); if (r <= 0) { error = "read " + r; run = false; break; } got += r; }
+            if (!run) break;
+            bb.clear(); bb.asShortBuffer().put(buf, 0, n);
+            final String msg = seq + ":" + Base64.encodeToString(bb.array(), Base64.NO_WRAP);
+            seq += 2; frames += 2;
+            final WebMessagePort p = port;
+            if (p != null) ui.post(() -> { try { p.postMessage(new WebMessage(msg)); } catch (Exception e) { } });
+        }
+    }
+
+    /* the probe: gains glide to their targets in ~20 ms, like the page's setTargetAtTime */
+    void playLoop() {
+        float[] out = new float[2 * N]; float gAL = 0, gAR = 0, gE = 0, gO = 0; final float a = (float) (1 - Math.exp(-1.0 / (0.02 * FS)));
+        int ph = 0;
+        while (run) {
+            float[] A = pAll, E = pEven, O = pOdd;
+            for (int i = 0; i < N; i++) {
+                gAL += (tAllL - gAL) * a; gAR += (tAllR - gAR) * a; gE += (tEven - gE) * a; gO += (tOdd - gO) * a;
+                float s = A != null ? A[ph] : 0, e = E != null ? E[ph] : 0, o = O != null ? O[ph] : 0;
+                out[2 * i] = gAL * s + gE * e; out[2 * i + 1] = gAR * s + gO * o;
+                ph = (ph + 1) % N;
+            }
+            int w = trk.write(out, 0, out.length, AudioTrack.WRITE_BLOCKING);
+            if (w < 0) { error = "write " + w; break; }
+        }
+    }
+
+    /* which: "all" | "even" | "odd"; b64: 512 float32 LE */
+    void probe(String which, String b64) {
+        try {
+            byte[] b = Base64.decode(b64, Base64.DEFAULT); ByteBuffer bb = ByteBuffer.wrap(b).order(ByteOrder.LITTLE_ENDIAN);
+            float[] f = new float[N]; for (int i = 0; i < N && bb.remaining() >= 4; i++) f[i] = bb.getFloat();
+            if (which.equals("all")) pAll = f; else if (which.equals("even")) pEven = f; else pOdd = f;
+        } catch (Exception e) { error = "probe: " + e; }
+    }
+
+    void gains(double allL, double allR, double even, double odd) { tAllL = (float) allL; tAllR = (float) allR; tEven = (float) even; tOdd = (float) odd; }
+
+    AudioDeviceInfo device(int id, int kind) { for (AudioDeviceInfo d : am.getDevices(kind)) if (d.getId() == id) return d; return null; }
+
+    static String typeName(int t) {
+        switch (t) {
+            case AudioDeviceInfo.TYPE_BUILTIN_MIC: return "builtin_mic";
+            case AudioDeviceInfo.TYPE_BUILTIN_SPEAKER: return "speaker";
+            case AudioDeviceInfo.TYPE_BUILTIN_EARPIECE: return "earpiece";
+            case AudioDeviceInfo.TYPE_TELEPHONY: return "telephony";
+            case AudioDeviceInfo.TYPE_WIRED_HEADSET: return "wired_headset";
+            case AudioDeviceInfo.TYPE_WIRED_HEADPHONES: return "wired_headphones";
+            case AudioDeviceInfo.TYPE_BLUETOOTH_SCO: return "bt_sco";
+            case AudioDeviceInfo.TYPE_BLUETOOTH_A2DP: return "bt_a2dp";
+            case AudioDeviceInfo.TYPE_USB_DEVICE: return "usb";
+            case AudioDeviceInfo.TYPE_FM_TUNER: return "fm";
+            default: return "type" + t;
+        }
+    }
+
+    JSONObject dev(AudioDeviceInfo d) throws Exception {
+        JSONObject j = new JSONObject();
+        j.put("id", d.getId()); j.put("type", typeName(d.getType())); j.put("name", String.valueOf(d.getProductName()));
+        if (Build.VERSION.SDK_INT >= 28) j.put("address", d.getAddress());
+        return j;
+    }
+
+    JSONObject mic(MicrophoneInfo m) throws Exception {
+        JSONObject j = new JSONObject();
+        j.put("id", m.getId()); j.put("address", m.getAddress()); j.put("desc", m.getDescription()); j.put("type", typeName(m.getType()));
+        j.put("location", m.getLocation());
+        MicrophoneInfo.Coordinate3F p = m.getPosition();
+        if (p != null) { JSONArray a = new JSONArray(); a.put(Math.round(p.x * 1000)); a.put(Math.round(p.y * 1000)); a.put(Math.round(p.z * 1000)); j.put("pos_mm", a); }
+        return j;
+    }
+
+    /* the phone's microphones and outputs: AudioDeviceInfo (what can be picked) and, on Android 9+, MicrophoneInfo (where each one is) */
+    String devices() {
+        try {
+            JSONObject j = new JSONObject(); JSONArray in = new JSONArray(), out = new JSONArray(), mics = new JSONArray();
+            for (AudioDeviceInfo d : am.getDevices(AudioManager.GET_DEVICES_INPUTS)) in.put(dev(d));
+            for (AudioDeviceInfo d : am.getDevices(AudioManager.GET_DEVICES_OUTPUTS)) out.put(dev(d));
+            if (Build.VERSION.SDK_INT >= 28) { try { for (MicrophoneInfo m : am.getMicrophones()) mics.put(mic(m)); } catch (Exception e) { } }
+            j.put("inputs", in); j.put("outputs", out); j.put("mics", mics); j.put("unprocessed", unprocessedOk()); j.put("sdk", Build.VERSION.SDK_INT);
+            return j.toString();
+        } catch (Exception e) { return "{}"; }
+    }
+
+    /* what is really in use now: the routed devices and, on Android 9+, the active microphones of the recording */
+    String status() {
+        try {
+            JSONObject j = new JSONObject();
+            j.put("running", run); j.put("frames", frames); j.put("src", srcName); j.put("ch", channels); j.put("mic_wanted", micWanted); j.put("out_wanted", outWanted);
+            j.put("error", error);
+            AudioRecord r = rec; AudioTrack t = trk;
+            if (r != null) { AudioDeviceInfo d = r.getRoutedDevice(); if (d != null) j.put("in", dev(d));
+                if (Build.VERSION.SDK_INT >= 28) { try { JSONArray a = new JSONArray(); List<MicrophoneInfo> l = r.getActiveMicrophones(); for (MicrophoneInfo m : l) a.put(mic(m)); j.put("active", a); } catch (Exception e) { } } }
+            if (t != null) { AudioDeviceInfo d = t.getRoutedDevice(); if (d != null) j.put("out", dev(d)); }
+            return j.toString();
+        } catch (Exception e) { return "{}"; }
+    }
+}

@@ -13,6 +13,45 @@ var Sonar=(function(){
   var listeners=[], peak=0, lastFrameAt=0, simIv=null, simStalled=false;
   var PHYS_CAL={k:1.17,o:100-1.17*110,s:0.9};   // mm of palm height per mm of echo range, and per unit of the fast (phase) part — from the lab
   function sleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
+  /* v0.50: the app's own sound. In the Android app (window.SonaroidsApp.audioStart) the app can record and play itself — then the microphone
+     and the speaker can be picked (a WebView gets whatever microphone Android gives it: on the Redmi sometimes the port's, sometimes the
+     front camera's). The page keeps doing all the processing; only where the frames come from and where the probe goes change.
+     'sonaroids_audio': 'app' | 'browser' (default: the browser, until the app's sound is tried on phones); 'sonaroids_mic' / 'sonaroids_out':
+     the device ids to use, '' — Android's pick; 'sonaroids_src': the recording source. */
+  var NATA=null, natPort=null, natOn=false, natCfg=null;
+  function lsGet(k,d){ try{ var v=localStorage.getItem(k); return v===null?d:v; }catch(e){ return d; } }
+  function natAvail(){ var A=typeof window!=='undefined'&&window.SonaroidsApp; return !!(A&&A.audioStart); }
+  function natWanted(){ return natAvail()&&lsGet('sonaroids_audio','browser')==='app'; }
+  function f32b64(a){ var b=new Uint8Array(new Float32Array(a).buffer), s='', i; for(i=0;i<b.length;i++) s+=String.fromCharCode(b[i]); return btoa(s); }
+  function probeData(parity){
+    var ks=[],k,n,q; for(k=kLo;k<=kHi;k++) if(parity==='all'||k%2===parity) ks.push(k);
+    var M=ks.length, x=new Float64Array(N), mx=0;
+    for(n=0;n<N;n++){ var s=0; for(q=0;q<M;q++) s+=Math.cos(2*Math.PI*ks[q]*n/N+Math.PI*q*q/M); x[n]=s; if(Math.abs(s)>mx) mx=Math.abs(s); }
+    var d=new Float32Array(N); for(n=0;n<N;n++) d[n]=x[n]/mx*0.9; return d;
+  }
+  function natProbes(){ NATA.audioProbe('all',f32b64(probeData('all'))); NATA.audioProbe('even',f32b64(probeData(0))); NATA.audioProbe('odd',f32b64(probeData(1))); }
+  /* a message: "<seq>:<base64 of int16 LE>", two frames (interleaved if stereo — the first channel is used) */
+  function natMsg(e){ var d=e.data; if(typeof d!=='string') return; var c=d.indexOf(':'); if(c<0) return;
+    var seq=+d.slice(0,c), bin=atob(d.slice(c+1)), ch=natCfg&&natCfg.ch===2?2:1, n=bin.length>>1, nf=Math.floor(n/ch/N), f, i, j, v;
+    for(i=0;i<nf;i++){ f=new Float32Array(N);
+      for(j=0;j<N;j++){ var o=((i*N+j)*ch)<<1; v=bin.charCodeAt(o)|(bin.charCodeAt(o+1)<<8); if(v>=32768) v-=65536; f[j]=v/32768; }
+      onFrame({data:{f:f,s:seq+i}}); } }
+  function natBoot(){
+    NATA=window.SonaroidsApp; var AC=window.AudioContext||window.webkitAudioContext;
+    try{ if(AC){ ctx=new AC(); if(ctx.state==='suspended') ctx.resume(); } }catch(e){ ctx=null; }   // only for the game's sounds
+    fs=48000; var df=fs/N; kLo=Math.ceil(F_LO/df); kHi=Math.floor(F_HI/df); kc=Math.floor((kLo+kHi)/2);
+    var mic=lsGet('sonaroids_mic',''), out=lsGet('sonaroids_out','');
+    natCfg={mic:mic===''?-1:+mic,out:out===''?-1:+out,src:lsGet('sonaroids_src','auto'),ch:1};
+    natProbes(); NATA.audioGains(0,0,0,0);
+    return new Promise(function(res,rej){
+      var to=setTimeout(function(){ window.removeEventListener('message',h); rej(new Error('no-mic')); },4000);
+      function h(e){ if(e.data!=='sonaroids-audio'||!e.ports||!e.ports[0]) return; window.removeEventListener('message',h); clearTimeout(to);
+        natPort=e.ports[0]; natPort.onmessage=natMsg; natOn=true; booted=true; lastSeq=-1; lastFrameAt=performance.now(); res(); }
+      window.addEventListener('message',h);
+      var ok=false; try{ ok=NATA.audioStart(JSON.stringify(natCfg)); }catch(e){ ok=false; }
+      if(!ok){ clearTimeout(to); window.removeEventListener('message',h); rej(new Error('no-mic')); }
+    });
+  }
   function makeProbe(parity){
     var ks=[],k,n,q; for(k=kLo;k<=kHi;k++) if(parity==='all'||k%2===parity) ks.push(k);
     var M=ks.length, x=new Float64Array(N), mx=0;
@@ -29,6 +68,7 @@ var Sonar=(function(){
   function boot(){
     if(sim) return simBoot();
     if(booted) return Promise.resolve();
+    if(natWanted()) return natBoot();
     var AC=window.AudioContext||window.webkitAudioContext;
     if(!AC) return Promise.reject(new Error('no-webaudio'));
     if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)) return Promise.reject(new Error('no-mic'));
@@ -52,10 +92,12 @@ var Sonar=(function(){
   }
   /* the probe band: new probes on the same volume knobs (the old ones stop); the echo processing takes the band in prepare() */
   function setBand(b){ band=b==='wide'?'wide':'normal'; F_LO=BANDS[band]; if(!fs) return; var df=fs/N; kLo=Math.ceil(F_LO/df); kHi=Math.floor(F_HI/df); kc=Math.floor((kLo+kHi)/2);
+    if(natOn){ natProbes(); return; }
     if(!ctx||!sS) return; [sS,sL,sR].forEach(function(s){ try{ s.stop(); s.disconnect(); }catch(e){} });
     sS=loopSrc(makeProbe('all')); sL=loopSrc(makeProbe(0)); sR=loopSrc(makeProbe(1)); sS.connect(gSL); sS.connect(gSR); sL.connect(gL); sR.connect(gR); sS.start(); sL.start(); sR.start(); }
   function curCal(){ return band==='wide'?WIDE_CAL:PHYS_CAL; }
   function setProbe(w){                        // 'off' | 'dual' | 'single-left' | 'single-right'
+    if(natOn){ try{ NATA.audioGains(w==='single-left'?PROBE_G:0,w==='single-right'?PROBE_G:0,w==='dual'?0.25:0,w==='dual'?0.25:0); }catch(e){} return; }
     if(!ctx) return; var t=ctx.currentTime;
     gSL.gain.setTargetAtTime(w==='single-left'?PROBE_G:0,t,0.02);
     gSR.gain.setTargetAtTime(w==='single-right'?PROBE_G:0,t,0.02);
@@ -106,7 +148,10 @@ var Sonar=(function(){
     var bw=fs/2048, s=0; for(var i=Math.ceil(F_LO/bw);i<=Math.floor(F_HI/bw);i++) s+=Math.pow(10,b[i]/10); return s; }
   function pickChannel(){
     if(sim) return sleep(700).then(function(){ chan=sim.chan||'right'; return chan; });
-    function meas(w){ setProbe(w); return sleep(350).then(function(){ var v=[],i=0; return new Promise(function(r){
+    function meas(w){ setProbe(w);
+      // v0.50: the app's sound has no analyser — the probe's own line power over 8 frames (probeStats), which measures the same thing
+      if(natOn) return sleep(350).then(function(){ return collect(8); }).then(function(fr){ return probeStats(fr,fs,F_LO,F_HI).line; });
+      return sleep(350).then(function(){ var v=[],i=0; return new Promise(function(r){
       var iv=setInterval(function(){ v.push(bandLevel()); if(++i>=10){ clearInterval(iv); v.sort(function(a,b){return a-b;}); r(v[5]); } },20); }); }); }
     return meas('single-left').then(function(Lv){ return meas('single-right').then(function(Rv){
       chan=(Lv>=Rv)?'left':'right'; setProbe('single-'+chan); return chan; }); });
@@ -150,14 +195,15 @@ var Sonar=(function(){
   function simBoot(){ if(booted) return Promise.resolve(); booted=true; var i=0, t0=performance.now(); lastSeq=-1;
     simIv=setInterval(function(){ var due=Math.floor((performance.now()-t0)/1000*fs/N); if(simStalled){ i=due; return; } while(i<due){ onFrame({data:{f:sim.source(i,PROBE_G),s:i}}); i++; } },10);
     return Promise.resolve(); }
-  function pause(){ if(ctx){ setProbe('off'); } }
-  function resume(){ if(ctx&&active){ if(ctx.state!=='running') ctx.resume().catch(function(){}); setProbe('single-'+chan); } }
+  function pause(){ if(ctx||natOn){ setProbe('off'); } }
+  function resume(){ if(natOn&&active){ setProbe('single-'+chan); return; } if(ctx&&active){ if(ctx.state!=='running') ctx.resume().catch(function(){}); setProbe('single-'+chan); } }
   /* Is the microphone still with us? When the app goes to the background iOS takes the microphone away (the island's mic light goes out)
      and does not give it back by itself (24 Sep). Signs: the track has ended or is muted, the audio context is not running,
      or no frames for half a second. Then the game has to ask for the microphone again — from a tap. */
   function healthy(){
     if(!booted) return false;
     if(sim) return !simStalled&&performance.now()-lastFrameAt<600;
+    if(natOn) return performance.now()-lastFrameAt<600;
     var tr=stream?stream.getAudioTracks():[];
     if(!tr.length||tr.some(function(t){ return t.readyState!=='live'||t.muted; })) return false;
     return ctx&&ctx.state==='running'&&performance.now()-lastFrameAt<600;
@@ -167,6 +213,7 @@ var Sonar=(function(){
     try{ if(stream) stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
     try{ if(node){ node.port.onmessage=null; node.disconnect(); } }catch(e){}
     try{ if(ctx) ctx.close(); }catch(e){}
+    if(natOn||natPort){ try{ NATA.audioStop(); }catch(e){} try{ natPort.onmessage=null; natPort.close(); }catch(e){} natPort=null; natOn=false; }
     if(simIv){ clearInterval(simIv); simIv=null; } simStalled=false;     // in simulation a re-opened microphone works again
     ctx=null; stream=null; node=null; an=null; booted=false; active=false; collector=null; lastSeq=-1; last=null; lost=false; lastFrameAt=0;
   }
@@ -176,7 +223,9 @@ var Sonar=(function(){
     shift:function(d){ DSP2.shift(d); },
     peak:function(){ return peak; },
     /* what the browser really gave for the microphone: on Android the echo/noise/gain processing may stay on despite our request */
-    micSettings:function(){ try{ var t=stream&&stream.getAudioTracks()[0]; if(!t) return null; var s=t.getSettings(), o={}; ['autoGainControl','echoCancellation','noiseSuppression','sampleRate','channelCount','latency','deviceId'].forEach(function(k){ if(s[k]!==undefined) o[k]=k==='deviceId'?String(s[k]).slice(0,8):s[k]; }); o.label=t.label; return o; }catch(e){ return null; } },
-    info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,probe_level:PROBE_LVL,vol_fit:volLog.slice(),f_lo:F_LO,band:band,cal:curCal(),gaps:gaps,booted:booted}; },
+    micSettings:function(){ if(natOn){ try{ var st=JSON.parse(NATA.audioStatus()); return {audio:'app',src:st.src,mic_wanted:st.mic_wanted,out_wanted:st.out_wanted,in:st.in,out:st.out,active:st.active}; }catch(e){ return {audio:'app'}; } }
+      try{ var t=stream&&stream.getAudioTracks()[0]; if(!t) return null; var s=t.getSettings(), o={}; ['autoGainControl','echoCancellation','noiseSuppression','sampleRate','channelCount','latency','deviceId'].forEach(function(k){ if(s[k]!==undefined) o[k]=k==='deviceId'?String(s[k]).slice(0,8):s[k]; }); o.label=t.label; return o; }catch(e){ return null; } },
+    info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,probe_level:PROBE_LVL,vol_fit:volLog.slice(),f_lo:F_LO,band:band,cal:curCal(),gaps:gaps,booted:booted,audio:natOn?'app':'browser'}; },
+    native:function(){ return natOn; }, nativeAvail:natAvail,
     chan:function(){ return chan; }, ctx:function(){ return ctx; }};
 })();

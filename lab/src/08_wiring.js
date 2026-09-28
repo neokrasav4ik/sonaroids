@@ -47,3 +47,6 @@ function seg(attr,fn){ Array.prototype.forEach.call(document.querySelectorAll('[
   b.addEventListener('click',function(){ Array.prototype.forEach.call(document.querySelectorAll('['+attr+']'),function(x){ x.classList.toggle('sel',x===b); }); fn(b.getAttribute(attr)); }); }); }
 document.addEventListener('visibilitychange',function(){ if(!ctx) return;
   if(document.hidden) setProbe('off'); else if(mode==='cal'||mode==='game'||mode==='rec'||mode==='right'||mode==='ark'||mode==='arc') setProbe('single-'+chan); });
+
+/* 0.60: back to the game (the lab opens from the game's service links; in the Android app there was no visible way back) */
+el('toGame').addEventListener('click',function(){ location.href='../play/'; });

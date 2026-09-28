@@ -16,6 +16,7 @@ import android.app.AlertDialog;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageInstaller;
@@ -92,6 +93,12 @@ public class MainActivity extends Activity {
         nat = new NativeAudio(audio, web, ui);
         web.addJavascriptInterface(new Bridge(), "SonaroidsApp");
         web.setWebViewClient(new WebViewClient() {
+            /* v0.58: the game is landscape; the lab (/lab/) turns any way — its probes hold the phone upright */
+            @Override
+            public void onPageStarted(WebView v, String url, android.graphics.Bitmap icon) {
+                boolean lab = url != null && url.contains("/lab/");
+                setRequestedOrientation(lab ? ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR : ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+            }
             @Override
             public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {
                 Uri u = r.getUrl();

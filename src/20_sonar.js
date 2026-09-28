@@ -107,7 +107,7 @@ var Sonar=(function(){
      a getting ready that failed, or from the service screen. The results go into the setup log (auto_audio). */
   var autoLog=null, autoRetest=false;
   function natAuto(){ return lsGet('sonaroids_mic','')===''&&lsGet('sonaroids_src','auto')==='auto'; }
-  function autoPick(){ try{ var j=JSON.parse(lsGet('sonaroids_autoaudio','')||'null'); return j&&typeof j.mic==='number'&&j.src&&j.v===3?j:null; }catch(e){ return null; } }   // v:3 — picks by v0.64's rules (older picks are tried again)
+  function autoPick(){ try{ var j=JSON.parse(lsGet('sonaroids_autoaudio','')||'null'); return j&&typeof j.mic==='number'&&j.src&&j.v===4?j:null; }catch(e){ return null; } }   // v:4 — picks by v0.66's rules (older picks are tried again)
   function steadiness(frames){ var ks=[],k,n,t; for(k=kLo;k<=kHi;k++) ks.push(k); var K=ks.length, T=frames.length, re=[], im=[], mr=new Float64Array(K), mi=new Float64Array(K);
     for(t=0;t<T;t++){ var r=new Float64Array(K), q=new Float64Array(K), f=frames[t];
       for(var j=0;j<K;j++){ var w=2*Math.PI*ks[j]/N, sr=0, si=0; for(n=0;n<N;n++){ sr+=f[n]*Math.cos(w*n); si-=f[n]*Math.sin(w*n); } r[j]=sr; q[j]=si; mr[j]+=sr/T; mi[j]+=si/T; }
@@ -153,7 +153,13 @@ var Sonar=(function(){
       var adj=10*Math.log10((Math.floor(F_HI*N/fs)-Math.ceil(BANDS.normal*N/fs)+1)/(kHi-kLo+1));
       var ok=res.filter(function(r){ return !r.fail&&r.wander<0.03&&r.peak<0.9; }), pick;
       var voice=ok.filter(function(r){ return r.src==='voice'&&r.line>=QUIET_LVL+adj+6; });
-      if(voice.length) pick=voice.sort(function(a,b){ return bonus(b)-bonus(a); })[0];
+      // v0.66: the bottom microphone first, whenever it passes. The Redmi Note 10S (28 Sep 18:59–19:03): the back one heard the probe
+      // 13.5 dB louder and won the test, but ~10 s after the recording opened the phone silently moved it (the probe fell 13.5 dB, the
+      // empty room no longer matched: "terrible"); the bottom one stayed steady and, with the palm at the camera end by the top speaker,
+      // played best of all ("playable"). On the Mi 9 Lite and the OnePlus the bottom one won anyway
+      var bottom=voice.filter(function(r){ return addr[r.mic]==='bottom'; });
+      if(bottom.length) pick=bottom[0];
+      else if(voice.length) pick=voice.sort(function(a,b){ return bonus(b)-bonus(a); })[0];
       else if(ok.length) pick=ok.sort(function(a,b){ return bonus(b)-bonus(a); })[0];
       // nothing steady (the probe too quiet to judge: the OnePlus at 25%, 28 Sep 18:01 — every wander 3–54% at SNR 10–13 dB, and the
       // «least unsteady» back microphone with UNPROCESSED won by chance): VOICE_RECOGNITION on the loudest microphone, not remembered — tried again next time
@@ -161,11 +167,11 @@ var Sonar=(function(){
       // v0.65: every microphone sounding the same (the Redmi: line 33.1 / 33.1 dB, SNR 32.1 / 32.4, wander 0.39 / 0.38%) — the phone does not
       // switch them at all; then no microphone is asked for (Android's own), and none is switched to later
       var vs=res.filter(function(r){ return !r.fail&&r.src==='voice'; }), same=vs.length>=2&&vs.every(function(r){ return Math.abs(r.line-vs[0].line)<0.5&&Math.abs(r.snr-vs[0].snr)<1; });
-      if(same) pick={mic:-1,src:'voice'};
+      if(same){ var bm=vs.filter(function(r){ return addr[r.mic]==='bottom'; })[0]; pick={mic:bm?bm.mic:-1,src:'voice'}; }   // v0.66: the bottom one if there is one (opened with it from the start, the Redmi keeps it)
       var sure=voice.length>0||ok.length>0;
       autoLog={tried:res,pick:pick?{mic:pick.mic,src:pick.src}:null,sure:sure,same:same}; autoRetest=!sure;
       if(!pick) return false;
-      if(sure) try{ localStorage.setItem('sonaroids_autoaudio',JSON.stringify({mic:pick.mic,src:pick.src,v:3})); }catch(e){}
+      if(sure) try{ localStorage.setItem('sonaroids_autoaudio',JSON.stringify({mic:pick.mic,src:pick.src,v:4})); }catch(e){}
       natCfg.mic=pick.mic; natCfg.src=pick.src; return natReopen().then(function(){ return true; }); });
   }
   /* microphone, audio context, probes. Must start from a tap (browsers unlock sound only on a user gesture) */

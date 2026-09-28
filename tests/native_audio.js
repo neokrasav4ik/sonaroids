@@ -61,7 +61,7 @@ const APPSTUB=`(function(){ var st={on:false,g:[0,0,0,0],probes:0,iv:null,frames
   await p3.goto('file://'+path.join(ROOT,'game','play','index.html')); await p3.waitForTimeout(300);
   await p3.evaluate(()=>__sonaroids.act.play()); await p3.waitForTimeout(400); await p3.evaluate(()=>__sonaroids.act.probe_norm());
   let same=null; t0=Date.now(); while(Date.now()-t0<25000){ same=await p3.evaluate(()=>Sonar.info().auto_audio); if(same) break; await p3.waitForTimeout(250); }
-  const sameOk=!!(same&&same.same&&same.pick&&same.pick.mic===-1);
+  const sameOk=!!(same&&same.same&&same.pick&&same.pick.mic===3);
   await b.close();
   const autoOk=!!(info.auto&&info.auto.tried.length===2&&info.auto.pick&&info.auto.pick.mic===3&&info.stored&&JSON.parse(info.stored).mic===3);
   const ok=autoOk&&backOk&&jumpOk&&sameOk&&def==='app'&&s==='wave'&&info.audio==='app'&&info.probes>=3&&info.frames>100&&info.mic&&info.mic.audio==='app'&&caught&&listed&&!errors.length;
@@ -69,7 +69,7 @@ const APPSTUB=`(function(){ var st={on:false,g:[0,0,0,0],probes:0,iv:null,frames
   console.log(`through the app's sound: ready → ${s}, mode ${info.audio}, probes sent ${info.probes}, frames ${info.frames}, probe gain ${info.gain&&info.gain.toFixed(3)}, SNR ${info.snr&&info.snr.toFixed(1)} dB; palm caught ${caught}; service screen lists the microphones and the speaker ${listed}`+(errors.length?' | errors: '+[...new Set(errors)].join('; ').slice(0,400):''));
   console.log(`the phone moved the recording to mic 4: logged and asked back (the recording reopened) → mic ${back.mic} (want 3), reopened ${back.sw} ${backOk?'ok':'FAIL'}\n  ${back.log.join('\n  ')}`);
   console.log(`the probe fell 14 dB unreported: logged ${JSON.stringify(jump)} dB ${jumpOk?'ok':'FAIL'}`);
-  console.log(`both microphones sound the same: pick ${same&&same.pick&&same.pick.mic} (want -1, Android's own), tried ${same&&same.tried.map(r=>r.mic+' line '+r.line+' SNR '+r.snr).join(' / ')} ${sameOk?'ok':'FAIL'}`);
+  console.log(`both microphones sound the same: pick ${same&&same.pick&&same.pick.mic} (want 3, the bottom one), tried ${same&&same.tried.map(r=>r.mic+' line '+r.line+' SNR '+r.snr).join(' / ')} ${sameOk?'ok':'FAIL'}`);
   console.log(`nothing chosen: the sound goes through ${def||'?'} (want app) ${def==='app'?'ok':'FAIL'}`);
   console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;
 })();

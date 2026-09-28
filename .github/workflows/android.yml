@@ -84,8 +84,7 @@ jobs:
           cp android/app/build/outputs/apk/release/app-release.apk out/sonaroids.apk
           rm -f android/app/release.jks
           url="https://github.com/${{ github.repository }}/releases/latest/download/sonaroids.apk"
-          printf '{"versionCode":%s,"versionName":"%s","url":"%s","src":"%s","date":"%s"}\n' "build ${{ github.run_number }}" "$v.${{ github.run_number }}" "$url" "${{ steps.need.outputs.hash }}" "$(date -u +%FT%TZ)" > out/app.json
-          cat out/app.json
+          printf '{"versionCode":%s,"versionName":"%s","url":"%s","src":"%s","date":"%s"}\n' "${{ github.run_number }}" "build ${{ github.run_number }}" "$url" "${{ steps.need.outputs.hash }}" "$(date -u +%FT%TZ)" > out/app.json
 
       - name: Publish the release
         if: steps.need.outputs.go == 'yes'

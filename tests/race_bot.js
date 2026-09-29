@@ -12,7 +12,7 @@ function botRace(seed,skill,FW){
     hist.push(seen()); const v=hist.length>delay?hist[hist.length-1-delay]:hist[0]; if(hist.length>delay+2) hist.shift();
     const cx=g.d+g.car.x, y=g.car.y, look=cx+30*(1+skill), road=Race.at(g,look);
     // it tries lines across the road and takes the best: away from cars and syrup ahead, towards gifts, not too far from where it is
-    const want=p=>p.type==='fuel'?(g.fuel<70?4:1.5):p.type==='coin'?1:2;
+    const want=p=>p.type==='fuel'?(g.fuel<70?4:1.5):p.type==='coin'?1:p.type[0]==='t'?2.5:2;
     let ty=road.c, best=-1e9;
     for(let yy=road.c-road.hw+6;yy<=road.c+road.hw-6;yy+=3){ let sc=-Math.abs(yy-y)*0.02-Math.abs(yy-road.c)*0.01;
       // where it would be when it reaches that car (the palm moves ~110 units a second at most)

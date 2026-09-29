@@ -1,7 +1,7 @@
 /* ── UI strings, English. All caps: the game's pixel font is drawn in capitals on screen. ── */
 var STR={};
 STR.en={
-  r_steer:'STEERING', r_steer_h:'BY HEIGHT', r_steer_r:'ALONG THE ROAD', r_span:'RANGE', r_span_n:'AS CAUGHT', r_span_w:'WIDE',
+  r_steer:'STEERING', r_steer_h:'BY HEIGHT', r_steer_r:'ALONG THE ROAD',
   volume_ios:'SET THE VOLUME TO 40–60%', volume_direct_ios:'THE VOLUME IS TOO LOW — TURN IT UP TO 40–60%', volume_loud_ios:'THE VOLUME IS TOO HIGH — TURN IT DOWN TO 40–60%',
   volume_silent:"THE PHONE DOESN'T HEAR ITS SOUND — TURN OFF SILENT MODE AND TURN THE VOLUME UP", volume_silent_s:'SILENT MODE CAN MUTE THE GAME',
   r_s:'THE CAR DRIVES ITSELF — YOUR PALM STEERS', r_try:'THE CAR FOLLOWS YOUR PALM — TRY THE TOP AND THE BOTTOM', r_fuel:'FUEL', r_out:'OUT OF FUEL', r_m:'M', r_finish:'FINISH',

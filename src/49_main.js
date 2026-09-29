@@ -93,7 +93,7 @@ function ringUI(p,st){ var r=ringAt(), col=st==='wait'?P.soft:st==='ok'?P.band:P
   text(L(st==='wait'?'ring_wait':st==='listen'?'ring_listen':st==='catch'?'ring_catch':'ring_ok'),r[0],r[1]+17,col,'center'); }
 function stepSquares(id){ if(!onboarding) return; var n=STEPS.length, q=6, gap=6, x=Math.round(LW/2-(n*q+(n-1)*gap)/2), y=LH-SAFE.b-q*3;
   for(var i=0;i<n;i++) R(STEPS[i]===id?P.band:P.line,x+i*(q+gap),y,q,q); }
-function handFrac(){ var st=Sonar.state(); return (st&&st.present&&T)?Tune.fracOf(mode==='race'&&raceWide&&T.field<RACE_WIDE_MM?{field:RACE_WIDE_MM}:T,st.height):null; }   // v0.90: the race's «wide range»
+function handFrac(){ var st=Sonar.state(); return (st&&st.present&&T)?Tune.fracOf(T,st.height):null; }
 
 /* ── screens ── */
 function sLang(){ sky(DT,0.3); var y=Math.round(LH*0.3); text('SONAROIDS',LW/2,y,P.band,'center',2);
@@ -460,11 +460,10 @@ function sRotate(){ lx.fillStyle=P.bg; lx.fillRect(0,0,LW,LH); var y=Math.round(
 /* ════ SONARACE (v0.84; the maintainer, 29 Sep: «ладонь только рулит; машинка едет, обгоняет, собирает топливо»). The rules are in
    src/14_race.js, the candy land in src/48_racehd.js; the getting ready (probe, empty room, wave, try-out) is SonaFly's, the car stands in
    for the ship. Drawn in HD only for now; the best race is kept on the phone ('sonaroids_race_best'), no table yet ════ */
-/* v0.90, for testing (the maintainer: «я запутался… верни для тестов выбор „руль по дороге“ и „широкий диапазон“»): in SonaRace's menu —
-   the steering (by the height on the screen, or along the road as in 0.87) and the range (as caught on the wave screen, or wide: at least
-   12 cm, as in his 21:14 race — the same palm shake is smaller on the screen) */
-var raceSteer=store.get('sonaroids_race_steer','height')==='road'?'road':'height', raceWide=store.get('sonaroids_race_wide','')==='1', RACE_WIDE_MM=120;
-function raceRowLabel(k){ return k==='r_steer'?L('r_steer')+': '+L(raceSteer==='road'?'r_steer_r':'r_steer_h'):L('r_span')+': '+L(raceWide?'r_span_w':'r_span_n'); }
+/* v0.90, for testing (the maintainer: «верни для тестов выбор „руль по дороге“»): in SonaRace's menu the steering — by the height on the
+   screen, or along the road as in 0.87 (v0.91: the «wide range» switch is gone — «это решается перекалибровкой») */
+var raceSteer=store.get('sonaroids_race_steer','height')==='road'?'road':'height';
+function raceRowLabel(){ return L('r_steer')+': '+L(raceSteer==='road'?'r_steer_r':'r_steer_h'); }
 var rDemo=null, rTry=null, rTryD=0, raceBest=+store.get('sonaroids_race_best','0')||0, raceNew=false;
 function raceFW(){ return Race.FH*(LW-SAFE.l)/LH; }
 function newSeed(){ try{ var a=new Uint32Array(1); crypto.getRandomValues(a); return a[0]; }catch(e){ return Math.floor(Math.random()*4294967296); } }
@@ -472,7 +471,7 @@ function newSeed(){ try{ var a=new Uint32Array(1); crypto.getRandomValues(a); re
 function raceDemoTick(){ if(!rDemo||rDemo.d>60000) rDemo=Race.create(20260929,raceFW(),Race.FH/2);
   if(rDemo._c===clock) return; rDemo._c=clock; for(var n=Math.max(1,Math.round(DT*60));n>0;n--) raceDemoStep(rDemo); }
 function sRTitle(){ raceDemoTick(); raceScene(rDemo,rDemo.d,rDemo.car.y,DT);
-  var items=[['play',L('play'),'primary'],['howto',L('howto')],['r_steer',raceRowLabel('r_steer')],['r_span',raceRowLabel('r_span')],['sfx','','sound'],['hub',L('all_games')]], w=colW(items);
+  var items=[['play',L('play'),'primary'],['howto',L('howto')],['r_steer',raceRowLabel()],['sfx','','sound'],['hub',L('all_games')]], w=colW(items);
   var bx0=sideX(w), m=Math.max(8,Math.round(LW*0.04)), band0=freeSide()==='left'?0:bx0-m, band1=freeSide()==='left'?bx0+w+m:LW;
   lx.globalAlpha=0.55; R(P.bg,band0,0,band1-band0,LH); lx.globalAlpha=1;
   column(items,Math.round(LH*0.52),bx0,items.length>5?6:8);
@@ -498,10 +497,10 @@ function raceCount(){ countT-=DT; followShip(); raceScene(g,g.d,raceCarY(g,g.d),
   if(countT<=0) startGame(); }
 function raceStart(){ var y0=raceSteer==='road'?(rCarYs===null?null:+rCarYs.toFixed(3)):(shipY===null?null:+(shipY/K).toFixed(3)); if(y0!==null) g.car.y=Math.max(Race.MARGIN,Math.min(Race.FH-Race.MARGIN,y0)); g.car.off=g.car.y-Race.centre(g,g.d+g.car.x);
   acc=0; parts=[]; raceNew=false; var I=Sonar.info();
-  Logs.gameStart({core:Race.TAG,game:'race',steer:g.steer,wide:raceWide?RACE_WIDE_MM:0,seed:g.seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:'frozen',asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
+  Logs.gameStart({core:Race.TAG,game:'race',steer:g.steer,seed:g.seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:'frozen',asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
     chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids'});
   Sfx.play('start'); go('play'); }
-var R_BURST={coin:['#ffffff','#ffd23f','#ff4f7a'],fuel:['#ffffff','#3fd07a','#8fdcff'],magnet:['#ffffff','#e8284a','#ffd23f'],bubble:['#ffffff','#ff8ac4','#e0409a']};
+var R_BURST={tbubble:['#ffffff','#ffd23f','#ff8ac4'],tmagnet:['#ffffff','#ffd23f','#e8284a'],coin:['#ffffff','#ffd23f','#ff4f7a'],fuel:['#ffffff','#3fd07a','#8fdcff'],magnet:['#ffffff','#e8284a','#ffd23f'],bubble:['#ffffff','#ff8ac4','#e0409a']};
 function raceReact(){ var cX=fx(Race.CAR_X), cY=g.car.y*K;
   g.events.forEach(function(k){ if(k!=='over') Sfx.play(k);
     if(k==='crash'){ flash=0.25; shake=0.35; burst(cX+6,cY,24,['#ffffff','#ff4f8b','#ffd23f','#6fd7ff'],70*K); }
@@ -517,7 +516,7 @@ function raceHud(){ var cx0=Math.round(LW/2), y=topY(), f=g.fuel/Race.TUNE.FUEL,
   if(!low||Math.floor(clock*5)%2){ lx.fillStyle=col; lx.beginPath(); lx.roundRect(bx,by,Math.max(2,bw*f),4,2); lx.fill(); }
   lx.fillStyle='#3fd07a'; lx.beginPath(); lx.roundRect(bx-9,by-2,4,7,1.2); lx.fill(); lx.fillRect(bx-8,by-4,2,2); lx.fillStyle='#e8363a'; lx.fillRect(bx-8.5,by-4.6,3,1);
   text(Math.floor(g.d/10)+' '+L('r_m'),cx0,by+8,P.soft,'center');
-  var gx=bx+bw+8; [['bubble','#ff8ac4',g.car.bubble,Race.TUNE.BUBBLE],['magnet','#e8284a',g.car.magnet,Race.TUNE.MAGNET]].forEach(function(q){ if(q[2]<=0) return;
+  var gx=bx+bw+8; [['turbo','#ffd23f',g.car.turbo,Race.TUNE.TURBO],['bubble','#ff8ac4',g.car.bubble,Race.TUNE.BUBBLE],['magnet','#e8284a',g.car.magnet,Race.TUNE.MAGNET]].forEach(function(q){ if(q[2]<=0) return;
     lx.fillStyle='rgba(40,12,30,0.55)'; lx.beginPath(); lx.arc(gx+4,by+2,5,0,6.2832); lx.fill(); lx.fillStyle=q[1]; lx.beginPath(); lx.moveTo(gx+4,by+2); lx.arc(gx+4,by+2,4,-Math.PI/2,-Math.PI/2+6.2832*Math.min(1,q[2]/q[3])); lx.closePath(); lx.fill(); gx+=12; });
   if(g.state==='coast'&&Math.floor(clock*3)%2===0) text(L('r_out'),cx0,Math.round(LH*0.3),P.hit,'center'); }
 function racePlay(){
@@ -599,7 +598,7 @@ var ACT={
   lefty:function(){ lefty=true; store.set('sonaroids_lefty','1'); turnShown=false; Logs.ev('играю левой'); seenT=scrT; },
   hub:function(){ mode='fly'; go('hub'); },
   r_steer:function(){ raceSteer=raceSteer==='road'?'height':'road'; store.set('sonaroids_race_steer',raceSteer); rCarYs=null; },
-  r_span:function(){ raceWide=!raceWide; store.set('sonaroids_race_wide',raceWide?'1':''); }, hub_rocks:function(){ mode='fly'; go('title'); }, hub_play:function(){ mode='fly'; go('title'); }, hub_race:function(){ mode='race'; go('rtitle'); },
+  hub_rocks:function(){ mode='fly'; go('title'); }, hub_play:function(){ mode='fly'; go('title'); }, hub_race:function(){ mode='race'; go('rtitle'); },
   gfx:function(){ setGfx(gfxMode==='hd'?'pixel':'hd'); pool={K:0,list:[[],[],[]]}; },
   skin_prev:function(){ var i=SKIN_IDS.indexOf(skinId); setSkin(SKIN_IDS[(i+SKIN_IDS.length-1)%SKIN_IDS.length]); },
   skin_next:function(){ var i=SKIN_IDS.indexOf(skinId); setSkin(SKIN_IDS[(i+1)%SKIN_IDS.length]); },
@@ -678,7 +677,7 @@ function sCountResume(){ countT-=DT; field(DT,0); var n=Math.max(1,Math.ceil(cou
   if(countT<=0){ acc=0; go('play'); } }
 
 /* ── the loop ── */
-var DT=1/60, lastNow=performance.now();
+var DT=1/60, lastNow=performance.now(), floorHeld=false;
 /* at most 60 frames a second in flight and 30 on the other screens: phones with 120 Hz screens would otherwise draw twice as often
    for nothing and warm up (v0.12) */
 function loop(now){
@@ -688,7 +687,9 @@ function loop(now){
   if(LH>LW){ pauseGame(); sRotate(); present(0); return; }
   if(booted&&Sonar.lost()&&(scr==='wave'||scr==='count'||scr==='play'||scr==='over')){ if(g&&g.state==='play') Logs.gameStop(); Board.setup('lost'); go('lost'); }
   var RS=mode==='race'&&(scr==='rtitle'||scr==='count'||scr==='count-resume'||scr==='play'||scr==='over'||scr==='paused'||scr==='restart'||(scr==='wave'&&caught&&scrT-caughtT>=CAUGHT_SHOW));
-  hdFrame(RS||(scr==='hub'?hdWanted(SKIN_IDS[hubSkin]):!!SK.hd),RS);   // v0.84: SonaRace's screens smooth   // v0.74: a shapes-only skin with «pixels» — the same canvas at 1 px per game pixel   // v0.72: the HD world canvas under the pixel one
+  hdFrame(RS||(scr==='hub'?hdWanted(SKIN_IDS[hubSkin]):!!SK.hd),RS);   // v0.84: SonaRace's screens smooth
+  // v0.91: while a game runs (and in its pause) the sonar keeps the empty room's level as the getting ready left it (see src/11_dsp.js)
+  var gameOn=!!(g&&g.state!=='over'&&(scr==='play'||scr==='count-resume'||scr==='paused'||scr==='restart')); if(gameOn!==floorHeld){ floorHeld=gameOn; try{ DSP2.set('holdfloor',gameOn); }catch(e){} }   // v0.74: a shapes-only skin with «pixels» — the same canvas at 1 px per game pixel   // v0.72: the HD world canvas under the pixel one
   uiColours(scr!=='hub');
   switch(scr){
     case 'lang': sLang(); break; case 'title': sTitle(); break; case 'rtitle': sRTitle(); break; case 'hub': sHub(); break;

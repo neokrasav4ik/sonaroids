@@ -235,11 +235,18 @@ function rMagnet(px,py){ rx.fillStyle='rgba(0,0,0,0.16)'; rx.beginPath(); rx.ell
 function rBubble(px,py){ rx.fillStyle='rgba(0,0,0,0.14)'; rx.beginPath(); rx.ellipse(px+1,py+5.5,4.5,1.3,0,0,6.2832); rx.fill();
   var g=rx.createRadialGradient(px-1.6,py-1.8,0.5,px,py,5); g.addColorStop(0,'#ffe0f0'); g.addColorStop(0.55,'#ff8ac4'); g.addColorStop(1,'#e0409a'); rx.fillStyle=g; rx.beginPath(); rx.arc(px,py,5,0,6.2832); rx.fill();
   rx.strokeStyle='#a01a68'; rx.lineWidth=0.6; rx.stroke(); rx.fillStyle='rgba(255,255,255,0.9)'; rx.beginPath(); rx.ellipse(px-1.8,py-2,1.4,0.8,-0.6,0,6.2832); rx.fill(); rx.beginPath(); rx.arc(px+2,py+1.8,0.5,0,6.2832); rx.fill(); }
+/* v0.91: the turbo gifts (the maintainer's picks from the sketch): the gum bubble with a golden lightning bolt and speed lines; the magnet
+   on a golden badge with a bolt, inside the gum bubble */
+function rBolt(px,py,s,col){ rx.fillStyle=col; rx.beginPath(); rx.moveTo(px+0.6*s,py-3*s); rx.lineTo(px-1.6*s,py+0.4*s); rx.lineTo(px-0.1*s,py+0.4*s); rx.lineTo(px-0.8*s,py+3*s); rx.lineTo(px+1.7*s,py-0.8*s); rx.lineTo(px+0.1*s,py-0.8*s); rx.closePath(); rx.fill(); rx.strokeStyle='#8a4a00'; rx.lineWidth=0.35; rx.stroke(); }
+function rTurboBubble(px,py){ rBubble(px,py); rBolt(px+0.3,py+0.2,1.05,'#ffd23f'); rx.strokeStyle='rgba(255,255,255,0.9)'; rx.lineWidth=0.7; rx.lineCap='round'; rx.beginPath(); rx.moveTo(px-8.5,py-1.5); rx.lineTo(px-6,py-1.5); rx.moveTo(px-9,py+1.2); rx.lineTo(px-6.2,py+1.2); rx.stroke(); }
+function rTurboMagnet(px,py){ rx.fillStyle='rgba(0,0,0,0.14)'; rx.beginPath(); rx.ellipse(px+1,py+7,5.5,1.4,0,0,6.2832); rx.fill();
+  rx.fillStyle='#ffd23f'; rx.beginPath(); rx.arc(px,py+0.5,5.6,0,6.2832); rx.fill(); rx.strokeStyle='#c8841a'; rx.lineWidth=0.6; rx.stroke(); rx.save(); rx.translate(px,py+0.5); rx.scale(0.7,0.7); rMagnet(0,-0.5); rx.restore(); rBolt(px,py+2,0.55,'#ffffff');
+  rx.fillStyle='rgba(255,138,196,0.25)'; rx.beginPath(); rx.arc(px,py+0.5,7.6,0,6.2832); rx.fill(); rx.strokeStyle='rgba(224,64,154,0.85)'; rx.lineWidth=0.7; rx.stroke(); rx.fillStyle='rgba(255,255,255,0.85)'; rx.beginPath(); rx.ellipse(px-3.2,py-3.8,1.6,0.8,-0.6,0,6.2832); rx.fill(); }
 /* a sprite: w×h sketch pixels around its middle, at this phone's HD scale */
 function rSprite(key,w,h,draw){ var s=RC.sp[key]; if(s) return s; var KS=rKS(), o=hdOff(w*KS,h*KS,hs); rx=o.x; rx.setTransform(hs*KS,0,0,hs*KS,0,0); rx.translate(w/2,h/2); draw(); return RC.sp[key]={c:o.c,w:w*KS,h:h*KS}; }
 function rCarSprite(kind,player){ if(player) return rSprite('p',30,20,function(){ rx.translate(1.5,0); rRocket(0,0); });   // the middle of its body stays the car's point
   var col=R_CARS[kind%R_CARS.length]; return rSprite('c'+kind%R_CARS.length,28,20,function(){ rCar(0,0,col[0],col[1],false); }); }
-function rGiftSprite(t){ return rSprite('g'+t,16,18,function(){ if(t==='fuel') rFuel(0,0); else if(t==='coin') rCoin(0,0); else if(t==='magnet') rMagnet(0,0); else rBubble(0,0); }); }
+function rGiftSprite(t){ return rSprite('g'+t,t[0]==='t'?22:16,18,function(){ if(t==='fuel') rFuel(0,0); else if(t==='coin') rCoin(0,0); else if(t==='magnet') rMagnet(0,0); else if(t==='tbubble') rTurboBubble(0,0); else if(t==='tmagnet') rTurboMagnet(0,0); else rBubble(0,0); }); }
 function rBlit(s,X,Y,a){ if(a){ hx.save(); hx.translate(X,Y); hx.rotate(a); hx.drawImage(s.c,-s.w/2,-s.h/2,s.w,s.h); hx.restore(); } else hx.drawImage(s.c,X-s.w/2,Y-s.h/2,s.w,s.h); }
 /* the road's direction at a place (radians; drawing only) */
 function rSlope(rg,wx){ return Math.atan2(Race.centre(rg,wx+4)-Race.centre(rg,wx-4),8); }
@@ -265,6 +272,8 @@ function raceScene(rg,vd,carY,dt){ rReset(rg.seed); var KS=rKS(), X0=rX0===null?
     var blink=s.inv>0&&Math.floor(clock*14)%2===0;
     if(s.magnet>0&&(s.magnet>2||Math.floor(clock*8)%2)){ for(var m=0;m<3;m++){ var ph=((clock*1.4+m/3)%1); hx.strokeStyle='rgba(232,40,74,'+(0.5*(1-ph)).toFixed(3)+')'; hx.lineWidth=0.8; hx.beginPath(); hx.arc(X,Y,(10+ph*30)*K/SU,-0.9,0.9); hx.stroke(); } }
     if(!blink){ var ks=K/SU*rCarK, sp=Math.min(1,(rg.v||40)/120); hx.save(); hx.translate(X,Y); hx.rotate(rTilt);           // candy puffs behind it, livelier the faster it goes
+      if(s.turbo>0){ hx.strokeStyle='rgba(255,255,255,0.8)'; hx.lineWidth=0.8*ks; hx.lineCap='round'; [[-6,-26],[0,-30],[6,-24]].forEach(function(q,i){ var jx=((clock*9+i*0.37)%1)*4; hx.beginPath(); hx.moveTo((-16-jx)*ks,q[0]*ks); hx.lineTo((q[1]-jx)*ks,q[0]*ks); hx.stroke(); });
+        [[-13,0,3.4,'#ffd23f'],[-17,-1,2.8,'#ff8a3d']].forEach(function(q){ var fl=0.85+0.3*Math.abs(Math.sin(clock*40+q[0])); hx.fillStyle=q[3]; hx.beginPath(); hx.arc(q[0]*ks,q[1]*ks,q[2]*fl*ks,0,6.2832); hx.fill(); }); }
       [[0,'#ffe0f0',2.4],[1,'#ffd23f',1.8],[2,'#ffb3d9',1.3]].forEach(function(q){ var ph=(clock*6+q[0]*0.33)%1, r=q[2]*(0.7+0.5*sp)*(1-ph*0.4)*ks; hx.globalAlpha=0.9-ph*0.5;
         hx.fillStyle=q[1]; hx.beginPath(); hx.arc((-11.5-q[0]*2.6-ph*4*sp)*ks,(q[0]===1?-0.9:q[0]===2?0.8:0)*ks,r,0,6.2832); hx.fill(); });
       hx.globalAlpha=1; hx.restore(); var cs=rCarSprite(0,true); if(rCarK!==1){ hx.save(); hx.translate(X,Y); hx.rotate(rTilt); hx.drawImage(cs.c,-cs.w*rCarK/2,-cs.h*rCarK/2,cs.w*rCarK,cs.h*rCarK); hx.restore(); } else rBlit(cs,X,Y,rTilt); }

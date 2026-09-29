@@ -57,6 +57,7 @@ var Sfx=(function(){
     else if(kind==='rub'){ crash(0.12,1600,0.35); }
     else if(kind==='crash'){ crash(0.4,900,0.9); tone(500,120,0.3,'square',0.45); }
     else if(kind==='magnet'||kind==='bubble'){ tone(880,1760,0.14,'triangle',0.35); tone(1320,2640,0.1,'triangle',0.25,0.1); }
+    else if(kind==='turbo'){ tone(300,1400,0.35,'sawtooth',0.22); tone(880,1760,0.14,'triangle',0.3,0.05); }
     else if(kind==='pop'){ crash(0.2,2600,0.5); tone(1400,500,0.16,'triangle',0.35); }
     else if(kind==='syrup'){ tone(260,140,0.22,'triangle',0.25); }
     else if(kind==='empty'){ tone(700,180,0.7,'triangle',0.4); }

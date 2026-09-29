@@ -129,6 +129,37 @@ function hubCard(id,x,y,w,ih,img,name,sub,on){
   frame(x,y,w,ih+26,on?P.band:P.line); if(on) frame(x-1,y-1,w+2,ih+28,P.band);
   text(name,x+w/2,y+ih+7,on?P.text:P.soft,'center'); if(sub) text(sub,x+w/2,y+ih+17,P.soft,'center');
   BTN.push({id:id,x:x,y:y,w:w,h:ih+26}); }
+/* v0.76 (the maintainer: the SonaRace card in HD too): a top-down race drawn smooth — a winding road with red-and-white kerbs and a dashed
+   middle line, cars driving along it (turned along the road, with windows and shadows), trees and bushes; the scene changes every 4 s
+   (a green meadow, a beach by the sea, a night with lamps) */
+var raceHC=null, RACE_THEMES=[
+  {g:['#5aa04a','#4e9440'],road:'#5a5a64',edge:'#e8e8ec',kerb:'#d8343c',line:'#f4f4f0',tree:['#2f7a36','#4aa24a','#1f5a28'],sand:null},
+  {g:['#e8d49a','#dcc68a'],road:'#6a6a72',edge:'#f0f0f0',kerb:'#2a7ad8',line:'#fffbe8',tree:['#3a8a4a','#5ab85a','#2a6a38'],sand:'#3aa8d8'},
+  {g:['#1c2a38','#18242f'],road:'#2c2c36',edge:'#8a8a98',kerb:'#ffb020',line:'#ffe88a',tree:['#12301e','#1e4a2c','#0a1a10'],sand:null,night:true}];
+var RACE_CARS=['#e83a3a','#2f7ad8','#f0c020','#3fc486','#b05ad8'];
+function raceCardHD(w,h){ var k=uiS, W2=Math.round(w*k), H2=Math.round(h*k);
+  if(!raceHC||raceHC.width!==W2||raceHC.height!==H2){ raceHC=document.createElement('canvas'); raceHC.width=W2; raceHC.height=H2; }
+  var x=raceHC.getContext('2d'), th=RACE_THEMES[Math.floor((clock+2)/4)%RACE_THEMES.length], t=clock, i, R2=srand(3);
+  x.setTransform(k,0,0,k,0,0); x.imageSmoothingEnabled=true;
+  var mid=function(u){ return h*(0.52+0.22*Math.sin(u/w*6.2832*0.85+0.6)+0.06*Math.sin(u/w*6.2832*2.1)); }, rw=h*0.2;
+  for(i=0;i<14;i++){ x.fillStyle=th.g[i%2]; x.beginPath(); x.moveTo(i*w/7-h,h); x.lineTo(i*w/7,0); x.lineTo((i+1)*w/7,0); x.lineTo((i+1)*w/7-h,h); x.fill(); }   // mown stripes
+  if(th.sand){ x.fillStyle=th.sand; x.beginPath(); x.moveTo(0,0); for(var u=0;u<=w;u+=4) x.lineTo(u,h*0.16+Math.sin(u*0.08+t*1.5)*1.2); x.lineTo(w,0); x.fill();
+    x.strokeStyle='rgba(255,255,255,0.8)'; x.lineWidth=0.6; x.beginPath(); for(u=0;u<=w;u+=4) x.lineTo(u,h*0.16+Math.sin(u*0.08+t*1.5)*1.2+0.8); x.stroke(); }
+  var road=function(lw,col,dash){ x.strokeStyle=col; x.lineWidth=lw; x.lineCap='butt'; x.setLineDash(dash||[]); x.beginPath(); for(var u2=-4;u2<=w+4;u2+=3) x.lineTo(u2,mid(u2)); x.stroke(); x.setLineDash([]); };
+  road(rw+3,th.kerb,[3,3]); x.lineDashOffset=3; road(rw+3,th.edge,[3,3]); x.lineDashOffset=0; road(rw,th.road); road(0.6,th.line,[4,4]);
+  // trees and bushes off the road
+  for(i=0;i<18;i++){ var tx=R2()*w, ty=R2()*h, tr=2+R2()*3; if(Math.abs(ty-mid(tx))<rw*0.9+tr||(th.sand&&ty<h*0.2)) continue;
+    x.fillStyle='rgba(0,0,0,0.25)'; x.beginPath(); x.arc(tx+1.2,ty+1.2,tr,0,6.2832); x.fill();
+    var tg=x.createRadialGradient(tx-tr*0.4,ty-tr*0.4,tr*0.2,tx,ty,tr); tg.addColorStop(0,th.tree[1]); tg.addColorStop(1,th.tree[0]); x.fillStyle=tg; x.beginPath(); x.arc(tx,ty,tr,0,6.2832); x.fill(); x.strokeStyle=th.tree[2]; x.lineWidth=0.4; x.stroke(); }
+  if(th.night){ for(i=0;i<6;i++){ var lxp=(i+0.5)*w/6, ly=mid(lxp)-rw*0.85; var gg=x.createRadialGradient(lxp,ly,0,lxp,ly,rw*1.2); gg.addColorStop(0,'rgba(255,220,140,0.35)'); gg.addColorStop(1,'rgba(255,220,140,0)'); x.fillStyle=gg; x.beginPath(); x.arc(lxp,ly,rw*1.2,0,6.2832); x.fill(); x.fillStyle='#ffe8a0'; x.beginPath(); x.arc(lxp,ly,0.8,0,6.2832); x.fill(); } }
+  // the cars: along the road at their own speeds, turned with it
+  RACE_CARS.forEach(function(col,j){ var s=((j*0.23+t*(0.07+j*0.012))%1.2)-0.1, cxp=s*w, cyp=mid(cxp)+(j%2?1:-1)*rw*0.22, a=Math.atan2(mid(cxp+2)-mid(cxp-2),4);
+    x.save(); x.translate(cxp,cyp); x.rotate(a); x.fillStyle='rgba(0,0,0,0.3)'; x.beginPath(); x.roundRect(-3.3,-1.6,7.4,3.8,1.2); x.fill();
+    x.fillStyle=col; x.beginPath(); x.roundRect(-3.6,-1.9,7.2,3.8,1.3); x.fill(); x.fillStyle='rgba(20,24,40,0.85)'; x.beginPath(); x.roundRect(0.4,-1.4,1.8,2.8,0.5); x.fill(); x.beginPath(); x.roundRect(-2.6,-1.3,1.4,2.6,0.4); x.fill();
+    x.fillStyle='rgba(255,255,255,0.5)'; x.fillRect(-2.8,-1.6,4.5,0.5);
+    if(th.night){ x.fillStyle='rgba(255,250,200,0.9)'; x.fillRect(3.4,-1.5,0.5,0.8); x.fillRect(3.4,0.7,0.5,0.8); var hb=x.createLinearGradient(4,0,12,0); hb.addColorStop(0,'rgba(255,245,200,0.35)'); hb.addColorStop(1,'rgba(255,245,200,0)'); x.fillStyle=hb; x.beginPath(); x.moveTo(3.8,-1.5); x.lineTo(12,-4); x.lineTo(12,4); x.lineTo(3.8,1.5); x.fill(); }
+    x.restore(); });
+  return raceHC; }
 function sHub(){ var fr;
   if(hdWanted(SKIN_IDS[hubSkin])){ hubTick(); noLight=true; drawDemo(skinView(SKIN_IDS[hubSkin]),DT); noLight=false; fr=hdCv; }   // v0.75: no soft light (it would sit outside the card)   // v0.72, HD: the demo on the HD canvas; the card shows it scaled down
   else { fr=hubFrame(); lx.drawImage(fr,0,0); }
@@ -145,6 +176,7 @@ function sHub(){ var fr;
   if(!raceImgs&&typeof RACE_THUMBS!=='undefined'){ raceImgs=RACE_THUMBS.map(function(u){ var im=new Image(); im.src=u; return im; }); }
   raceI=Math.floor((clock+2)/4)%((raceImgs&&raceImgs.length)||1);
   var ri=raceImgs&&raceImgs[raceI]&&raceImgs[raceI].complete?raceImgs[raceI]:null;
+  if(uiS>1) ri=raceCardHD(cw-4,ih);   // v0.76: in HD the SonaRace card is drawn smooth and alive
   hubCard('hub_race',cx+cw+gap,ty,cw,ih,ri,'SonaRace',clock-soonT<1.5&&Math.floor(clock*6)%2?'':L('soon'),false);
   if(narrow){ var t1=pw+8+sw, x1=Math.round(cx0-t1/2); button('hub_play',L('play'),x1,playY,pw,BH,'primary',Math.floor(clock*2)%2===0); soundRow(x1+pw+8,playY,sw,BH);
     var x2=Math.round(cx0-bw-4); button('howto',L('howto'),x2,rowY,bw,BH,''); button('lang',L('lang'),x2+bw+8,rowY,bw,BH,''); }

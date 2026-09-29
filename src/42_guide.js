@@ -50,9 +50,22 @@ function phoneIso(o,cm,portOn,cam){                                          // 
 }
 /* the tiny game on the drawn phone's screen. It is drawn after the picture is mirrored: a turned-over phone turns its screen too,
    so the ship stays on the player's left and flies right */
+/* v0.76 (the maintainer: the drawn phone's game in the chosen skin and graphics): the skin's own world — its sky, rocks, saucer, shots and
+   ship, the ship at the palm's height — drawn off-screen (pixels, or the HD pictures) and laid onto the phone's screen in perspective */
+var phoneSt={}, phoneC=null, phoneHC=null, phoneAt=-1;
+function phoneWorld(f){ var sk=SK, sy=LH*(0.12+(1-f)*0.76), sx=LW*0.12;
+  if(phoneAt===clock) return sk.hd?phoneHC:phoneC; phoneAt=clock;                       // two phones in one picture share the frame
+  if(sk.hd){ var q=Math.min(hs,1.5); if(!phoneHC||phoneHC.width!==Math.round(LW*q)||phoneHC.height!==Math.round(LH*q)){ phoneHC=document.createElement('canvas'); phoneHC.width=Math.round(LW*q); phoneHC.height=Math.round(LH*q); }
+    var keep=hx; hx=phoneHC.getContext('2d'); hx.setTransform(q,0,0,q,0,0); hx.imageSmoothingEnabled=true; noLight=true;
+    try{ drawDemo(sk,DT,sx,phoneSt,sy,0.15); } finally { hx=keep; noLight=false; } return phoneHC; }
+  if(!phoneC||phoneC.width!==LW||phoneC.height!==LH){ phoneC=document.createElement('canvas'); phoneC.width=LW; phoneC.height=LH; }
+  var kl=lx; lx=phoneC.getContext('2d'); lx.setTransform(1,0,0,1,0,0); lx.imageSmoothingEnabled=false; noLight=true;
+  try{ drawDemo(sk,DT,sx,phoneSt,sy,0.15); } finally { lx=kl; noLight=false; } return phoneC; }
 function phoneGame(ph,o,cm,f,T,mirror){
   var m=0.9*cm, x0=ph.X0+m, x1=ph.X1-m, y0=ph.Y0+m, y1=ph.Y1-m, W0=x1-x0, H0=y1-y0;
   function at(u,v){ if(!mirror) return iso(x0+u*W0,y0+v*H0,ph.Zp,o); var p=iso(x0+(1-u)*W0,y0+v*H0,ph.Zp,o); return [LW-p[0],p[1]]; }
+  if(SK&&typeof drawDemo==='function'){ var wc=phoneWorld(f), a0=at(0,0), a1=at(1,0), a2=at(0,1);
+    lx.save(); lx.transform(a1[0]-a0[0],a1[1]-a0[1],a2[0]-a0[0],a2[1]-a0[1],a0[0],a0[1]); lx.imageSmoothingEnabled=true; lx.imageSmoothingQuality='high'; lx.drawImage(wc,0,0,1,1); lx.restore(); return; }
   if(uiS>1){ for(var i2=0;i2<14;i2++){ var u2=((i2*0.137+T*0.05*(1+i2%3))%1), v2=(i2*0.311)%1, p2=at(1-u2,v2); lx.fillStyle=i2%3?P.stars[1]:P.stars[2]; lx.beginPath(); lx.arc(p2[0],p2[1],0.45,0,6.2832); lx.fill(); }
     [[0.62,0.3,3],[0.83,0.68,2],[0.45,0.8,2]].forEach(function(r,j){ var u=(((r[0]-T*0.04*(j+1))%1)+1)%1*0.9+0.08, p=at(u,r[1]); lx.fillStyle=P.rock[3]; lx.beginPath(); lx.arc(p[0],p[1],r[2]*0.6,0,6.2832); lx.fill(); lx.fillStyle=P.rock[1]; lx.beginPath(); lx.arc(p[0]+r[2]*0.15,p[1]+r[2]*0.15,r[2]*0.4,0,6.2832); lx.fill(); });
     var sq=at(0.12,0.12+(1-f)*0.76), sx2=sq[0]+(mirror?-1:1)*2, d2=mirror?-1:1; lx.fillStyle=P.ship[2]; lx.beginPath(); lx.moveTo(sx2+d2*8,sq[1]); lx.lineTo(sx2,sq[1]-3.6); lx.lineTo(sx2+d2*1.5,sq[1]); lx.lineTo(sx2,sq[1]+3.6); lx.closePath(); lx.fill();

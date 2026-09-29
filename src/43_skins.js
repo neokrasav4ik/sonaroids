@@ -140,12 +140,13 @@ function demoMake(){ var R2=srand(5), d={rocks:[],shots:[],ufo:{x:LW*0.8,y:LH*0.
   for(var i=0;i<7;i++) d.rocks.push({x:LW*(0.3+R2()*0.8),y:LH*(0.12+R2()*0.76),sz:i%3===0?0:i%3===1?1:2,v:10+R2()*14,id:i});
   return d; }
 function demoRock(sk,sz,id){ var k=sk.id+(sk.hd?'hd'+hs:'')+':'+sz+':'+id+':'+K; if(!demoSpr[k]) demoSpr[k]=sk.rock(Math.max(3,Math.round(Core.R_SIZE[sz]*K)),sz,id*13+sz); return demoSpr[k]; }
-function drawDemo(sk,dt,shipX){ if(!demo||demo.LW!==LW){ demo=demoMake(); demo.LW=LW; } var d=demo; d.t+=dt;
-  sk.sky(dt,0.5);
+function drawDemo(sk,dt,shipX,st,shipY,skyS){ var d;                            // v0.76: st — a demo of its own (the drawn phone's screen), shipY — the ship's height, skyS — the sky's speed
+  if(st){ if(!st.d||st.d.LW!==LW){ st.d=demoMake(); st.d.LW=LW; } d=st.d; } else { if(!demo||demo.LW!==LW){ demo=demoMake(); demo.LW=LW; } d=demo; } d.t+=dt;
+  sk.sky(dt,skyS===undefined?0.5:skyS);
   d.rocks.forEach(function(r){ r.x-=r.v*K*dt; if(r.x<-20){ r.x=LW+20; r.y=LH*(0.12+Math.random()*0.76); }
     var sp=demoRock(sk,r.sz,r.id); if(sk.drawRock){ sp.rot=(sp.rot+(sp.vr||0)*dt+16)%16; sk.drawRock(sp,r.x,r.y); return; }
     var fr=sp.frames[Math.floor((d.t*2+r.id)%16)]; lx.drawImage(fr,Math.round(r.x-sp.size/2+(sp.ox||0)),Math.round(r.y-sp.size/2)); });
-  var sy=Math.round(LH*(0.5+0.18*Math.sin(d.t*0.9))), sx=Math.round(shipX===undefined?fx(Core.SHIP_X):shipX);
+  var sy=Math.round(shipY!==undefined?shipY:LH*(0.5+0.18*Math.sin(d.t*0.9))), sx=Math.round(shipX===undefined?fx(Core.SHIP_X):shipX);
   if(Math.floor(d.t*6)!==Math.floor((d.t-dt)*6)) d.shots.push({x:sx+16,y:sy});
   d.shots=d.shots.filter(function(b){ b.x+=190*K*dt; return b.x<LW+10; }); d.shots.forEach(function(b){ sk.bullet(b.x,b.y); });
   var u=d.ufo; u.x-=6*K*dt; if(u.x<-30) u.x=LW+60; sk.ufo(Math.round(u.x),Math.round(u.y+Math.sin(d.t*1.7)*6),true,false);
@@ -158,9 +159,9 @@ function demoInto(sk,dt){ if(!demoC||demoC.width!==LW||demoC.height!==LH){ demoC
 function skinProbe(id){ var sk=SKINS[id], out={}, keep=lx, oldSK=SK;
   function grab(w,h,fn){ var c=document.createElement('canvas'); c.width=w; c.height=h; lx=c.getContext('2d'); lx.imageSmoothingEnabled=false; noLight=true;
     try{ fn(); } finally { lx=keep; noLight=false; } return Array.from(lx.canvas===c?[]:c.getContext('2d').getImageData(0,0,w,h).data); }
-  var sh=(id==='space')?null:skySheet(sk);
+  var sh=(id==='space'||!sk.paint)?null:skySheet(sk);
   if(sh){ out.bg=Array.from(sh.c.getContext('2d').getImageData(0,0,sh.c.width,sh.c.height).data); out.bgW=sh.c.width; out.bgH=sh.c.height; }
-  else { out.bg=grab(LW,LH,function(){ sky(0,0); }); out.bgW=LW; out.bgH=LH; }
+  else { out.bg=grab(LW,LH,function(){ if(id==='space') sky(0,0); else sk.sky(0,0); }); out.bgW=LW; out.bgH=LH; }   // v0.76: a skin's own sky (not the chosen one's)
   out.motes=sk.motes||P.stars;
   out.rocks=[0,1,2].map(function(sz){ var r=sk.rock(Math.max(3,Math.round(Core.R_SIZE[sz]*K)),sz,sz*17+3), c=r.frames[0], d=c.getContext('2d').getImageData(0,0,c.width,c.height).data; return {w:c.width,h:c.height,d:Array.from(d)}; });
   function obj(w,h,fn){ return {w:w,h:h,d:grab(w,h,fn)}; }

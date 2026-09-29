@@ -1,6 +1,6 @@
-/* ── SKINS DRAWN AS SHAPES (v0.74, the maintainer: «вектор 80-х, неон, тетрадка — вот это интересно, и геймбой посмотреть»). They exist
-   only here, on the HD canvas: with «ГРАФИКА: HD» sharp at the screen's resolution, with «ПИКСЕЛИ» the same drawing at one pixel per game
-   pixel, blown up without smoothing (see hdOnly / hdPix in 45_hd.js). Readability by the same audit (HD=1 node tests/skin_audit.js):
+/* ── SKINS DRAWN AS SHAPES (v0.74, the maintainer: «вектор 80-х, неон, тетрадка — вот это интересно, и геймбой посмотреть»). Their HD
+   pictures (v0.76: the pixel ones of vector, neon and notebook are in 47_pixskins.js; the LCD has none — its picture here, at one pixel
+   per game pixel and blown up without smoothing, is already whole pixels: hdOnly / hdPix in 45_hd.js). Readability by the same audit (HD=1 node tests/skin_audit.js):
    objects stand out by lightness and by shape (the enemy shots have a shape of their own), not by black frames. ── */
 function lwMin(w){ return Math.max(w,0.9/hs); }                                   // a line never thinner than about a screen pixel's worth
 function polyAt(c,P){ c.beginPath(); for(var i=0;i<P.length;i++){ if(i) c.lineTo(P[i][0],P[i][1]); else c.moveTo(P[i][0],P[i][1]); } c.closePath(); }

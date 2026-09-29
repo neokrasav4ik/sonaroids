@@ -93,7 +93,7 @@ function ringUI(p,st){ var r=ringAt(), col=st==='wait'?P.soft:st==='ok'?P.band:P
   text(L(st==='wait'?'ring_wait':st==='listen'?'ring_listen':st==='catch'?'ring_catch':'ring_ok'),r[0],r[1]+17,col,'center'); }
 function stepSquares(id){ if(!onboarding) return; var n=STEPS.length, q=6, gap=6, x=Math.round(LW/2-(n*q+(n-1)*gap)/2), y=LH-SAFE.b-q*3;
   for(var i=0;i<n;i++) R(STEPS[i]===id?P.band:P.line,x+i*(q+gap),y,q,q); }
-function handFrac(){ var st=Sonar.state(); return (st&&st.present&&T)?Tune.fracOf(T,st.height):null; }
+function handFrac(){ var st=Sonar.state(); return (st&&st.present&&T)?Tune.fracOf(mode==='race'&&raceWide&&T.field<RACE_WIDE_MM?{field:RACE_WIDE_MM}:T,st.height):null; }   // v0.90: the race's «wide range»
 
 /* ── screens ── */
 function sLang(){ sky(DT,0.3); var y=Math.round(LH*0.3); text('SONAROIDS',LW/2,y,P.band,'center',2);
@@ -460,6 +460,11 @@ function sRotate(){ lx.fillStyle=P.bg; lx.fillRect(0,0,LW,LH); var y=Math.round(
 /* ════ SONARACE (v0.84; the maintainer, 29 Sep: «ладонь только рулит; машинка едет, обгоняет, собирает топливо»). The rules are in
    src/14_race.js, the candy land in src/48_racehd.js; the getting ready (probe, empty room, wave, try-out) is SonaFly's, the car stands in
    for the ship. Drawn in HD only for now; the best race is kept on the phone ('sonaroids_race_best'), no table yet ════ */
+/* v0.90, for testing (the maintainer: «я запутался… верни для тестов выбор „руль по дороге“ и „широкий диапазон“»): in SonaRace's menu —
+   the steering (by the height on the screen, or along the road as in 0.87) and the range (as caught on the wave screen, or wide: at least
+   12 cm, as in his 21:14 race — the same palm shake is smaller on the screen) */
+var raceSteer=store.get('sonaroids_race_steer','height')==='road'?'road':'height', raceWide=store.get('sonaroids_race_wide','')==='1', RACE_WIDE_MM=120;
+function raceRowLabel(k){ return k==='r_steer'?L('r_steer')+': '+L(raceSteer==='road'?'r_steer_r':'r_steer_h'):L('r_span')+': '+L(raceWide?'r_span_w':'r_span_n'); }
 var rDemo=null, rTry=null, rTryD=0, raceBest=+store.get('sonaroids_race_best','0')||0, raceNew=false;
 function raceFW(){ return Race.FH*(LW-SAFE.l)/LH; }
 function newSeed(){ try{ var a=new Uint32Array(1); crypto.getRandomValues(a); return a[0]; }catch(e){ return Math.floor(Math.random()*4294967296); } }
@@ -467,30 +472,33 @@ function newSeed(){ try{ var a=new Uint32Array(1); crypto.getRandomValues(a); re
 function raceDemoTick(){ if(!rDemo||rDemo.d>60000) rDemo=Race.create(20260929,raceFW(),Race.FH/2);
   if(rDemo._c===clock) return; rDemo._c=clock; for(var n=Math.max(1,Math.round(DT*60));n>0;n--) raceDemoStep(rDemo); }
 function sRTitle(){ raceDemoTick(); raceScene(rDemo,rDemo.d,rDemo.car.y,DT);
-  var items=[['play',L('play'),'primary'],['howto',L('howto')],['sfx','','sound'],['hub',L('all_games')]], w=colW(items);
+  var items=[['play',L('play'),'primary'],['howto',L('howto')],['r_steer',raceRowLabel('r_steer')],['r_span',raceRowLabel('r_span')],['sfx','','sound'],['hub',L('all_games')]], w=colW(items);
   var bx0=sideX(w), m=Math.max(8,Math.round(LW*0.04)), band0=freeSide()==='left'?0:bx0-m, band1=freeSide()==='left'?bx0+w+m:LW;
   lx.globalAlpha=0.55; R(P.bg,band0,0,band1-band0,LH); lx.globalAlpha=1;
-  column(items,Math.round(LH*0.52),bx0,8);
+  column(items,Math.round(LH*0.52),bx0,items.length>5?6:8);
   var a0=freeSide()==='left'?band1:SAFE.l, a1=freeSide()==='left'?LW-SAFE.r:band0, cx0=Math.round((a0+a1)/2), lsc=PF.width('SonaRace',2)<=a1-a0-12?2:1, y=Math.round(LH*0.14);
   text('SonaRace',cx0,y,P.band,'center',lsc); y+=lsc*10+6;
   PF.wrap(L('r_s'),a1-a0-16,1).forEach(function(l){ text(l,cx0,y,P.text,'center'); y+=10; });
   if(raceBest>0) text(L('best')+' '+raceBest,cx0,LH-SAFE.b-28,P.text,'center');
   say('SonaRace. '+L('play')); }
 /* the try-out before the race: an empty stretch of road rolls slowly, the car follows the palm */
+/* the car before the race: by the height as the ship, or along the road (then its place across the road, as in the race) */
+var rCarYs=null;
+function raceCarY(rg,vd){ if(raceSteer!=='road') return shipY/K; var t=Race.steerY(rg,vd+Race.CAR_X,lastHand===null?0.5:lastHand); rCarYs=rCarYs===null?t:rCarYs+(t-rCarYs)*0.49; return rCarYs; }
 function raceTry(){ followShip(); lx.clearRect(0,0,LW,LH); if(!rTry){ rTry=Race.create(7,raceFW(),Race.FH/2); rTryD=0; } rTryD+=45*DT;
-  raceScene(rTry,rTryD,shipY/K,DT);
+  raceScene(rTry,rTryD,raceCarY(rTry,rTryD),DT);
   titles(L('wave_ok'),L('r_try'));
   var items=[['start',L('play'),'primary'],['again',L('recal')]], bw=btnW(items.map(function(q){ return q[1]; })), lane=Math.round(fx(Race.CAR_X))+30;
   column(items,Math.round(LH*0.62),freeSide()==='left'?Math.max(sideX(bw),lane):undefined); stepSquares('wave'); }
 /* the countdown: the race's own road, still, the car at the palm */
-function raceCount(){ countT-=DT; followShip(); raceScene(g,g.d,shipY/K,DT);
+function raceCount(){ countT-=DT; followShip(); raceScene(g,g.d,raceCarY(g,g.d),DT);
   var n=Math.max(1,Math.ceil(countT)), cx0=Math.round(LW/2), cy0=Math.round(LH/2);
   ring(cx0,cy0,13,1-(countT-Math.floor(countT)),P.band); text(String(n),cx0,cy0-3,P.text,'center'); say(String(n));
   if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.play('tick');
   if(countT<=0) startGame(); }
-function raceStart(){ var y0=shipY===null?null:+(shipY/K).toFixed(3); if(y0!==null) g.car.y=Math.max(Race.MARGIN,Math.min(Race.FH-Race.MARGIN,y0));
+function raceStart(){ var y0=raceSteer==='road'?(rCarYs===null?null:+rCarYs.toFixed(3)):(shipY===null?null:+(shipY/K).toFixed(3)); if(y0!==null) g.car.y=Math.max(Race.MARGIN,Math.min(Race.FH-Race.MARGIN,y0)); g.car.off=g.car.y-Race.centre(g,g.d+g.car.x);
   acc=0; parts=[]; raceNew=false; var I=Sonar.info();
-  Logs.gameStart({core:Race.TAG,game:'race',seed:g.seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:'frozen',asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
+  Logs.gameStart({core:Race.TAG,game:'race',steer:g.steer,wide:raceWide?RACE_WIDE_MM:0,seed:g.seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:'frozen',asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
     chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids'});
   Sfx.play('start'); go('play'); }
 var R_BURST={coin:['#ffffff','#ffd23f','#ff4f7a'],fuel:['#ffffff','#3fd07a','#8fdcff'],magnet:['#ffffff','#e8284a','#ffd23f'],bubble:['#ffffff','#ff8ac4','#e0409a']};
@@ -567,7 +575,7 @@ function toWave(){ T=Tune.create(+store.get('sonaroids_field','100')||100,true);
 function pauseGame(){ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; go('paused'); } }
 function startCount(){ if(resumeAfterPrep&&g&&g.state!=='over'){ resumeAfterPrep=false; countT=3; go('count-resume'); return; }
   resumeAfterPrep=false; countT=3; if(scr!=='wave') shipY=null; lastHand=handFrac()===null?lastHand:handFrac(); /* from the try-out the ship goes on where it is */ Logs.ev('отсчёт',{field:+T.field.toFixed(1),auto:T.auto}); store.set('sonaroids_field',Math.round(T.field));
-  if(mode==='race'){ g=Race.create(newSeed(),raceFW(),shipY===null?null:shipY/K); rTry=null; } go('count'); }
+  if(mode==='race'){ g=Race.create(newSeed(),raceFW(),shipY===null?null:shipY/K,raceSteer); rTry=null; } go('count'); }
 function startGame(){ if(mode==='race'){ raceStart(); return; }
   var seed=0; try{ var a=new Uint32Array(1); crypto.getRandomValues(a); seed=a[0]; }catch(e){ seed=Math.floor(Math.random()*4294967296); }
   var y0=shipY===null?null:+(shipY/K).toFixed(3);
@@ -589,7 +597,9 @@ var ACT={
   /* a deep recalibration: forget the saved palm range, close the microphone and start from "put the phone down" */
   recal:function(){ onboarding=false; direct=false; store.set('sonaroids_field','100'); Sonar.restart(); booted=false; acoustic=false; go('phone'); },
   lefty:function(){ lefty=true; store.set('sonaroids_lefty','1'); turnShown=false; Logs.ev('играю левой'); seenT=scrT; },
-  hub:function(){ mode='fly'; go('hub'); }, hub_rocks:function(){ mode='fly'; go('title'); }, hub_play:function(){ mode='fly'; go('title'); }, hub_race:function(){ mode='race'; go('rtitle'); },
+  hub:function(){ mode='fly'; go('hub'); },
+  r_steer:function(){ raceSteer=raceSteer==='road'?'height':'road'; store.set('sonaroids_race_steer',raceSteer); rCarYs=null; },
+  r_span:function(){ raceWide=!raceWide; store.set('sonaroids_race_wide',raceWide?'1':''); }, hub_rocks:function(){ mode='fly'; go('title'); }, hub_play:function(){ mode='fly'; go('title'); }, hub_race:function(){ mode='race'; go('rtitle'); },
   gfx:function(){ setGfx(gfxMode==='hd'?'pixel':'hd'); pool={K:0,list:[[],[],[]]}; },
   skin_prev:function(){ var i=SKIN_IDS.indexOf(skinId); setSkin(SKIN_IDS[(i+SKIN_IDS.length-1)%SKIN_IDS.length]); },
   skin_next:function(){ var i=SKIN_IDS.indexOf(skinId); setSkin(SKIN_IDS[(i+1)%SKIN_IDS.length]); },

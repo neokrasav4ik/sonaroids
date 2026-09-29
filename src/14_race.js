@@ -44,11 +44,15 @@ var Race=(function(){
   function at(g,x){ while(g.keys[g.keys.length-1].x<=x+2) addKey(g); var i=seg(g,x), a=g.keys[i], b=g.keys[i+1], u=(x-a.x)/(b.x-a.x); u=clamp(u,0,1); var s=u*u*(3-2*u);
     return {c:a.c+(b.c-a.c)*s,hw:a.hw+(b.hw-a.hw)*s}; }
   function centre(g,x){ return at(g,x).c; }
-  function create(seed,FW,y0){
+  /* steering along the road: the palm (0 bottom … 1 top) → the place across the road; its range spans the road and OFFW units past each kerb */
+  var OFFW=12;
+  function offOf(g,x,hand){ var r=at(g,x); return (0.5-hand)*2*(r.hw+OFFW); }
+  function steerY(g,x,hand){ var r=at(g,x); return clamp(r.c+(0.5-hand)*2*(r.hw+OFFW),MARGIN,FH-MARGIN); }
+  function create(seed,FW,y0,steer){
     var g={seed:seed>>>0,FW:FW||380,FH:FH,rand:rng(seed),n:0,t:0,state:'play',score:0,d:0,v:0,fuel:TUNE.FUEL,coins:0,passed:0,crashes:0,
-      car:{x:CAR_X,y:FH/2,inv:0,rub:0,bubble:0,magnet:0,syrup:0,on:'road'},keys:[{x:-300,c:FH/2,hw:TUNE.HW0},{x:260,c:FH/2,hw:TUNE.HW0}],ki:0,straight:0,roadRand:rng((seed^0x5bd1e995)>>>0),
+      steer:steer==='road'?'road':'height',car:{x:CAR_X,y:FH/2,off:0,inv:0,rub:0,bubble:0,magnet:0,syrup:0,on:'road'},keys:[{x:-300,c:FH/2,hw:TUNE.HW0},{x:260,c:FH/2,hw:TUNE.HW0}],ki:0,straight:0,roadRand:rng((seed^0x5bd1e995)>>>0),
       cars:[],items:[],puddles:[],nextCar:420,nextSoda:900,nextGift:1500,nextCoin:260,nextPud:1400,line:0,lines:{},lineN:0,kind:0,nextId:1,events:[],fx:[]};
-    g.car.y=(y0===undefined||y0===null)?FH/2:clamp(y0,MARGIN,FH-MARGIN); g.v=TUNE.V0*0.55; return g; }   // y0: where the car starts (the palm at the start)
+    g.car.y=(y0===undefined||y0===null)?FH/2:clamp(y0,MARGIN,FH-MARGIN); g.car.off=g.car.y-at(g,g.car.x).c; g.v=TUNE.V0*0.55; return g; }   // y0: where the car starts (the palm at the start)
   /* what is at a place ahead: is it free of cars (for a new car or a gift) */
   function freeAt(g,x,o,dx,dy){ for(var i=0;i<g.cars.length;i++){ var c=g.cars[i]; if(c.x-x<dx&&x-c.x<dx&&c.o-o<dy&&o-c.o<dy) return false; } return true; }
   function lane(g,x){ var r=at(g,x), m=r.hw-CAR.hw-3; return rnd(g,-m,m); }
@@ -78,9 +82,10 @@ var Race=(function(){
     g.events=[]; g.fx=[]; if(g.state==='over') return g;
     g.n++; g.t=g.n*DT;
     var s=g.car, i, c, p, dx, dy;
-    // the palm sets the car's height on the screen, as the ship's (v0.87 tried «the place across the road» — the maintainer: «верни как было,
-    // так больше контроля»)
-    if(hand!==null&&hand!==undefined&&g.state==='play'){ var ty=FH-MARGIN-hand*(FH-2*MARGIN); s.y+=(ty-s.y)*FOLLOW; }
+    // two ways to steer, for the maintainer to compare (v0.90: «верни для тестов выбор»): 'height' — the palm sets the car's height on the
+    // screen, as the ship's; 'road' — the palm sets its place across the road, a still palm keeps its lane through the bends (0.87)
+    if(g.steer==='road'){ if(hand!==null&&hand!==undefined&&g.state==='play') s.off=offOf(g,g.d+s.x,hand); var rr0=at(g,g.d+s.x); s.y+=(clamp(rr0.c+s.off,MARGIN,FH-MARGIN)-s.y)*FOLLOW; }
+    else if(hand!==null&&hand!==undefined&&g.state==='play'){ var ty=FH-MARGIN-hand*(FH-2*MARGIN); s.y+=(ty-s.y)*FOLLOW; }
     if(s.inv>0) s.inv-=DT; if(s.bubble>0) s.bubble-=DT; if(s.magnet>0) s.magnet-=DT; if(s.syrup>0) s.syrup-=DT; if(s.rub>0) s.rub-=DT;
     // where the car is: on the road, on the kerb or off it
     var cx=g.d+s.x, r=at(g,cx), off=s.y-r.c; if(off<0) off=-off;
@@ -121,8 +126,8 @@ var Race=(function(){
     if(me.x-px<60&&me.x-px>-40&&py>lo0&&py<hi0) return false;                 // nor into the player's car
     for(var i=0;i<g.cars.length;i++){ var c=g.cars[i]; if(c===me) continue; var dx=c.x-me.x; if(dx<40&&dx>-40){ var lo=Math.min(me.o,o)-CAR.hw*2-3, hi=Math.max(me.o,o)+CAR.hw*2+3; if(c.o>lo&&c.o<hi) return false; } } return true; }
   /* a whole race from a palm trajectory (one value per step, −1 = no palm): what a server would run */
-  function replay(seed,FW,hands,y0){ var g=create(seed,FW,y0); for(var i=0;i<hands.length&&g.state!=='over';i++) step(g,hands[i]<0?null:hands[i]); return g; }
+  function replay(seed,FW,hands,y0,steer){ var g=create(seed,FW,y0,steer); for(var i=0;i<hands.length&&g.state!=='over';i++) step(g,hands[i]<0?null:hands[i]); return g; }
   var TAG='race-4';   // v0.89: the speed rises earlier (race-3: 0.87's gifts and sodas; race-2, steering across the road, was tried and dropped)
-  return {TAG:TAG,TUNE:TUNE,CAR:CAR,CAR_X:CAR_X,DT:DT,FH:FH,MARGIN:MARGIN,create:create,step:step,replay:replay,at:at,centre:centre,vmax:vmax,burn:burn};
+  return {TAG:TAG,TUNE:TUNE,CAR:CAR,CAR_X:CAR_X,OFFW:OFFW,offOf:offOf,steerY:steerY,DT:DT,FH:FH,MARGIN:MARGIN,create:create,step:step,replay:replay,at:at,centre:centre,vmax:vmax,burn:burn};
 })();
 if(typeof module!=='undefined') module.exports=Race;

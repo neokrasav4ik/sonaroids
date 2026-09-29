@@ -4,23 +4,28 @@
    ground. Coordinates stay in game pixels (the HD canvas is scaled), so the game's logic, sizes and hit circles do not change.
    A skin has HD pictures when HDSK has it; without them the switch keeps the pixel ones. Kept in 'sonaroids_gfx' ('pixel' | 'hd'). ── */
 var HDSK={}, gfxMode=(function(){ try{ return localStorage.getItem('sonaroids_gfx')==='hd'?'hd':'pixel'; }catch(e){ return 'pixel'; } })();
-var hdCv=null, hx=null, hs=1, hdShown=false, hdKey='', hdD=2, hdPerf={t:0,n:0,sum:0,skip:2};
+var hdCv=null, hx=null, hs=1, hdShown=false, hdKey='', hdD=2, hdPix=false, hdPerf={t:0,n:0,sum:0,skip:2};
 function hdSize(){ if(!hdCv){ hdCv=document.createElement('canvas'); hdCv.id='hd';
     hdCv.style.cssText='position:fixed;left:0;top:0;display:none;pointer-events:none;image-rendering:auto'; document.body.insertBefore(hdCv,cv); hx=hdCv.getContext('2d'); }
-  var cssW=LW*S/DPR, cssH=LH*S/DPR, d=Math.min(hdD,DPR); hdCv.width=Math.round(cssW*d); hdCv.height=Math.round(cssH*d); hdCv.style.width=cssW+'px'; hdCv.style.height=cssH+'px';
+  var cssW=LW*S/DPR, cssH=LH*S/DPR, d=Math.min(hdD,DPR); hdCv.width=hdTargetW(); hdCv.height=hdPix?LH:Math.round(cssH*d); hdCv.style.width=cssW+'px'; hdCv.style.height=cssH+'px';
+  hdCv.style.imageRendering=hdPix?'pixelated':'auto';
   hs=hdCv.width/LW; hdKey=LW+'x'+LH+'x'+hs; hx.setTransform(hs,0,0,hs,0,0); hx.imageSmoothingEnabled=true; hx.imageSmoothingQuality='high'; }
+/* v0.74: a skin drawn only as shapes (vector 80s, neon, notebook, green LCD) has no pixel pictures of its own: with «pixels» chosen it is
+   drawn on the same canvas at one pixel per game pixel and shown blown up without smoothing — its own pixel look */
+function hdTargetW(){ return hdPix?LW:Math.round(LW*S/DPR*Math.min(hdD,DPR)); }
 function hdAvail(id){ return !!HDSK[id]; }
-function hdWanted(id){ return gfxMode==='hd'&&hdAvail(id); }
+function hdOnly(id){ return !!HDSK[id]&&!SKINS[id]; }
+function hdWanted(id){ return hdAvail(id)&&(gfxMode==='hd'||!SKINS[id]); }
 /* the frame: with an HD picture the pixel canvas is cleared to transparent (the world goes under it) and the HD canvas is shown */
 /* the HD canvas keeps up with the phone: if frames come slower than ~45 a second for two seconds, its resolution steps down (2× → 1.5× →
    1× CSS pixels); the game's own pixels and logic are untouched */
 function hdPace(){ var now=performance.now(), dt=hdPerf.t?(now-hdPerf.t)/1000:0; hdPerf.t=now; if(dt<=0||dt>0.25){ return; }
   if(hdPerf.skip>0){ hdPerf.skip-=dt; return; } hdPerf.sum+=dt; hdPerf.n++;
   if(hdPerf.sum>=2){ var avg=hdPerf.sum/hdPerf.n; hdPerf.sum=0; hdPerf.n=0;
-    if(avg>1/45&&Math.min(hdD,DPR)>1){ hdD=Math.max(1,Math.min(hdD,DPR)-0.5); hdSize(); hdPerf.skip=2; if(typeof Logs!=='undefined'&&Logs.ev) { Logs.ev('hd: '+Math.round(1/avg)+' fps → '+hdD+'×'); if(Logs.gameEv) Logs.gameEv('hd: '+Math.round(1/avg)+' fps → '+hdD+'×'); } } } }
-function hdFrame(on){ if(on){ if(!hdCv||hdCv.width!==Math.round(LW*S/DPR*Math.min(hdD,DPR))) hdSize(); hdPace(); if(!hdShown){ hdCv.style.display='block'; hdShown=true; } lx.clearRect(0,0,LW,LH); hx.setTransform(hs,0,0,hs,0,0); }
+    if(!hdPix&&avg>1/45&&Math.min(hdD,DPR)>1){ hdD=Math.max(1,Math.min(hdD,DPR)-0.5); hdSize(); hdPerf.skip=2; if(typeof Logs!=='undefined'&&Logs.ev) { Logs.ev('hd: '+Math.round(1/avg)+' fps → '+hdD+'×'); if(Logs.gameEv) Logs.gameEv('hd: '+Math.round(1/avg)+' fps → '+hdD+'×'); } } } }
+function hdFrame(on){ if(on){ var px=gfxMode!=='hd'; if(px!==hdPix){ hdPix=px; if(hdCv) hdSize(); } if(!hdCv||hdCv.width!==hdTargetW()) hdSize(); hdPace(); if(!hdShown){ hdCv.style.display='block'; hdShown=true; } lx.clearRect(0,0,LW,LH); hx.setTransform(hs,0,0,hs,0,0); }
   else { hdPerf.t=0; if(hdShown){ hdCv.style.display='none'; hdShown=false; } } }
-function setGfx(m){ gfxMode=m==='hd'?'hd':'pixel'; try{ localStorage.setItem('sonaroids_gfx',gfxMode); }catch(e){} setSkin(skinId); }
+function setGfx(m){ gfxMode=m==='hd'?'hd':'pixel'; try{ localStorage.setItem('sonaroids_gfx',gfxMode); }catch(e){} setSkin(skinId); resize(); }   // v0.75: the texts and buttons follow the mode
 
 /* ── drawing helpers for the HD canvas (game-pixel coordinates) ── */
 /* the background veil (the maintainer: «на hd лучше весь фон немного приглушить, чтобы основные объекты хорошо читались»): drawn last in sky() */
@@ -44,7 +49,7 @@ function lamb(n){ return Math.max(0,n[0]*LDIR[0]+n[1]*LDIR[1]+n[2]*LDIR[2]); }
 /* a rock sprite drawn rotated about its centre */
 function hdDrawRock(sp,x,y){ var s=sp.size; hx.save(); hx.translate(x+(sp.ox||0),y); if(sp.vr) hx.rotate(sp.rot/16*6.2832); hx.drawImage(sp.img,-s/2,-s/2,s,s); if(sp.after) sp.after(sp); hx.restore(); }
 /* sparks: soft round dots with a little light */
-function hdParts(){ parts.forEach(function(p){ var f=p.life/p.max, c=p.cols[Math.min(p.cols.length-1,Math.floor((1-f)*p.cols.length))]; hx.globalAlpha=Math.min(1,f*1.6); hx.fillStyle=c; hx.beginPath(); hx.arc(p.x,p.y,0.45+f*0.7,0,6.2832); hx.fill(); }); hx.globalAlpha=1; }
+function hdParts(){ if(SK&&SK.parts){ SK.parts(); return; } parts.forEach(function(p){ var f=p.life/p.max, c=p.cols[Math.min(p.cols.length-1,Math.floor((1-f)*p.cols.length))]; hx.globalAlpha=Math.min(1,f*1.6); hx.fillStyle=c; hx.beginPath(); hx.arc(p.x,p.y,0.45+f*0.7,0,6.2832); hx.fill(); }); hx.globalAlpha=1; }
 
 /* ════════ SPACE HD (v0.72, style «A3 + outline», chosen by the maintainer: drawn, not photographic): a soft cartoon — every object has a
    dark ink outline, three-tone shading with soft steps, a cool rim light on its shadow side; nebulae of soft layered clouds with swirls,
@@ -303,7 +308,7 @@ function hdProbe(id){ var sk=HDSK[id], out={}, keep=hx, pn=performance.now; if(!
     try{ fn(); } finally { hx=keep; } return {w:c.width,h:c.height,d:Array.from(c.getContext('2d').getImageData(0,0,c.width,c.height).data)}; }
   try{
     var bg=grab(LW,LH,1,function(){ sk.sky(0,0); }); out.bg=bg.d; out.bgW=bg.w; out.bgH=bg.h;
-    out.motes=sk.motes||[];
+    out.motes=sk.motes||[]; out.shotsByShape=sk.shotsByShape||'';
     out.rocks=[0,1,2].map(function(sz){ var r=Math.max(3,Math.round(Core.R_SIZE[sz]*K)), sp=sk.rock(r,sz,sz*17+3); return grab(r*3.2,r*3.2,hs,function(){ sk.drawRock(sp,r*1.6,r*1.6); }); });
     out.ship=grab(48,28,hs,function(){ sk.ship(16,14,0.3,false); });
     out.ufo=grab(36,22,hs,function(){ sk.ufo(18,11,true,false); });

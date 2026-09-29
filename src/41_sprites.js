@@ -72,7 +72,8 @@ function drawParts(dt){
 }
 /* a pixel ring: progress p (0…1) in colour col over a dim full circle */
 function ring(x,y,r,p,col){
+  if(uiS>1){ lx.lineWidth=1.8; lx.lineCap='round'; lx.strokeStyle=P.line; lx.beginPath(); lx.arc(x,y,r-0.5,0,6.2832); lx.stroke(); if(p>0){ lx.strokeStyle=col; lx.beginPath(); lx.arc(x,y,r-0.5,-Math.PI/2,-Math.PI/2+p*6.2832); lx.stroke(); } return; }
   for(var i=0;i<72;i++){ var a=-Math.PI/2+i/72*Math.PI*2, on=i/72<p;
     for(var w=0;w<2;w++){ var rr=r-w; R(on?col:P.line,x+Math.cos(a)*rr,y+Math.sin(a)*rr,1,1); } }
 }
-function tick(x,y,c){ [[-3,0],[-2,1],[-1,2],[0,1],[1,0],[2,-1],[3,-2]].forEach(function(q){ R(c,x+q[0]*2-1,y+q[1]*2-1,2,2); }); }
+function tick(x,y,c){ if(uiS>1){ lx.strokeStyle=c; lx.lineWidth=2; lx.lineCap='round'; lx.lineJoin='round'; lx.beginPath(); lx.moveTo(x-6,y-1); lx.lineTo(x-2,y+3); lx.lineTo(x+5,y-5); lx.stroke(); return; } [[-3,0],[-2,1],[-1,2],[0,1],[1,0],[2,-1],[3,-2]].forEach(function(q){ R(c,x+q[0]*2-1,y+q[1]*2-1,2,2); }); }

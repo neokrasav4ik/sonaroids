@@ -2,7 +2,7 @@
    the palm hovering by the short edge with the charging port. The palm is slightly smaller than real, the phone 1.6× larger
    than real so its screen is readable: a tiny ship on it follows the palm. Drawn with the port on the right;
    for a left-handed player the whole picture is mirrored (labels are not). ── */
-function polyFill(pts,c){ lx.fillStyle=c; var y0=Math.floor(Math.min.apply(null,pts.map(function(p){return p[1];}))), y1=Math.ceil(Math.max.apply(null,pts.map(function(p){return p[1];})));
+function polyFill(pts,c){ lx.fillStyle=c; if(uiS>1){ lx.beginPath(); pts.forEach(function(q,i){ if(i) lx.lineTo(q[0],q[1]); else lx.moveTo(q[0],q[1]); }); lx.closePath(); lx.fill(); return; } var y0=Math.floor(Math.min.apply(null,pts.map(function(p){return p[1];}))), y1=Math.ceil(Math.max.apply(null,pts.map(function(p){return p[1];})));
   for(var y=y0;y<=y1;y++){ var xs=[], yy=y+0.5; for(var a=0,b=pts.length-1;a<pts.length;b=a++){ var A=pts[a],B=pts[b]; if((A[1]>yy)!==(B[1]>yy)) xs.push(A[0]+(yy-A[1])*(B[0]-A[0])/(B[1]-A[1])); }
     xs.sort(function(p,q){return p-q;}); for(var i=0;i+1<xs.length;i+=2){ var xa=Math.round(xs[i]), xb=Math.round(xs[i+1]); if(xb>xa) lx.fillRect(xa,y,xb-xa,1); } } }
 function ease(x){ x=Math.max(0,Math.min(1,x)); return x*x*(3-2*x); }
@@ -11,6 +11,7 @@ function waveH(t){ return 0.5+0.5*Math.sin(t*2.4-Math.PI/2); }       // demo wav
 function iso(X,Y,Z,o){ return [o[0]+X+0.42*Y, o[1]+0.62*Y-Z]; }
 function unIso(sx,sy,o){ var Y=(sy-o[1])/0.62; return [sx-o[0]-0.42*Y, Y]; }
 function polyA(pts,c,al){ if(al===undefined||al>=1){ polyFill(pts,c); return; } if(al<=0) return;
+  if(uiS>1){ lx.globalAlpha=al; polyFill(pts,c); lx.globalAlpha=1; return; }
   lx.fillStyle=c; var y0=Math.floor(Math.min.apply(null,pts.map(function(p){return p[1];}))), y1=Math.ceil(Math.max.apply(null,pts.map(function(p){return p[1];})));
   for(var y=y0;y<=y1;y++){ var xs=[], yy=y+0.5; for(var a=0,b=pts.length-1;a<pts.length;b=a++){ var A=pts[a],B=pts[b]; if((A[1]>yy)!==(B[1]>yy)) xs.push(A[0]+(yy-A[1])*(B[0]-A[0])/(B[1]-A[1])); }
     xs.sort(function(p,q){return p-q;}); for(var i=0;i+1<xs.length;i+=2) for(var x=Math.round(xs[i]);x<Math.round(xs[i+1]);x++) if(bay(x,y)<al) lx.fillRect(x,y,1,1); } }
@@ -52,6 +53,11 @@ function phoneIso(o,cm,portOn,cam){                                          // 
 function phoneGame(ph,o,cm,f,T,mirror){
   var m=0.9*cm, x0=ph.X0+m, x1=ph.X1-m, y0=ph.Y0+m, y1=ph.Y1-m, W0=x1-x0, H0=y1-y0;
   function at(u,v){ if(!mirror) return iso(x0+u*W0,y0+v*H0,ph.Zp,o); var p=iso(x0+(1-u)*W0,y0+v*H0,ph.Zp,o); return [LW-p[0],p[1]]; }
+  if(uiS>1){ for(var i2=0;i2<14;i2++){ var u2=((i2*0.137+T*0.05*(1+i2%3))%1), v2=(i2*0.311)%1, p2=at(1-u2,v2); lx.fillStyle=i2%3?P.stars[1]:P.stars[2]; lx.beginPath(); lx.arc(p2[0],p2[1],0.45,0,6.2832); lx.fill(); }
+    [[0.62,0.3,3],[0.83,0.68,2],[0.45,0.8,2]].forEach(function(r,j){ var u=(((r[0]-T*0.04*(j+1))%1)+1)%1*0.9+0.08, p=at(u,r[1]); lx.fillStyle=P.rock[3]; lx.beginPath(); lx.arc(p[0],p[1],r[2]*0.6,0,6.2832); lx.fill(); lx.fillStyle=P.rock[1]; lx.beginPath(); lx.arc(p[0]+r[2]*0.15,p[1]+r[2]*0.15,r[2]*0.4,0,6.2832); lx.fill(); });
+    var sq=at(0.12,0.12+(1-f)*0.76), sx2=sq[0]+(mirror?-1:1)*2, d2=mirror?-1:1; lx.fillStyle=P.ship[2]; lx.beginPath(); lx.moveTo(sx2+d2*8,sq[1]); lx.lineTo(sx2,sq[1]-3.6); lx.lineTo(sx2+d2*1.5,sq[1]); lx.lineTo(sx2,sq[1]+3.6); lx.closePath(); lx.fill();
+    lx.fillStyle=P.flame[1]; lx.beginPath(); lx.moveTo(sx2+d2*0.8,sq[1]-1); lx.lineTo(sx2-d2*2.5,sq[1]); lx.lineTo(sx2+d2*0.8,sq[1]+1); lx.fill();
+    lx.strokeStyle=P.bullet; lx.lineWidth=0.8; lx.lineCap='round'; for(var b2=0;b2<3;b2++){ var bu2=((T*0.9+b2/3)%1)*0.7+0.22, bq=at(bu2,0.12+(1-f)*0.76); lx.beginPath(); lx.moveTo(bq[0]-1.2,bq[1]); lx.lineTo(bq[0]+1.2,bq[1]); lx.stroke(); } return; }
   for(var i=0;i<14;i++){ var u=((i*0.137+T*0.05*(1+i%3))%1), v=(i*0.311)%1, p=at(1-u,v); R(i%3?P.stars[1]:P.stars[2],p[0],p[1],1,1); }
   [[0.62,0.3,3],[0.83,0.68,2],[0.45,0.8,2]].forEach(function(r,j){ var u=(((r[0]-T*0.04*(j+1))%1)+1)%1*0.9+0.08, p=at(u,r[1]);
     R(P.rock[3],p[0]-1,p[1]-1,r[2],r[2]); R(P.rock[2],p[0],p[1],r[2]-1,r[2]-1); });
@@ -66,15 +72,16 @@ function scene(id,t,f,away,waves,T,lay){
   var TX0=-21.1*cm, TX=31.1*cm, TY0=-13.3*cm, TY1=17.3*cm, fl=iso(TX0,TY0,0,o)[0];          // v0.35: the table 10% smaller
   if(lay&&!lay.solo&&fl<LW*0.04) TX0+=LW*0.04-fl;                                     // and, beside the second picture, it stops short of the left edge
   var fr=iso(TX,TY1,0,o)[0]; if(lay&&!lay.solo&&fr>LW*0.47) TX-=fr-LW*0.47;           // …and of the middle, where the second picture starts
-  var tkey=LW+'x'+LH+(lay?':'+lay.ox+':'+lay.k:'');
-  if(!tableC||tableC._k!==tkey){ tableC=document.createElement('canvas'); tableC.width=LW; tableC.height=LH; tableC._k=tkey; var keep=lx; lx=tableC.getContext('2d');
+  var tkey=LW+'x'+LH+'x'+uiS+(lay?':'+lay.ox+':'+lay.k:'');
+  if(!tableC||tableC._k!==tkey){ tableC=document.createElement('canvas'); tableC.width=Math.round(LW*uiS); tableC.height=Math.round(LH*uiS); tableC._k=tkey; var keep=lx; lx=tableC.getContext('2d'); lx.setTransform(uiS,0,0,uiS,0,0);
     polyFill([iso(TX0,TY0,0,o),iso(TX,TY0,0,o),iso(TX,TY1,0,o),iso(TX0,TY1,0,o)],P.neb[1]);
-    for(var yy=0;yy<LH;yy+=3) for(var xx=(yy%6?2:0);xx<LW;xx+=4){ var q0=unIso(xx,yy,o); if(q0[0]>TX0&&q0[0]<TX&&q0[1]>TY0&&q0[1]<TY1) R(P.neb[2],xx,yy,1,1); }
+    for(var yy=0;yy<LH;yy+=3) for(var xx=(yy%6?2:0);xx<LW;xx+=4){ var q0=unIso(xx,yy,o); if(q0[0]>TX0&&q0[0]<TX&&q0[1]>TY0&&q0[1]<TY1){ if(uiS>1){ lx.fillStyle=P.neb[2]; lx.beginPath(); lx.arc(xx+0.5,yy+0.5,0.4,0,6.2832); lx.fill(); } else R(P.neb[2],xx,yy,1,1); } }
     var tc=[iso(TX0,TY0,0,o),iso(TX,TY0,0,o),iso(TX,TY1,0,o),iso(TX0,TY1,0,o)];                   // v0.35: a thin edge, so the table never melts into the nebula behind it
+    if(uiS>1){ lx.strokeStyle=P.stars[0]; lx.lineWidth=0.7; lx.beginPath(); tc.forEach(function(q,i){ if(i) lx.lineTo(q[0],q[1]); else lx.moveTo(q[0],q[1]); }); lx.closePath(); lx.stroke(); } else
     for(var e=0;e<4;e++){ var e0=tc[e], e1=tc[(e+1)%4], n=Math.ceil(Math.max(Math.abs(e1[0]-e0[0]),Math.abs(e1[1]-e0[1])));
       for(var u=0;u<=n;u++) R(P.stars[0],e0[0]+(e1[0]-e0[0])*u/n,e0[1]+(e1[1]-e0[1])*u/n,1,1); }
     lx=keep; }
-  lx.drawImage(tableC,0,0);
+  lx.drawImage(tableC,0,0,LW,LH);
   var ph=phoneIso(o,cm,id==='phone'&&Math.floor(T*3)%2===0,typeof camEnd==='function'&&camEnd());
   var HSC=0.85, hw=8.5*cm*HSC, Xa=ph.X1+1.2*cm, Yb=5*cm, al=1, Z5=5*cm, Z15=15*cm;          // v0.26: back to 5–15 cm (4–12 was tried in v0.22–0.25)
   var hz=Z5+(Z15-Z5)*f+2.4*cm*HSC, dy=0;
@@ -85,9 +92,12 @@ function scene(id,t,f,away,waves,T,lay){
     var bx0=Math.max(0,Math.floor(Math.min(c4[0][0],c4[1][0],c4[2][0],c4[3][0]))), bx1=Math.min(LW,Math.ceil(Math.max(c4[0][0],c4[1][0],c4[2][0],c4[3][0])));
     var by0=Math.max(0,Math.floor(Math.min(c4[0][1],c4[1][1],c4[2][1],c4[3][1]))), by1=Math.min(LH,Math.ceil(Math.max(c4[0][1],c4[1][1],c4[2][1],c4[3][1])));
     lx.fillStyle=P.neb[0];
+    if(uiS>1){ lx.globalAlpha=Math.min(1,dens*1.1); lx.beginPath(); for(var a3=0;a3<6.3;a3+=0.2){ var q3=iso(sc[0]+Math.cos(a3)*rx,sc[1]+Math.sin(a3)*ry,0,o); if(a3) lx.lineTo(q3[0],q3[1]); else lx.moveTo(q3[0],q3[1]); } lx.fill(); lx.globalAlpha=1; } else
     for(var y2=by0;y2<by1;y2++) for(var x2=bx0;x2<bx1;x2++){ var q1=unIso(x2,y2,o), ex=(q1[0]-sc[0])/rx, ey=(q1[1]-sc[1])/ry; if(ex*ex+ey*ey<1&&bay(x2,y2)<dens) lx.fillRect(x2,y2,1,1); } }
   // v0.69: the waves from both ends of the phone, alike (the maintainer: the palm is heard at either end)
-  if(waves) for(var i=0;i<3;i++){ var rr=((T*6+i*4.5)%13.5)*cm+1*cm;
+  if(waves&&uiS>1){ lx.strokeStyle=P.bullet; lx.lineWidth=0.8; lx.lineCap='round'; for(var i4=0;i4<3;i4++){ var r4=((T*6+i4*4.5)%13.5)*cm+1*cm; lx.globalAlpha=Math.max(0,1-r4/(15*cm));
+    [1,-1].forEach(function(sd){ lx.beginPath(); for(var a4=-1.4;a4<=1.41;a4+=0.07){ var q4=iso((sd>0?ph.X1:ph.X0)+sd*Math.cos(a4)*r4,Math.sin(a4)*r4,0,o); if(a4>-1.4) lx.lineTo(q4[0],q4[1]); else lx.moveTo(q4[0],q4[1]); } lx.stroke(); }); } lx.globalAlpha=1; }
+  else if(waves) for(var i=0;i<3;i++){ var rr=((T*6+i*4.5)%13.5)*cm+1*cm;
     for(var a=-1.4;a<=1.4;a+=0.05){ var pp=iso(ph.X1+Math.cos(a)*rr,Math.sin(a)*rr,0,o), pq=iso(ph.X0-Math.cos(a)*rr,Math.sin(a)*rr,0,o); R(P.bullet,pp[0],pp[1],1,1); R(P.bullet,pq[0],pq[1],1,1); } }
   if(id==='wave'){ var rX=Xa+hw+8.5*cm, rY=Yb-12*cm, b0=iso(rX,rY,0,o), b5=iso(rX,rY,Z5,o), b15=iso(rX,rY,Z15,o);         // a 5–15 cm ruler
     dots(b0[0],b0[1],b15[1],P.soft); R(P.soft,b5[0]-3,b5[1],7,1); R(P.soft,b15[0]-3,b15[1],7,1);
@@ -101,7 +111,9 @@ function scene(id,t,f,away,waves,T,lay){
 /* sound picture: a speaker and the volume scale with 3–7 lit. On the maintainer's iPhone (24 Sep) the probe follows the media volume —
    the one the side buttons change while the game plays; the silent switch does not mute it */
 var SPEAKER=['...11....','..111..1.','11111...1','11111.1.1','11111...1','..111..1.','...11....'];
-function soundVolume(t){ var k=Math.max(3,Math.round(LH/55)), cy=Math.round(LH*0.5), x2=Math.round(LW/2-13*k); bigBlit(SPEAKER,P.text,x2,cy-4*k,k);
+function soundVolume(t){ var k=Math.max(3,Math.round(LH/55)), cy=Math.round(LH*0.5), x2=Math.round(LW/2-13*k);
+  if(uiS>1){ lx.fillStyle=P.text; lx.beginPath(); lx.moveTo(x2,cy-2*k); lx.lineTo(x2+2*k,cy-2*k); lx.lineTo(x2+5*k,cy-4.5*k); lx.lineTo(x2+5*k,cy+3.5*k); lx.lineTo(x2+2*k,cy+1*k); lx.lineTo(x2,cy+1*k); lx.closePath(); lx.fill();
+    lx.strokeStyle=P.text; lx.lineWidth=0.8*k; lx.lineCap='round'; [2.2,4].forEach(function(rr){ lx.beginPath(); lx.arc(x2+5.5*k,cy-0.5*k,rr*k,-0.8,0.8); lx.stroke(); }); } else bigBlit(SPEAKER,P.text,x2,cy-4*k,k);
   var lvl=Math.min(3,Math.floor((t%3)*3)+1), bx=x2+11*k;   // v0.45: the band marks 20–30% (bars 2–3 of 10), was 30–70%
   for(var j=0;j<10;j++){ var h=Math.round((3+j*1.1)*k*0.6), xb=bx+j*Math.round(k*1.6), yb=cy+3*k-h;
     if(j>=1&&j<=2) R(P.band,xb-1,yb-1,Math.round(k)+2,h+2); R(j<lvl?P.text:P.line,xb,yb,Math.round(k),h); } }
@@ -109,7 +121,7 @@ function soundVolume(t){ var k=Math.max(3,Math.round(LH/55)), cy=Math.round(LH*0
 function picture(fn,mirror){
   var keep=lx, pcx=pc.getContext('2d'); pcx.clearRect(0,0,LW,LH); lx=pcx; var labels;
   try{ labels=fn()||[]; } finally { lx=keep; }
-  if(mirror){ lx.save(); lx.translate(LW,0); lx.scale(-1,1); lx.drawImage(pc,0,0); lx.restore(); } else lx.drawImage(pc,0,0);
+  if(mirror){ lx.save(); lx.translate(LW,0); lx.scale(-1,1); lx.drawImage(pc,0,0,LW,LH); lx.restore(); } else lx.drawImage(pc,0,0,LW,LH);
   (labels.screens||(labels.screen?[labels.screen]:[])).forEach(function(sc){ phoneGame(sc.ph,sc.o,sc.cm,sc.f,sc.T,mirror); });
   labels.forEach(function(l){ var s=l.t, x=l.x, a=l.a||'left';
     if(mirror){ x=LW-x; a=a==='left'?'right':a==='right'?'left':a; if(l.arrow) s=s.replace('← ','')+' →'; }

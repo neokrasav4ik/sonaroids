@@ -36,7 +36,7 @@ function analyse(o){ const W=o.w,H=o.h,d=o.d, op=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&d[
   // v0.73: a seeded Math.random, so the space sky (random stars and nebula) and the result are the same on every run
   await p.addInitScript(()=>{ let q=12345; Math.random=()=>{ q=(q*1664525+1013904223)>>>0; return q/4294967296; }; });
   await p.goto('file://'+GAME); await p.waitForTimeout(500);
-  const ids=await p.evaluate(hd=>hd?__sonaroids.hdIds():__sonaroids.skinIds(),HD);
+  const ids=await p.evaluate(hd=>hd?__sonaroids.hdIds():__sonaroids.pixIds(),HD);
   const rows=[], json={}; let bad=0;
   for(const id of ids){
     const o=await p.evaluate(([i,hd])=>hd?__sonaroids.hdProbe(i):__sonaroids.skinProbe(i),[id,HD]);
@@ -53,9 +53,10 @@ function analyse(o){ const W=o.w,H=o.h,d=o.d, op=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&d[
       if(shotish) shotLab.push([name,a.bodyLab]);
       if(!ok) bad++;
       res[name]={cr:+worst.cr.toFixed(2),camo:+camo.toFixed(2),dE:Math.round(minDE),ok};
-      rows.push(`${(id+(HD?' HD':'')).padEnd(9)} ${name.padEnd(11)} CR ${worst.cr.toFixed(1).padStart(4)} camo ${String(Math.round(camo*100)).padStart(3)}% ΔE ${String(Math.round(minDE)).padStart(3)}  ${ok?'ok':'UNREADABLE'}`); }
+      rows.push(`${(id+(HD?' HD':'')).padEnd(9)} ${name.padEnd(11)} CR ${worst.cr.toFixed(1).padStart(4)} camo ${String(Math.round(camo*100)).padStart(3)}% ΔE ${String(Math.round(minDE)).padStart(3)}  ${ok?'ok':'UNREADABLE (edge/dark/lit L'+a.tones.map(t=>Math.round(t*100)).join('/')+' vs sky L'+Math.round(worst.q.lum*100)+')'}`); }
     // own vs enemy shots; shots vs the drifting motes of the sky
-    if(shotLab.length===2){ const d=dE(shotLab[0][1],shotLab[1][1]); rows.push(`${id.padEnd(6)} own/enemy shots ΔE ${Math.round(d)} ${d>=40?'ok':'TOO ALIKE'}`); if(d<40) bad++; res.shots_apart=Math.round(d); }
+    if(shotLab.length===2){ const d=dE(shotLab[0][1],shotLab[1][1]);   // v0.74: a four-colour skin (the green LCD) tells them apart by shape — reported, not failed
+      rows.push(`${id.padEnd(6)} own/enemy shots ΔE ${Math.round(d)} ${d>=40?'ok':o.shotsByShape?'by shape: '+o.shotsByShape+' — ok':'TOO ALIKE'}`); if(d<40&&!o.shotsByShape) bad++; res.shots_apart=Math.round(d); }
     let moteDE=Infinity, moteW=''; (o.motes||[]).forEach(m=>shotLab.forEach(s=>{ const d=dE(lab(...hex(m)),s[1]); if(d<moteDE){ moteDE=d; moteW=m+' ~ '+s[0]; } }));
     if(isFinite(moteDE)){ rows.push(`${id.padEnd(6)} shots vs motes ΔE ${Math.round(moteDE)} ${moteDE>=30?'ok':'CONFUSABLE ('+moteW+')'}`); if(moteDE<30) bad++; res.motes=Math.round(moteDE); }
     rows.push(`${id.padEnd(6)} sky: `+cl.map(q=>`${Math.round(q.w*100)}% L${(q.lum*100).toFixed(0)}`).join(' · ')); rows.push('');

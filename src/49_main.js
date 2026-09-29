@@ -114,7 +114,7 @@ var prevC=null;
 function hubTick(){ hubT+=DT; if(hubT>4){ hubT=0; hubPrev=hubSkin; var n; do{ n=Math.floor(Math.random()*SKIN_IDS.length); }while(n===hubSkin&&SKIN_IDS.length>1); hubSkin=n; hubFade=0; } }
 function hubFrame(){ hubTick();
   hubFade=Math.min(1,hubFade+DT/0.6);
-  if(hubFade<1&&hubPrev>=0){ var a=demoInto(SKINS[SKIN_IDS[hubPrev]],0);                     // the old skin, still…
+  if(hubFade<1&&hubPrev>=0&&SKINS[SKIN_IDS[hubPrev]]){ var a=demoInto(SKINS[SKIN_IDS[hubPrev]],0);                     // the old skin, still…
     if(!prevC||prevC.width!==LW||prevC.height!==LH){ prevC=document.createElement('canvas'); prevC.width=LW; prevC.height=LH; }
     var pc2=prevC.getContext('2d'); pc2.clearRect(0,0,LW,LH); pc2.drawImage(a,0,0);
     var b=demoInto(SKINS[SKIN_IDS[hubSkin]],DT); return dissolve(prevC,b,hubFade); }           // …and the new one showing through, pixel by pixel
@@ -130,7 +130,7 @@ function hubCard(id,x,y,w,ih,img,name,sub,on){
   text(name,x+w/2,y+ih+7,on?P.text:P.soft,'center'); if(sub) text(sub,x+w/2,y+ih+17,P.soft,'center');
   BTN.push({id:id,x:x,y:y,w:w,h:ih+26}); }
 function sHub(){ var fr;
-  if(hdWanted(SKIN_IDS[hubSkin])){ hubTick(); drawDemo(skinView(SKIN_IDS[hubSkin]),DT); fr=hdCv; }   // v0.72, HD: the demo on the HD canvas; the card shows it scaled down
+  if(hdWanted(SKIN_IDS[hubSkin])){ hubTick(); noLight=true; drawDemo(skinView(SKIN_IDS[hubSkin]),DT); noLight=false; fr=hdCv; }   // v0.75: no soft light (it would sit outside the card)   // v0.72, HD: the demo on the HD canvas; the card shows it scaled down
   else { fr=hubFrame(); lx.drawImage(fr,0,0); }
   lx.globalAlpha=0.72; R(P.bg,0,0,LW,LH); lx.globalAlpha=1;
   var cx0=Math.round((SAFE.l+LW-SAFE.r)/2), y=SAFE.t+8, sub=LH>=200;
@@ -553,7 +553,7 @@ function loop(now){
   DT=Math.min(0.05,Math.max(0,(now-lastNow)/1000)); lastNow=now; clock+=DT; scrT+=DT; BTN=[];
   if(LH>LW){ pauseGame(); sRotate(); present(0); return; }
   if(booted&&Sonar.lost()&&(scr==='wave'||scr==='count'||scr==='play'||scr==='over')){ if(g&&g.state==='play') Logs.gameStop(); Board.setup('lost'); go('lost'); }
-  hdFrame(scr==='hub'?hdWanted(SKIN_IDS[hubSkin]):!!SK.hd);   // v0.72: the HD world canvas under the pixel one
+  hdFrame(scr==='hub'?hdWanted(SKIN_IDS[hubSkin]):!!SK.hd);   // v0.74: a shapes-only skin with «pixels» — the same canvas at 1 px per game pixel   // v0.72: the HD world canvas under the pixel one
   uiColours(scr!=='hub');
   switch(scr){
     case 'lang': sLang(); break; case 'title': sTitle(); break; case 'hub': sHub(); break;
@@ -639,7 +639,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:') navigator.service
 go('hub');   // v0.70: the games' screen first (always the menu first since 0.44; a new player's first "Play" walks through the instruction)
 requestAnimationFrame(loop);
 /* test hooks: headless tests drive the screens through these (harmless in the game) */
-window.__sonaroids={skinProbe:skinProbe,hdProbe:hdProbe,hdIds:hdIds,skinIds:function(){ return SKIN_IDS.slice(); },go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },
+window.__sonaroids={skinProbe:skinProbe,hdProbe:hdProbe,hdIds:hdIds,pixIds:function(){ return SKIN_IDS.filter(function(i){ return !!SKINS[i]; }); },skinIds:function(){ return SKIN_IDS.slice(); },go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },
   setBooted:function(v){ booted=v; },
   board:function(){ return {tbl:tblBox,nick:nickEl?{shown:nickEl.style.display!=='none',rect:nickEl.getBoundingClientRect().toJSON()}:null}; },
   side:function(){ return {hand:handSide(),rel:handRel,cam:camEnd(),stored:store.get('sonaroids_rel',''),say:sayLast}; }, wave:function(){ toWave(); },

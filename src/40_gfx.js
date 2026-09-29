@@ -11,6 +11,11 @@ var P={bg:'#1B1A2E', neb:['#2A2440','#3C2B4F','#4A2F4A'], stars:['#5A4C6E','#B89
   pick:'#FFE66D', glowP:'255,230,109', ufo:['#4B2F80','#7B55C7','#B48CFF','#EADFFF'], ebullet:'#FF7A7A', text:'#FFF3EA', soft:'#C9A9B6', line:'#4A3A57', band:'#7FE0C8', hit:'#FF7A7A', hand:['#6E4D57','#C99A94','#F3CDBF']};
 P.btn=P.ship[1]; P.btnHi=P.ship[2]; P.band0=P.band;
 var PIXH=215;
+/* v0.75 (the maintainer: «if HD graphics is chosen, every screen and everything else must be HD too»): with HD the game-pixel canvas is made
+   at the screen's resolution (uiS device pixels per game pixel) and keeps working in game pixels through its transform; texts are set in
+   a smooth typeface fitted to the pixel font's own widths (so every layout stays as it is), frames, buttons, rings and the pictures'
+   shapes are drawn smooth. With «pixels» uiS is 1 — the game as it was */
+var uiS=1, UIFONT='system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 var cv=document.getElementById('cv'), lc=cv, lx=cv.getContext('2d');                          // the visible canvas is the low-resolution one
 var gl=document.getElementById('glow'), gx=gl.getContext('2d'), glowDirty=false, glowSpr={};
 var pc=document.createElement('canvas');                         // pictures that can be mirrored for a left-handed player
@@ -28,7 +33,9 @@ function resize(){
   var w=Math.max(200,window.innerWidth), h=Math.max(150,window.innerHeight);
   W=Math.round(w*DPR); H=Math.round(h*DPR);
   S=Math.max(1,Math.round(Math.min(W,H)/PIXH)); LH=Math.ceil(H/S); LW=Math.ceil(W/S); K=LH/180;
-  lc.width=LW; lc.height=LH; pc.width=LW; pc.height=LH; lx.imageSmoothingEnabled=false;
+  uiS=(typeof gfxMode!=='undefined'&&gfxMode==='hd')?S*Math.min(2,DPR)/DPR:1;
+  lc.width=Math.round(LW*uiS); lc.height=Math.round(LH*uiS); pc.width=lc.width; pc.height=lc.height;
+  lx.setTransform(uiS,0,0,uiS,0,0); lx.imageSmoothingEnabled=false; var pcx0=pc.getContext('2d'); pcx0.setTransform(uiS,0,0,uiS,0,0); pcx0.imageSmoothingEnabled=false;
   var css=function(el){ el.style.width=(LW*S/DPR)+'px'; el.style.height=(LH*S/DPR)+'px'; };
   css(cv); css(gl); gl.width=LW*2; gl.height=LH*2; glowDirty=false; tableC=null;   // soft light needs no fine detail: half a game pixel, scaled up smoothly
   var si={l:0,r:0,t:0,b:0}; try{ si=safeInsets(); }catch(e){}
@@ -56,7 +63,7 @@ function spaceSky(dt,speed){                                        // nebula an
   var t=performance.now()/1000;
   stars.forEach(function(s){ var i=s.z<0.5?0:s.z<0.85?1:2; if(i===2&&Math.sin(t*3+s.tw)>0.6) i=1; lx.fillStyle=P.stars[i]; lx.fillRect(Math.round(s.x),Math.round(s.y),1,1); });
 }
-function light(x,y,rad,rgb,a){ if(noLight) return; lights.push([x,y,rad,rgb,a]); }
+function light(x,y,rad,rgb,a){ if(noLight||(SK&&SK.nolight)) return; lights.push([x,y,rad,rgb,a]); }
 /* a soft light sprite per colour, made once: drawing it is much cheaper than a new gradient per light per frame */
 function glowSprite(rgb){ var c=glowSpr[rgb]; if(c) return c; c=document.createElement('canvas'); c.width=c.height=64; var x=c.getContext('2d'), g=x.createRadialGradient(32,32,0,32,32,32);
   g.addColorStop(0,'rgba('+rgb+',1)'); g.addColorStop(1,'rgba('+rgb+',0)'); x.fillStyle=g; x.fillRect(0,0,64,64); return glowSpr[rgb]=c; }
@@ -71,10 +78,13 @@ function present(shake){
 
 /* ── pixels, text, buttons ── */
 function R(c,x,y,w,h){ lx.fillStyle=c; lx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h)); }
-function frame(x,y,w,h,c){ R(c,x,y,w,1); R(c,x,y+h-1,w,1); R(c,x,y,1,h); R(c,x+w-1,y,1,h); }
+function frame(x,y,w,h,c){ if(uiS>1){ lx.strokeStyle=c; lx.lineWidth=0.7; lx.strokeRect(x+0.35,y+0.35,w-0.7,h-0.7); return; } R(c,x,y,w,1); R(c,x,y+h-1,w,1); R(c,x,y,1,h); R(c,x+w-1,y,1,h); }
 function dots(x,y0,y1,c){ for(var y=Math.round(Math.min(y0,y1));y<=Math.max(y0,y1);y+=2) R(c,x,y,1,1); }
 /* text in game pixels; a dark 1-pixel rim keeps it readable over stars and nebula */
 function text(s,x,y,col,align,sc,noRim){ sc=sc||1; var w=PF.width(s,sc); x=Math.round(align==='center'?x-w/2:align==='right'?x-w:x); y=Math.round(y);
+  if(uiS>1){ lx.save(); lx.font='700 '+(10*sc)+'px '+UIFONT; lx.textBaseline='alphabetic'; var nat=lx.measureText(s).width, fx=nat>0?Math.min(1.35,Math.max(0.45,w/nat)):1;
+    lx.translate(x+(w-nat*fx)/2,y+7*sc); lx.scale(fx,1); if(!noRim){ lx.lineJoin='round'; lx.strokeStyle=P.bg; lx.lineWidth=2.2*sc; lx.strokeText(s,0,0); }
+    lx.fillStyle=col; lx.fillText(s,0,0); lx.restore(); return w; }
   if(!noRim){ lx.fillStyle=P.bg; for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++) if(dx||dy) PF.draw(lx,s,x+dx,y+dy,sc); }
   PF.draw(lx,s,x,y,sc,col); return w; }
 /* a block of lines wrapped to maxW, centred on cx; returns the y after the block */
@@ -82,11 +92,13 @@ function para(s,cx0,y,maxW,col){ PF.wrap(s,maxW,1).forEach(function(l){ text(l,c
 var BTN=[];                                                         // buttons of the current frame: hit areas in game pixels
 var BH=22;                                                          // button height in game pixels (17 → 20 in v0.6 → 22 in v0.9)
 /* a small icon button: three bars (menu) in a frame; the hit area is larger than the drawing */
-function iconButton(id,x,y){ var s=BH-3; R(P.bg,x,y,s,s); frame(x,y,s,s,P.line); for(var i=0;i<3;i++) R(P.soft,x+4,y+5+i*3,s-8,1);
+function iconButton(id,x,y){ var s=BH-3; if(uiS>1){ lx.fillStyle=P.bg; lx.beginPath(); lx.roundRect(x,y,s,s,3); lx.fill(); lx.strokeStyle=P.line; lx.lineWidth=0.7; lx.stroke(); lx.fillStyle=P.soft; for(var j=0;j<3;j++){ lx.beginPath(); lx.roundRect(x+4.5,y+5+j*3.2,s-9,1.2,0.6); lx.fill(); } }
+  else { R(P.bg,x,y,s,s); frame(x,y,s,s,P.line); for(var i=0;i<3;i++) R(P.soft,x+4,y+5+i*3,s-8,1); }
   BTN.push({id:id,x:x-4,y:y-4,w:s+8,h:s+8}); }
 function button(id,label,x,y,w,h,kind,on){
   var hot=kind==='primary', blink=hot&&on;
-  R(hot?(blink?P.btnHi:P.btn):P.bg,x,y,w,h); frame(x,y,w,h,hot?P.btnHi:P.line);   // v0.71: the primary button in the skin's accent
+  if(uiS>1){ lx.fillStyle=hot?(blink?P.btnHi:P.btn):P.bg; lx.beginPath(); lx.roundRect(x,y,w,h,3); lx.fill(); lx.strokeStyle=hot?P.btnHi:P.line; lx.lineWidth=0.8; lx.beginPath(); lx.roundRect(x+0.4,y+0.4,w-0.8,h-0.8,2.6); lx.stroke(); }
+  else { R(hot?(blink?P.btnHi:P.btn):P.bg,x,y,w,h); frame(x,y,w,h,hot?P.btnHi:P.line); }   // v0.71: the primary button in the skin's accent
   text(label,x+w/2,y+Math.round((h-7)/2),hot?P.bg:P.text,'center',1,true);
   BTN.push({id:id,x:x,y:y,w:w,h:h});
 }

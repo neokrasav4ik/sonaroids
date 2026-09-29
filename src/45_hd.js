@@ -162,9 +162,9 @@ HDSK.space={id:'space', hd:true, glow:true, veil:'rgba(10,8,30,0.55)', motes:['#
     return o.c; },
   ship:function(x,y,t,blink){ if(blink) return; if(!this._ship||this._shipKey!==hdKey){ this._ship=this.shipMake(); this._shipKey=hdKey; }
     var fl=0.8+0.2*Math.sin(t*40)+0.1*Math.sin(t*23);
-    hGlow(x,y,7,'255,170,100',0.6);
+    if(!shipBare){ hGlow(x,y,7,'255,170,100',0.6);
     hx.fillStyle='#ff8a3c'; hx.beginPath(); hx.moveTo(x+1.5,y-1.7); hx.quadraticCurveTo(x-9*fl,y,x+1.5,y+1.7); hx.fill();
-    hx.fillStyle='#ffd070'; hx.beginPath(); hx.moveTo(x+1.5,y-1.1); hx.quadraticCurveTo(x-6*fl,y,x+1.5,y+1.1); hx.fill();
+    hx.fillStyle='#ffd070'; hx.beginPath(); hx.moveTo(x+1.5,y-1.1); hx.quadraticCurveTo(x-6*fl,y,x+1.5,y+1.1); hx.fill(); }
     hx.fillStyle='#fff8e0'; hx.beginPath(); hx.moveTo(x+1.5,y-0.55); hx.quadraticCurveTo(x-2.5*fl,y,x+1.5,y+0.55); hx.fill();
     hx.drawImage(this._ship,x-1,y-7,24,14);
     if(Math.floor(t*3)%2){ hGlow(x+5.2,y-5.7,1.8,'255,90,90',0.9); hGlow(x+5.2,y+5.7,1.8,'120,255,170',0.9); } light(x-2,y,9*K,'255,184,107',0.4); },
@@ -257,7 +257,7 @@ HDSK.fairy={id:'fairy', hd:true, glow:false, ink:'#2d2350', veil:'rgba(238,242,2
         if(Math.sin(t*2.7+sp.seed)>0.55){ hGlow(0,0.9*r2,0.5*r2,'255,240,150',0.8); hx.fillStyle='#fff3a0'; hx.beginPath(); hx.moveTo(0.05*r2,0.62*r2); hx.lineTo(-0.16*r2,0.95*r2); hx.lineTo(0,0.93*r2); hx.lineTo(-0.1*r2,1.22*r2); hx.lineTo(0.18*r2,0.86*r2); hx.lineTo(0.03*r2,0.88*r2); hx.closePath(); hx.fill(); } } }; },
   drawRock:hdDrawRock,
   ship:function(x,y,t,blink){ if(blink) return; var fl=Math.sin(t*14);
-    for(var i=0;i<9;i++){ var a=1-i/9; hGlow(x-3-i*2.2,y+3+Math.sin(t*10+i)*1.2,1.4*a+0.6,'255,'+(210-i*8)+',120',0.7*a); }
+    if(!shipBare) for(var i=0;i<9;i++){ var a=1-i/9; hGlow(x-3-i*2.2,y+3+Math.sin(t*10+i)*1.2,1.4*a+0.6,'255,'+(210-i*8)+',120',0.7*a); }
     hx.save(); hx.translate(x,y);
     // the far wing, the tail, the body, the near wing
     var wingD=function(side){ hx.save(); hx.translate(6,-1.5); hx.scale(1,side*(0.35+0.65*Math.abs(fl))); var wg=hx.createLinearGradient(0,0,-6,-9); wg.addColorStop(0,side>0?'#b8307e':'#7a2060'); wg.addColorStop(1,side>0?'#ff9ad6':'#c86aa8'); hx.fillStyle=wg;

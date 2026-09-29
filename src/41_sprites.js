@@ -73,9 +73,10 @@ function blit(map,cols,x,y){ for(var r=0;r<map.length;r++) for(var c=0;c<map[r].
   lx.fillStyle=cols[+ch-1]; lx.fillRect(Math.round(x+c),Math.round(y+r),1,1); } }
 function bigBlit(map,col,x,y,k){ for(var r=0;r<map.length;r++) for(var c=0;c<map[r].length;c++) if(map[r][c]!=='.') R(col,x+c*k,y+r*k,k,k); }
 /* the ship with its engine flame; (x, y) — the ship's nose line, like the core's ship position */
+var shipBare=false;   // v0.83: true only in tests/skin_sizes.js — the ships drawn without their flame, trail or exhaust (their hull measured)
 function drawShip(x,y,t,blink){
   if(blink) return; var fl=Math.floor(t*20)%3, sx=Math.round(x), sy=Math.round(y);
-  R(P.flame[0],sx-5-fl,sy-1,3+fl,3); R(P.flame[1],sx-4-(fl>>1),sy,2+(fl>>1),1); R(P.flame[2],sx-3,sy,1,1);
+  if(!shipBare){ R(P.flame[0],sx-5-fl,sy-1,3+fl,3); R(P.flame[1],sx-4-(fl>>1),sy,2+(fl>>1),1); R(P.flame[2],sx-3,sy,1,1); }
   blit(SHIP_BIG,P.ship,sx-2,sy-6); light(x-2,y,9*K,hex(P.flame[1]).join(','),0.4);
 }
 function burst(x,y,n,cols,sp){ for(var i=0;i<n;i++){ var a=Math.random()*6.28, v=rnd(0.3,1)*sp; parts.push({x:x,y:y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:rnd(0.4,0.9),max:0.9,cols:cols}); } }

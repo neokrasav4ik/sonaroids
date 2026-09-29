@@ -77,8 +77,9 @@ SKINS.space={id:'space', glow:true,
   ufo:function(ux,uy,big,hurt){ blit(big?UFO_BIG:UFO_SMALL,hurt?[P.text,P.text,P.text,P.text]:P.ufo,ux-(big?9:6),uy-(big?4:2));
     if(Math.floor(clock*6)%2){ R(P.ufo[3],ux-(big?5:3),uy+1,1,1); R(P.ufo[3],ux+(big?4:2),uy+1,1,1); } light(ux,uy,(big?22:16)*K,hex(P.ufo[2]).join(','),0.35); },
   pick:function(x,y,type){ R(P.pick,x-6,y-6,13,13); R(P.bg,x-4,y-4,9,9); blit(ICON[type],[P.pick],x-3,y-3); light(x,y,14*K,P.glowP,0.4); },   // v0.81: 13 pixels (the core's zone) with a two-pixel frame (was 11 with one)
-  bullet:function(x,y){ R(P.bullet,x-2,y,4,1); light(x,y,6*K,P.glowB,0.45); },
-  ebullet:function(x,y){ R(P.ebullet,x-1,y-1,2,2); light(x,y,7*K,hex(P.ebullet).join(','),0.5); },
+  bullet:function(x,y){ R(P.bullet,x-3,y,6,1); light(x,y,6*K,P.glowB,0.45); },   // v0.83: 6 long (was 4), like the other skins' shots
+  ebullet:function(x,y){ R(P.ebullet,x-1,y-2,2,4); R(P.ebullet,x-2,y-1,4,2);   // v0.83: a 4-pixel round (was 2×2)
+    light(x,y,7*K,hex(P.ebullet).join(','),0.5); },
   bursts:function(){ return {rock:P.rock.slice(2).concat([P.flame[1]]),ufo:P.ufo,ship:P.ship.concat(P.flame),pick:[P.pick,P.text]}; },
   shield:function(){ return P.pick; }, mini:function(){ return [P.ship[1],P.ship[2]]; } };
 
@@ -109,7 +110,7 @@ SKINS.fairy={id:'fairy', glow:false, ink:'sel', motes:['#ffffff','#f4f3ff','#fff
       [[2,0],[1,1],[0,2],[1,2],[2,2],[1,3],[0,4]].forEach(function(q){ p.put(c+q[0]-1,c+r*0.8+q[1],cH('#ffe066')); }); }
     return inkRock(p,this.ink); },
   ship:function(x,y,t,blink){ if(blink) return; x=Math.round(x); y=Math.round(y);
-    for(var i=0;i<5;i++){ lx.globalAlpha=0.9-i*0.15; R('#ff8a3d',x-3-i*2,y+3+(i%2)+Math.round(Math.sin(t*9+i)),1,1); } lx.globalAlpha=1;
+    if(!shipBare){ for(var i=0;i<5;i++){ lx.globalAlpha=0.9-i*0.15; R('#ff8a3d',x-3-i*2,y+3+(i%2)+Math.round(Math.sin(t*9+i)),1,1); } lx.globalAlpha=1; }
     spr('dragon',DRAGON,DRAGON_PAL,x-1,y-7,this.ink); },
   ufo:function(ux,uy,big,hurt){ var m=big?BAT:BAT_S, flap=Math.floor(clock*6)%2, pal=hurt?{w:'#ffffff'}:{k:'#4a2d7a',m:flap?'#8f6ad0':'#6f4aa8',e:'#ffe066'};
     spr('bat'+big+hurt+flap,hurt?whiteMap(m):m,pal,ux-(big?9:6),uy-(big?4:3),this.ink); },

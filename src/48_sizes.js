@@ -25,7 +25,7 @@ function rockCentre(sp){ try{
 /* every rock the game draws is made here: the skin's picture at its own size, centred */
 function makeSkinRock(sk,sz,rc,seed){ return rockCentre(sk.rock(rockR(sk,sz,rc),sz,seed)); }
 /* HD ships drawn a little larger or smaller around their own point (the flame and the light stay with the ship) */
-(function(){ var SHIPK={fairy:0.82,vector:1.3,note:0.87};
+(function(){ var SHIPK={fairy:0.82,vector:1.15,note:1.14};   // v0.83: by the hull, without the flame: vector 17 → 20, notebook 15 → 20 (0.79 measured the flame with them)
   Object.keys(SHIPK).forEach(function(id){ var sk=HDSK[id]; if(!sk||sk._shipK) return; var k=SHIPK[id], draw=sk.ship; sk._shipK=k;
     sk.ship=function(x,y,t,blink){ if(blink) return; hx.save(); hx.translate(x,y); hx.scale(k,k); hx.translate(-x,-y); try{ draw.call(this,x,y,t,blink); } finally { hx.restore(); } }; }); })();
 /* v0.81: power-ups the size of what the game counts (the maintainer: «в рамках их зон и одинаковыми размерами в скинах/графиках»): the core
@@ -38,6 +38,15 @@ function pickScale(sk){ if(sk._pk&&sk._pkKey===hs) return sk._pk; var keepH=hx, 
   sk._pk=k; sk._pkKey=hs; return k; }
 (function(){ Object.keys(HDSK).forEach(function(id){ var sk=HDSK[id]; if(!sk||sk._pickDraw||id==='lcd') return; sk._pickDraw=sk.pick;
     sk.pick=function(x,y,type){ var k=pickScale(this); hx.save(); hx.translate(x,y); hx.scale(k,k); hx.translate(-x,-y); try{ this._pickDraw(x,y,type); } finally { hx.restore(); } }; }); })();
+/* v0.83: saucers the size of what the game counts, the same in every skin (they were 18–24.5 wide, the small one 12–17.5): the core hits a
+   big one within 7+1 of its middle across and a small one within 5+1 — 17 and 13 game pixels on a usual phone. HD pictures measured and scaled. */
+var UFO_W=[13,17];
+function ufoScale(sk,big){ var key=hs+(big?'b':'s'); sk._uk=sk._uk||{}; if(sk._uk[key]) return sk._uk[key]; var keepH=hx, keepHs=hs, SC=4, c=document.createElement('canvas'); c.width=c.height=60*SC; var k=1;
+  try{ hx=c.getContext('2d'); hx.setTransform(SC,0,0,SC,0,0); hs=SC; noLight=true; sk._ufoDraw.call(sk,30,30,big,false); var b=alphaBox(c); if(b) k=UFO_W[big?1:0]/(b.w/SC); }
+  catch(e){} finally { hx=keepH; hs=keepHs; noLight=false; lights=[]; }
+  return (sk._uk[key]=k); }
+(function(){ Object.keys(HDSK).forEach(function(id){ var sk=HDSK[id]; if(!sk||sk._ufoDraw||id==='lcd') return; sk._ufoDraw=sk.ufo;
+    sk.ufo=function(ux,uy,big,hurt){ var k=ufoScale(this,big); hx.save(); hx.translate(ux,uy); hx.scale(k,k); hx.translate(-ux,-uy); try{ this._ufoDraw(ux,uy,big,hurt); } finally { hx.restore(); } }; }); })();
 /* for tests/skin_sizes.js: a skin's rocks and ship as the game draws them, measured in game pixels — the body (alpha ≥ 128), its size
    against the core's circle and how far its middle sits from the point the game draws it at */
 function sizeProbe(id,mode){ var sk=mode==='pixel'?SKINS[id]:HDSK[id]; if(!sk) return null; var keepL=lx, keepH=hx, keepHs=hs, SC=4, W=120, H=100, out={rocks:[],ship:null};
@@ -54,6 +63,11 @@ function sizeProbe(id,mode){ var sk=mode==='pixel'?SKINS[id]:HDSK[id]; if(!sk) r
           else ctx.drawImage(sp.frames[q*4%sp.frames.length],Math.round(W/2-sp.size/2+(sp.ox||0)),Math.round(H/2-sp.size/2+(sp.oy||0))); });
         if(m){ n++; pc+=Math.max(m.w,m.h)/hit; dx+=m.dx; dy+=m.dy; } } }
     out.rocks.push(n?{pct:Math.round(100*pc/n),dx:+(dx/n).toFixed(1),dy:+(dy/n).toFixed(1)}:null); });
-  var s=grab(function(){ sk.ship(W/2,H/2,0.3,false); }); out.ship=s?+s.w.toFixed(1):0;
+  // v0.83: the ship's hull — drawn without its flame, trail or exhaust (shipBare), the union of several frames (wings flap), alpha ≥ 128
+  var hw=0, hh=0; shipBare=true;
+  try{ [0.05,0.13,0.21,0.34,0.47,0.6].forEach(function(t){ var m=grab(function(){ sk.ship(W/2,H/2,t,false); }); if(m){ hw=Math.max(hw,m.w); hh=Math.max(hh,m.h); } }); } finally { shipBare=false; }
+  out.ship=+hw.toFixed(1); out.shipH=+hh.toFixed(1);
   var pk=grab(function(){ sk.pick(W/2,H/2,'shield'); }); out.pick=pk?+Math.max(pk.w,pk.h).toFixed(1):0;
+  var ub=grab(function(){ sk.ufo(W/2,H/2,true,false); }), us=grab(function(){ sk.ufo(W/2,H/2,false,false); }), bl=grab(function(){ sk.bullet(W/2,H/2); }), eb=grab(function(){ sk.ebullet(W/2,H/2); });
+  out.ufo=ub?[+ub.w.toFixed(1),+ub.h.toFixed(1)]:[0,0]; out.ufoS=us?[+us.w.toFixed(1),+us.h.toFixed(1)]:[0,0]; out.bullet=bl?[+bl.w.toFixed(1),+bl.h.toFixed(1)]:[0,0]; out.ebullet=eb?[+eb.w.toFixed(1),+eb.h.toFixed(1)]:[0,0];
   return out; }

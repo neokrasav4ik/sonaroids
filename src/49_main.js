@@ -630,18 +630,28 @@ var ACT={
 /* buttons act when the finger lifts (on the same button it went down on): iPhone lets a page share files or open the microphone
    only from a finished tap — acting on touch-down made "logs" work only on the second tap (v0.12) */
 var downOn=null;
+/* v0.89 (the maintainer: «все кнопки в игре визуально не реагируют на нажатия — непонятно, прошёл тап или нет»): every button, card,
+   row, chip and link lights up under the finger while it is down and for a moment after it lifts */
+var press={id:null,x:0,y:0,until:0}, PRESS_LOOK='A';
+function btnRect(id,x,y){ for(var i=BTN.length-1;i>=0;i--){ var b=BTN[i]; if(b.id===id&&x>=b.x-4&&x<b.x+b.w+4&&y>=b.y-4&&y<b.y+b.h+4) return b; } return null; }
+function pressGlow(){ if(!press.id) return; if(!downOn&&clock>press.until){ press.id=null; return; } var b=btnRect(press.id,press.x,press.y); if(!b) return;
+  var x=Math.max(0,b.x), y=Math.max(0,b.y), w=Math.min(LW,b.x+b.w)-x, h=Math.min(LH,b.y+b.h)-y;
+  lx.save(); lx.beginPath(); if(lx.roundRect) lx.roundRect(x,y,w,h,3); else lx.rect(x,y,w,h);
+  if(PRESS_LOOK==='A'){ lx.fillStyle='rgba(255,255,255,0.3)'; lx.fill(); lx.strokeStyle=P.btnHi||'#fff'; lx.lineWidth=1.2; lx.stroke(); }
+  else { lx.fillStyle='rgba(0,0,0,0.38)'; lx.fill(); lx.strokeStyle=P.band; lx.lineWidth=1.2; lx.stroke(); }
+  lx.restore(); }
 function btnAt(e){ var x=e.clientX*DPR/S, y=e.clientY*DPR/S;
   for(var i=BTN.length-1;i>=0;i--){ var b=BTN[i]; if(x>=b.x-4&&x<b.x+b.w+4&&y>=b.y-4&&y<b.y+b.h+4) return b.id; } return null; }
 /* v0.56 (the maintainer): the service links show after a long press on the version (0.7 s), not a tap — a player won't open them by chance */
 var verHold=null, verDown=false;   // verDown: the finger is still on the version (a pointercancel from iOS does not end the hold, only lifting the finger does)
-cv.addEventListener('pointerdown',function(e){ downOn=btnAt(e); if(verHold){ clearTimeout(verHold); verHold=null; }
+cv.addEventListener('pointerdown',function(e){ downOn=btnAt(e); if(downOn){ press.id=downOn; press.x=e.clientX*DPR/S; press.y=e.clientY*DPR/S; press.until=clock+0.15; } if(verHold){ clearTimeout(verHold); verHold=null; }
   if(downOn==='ver'){ verDown=true; verHold=setTimeout(function(){ verHold=null; if(verDown){ verDown=false; ACT.ver(); Sfx.play('tap'); downOn=null; } },700); }
   e.preventDefault(); },{passive:false});
 /* v0.87 (the maintainer): a short tap on the version on the games' screen reloads the page (a new version at once);
    the long press still shows the service links */
-cv.addEventListener('pointerup',function(e){ verDown=false; var quick=!!verHold; if(verHold){ clearTimeout(verHold); verHold=null; } var id=btnAt(e);
+cv.addEventListener('pointerup',function(e){ verDown=false; press.until=clock+0.15; var quick=!!verHold; if(verHold){ clearTimeout(verHold); verHold=null; } var id=btnAt(e);
   if(id==='ver'){ if(quick&&downOn==='ver'&&scr==='hub'){ Logs.ev('обновление страницы по версии'); location.reload(); } downOn=null; e.preventDefault(); return; } if(id&&id===downOn&&!ACT[id]&&id.indexOf('aud:')===0){ Sfx.play('tap'); audAct(id); } else if(id&&id===downOn&&ACT[id]){ if(id!=='allow'&&id!=='play'&&id!=='retry'&&id!=='sfx'&&id!=='vol_dn'&&id!=='vol_up') Sfx.play('tap'); ACT[id](); } downOn=null; e.preventDefault(); },{passive:false});
-cv.addEventListener('pointercancel',function(){ downOn=null; });
+cv.addEventListener('pointercancel',function(){ downOn=null; press.id=null; });
 cv.addEventListener('touchend',function(){ verDown=false; });   // the hold ends when the finger lifts, even after a pointercancel
 ['gesturestart','gesturechange','gestureend','dblclick'].forEach(function(n){ document.addEventListener(n,function(e){ e.preventDefault(); },{passive:false}); });
 document.addEventListener('touchmove',function(e){ e.preventDefault(); },{passive:false});
@@ -677,7 +687,7 @@ function loop(now){
     case 'count': sCount(); break; case 'count-resume': sCountResume(); break; case 'play': sPlay(); break; case 'over': sOver(); break;
     case 'audio': sAudio(); break; case 'paused': sPaused(); break; case 'restart': sRestart(); break; case 'scores': sScores(); break; case 'nick': sNick(); break; case 'lost': sLost(); break; case 'nomic': sNomic(); break; case 'link': sLink(); break; case 'linkshow': sLinkShow(); break; case 'linkin': sLinkIn(); break; case 'linkdone': sLinkDone(); break;
   }
-  chrome();
+  chrome(); pressGlow();
   present(scr==='play'?shake:0);
 }
 /* v0.48 (the maintainer): the menu button in the top corner on every screen but the menus themselves, and the version on every screen but
@@ -762,6 +772,6 @@ window.__sonaroids={skinProbe:skinProbe,hdProbe:hdProbe,sizeProbe:sizeProbe,hdId
     g=Core.create(1,Core.FH*(LW-SAFE.l)/LH); for(var i=0;i<300;i++) Core.step(g,0.5); g.state='over'; },state:function(){ return {scr:scr,g:g,T:T,caught:caught,prep:prep,lang:lang,linkCode:linkCode,gfx:gfxMode,mode:mode}; },
   race:function(){ mode='race'; booted=true; prep={res:{ok:true},doneT:-9}; T=Tune.create(100,true); T.ok=true; caught=true;   // a stand-in race for layout checks
     g=Race.create(1,raceFW(),90); for(var i=0;i<60*20;i++) raceDemoStep(g); g.fuel=40; },
-  phoneK:function(k){ PHONE_SHIPK=k; }, prepBg:function(v){ PREP_BG=v; },
+  phoneK:function(k){ PHONE_SHIPK=k; }, press:function(id,look){ var b=BTN.filter(function(q){ return q.id===id; })[0]; if(look) PRESS_LOOK=look; if(b){ press.id=id; press.x=b.x+b.w/2; press.y=b.y+b.h/2; press.until=clock+99; } return !!b; }, prepBg:function(v){ PREP_BG=v; },
   raceChunkMs:function(n){ var rg=Race.create(5,raceFW(),90), t0=performance.now(); rReset(5); RC.ch={}; for(var i=0;i<n;i++) rChunk(rg,i); var ms=(performance.now()-t0)/n; RC.ch={}; return ms; } };
 })();

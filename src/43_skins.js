@@ -71,12 +71,12 @@ function hill(x,w,base,amp,seed){ var a=2*Math.PI*x/w; return base+amp*(0.6*Math
 var SKINS={};
 /* ═══ space — the game as it was ═══ */
 SKINS.space={id:'space', glow:true,
-  sky:function(dt,s){ spaceSky(dt,s); },
+  sky:function(dt,s){ spaceSky(dt,s); lx.fillStyle='rgba(10,6,26,0.45)'; lx.fillRect(0,0,LW,LH); },   // v0.81: the background dimmed like in HD (the rocks stood out half as much)
   rock:function(r){ return makeRock(r); },
   ship:function(x,y,t,blink){ drawShip(x,y,t,blink); },
   ufo:function(ux,uy,big,hurt){ blit(big?UFO_BIG:UFO_SMALL,hurt?[P.text,P.text,P.text,P.text]:P.ufo,ux-(big?9:6),uy-(big?4:2));
     if(Math.floor(clock*6)%2){ R(P.ufo[3],ux-(big?5:3),uy+1,1,1); R(P.ufo[3],ux+(big?4:2),uy+1,1,1); } light(ux,uy,(big?22:16)*K,hex(P.ufo[2]).join(','),0.35); },
-  pick:function(x,y,type){ R(P.pick,x-5,y-5,11,11); R(P.bg,x-4,y-4,9,9); blit(ICON[type],[P.pick],x-3,y-3); light(x,y,14*K,P.glowP,0.35); },
+  pick:function(x,y,type){ R(P.pick,x-6,y-6,13,13); R(P.bg,x-4,y-4,9,9); blit(ICON[type],[P.pick],x-3,y-3); light(x,y,14*K,P.glowP,0.4); },   // v0.81: 13 pixels (the core's zone) with a two-pixel frame (was 11 with one)
   bullet:function(x,y){ R(P.bullet,x-2,y,4,1); light(x,y,6*K,P.glowB,0.45); },
   ebullet:function(x,y){ R(P.ebullet,x-1,y-1,2,2); light(x,y,7*K,hex(P.ebullet).join(','),0.5); },
   bursts:function(){ return {rock:P.rock.slice(2).concat([P.flame[1]]),ufo:P.ufo,ship:P.ship.concat(P.flame),pick:[P.pick,P.text]}; },
@@ -114,7 +114,7 @@ SKINS.fairy={id:'fairy', glow:false, ink:'sel', motes:['#ffffff','#f4f3ff','#fff
   ufo:function(ux,uy,big,hurt){ var m=big?BAT:BAT_S, flap=Math.floor(clock*6)%2, pal=hurt?{w:'#ffffff'}:{k:'#4a2d7a',m:flap?'#8f6ad0':'#6f4aa8',e:'#ffe066'};
     spr('bat'+big+hurt+flap,hurt?whiteMap(m):m,pal,ux-(big?9:6),uy-(big?4:3),this.ink); },
   pick:function(x,y,type){ var c=mapCanvas('coin',['..yyyyyyy..','.yYYYYYYYy.','yYYYYYYYYYy','yYYYYYYYYYy','yYYYYYYYYYy','yYYYYYYYYYy','yYYYYYYYYYy','yYYYYYYYYYy','yYYYYYYYYYy','.yYYYYYYYy.','..yyyyyyy..'],{y:'#c07808',Y:'#ffd24a'});
-    var k='coin|'+this.ink; if(!mapCache[k]) mapCache[k]=ink(c,this.ink); lx.drawImage(mapCache[k],x-6,y-6); blit(ICON[type],['#6a3200'],x-3,y-3); },
+    var k='coin|'+this.ink; if(!mapCache[k]) mapCache[k]=ink(c,this.ink); lx.drawImage(mapCache[k],x-6,y-6); blit(ICON[type],['#3a1600'],x-3,y-3); },   // v0.81: a darker sign
   bullet:function(x,y){ shot([[x-3,y-1,4,1,'#d8340c'],[x-4,y,6,1,'#f06a14'],[x-3,y+1,4,1,'#d8340c'],[x-1,y,2,1,'#fff0a0']],this.ink); },   // a round-ish fireball, white-hot at the front
   ebullet:function(x,y){ shot([[x-1,y-1,3,3,'#8a0c70']],this.ink); R('#ff9ad8',x,y,1,1); },
   bursts:function(){ return {rock:['#3d3a66','#5f5596','#8279b8','#ffb020'],ufo:['#4a2d7a','#8f6ad0','#e8187a'],ship:['#1f8a5a','#3fc486','#ff5a1f'],pick:['#b05a00','#ffb020']}; },
@@ -162,7 +162,7 @@ function skinProbe(id){ var sk=SKINS[id], out={}, keep=lx, oldSK=SK;
     try{ fn(); } finally { lx=keep; noLight=false; } return Array.from(lx.canvas===c?[]:c.getContext('2d').getImageData(0,0,w,h).data); }
   var sh=(id==='space'||!sk.paint)?null:skySheet(sk);
   if(sh){ out.bg=Array.from(sh.c.getContext('2d').getImageData(0,0,sh.c.width,sh.c.height).data); out.bgW=sh.c.width; out.bgH=sh.c.height; }
-  else { out.bg=grab(LW,LH,function(){ if(id==='space') sky(0,0); else sk.sky(0,0); }); out.bgW=LW; out.bgH=LH; }   // v0.76: a skin's own sky (not the chosen one's)
+  else { out.bg=grab(LW,LH,function(){ sk.sky(0,0); }); out.bgW=LW; out.bgH=LH; }   // v0.81: the skin's own sky (sky() follows the chosen graphics — with HD by default it drew onto the HD canvas, and space was audited on nothing)   // v0.76: a skin's own sky (not the chosen one's)
   out.motes=sk.motes||P.stars;
   out.rocks=[0,1,2].map(function(sz){ var r=makeSkinRock(sk,sz,Core.R_SIZE[sz],sz*17+3), c=r.frames[0], d=c.getContext('2d').getImageData(0,0,c.width,c.height).data; return {w:c.width,h:c.height,d:Array.from(d)}; });
   function obj(w,h,fn){ return {w:w,h:h,d:grab(w,h,fn)}; }

@@ -28,6 +28,16 @@ function makeSkinRock(sk,sz,rc,seed){ return rockCentre(sk.rock(rockR(sk,sz,rc),
 (function(){ var SHIPK={fairy:0.82,vector:1.3,note:0.87};
   Object.keys(SHIPK).forEach(function(id){ var sk=HDSK[id]; if(!sk||sk._shipK) return; var k=SHIPK[id], draw=sk.ship; sk._shipK=k;
     sk.ship=function(x,y,t,blink){ if(blink) return; hx.save(); hx.translate(x,y); hx.scale(k,k); hx.translate(-x,-y); try{ draw.call(this,x,y,t,blink); } finally { hx.restore(); } }; }); })();
+/* v0.81: power-ups the size of what the game counts (the maintainer: «в рамках их зон и одинаковыми размерами в скинах/графиках»): the core
+   takes one when the ship's point is within 9 of it on each axis — less the ship's own 3 that is 12 core units, PICK_W = 13 game pixels on a
+   usual phone. The HD pictures are measured once (the body, alpha ≥ 128) and scaled to it; the pixel ones are drawn 13 pixels. */
+var PICK_W=13;
+function pickScale(sk){ if(sk._pk&&sk._pkKey===hs) return sk._pk; var keepH=hx, keepHs=hs, SC=4, c=document.createElement('canvas'); c.width=c.height=40*SC; var k=1;
+  try{ hx=c.getContext('2d'); hx.setTransform(SC,0,0,SC,0,0); hs=SC; noLight=true; sk._pickDraw.call(sk,20,20,'shield'); var b=alphaBox(c); if(b) k=PICK_W/(Math.max(b.w,b.h)/SC); }
+  catch(e){} finally { hx=keepH; hs=keepHs; noLight=false; lights=[]; }
+  sk._pk=k; sk._pkKey=hs; return k; }
+(function(){ Object.keys(HDSK).forEach(function(id){ var sk=HDSK[id]; if(!sk||sk._pickDraw||id==='lcd') return; sk._pickDraw=sk.pick;
+    sk.pick=function(x,y,type){ var k=pickScale(this); hx.save(); hx.translate(x,y); hx.scale(k,k); hx.translate(-x,-y); try{ this._pickDraw(x,y,type); } finally { hx.restore(); } }; }); })();
 /* for tests/skin_sizes.js: a skin's rocks and ship as the game draws them, measured in game pixels — the body (alpha ≥ 128), its size
    against the core's circle and how far its middle sits from the point the game draws it at */
 function sizeProbe(id,mode){ var sk=mode==='pixel'?SKINS[id]:HDSK[id]; if(!sk) return null; var keepL=lx, keepH=hx, keepHs=hs, SC=4, W=120, H=100, out={rocks:[],ship:null};
@@ -45,4 +55,5 @@ function sizeProbe(id,mode){ var sk=mode==='pixel'?SKINS[id]:HDSK[id]; if(!sk) r
         if(m){ n++; pc+=Math.max(m.w,m.h)/hit; dx+=m.dx; dy+=m.dy; } } }
     out.rocks.push(n?{pct:Math.round(100*pc/n),dx:+(dx/n).toFixed(1),dy:+(dy/n).toFixed(1)}:null); });
   var s=grab(function(){ sk.ship(W/2,H/2,0.3,false); }); out.ship=s?+s.w.toFixed(1):0;
+  var pk=grab(function(){ sk.pick(W/2,H/2,'shield'); }); out.pick=pk?+Math.max(pk.w,pk.h).toFixed(1):0;
   return out; }

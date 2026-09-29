@@ -2,8 +2,8 @@
    coins, and steps round syrup. Human limits as in tests/bot.js: it sees 0.25 s late (more for a weaker driver), its palm shakes a little
    and moves at most about one screen height per half second. Usage: node tests/race_bot.js [races] [skill 0…1] */
 const Race=require('../src/14_race.js');
-function botRace(seed,skill,FW){
-  const g=Race.create(seed,FW||390), FH=Race.FH, M=Race.MARGIN, delay=Math.round(0.25*60*(1.6-skill)), hist=[];
+function botRace(seed,skill,FW,steer){
+  const g=Race.create(seed,FW||390,null,steer), FH=Race.FH, M=Race.MARGIN, delay=Math.round(0.25*60*(1.6-skill)), hist=[];
   let hand=0.5, noise=0, s=seed>>>0; const rnd=()=>{ s=(s*1664525+1013904223)>>>0; return s/4294967296; };
   const seen=()=>({d:g.d,sodaIn:g.items.filter(p=>p.type==='fuel').length,y:g.car.y,cars:g.cars.map(c=>({x:c.x,y:Race.centre(g,c.x)+c.o})),items:g.items.map(p=>({x:p.x,y:Race.centre(g,p.x)+p.o,type:p.type})),
     puds:g.puddles.map(p=>({x:p.x,y:Race.centre(g,p.x)+p.o,r:p.r}))});
@@ -22,7 +22,7 @@ function botRace(seed,skill,FW){
       v.items.forEach(p=>{ const dx=p.x-cx; if(dx>4&&dx<140*(0.5+skill)&&Math.abs(p.y-yy)<7) sc+=want(p)*(1-dx/250); });
       if(sc>best){ best=sc; ty=yy; } }
     ty=Math.max(road.c-road.hw+6,Math.min(road.c+road.hw-6,ty));
-    let w=(FH-M-ty)/(FH-2*M); w=Math.max(0,Math.min(1,w));
+    let w=steer==='road'?0.5-(ty-road.c)/(2*(Race.at(g,cx).hw+Race.OFFW)):(FH-M-ty)/(FH-2*M); w=Math.max(0,Math.min(1,w));   // along the road: the place across it
     noise=noise*0.95+(rnd()-0.5)*0.02*(1.5-skill); const st=1/30;
     hand+=Math.max(-st,Math.min(st,w-hand)); Race.step(g,Math.max(0,Math.min(1,hand+noise)));
     if(g.car.on==='off') offT+=Race.DT; if(g.fuel<20&&fuelLow===null) fuelLow=g.t;

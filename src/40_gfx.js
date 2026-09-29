@@ -99,6 +99,9 @@ function button(id,label,x,y,w,h,kind,on){
   var hot=kind==='primary', blink=hot&&on;
   if(uiS>1){ lx.fillStyle=hot?(blink?P.btnHi:P.btn):P.bg; lx.beginPath(); lx.roundRect(x,y,w,h,3); lx.fill(); lx.strokeStyle=hot?P.btnHi:P.line; lx.lineWidth=0.8; lx.beginPath(); lx.roundRect(x+0.4,y+0.4,w-0.8,h-0.8,2.6); lx.stroke(); }
   else { R(hot?(blink?P.btnHi:P.btn):P.bg,x,y,w,h); frame(x,y,w,h,hot?P.btnHi:P.line); }   // v0.71: the primary button in the skin's accent
+  var tw=PF.width(label), fit=Math.min(1,(w-8)/Math.max(1,tw));        // v0.92: a label wider than its button is drawn narrower (a tablet's test settings)
+  if(fit<1){ lx.save(); lx.translate(x+w/2,0); lx.scale(fit,1); lx.translate(-(x+w/2),0); }
   text(label,x+w/2,y+Math.round((h-7)/2),hot?P.bg:P.text,'center',1,true);
+  if(fit<1) lx.restore();
   BTN.push({id:id,x:x,y:y,w:w,h:h});
 }

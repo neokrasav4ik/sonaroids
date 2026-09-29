@@ -5,7 +5,7 @@ let chromium; try{ ({chromium}=require('playwright')); }catch(e){ console.log('p
 const fs=require('fs'), path=require('path'); const ROOT=path.join(__dirname,'..'), OUT=path.join(__dirname,'out','screens'); fs.mkdirSync(OUT,{recursive:true});
 const SIZES=[[568,320],[667,375],[740,360],[844,390],[932,430],[1024,768],[1366,1024]];
 const SCREENS=['lang','hub','title','sound','phone','mic','probe','wave','wave-try','count','play','pause-play','restart','over','over-here','scores','nick','link','linkshow','linkin','linkdone','lost','nomic',
-  'race-menu','race-try','race-count','race-play','race-pause','race-over'];   // v0.84: SonaRace's own screens (its menu, the try-out with the car, the race, its pause and finish)
+  'race-menu','race-set','race-try','race-count','race-play','race-pause','race-over'];   // v0.84: SonaRace's own screens (its menu, the try-out with the car, the race, its pause and finish)
 (async()=>{
   const b=await chromium.launch(); const bad=[]; const errors=[]; let n=0;
   for(const [w,h] of SIZES) for(const lang of ['en','ru']) for(const hand of ['right','left']){
@@ -33,6 +33,7 @@ const SCREENS=['lang','hub','title','sound','phone','mic','probe','wave','wave-t
         else if(s==='linkshow'){ __sonaroids.act.link_show(); }   // the code comes through Board.link → fetch → the faked server below (v0.33: a mocked Board.link hid a bug)
         else if(s==='linkin'){ __sonaroids.act.link_back2(); __sonaroids.act.link_in(); }
         else if(s==='race-menu'){ __sonaroids.act.hub_race(); __sonaroids.race(); }
+        else if(s==='race-set'){ __sonaroids.act.rset(); }
         else if(s==='race-try'){ __sonaroids.go('wave'); }
         else if(s==='race-count'){ __sonaroids.go('count'); }
         else if(s==='race-play'){ const r=__sonaroids.state().g; r.state='play'; r.car.inv=99; __sonaroids.go('play'); }
@@ -47,6 +48,7 @@ const SCREENS=['lang','hub','title','sound','phone','mic','probe','wave','wave-t
       const {LW,LH}=r.S;
       if(s==='race-try'&&!(r.btn.some(q=>q.id==='start')&&r.btn.some(q=>q.id==='again'))) bad.push(`${w}x${h} ${lang} ${hand}: the race's try-out lacks play/recalibrate`);
       if(s==='race-menu'&&!['play','howto','hub'].every(id=>r.btn.some(q=>q.id===id))) bad.push(`${w}x${h} ${lang} ${hand}: the race menu lacks its buttons`);
+      if(s==='race-set'&&r.btn.filter(q=>q.id.indexOf('rs_')===0).length!==12) bad.push(`${w}x${h} ${lang} ${hand}: the test settings lack switches`);
       if(s==='race-play'&&!r.btn.some(q=>q.id==='pause')) bad.push(`${w}x${h} ${lang} ${hand}: no menu button in the race`);
       if(s==='race-pause'&&!(['resume','restart','quit','exit'].every(id=>r.btn.some(q=>q.id===id)))) bad.push(`${w}x${h} ${lang} ${hand}: the race's pause lacks resume/end`);
       if(s==='race-over'&&!(['again','menu','ver'].every(id=>r.btn.some(q=>q.id===id)))) bad.push(`${w}x${h} ${lang} ${hand}: the race's finish lacks again/menu`);

@@ -48,27 +48,33 @@ var Race=(function(){
   var OFFW=12;
   function offOf(g,x,hand){ var r=at(g,x); return (0.5-hand)*2*(r.hw+OFFW); }
   function steerY(g,x,hand){ var r=at(g,x); return clamp(r.c+(0.5-hand)*2*(r.hw+OFFW),MARGIN,FH-MARGIN); }
-  function create(seed,FW,y0,steer){
+  function create(seed,FW,y0,steer,opt){
     var g={seed:seed>>>0,FW:FW||380,FH:FH,rand:rng(seed),n:0,t:0,state:'play',score:0,d:0,v:0,fuel:TUNE.FUEL,coins:0,passed:0,crashes:0,
-      steer:steer==='road'?'road':'height',car:{x:CAR_X,y:FH/2,off:0,gap:0,glide:0,turbo:0,inv:0,rub:0,bubble:0,magnet:0,syrup:0,on:'road'},keys:[{x:-300,c:FH/2,hw:TUNE.HW0},{x:260,c:FH/2,hw:TUNE.HW0}],ki:0,straight:0,roadRand:rng((seed^0x5bd1e995)>>>0),
+      steer:steer==='road'?'road':'height',opt:optOf(opt),car:{x:CAR_X,y:FH/2,off:0,gap:0,glide:0,turbo:0,inv:0,rub:0,bubble:0,magnet:0,syrup:0,on:'road'},keys:[{x:-300,c:FH/2,hw:TUNE.HW0},{x:260,c:FH/2,hw:TUNE.HW0}],ki:0,straight:0,roadRand:rng((seed^0x5bd1e995)>>>0),
       cars:[],items:[],puddles:[],nextCar:420,nextSoda:900,nextGift:1500,nextCoin:260,nextPud:1400,line:0,lines:{},lineN:0,kind:0,nextId:1,events:[],fx:[]};
     g.car.y=(y0===undefined||y0===null)?FH/2:clamp(y0,MARGIN,FH-MARGIN); g.car.off=g.car.y-at(g,g.car.x).c; g.v=TUNE.V0*0.55; return g; }   // y0: where the car starts (the palm at the start)
   /* what is at a place ahead: is it free of cars (for a new car or a gift) */
   function freeAt(g,x,o,dx,dy){ for(var i=0;i<g.cars.length;i++){ var c=g.cars[i]; if(c.x-x<dx&&x-c.x<dx&&c.o-o<dy&&o-c.o<dy) return false; } return true; }
   function lane(g,x){ var r=at(g,x), m=r.hw-CAR.hw-3; return rnd(g,-m,m); }
   function spawnAhead(g){ var far=g.d+g.FW+40, t=g.t, dn=density(t), x, o, i;
-    while(g.nextCar<far){ x=g.nextCar; g.nextCar+=rnd(g,TUNE.CAR_GAP[0],TUNE.CAR_GAP[1])/dn;
+    while(g.nextCar<far){ x=g.nextCar; g.nextCar+=rnd(g,TUNE.CAR_GAP[0],TUNE.CAR_GAP[1])/dn/g.opt.traffic;
       for(i=0;i<4;i++){ o=lane(g,x); if(freeAt(g,x,o,34,CAR.hw*2+4)) break; }
       if(i<4) g.cars.push({id:g.nextId++,x:x,o:o,to:o,v:vmax(t)*rnd(g,0.42,0.72),kind:(g.kind=(g.kind+1+Math.floor(g.rand()*5))%6),turnT:rnd(g,1.5,4)}); }
     while(g.nextSoda<far){ x=g.nextSoda; g.nextSoda+=rnd(g,TUNE.SODA_GAP[0],TUNE.SODA_GAP[1])*(1+g.d/TUNE.SODA_GROW); g.items.push({id:g.nextId++,type:'fuel',x:x,o:lane(g,x)}); }
-    while(g.nextGift<far){ x=g.nextGift; g.nextGift+=rnd(g,TUNE.GIFT_GAP[0],TUNE.GIFT_GAP[1]); var k=g.rand(); g.items.push({id:g.nextId++,type:k<0.34?'magnet':k<0.68?'bubble':k<0.87?'tbubble':'tmagnet',x:x,o:lane(g,x)}); }   // v0.91: turbo gifts too
+    while(g.nextGift<far){ x=g.nextGift; g.nextGift+=rnd(g,TUNE.GIFT_GAP[0],TUNE.GIFT_GAP[1]); var k=g.rand(), gs=GIFTS.filter(function(q){ return g.opt.gifts[q[0]]; }), tw=0, a;   // v0.92: only the gifts switched on, in their shares
+      gs.forEach(function(q){ tw+=q[1]; }); if(tw>0){ for(a=0;a<gs.length-1&&k*tw>=gs[a][1];a++) k-=gs[a][1]/tw; g.items.push({id:g.nextId++,type:gs[a][0],x:x,o:lane(g,x)}); } }
     while(g.nextCoin<far){ x=g.nextCoin; g.nextCoin+=rnd(g,TUNE.COIN_GAP[0],TUNE.COIN_GAP[1]); var ln=++g.line, o0=lane(g,x), o1=lane(g,x+64);
       g.lines[ln]=0; for(i=0;i<5;i++) g.items.push({id:g.nextId++,type:'coin',x:x+i*16,o:o0+(o1-o0)*i/4,line:ln}); }
-    while(g.nextPud<far){ x=g.nextPud; g.nextPud+=rnd(g,TUNE.PUD_GAP[0],TUNE.PUD_GAP[1])/dn; if(g.t>12) g.puddles.push({id:g.nextId++,x:x,o:lane(g,x),r:rnd(g,6,9)}); } }
+    while(g.nextPud<far){ x=g.nextPud; g.nextPud+=rnd(g,TUNE.PUD_GAP[0],TUNE.PUD_GAP[1])/dn; if(g.t>12&&g.opt.syrup) g.puddles.push({id:g.nextId++,x:x,o:lane(g,x),r:rnd(g,6,9)}); } }
+  /* v0.92, test switches (the maintainer: «наделай мне включателей и выключателей тех или иных условий, чтобы я поигрался — как лучше и
+     играбельнее»): what a knock does, which gifts come, how many cars, how fast, fuel, syrup, the verge. Without opt — the tuned rules */
+  var GIFTS=[['magnet',0.34],['bubble',0.34],['tbubble',0.19],['tmagnet',0.13]];
+  var OPT0={crashSlow:true,crashFuel:true,gifts:{magnet:true,bubble:true,tbubble:true,tmagnet:true},traffic:1,speed:1,burn:true,syrup:true,offSlow:true};
+  function optOf(o){ var r={}, k; for(k in OPT0) r[k]=OPT0[k]; if(o) for(k in o) if(o[k]!==undefined) r[k]=o[k]; var gf={}; for(k in OPT0.gifts) gf[k]=(o&&o.gifts&&o.gifts[k]!==undefined)?!!o.gifts[k]:OPT0.gifts[k]; r.gifts=gf; return r; }
   function knock(g,c){ var s=g.car; if(s.inv>0) return;
     c.hit=true; c.v+=20;                                                    // the other car is pushed on a little
     if(s.bubble>0){ s.bubble=0; s.inv=0.6; g.events.push('pop'); return; }
-    g.v*=TUNE.CRASH_V; g.fuel=Math.max(0,g.fuel-TUNE.CRASH_FUEL); s.inv=TUNE.INV; g.crashes++; g.events.push('crash'); }
+    if(g.opt.crashSlow) g.v*=TUNE.CRASH_V; if(g.opt.crashFuel) g.fuel=Math.max(0,g.fuel-TUNE.CRASH_FUEL); s.inv=TUNE.INV; g.crashes++; g.events.push('crash'); }
   /* side by side: a rub, not a crash — both cars are pushed apart and ours loses a little speed */
   function rub(g,c,dy){ var s=g.car, push=(2*CAR.hw-1-(dy<0?-dy:dy))/2+0.5, dir=dy<0?-1:1;
     s.y-=dir*push; c.o+=dir*push; c.to=c.o; if(s.rub<=0){ g.v*=0.85; g.events.push('rub'); } s.rub=0.4; }
@@ -101,11 +107,11 @@ var Race=(function(){
     s.on=off<=r.hw-TUNE.KERB_W?'road':off<=r.hw+1?'kerb':'off';
     for(i=0;i<g.puddles.length;i++){ p=g.puddles[i]; dx=p.x-cx; dy=r.c+p.o-s.y; if(dx<p.r+CAR.hl-3&&dx>-p.r-CAR.hl+3&&dy<p.r+CAR.hw-1&&dy>-p.r-CAR.hw+1){ if(s.syrup<=0) g.events.push('syrup'); s.syrup=TUNE.SYRUP_T; } }
     // speed: towards the top speed, less off the road, on the kerb, in syrup; nothing when the fuel is out
-    var top=vmax(g.t)*(s.on==='off'?TUNE.OFF:s.on==='kerb'?TUNE.KERB:1)*(s.syrup>0?TUNE.SYRUP:1)*(s.turbo>0?TUNE.TURBO_K:1);
+    var top=vmax(g.t)*g.opt.speed*(s.on==='off'?(g.opt.offSlow?TUNE.OFF:1):s.on==='kerb'?(g.opt.offSlow?TUNE.KERB:1):1)*(s.syrup>0?TUNE.SYRUP:1)*(s.turbo>0?TUNE.TURBO_K:1);
     if(g.state==='coast') top=0;
     if(g.v<top) g.v=Math.min(top,g.v+TUNE.ACC*(s.turbo>0?2.5:1)*DT); else g.v=Math.max(top,g.v-TUNE.BRAKE*DT);
     g.d+=g.v*DT; cx=g.d+s.x;
-    if(g.state==='play'){ g.fuel-=burn(g.t)*DT; if(g.fuel<=0){ g.fuel=0; g.state='coast'; g.events.push('empty'); } }
+    if(g.state==='play'){ if(g.opt.burn) g.fuel-=burn(g.t)*DT; if(g.fuel<=0){ g.fuel=0; g.state='coast'; g.events.push('empty'); } }
     else if(g.v<4){ g.v=0; g.state='over'; g.events.push('over'); }
     spawnAhead(g);
     // the other cars: drive on (one close behind ours slows to our speed: nobody is run into from behind), change lanes now and then
@@ -135,8 +141,8 @@ var Race=(function(){
     if(me.x-px<60&&me.x-px>-40&&py>lo0&&py<hi0) return false;                 // nor into the player's car
     for(var i=0;i<g.cars.length;i++){ var c=g.cars[i]; if(c===me) continue; var dx=c.x-me.x; if(dx<40&&dx>-40){ var lo=Math.min(me.o,o)-CAR.hw*2-3, hi=Math.max(me.o,o)+CAR.hw*2+3; if(c.o>lo&&c.o<hi) return false; } } return true; }
   /* a whole race from a palm trajectory (one value per step, −1 = no palm): what a server would run */
-  function replay(seed,FW,hands,y0,steer){ var g=create(seed,FW,y0,steer); for(var i=0;i<hands.length&&g.state!=='over';i++) step(g,hands[i]<0?null:hands[i]); return g; }
-  var TAG='race-5';   // v0.91: the car glides back to a palm seen again; turbo gifts   // v0.89: the speed rises earlier (race-3: 0.87's gifts and sodas; race-2, steering across the road, was tried and dropped)
-  return {TAG:TAG,TUNE:TUNE,CAR:CAR,CAR_X:CAR_X,OFFW:OFFW,offOf:offOf,steerY:steerY,DT:DT,FH:FH,MARGIN:MARGIN,create:create,step:step,replay:replay,at:at,centre:centre,vmax:vmax,burn:burn};
+  function replay(seed,FW,hands,y0,steer,opt){ var g=create(seed,FW,y0,steer,opt); for(var i=0;i<hands.length&&g.state!=='over';i++) step(g,hands[i]<0?null:hands[i]); return g; }
+  var TAG='race-6';   // v0.92: test switches (g.opt) —   // v0.91: the car glides back to a palm seen again; turbo gifts   // v0.89: the speed rises earlier (race-3: 0.87's gifts and sodas; race-2, steering across the road, was tried and dropped)
+  return {TAG:TAG,OPT0:OPT0,optOf:optOf,TUNE:TUNE,CAR:CAR,CAR_X:CAR_X,OFFW:OFFW,offOf:offOf,steerY:steerY,DT:DT,FH:FH,MARGIN:MARGIN,create:create,step:step,replay:replay,at:at,centre:centre,vmax:vmax,burn:burn};
 })();
 if(typeof module!=='undefined') module.exports=Race;

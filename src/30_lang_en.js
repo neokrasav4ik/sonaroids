@@ -1,6 +1,8 @@
 /* ── UI strings, English. All caps: the game's pixel font is drawn in capitals on screen. ── */
 var STR={};
 STR.en={
+  r_test:'TEST VERSION', r_set:'TEST SETTINGS', r_yes:'YES', r_no:'NO', r_knock:'A KNOCK SLOWS', r_kfuel:'A KNOCK COSTS FUEL', r_mag:'MAGNET', r_bub:'BUBBLE', r_tbub:'TURBO+BUBBLE', r_tmag:'TURBO+MAGNET',
+  r_cars:'CARS', r_few:'FEW', r_mid:'SOME', r_many:'MANY', r_speed:'SPEED', r_slow:'LOWER', r_norm:'USUAL', r_fast:'HIGHER', r_burn:'FUEL', r_burn_y:'IS USED', r_burn_n:'NOT USED', r_syrup:'SYRUP', r_verge:'THE VERGE SLOWS',
   r_steer:'STEERING', r_steer_h:'BY HEIGHT', r_steer_r:'ALONG THE ROAD',
   volume_ios:'SET THE VOLUME TO 40–60%', volume_direct_ios:'THE VOLUME IS TOO LOW — TURN IT UP TO 40–60%', volume_loud_ios:'THE VOLUME IS TOO HIGH — TURN IT DOWN TO 40–60%',
   volume_silent:"THE PHONE DOESN'T HEAR ITS SOUND — TURN OFF SILENT MODE AND TURN THE VOLUME UP", volume_silent_s:'SILENT MODE CAN MUTE THE GAME',

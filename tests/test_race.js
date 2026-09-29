@@ -12,6 +12,9 @@ check('another seed → another race',c.score!==a.score||c.d!==a.d);
 { const g=Race.create(1,390); for(let i=0;i<18;i++) Race.step(g,1); check('the car follows the palm to the top',Math.abs(g.car.y-Race.MARGIN)<Race.FH*0.01,`y ${g.car.y.toFixed(1)}`); }
 { const g=Race.create(3,390,null,'road'); const offs=[]; for(let i=0;i<60*40;i++){ Race.step(g,0.62); if(i>60){ const r=Race.at(g,g.d+g.car.x); offs.push((g.car.y-r.c)/r.hw); } } const lo=Math.min(...offs), hi=Math.max(...offs);   // v0.90: the other way to steer
   check('steering along the road: a still palm keeps its place across the road through the bends',hi-lo<0.12,`${lo.toFixed(2)}…${hi.toFixed(2)} of the half-width`); }
+{ const o={crashSlow:false,gifts:{magnet:false,bubble:false,tbubble:false,tmagnet:true},syrup:false,burn:false}, g=Race.create(11,390,null,'height',o); let kinds=new Set(), slowed=0, puds=0;   // v0.92: test switches
+  for(let i=0;i<60*120;i++){ const v0=g.v; Race.step(g,0.5); g.items.forEach(p=>{ if(p.type!=='fuel'&&p.type!=='coin') kinds.add(p.type); }); puds+=g.puddles.length; if(g.events.includes('crash')&&g.v<v0*0.8) slowed++; }
+  check('switches: only turbo+magnet gifts, no syrup, a knock does not slow, fuel not used',[...kinds].join()==='tmagnet'&&puds===0&&slowed===0&&g.fuel>80,`gifts ${[...kinds].join()}, puddles ${puds}, slowed by knocks ${slowed}, fuel ${g.fuel.toFixed(0)}`); }
 { const g=Race.create(1,390); let n=0; while(g.state!=='over'&&n<60*600){ Race.step(g,0); n++; }   // stuck at the bottom, off the road: no sodas, slow
   check('no fuel → the car rolls to a stop, the race is over',g.state==='over'&&g.fuel===0&&g.v===0,`${(g.t).toFixed(0)} s, ${Math.floor(g.d/10)} m`); }
 { const g=Race.create(5,390); let off=0, on=0; for(let i=0;i<60*8;i++){ Race.step(g,0); } off=g.v; const h=Race.create(5,390); for(let i=0;i<60*8;i++){ const road=Race.at(h,h.d+h.car.x+10); Race.step(h,(Race.FH-Race.MARGIN-road.c)/(Race.FH-2*Race.MARGIN)); } on=h.v;

@@ -6,7 +6,7 @@ cd "$(dirname "$0")"; D="$1"; [ -d "$D" ] || { echo "укажи папку с WA
 R=$(ls "$D"/sonar1h_*.wav "$D"/sonar1r_*.wav "$D"/sonar_2*.wav 2>/dev/null | while read f; do grep -q -e '"single-landscape"' -e '"right-portrait"' "$f" && echo "$f"; done)
 RP=$(ls "$D"/sonarright_*.wav 2>/dev/null); AKF=$(ls "$D"/sonarark_*.wav 2>/dev/null); ARF=$(ls "$D"/sonararc_*.wav 2>/dev/null); TWF=$(ls "$D"/sonartwo_*.wav "$D"/sonarfist_*.wav 2>/dev/null); STF=$(ls "$D"/sonarstereo_*.wav 2>/dev/null); DPF=$(ls "$D"/sonardepth_*.wav 2>/dev/null)
 L=$(ls "$D"/sonarlong_*.wav 2>/dev/null); SD=$(ls "$D"/sonarside_*.wav 2>/dev/null); DU=$(ls "$D"/sonardual_*.wav 2>/dev/null)
-G=$(ls "$D"/sonar_game_*.wav "$D"/sonaroids_game_*.wav 2>/dev/null); S=$(ls "$D"/sonar_setup_*.wav "$D"/sonaroids_setup_*.wav 2>/dev/null)
+G=$(ls "$D"/sonar_game_*.wav "$D"/*sonaroids_game_*.wav 2>/dev/null); S=$(ls "$D"/sonar_setup_*.wav "$D"/*sonaroids_setup_*.wav 2>/dev/null)   # «*sonaroids_…»: names numbered by hand (1-sonaroids_setup_…)
 [ -n "$R" ] && { echo "== записи по метке =="; node eval_recording.js $R; echo; echo "== записи по метке, калибровка как в игре =="; node eval_recording.js --phys $R; }
 [ -n "$AKF" ] && { echo; echo "== арканоид (прототип) =="; node eval_ark.js $AKF; }
 [ -n "$ARF" ] && { echo; echo "== экшн-прототипы: слалом, ловец бомб, пещера =="; node eval_arc.js $ARF; }

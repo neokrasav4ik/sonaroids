@@ -34,6 +34,8 @@ const SCREENS=['lang','hub','title','sound','phone','mic','probe','wave','wave-t
         else if(s==='linkdone'){ document.querySelector('input').value='k7m 4qx'; __sonaroids.act.code_ok(); }
         else { if(s==='over'){ g.state='over'; g.score=12480; } __sonaroids.go(s); } },s);
       await p.waitForTimeout(s==='over'||s==='over-here'?1000:s==='phone'||s==='wave-try'?1300:150); n++;
+      // v0.78: the game starts in HD — a big screen draws slowly here without a GPU (1366×1024: ~12 frames/s), so wait for the calibrated screen's buttons
+      if(s==='wave-try') for(let i=0;i<40&&!(await p.evaluate(()=>__sonaroids.btn().some(q=>q.id==='start')));i++) await p.waitForTimeout(100);
       const r=await p.evaluate(()=>({btn:__sonaroids.btn(),S:__sonaroids.S()}));
       const {LW,LH}=r.S;
       if(s==='wave-try'&&!(r.btn.some(q=>q.id==='start')&&r.btn.some(q=>q.id==='again'))) bad.push(`${w}x${h} ${lang} ${hand}: calibrated screen lacks play/recalibrate`);

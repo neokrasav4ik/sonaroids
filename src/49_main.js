@@ -69,7 +69,7 @@ function sideX(w){ return freeSide()==='left'?SAFE.l+Math.max(8,Math.round(LW*0.
 /* a column of buttons on the free side, vertically centred on y0 */
 function colW(items){ var w=btnW(items.filter(function(b){ return b[2]!=='sound'; }).map(function(b){ return b[1]; }));
   return items.some(function(b){ return b[2]==='sound'; })?Math.max(w,soundW()):w; }
-function column(items,y0,x0){ var w=colW(items), h=BH, gap=10, y=Math.round(y0-(items.length*(h+gap)-gap)/2), x=x0===undefined?sideX(w):x0;
+function column(items,y0,x0,gap){ var w=colW(items), h=BH; gap=gap===undefined?10:gap; var y=Math.round(y0-(items.length*(h+gap)-gap)/2), x=x0===undefined?sideX(w):x0;
   items.forEach(function(b){ if(b[2]==='sound') soundRow(x,y,w,h); else button(b[0],b[1],x,y,w,h,b[2]||'',Math.floor(clock*2)%2===0); y+=h+gap; }); }
 /* v0.36: the sound row in the menu and the pause — [ - | SOUNDS ▮▮▮▮▮▯▯▯ | + ]; the middle switches the sounds on and off */
 function soundW(){ return PF.width(L('sfx_off'))+6+Sfx.steps*4+2*Math.round(BH*0.9)+12; }
@@ -202,7 +202,7 @@ function skinRow(x,y,w,h){ var s=Math.round(h*0.9), ty=y+Math.round((h-7)/2);
   var n=SKIN_IDS.length, i0=SKIN_IDS.indexOf(skinId), dx=Math.round(x+w/2-(n*6-2)/2); for(var i=0;i<n;i++) R(i===i0?P.band:P.line,dx+i*6,y+h+3,3,3); }
 function sTitle(){
   // v0.72: «graphics: pixels / HD» under the skin (a skin without HD pictures yet says «soon»)
-  var gl2=L('gfx')+': '+(gfxMode==='hd'?'HD'+(hdAvail(skinId)?'':' ('+L('soon')+')'):L('gfx_pixel'));
+  var gl2=gfxLabel();
   var items=[['play',L('play'),'primary'],['scores',L('scores')],['howto',L('howto')],['skin','','skin'],['gfx',gl2],['hub',L('all_games')]];
   var w=Math.max(btnW(items.filter(function(b){ return b[1]; }).map(function(b){ return b[1]; })),PF.width(L('skin')+': '+L('skin_'+SKIN_IDS.reduce(function(a,k){ return PF.width(L('skin_'+k))>PF.width(L('skin_'+a))?k:a; })))+2*Math.round(BH*0.9)+24);
   var bx0=sideX(w), band0=freeSide()==='left'?0:bx0-Math.max(8,Math.round(LW*0.04)), band1=freeSide()==='left'?bx0+w+Math.max(8,Math.round(LW*0.04)):LW;
@@ -448,7 +448,11 @@ function sLinkIn(){ sky(DT,0.3); titles(L('link_in_t'),L('link_in_s')); nickFiel
   button(items[0][0],items[0][1],x,y0,w,BH,'primary',true); button(items[1][0],items[1][1],x+w+gap,y0,w,BH,'',false); }
 function sLinkDone(){ sky(DT,0.3); titles(L('link_ok_t'),L('link_ok_s').replace('{nick}',linkNick?' — '+linkNick:''));
   var w=btnW([L('next')]); button('link_done',L('next'),Math.round(LW/2-w/2),Math.round(LH*0.6),w,BH,'primary',true); }
-function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('paused')); column([['resume',L('resume'),'primary']].concat(pausedFrom==='play'?[['restart',L('restart')],['quit',L('quit')]]:[]).concat([['exit',L('exit')],['sfx','','sound']]),Math.round(LH*0.55)); }
+function gfxLabel(){ return L('gfx')+': '+(gfxMode==='hd'?'HD'+(hdAvail(skinId)?'':' ('+L('soon')+')'):L('gfx_pixel')); }
+/* v0.78: «ГРАФИКА: ПИКСЕЛИ / HD» in the pause too (the maintainer: switch it right during a session) — the same action as in the menu */
+function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('paused')); var it=[['resume',L('resume'),'primary']].concat(pausedFrom==='play'?[['restart',L('restart')],['quit',L('quit')]]:[]).concat([['exit',L('exit')],['gfx',gfxLabel()],['sfx','','sound']]);
+  var top=topY()+12, bot=LH-SAFE.b-4, gap=it.length>5?6:10;                                     // six rows: tighter, between the title and the bottom
+  column(it,Math.min(Math.round(LH*0.55),Math.round((top+bot)/2)),undefined,gap); }
 /* v0.24 "start over" from the pause menu: straight into a countdown with the same calibration, or through calibration again */
 function sRestart(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('restart'),L('restart_s'));
   column([['rs_go',L('rs_go'),'primary'],['rs_cal',L('recal')],['rs_back',L('back')]],Math.round(LH*0.58)); }
@@ -676,5 +680,5 @@ window.__sonaroids={skinProbe:skinProbe,hdProbe:hdProbe,hdIds:hdIds,pixIds:funct
   board:function(){ return {tbl:tblBox,nick:nickEl?{shown:nickEl.style.display!=='none',rect:nickEl.getBoundingClientRect().toJSON()}:null}; },
   side:function(){ return {hand:handSide(),rel:handRel,cam:camEnd(),stored:store.get('sonaroids_rel',''),say:sayLast}; }, wave:function(){ toWave(); },
   fake:function(){ booted=true; prep={res:{ok:true},doneT:-9}; T=Tune.create(100,true); T.ok=true; caught=true;          // a stand-in state for layout checks
-    g=Core.create(1,Core.FH*(LW-SAFE.l)/LH); for(var i=0;i<300;i++) Core.step(g,0.5); g.state='over'; },state:function(){ return {scr:scr,g:g,T:T,caught:caught,prep:prep,lang:lang,linkCode:linkCode}; }};
+    g=Core.create(1,Core.FH*(LW-SAFE.l)/LH); for(var i=0;i<300;i++) Core.step(g,0.5); g.state='over'; },state:function(){ return {scr:scr,g:g,T:T,caught:caught,prep:prep,lang:lang,linkCode:linkCode,gfx:gfxMode}; }};
 })();

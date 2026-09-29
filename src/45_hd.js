@@ -3,7 +3,7 @@
    (up to 2× CSS pixels), under the game-pixel canvas, which then carries only the texts, the buttons and the menus on a transparent
    ground. Coordinates stay in game pixels (the HD canvas is scaled), so the game's logic, sizes and hit circles do not change.
    A skin has HD pictures when HDSK has it; without them the switch keeps the pixel ones. Kept in 'sonaroids_gfx' ('pixel' | 'hd'). ── */
-var HDSK={}, gfxMode=(function(){ try{ return localStorage.getItem('sonaroids_gfx')==='hd'?'hd':'pixel'; }catch(e){ return 'pixel'; } })();
+var HDSK={}, gfxMode=(function(){ try{ return localStorage.getItem('sonaroids_gfx')==='pixel'?'pixel':'hd'; }catch(e){ return 'hd'; } })();   // v0.78: HD unless the player chose pixels (the maintainer: HD by default on the first start)
 var hdCv=null, hx=null, hs=1, hdShown=false, hdKey='', hdD=2, hdPix=false, hdPerf={t:0,n:0,sum:0,skip:2};
 function hdSize(){ if(!hdCv){ hdCv=document.createElement('canvas'); hdCv.id='hd';
     hdCv.style.cssText='position:fixed;left:0;top:0;display:none;pointer-events:none;image-rendering:auto'; document.body.insertBefore(hdCv,cv); hx=hdCv.getContext('2d'); }

@@ -22,6 +22,7 @@ async function direct(b,base,v0){ const {p,errors}=await page(b);
     await p.evaluate(()=>{ Sonar.simulate({fs:48000,chan:'right',source:makeSimSource(()=>null,{loud:()=>10})}); });
     await p.evaluate(()=>__sonaroids.act.play()); await p.waitForTimeout(400); await p.evaluate(()=>__sonaroids.act.probe_norm());
     let scr='', say=''; for(let i=0;i<80;i++){ await p.waitForTimeout(150); scr=await p.evaluate(()=>__sonaroids.scr()); if(scr==='sound') break; }
+    for(let i=0;i<10;i++){ say=await p.evaluate(()=>__sonaroids.side().say); if(/TOO HIGH/.test(say)) break; await p.waitForTimeout(100); }   // the screen switches first, its title is drawn on the next frame
     say=await p.evaluate(()=>__sonaroids.side().say); const lvl=await p.evaluate(()=>Sonar.info().probe_level);
     const lg=await p.evaluate(async()=>{ const b=Logs.setupBlob(); if(!b) return null; const t=new TextDecoder('latin1').decode(new Uint8Array(await b.arrayBuffer())); return {size:b.size,why:/"loud"/.test(t),ev:t.indexOf('\u043d\u0435 \u0433\u043e\u0442\u043e\u0432\u043e')>=0||/не готово/.test(new TextDecoder().decode(new Uint8Array(await b.arrayBuffer())))}; });
     const good=scr==='sound'&&/TOO HIGH/.test(say)&&lg&&lg.why&&lg.ev&&!errors.length; ok=ok&&good;

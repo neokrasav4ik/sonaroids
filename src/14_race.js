@@ -1,0 +1,122 @@
+/* ── RACE CORE (SonaRace, v0.84): the race itself, without drawing. Deterministic like the flight core (src/13_core.js): a fixed 60 Hz
+   step, a seeded integer RNG, only + − × ÷ and sqrt — so a server can later replay a race from its palm trajectory.
+   Rules (agreed with the maintainer 29 Sep: «ладонь только рулит; машинка едет, обгоняет, собирает топливо»):
+   - the road runs left to right and winds; the car stays at one place on the screen and the palm moves it up and down, like the ship;
+   - the car drives by itself and speeds up to the top speed, which grows over the race; off the road it is half as fast, on the kerb a
+     little slower, in a syrup puddle slower for a moment;
+   - cars ahead go the same way, slower, and change lanes now and then; every one passed is +25; running into one costs most of the speed
+     and some fuel, unless the gum bubble takes the knock;
+   - fuel runs out by time; a soda bottle refills it; when it is empty the car rolls to a stop and the race is over;
+   - gifts: the soda (fuel), the magnet (6 s: pulls coins and gifts in), the gum bubble (a shield for one knock, 12 s), candy coins
+     (+10 each, lines of five, +50 for a whole line);
+   - the score: metres driven + coins + cars passed. Harder over the race: faster, narrower road, more cars and puddles, fuel burns
+     faster and sodas come less often.
+   Field: FH = 180 units high (the palm's range, as in the flight), FW = 180 × aspect wide; 10 units = 1 metre. ── */
+var Race=(function(){
+  var DT=1/60, FH=180, MARGIN=FH*0.04, CAR_X=40, FOLLOW=0.48658;          // the car follows the palm with the ship's 25 ms lag
+  var CAR={hl:9,hw:4.6};                                                   // half the car's length and width (every car the same)
+  var TUNE={V0:112,V1:205,VT:240, ACC:55, BRAKE:120, OFF:0.5, KERB:0.9, KERB_W:4, SYRUP:0.62, SYRUP_T:0.7,
+    HW0:0.25*FH, HW1:0.185*FH, HWD:40000, FUEL:100, BURN0:2.0, BURN1:3.2, BURNT:360, SODA:30, CRASH_V:0.35, CRASH_FUEL:6, INV:1.1,
+    SODA_GAP:[1200,1600], SODA_GROW:60000, GIFT_GAP:[2400,3400], COIN_GAP:[330,620], CAR_GAP:[150,320], PUD_GAP:[520,980],
+    MAGNET:6, BUBBLE:12, PASS:25, COIN:10, LINE:50};
+  function rng(seed){ var a=seed>>>0; return function(){ a=(a+0x6D2B79F5)>>>0; var t=a; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
+  function rnd(g,a,b){ return a+g.rand()*(b-a); }
+  function clamp(v,a,b){ return v<a?a:v>b?b:v; }
+  /* how far into the race, 0 → 1: by distance for the road, by time for the pace */
+  function farD(d){ return clamp(d/TUNE.HWD,0,1); }
+  function farT(t){ return clamp(t/TUNE.VT,0,1); }
+  function vmax(t){ return TUNE.V0+(TUNE.V1-TUNE.V0)*farT(t); }
+  function burn(t){ return TUNE.BURN0+(TUNE.BURN1-TUNE.BURN0)*clamp(t/TUNE.BURNT,0,1); }
+  function density(t){ return 1+0.9*farT(t); }                              // cars and puddles: up to 1.9× as often
+  /* the road: a middle line through key points every 90–200 units, joined by smoothstep (flat at each point — soft S-bends) */
+  /* the road has its own random numbers: it is the same whichever way far ahead it is looked at (the drawing looks further than the rules) */
+  function rr(g,a,b){ return a+g.roadRand()*(b-a); }
+  function addKey(g){ var k=g.keys, p=k[k.length-1], dx=rr(g,90,200), hw=TUNE.HW0+(TUNE.HW1-TUNE.HW0)*farD(p.x)+rr(g,-4,4),
+      lo=hw+10, hi=FH-hw-10, span=dx*0.32, c=clamp(p.c+rr(g,-span,span),lo,hi);
+    if(g.straight>0){ g.straight--; c=p.c; }
+    else if(g.roadRand()<0.12) g.straight=1+Math.floor(g.roadRand()*2);          // a straight now and then
+    k.push({x:p.x+dx,c:c,hw:hw}); }
+  function seg(g,x){ var k=g.keys, i=g.ki; while(i>0&&k[i].x>x) i--; while(i<k.length-2&&k[i+1].x<=x) i++; g.ki=i; return i; }
+  function at(g,x){ while(g.keys[g.keys.length-1].x<=x+2) addKey(g); var i=seg(g,x), a=g.keys[i], b=g.keys[i+1], u=(x-a.x)/(b.x-a.x); u=clamp(u,0,1); var s=u*u*(3-2*u);
+    return {c:a.c+(b.c-a.c)*s,hw:a.hw+(b.hw-a.hw)*s}; }
+  function centre(g,x){ return at(g,x).c; }
+  function create(seed,FW,y0){
+    var g={seed:seed>>>0,FW:FW||380,FH:FH,rand:rng(seed),n:0,t:0,state:'play',score:0,d:0,v:0,fuel:TUNE.FUEL,coins:0,passed:0,crashes:0,
+      car:{x:CAR_X,y:FH/2,inv:0,rub:0,bubble:0,magnet:0,syrup:0,on:'road'},keys:[{x:-300,c:FH/2,hw:TUNE.HW0},{x:260,c:FH/2,hw:TUNE.HW0}],ki:0,straight:0,roadRand:rng((seed^0x5bd1e995)>>>0),
+      cars:[],items:[],puddles:[],nextCar:420,nextSoda:900,nextGift:1500,nextCoin:260,nextPud:1400,line:0,lines:{},lineN:0,kind:0,nextId:1,events:[],fx:[]};
+    g.car.y=(y0===undefined||y0===null)?FH/2:clamp(y0,MARGIN,FH-MARGIN); g.v=TUNE.V0*0.55; return g; }
+  /* what is at a place ahead: is it free of cars (for a new car or a gift) */
+  function freeAt(g,x,o,dx,dy){ for(var i=0;i<g.cars.length;i++){ var c=g.cars[i]; if(c.x-x<dx&&x-c.x<dx&&c.o-o<dy&&o-c.o<dy) return false; } return true; }
+  function lane(g,x){ var r=at(g,x), m=r.hw-CAR.hw-3; return rnd(g,-m,m); }
+  function spawnAhead(g){ var far=g.d+g.FW+40, t=g.t, dn=density(t), x, o, i;
+    while(g.nextCar<far){ x=g.nextCar; g.nextCar+=rnd(g,TUNE.CAR_GAP[0],TUNE.CAR_GAP[1])/dn;
+      for(i=0;i<4;i++){ o=lane(g,x); if(freeAt(g,x,o,34,CAR.hw*2+4)) break; }
+      if(i<4) g.cars.push({id:g.nextId++,x:x,o:o,to:o,v:vmax(t)*rnd(g,0.42,0.72),kind:(g.kind=(g.kind+1+Math.floor(g.rand()*5))%6),turnT:rnd(g,1.5,4)}); }
+    while(g.nextSoda<far){ x=g.nextSoda; g.nextSoda+=rnd(g,TUNE.SODA_GAP[0],TUNE.SODA_GAP[1])*(1+g.d/TUNE.SODA_GROW); g.items.push({id:g.nextId++,type:'fuel',x:x,o:lane(g,x)}); }
+    while(g.nextGift<far){ x=g.nextGift; g.nextGift+=rnd(g,TUNE.GIFT_GAP[0],TUNE.GIFT_GAP[1]); g.items.push({id:g.nextId++,type:g.rand()<0.5?'magnet':'bubble',x:x,o:lane(g,x)}); }
+    while(g.nextCoin<far){ x=g.nextCoin; g.nextCoin+=rnd(g,TUNE.COIN_GAP[0],TUNE.COIN_GAP[1]); var ln=++g.line, o0=lane(g,x), o1=lane(g,x+64);
+      g.lines[ln]=0; for(i=0;i<5;i++) g.items.push({id:g.nextId++,type:'coin',x:x+i*16,o:o0+(o1-o0)*i/4,line:ln}); }
+    while(g.nextPud<far){ x=g.nextPud; g.nextPud+=rnd(g,TUNE.PUD_GAP[0],TUNE.PUD_GAP[1])/dn; if(g.t>12) g.puddles.push({id:g.nextId++,x:x,o:lane(g,x),r:rnd(g,6,9)}); } }
+  function knock(g,c){ var s=g.car; if(s.inv>0) return;
+    c.hit=true; c.v+=20;                                                    // the other car is pushed on a little
+    if(s.bubble>0){ s.bubble=0; s.inv=0.6; g.events.push('pop'); return; }
+    g.v*=TUNE.CRASH_V; g.fuel=Math.max(0,g.fuel-TUNE.CRASH_FUEL); s.inv=TUNE.INV; g.crashes++; g.events.push('crash'); }
+  /* side by side: a rub, not a crash — both cars are pushed apart and ours loses a little speed */
+  function rub(g,c,dy){ var s=g.car, push=(2*CAR.hw-1-(dy<0?-dy:dy))/2+0.5, dir=dy<0?-1:1;
+    s.y-=dir*push; c.o+=dir*push; c.to=c.o; if(s.rub<=0){ g.v*=0.85; g.events.push('rub'); } s.rub=0.4; }
+  function take(g,p){ var s=g.car; p.dead=true; g.fx.push({pick:p.type,x:p.x-g.d,y:centre(g,p.x)+p.o});
+    if(p.type==='fuel'){ g.fuel=Math.min(TUNE.FUEL,g.fuel+TUNE.SODA); g.events.push('fuel'); }
+    else if(p.type==='magnet'){ s.magnet=TUNE.MAGNET; g.events.push('magnet'); }
+    else if(p.type==='bubble'){ s.bubble=TUNE.BUBBLE; g.events.push('bubble'); }
+    else { g.coins++; g.events.push('coin'); if(p.line&&++g.lines[p.line]===5){ delete g.lines[p.line]; g.lineN++; g.events.push('line'); } } }
+  /* one fixed step. hand: palm position as a screen fraction from the bottom (0…1), or null when no palm is seen */
+  function step(g,hand){
+    g.events=[]; g.fx=[]; if(g.state==='over') return g;
+    g.n++; g.t=g.n*DT;
+    var s=g.car, i, c, p, dx, dy;
+    if(hand!==null&&hand!==undefined&&g.state==='play'){ var ty=FH-MARGIN-hand*(FH-2*MARGIN); s.y+=(ty-s.y)*FOLLOW; }
+    if(s.inv>0) s.inv-=DT; if(s.bubble>0) s.bubble-=DT; if(s.magnet>0) s.magnet-=DT; if(s.syrup>0) s.syrup-=DT; if(s.rub>0) s.rub-=DT;
+    // where the car is: on the road, on the kerb or off it
+    var cx=g.d+s.x, r=at(g,cx), off=s.y-r.c; if(off<0) off=-off;
+    s.on=off<=r.hw-TUNE.KERB_W?'road':off<=r.hw+1?'kerb':'off';
+    for(i=0;i<g.puddles.length;i++){ p=g.puddles[i]; dx=p.x-cx; dy=r.c+p.o-s.y; if(dx<p.r+CAR.hl-3&&dx>-p.r-CAR.hl+3&&dy<p.r+CAR.hw-1&&dy>-p.r-CAR.hw+1){ if(s.syrup<=0) g.events.push('syrup'); s.syrup=TUNE.SYRUP_T; } }
+    // speed: towards the top speed, less off the road, on the kerb, in syrup; nothing when the fuel is out
+    var top=vmax(g.t)*(s.on==='off'?TUNE.OFF:s.on==='kerb'?TUNE.KERB:1)*(s.syrup>0?TUNE.SYRUP:1);
+    if(g.state==='coast') top=0;
+    if(g.v<top) g.v=Math.min(top,g.v+TUNE.ACC*DT); else g.v=Math.max(top,g.v-TUNE.BRAKE*DT);
+    g.d+=g.v*DT; cx=g.d+s.x;
+    if(g.state==='play'){ g.fuel-=burn(g.t)*DT; if(g.fuel<=0){ g.fuel=0; g.state='coast'; g.events.push('empty'); } }
+    else if(g.v<4){ g.v=0; g.state='over'; g.events.push('over'); }
+    spawnAhead(g);
+    // the other cars: drive on (one close behind ours slows to our speed: nobody is run into from behind), change lanes now and then
+    // (not into a car next to them), keep inside their road
+    for(i=0;i<g.cars.length;i++){ c=g.cars[i]; c.x+=(c.x<cx&&c.x>cx-3*CAR.hl&&c.v>g.v&&cy0(g,c,s)?g.v:c.v)*DT; var rr=at(g,c.x), m=rr.hw-CAR.hw-3;
+      c.turnT-=DT; if(c.turnT<=0){ c.turnT=rnd(g,2,5); if(g.rand()<0.4){ var nt=rnd(g,-m,m); if(freeAt2(g,c,nt)) c.to=nt; } }
+      c.to=clamp(c.to,-m,m); var dto=c.to-c.o, sv=16*DT; c.o+=dto>sv?sv:dto<-sv?-sv:dto; }
+    // running into a car; passing one
+    for(i=0;i<g.cars.length;i++){ c=g.cars[i]; dx=c.x-cx; dy=centre(g,c.x)+c.o-s.y;
+      if(!c.hit&&dx<2*CAR.hl-2&&dx>-2*CAR.hl+2&&dy<2*CAR.hw-1&&dy>-2*CAR.hw+1){ if(dx>CAR.hl) knock(g,c); else rub(g,c,dy); }
+      if(!c.passed&&dx<-2*CAR.hl){ c.passed=true; if(!c.hit){ g.passed++; g.score+=TUNE.PASS; g.events.push('pass'); } } }
+    // gifts: the magnet pulls those near (within 70 ahead, 55 across) towards the car
+    for(i=0;i<g.items.length;i++){ p=g.items[i]; var pc=centre(g,p.x), py=pc+p.o; dx=p.x-cx; dy=py-s.y;
+      if(s.magnet>0&&dx<70&&dx>-10&&dy<55&&dy>-55){ var nx=p.x-dx*0.16, ny=py-dy*0.16; p.x=nx; p.o=ny-centre(g,nx); dx=p.x-cx; dy=ny-s.y; }
+      if(dx<CAR.hl+5&&dx>-CAR.hl-5&&dy<CAR.hw+5&&dy>-CAR.hw-5) take(g,p); }
+    // the score: metres + coins + whole lines + cars passed
+    g.score=Math.floor(g.d/10)+g.coins*TUNE.COIN+g.lineN*TUNE.LINE+g.passed*TUNE.PASS;
+    var back=g.d-40;
+    g.cars=g.cars.filter(function(q){ return q.x>back&&q.x<g.d+g.FW+400; });
+    g.items=g.items.filter(function(q){ if(!q.dead&&q.x<=back&&q.line) delete g.lines[q.line]; return !q.dead&&q.x>back; });   // a missed coin: its line can't be whole
+    g.puddles=g.puddles.filter(function(q){ return q.x>back; });
+    if(g.keys.length>8&&g.keys[2].x<back-200){ g.keys.shift(); g.ki=Math.max(0,g.ki-1); }
+    return g;
+  }
+  function cy0(g,c,s){ var dy=centre(g,c.x)+c.o-s.y; return dy<2*CAR.hw+2&&dy>-2*CAR.hw-2; }
+  function freeAt2(g,me,o){ var s=g.car, px=g.d+s.x, py=s.y-centre(g,px), lo0=Math.min(me.o,o)-CAR.hw*2-6, hi0=Math.max(me.o,o)+CAR.hw*2+6;
+    if(me.x-px<60&&me.x-px>-40&&py>lo0&&py<hi0) return false;                 // nor into the player's car
+    for(var i=0;i<g.cars.length;i++){ var c=g.cars[i]; if(c===me) continue; var dx=c.x-me.x; if(dx<40&&dx>-40){ var lo=Math.min(me.o,o)-CAR.hw*2-3, hi=Math.max(me.o,o)+CAR.hw*2+3; if(c.o>lo&&c.o<hi) return false; } } return true; }
+  /* a whole race from a palm trajectory (one value per step, −1 = no palm): what a server would run */
+  function replay(seed,FW,hands,y0){ var g=create(seed,FW,y0); for(var i=0;i<hands.length&&g.state!=='over';i++) step(g,hands[i]<0?null:hands[i]); return g; }
+  var TAG='race-1';
+  return {TAG:TAG,TUNE:TUNE,CAR:CAR,CAR_X:CAR_X,DT:DT,FH:FH,MARGIN:MARGIN,create:create,step:step,replay:replay,at:at,centre:centre,vmax:vmax,burn:burn};
+})();
+if(typeof module!=='undefined') module.exports=Race;

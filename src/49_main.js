@@ -14,7 +14,9 @@ var prep=null, T=null, caught=false, g=null, acc=0, countT=0, overT=0, shake=0, 
 /* own sounds louder than this in the microphone are turned down (v0.19: 0.05, was 0.3). iPhone: peaks 0.007–0.013 with sounds on — never ducks */
 var DUCK_PEAK=0.05;
 var lastHand=null, shipY=null, sayLast='', pausedFrom=null, livesT=0, duckT=0;
-function go(s){ if(scr==='wave'&&s!=='wave'&&!caught&&T&&typeof Board!=='undefined') Board.setup('nocatch',{t:scrT,flips:flips});   // left the wave step without a caught range
+var mode='fly';   // v0.84: which game — 'fly' (SonaFly) or 'race' (SonaRace); the getting ready is the same, «menu» is the game's own
+function go(s){ if(mode==='race'&&s==='title') s='rtitle';
+  if(scr==='wave'&&s!=='wave'&&!caught&&T&&typeof Board!=='undefined') Board.setup('nocatch',{t:scrT,flips:flips});   // left the wave step without a caught range
   if(s!==scr) scrPrev=scr; scr=s; scrT=0; BTN=[]; if(s!=='nick'&&s!=='linkin'&&typeof nickField==='function'&&nickEl) nickField(false); }
 var scrPrev=null, diag=false, flips=0;                        // diag: the "logs" button is shown (a tap on the version on the game-over screen)
 
@@ -132,36 +134,13 @@ function hubCard(id,x,y,w,ih,img,name,sub,on){
   frame(x,y,w,ih+26,on?P.band:P.line); if(on) frame(x-1,y-1,w+2,ih+28,P.band);
   text(name,x+w/2,y+ih+7,on?P.text:P.soft,'center'); if(sub) text(sub,x+w/2,y+ih+17,P.soft,'center');
   BTN.push({id:id,x:x,y:y,w:w,h:ih+26}); }
-/* v0.76 (the maintainer: the SonaRace card in HD too): a top-down race drawn smooth — a winding road with red-and-white kerbs and a dashed
-   middle line, cars driving along it (turned along the road, with windows and shadows), trees and bushes; the scene changes every 4 s
-   (a green meadow, a beach by the sea, a night with lamps) */
-var raceHC=null, RACE_THEMES=[
-  {g:['#5aa04a','#4e9440'],road:'#5a5a64',edge:'#e8e8ec',kerb:'#d8343c',line:'#f4f4f0',tree:['#2f7a36','#4aa24a','#1f5a28'],sand:null},
-  {g:['#e8d49a','#dcc68a'],road:'#6a6a72',edge:'#f0f0f0',kerb:'#2a7ad8',line:'#fffbe8',tree:['#3a8a4a','#5ab85a','#2a6a38'],sand:'#3aa8d8'},
-  {g:['#1c2a38','#18242f'],road:'#2c2c36',edge:'#8a8a98',kerb:'#ffb020',line:'#ffe88a',tree:['#12301e','#1e4a2c','#0a1a10'],sand:null,night:true}];
-var RACE_CARS=['#e83a3a','#2f7ad8','#f0c020','#3fc486','#b05ad8'];
-function raceCardHD(w,h){ var k=uiS, W2=Math.round(w*k), H2=Math.round(h*k);
+/* v0.84: the SonaRace card shows the candy land itself — the menu's own demo race, drawn smaller into the card */
+var raceHC=null;
+function raceCardHD(w,h){ var k=uiS>1?hs:Math.max(1,hs), W2=Math.round(w*k), H2=Math.round(h*k);
   if(!raceHC||raceHC.width!==W2||raceHC.height!==H2){ raceHC=document.createElement('canvas'); raceHC.width=W2; raceHC.height=H2; }
-  var x=raceHC.getContext('2d'), th=RACE_THEMES[Math.floor((clock+2)/4)%RACE_THEMES.length], t=clock, i, R2=srand(3);
-  x.setTransform(k,0,0,k,0,0); x.imageSmoothingEnabled=true;
-  var mid=function(u){ return h*(0.52+0.22*Math.sin(u/w*6.2832*0.85+0.6)+0.06*Math.sin(u/w*6.2832*2.1)); }, rw=h*0.2;
-  for(i=0;i<14;i++){ x.fillStyle=th.g[i%2]; x.beginPath(); x.moveTo(i*w/7-h,h); x.lineTo(i*w/7,0); x.lineTo((i+1)*w/7,0); x.lineTo((i+1)*w/7-h,h); x.fill(); }   // mown stripes
-  if(th.sand){ x.fillStyle=th.sand; x.beginPath(); x.moveTo(0,0); for(var u=0;u<=w;u+=4) x.lineTo(u,h*0.16+Math.sin(u*0.08+t*1.5)*1.2); x.lineTo(w,0); x.fill();
-    x.strokeStyle='rgba(255,255,255,0.8)'; x.lineWidth=0.6; x.beginPath(); for(u=0;u<=w;u+=4) x.lineTo(u,h*0.16+Math.sin(u*0.08+t*1.5)*1.2+0.8); x.stroke(); }
-  var road=function(lw,col,dash){ x.strokeStyle=col; x.lineWidth=lw; x.lineCap='butt'; x.setLineDash(dash||[]); x.beginPath(); for(var u2=-4;u2<=w+4;u2+=3) x.lineTo(u2,mid(u2)); x.stroke(); x.setLineDash([]); };
-  road(rw+3,th.kerb,[3,3]); x.lineDashOffset=3; road(rw+3,th.edge,[3,3]); x.lineDashOffset=0; road(rw,th.road); road(0.6,th.line,[4,4]);
-  // trees and bushes off the road
-  for(i=0;i<18;i++){ var tx=R2()*w, ty=R2()*h, tr=2+R2()*3; if(Math.abs(ty-mid(tx))<rw*0.9+tr||(th.sand&&ty<h*0.2)) continue;
-    x.fillStyle='rgba(0,0,0,0.25)'; x.beginPath(); x.arc(tx+1.2,ty+1.2,tr,0,6.2832); x.fill();
-    var tg=x.createRadialGradient(tx-tr*0.4,ty-tr*0.4,tr*0.2,tx,ty,tr); tg.addColorStop(0,th.tree[1]); tg.addColorStop(1,th.tree[0]); x.fillStyle=tg; x.beginPath(); x.arc(tx,ty,tr,0,6.2832); x.fill(); x.strokeStyle=th.tree[2]; x.lineWidth=0.4; x.stroke(); }
-  if(th.night){ for(i=0;i<6;i++){ var lxp=(i+0.5)*w/6, ly=mid(lxp)-rw*0.85; var gg=x.createRadialGradient(lxp,ly,0,lxp,ly,rw*1.2); gg.addColorStop(0,'rgba(255,220,140,0.35)'); gg.addColorStop(1,'rgba(255,220,140,0)'); x.fillStyle=gg; x.beginPath(); x.arc(lxp,ly,rw*1.2,0,6.2832); x.fill(); x.fillStyle='#ffe8a0'; x.beginPath(); x.arc(lxp,ly,0.8,0,6.2832); x.fill(); } }
-  // the cars: along the road at their own speeds, turned with it
-  RACE_CARS.forEach(function(col,j){ var s=((j*0.23+t*(0.07+j*0.012))%1.2)-0.1, cxp=s*w, cyp=mid(cxp)+(j%2?1:-1)*rw*0.22, a=Math.atan2(mid(cxp+2)-mid(cxp-2),4);
-    x.save(); x.translate(cxp,cyp); x.rotate(a); x.fillStyle='rgba(0,0,0,0.3)'; x.beginPath(); x.roundRect(-3.3,-1.6,7.4,3.8,1.2); x.fill();
-    x.fillStyle=col; x.beginPath(); x.roundRect(-3.6,-1.9,7.2,3.8,1.3); x.fill(); x.fillStyle='rgba(20,24,40,0.85)'; x.beginPath(); x.roundRect(0.4,-1.4,1.8,2.8,0.5); x.fill(); x.beginPath(); x.roundRect(-2.6,-1.3,1.4,2.6,0.4); x.fill();
-    x.fillStyle='rgba(255,255,255,0.5)'; x.fillRect(-2.8,-1.6,4.5,0.5);
-    if(th.night){ x.fillStyle='rgba(255,250,200,0.9)'; x.fillRect(3.4,-1.5,0.5,0.8); x.fillRect(3.4,0.7,0.5,0.8); var hb=x.createLinearGradient(4,0,12,0); hb.addColorStop(0,'rgba(255,245,200,0.35)'); hb.addColorStop(1,'rgba(255,245,200,0)'); x.fillStyle=hb; x.beginPath(); x.moveTo(3.8,-1.5); x.lineTo(12,-4); x.lineTo(12,4); x.lineTo(3.8,1.5); x.fill(); }
-    x.restore(); });
+  var keepH=hx, keepS=hs; raceDemoTick();
+  try{ hx=raceHC.getContext('2d'); hs=W2/LW; rX0=0; noLight=true; raceScene(rDemo,rDemo.d,rDemo.car.y,DT); }
+  finally { hx=keepH; hs=keepS; rX0=null; noLight=false; }
   return raceHC; }
 function sHub(){ var fr;
   if(hdWanted(SKIN_IDS[hubSkin])){ hubTick(); noLight=true; drawDemo(skinView(SKIN_IDS[hubSkin]),DT); noLight=false; fr=hdCv; }   // v0.75: no soft light (it would sit outside the card)   // v0.72, HD: the demo on the HD canvas; the card shows it scaled down
@@ -176,11 +155,7 @@ function sHub(){ var fr;
   var ih=Math.max(24,playY-8-lab-top), cw=Math.min(Math.round(ih*LW/LH),Math.round((LW-SAFE.l-SAFE.r-40)/2)), gap=16;
   ih=Math.round(cw*LH/LW); var cx=Math.round(cx0-cw-gap/2), ty=Math.round(top+(playY-8-lab-top-ih)/2);
   hubCard('hub_rocks',cx,ty,cw,ih,fr,'SonaFly','',true);
-  if(!raceImgs&&typeof RACE_THUMBS!=='undefined'){ raceImgs=RACE_THUMBS.map(function(u){ var im=new Image(); im.src=u; return im; }); }
-  raceI=Math.floor((clock+2)/4)%((raceImgs&&raceImgs.length)||1);
-  var ri=raceImgs&&raceImgs[raceI]&&raceImgs[raceI].complete?raceImgs[raceI]:null;
-  if(uiS>1) ri=raceCardHD(cw-4,ih);   // v0.76: in HD the SonaRace card is drawn smooth and alive
-  hubCard('hub_race',cx+cw+gap,ty,cw,ih,ri,'SonaRace',clock-soonT<1.5&&Math.floor(clock*6)%2?'':L('soon'),false);
+  hubCard('hub_race',cx+cw+gap,ty,cw,ih,raceCardHD(cw-4,ih),'SonaRace','',true);   // v0.84: the race is open
   if(narrow){ var t1=pw+8+sw, x1=Math.round(cx0-t1/2); button('hub_play',L('play'),x1,playY,pw,BH,'primary',Math.floor(clock*2)%2===0); soundRow(x1+pw+8,playY,sw,BH);
     var x2=Math.round(cx0-bw-4); button('howto',L('howto'),x2,rowY,bw,BH,''); button('lang',L('lang'),x2+bw+8,rowY,bw,BH,''); }
   else { button('hub_play',L('play'),cx0-Math.round(pw/2),playY,pw,BH,'primary',Math.floor(clock*2)%2===0);
@@ -302,7 +277,7 @@ function handBeacon(){ var m=handSide()==='left', a=0.55+0.35*Math.sin(clock*5),
 var CAUGHT_SHOW=1.0, caughtT=0;
 function followShip(){ var f=handFrac(); if(f!==null) lastHand=f;
   var ty=(Core.FH-Core.MARGIN-(lastHand===null?0.5:lastHand)*(Core.FH-2*Core.MARGIN))*K; shipY=shipY===null?ty:shipY+(ty-shipY)*0.49; return f!==null; }
-function sTry(){ followShip(); /* the sky is already drawn by sWave */ SK.ship(fx(Core.SHIP_X),shipY,clock,false);
+function sTry(){ if(mode==='race'){ raceTry(); return; } followShip(); /* the sky is already drawn by sWave */ SK.ship(fx(Core.SHIP_X),shipY,clock,false);
   titles(L('wave_ok'),L('try_s'));
   // buttons on the free side, but never over the ship's lane (it flies at the left edge of the field)
   var items=[['start',L('play'),'primary'],['again',L('recal')]], bw=btnW(items.map(function(q){ return q[1]; })), lane=Math.round(fx(Core.SHIP_X))+34;
@@ -318,7 +293,8 @@ function poolFill(budget){ if(pool.K!==K||pool.skin!==SK||(SK.hd&&pool.hs!==hs))
   pool.list[sz].push(makeSkinRock(SK,sz,Core.R_SIZE[sz],pool.list[sz].length*17+sz)); } }   // v0.70: the skin's rocks
 function rockFromPool(r){ poolFill(0); var l=pool.list[r.sz]; if(!l||!l.length) return makeSkinRock(SK,r.sz,r.r,r.id);
   var b=l[r.id%l.length], o={}; for(var k in b) o[k]=b[k]; o.ox=b.ox||0; o.rot=(r.id*5)%16; o.vr=b.vr===0?0:((r.id*7)%11-5); return o; }
-function field(dt,speed){ poolFill(0); SK.sky(dt,speed);
+function field(dt,speed){ if(mode==='race'&&g&&g.car){ raceScene(g,g.d,g.car.y,dt); raceParts(dt); return; }
+  poolFill(0); SK.sky(dt,speed);
   if(!g) return;
   if(g.state!=='play'){ g.bullets=[]; g.ebullets=[]; g.rocks.forEach(function(r){ r.x+=r.vx*dt; r.y+=r.vy*dt; }); if(g.ufo) g.ufo.x-=6*dt; }   // after the game: things drift on, for the look only
   g.rocks.forEach(function(r){ var sp=rockSpr[r.id]; if(!sp){ sp=rockSpr[r.id]=rockFromPool(r); }
@@ -338,7 +314,7 @@ function field(dt,speed){ poolFill(0); SK.sky(dt,speed);
     if(livesT>0){ for(var i=0;i<g.lives;i++) blit(MINI,SK.mini(),sx-2+i*7,sy-14); } }   // lives: shown only for a moment after a hit
   drawParts(dt);
 }
-function sCount(){ countT-=DT; poolFill(2); followShip();
+function sCount(){ if(mode==='race'){ raceCount(); return; } countT-=DT; poolFill(2); followShip();
   SK.sky(DT,0.6); SK.ship(fx(Core.SHIP_X),shipY,clock,false);
   var n=Math.max(1,Math.ceil(countT)), cx0=Math.round(LW/2), cy0=Math.round(LH/2);
   ring(cx0,cy0,13,1-(countT-Math.floor(countT)),P.band); text(String(n),cx0,cy0-3,P.text,'center'); say(String(n));
@@ -349,7 +325,7 @@ var SITE='sonaroids.app';
    is still loud in the microphone. The sonar no longer takes it for a shifted input; the player gets a line under the score after 0.7 s */
 var covT=0;
 function coveredLine(y){ covT=(typeof DSP2!=='undefined'&&DSP2.info().covered)?covT+DT:0; if(covT>0.7) text(L('covered'),Math.round(LW/2),y,P.hit,'center'); }
-function sPlay(){
+function sPlay(){ if(mode==='race'){ racePlay(); return; }
   acc+=DT; var n=0;
   while(acc>=Core.DT&&n<5){ acc-=Core.DT; n++; var h=Board.q(handFrac()); Core.step(g,h); Board.step(h); Logs.step(g,h); react(); if(g.state!=='play') break; }   // v0.25: the palm rounded to 1/4000 — the server replays these exact numbers
   if(n===5) acc=0;
@@ -376,7 +352,7 @@ function devInfo(){ var ua=navigator.userAgent||'', ios=/iPhone|iPad|iPod/.test(
     eq:!!D.eq,eq_db:r(D.eq_db,10),relocks:D.relocks,drops:D.drops,side:handRel||undefined,ec:m.echoCancellation,ns:m.noiseSuppression,agc:m.autoGainControl,
     app:!!APP,audio:I.audio,src:m.src,vol:APP?(function(){ try{ return r(APP.getVolume(),100); }catch(e){ return undefined; } })():undefined,band:I.band}; }   // v0.55
 Board.devInfo(devInfo);
-function endGame(){ g.state='over'; overT=0; Logs.gameStop(); Board.finish(g.score); Board.flush(); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } go('over'); }
+function endGame(){ if(mode==='race'&&g&&g.car){ raceEnd(); return; } g.state='over'; overT=0; Logs.gameStop(); Board.finish(g.score); Board.flush(); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } go('over'); }
 function react(){ g.events.forEach(function(k){
   if(k==='fire'){ if(Math.random()<0.5) Sfx.play('fire'); } else if(k!=='crash') Sfx.play(k); });
   var BU=SK.bursts(); (g.gone||[]).forEach(function(r){ burst(fx(r.x),r.y*K,8+Math.round(r.r*K),BU.rock,50*K); delete rockSpr[r.id]; shake=Math.max(shake,0.08+r.r*0.004); });
@@ -386,7 +362,7 @@ function react(){ g.events.forEach(function(k){
   if((g.fx||[]).some(function(f){ return f.pick==='life'; })) livesT=1.8;                  // a life taken: the lives show for a moment
   if(g.events.indexOf('hit')>=0||g.events.indexOf('over')>=0){ flash=0.25; shake=0.4; livesT=1.8; burst(fx(g.ship.x)+6,g.ship.y*K,26,BU.ship,70*K); }
 }
-function sOver(){ overT+=DT;                       // no tuning here: it is done on the wave screen before every game (24 Sep)
+function sOver(){ if(mode==='race'&&g&&g.car){ raceOver(); return; } overT+=DT;                       // no tuning here: it is done on the wave screen before every game (24 Sep)
   field(DT,0.3); var cx0=freeSide()==='left'?Math.round(LW*0.6):Math.round(LW*0.4), y=Math.round(LH*0.3);
   text(L('over'),cx0,y,P.text,'center'); text(String(g.score),cx0,y+13,P.band,'center',2);   // the score, big (25 Sep)
   // v0.27: the version is also a switch — a tap shows the "logs" button (for this launch); the logs are always being written
@@ -457,9 +433,9 @@ function gfxLabel(){ return L('gfx')+': '+(gfxMode==='hd'?'HD'+(hdAvail(skinId)?
    «◀ skin ▶» (the maintainer: «добавить выбор скина и в меню игры»), graphics, sounds; the skin changes at once, the game waits */
 function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('paused'));
   var act=[['resume',L('resume'),'primary']].concat(pausedFrom==='play'?[['restart',L('restart')],['quit',L('quit')]]:[]).concat([['exit',L('exit')]]),
-      look=[['skin','','skin'],['gfx',gfxLabel()],['sfx','','sound']], top=topY()+12, bot=LH-SAFE.b-4;
+      look=mode==='race'?[['sfx','','sound']]:[['skin','','skin'],['gfx',gfxLabel()],['sfx','','sound']], top=topY()+12, bot=LH-SAFE.b-4;
   var w1=colW(act), w2=colW(look), g=10, left=freeSide()==='left', x1=sideX(w1), x2=left?x1+w1+g:x1-g-w2, cy=Math.min(Math.round(LH*0.55),Math.round((top+bot)/2));
-  if(w1+g+w2>LW-SAFE.l-SAFE.r-2*Math.max(8,Math.round(LW*0.04))){                                   // too narrow for two (a tablet in Russian): one tight column
+  if(mode==='race'||w1+g+w2>LW-SAFE.l-SAFE.r-2*Math.max(8,Math.round(LW*0.04))){                     // the race: one column (only the sounds beside the actions)                                   // too narrow for two (a tablet in Russian): one tight column
     var it=act.concat(look), gap=Math.max(2,Math.min(8,Math.floor((bot-top+2-it.length*BH)/(it.length-1))));
     column(it,Math.round((top+bot)/2),undefined,gap); return; }
   column(act,cy,x1,8); column(look,cy,x2,8); }
@@ -467,11 +443,91 @@ function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globa
 function sRestart(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('restart'),L('restart_s'));
   column([['rs_go',L('rs_go'),'primary'],['rs_cal',L('recal')],['rs_back',L('back')]],Math.round(LH*0.58)); }
 /* the running game is dropped without the game-over screen; its score still counts for the best */
-function dropGame(){ if(g&&g.state==='play'){ Logs.gameEv('restarted by the player'); g.state='over'; Logs.gameStop(); Board.finish(g.score); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } } }
+function dropGame(){ if(mode==='race'&&g&&g.car){ if(g.state!=='over'){ Logs.gameEv('restarted by the player'); g.state='over'; Logs.gameStop(); if(g.score>raceBest){ raceBest=g.score; store.set('sonaroids_race_best',raceBest); } } return; }
+  if(g&&g.state==='play'){ Logs.gameEv('restarted by the player'); g.state='over'; Logs.gameStop(); Board.finish(g.score); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } } }
 function sLost(){ sky(DT,0.2); titles(L('lost_t'),L('lost_s'),P.hit); nextBtn('retry',L('retry')); }
 function sNomic(){ sky(DT,0.2); titles(L('nomic_t'),L(errKind==='mic'?'nomic_s':'noaudio_s'),P.hit); nextBtn('retry',L('retry')); }
 function sRotate(){ lx.fillStyle=P.bg; lx.fillRect(0,0,LW,LH); var y=Math.round(LH/2-24); y=para(L('rotate'),LW/2,y,LW-16,P.text);
   para(L('rotate_s'),LW/2,y+12,LW-24,P.soft); say(L('rotate')+'. '+L('rotate_s')); }   // 25 Sep: some players don't think of the rotation lock
+
+/* ════ SONARACE (v0.84; the maintainer, 29 Sep: «ладонь только рулит; машинка едет, обгоняет, собирает топливо»). The rules are in
+   src/14_race.js, the candy land in src/48_racehd.js; the getting ready (probe, empty room, wave, try-out) is SonaFly's, the car stands in
+   for the ship. Drawn in HD only for now; the best race is kept on the phone ('sonaroids_race_best'), no table yet ════ */
+var rDemo=null, rTry=null, rTryD=0, raceBest=+store.get('sonaroids_race_best','0')||0, raceNew=false;
+function raceFW(){ return Race.FH*(LW-SAFE.l)/LH; }
+function newSeed(){ try{ var a=new Uint32Array(1); crypto.getRandomValues(a); return a[0]; }catch(e){ return Math.floor(Math.random()*4294967296); } }
+/* the menu's and the card's race drives itself (a new one after ~6 km, so its numbers stay small) */
+function raceDemoTick(){ if(!rDemo||rDemo.d>60000) rDemo=Race.create(20260929,raceFW(),Race.FH/2);
+  if(rDemo._c===clock) return; rDemo._c=clock; for(var n=Math.max(1,Math.round(DT*60));n>0;n--) raceDemoStep(rDemo); }
+function sRTitle(){ raceDemoTick(); raceScene(rDemo,rDemo.d,rDemo.car.y,DT);
+  var items=[['play',L('play'),'primary'],['howto',L('howto')],['sfx','','sound'],['hub',L('all_games')]], w=colW(items);
+  var bx0=sideX(w), m=Math.max(8,Math.round(LW*0.04)), band0=freeSide()==='left'?0:bx0-m, band1=freeSide()==='left'?bx0+w+m:LW;
+  lx.globalAlpha=0.55; R(P.bg,band0,0,band1-band0,LH); lx.globalAlpha=1;
+  column(items,Math.round(LH*0.52),bx0,8);
+  var a0=freeSide()==='left'?band1:SAFE.l, a1=freeSide()==='left'?LW-SAFE.r:band0, cx0=Math.round((a0+a1)/2), lsc=PF.width('SonaRace',2)<=a1-a0-12?2:1, y=Math.round(LH*0.14);
+  text('SonaRace',cx0,y,P.band,'center',lsc); y+=lsc*10+6;
+  PF.wrap(L('r_s'),a1-a0-16,1).forEach(function(l){ text(l,cx0,y,P.text,'center'); y+=10; });
+  if(raceBest>0) text(L('best')+' '+raceBest,cx0,LH-SAFE.b-28,P.text,'center');
+  say('SonaRace. '+L('play')); }
+/* the try-out before the race: an empty stretch of road rolls slowly, the car follows the palm */
+function raceTry(){ followShip(); lx.clearRect(0,0,LW,LH); if(!rTry){ rTry=Race.create(7,raceFW(),Race.FH/2); rTryD=0; } rTryD+=45*DT;
+  raceScene(rTry,rTryD,shipY/K,DT);
+  titles(L('wave_ok'),L('r_try'));
+  var items=[['start',L('play'),'primary'],['again',L('recal')]], bw=btnW(items.map(function(q){ return q[1]; })), lane=Math.round(fx(Race.CAR_X))+30;
+  column(items,Math.round(LH*0.62),freeSide()==='left'?Math.max(sideX(bw),lane):undefined); stepSquares('wave'); }
+/* the countdown: the race's own road, still, the car at the palm */
+function raceCount(){ countT-=DT; followShip(); raceScene(g,g.d,shipY/K,DT);
+  var n=Math.max(1,Math.ceil(countT)), cx0=Math.round(LW/2), cy0=Math.round(LH/2);
+  ring(cx0,cy0,13,1-(countT-Math.floor(countT)),P.band); text(String(n),cx0,cy0-3,P.text,'center'); say(String(n));
+  if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.play('tick');
+  if(countT<=0) startGame(); }
+function raceStart(){ var y0=shipY===null?null:+(shipY/K).toFixed(3); if(y0!==null) g.car.y=Math.max(Race.MARGIN,Math.min(Race.FH-Race.MARGIN,y0));
+  acc=0; parts=[]; raceNew=false; var I=Sonar.info();
+  Logs.gameStart({core:Race.TAG,game:'race',seed:g.seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:'frozen',asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
+    chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids'});
+  Sfx.play('start'); go('play'); }
+var R_BURST={coin:['#ffffff','#ffd23f','#ff4f7a'],fuel:['#ffffff','#3fd07a','#8fdcff'],magnet:['#ffffff','#e8284a','#ffd23f'],bubble:['#ffffff','#ff8ac4','#e0409a']};
+function raceReact(){ var cX=fx(Race.CAR_X), cY=g.car.y*K;
+  g.events.forEach(function(k){ if(k!=='over') Sfx.play(k);
+    if(k==='crash'){ flash=0.25; shake=0.35; burst(cX+6,cY,24,['#ffffff','#ff4f8b','#ffd23f','#6fd7ff'],70*K); }
+    else if(k==='rub'){ shake=Math.max(shake,0.1); burst(cX,cY,6,['#ffffff','#ffd23f'],40*K); }
+    else if(k==='pop') burst(cX,cY,20,R_BURST.bubble,60*K);
+    else if(k==='line') burst(cX+8,cY,14,R_BURST.coin,55*K); });
+  (g.fx||[]).forEach(function(f){ burst(SAFE.l+f.x*K,f.y*K,f.pick==='coin'?6:14,R_BURST[f.pick]||R_BURST.coin,(f.pick==='coin'?35:50)*K); }); }
+/* the top: the score, the fuel under it (a soda bottle, the bar), the metres; the gifts at work beside the bar with the time they have left */
+function raceHud(){ var cx0=Math.round(LW/2), y=topY(), f=g.fuel/Race.TUNE.FUEL, bw=64, bx=cx0-bw/2, by=y+12, low=f<0.15;
+  text(String(g.score).padStart(6,'0'),cx0,y,P.text,'center');
+  var col=f<0.15?'#ff3b5c':f<0.35?'#ffb52e':'#3fd07a';
+  lx.fillStyle='rgba(40,12,30,0.55)'; lx.beginPath(); lx.roundRect(bx-1,by-1,bw+2,6,3); lx.fill();
+  if(!low||Math.floor(clock*5)%2){ lx.fillStyle=col; lx.beginPath(); lx.roundRect(bx,by,Math.max(2,bw*f),4,2); lx.fill(); }
+  lx.fillStyle='#3fd07a'; lx.beginPath(); lx.roundRect(bx-9,by-2,4,7,1.2); lx.fill(); lx.fillRect(bx-8,by-4,2,2); lx.fillStyle='#e8363a'; lx.fillRect(bx-8.5,by-4.6,3,1);
+  text(Math.floor(g.d/10)+' '+L('r_m'),cx0,by+8,P.soft,'center');
+  var gx=bx+bw+8; [['bubble','#ff8ac4',g.car.bubble,Race.TUNE.BUBBLE],['magnet','#e8284a',g.car.magnet,Race.TUNE.MAGNET]].forEach(function(q){ if(q[2]<=0) return;
+    lx.fillStyle='rgba(40,12,30,0.55)'; lx.beginPath(); lx.arc(gx+4,by+2,5,0,6.2832); lx.fill(); lx.fillStyle=q[1]; lx.beginPath(); lx.moveTo(gx+4,by+2); lx.arc(gx+4,by+2,4,-Math.PI/2,-Math.PI/2+6.2832*Math.min(1,q[2]/q[3])); lx.closePath(); lx.fill(); gx+=12; });
+  if(g.state==='coast'&&Math.floor(clock*3)%2===0) text(L('r_out'),cx0,Math.round(LH*0.3),P.hit,'center'); }
+function racePlay(){
+  acc+=DT; var n=0;
+  while(acc>=Race.DT&&n<5){ acc-=Race.DT; n++; var h=Board.q(handFrac()); Race.step(g,h); Logs.step({n:g.n,FH:g.FH,ship:{y:g.car.y},lives:Math.round(g.fuel),score:g.score,events:g.events},h); raceReact(); if(g.state==='over') break; }
+  if(n===5) acc=0;
+  shake=Math.max(0,shake-DT); flash=Math.max(0,flash-DT);
+  duckT-=DT; if(duckT<=0&&Sonar.peak()>DUCK_PEAK){ duckT=0.4; if(Sfx.duck()) Logs.gameEv('sounds down',+Sfx.level().toFixed(2)); }
+  raceScene(g,g.d,g.car.y,DT); raceParts(DT);
+  raceHud();
+  if(freeSide()==='left') text(SITE,LW-SAFE.r-14,topY(),P.soft,'right'); else text(SITE,SAFE.l+14,topY(),P.soft,'left');
+  coveredLine(topY()+32);
+  iconButton('pause',freeSide()==='left'?Math.round(SAFE.l*0.5)+10:LW-Math.round(SAFE.r*0.5)-10-(BH-3),SAFE.t+7); say(L('menu_a'));
+  if(flash>0){ lx.globalAlpha=Math.min(0.3,flash); R('#ffffff',0,0,LW,LH); lx.globalAlpha=1; }
+  if(g.state==='over') endGame(); }
+function raceEnd(){ g.state='over'; overT=0; Logs.gameStop(); if(g.score>raceBest){ raceBest=g.score; raceNew=true; store.set('sonaroids_race_best',raceBest); } go('over'); }
+function raceOver(){ overT+=DT; field(DT,0); lx.globalAlpha=0.35; R(P.bg,0,0,LW,LH); lx.globalAlpha=1;
+  var cx0=freeSide()==='left'?Math.round(LW*0.6):Math.round(LW*0.4), y=Math.round(LH*0.22);
+  text(L('r_finish'),cx0,y,P.text,'center'); text(String(g.score),cx0,y+13,P.band,'center',2);
+  var ls=[[L('r_dist')+' '+Math.floor(g.d/10)+' '+L('r_m'),P.text],[L('r_coins')+' '+g.coins,P.text],[L('r_passed')+' '+g.passed,P.text],[raceNew?L('best')+'!':L('best')+' '+raceBest,raceNew?P.band:P.soft]];
+  ls.forEach(function(q,i){ text(q[0],cx0,y+38+i*11,q[1],'center'); });
+  var vs='V'+VERSION, vr=freeSide()==='left', vx=vr?LW-SAFE.r-8:SAFE.l+8, vy=LH-SAFE.b-12, vw=PF.width(vs);
+  text(vs,vx,vy,diag?P.band:P.soft,vr?'right':'left'); var bx0=Math.max(0,(vr?vx-vw:vx)-8), bx1=Math.min(LW,(vr?vx:vx+vw)+8), by0=vy-8; BTN.push({id:'ver',x:bx0,y:by0,w:bx1-bx0,h:Math.min(PF.CAP+16,LH-by0)});
+  say(L('r_finish')+' '+g.score);
+  if(overT>0.8) column([['again',L('again'),'primary'],['menu',L('menu')]].concat(diag&&Logs.has()?[['logs',L('logs')]]:[]),Math.round(LH*0.52)); }
 
 /* ── actions ── */
 function startPrepare(){
@@ -502,9 +558,10 @@ function toAway(){ prep=null; go('probe'); }
 function toRoom(b){ Sonar.setBand(b); prep=null; go('away'); }
 function toWave(){ T=Tune.create(+store.get('sonaroids_field','100')||100,true); caught=false; flips=0; flipT=-9; seenT=0; go('wave'); }
 function pauseGame(){ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; go('paused'); } }
-function startCount(){ if(resumeAfterPrep&&g&&g.state==='play'){ resumeAfterPrep=false; countT=3; go('count-resume'); return; }
-  resumeAfterPrep=false; countT=3; if(scr!=='wave') shipY=null; lastHand=handFrac()===null?lastHand:handFrac(); /* from the try-out the ship goes on where it is */ Logs.ev('отсчёт',{field:+T.field.toFixed(1),auto:T.auto}); store.set('sonaroids_field',Math.round(T.field)); go('count'); }
-function startGame(){
+function startCount(){ if(resumeAfterPrep&&g&&g.state!=='over'){ resumeAfterPrep=false; countT=3; go('count-resume'); return; }
+  resumeAfterPrep=false; countT=3; if(scr!=='wave') shipY=null; lastHand=handFrac()===null?lastHand:handFrac(); /* from the try-out the ship goes on where it is */ Logs.ev('отсчёт',{field:+T.field.toFixed(1),auto:T.auto}); store.set('sonaroids_field',Math.round(T.field));
+  if(mode==='race'){ g=Race.create(newSeed(),raceFW(),shipY===null?null:shipY/K); rTry=null; } go('count'); }
+function startGame(){ if(mode==='race'){ raceStart(); return; }
   var seed=0; try{ var a=new Uint32Array(1); crypto.getRandomValues(a); seed=a[0]; }catch(e){ seed=Math.floor(Math.random()*4294967296); }
   var y0=shipY===null?null:+(shipY/K).toFixed(3);
   g=Core.create(seed,Core.FH*(LW-SAFE.l)/LH,y0); Board.start(seed,g.FW,y0); nickAsked=false; acc=0; rockSpr={}; parts=[]; livesT=0; var I=Sonar.info();
@@ -524,7 +581,7 @@ var ACT={
   /* a deep recalibration: forget the saved palm range, close the microphone and start from "put the phone down" */
   recal:function(){ onboarding=false; direct=false; store.set('sonaroids_field','100'); Sonar.restart(); booted=false; acoustic=false; go('phone'); },
   lefty:function(){ lefty=true; store.set('sonaroids_lefty','1'); turnShown=false; Logs.ev('играю левой'); seenT=scrT; },
-  hub:function(){ go('hub'); }, hub_rocks:function(){ go('title'); }, hub_play:function(){ go('title'); }, hub_race:function(){ soonT=clock; Sfx.play('tap'); },
+  hub:function(){ mode='fly'; go('hub'); }, hub_rocks:function(){ mode='fly'; go('title'); }, hub_play:function(){ mode='fly'; go('title'); }, hub_race:function(){ mode='race'; go('rtitle'); },
   gfx:function(){ setGfx(gfxMode==='hd'?'pixel':'hd'); pool={K:0,list:[[],[],[]]}; },
   skin_prev:function(){ var i=SKIN_IDS.indexOf(skinId); setSkin(SKIN_IDS[(i+SKIN_IDS.length-1)%SKIN_IDS.length]); },
   skin_next:function(){ var i=SKIN_IDS.indexOf(skinId); setSkin(SKIN_IDS[(i+1)%SKIN_IDS.length]); },
@@ -599,10 +656,11 @@ function loop(now){
   DT=Math.min(0.05,Math.max(0,(now-lastNow)/1000)); lastNow=now; clock+=DT; scrT+=DT; BTN=[];
   if(LH>LW){ pauseGame(); sRotate(); present(0); return; }
   if(booted&&Sonar.lost()&&(scr==='wave'||scr==='count'||scr==='play'||scr==='over')){ if(g&&g.state==='play') Logs.gameStop(); Board.setup('lost'); go('lost'); }
-  hdFrame(scr==='hub'?hdWanted(SKIN_IDS[hubSkin]):!!SK.hd);   // v0.74: a shapes-only skin with «pixels» — the same canvas at 1 px per game pixel   // v0.72: the HD world canvas under the pixel one
+  var RS=mode==='race'&&(scr==='rtitle'||scr==='count'||scr==='count-resume'||scr==='play'||scr==='over'||scr==='paused'||scr==='restart'||(scr==='wave'&&caught&&scrT-caughtT>=CAUGHT_SHOW));
+  hdFrame(RS||(scr==='hub'?hdWanted(SKIN_IDS[hubSkin]):!!SK.hd),RS);   // v0.84: SonaRace's screens smooth   // v0.74: a shapes-only skin with «pixels» — the same canvas at 1 px per game pixel   // v0.72: the HD world canvas under the pixel one
   uiColours(scr!=='hub');
   switch(scr){
-    case 'lang': sLang(); break; case 'title': sTitle(); break; case 'hub': sHub(); break;
+    case 'lang': sLang(); break; case 'title': sTitle(); break; case 'rtitle': sRTitle(); break; case 'hub': sHub(); break;
     case 'sound': sSound(); break;
     case 'phone': sPhone(); break; case 'mic': sMic(); break; case 'probe': sProbe(); break; case 'away': sAway(); break; case 'wave': sWave(); break;
     case 'count': sCount(); break; case 'count-resume': sCountResume(); break; case 'play': sPlay(); break; case 'over': sOver(); break;
@@ -669,7 +727,7 @@ function audAct(id){ var p=id.split(':'), k=p[1], v=p.slice(2).join(':');
   else if(k==='retest') Sonar.audioRetest();
   else if(k==='lab'){ location.href='../lab/sonar_lab3.html'; return; }
   Sonar.restart(); booted=false; acoustic=false; audDev=null; }
-var NO_MENU={hub:1,title:1,lang:1,paused:1,restart:1,play:1}, NO_VER={hub:1,over:1,play:1,count:1,'count-resume':1,paused:1,restart:1};
+var NO_MENU={hub:1,title:1,rtitle:1,lang:1,paused:1,restart:1,play:1}, NO_VER={hub:1,over:1,play:1,count:1,'count-resume':1,paused:1,restart:1};
 function chrome(){ if(LH>LW) return;
   var s=BH-3, vr=freeSide()!=='left', x=vr?LW-Math.round(SAFE.r*0.5)-10-s:Math.round(SAFE.l*0.5)+10, y=SAFE.t+7;
   if(!NO_MENU[scr]) iconButton(scr==='count'||scr==='count-resume'?'pause':scr==='scores'?'sc_back':'menu',x,y);
@@ -677,7 +735,7 @@ function chrome(){ if(LH>LW) return;
   // the try-out ship flies up the left edge: there the version goes to the top right corner; on the scores screen the buttons' column
   // starts right under the menu button — the version stands beside it
   if(NO_VER[scr]) return;
-  if((scr==='wave'&&!vr)||scr==='title') diagCorner('V'+VERSION,true,SAFE.t+8,scr==='title'?vr===(freeSide()!=='left'):true);   // the game's screen: the corner away from its buttons
+  if((scr==='wave'&&!vr)||scr==='title'||scr==='rtitle') diagCorner('V'+VERSION,true,SAFE.t+8,scr==='title'||scr==='rtitle'?vr===(freeSide()!=='left'):true);   // the game's screen: the corner away from its buttons
   else if(scr==='scores') diagCorner('V'+VERSION,true,y+Math.round((s-PF.CAP)/2),false,vr?x-16:x+s+16);
   else diagCorner('V'+VERSION,true,y+s+14); }
 SK=skinView(skinId); resize(); Board.flush();
@@ -690,5 +748,9 @@ window.__sonaroids={skinProbe:skinProbe,hdProbe:hdProbe,sizeProbe:sizeProbe,hdId
   board:function(){ return {tbl:tblBox,nick:nickEl?{shown:nickEl.style.display!=='none',rect:nickEl.getBoundingClientRect().toJSON()}:null}; },
   side:function(){ return {hand:handSide(),rel:handRel,cam:camEnd(),stored:store.get('sonaroids_rel',''),say:sayLast}; }, wave:function(){ toWave(); },
   fake:function(){ booted=true; prep={res:{ok:true},doneT:-9}; T=Tune.create(100,true); T.ok=true; caught=true;          // a stand-in state for layout checks
-    g=Core.create(1,Core.FH*(LW-SAFE.l)/LH); for(var i=0;i<300;i++) Core.step(g,0.5); g.state='over'; },state:function(){ return {scr:scr,g:g,T:T,caught:caught,prep:prep,lang:lang,linkCode:linkCode,gfx:gfxMode}; }};
+    g=Core.create(1,Core.FH*(LW-SAFE.l)/LH); for(var i=0;i<300;i++) Core.step(g,0.5); g.state='over'; },state:function(){ return {scr:scr,g:g,T:T,caught:caught,prep:prep,lang:lang,linkCode:linkCode,gfx:gfxMode,mode:mode}; },
+  race:function(){ mode='race'; booted=true; prep={res:{ok:true},doneT:-9}; T=Tune.create(100,true); T.ok=true; caught=true;   // a stand-in race for layout checks
+    g=Race.create(1,raceFW(),90); for(var i=0;i<60*20;i++) raceDemoStep(g); g.fuel=40; },
+  phoneK:function(k){ PHONE_SHIPK=k; },
+  raceChunkMs:function(n){ var rg=Race.create(5,raceFW(),90), t0=performance.now(); rReset(-1); rReset(5); for(var i=0;i<n;i++) rChunk(rg,i); var ms=(performance.now()-t0)/n; RC.ch={}; return ms; } };
 })();

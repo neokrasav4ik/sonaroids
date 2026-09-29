@@ -52,15 +52,15 @@ function phoneIso(o,cm,portOn,cam){                                          // 
    so the ship stays on the player's left and flies right */
 /* v0.76 (the maintainer: the drawn phone's game in the chosen skin and graphics): the skin's own world — its sky, rocks, saucer, shots and
    ship, the ship at the palm's height — drawn off-screen (pixels, or the HD pictures) and laid onto the phone's screen in perspective */
-var phoneSt={}, phoneC=null, phoneHC=null, phoneAt=-1;
-function phoneWorld(f){ var sk=SK, sy=LH*(0.12+(1-f)*0.76), sx=LW*0.12;
+var phoneSt={}, phoneC=null, phoneHC=null, phoneAt=-1, PHONE_SHIPK=4;   // v0.84: the ship on the drawn phone ~3× larger (the maintainer: «оочень маленький кораблик — его вообще не видно», his pick «А»)
+function phoneWorld(f){ var sk=SK, k=PHONE_SHIPK, hh=Math.max(LH*0.12,7*k+4), sy=hh+(1-f)*(LH-2*hh), sx=LW*0.12+10*(k-1.4);
   if(phoneAt===clock) return sk.hd?phoneHC:phoneC; phoneAt=clock;                       // two phones in one picture share the frame
   if(sk.hd){ var q=Math.min(hs,1.5); if(!phoneHC||phoneHC.width!==Math.round(LW*q)||phoneHC.height!==Math.round(LH*q)){ phoneHC=document.createElement('canvas'); phoneHC.width=Math.round(LW*q); phoneHC.height=Math.round(LH*q); }
     var keep=hx; hx=phoneHC.getContext('2d'); hx.setTransform(q,0,0,q,0,0); hx.imageSmoothingEnabled=true; noLight=true;
-    try{ drawDemo(sk,DT,sx,phoneSt,sy,0.15,1.4); } finally { hx=keep; noLight=false; } return phoneHC; }
+    try{ drawDemo(sk,DT,sx,phoneSt,sy,0.15,k); } finally { hx=keep; noLight=false; } return phoneHC; }
   if(!phoneC||phoneC.width!==LW||phoneC.height!==LH){ phoneC=document.createElement('canvas'); phoneC.width=LW; phoneC.height=LH; }
   var kl=lx; lx=phoneC.getContext('2d'); lx.setTransform(1,0,0,1,0,0); lx.imageSmoothingEnabled=false; noLight=true;
-  try{ drawDemo(sk,DT,sx,phoneSt,sy,0.15,1.4); } finally { lx=kl; noLight=false; } return phoneC; }   // v0.77: the ship 1.4× (the maintainer: «прям чуток»)
+  try{ drawDemo(sk,DT,sx,phoneSt,sy,0.15,k); } finally { lx=kl; noLight=false; } return phoneC; }   // v0.77: the ship 1.4×; v0.84: 4× (PHONE_SHIPK)
 function phoneGame(ph,o,cm,f,T,mirror){
   var m=0.9*cm, x0=ph.X0+m, x1=ph.X1-m, y0=ph.Y0+m, y1=ph.Y1-m, W0=x1-x0, H0=y1-y0;
   function at(u,v){ if(!mirror) return iso(x0+u*W0,y0+v*H0,ph.Zp,o); var p=iso(x0+(1-u)*W0,y0+v*H0,ph.Zp,o); return [LW-p[0],p[1]]; }

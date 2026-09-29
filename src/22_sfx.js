@@ -49,6 +49,17 @@ var Sfx=(function(){
     else if(kind==='ufo_hit'){ crash(0.15,2200,0.5); tone(1300,500,0.12,'square',0.35); }
     else if(kind==='ufo_dodge'){ tone(380,950,0.09,'triangle',0.16); }
     else if(kind==='ufo_die'){ crash(0.6,700,0.9); tone(600,80,0.5,'square',0.45); }
+    // v0.84, SonaRace: a candy coin, a whole line of them, the soda, a car passed, a rub, a crash, the gifts, syrup, the fuel out
+    else if(kind==='coin'){ tone(1568,2093,0.05,'square',0.18); }
+    else if(kind==='line'){ [1319,1568,2093].forEach(function(f,i){ tone(f,null,0.06,'square',0.22,i*0.06); }); }
+    else if(kind==='fuel'){ tone(420,1100,0.16,'triangle',0.4); crash(0.18,3200,0.25,0.05); }
+    else if(kind==='pass'){ tone(260,520,0.1,'triangle',0.14); }
+    else if(kind==='rub'){ crash(0.12,1600,0.35); }
+    else if(kind==='crash'){ crash(0.4,900,0.9); tone(500,120,0.3,'square',0.45); }
+    else if(kind==='magnet'||kind==='bubble'){ tone(880,1760,0.14,'triangle',0.35); tone(1320,2640,0.1,'triangle',0.25,0.1); }
+    else if(kind==='pop'){ crash(0.2,2600,0.5); tone(1400,500,0.16,'triangle',0.35); }
+    else if(kind==='syrup'){ tone(260,140,0.22,'triangle',0.25); }
+    else if(kind==='empty'){ tone(700,180,0.7,'triangle',0.4); }
   }
   /* the game's own sounds must not flood the microphone: on the OnePlus 13 (24 Sep) they reached it ~50 dB louder than on iPhone,
      far above the probe, and the ship drifted. When the microphone gets near its limit, the sounds are turned down step by step */

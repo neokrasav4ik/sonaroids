@@ -8,6 +8,7 @@ echo; echo "== the font matches its drawing ==";  python3 font/make_font.py --ch
 echo; echo "== DSP2 is the lab's ==";              node tests/test_same_dsp.js
 echo; echo "== flight core: deterministic ==";     node tests/test_core.js
 echo; echo "== game rules and difficulty (bot) ==";  node tests/test_rules.js
+echo; echo "== race core: deterministic, rules and length (bot) =="; node tests/test_race.js
 echo; echo "== wave tuning on a synthetic palm =="; node tests/test_tune.js
 echo; echo "== band equalizer (Android) ==";           node tests/test_eq.js
 echo; echo "== is the probe heard: muted vs noisy =="; node tests/test_quiet.js
@@ -23,3 +24,4 @@ echo; echo "== HD skins: every object readable on its sky (Chromium) =="; HD=1 n
 echo; echo "== graphics: pixels / HD (Chromium) =="; node tests/hd.js
 echo; echo "== skins: objects drawn the size the game counts (Chromium) =="; node tests/skin_sizes.js
 echo; echo "== the whole game, synthetic microphone (Chromium) =="; node tests/flow.js
+echo; echo "== SonaRace, synthetic microphone (Chromium) =="; node tests/race_flow.js

@@ -1,6 +1,8 @@
 /* ── UI strings, English. All caps: the game's pixel font is drawn in capitals on screen. ── */
 var STR={};
 STR.en={
+  r_s:'THE CAR DRIVES ITSELF — YOUR PALM STEERS', r_try:'THE CAR FOLLOWS YOUR PALM — TRY THE TOP AND THE BOTTOM', r_fuel:'FUEL', r_out:'OUT OF FUEL', r_m:'M', r_finish:'FINISH',
+  r_dist:'DISTANCE', r_coins:'CANDY COINS', r_passed:'CARS PASSED', r_rules:'SODA — FUEL, MAGNET, GUM BUBBLE — A SHIELD',
   title:'SONAROIDS', android:'ON ANDROID IT DOES NOT WORK ON EVERY PHONE', source:'SOURCE CODE', version:'VERSION', play:'PLAY', recal:'RECALIBRATE', howto:'HOW TO PLAY', or:'OR', covered:"DON'T COVER THE SPEAKER AND MIC", fullscr:'FOR FULL SCREEN MODE, ADD THE SITE TO YOUR HOME SCREEN', lang:'РУССКИЙ', sfx_row:'SOUNDS', sfx_off:'SOUNDS: OFF',
   next:'NEXT', volume:'SET THE VOLUME TO 20–30%', volume_s:'WITH THE VOLUME BUTTONS', volume_direct:'THE VOLUME IS TOO LOW — TURN IT UP TO 20–30%', volume_loud:'THE VOLUME IS TOO HIGH — TURN IT DOWN TO 20–30%',
   phone_t:'PUT THE PHONE DOWN OR HOLD IT', phone_s_cam:'SCREEN UP, FRONT CAMERA TOWARDS YOUR PLAYING HAND', cam:'CAMERA', phone_s:'SCREEN UP, CHARGING PORT TOWARDS YOUR PLAYING HAND', port:'PORT',

@@ -4,7 +4,8 @@
 let chromium; try{ ({chromium}=require('playwright')); }catch(e){ console.log('playwright not installed — skipped'); process.exit(0); }
 const fs=require('fs'), path=require('path'); const ROOT=path.join(__dirname,'..'), OUT=path.join(__dirname,'out','screens'); fs.mkdirSync(OUT,{recursive:true});
 const SIZES=[[568,320],[667,375],[740,360],[844,390],[932,430],[1024,768],[1366,1024]];
-const SCREENS=['lang','hub','title','sound','phone','mic','probe','wave','wave-try','count','play','pause-play','restart','over','over-here','scores','nick','link','linkshow','linkin','linkdone','lost','nomic'];
+const SCREENS=['lang','hub','title','sound','phone','mic','probe','wave','wave-try','count','play','pause-play','restart','over','over-here','scores','nick','link','linkshow','linkin','linkdone','lost','nomic',
+  'race-menu','race-try','race-count','race-play','race-pause','race-over'];   // v0.84: SonaRace's own screens (its menu, the try-out with the car, the race, its pause and finish)
 (async()=>{
   const b=await chromium.launch(); const bad=[]; const errors=[]; let n=0;
   for(const [w,h] of SIZES) for(const lang of ['en','ru']) for(const hand of ['right','left']){
@@ -31,16 +32,27 @@ const SCREENS=['lang','hub','title','sound','phone','mic','probe','wave','wave-t
         else if(s==='link'){ __sonaroids.act.link(); }
         else if(s==='linkshow'){ __sonaroids.act.link_show(); }   // the code comes through Board.link → fetch → the faked server below (v0.33: a mocked Board.link hid a bug)
         else if(s==='linkin'){ __sonaroids.act.link_back2(); __sonaroids.act.link_in(); }
+        else if(s==='race-menu'){ __sonaroids.act.hub_race(); __sonaroids.race(); }
+        else if(s==='race-try'){ __sonaroids.go('wave'); }
+        else if(s==='race-count'){ __sonaroids.go('count'); }
+        else if(s==='race-play'){ const r=__sonaroids.state().g; r.state='play'; r.car.inv=99; __sonaroids.go('play'); }
+        else if(s==='race-pause'){ __sonaroids.act.pause(); }
+        else if(s==='race-over'){ const r=__sonaroids.state().g; r.state='over'; __sonaroids.go('over'); }
         else if(s==='linkdone'){ document.querySelector('input').value='k7m 4qx'; __sonaroids.act.code_ok(); }
         else { if(s==='over'){ g.state='over'; g.score=12480; } __sonaroids.go(s); } },s);
-      await p.waitForTimeout(s==='over'||s==='over-here'?1000:s==='phone'||s==='wave-try'?1300:150); n++;
+      await p.waitForTimeout(s==='over'||s==='over-here'||s==='race-over'?1000:s==='phone'||s==='wave-try'||s==='race-try'?1300:150); n++;
       // v0.78: the game starts in HD — a big screen draws slowly here without a GPU (1366×1024: ~12 frames/s), so wait for the calibrated screen's buttons
-      if(s==='wave-try') for(let i=0;i<40&&!(await p.evaluate(()=>__sonaroids.btn().some(q=>q.id==='start')));i++) await p.waitForTimeout(100);
+      if(s==='wave-try'||s==='race-try') for(let i=0;i<40&&!(await p.evaluate(()=>__sonaroids.btn().some(q=>q.id==='start')));i++) await p.waitForTimeout(100);
       const r=await p.evaluate(()=>({btn:__sonaroids.btn(),S:__sonaroids.S()}));
       const {LW,LH}=r.S;
+      if(s==='race-try'&&!(r.btn.some(q=>q.id==='start')&&r.btn.some(q=>q.id==='again'))) bad.push(`${w}x${h} ${lang} ${hand}: the race's try-out lacks play/recalibrate`);
+      if(s==='race-menu'&&!['play','howto','hub'].every(id=>r.btn.some(q=>q.id===id))) bad.push(`${w}x${h} ${lang} ${hand}: the race menu lacks its buttons`);
+      if(s==='race-play'&&!r.btn.some(q=>q.id==='pause')) bad.push(`${w}x${h} ${lang} ${hand}: no menu button in the race`);
+      if(s==='race-pause'&&!(['resume','restart','quit','exit'].every(id=>r.btn.some(q=>q.id===id)))) bad.push(`${w}x${h} ${lang} ${hand}: the race's pause lacks resume/end`);
+      if(s==='race-over'&&!(['again','menu','ver'].every(id=>r.btn.some(q=>q.id===id)))) bad.push(`${w}x${h} ${lang} ${hand}: the race's finish lacks again/menu`);
       if(s==='wave-try'&&!(r.btn.some(q=>q.id==='start')&&r.btn.some(q=>q.id==='again'))) bad.push(`${w}x${h} ${lang} ${hand}: calibrated screen lacks play/recalibrate`);
       // v0.48: the menu button may sit over the lane's top — in flight the pause button stands in the very same place
-      if(s==='wave-try'){ const lane=r.S.shipLane; if(lane!==undefined&&r.btn.some(q=>q.id!=='menu'&&q.x<lane&&q.x+q.w>lane-24)) bad.push(`${w}x${h} ${lang} ${hand}: button over the ship lane (${r.btn.filter(q=>q.id!=='menu'&&q.x<lane&&q.x+q.w>lane-24).map(q=>q.id+'@'+q.x+','+q.y).join(' ')}; lane ${lane})`); }
+      if(s==='wave-try'||s==='race-try'){ const lane=r.S.shipLane; if(lane!==undefined&&r.btn.some(q=>q.id!=='menu'&&q.x<lane&&q.x+q.w>lane-24)) bad.push(`${w}x${h} ${lang} ${hand}: button over the ship lane (${r.btn.filter(q=>q.id!=='menu'&&q.x<lane&&q.x+q.w>lane-24).map(q=>q.id+'@'+q.x+','+q.y).join(' ')}; lane ${lane})`); }
       if(s==='play'&&!r.btn.some(q=>q.id==='pause')) bad.push(`${w}x${h} ${lang} ${hand}: no menu button in flight`);
       if(s==='scores'){ const b=await p.evaluate(()=>__sonaroids.board()); if(!b.tbl||r.btn.some(q=>q.x<b.tbl[1]&&q.x+q.w>b.tbl[0]-4)) bad.push(`${w}x${h} ${lang} ${hand}: the table runs under the buttons`); if(b.tbl&&b.tbl[1]-b.tbl[0]<130) bad.push(`${w}x${h} ${lang} ${hand}: the table is too narrow (${b.tbl[1]-b.tbl[0]} px)`); }
       if(s==='linkshow'){ await p.waitForTimeout(300); const lc=await p.evaluate(()=>__sonaroids.state().linkCode); if(lc!=='K7M4QX') bad.push(`${w}x${h} ${lang} ${hand}: the transfer code is ${JSON.stringify(lc)}`); }

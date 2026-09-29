@@ -23,7 +23,8 @@ function hdPace(){ var now=performance.now(), dt=hdPerf.t?(now-hdPerf.t)/1000:0;
   if(hdPerf.skip>0){ hdPerf.skip-=dt; return; } hdPerf.sum+=dt; hdPerf.n++;
   if(hdPerf.sum>=2){ var avg=hdPerf.sum/hdPerf.n; hdPerf.sum=0; hdPerf.n=0;
     if(!hdPix&&avg>1/45&&Math.min(hdD,DPR)>1){ hdD=Math.max(1,Math.min(hdD,DPR)-0.5); hdSize(); hdPerf.skip=2; if(typeof Logs!=='undefined'&&Logs.ev) { Logs.ev('hd: '+Math.round(1/avg)+' fps → '+hdD+'×'); if(Logs.gameEv) Logs.gameEv('hd: '+Math.round(1/avg)+' fps → '+hdD+'×'); } } } }
-function hdFrame(on){ if(on){ var px=gfxMode!=='hd'; if(px!==hdPix){ hdPix=px; if(hdCv) hdSize(); } if(!hdCv||hdCv.width!==hdTargetW()) hdSize(); hdPace(); if(!hdShown){ hdCv.style.display='block'; hdShown=true; } lx.clearRect(0,0,LW,LH); hx.setTransform(hs,0,0,hs,0,0); }
+/* full: smooth whatever the switch says (SonaRace is drawn in HD only, v0.84) */
+function hdFrame(on,full){ if(on){ var px=!full&&gfxMode!=='hd'; if(px!==hdPix){ hdPix=px; if(hdCv) hdSize(); } if(!hdCv||hdCv.width!==hdTargetW()) hdSize(); hdPace(); if(!hdShown){ hdCv.style.display='block'; hdShown=true; } lx.clearRect(0,0,LW,LH); hx.setTransform(hs,0,0,hs,0,0); }
   else { hdPerf.t=0; if(hdShown){ hdCv.style.display='none'; hdShown=false; } } }
 function setGfx(m){ gfxMode=m==='hd'?'hd':'pixel'; try{ localStorage.setItem('sonaroids_gfx',gfxMode); }catch(e){} setSkin(skinId); resize(); }   // v0.75: the texts and buttons follow the mode
 

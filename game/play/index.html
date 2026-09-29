@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='0.79';
+var VERSION='0.80';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -1016,7 +1016,7 @@ STR.en={
   probe_t:'CHOOSE THE PROBE', probe_s:'WITH THIS SOUND THE PHONE HEARS YOUR HAND', probe_wide:'WIDE', probe_wide1:'CLEANER CONTROL', probe_wide2:'CHILDREN AND PETS MAY HEAR IT',
   probe_norm:'NORMAL', probe_norm1:'SILENT', probe_norm2:'SLIGHTLY ROUGHER CONTROL',
   away_t:'TAKE YOUR HAND AWAY', away_s:'LISTENING TO THE EMPTY ROOM', away_ok:'THE ROOM IS QUIET',
-  aud_fx:'PHONE PROCESSING:', aud_src:'SOURCE', aud_usage:'PROBE AS', aud_end:'PROBE FROM', turn_t:'TURN THE PHONE ROUND', hub_s:'GAMES YOU PLAY WITH YOUR PALM', soon:'SOON', all_games:'← ALL GAMES', skin:'SKIN', gfx:'GRAPHICS', gfx_pixel:'PIXELS', skin_space:'SPACE', skin_vector:'VECTOR 80S', skin_neon:'NEON', skin_note:'NOTEBOOK', skin_lcd:'RETRO LCD', skin_fairy:'FAIRY TALE', turn_s:'BY 180° IF YOU PLAY', turn_s2:'WITH YOUR RIGHT HAND', turn_h:'ROUND LIKE A WHEEL — DON\'T FLIP IT FACE DOWN', lefty:'I PLAY LEFT-HANDED', aud_vol:'VOLUME', aud_keep:'LEAVE AS IS', aud_cam:'CAMERA END', aud_port:'PORT END', aud_media:'MEDIA', aud_game:'GAME', aud_autotest:'AUTO PICK', aud_notyet:'NOT DONE YET', aud_retest:'TEST AGAIN', aud_lab:'LAB', aud_nextgame:'WITH THE NEXT GAME', aud_link:'SOUND', aud_t:'APP SOUND', aud_s:'WHERE THE GAME TAKES THE MICROPHONE FROM AND WHERE THE PROBE PLAYS', aud_mode:'SOUND', aud_browser:'BROWSER', aud_app:'APP', aud_mic:'MICROPHONE', aud_out:'SPEAKER', aud_auto:'AUTO', aud_speaker:'SPEAKER', aud_earpiece:'EARPIECE', aud_bottom:'BOTTOM', aud_top:'TOP', aud_back:'BACK', aud_now:'NOW:', aud_active:'RECORDING:', aud_idle:'THE MICROPHONE OPENS WITH THE GAME', aud_browser_now:'NOW THE SOUND GOES THROUGH THE BROWSER: ANDROID PICKS THE MICROPHONE', aud_nopos:'THE PHONE DOES NOT TELL WHERE ITS MICROPHONES ARE',
+  aud_fx:'PHONE PROCESSING:', aud_src:'SOURCE', aud_usage:'PROBE AS', aud_end:'PROBE FROM', turn_t:'TURN THE PHONE ROUND', hub_s:'GAMES YOU PLAY WITH YOUR PALM IN MID-AIR', soon:'SOON', all_games:'← ALL GAMES', skin:'SKIN', gfx:'GRAPHICS', gfx_pixel:'PIXELS', skin_space:'SPACE', skin_vector:'VECTOR 80S', skin_neon:'NEON', skin_note:'NOTEBOOK', skin_lcd:'RETRO LCD', skin_fairy:'FAIRY TALE', turn_s:'BY 180° IF YOU PLAY', turn_s2:'WITH YOUR RIGHT HAND', turn_h:'ROUND LIKE A WHEEL — DON\'T FLIP IT FACE DOWN', lefty:'I PLAY LEFT-HANDED', aud_vol:'VOLUME', aud_keep:'LEAVE AS IS', aud_cam:'CAMERA END', aud_port:'PORT END', aud_media:'MEDIA', aud_game:'GAME', aud_autotest:'AUTO PICK', aud_notyet:'NOT DONE YET', aud_retest:'TEST AGAIN', aud_lab:'LAB', aud_nextgame:'WITH THE NEXT GAME', aud_link:'SOUND', aud_t:'APP SOUND', aud_s:'WHERE THE GAME TAKES THE MICROPHONE FROM AND WHERE THE PROBE PLAYS', aud_mode:'SOUND', aud_browser:'BROWSER', aud_app:'APP', aud_mic:'MICROPHONE', aud_out:'SPEAKER', aud_auto:'AUTO', aud_speaker:'SPEAKER', aud_earpiece:'EARPIECE', aud_bottom:'BOTTOM', aud_top:'TOP', aud_back:'BACK', aud_now:'NOW:', aud_active:'RECORDING:', aud_idle:'THE MICROPHONE OPENS WITH THE GAME', aud_browser_now:'NOW THE SOUND GOES THROUGH THE BROWSER: ANDROID PICKS THE MICROPHONE', aud_nopos:'THE PHONE DOES NOT TELL WHERE ITS MICROPHONES ARE',
   wave_t:'WAVE YOUR PALM', wave_s:'5–10 CM ABOVE THE TABLE OR 5–15 CM FROM THE PHONE\'S END', wave_ok:'GOT YOUR RANGE', other_t:'WAVE ON THE OTHER SIDE', other_s:'THE PHONE DOES NOT HEAR THE PALM ON THIS SIDE', try_s:'THE SHIP FOLLOWS YOUR PALM — TRY THE TOP AND THE BOTTOM', cm:'CM',
   ring_wait:'GET READY', ring_listen:'LISTENING', ring_catch:'CATCHING THE RANGE', ring_ok:'DONE',
   start:'START', over:'GAME OVER', best:'BEST', again:'AGAIN', menu:'MENU', logs:'LOGS',
@@ -1044,7 +1044,7 @@ STR.ru={
   probe_t:'ВЫБЕРИ ЗОНД', probe_s:'ЭТИМ ЗВУКОМ ТЕЛЕФОН СЛЫШИТ ТВОЮ РУКУ', probe_wide:'ШИРОКИЙ', probe_wide1:'УПРАВЛЕНИЕ ЧИЩЕ', probe_wide2:'МОГУТ СЛЫШАТЬ ДЕТИ И ЖИВОТНЫЕ',
   probe_norm:'ОБЫЧНЫЙ', probe_norm1:'НЕ СЛЫШЕН', probe_norm2:'УПРАВЛЕНИЕ ЧУТЬ ГРУБЕЕ',
   away_t:'УБЕРИ РУКУ', away_s:'СЛУШАЮ ПУСТУЮ КОМНАТУ', away_ok:'КОМНАТА ТИХАЯ',
-  aud_fx:'ОБРАБОТКА ТЕЛЕФОНА:', aud_src:'ИСТОЧНИК', aud_usage:'ЗОНД КАК', aud_end:'ЗОНД ИЗ', turn_t:'РАЗВЕРНИ ТЕЛЕФОН', hub_s:'ИГРЫ, КОТОРЫМИ УПРАВЛЯЕТ ЛАДОНЬ', soon:'СКОРО', all_games:'← ВСЕ ИГРЫ', skin:'СКИН', gfx:'ГРАФИКА', gfx_pixel:'ПИКСЕЛИ', skin_space:'КОСМОС', skin_vector:'ВЕКТОР 80-Х', skin_neon:'НЕОН', skin_note:'ТЕТРАДКА', skin_lcd:'РЕТРО LCD', skin_fairy:'СКАЗКА', turn_s:'НА 180°, ЕСЛИ ИГРАЕШЬ', turn_s2:'ПРАВОЙ РУКОЙ', turn_h:'ПО КРУГУ, КАК РУЛЬ — НЕ ПЕРЕВОРАЧИВАЙ ЭКРАНОМ ВНИЗ', lefty:'ИГРАЮ ЛЕВОЙ РУКОЙ', aud_vol:'ГРОМКОСТЬ', aud_keep:'НЕ ТРОГАТЬ', aud_cam:'У КАМЕРЫ', aud_port:'У РАЗЪЁМА', aud_media:'МЕДИА', aud_game:'ИГРА', aud_autotest:'АВТОВЫБОР', aud_notyet:'ЕЩЁ НЕ ДЕЛАЛСЯ', aud_retest:'ПЕРЕПРОВЕРИТЬ', aud_lab:'ЛАБА', aud_nextgame:'БУДЕТ ПРИ СЛЕДУЮЩЕЙ ИГРЕ', aud_link:'ЗВУК', aud_t:'ЗВУК ПРИЛОЖЕНИЯ', aud_s:'ОТКУДА ИГРА БЕРЁТ МИКРОФОН И КУДА ИГРАЕТ ЗОНД', aud_mode:'ЗВУК', aud_browser:'БРАУЗЕР', aud_app:'ПРИЛОЖЕНИЕ', aud_mic:'МИКРОФОН', aud_out:'ДИНАМИК', aud_auto:'АВТО', aud_speaker:'ДИНАМИК', aud_earpiece:'РАЗГОВОРНЫЙ', aud_bottom:'НИЗ', aud_top:'ВЕРХ', aud_back:'СЗАДИ', aud_now:'СЕЙЧАС:', aud_active:'ПИШУТ:', aud_idle:'МИКРОФОН ОТКРОЕТСЯ ПРИ ИГРЕ', aud_browser_now:'СЕЙЧАС ЗВУК ЧЕРЕЗ БРАУЗЕР: МИКРОФОН ВЫБИРАЕТ ANDROID', aud_nopos:'ТЕЛЕФОН НЕ СООБЩАЕТ, ГДЕ МИКРОФОНЫ',
+  aud_fx:'ОБРАБОТКА ТЕЛЕФОНА:', aud_src:'ИСТОЧНИК', aud_usage:'ЗОНД КАК', aud_end:'ЗОНД ИЗ', turn_t:'РАЗВЕРНИ ТЕЛЕФОН', hub_s:'ИГРЫ, КОТОРЫМИ УПРАВЛЯЕТ ЛАДОНЬ В ВОЗДУХЕ', soon:'СКОРО', all_games:'← ВСЕ ИГРЫ', skin:'СКИН', gfx:'ГРАФИКА', gfx_pixel:'ПИКСЕЛИ', skin_space:'КОСМОС', skin_vector:'ВЕКТОР 80-Х', skin_neon:'НЕОН', skin_note:'ТЕТРАДКА', skin_lcd:'РЕТРО LCD', skin_fairy:'СКАЗКА', turn_s:'НА 180°, ЕСЛИ ИГРАЕШЬ', turn_s2:'ПРАВОЙ РУКОЙ', turn_h:'ПО КРУГУ, КАК РУЛЬ — НЕ ПЕРЕВОРАЧИВАЙ ЭКРАНОМ ВНИЗ', lefty:'ИГРАЮ ЛЕВОЙ РУКОЙ', aud_vol:'ГРОМКОСТЬ', aud_keep:'НЕ ТРОГАТЬ', aud_cam:'У КАМЕРЫ', aud_port:'У РАЗЪЁМА', aud_media:'МЕДИА', aud_game:'ИГРА', aud_autotest:'АВТОВЫБОР', aud_notyet:'ЕЩЁ НЕ ДЕЛАЛСЯ', aud_retest:'ПЕРЕПРОВЕРИТЬ', aud_lab:'ЛАБА', aud_nextgame:'БУДЕТ ПРИ СЛЕДУЮЩЕЙ ИГРЕ', aud_link:'ЗВУК', aud_t:'ЗВУК ПРИЛОЖЕНИЯ', aud_s:'ОТКУДА ИГРА БЕРЁТ МИКРОФОН И КУДА ИГРАЕТ ЗОНД', aud_mode:'ЗВУК', aud_browser:'БРАУЗЕР', aud_app:'ПРИЛОЖЕНИЕ', aud_mic:'МИКРОФОН', aud_out:'ДИНАМИК', aud_auto:'АВТО', aud_speaker:'ДИНАМИК', aud_earpiece:'РАЗГОВОРНЫЙ', aud_bottom:'НИЗ', aud_top:'ВЕРХ', aud_back:'СЗАДИ', aud_now:'СЕЙЧАС:', aud_active:'ПИШУТ:', aud_idle:'МИКРОФОН ОТКРОЕТСЯ ПРИ ИГРЕ', aud_browser_now:'СЕЙЧАС ЗВУК ЧЕРЕЗ БРАУЗЕР: МИКРОФОН ВЫБИРАЕТ ANDROID', aud_nopos:'ТЕЛЕФОН НЕ СООБЩАЕТ, ГДЕ МИКРОФОНЫ',
   wave_t:'ПОМАШИ ЛАДОНЬЮ', wave_s:'5–10 СМ НАД СТОЛОМ ИЛИ 5–15 СМ ОТ ТОРЦА ТЕЛЕФОНА', wave_ok:'РАЗМАХ ПОЙМАН', other_t:'ПОМАШИ С ДРУГОЙ СТОРОНЫ', other_s:'С ЭТОЙ СТОРОНЫ ТЕЛЕФОН НЕ СЛЫШИТ ЛАДОНЬ', try_s:'КОРАБЛЬ ИДЁТ ЗА ЛАДОНЬЮ — ПРОВЕРЬ ВЕРХ И НИЗ', cm:'СМ',
   ring_wait:'ПРИГОТОВЬСЯ', ring_listen:'СЛУШАЮ', ring_catch:'ЛОВЛЮ РАЗМАХ', ring_ok:'ГОТОВО',
   start:'СТАРТ', over:'ИГРА ОКОНЧЕНА', best:'РЕКОРД', again:'ЕЩЁ РАЗ', menu:'МЕНЮ', logs:'ЖУРНАЛЫ',
@@ -2009,7 +2009,7 @@ function nline(fn,col,w,a){ a=a===undefined?1:a; hx.lineJoin='round'; hx.lineCap
   hx.globalAlpha=0.22*a; hx.strokeStyle=col; hx.lineWidth=lwMin(w)*3.6; fn(); hx.stroke();
   hx.globalAlpha=0.95*a; hx.lineWidth=lwMin(w)*1.3; fn(); hx.stroke();
   hx.globalAlpha=0.9*a; hx.strokeStyle='#ffffff'; hx.lineWidth=lwMin(w)*0.45; fn(); hx.stroke(); hx.globalAlpha=1; }
-HDSK.neon={id:'neon', hd:true, glow:false, nolight:true, veil:'rgba(8,2,22,0.3)', motes:['#c9b8ff','#9ef8ff'],
+HDSK.neon={id:'neon', hd:true, glow:false, nolight:true, veil:'rgba(8,2,22,0.64)', motes:['#c9b8ff','#9ef8ff'],
   ui:{veil:0.5,band:'#ff4fd8',btn:'#e04ed0',btnHi:'#ff8ae8'},
   bgMake:function(){ var w=LW, h=LH, o=hdOff(w,h), x=o.x, hz=h*0.7, R2=srand(12), i;
     var g=x.createLinearGradient(0,0,0,hz); g.addColorStop(0,'#07031a'); g.addColorStop(0.6,'#1a0838'); g.addColorStop(1,'#3a0c4a'); x.fillStyle=g; x.fillRect(0,0,w,hz);
@@ -2037,20 +2037,20 @@ HDSK.neon={id:'neon', hd:true, glow:false, nolight:true, veil:'rgba(8,2,22,0.3)'
     hdVeil(this); },
   rock:function(r,sz,seed){ var R2=srand(seed*31+7), inner=[]; for(var i=0;i<3+(r>8?2:0);i++) inner.push(Math.floor(R2()*9)); return {r:r,pts:rockPoly(r,seed,9),inner:inner,size:r*2.4,rot:R2()*16,vr:(R2()-0.5)*6,hd:true}; },
   drawRock:function(sp,x,y){ var cx=x+(sp.ox||0), P=turnPts(sp.pts,sp.r,sp.rot/16*6.2832,cx,y), c=[cx-sp.r*0.15,y-sp.r*0.1];
-    hx.fillStyle='rgba(40,8,64,0.85)'; polyAt(hx,P); hx.fill();
+    hx.fillStyle='rgba(16,3,28,0.96)'; polyAt(hx,P); hx.fill();
     nline(function(){ hx.beginPath(); sp.inner.forEach(function(k){ hx.moveTo(c[0],c[1]); hx.lineTo(P[k][0],P[k][1]); }); },'#a05ad8',0.3,0.6);
-    nline(function(){ polyAt(hx,P); },'#e07aff',0.6,1); },
+    nline(function(){ polyAt(hx,P); },'#ef9aff',0.85,1); },
   ship:function(x,y,t,blink){ if(blink) return; var fl=0.75+0.25*Math.sin(t*35);
-    hx.fillStyle='rgba(10,50,60,0.85)'; hx.beginPath(); hx.moveTo(x+20,y); hx.lineTo(x+7,y-6); hx.lineTo(x+3,y-6); hx.lineTo(x+5,y-1.6); hx.lineTo(x+1.5,y-1.6); hx.lineTo(x+1.5,y+1.6); hx.lineTo(x+5,y+1.6); hx.lineTo(x+3,y+6); hx.lineTo(x+7,y+6); hx.closePath(); hx.fill();
+    hx.fillStyle='rgba(3,22,28,0.96)'; hx.beginPath(); hx.moveTo(x+20,y); hx.lineTo(x+7,y-6); hx.lineTo(x+3,y-6); hx.lineTo(x+5,y-1.6); hx.lineTo(x+1.5,y-1.6); hx.lineTo(x+1.5,y+1.6); hx.lineTo(x+5,y+1.6); hx.lineTo(x+3,y+6); hx.lineTo(x+7,y+6); hx.closePath(); hx.fill();
     nline(function(){ hx.beginPath(); hx.moveTo(x+1.5,y-1.2); hx.lineTo(x+1.5-8*fl,y); hx.lineTo(x+1.5,y+1.2); },'#ffb13b',0.5,0.9);
-    nline(function(){ hx.beginPath(); hx.moveTo(x+20,y); hx.lineTo(x+7,y-6); hx.lineTo(x+3,y-6); hx.lineTo(x+5,y-1.6); hx.lineTo(x+1.5,y-1.6); hx.lineTo(x+1.5,y+1.6); hx.lineTo(x+5,y+1.6); hx.lineTo(x+3,y+6); hx.lineTo(x+7,y+6); hx.closePath(); },'#3ff7d0',0.6,1);
+    nline(function(){ hx.beginPath(); hx.moveTo(x+20,y); hx.lineTo(x+7,y-6); hx.lineTo(x+3,y-6); hx.lineTo(x+5,y-1.6); hx.lineTo(x+1.5,y-1.6); hx.lineTo(x+1.5,y+1.6); hx.lineTo(x+5,y+1.6); hx.lineTo(x+3,y+6); hx.lineTo(x+7,y+6); hx.closePath(); },'#6ffbe0',0.85,1);
     nline(function(){ hx.beginPath(); hx.ellipse(x+13,y-0.4,3,1.2,0,0,6.2832); },'#3fb8ff',0.4,0.9); },
   ufo:function(ux,uy,big,hurt){ var k=big?1:0.72, col=hurt?'#ffffff':'#ff9aea';
-    hx.save(); hx.translate(ux,uy); hx.scale(k,k); hx.fillStyle='rgba(60,8,50,0.85)'; hx.beginPath(); hx.ellipse(0,0.5,10,3,0,0,6.2832); hx.fill(); hx.beginPath(); hx.ellipse(0,-1.4,4.5,4.2,0,Math.PI,0); hx.fill();
+    hx.save(); hx.translate(ux,uy); hx.scale(k,k); hx.fillStyle='rgba(26,3,22,0.96)'; hx.beginPath(); hx.ellipse(0,0.5,10,3,0,0,6.2832); hx.fill(); hx.beginPath(); hx.ellipse(0,-1.4,4.5,4.2,0,Math.PI,0); hx.fill();
     nline(function(){ hx.beginPath(); hx.ellipse(0,0.5,10,3,0,0,6.2832); hx.moveTo(4.5,-1.4); hx.ellipse(0,-1.4,4.5,4.2,0,0,Math.PI,true); },col,0.6/k,1);
     var t=performance.now()/1000; for(var i=0;i<5;i++){ hx.fillStyle=(Math.floor(t*6)+i)%2?'#fff27a':'#7affff'; hx.beginPath(); hx.arc(-6+i*3,0.8,0.55,0,6.2832); hx.fill(); } hx.restore(); },
   pick:function(x,y,type){ var t=performance.now()/1000, a=0.8+0.2*Math.sin(t*5);
-    hx.fillStyle='rgba(50,40,8,0.85)'; hx.beginPath(); hx.roundRect(x-5.5,y-5.5,11,11,2.5); hx.fill();
+    hx.fillStyle='rgba(22,17,3,0.96)'; hx.beginPath(); hx.roundRect(x-5.5,y-5.5,11,11,2.5); hx.fill();
     nline(function(){ hx.beginPath(); hx.roundRect(x-5.5,y-5.5,11,11,2.5); },'#ffe66d',0.55,a); hx.save(); hx.translate(x,y); hdIcon(type,'#fff6c0'); hx.restore(); },
   bullet:function(x,y){ nline(function(){ hx.beginPath(); hx.moveTo(x-3.5,y); hx.lineTo(x+2,y); },'#ffd24a',0.8,1); },
   ebullet:function(x,y){ nline(function(){ hx.beginPath(); hx.arc(x,y,1.8,0,6.2832); },'#ff8aa8',0.6,1); hx.fillStyle='#fff0f5'; hx.beginPath(); hx.arc(x,y,1.5,0,6.2832); hx.fill(); },
@@ -2061,7 +2061,7 @@ HDSK.neon={id:'neon', hd:true, glow:false, nolight:true, veil:'rgba(8,2,22,0.3)'
 /* ════════ NOTEBOOK: a squared school page with a red margin; pencil doodles (a sun, a ringed planet, stars, clouds) drift by behind;
    everything that matters is drawn in blue ballpoint (the enemies in red pen), rocks hatched on their shadow side, the power-up coloured
    with a yellow highlighter ════════ */
-var PEN='#1d3fa0', RED='#a8142c';
+var PEN='#1d3fa0', RED='#a8142c', NTINT='rgba(208,218,242,0.96)';   // v0.80: rocks, the ship and the saucer tinted pale blue, as if coloured in with the pen (the maintainer's pick «Б»)
 function penLine(fn,col,w,a){ hx.lineJoin='round'; hx.lineCap='round'; hx.strokeStyle=col; hx.globalAlpha=(a===undefined?1:a)*0.95; hx.lineWidth=lwMin(w); fn(0); hx.stroke(); hx.globalAlpha=(a===undefined?1:a)*0.45; hx.lineWidth=lwMin(w*0.7); fn(1); hx.stroke(); hx.globalAlpha=1; }
 HDSK.note={id:'note', hd:true, glow:false, nolight:true, motes:['#8a8a90','#9a9aa4'],
   ui:{veil:0.62,band:'#ffe14a',btn:'#ffd93a',btnHi:'#fff08a'},
@@ -2087,20 +2087,20 @@ HDSK.note={id:'note', hd:true, glow:false, nolight:true, motes:['#8a8a90','#9a9a
   rock:function(r,sz,seed){ var R2=srand(seed*57+3), cr=[], jit=[]; for(var i=0;i<2+(r>8?1:0);i++) cr.push([R2()*6.2832,R2()*0.5,0.13+R2()*0.12]); for(i=0;i<11;i++) jit.push([(R2()-0.5)*0.5,(R2()-0.5)*0.5]);
     return {r:r,pts:rockPoly(r,seed,11),cr:cr,jit:jit,size:r*2.4,rot:R2()*16,vr:(R2()-0.5)*6,hd:true}; },
   drawRock:function(sp,x,y){ var r=sp.r, cx=x+(sp.ox||0), a0=sp.rot/16*6.2832, P=turnPts(sp.pts,r,a0,cx,y);
-    hx.save(); polyAt(hx,P); hx.clip(); hx.fillStyle='rgba(251,248,239,0.9)'; hx.fillRect(cx-r*1.3,y-r*1.3,r*2.6,r*2.6);            // the paper inside, so the doodles behind don't show through
+    hx.save(); polyAt(hx,P); hx.clip(); hx.fillStyle=NTINT; hx.fillRect(cx-r*1.3,y-r*1.3,r*2.6,r*2.6);            // the paper inside, so the doodles behind don't show through
     hx.fillStyle=this.hatchFill(); hx.beginPath(); hx.arc(cx-r*0.2,y-r*0.25,r*1.35,0,6.2832); hx.arc(cx-r*0.55,y-r*0.6,r*1.05,0,6.2832,true); hx.fill();   // hatched on the shadow side
     sp.cr.forEach(function(c){ var ca=c[0]+a0; penLine(function(){ hx.beginPath(); hx.arc(cx+Math.cos(ca)*c[1]*r,y+Math.sin(ca)*c[1]*r,c[2]*r,0.3,6.0); },PEN,0.35,0.9); });
     hx.restore();
-    penLine(function(j){ var Q=j?P.map(function(p,i){ return [p[0]+sp.jit[i][0],p[1]+sp.jit[i][1]]; }):P; polyAt(hx,Q); },PEN,Math.max(0.5,r*0.06)); },
+    penLine(function(j){ var Q=j?P.map(function(p,i){ return [p[0]+sp.jit[i][0],p[1]+sp.jit[i][1]]; }):P; polyAt(hx,Q); },PEN,Math.max(0.7,r*0.09)); },
   ship:function(x,y,t,blink){ if(blink) return; var fl=Math.sin(t*30);
     var S=[[19,0],[7,-6],[3,-6],[5,-1.5],[1.5,-1.5],[1.5,1.5],[5,1.5],[3,6],[7,6]];
-    hx.fillStyle='rgba(251,248,239,0.95)'; polyAt(hx,S.map(function(p){ return [x+p[0],y+p[1]]; })); hx.fill();
+    hx.fillStyle=NTINT; polyAt(hx,S.map(function(p){ return [x+p[0],y+p[1]]; })); hx.fill();
     penLine(function(j){ polyAt(hx,S.map(function(p,i){ return [x+p[0]+(j?((i*37)%5-2)*0.12:0),y+p[1]+(j?((i*53)%5-2)*0.12:0)]; })); },PEN,0.6);
     hx.fillStyle=PEN; hx.beginPath(); hx.ellipse(x+13,y-0.4,2.8,1.1,0,0,6.2832); hx.fill();
     penLine(function(){ hx.beginPath(); hx.moveTo(x+6,y-3); hx.lineTo(x+10,y-1.4); hx.moveTo(x+6,y+3); hx.lineTo(x+10,y+1.4); },PEN,0.3,0.8);
     penLine(function(){ hx.beginPath(); hx.moveTo(x+1,y-1.2); for(var i=0;i<6;i++) hx.lineTo(x-1-i*1.2,y+(i%2?1.4:-1.4)*(1-i/7)*(0.8+0.2*fl)); hx.lineTo(x+1,y+1.2); },'#e0701a',0.5,1); },
   ufo:function(ux,uy,big,hurt){ var k=big?1:0.72, col=hurt?PEN:RED;
-    hx.save(); hx.translate(ux,uy); hx.scale(k,k); hx.fillStyle='rgba(251,248,239,0.95)'; hx.beginPath(); hx.ellipse(0,0.5,10,3,0,0,6.2832); hx.fill(); hx.beginPath(); hx.ellipse(0,-1,4.5,4,0,Math.PI,0); hx.fill();
+    hx.save(); hx.translate(ux,uy); hx.scale(k,k); hx.fillStyle=NTINT; hx.beginPath(); hx.ellipse(0,0.5,10,3,0,0,6.2832); hx.fill(); hx.beginPath(); hx.ellipse(0,-1,4.5,4,0,Math.PI,0); hx.fill();
     penLine(function(j){ hx.beginPath(); hx.ellipse(j*0.3,0.5,10,3,0,0,6.2832); hx.moveTo(4.5,-1); hx.ellipse(0,-1,4.5,4,0,0,Math.PI,true); },col,0.6/k);
     hx.fillStyle=col; for(var i=0;i<5;i++){ hx.beginPath(); hx.arc(-6+i*3,1,0.6,0,6.2832); hx.fill(); } hx.restore(); },
   pick:function(x,y,type){ hx.fillStyle='rgba(255,226,40,0.65)'; hx.fillRect(x-6,y-6,12,12);
@@ -2235,18 +2235,18 @@ SKINS.neon={id:'neon', glow:false, nolight:true, motes:['#c9b8ff','#9ef8ff'],
     if(!this._k||this._k!==LW+'x'+LH){ this._k=LW+'x'+LH; this._sky=this.skyMake(); this._rng=this.rangeMake(); this._grid=[]; for(var f=0;f<8;f++) this._grid.push(this.gridMake(f*2)); this._mx=this._mx||0; this._gx=this._gx||0; }
     this._mx=(this._mx+4*K*dt*s)%(LW*2+40); this._gx=(this._gx+26*K*dt*s)%16;
     lx.drawImage(this._sky,0,0); var mx=Math.floor(this._mx); lx.drawImage(this._rng,-mx,0); lx.drawImage(this._rng,LW*2+40-mx,0);
-    lx.drawImage(this._grid[Math.floor(this._gx/2)%8],0,hz); },
+    lx.drawImage(this._grid[Math.floor(this._gx/2)%8],0,hz); lx.fillStyle='rgba(8,2,22,0.55)'; lx.fillRect(0,0,LW,LH); },   // v0.80: the background dimmed (the maintainer's pick «Б»)
   rock:function(r,sz,seed){ var R2=srand(seed*31+7), inner=[]; for(var i=0;i<3+(r>8?2:0);i++) inner.push(Math.floor(R2()*9));
-    return pixRockFrames(r,seed,9,function(p,P,c){ p.poly(P,[40,8,60]); var cc=[c-r*0.15,c-r*0.1]; inner.forEach(function(k){ p.line(cc[0],cc[1],P[k][0],P[k][1],[110,60,170]); }); var I=P.map(function(q){ var dx=q[0]-c, dy=q[1]-c, d=Math.hypot(dx,dy)||1; return [q[0]-dx/d*1.2,q[1]-dy/d*1.2]; }); p.path(I,cH('#7a2aa8'),true); p.path(P,cH('#f0a0ff'),true); }); },   // the glow inside, so the tube is the rock's edge
+    return pixRockFrames(r,seed,9,function(p,P,c){ p.poly(P,[16,3,28]); var cc=[c-r*0.15,c-r*0.1]; inner.forEach(function(k){ p.line(cc[0],cc[1],P[k][0],P[k][1],[110,60,170]); }); var I=P.map(function(q){ var dx=q[0]-c, dy=q[1]-c, d=Math.hypot(dx,dy)||1; return [q[0]-dx/d*1.2,q[1]-dy/d*1.2]; }); p.path(I,cH('#b050e0'),true); p.path(P,cH('#ffc4ff'),true); }); },   // the glow inside, so the tube is the rock's edge
   shipPix:function(){ return pixOnce('n-ship',24,16,function(p){ var y=8, S=[[21,y],[8,y-6],[4,y-6],[6,y-2],[2,y-2],[2,y+2],[6,y+2],[4,y+6],[8,y+6]];
-      p.poly(S,[10,50,60]); p.path(S,cH('#3ff7d0'),true); p.line(12,y-1,15,y-1,cH('#9fefff')); p.line(12,y,16,y,cH('#3fb8ff')); p.halo(cH('#0f5a54')); }); },
+      p.poly(S,[3,22,28]); p.path(S,cH('#7ffbe4'),true); p.line(12,y-1,15,y-1,cH('#9fefff')); p.line(12,y,16,y,cH('#3fb8ff')); p.halo(cH('#0f5a54')); }); },
   ship:function(x,y,t,blink){ if(blink) return; x=Math.round(x); y=Math.round(y); var fl=Math.floor(t*20)%3; R('#ffb13b',x-2-fl,y,3+fl,1); R('#fff2b0',x,y,1,1); lx.drawImage(this.shipPix(),x-2,y-8); },
   ufoPix:function(big,hurt){ var k=big?1:0.72; return pixOnce('n-ufo'+big+hurt,26,16,function(p){ var c=13, cy=8, col=cH(hurt?'#ffffff':'#ff9aea'), E=[];
-      for(var i=0;i<24;i++){ var a=i/24*6.2832; E.push([c+Math.cos(a)*10*k,cy+1+Math.sin(a)*3*k]); } p.poly(E,[60,8,50]); p.path(E,col,true);
-      var D=[]; for(i=0;i<=10;i++){ var b=Math.PI+i/10*Math.PI; D.push([c+Math.cos(b)*4.5*k,cy-1+Math.sin(b)*4.2*k]); } p.poly(D,[60,8,50]); p.path(D,col,false); p.halo(cH('#6a1a60')); }); },
+      for(var i=0;i<24;i++){ var a=i/24*6.2832; E.push([c+Math.cos(a)*10*k,cy+1+Math.sin(a)*3*k]); } p.poly(E,[26,3,22]); p.path(E,col,true);
+      var D=[]; for(i=0;i<=10;i++){ var b=Math.PI+i/10*Math.PI; D.push([c+Math.cos(b)*4.5*k,cy-1+Math.sin(b)*4.2*k]); } p.poly(D,[26,3,22]); p.path(D,col,false); p.halo(cH('#6a1a60')); }); },
   ufo:function(ux,uy,big,hurt){ lx.drawImage(this.ufoPix(big,!!hurt),Math.round(ux)-13,Math.round(uy)-8); var t=performance.now()/1000;
     for(var i=0;i<5;i++) R((Math.floor(t*6)+i)%2?'#fff27a':'#7affff',Math.round(ux)-6+i*3,Math.round(uy)+1,1,1); },
-  pick:function(x,y,type){ x=Math.round(x); y=Math.round(y); var c=pixOnce('n-pick',15,15,function(p){ p.rect(2,2,11,11,[50,40,8]); p.path([[3,1],[11,1],[13,3],[13,11],[11,13],[3,13],[1,11],[1,3]],cH('#ffe66d'),true); p.halo(cH('#6a5a10')); });
+  pick:function(x,y,type){ x=Math.round(x); y=Math.round(y); var c=pixOnce('n-pick',15,15,function(p){ p.rect(2,2,11,11,[22,17,3]); p.path([[3,1],[11,1],[13,3],[13,11],[11,13],[3,13],[1,11],[1,3]],cH('#ffe66d'),true); p.halo(cH('#6a5a10')); });
     lx.drawImage(c,x-7,y-7); blit(PICONS[type],['#fff6c0'],x-3,y-3); },
   bullet:function(x,y){ x=Math.round(x); y=Math.round(y); R('#ffd24a',x-3,y,3,1); R('#fff6d0',x,y,2,1); R('#1e1404',x-3,y-1,5,1); R('#1e1404',x-3,y+1,5,1); },
   ebullet:function(x,y){ x=Math.round(x); y=Math.round(y); var c=pixOnce('n-eb',7,7,function(p){ p.ring(3,3,2,2,cH('#ffc0d2')); p.rect(2,2,3,3,cH('#ff5a8a')); p.put(3,3,[255,255,255]); p.halo(cH('#2a0418')); }); lx.drawImage(c,x-3,y-3); },
@@ -2254,7 +2254,7 @@ SKINS.neon={id:'neon', glow:false, nolight:true, motes:['#c9b8ff','#9ef8ff'],
 
 /* ════════ NOTEBOOK, pixels: squared paper with a red margin, pencil doodles drifting behind, one-pixel ballpoint lines; rocks hatched on the
    shadow side, the saucer and the enemy shots in red pen, the power-up coloured with a yellow highlighter ════════ */
-var NPEN=cH('#1d3fa0'), NPEN2=cH('#6a80c8'), NRED=cH('#a8142c'), NPAPER=cH('#fbf8ef'), NPEN_L=cH('#9aaad8');
+var NTINTP=cH('#d0daf2'), NPEN=cH('#1d3fa0'), NPEN2=cH('#6a80c8'), NRED=cH('#a8142c'), NPAPER=cH('#fbf8ef'), NPEN_L=cH('#9aaad8');
 SKINS.note={id:'note', glow:false, nolight:true, motes:['#9a9aa4'],
   ui:HDSK.note.ui,
   paperMake:function(){ var p=new Pix(LW,LH), x, y, g=cH('#d6e2f2'), g2=cH('#e6edf6');
@@ -2271,17 +2271,17 @@ SKINS.note={id:'note', glow:false, nolight:true, motes:['#9a9aa4'],
   sky:function(dt,s){ if(!this._k||this._k!==LW+'x'+LH){ this._k=LW+'x'+LH; this._paper=this.paperMake(); this._dood=this.doodleMake(); this._x=this._x||0; }
     this._x=(this._x+2.5*K*dt*s)%(LW*2); lx.drawImage(this._paper,0,0); var x=Math.floor(this._x); lx.drawImage(this._dood,-x,0); lx.drawImage(this._dood,LW*2-x,0); },
   rock:function(r,sz,seed){ var R2=srand(seed*57+3), cr=[]; for(var i=0;i<2+(r>8?1:0);i++) cr.push([R2()*6.2832,R2()*0.5,0.14+R2()*0.12]);
-    return pixRockFrames(r,seed,11,function(p,P,c,rr,f){ p.poly(P,NPAPER);
+    return pixRockFrames(r,seed,11,function(p,P,c,rr,f){ p.poly(P,NTINTP);
       for(var y=0;y<p.h;y++) for(var x=0;x<p.w;x++){ var o=(y*p.w+x)*4; if(!p.d[o+3]) continue; var dx=x-c, dy=y-c; if(dx+dy>r*0.35&&(x+y)%3===0) p.put(x,y,NPEN2); }   // hatched on the shadow side
       var a0=f/16*6.2832; cr.forEach(function(q){ var a=q[0]+a0; p.ring(c+Math.cos(a)*q[1]*r,c+Math.sin(a)*q[1]*r,Math.max(1.2,q[2]*r),Math.max(1.2,q[2]*r),NPEN,0.3,6); });
-      p.path(P,NPEN,true); if(r>7) p.path(P.map(function(q,i){ return [q[0]+(i%3===0?1:0),q[1]]; }),NPEN_L,true); p.path(P,NPEN,true); }); },
+      p.path(P,NPEN,true); if(r>7) p.path(P.map(function(q,i){ return [q[0]+(i%3===0?1:0),q[1]]; }),NPEN,true); p.path(P,NPEN,true); }); },
   shipPix:function(){ return pixOnce('nb-ship',24,16,function(p){ var y=8, S=[[21,y],[9,y-6],[5,y-6],[7,y-2],[3,y-2],[3,y+2],[7,y+2],[5,y+6],[9,y+6]];
-      p.poly(S,NPAPER); p.path(S,NPEN,true); p.rect(13,y-1,4,2,NPEN); p.line(8,y-3,12,y-1,NPEN2); p.line(8,y+3,12,y+1,NPEN2); }); },
+      p.poly(S,NTINTP); p.path(S,NPEN,true); p.rect(13,y-1,4,2,NPEN); p.line(8,y-3,12,y-1,NPEN2); p.line(8,y+3,12,y+1,NPEN2); }); },
   ship:function(x,y,t,blink){ if(blink) return; x=Math.round(x); y=Math.round(y); var fl=Math.floor(t*14)%2;
     lx.drawImage(this.shipPix(),x-2,y-8); lx.fillStyle='#e0701a'; for(var i=0;i<5;i++) lx.fillRect(x-1-i,y+((i+fl)%2?1:-1),1,1); },
   ufoPix:function(big,hurt){ var k=big?1:0.72; return pixOnce('nb-ufo'+big+hurt,26,16,function(p){ var c=13, cy=8, col=hurt?NPEN:NRED, E=[], D=[], i;
-      for(i=0;i<24;i++){ var a=i/24*6.2832; E.push([c+Math.cos(a)*10*k,cy+1+Math.sin(a)*3*k]); } p.poly(E,NPAPER); p.path(E,col,true);
-      for(i=0;i<=10;i++){ var b=Math.PI+i/10*Math.PI; D.push([c+Math.cos(b)*4.5*k,cy-1+Math.sin(b)*4*k]); } p.poly(D,NPAPER); p.path(D,col,false);
+      for(i=0;i<24;i++){ var a=i/24*6.2832; E.push([c+Math.cos(a)*10*k,cy+1+Math.sin(a)*3*k]); } p.poly(E,NTINTP); p.path(E,col,true);
+      for(i=0;i<=10;i++){ var b=Math.PI+i/10*Math.PI; D.push([c+Math.cos(b)*4.5*k,cy-1+Math.sin(b)*4*k]); } p.poly(D,NTINTP); p.path(D,col,false);
       for(i=0;i<5;i++) p.put(c-6*k+i*3*k,cy+1,col); }); },
   ufo:function(ux,uy,big,hurt){ lx.drawImage(this.ufoPix(big,!!hurt),Math.round(ux)-13,Math.round(uy)-8); },
   pick:function(x,y,type){ x=Math.round(x); y=Math.round(y); R('#ffe44a',x-6,y-6,12,12); var c=pixOnce('nb-pick',14,14,function(p){ p.path([[1,1],[12,1],[12,12],[1,12]],NPEN,true); p.line(2,0,12,0,NPEN_L); }); lx.drawImage(c,x-7,y-7); blit(PICONS[type],['#1d3fa0'],x-3,y-3); },
@@ -2502,7 +2502,7 @@ function sHub(){ var fr;
   if(hdWanted(SKIN_IDS[hubSkin])){ hubTick(); noLight=true; drawDemo(skinView(SKIN_IDS[hubSkin]),DT); noLight=false; fr=hdCv; }   // v0.75: no soft light (it would sit outside the card)   // v0.72, HD: the demo on the HD canvas; the card shows it scaled down
   else { fr=hubFrame(); lx.drawImage(fr,0,0); }
   lx.globalAlpha=0.72; R(P.bg,0,0,LW,LH); lx.globalAlpha=1;
-  var cx0=Math.round((SAFE.l+LW-SAFE.r)/2), y=SAFE.t+8, sub=LH>=200;
+  var cx0=Math.round((SAFE.l+LW-SAFE.r)/2), y=SAFE.t+8, sub=LH>=150;   // v0.80: the line under the name on every phone (the cards ~11 px lower; it was only on screens ≥200 px high)
   text('SONAROIDS',cx0,y,P.band,'center',2); if(sub) text(L('hub_s'),cx0,y+19,P.soft,'center');
   // two rows under the cards: «play» (and, on a narrow screen, the sounds beside it), then «how to play», the language (and the sounds);
   // with the service links shown (a long press on the version) everything moves up a line to make room for them

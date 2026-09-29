@@ -164,7 +164,7 @@ function sHub(){ var fr;
   if(hdWanted(SKIN_IDS[hubSkin])){ hubTick(); noLight=true; drawDemo(skinView(SKIN_IDS[hubSkin]),DT); noLight=false; fr=hdCv; }   // v0.75: no soft light (it would sit outside the card)   // v0.72, HD: the demo on the HD canvas; the card shows it scaled down
   else { fr=hubFrame(); lx.drawImage(fr,0,0); }
   lx.globalAlpha=0.72; R(P.bg,0,0,LW,LH); lx.globalAlpha=1;
-  var cx0=Math.round((SAFE.l+LW-SAFE.r)/2), y=SAFE.t+8, sub=LH>=200;
+  var cx0=Math.round((SAFE.l+LW-SAFE.r)/2), y=SAFE.t+8, sub=LH>=150;   // v0.80: the line under the name on every phone (the cards ~11 px lower; it was only on screens ≥200 px high)
   text('SONAROIDS',cx0,y,P.band,'center',2); if(sub) text(L('hub_s'),cx0,y+19,P.soft,'center');
   // two rows under the cards: «play» (and, on a narrow screen, the sounds beside it), then «how to play», the language (and the sounds);
   // with the service links shown (a long press on the version) everything moves up a line to make room for them

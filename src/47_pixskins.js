@@ -75,18 +75,18 @@ SKINS.neon={id:'neon', glow:false, nolight:true, motes:['#c9b8ff','#9ef8ff'],
     if(!this._k||this._k!==LW+'x'+LH){ this._k=LW+'x'+LH; this._sky=this.skyMake(); this._rng=this.rangeMake(); this._grid=[]; for(var f=0;f<8;f++) this._grid.push(this.gridMake(f*2)); this._mx=this._mx||0; this._gx=this._gx||0; }
     this._mx=(this._mx+4*K*dt*s)%(LW*2+40); this._gx=(this._gx+26*K*dt*s)%16;
     lx.drawImage(this._sky,0,0); var mx=Math.floor(this._mx); lx.drawImage(this._rng,-mx,0); lx.drawImage(this._rng,LW*2+40-mx,0);
-    lx.drawImage(this._grid[Math.floor(this._gx/2)%8],0,hz); },
+    lx.drawImage(this._grid[Math.floor(this._gx/2)%8],0,hz); lx.fillStyle='rgba(8,2,22,0.55)'; lx.fillRect(0,0,LW,LH); },   // v0.80: the background dimmed (the maintainer's pick «Б»)
   rock:function(r,sz,seed){ var R2=srand(seed*31+7), inner=[]; for(var i=0;i<3+(r>8?2:0);i++) inner.push(Math.floor(R2()*9));
-    return pixRockFrames(r,seed,9,function(p,P,c){ p.poly(P,[40,8,60]); var cc=[c-r*0.15,c-r*0.1]; inner.forEach(function(k){ p.line(cc[0],cc[1],P[k][0],P[k][1],[110,60,170]); }); var I=P.map(function(q){ var dx=q[0]-c, dy=q[1]-c, d=Math.hypot(dx,dy)||1; return [q[0]-dx/d*1.2,q[1]-dy/d*1.2]; }); p.path(I,cH('#7a2aa8'),true); p.path(P,cH('#f0a0ff'),true); }); },   // the glow inside, so the tube is the rock's edge
+    return pixRockFrames(r,seed,9,function(p,P,c){ p.poly(P,[16,3,28]); var cc=[c-r*0.15,c-r*0.1]; inner.forEach(function(k){ p.line(cc[0],cc[1],P[k][0],P[k][1],[110,60,170]); }); var I=P.map(function(q){ var dx=q[0]-c, dy=q[1]-c, d=Math.hypot(dx,dy)||1; return [q[0]-dx/d*1.2,q[1]-dy/d*1.2]; }); p.path(I,cH('#b050e0'),true); p.path(P,cH('#ffc4ff'),true); }); },   // the glow inside, so the tube is the rock's edge
   shipPix:function(){ return pixOnce('n-ship',24,16,function(p){ var y=8, S=[[21,y],[8,y-6],[4,y-6],[6,y-2],[2,y-2],[2,y+2],[6,y+2],[4,y+6],[8,y+6]];
-      p.poly(S,[10,50,60]); p.path(S,cH('#3ff7d0'),true); p.line(12,y-1,15,y-1,cH('#9fefff')); p.line(12,y,16,y,cH('#3fb8ff')); p.halo(cH('#0f5a54')); }); },
+      p.poly(S,[3,22,28]); p.path(S,cH('#7ffbe4'),true); p.line(12,y-1,15,y-1,cH('#9fefff')); p.line(12,y,16,y,cH('#3fb8ff')); p.halo(cH('#0f5a54')); }); },
   ship:function(x,y,t,blink){ if(blink) return; x=Math.round(x); y=Math.round(y); var fl=Math.floor(t*20)%3; R('#ffb13b',x-2-fl,y,3+fl,1); R('#fff2b0',x,y,1,1); lx.drawImage(this.shipPix(),x-2,y-8); },
   ufoPix:function(big,hurt){ var k=big?1:0.72; return pixOnce('n-ufo'+big+hurt,26,16,function(p){ var c=13, cy=8, col=cH(hurt?'#ffffff':'#ff9aea'), E=[];
-      for(var i=0;i<24;i++){ var a=i/24*6.2832; E.push([c+Math.cos(a)*10*k,cy+1+Math.sin(a)*3*k]); } p.poly(E,[60,8,50]); p.path(E,col,true);
-      var D=[]; for(i=0;i<=10;i++){ var b=Math.PI+i/10*Math.PI; D.push([c+Math.cos(b)*4.5*k,cy-1+Math.sin(b)*4.2*k]); } p.poly(D,[60,8,50]); p.path(D,col,false); p.halo(cH('#6a1a60')); }); },
+      for(var i=0;i<24;i++){ var a=i/24*6.2832; E.push([c+Math.cos(a)*10*k,cy+1+Math.sin(a)*3*k]); } p.poly(E,[26,3,22]); p.path(E,col,true);
+      var D=[]; for(i=0;i<=10;i++){ var b=Math.PI+i/10*Math.PI; D.push([c+Math.cos(b)*4.5*k,cy-1+Math.sin(b)*4.2*k]); } p.poly(D,[26,3,22]); p.path(D,col,false); p.halo(cH('#6a1a60')); }); },
   ufo:function(ux,uy,big,hurt){ lx.drawImage(this.ufoPix(big,!!hurt),Math.round(ux)-13,Math.round(uy)-8); var t=performance.now()/1000;
     for(var i=0;i<5;i++) R((Math.floor(t*6)+i)%2?'#fff27a':'#7affff',Math.round(ux)-6+i*3,Math.round(uy)+1,1,1); },
-  pick:function(x,y,type){ x=Math.round(x); y=Math.round(y); var c=pixOnce('n-pick',15,15,function(p){ p.rect(2,2,11,11,[50,40,8]); p.path([[3,1],[11,1],[13,3],[13,11],[11,13],[3,13],[1,11],[1,3]],cH('#ffe66d'),true); p.halo(cH('#6a5a10')); });
+  pick:function(x,y,type){ x=Math.round(x); y=Math.round(y); var c=pixOnce('n-pick',15,15,function(p){ p.rect(2,2,11,11,[22,17,3]); p.path([[3,1],[11,1],[13,3],[13,11],[11,13],[3,13],[1,11],[1,3]],cH('#ffe66d'),true); p.halo(cH('#6a5a10')); });
     lx.drawImage(c,x-7,y-7); blit(PICONS[type],['#fff6c0'],x-3,y-3); },
   bullet:function(x,y){ x=Math.round(x); y=Math.round(y); R('#ffd24a',x-3,y,3,1); R('#fff6d0',x,y,2,1); R('#1e1404',x-3,y-1,5,1); R('#1e1404',x-3,y+1,5,1); },
   ebullet:function(x,y){ x=Math.round(x); y=Math.round(y); var c=pixOnce('n-eb',7,7,function(p){ p.ring(3,3,2,2,cH('#ffc0d2')); p.rect(2,2,3,3,cH('#ff5a8a')); p.put(3,3,[255,255,255]); p.halo(cH('#2a0418')); }); lx.drawImage(c,x-3,y-3); },
@@ -94,7 +94,7 @@ SKINS.neon={id:'neon', glow:false, nolight:true, motes:['#c9b8ff','#9ef8ff'],
 
 /* ════════ NOTEBOOK, pixels: squared paper with a red margin, pencil doodles drifting behind, one-pixel ballpoint lines; rocks hatched on the
    shadow side, the saucer and the enemy shots in red pen, the power-up coloured with a yellow highlighter ════════ */
-var NPEN=cH('#1d3fa0'), NPEN2=cH('#6a80c8'), NRED=cH('#a8142c'), NPAPER=cH('#fbf8ef'), NPEN_L=cH('#9aaad8');
+var NTINTP=cH('#d0daf2'), NPEN=cH('#1d3fa0'), NPEN2=cH('#6a80c8'), NRED=cH('#a8142c'), NPAPER=cH('#fbf8ef'), NPEN_L=cH('#9aaad8');
 SKINS.note={id:'note', glow:false, nolight:true, motes:['#9a9aa4'],
   ui:HDSK.note.ui,
   paperMake:function(){ var p=new Pix(LW,LH), x, y, g=cH('#d6e2f2'), g2=cH('#e6edf6');
@@ -111,17 +111,17 @@ SKINS.note={id:'note', glow:false, nolight:true, motes:['#9a9aa4'],
   sky:function(dt,s){ if(!this._k||this._k!==LW+'x'+LH){ this._k=LW+'x'+LH; this._paper=this.paperMake(); this._dood=this.doodleMake(); this._x=this._x||0; }
     this._x=(this._x+2.5*K*dt*s)%(LW*2); lx.drawImage(this._paper,0,0); var x=Math.floor(this._x); lx.drawImage(this._dood,-x,0); lx.drawImage(this._dood,LW*2-x,0); },
   rock:function(r,sz,seed){ var R2=srand(seed*57+3), cr=[]; for(var i=0;i<2+(r>8?1:0);i++) cr.push([R2()*6.2832,R2()*0.5,0.14+R2()*0.12]);
-    return pixRockFrames(r,seed,11,function(p,P,c,rr,f){ p.poly(P,NPAPER);
+    return pixRockFrames(r,seed,11,function(p,P,c,rr,f){ p.poly(P,NTINTP);
       for(var y=0;y<p.h;y++) for(var x=0;x<p.w;x++){ var o=(y*p.w+x)*4; if(!p.d[o+3]) continue; var dx=x-c, dy=y-c; if(dx+dy>r*0.35&&(x+y)%3===0) p.put(x,y,NPEN2); }   // hatched on the shadow side
       var a0=f/16*6.2832; cr.forEach(function(q){ var a=q[0]+a0; p.ring(c+Math.cos(a)*q[1]*r,c+Math.sin(a)*q[1]*r,Math.max(1.2,q[2]*r),Math.max(1.2,q[2]*r),NPEN,0.3,6); });
-      p.path(P,NPEN,true); if(r>7) p.path(P.map(function(q,i){ return [q[0]+(i%3===0?1:0),q[1]]; }),NPEN_L,true); p.path(P,NPEN,true); }); },
+      p.path(P,NPEN,true); if(r>7) p.path(P.map(function(q,i){ return [q[0]+(i%3===0?1:0),q[1]]; }),NPEN,true); p.path(P,NPEN,true); }); },
   shipPix:function(){ return pixOnce('nb-ship',24,16,function(p){ var y=8, S=[[21,y],[9,y-6],[5,y-6],[7,y-2],[3,y-2],[3,y+2],[7,y+2],[5,y+6],[9,y+6]];
-      p.poly(S,NPAPER); p.path(S,NPEN,true); p.rect(13,y-1,4,2,NPEN); p.line(8,y-3,12,y-1,NPEN2); p.line(8,y+3,12,y+1,NPEN2); }); },
+      p.poly(S,NTINTP); p.path(S,NPEN,true); p.rect(13,y-1,4,2,NPEN); p.line(8,y-3,12,y-1,NPEN2); p.line(8,y+3,12,y+1,NPEN2); }); },
   ship:function(x,y,t,blink){ if(blink) return; x=Math.round(x); y=Math.round(y); var fl=Math.floor(t*14)%2;
     lx.drawImage(this.shipPix(),x-2,y-8); lx.fillStyle='#e0701a'; for(var i=0;i<5;i++) lx.fillRect(x-1-i,y+((i+fl)%2?1:-1),1,1); },
   ufoPix:function(big,hurt){ var k=big?1:0.72; return pixOnce('nb-ufo'+big+hurt,26,16,function(p){ var c=13, cy=8, col=hurt?NPEN:NRED, E=[], D=[], i;
-      for(i=0;i<24;i++){ var a=i/24*6.2832; E.push([c+Math.cos(a)*10*k,cy+1+Math.sin(a)*3*k]); } p.poly(E,NPAPER); p.path(E,col,true);
-      for(i=0;i<=10;i++){ var b=Math.PI+i/10*Math.PI; D.push([c+Math.cos(b)*4.5*k,cy-1+Math.sin(b)*4*k]); } p.poly(D,NPAPER); p.path(D,col,false);
+      for(i=0;i<24;i++){ var a=i/24*6.2832; E.push([c+Math.cos(a)*10*k,cy+1+Math.sin(a)*3*k]); } p.poly(E,NTINTP); p.path(E,col,true);
+      for(i=0;i<=10;i++){ var b=Math.PI+i/10*Math.PI; D.push([c+Math.cos(b)*4.5*k,cy-1+Math.sin(b)*4*k]); } p.poly(D,NTINTP); p.path(D,col,false);
       for(i=0;i<5;i++) p.put(c-6*k+i*3*k,cy+1,col); }); },
   ufo:function(ux,uy,big,hurt){ lx.drawImage(this.ufoPix(big,!!hurt),Math.round(ux)-13,Math.round(uy)-8); },
   pick:function(x,y,type){ x=Math.round(x); y=Math.round(y); R('#ffe44a',x-6,y-6,12,12); var c=pixOnce('nb-pick',14,14,function(p){ p.path([[1,1],[12,1],[12,12],[1,12]],NPEN,true); p.line(2,0,12,0,NPEN_L); }); lx.drawImage(c,x-7,y-7); blit(PICONS[type],['#1d3fa0'],x-3,y-3); },

@@ -167,7 +167,7 @@ function lcdSprite(rows){ var h=rows.length, w=Math.max.apply(null,rows.map(func
   for(var yy=0;yy<h;yy++) for(var xx=0;xx<w;xx++){ var ch=rows[yy][xx]||'.'; if(ch==='.') continue; x.fillStyle=LCDG[+ch]; x.fillRect(xx*LP+gap,yy*LP+gap,LP-2*gap,LP-2*gap); }
   return {c:o.c,w:w*LP,h:h*LP}; }
 function lcdPut(sp,x,y){ hx.drawImage(sp.c,Math.round(x/LP)*LP,Math.round(y/LP)*LP,sp.w,sp.h); }
-var LCD_SHIP=['..00.........','.0110........','.01110000....','0011111122000','0122221122110','0011111111100','.01110000....','.0110........','..00.........'];
+var LCD_SHIP=['.00........','.0110......','.011100....','00111112200','01222112210','00111111100','.011100....','.0110......','.00........'];   // v0.79: 11 cells long (was 13)
 var LCD_UFO=['....0000....','...022330...','000000000000','031313131310','.0000000000.'];
 var LCD_ICON={shield:['01110','02320','02220','00200','..0..'],triple:['...00','..0..','00000','..0..','...00'],slow:['00000','.020.','..0..','.020.','00000'],life:['0.0.0','00000','00000','.000.','..0..']};
 HDSK.lcd={id:'lcd', hd:true, glow:false, nolight:true, motes:['#8bac0f'], shotsByShape:'a dash vs an X',

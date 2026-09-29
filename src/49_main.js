@@ -312,15 +312,15 @@ function fx(x){ return x*K+SAFE.l; }
 /* rock pictures: 6 per size, drawn ahead of time (a few per frame on the calm screens) — drawing one mid-flight took a frame (v0.16) */
 var POOL_N=6, pool={K:0,list:[[],[],[]]};
 function poolFill(budget){ if(pool.K!==K||pool.skin!==SK||(SK.hd&&pool.hs!==hs)){ pool={K:K,skin:SK,hs:hs,list:[[],[],[]]}; rockSpr={}; } for(var n=0;n<budget;n++){ var sz=[0,1,2].filter(function(i){ return pool.list[i].length<POOL_N; })[0]; if(sz===undefined) return;
-  pool.list[sz].push(SK.rock(Math.max(3,Math.round(Core.R_SIZE[sz]*K)),sz,pool.list[sz].length*17+sz)); } }   // v0.70: the skin's rocks
-function rockFromPool(r){ poolFill(0); var l=pool.list[r.sz]; if(!l||!l.length) return SK.rock(Math.max(3,Math.round(r.r*K)),r.sz,r.id);
+  pool.list[sz].push(makeSkinRock(SK,sz,Core.R_SIZE[sz],pool.list[sz].length*17+sz)); } }   // v0.70: the skin's rocks
+function rockFromPool(r){ poolFill(0); var l=pool.list[r.sz]; if(!l||!l.length) return makeSkinRock(SK,r.sz,r.r,r.id);
   var b=l[r.id%l.length], o={}; for(var k in b) o[k]=b[k]; o.ox=b.ox||0; o.rot=(r.id*5)%16; o.vr=b.vr===0?0:((r.id*7)%11-5); return o; }
 function field(dt,speed){ poolFill(0); SK.sky(dt,speed);
   if(!g) return;
   if(g.state!=='play'){ g.bullets=[]; g.ebullets=[]; g.rocks.forEach(function(r){ r.x+=r.vx*dt; r.y+=r.vy*dt; }); if(g.ufo) g.ufo.x-=6*dt; }   // after the game: things drift on, for the look only
   g.rocks.forEach(function(r){ var sp=rockSpr[r.id]; if(!sp){ sp=rockSpr[r.id]=rockFromPool(r); }
     sp.rot=(sp.rot+sp.vr*dt+16)%16; if(SK.drawRock){ SK.drawRock(sp,fx(r.x),r.y*K); return; }
-    var fr=sp.frames[Math.floor(sp.rot)%16]; lx.drawImage(fr,Math.round(fx(r.x)-sp.size/2+(sp.ox||0)),Math.round(r.y*K-sp.size/2)); });
+    var fr=sp.frames[Math.floor(sp.rot)%16]; lx.drawImage(fr,Math.round(fx(r.x)-sp.size/2+(sp.ox||0)),Math.round(r.y*K-sp.size/2+(sp.oy||0))); });
   g.picks.forEach(function(p){ var x=fx(p.x), y=p.y*K+Math.sin(clock*3)*2; if(!SK.hd){ x=Math.round(x); y=Math.round(y); }
     SK.pick(x,y,p.type); });
   if(g.ufo){ var u=g.ufo, big=u.kind==='big', ux=SK.hd?fx(u.x):Math.round(fx(u.x)), uy=SK.hd?u.y*K:Math.round(u.y*K);
@@ -675,7 +675,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:') navigator.service
 go('hub');   // v0.70: the games' screen first (always the menu first since 0.44; a new player's first "Play" walks through the instruction)
 requestAnimationFrame(loop);
 /* test hooks: headless tests drive the screens through these (harmless in the game) */
-window.__sonaroids={skinProbe:skinProbe,hdProbe:hdProbe,hdIds:hdIds,pixIds:function(){ return SKIN_IDS.filter(function(i){ return !!SKINS[i]; }); },skinIds:function(){ return SKIN_IDS.slice(); },go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },
+window.__sonaroids={skinProbe:skinProbe,hdProbe:hdProbe,sizeProbe:sizeProbe,hdIds:hdIds,pixIds:function(){ return SKIN_IDS.filter(function(i){ return !!SKINS[i]; }); },skinIds:function(){ return SKIN_IDS.slice(); },go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },
   setBooted:function(v){ booted=v; },
   board:function(){ return {tbl:tblBox,nick:nickEl?{shown:nickEl.style.display!=='none',rect:nickEl.getBoundingClientRect().toJSON()}:null}; },
   side:function(){ return {hand:handSide(),rel:handRel,cam:camEnd(),stored:store.get('sonaroids_rel',''),say:sayLast}; }, wave:function(){ toWave(); },

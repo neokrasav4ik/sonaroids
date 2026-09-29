@@ -47,7 +47,7 @@ function reliefSprite(size,shape,height,shade){ var o=hdOff(size,size), W2=o.c.w
 var LDIR=(function(){ var l=[-0.55,-0.65,0.52], n=Math.hypot(l[0],l[1],l[2]); return [l[0]/n,l[1]/n,l[2]/n]; })();
 function lamb(n){ return Math.max(0,n[0]*LDIR[0]+n[1]*LDIR[1]+n[2]*LDIR[2]); }
 /* a rock sprite drawn rotated about its centre */
-function hdDrawRock(sp,x,y){ var s=sp.size; hx.save(); hx.translate(x+(sp.ox||0),y); if(sp.vr) hx.rotate(sp.rot/16*6.2832); hx.drawImage(sp.img,-s/2,-s/2,s,s); if(sp.after) sp.after(sp); hx.restore(); }
+function hdDrawRock(sp,x,y){ var s=sp.size; hx.save(); hx.translate(x+(sp.ox||0),y+(sp.oy||0)); if(sp.vr) hx.rotate(sp.rot/16*6.2832); hx.drawImage(sp.img,-s/2,-s/2,s,s); if(sp.after) sp.after(sp); hx.restore(); }
 /* sparks: soft round dots with a little light */
 function hdParts(){ if(SK&&SK.parts){ SK.parts(); return; } parts.forEach(function(p){ var f=p.life/p.max, c=p.cols[Math.min(p.cols.length-1,Math.floor((1-f)*p.cols.length))]; hx.globalAlpha=Math.min(1,f*1.6); hx.fillStyle=c; hx.beginPath(); hx.arc(p.x,p.y,0.45+f*0.7,0,6.2832); hx.fill(); }); hx.globalAlpha=1; }
 
@@ -309,7 +309,7 @@ function hdProbe(id){ var sk=HDSK[id], out={}, keep=hx, pn=performance.now; if(!
   try{
     var bg=grab(LW,LH,1,function(){ sk.sky(0,0); }); out.bg=bg.d; out.bgW=bg.w; out.bgH=bg.h;
     out.motes=sk.motes||[]; out.shotsByShape=sk.shotsByShape||'';
-    out.rocks=[0,1,2].map(function(sz){ var r=Math.max(3,Math.round(Core.R_SIZE[sz]*K)), sp=sk.rock(r,sz,sz*17+3); return grab(r*3.2,r*3.2,hs,function(){ sk.drawRock(sp,r*1.6,r*1.6); }); });
+    out.rocks=[0,1,2].map(function(sz){ var sp=makeSkinRock(sk,sz,Core.R_SIZE[sz],sz*17+3), r=Math.ceil(sp.r||rockR(sk,sz,Core.R_SIZE[sz])); return grab(r*3.2,r*3.2,hs,function(){ sk.drawRock(sp,r*1.6,r*1.6); }); });
     out.ship=grab(48,28,hs,function(){ sk.ship(16,14,0.3,false); });
     out.ufo=grab(36,22,hs,function(){ sk.ufo(18,11,true,false); });
     out.ufoS=grab(30,18,hs,function(){ sk.ufo(15,9,false,false); });

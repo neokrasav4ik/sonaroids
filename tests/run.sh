@@ -21,4 +21,5 @@ echo; echo "== the app's own sound: frames through the app, the service screen (
 echo; echo "== skins: every object readable on its sky (Chromium) =="; node tests/skin_audit.js
 echo; echo "== HD skins: every object readable on its sky (Chromium) =="; HD=1 node tests/skin_audit.js
 echo; echo "== graphics: pixels / HD (Chromium) =="; node tests/hd.js
+echo; echo "== skins: objects drawn the size the game counts (Chromium) =="; node tests/skin_sizes.js
 echo; echo "== the whole game, synthetic microphone (Chromium) =="; node tests/flow.js

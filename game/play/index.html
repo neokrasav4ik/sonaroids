@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='0.78';
+var VERSION='0.79';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -1203,6 +1203,21 @@ var SHIP_MAP=[
  '.....12221......',
  '....1221........',
  '....11..........'];
+/* v0.79: the flying ship is drawn 20 pixels long (was 16: 80% of the other skins' ships); SHIP_MAP stays for the small pictures */
+var SHIP_BIG=[
+ '.....11.............',
+ '.....1221...........',
+ '......12221.........',
+ '.......122221.......',
+ '..11112223333211....',
+ '.12222233333333211..',
+ '.1233333333333333321',
+ '.12222233333333211..',
+ '..11112223333211....',
+ '.......122221.......',
+ '......12221.........',
+ '.....1221...........',
+ '.....11.............'];
 var UFO_BIG=[
  '.......1111.......',
  '......134431......',
@@ -1227,8 +1242,8 @@ function bigBlit(map,col,x,y,k){ for(var r=0;r<map.length;r++) for(var c=0;c<map
 /* the ship with its engine flame; (x, y) — the ship's nose line, like the core's ship position */
 function drawShip(x,y,t,blink){
   if(blink) return; var fl=Math.floor(t*20)%3, sx=Math.round(x), sy=Math.round(y);
-  R(P.flame[0],sx-3-fl,sy-1,3+fl,3); R(P.flame[1],sx-2-(fl>>1),sy,2+(fl>>1),1); R(P.flame[2],sx-1,sy,1,1);
-  blit(SHIP_MAP,P.ship,sx,sy-5); light(x-2,y,9*K,hex(P.flame[1]).join(','),0.4);
+  R(P.flame[0],sx-5-fl,sy-1,3+fl,3); R(P.flame[1],sx-4-(fl>>1),sy,2+(fl>>1),1); R(P.flame[2],sx-3,sy,1,1);
+  blit(SHIP_BIG,P.ship,sx-2,sy-6); light(x-2,y,9*K,hex(P.flame[1]).join(','),0.4);
 }
 function burst(x,y,n,cols,sp){ for(var i=0;i<n;i++){ var a=Math.random()*6.28, v=rnd(0.3,1)*sp; parts.push({x:x,y:y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:rnd(0.4,0.9),max:0.9,cols:cols}); } }
 function drawParts(dt){
@@ -1574,13 +1589,13 @@ var demo=null, demoSpr={};
 function demoMake(){ var R2=srand(5), d={rocks:[],shots:[],ufo:{x:LW*0.8,y:LH*0.35},t:0};
   for(var i=0;i<7;i++) d.rocks.push({x:LW*(0.3+R2()*0.8),y:LH*(0.12+R2()*0.76),sz:i%3===0?0:i%3===1?1:2,v:10+R2()*14,id:i});
   return d; }
-function demoRock(sk,sz,id){ var k=sk.id+(sk.hd?'hd'+hs:'')+':'+sz+':'+id+':'+K; if(!demoSpr[k]) demoSpr[k]=sk.rock(Math.max(3,Math.round(Core.R_SIZE[sz]*K)),sz,id*13+sz); return demoSpr[k]; }
+function demoRock(sk,sz,id){ var k=sk.id+(sk.hd?'hd'+hs:'')+':'+sz+':'+id+':'+K; if(!demoSpr[k]) demoSpr[k]=makeSkinRock(sk,sz,Core.R_SIZE[sz],id*13+sz); return demoSpr[k]; }
 function drawDemo(sk,dt,shipX,st,shipY,skyS,shipK){ var d;                   // v0.77: shipK — the ship a little larger (the drawn phone's screen)                            // v0.76: st — a demo of its own (the drawn phone's screen), shipY — the ship's height, skyS — the sky's speed
   if(st){ if(!st.d||st.d.LW!==LW){ st.d=demoMake(); st.d.LW=LW; } d=st.d; } else { if(!demo||demo.LW!==LW){ demo=demoMake(); demo.LW=LW; } d=demo; } d.t+=dt;
   sk.sky(dt,skyS===undefined?0.5:skyS);
   d.rocks.forEach(function(r){ r.x-=r.v*K*dt; if(r.x<-20){ r.x=LW+20; r.y=LH*(0.12+Math.random()*0.76); }
     var sp=demoRock(sk,r.sz,r.id); if(sk.drawRock){ sp.rot=(sp.rot+(sp.vr||0)*dt+16)%16; sk.drawRock(sp,r.x,r.y); return; }
-    var fr=sp.frames[Math.floor((d.t*2+r.id)%16)]; lx.drawImage(fr,Math.round(r.x-sp.size/2+(sp.ox||0)),Math.round(r.y-sp.size/2)); });
+    var fr=sp.frames[Math.floor((d.t*2+r.id)%16)]; lx.drawImage(fr,Math.round(r.x-sp.size/2+(sp.ox||0)),Math.round(r.y-sp.size/2+(sp.oy||0))); });
   var sy=Math.round(shipY!==undefined?shipY:LH*(0.5+0.18*Math.sin(d.t*0.9))), sx=Math.round(shipX===undefined?fx(Core.SHIP_X):shipX);
   if(Math.floor(d.t*6)!==Math.floor((d.t-dt)*6)) d.shots.push({x:sx+16,y:sy});
   d.shots=d.shots.filter(function(b){ b.x+=190*K*dt; return b.x<LW+10; }); d.shots.forEach(function(b){ sk.bullet(b.x,b.y); });
@@ -1599,7 +1614,7 @@ function skinProbe(id){ var sk=SKINS[id], out={}, keep=lx, oldSK=SK;
   if(sh){ out.bg=Array.from(sh.c.getContext('2d').getImageData(0,0,sh.c.width,sh.c.height).data); out.bgW=sh.c.width; out.bgH=sh.c.height; }
   else { out.bg=grab(LW,LH,function(){ if(id==='space') sky(0,0); else sk.sky(0,0); }); out.bgW=LW; out.bgH=LH; }   // v0.76: a skin's own sky (not the chosen one's)
   out.motes=sk.motes||P.stars;
-  out.rocks=[0,1,2].map(function(sz){ var r=sk.rock(Math.max(3,Math.round(Core.R_SIZE[sz]*K)),sz,sz*17+3), c=r.frames[0], d=c.getContext('2d').getImageData(0,0,c.width,c.height).data; return {w:c.width,h:c.height,d:Array.from(d)}; });
+  out.rocks=[0,1,2].map(function(sz){ var r=makeSkinRock(sk,sz,Core.R_SIZE[sz],sz*17+3), c=r.frames[0], d=c.getContext('2d').getImageData(0,0,c.width,c.height).data; return {w:c.width,h:c.height,d:Array.from(d)}; });
   function obj(w,h,fn){ return {w:w,h:h,d:grab(w,h,fn)}; }
   out.ship=obj(40,24,function(){ sk.ship(20,12,0.3,false); });
   out.ufo=obj(30,16,function(){ sk.ufo(15,8,true,false); });
@@ -1665,7 +1680,7 @@ function reliefSprite(size,shape,height,shade){ var o=hdOff(size,size), W2=o.c.w
 var LDIR=(function(){ var l=[-0.55,-0.65,0.52], n=Math.hypot(l[0],l[1],l[2]); return [l[0]/n,l[1]/n,l[2]/n]; })();
 function lamb(n){ return Math.max(0,n[0]*LDIR[0]+n[1]*LDIR[1]+n[2]*LDIR[2]); }
 /* a rock sprite drawn rotated about its centre */
-function hdDrawRock(sp,x,y){ var s=sp.size; hx.save(); hx.translate(x+(sp.ox||0),y); if(sp.vr) hx.rotate(sp.rot/16*6.2832); hx.drawImage(sp.img,-s/2,-s/2,s,s); if(sp.after) sp.after(sp); hx.restore(); }
+function hdDrawRock(sp,x,y){ var s=sp.size; hx.save(); hx.translate(x+(sp.ox||0),y+(sp.oy||0)); if(sp.vr) hx.rotate(sp.rot/16*6.2832); hx.drawImage(sp.img,-s/2,-s/2,s,s); if(sp.after) sp.after(sp); hx.restore(); }
 /* sparks: soft round dots with a little light */
 function hdParts(){ if(SK&&SK.parts){ SK.parts(); return; } parts.forEach(function(p){ var f=p.life/p.max, c=p.cols[Math.min(p.cols.length-1,Math.floor((1-f)*p.cols.length))]; hx.globalAlpha=Math.min(1,f*1.6); hx.fillStyle=c; hx.beginPath(); hx.arc(p.x,p.y,0.45+f*0.7,0,6.2832); hx.fill(); }); hx.globalAlpha=1; }
 
@@ -1927,7 +1942,7 @@ function hdProbe(id){ var sk=HDSK[id], out={}, keep=hx, pn=performance.now; if(!
   try{
     var bg=grab(LW,LH,1,function(){ sk.sky(0,0); }); out.bg=bg.d; out.bgW=bg.w; out.bgH=bg.h;
     out.motes=sk.motes||[]; out.shotsByShape=sk.shotsByShape||'';
-    out.rocks=[0,1,2].map(function(sz){ var r=Math.max(3,Math.round(Core.R_SIZE[sz]*K)), sp=sk.rock(r,sz,sz*17+3); return grab(r*3.2,r*3.2,hs,function(){ sk.drawRock(sp,r*1.6,r*1.6); }); });
+    out.rocks=[0,1,2].map(function(sz){ var sp=makeSkinRock(sk,sz,Core.R_SIZE[sz],sz*17+3), r=Math.ceil(sp.r||rockR(sk,sz,Core.R_SIZE[sz])); return grab(r*3.2,r*3.2,hs,function(){ sk.drawRock(sp,r*1.6,r*1.6); }); });
     out.ship=grab(48,28,hs,function(){ sk.ship(16,14,0.3,false); });
     out.ufo=grab(36,22,hs,function(){ sk.ufo(18,11,true,false); });
     out.ufoS=grab(30,18,hs,function(){ sk.ufo(15,9,false,false); });
@@ -2105,7 +2120,7 @@ function lcdSprite(rows){ var h=rows.length, w=Math.max.apply(null,rows.map(func
   for(var yy=0;yy<h;yy++) for(var xx=0;xx<w;xx++){ var ch=rows[yy][xx]||'.'; if(ch==='.') continue; x.fillStyle=LCDG[+ch]; x.fillRect(xx*LP+gap,yy*LP+gap,LP-2*gap,LP-2*gap); }
   return {c:o.c,w:w*LP,h:h*LP}; }
 function lcdPut(sp,x,y){ hx.drawImage(sp.c,Math.round(x/LP)*LP,Math.round(y/LP)*LP,sp.w,sp.h); }
-var LCD_SHIP=['..00.........','.0110........','.01110000....','0011111122000','0122221122110','0011111111100','.01110000....','.0110........','..00.........'];
+var LCD_SHIP=['.00........','.0110......','.011100....','00111112200','01222112210','00111111100','.011100....','.0110......','.00........'];   // v0.79: 11 cells long (was 13)
 var LCD_UFO=['....0000....','...022330...','000000000000','031313131310','.0000000000.'];
 var LCD_ICON={shield:['01110','02320','02220','00200','..0..'],triple:['...00','..0..','00000','..0..','...00'],slow:['00000','.020.','..0..','.020.','00000'],life:['0.0.0','00000','00000','.000.','..0..']};
 HDSK.lcd={id:'lcd', hd:true, glow:false, nolight:true, motes:['#8bac0f'], shotsByShape:'a dash vs an X',
@@ -2273,6 +2288,54 @@ SKINS.note={id:'note', glow:false, nolight:true, motes:['#9a9aa4'],
   bullet:function(x,y){ x=Math.round(x); y=Math.round(y); R('#1d3fa0',x-4,y,6,1); R('#6a80c8',x-3,y+1,4,1); },
   ebullet:function(x,y){ x=Math.round(x); y=Math.round(y); var c=pixOnce('nb-eb',6,6,function(p){ p.line(0,0,4,4,NRED); p.line(4,0,0,4,NRED); p.line(1,0,5,4,NRED); p.line(5,0,1,4,NRED); }); lx.drawImage(c,x-3,y-2); },
   bursts:function(){ return HDSK.note.bursts(); }, shield:function(){ return '#1d3fa0'; }, mini:function(){ return ['#1d3fa0','#6a80c8']; } };
+/* ── v0.79: every skin draws its objects the size of what the game counts (the maintainer: «на сказке в пикселе объекты больше, чем в HD»).
+   Hits, points and the server's replay live in the core (src/13_core.js) and are the same for every skin and both graphics; only the pictures
+   differed — a rock was drawn from 80% (space, pixels) to 152% (fairy tale, pixels, small cloud) of the circle it is hit in. Now:
+   · rocks: each skin's picture is scaled per size by its own factor rk (measured against the core's circle: tests/skin_sizes.js keeps every
+     skin, both graphics, at 90–112% on common screens), and a sprite whose body sits off its centre is moved back onto it (ox / oy);
+   · ships: 21–25 game pixels long in every skin (the space pixel ship and the LCD ship redrawn larger / smaller; the HD fairy dragon,
+     the HD vector ship and the HD notebook ship scaled by shipK). ── */
+var RK={ 'space':[1.13,1.13,1.13], 'space/hd':[1.01,1,1], 'fairy':[0.82,0.73,0.6], 'fairy/hd':[0.89,1,0.85],
+  'vector':[0.91,0.88,0.73], 'vector/hd':[0.97,0.97,0.95], 'neon':[0.96,0.98,0.95], 'neon/hd':[0.97,0.99,0.99], 'note':[0.96,0.93,0.9], 'note/hd':[0.96,0.98,0.95],
+  'lcd/hd':[0.91,0.86,0.79] };
+function rockK(sk,sz){ var f=sk&&RK[sk.id+(sk.hd?'/hd':'')]; return f?f[sz]:1; }
+/* the sprite radius for a rock of core radius rc: whole pixels for pixel pictures and the LCD cells, half pixels for smooth HD */
+function rockR(sk,sz,rc){ var v=rc*K*rockK(sk,sz); return (sk&&sk.hd&&sk.id!=='lcd')?Math.max(3,Math.round(v*2)/2):Math.max(3,Math.round(v)); }
+/* the middle of a picture's body (alpha ≥ 128), in its own pixels */
+function alphaBox(c){ var w=c.width, h=c.height, d=c.getContext('2d').getImageData(0,0,w,h).data, x0=w, y0=h, x1=-1, y1=-1, x, y;
+  for(y=0;y<h;y++) for(x=0;x<w;x++) if(d[(y*w+x)*4+3]>=128){ if(x<x0) x0=x; if(x>x1) x1=x; if(y<y0) y0=y; if(y>y1) y1=y; }
+  return x1<0?null:{cx:(x0+x1+1)/2,cy:(y0+y1+1)/2,w:x1-x0+1,h:y1-y0+1}; }
+/* a pixel rock (16 turning frames) or an HD cloud sprite whose body is off its centre by 1.5 game pixels or more is moved back onto it */
+function rockCentre(sp){ try{
+    if(sp.frames&&sp.frames.length){ var n=sp.frames.length, sx=0, sy=0, k=0; for(var f=0;f<n;f+=Math.max(1,n>>2)){ var a=alphaBox(sp.frames[f]); if(a){ sx+=a.cx; sy+=a.cy; k++; } }   // the middle over its turn
+      if(k){ var dx=sp.size/2-sx/k, dy=sp.size/2-sy/k; if(Math.abs(dx)>=1.5) sp.ox=(sp.ox||0)+Math.round(dx); if(Math.abs(dy)>=1.5) sp.oy=(sp.oy||0)+Math.round(dy); } }
+    else if(sp.img&&sp.img.getContext&&!sp.vr){ var c=alphaBox(sp.img), s=sp.size/sp.img.width; if(c){
+      var ex=(sp.img.width/2-c.cx)*s, ey=(sp.img.height/2-c.cy)*s; if(Math.abs(ex)>=1.5) sp.ox=(sp.ox||0)+ex; if(Math.abs(ey)>=1.5) sp.oy=(sp.oy||0)+ey; } }
+  }catch(e){} return sp; }
+/* every rock the game draws is made here: the skin's picture at its own size, centred */
+function makeSkinRock(sk,sz,rc,seed){ return rockCentre(sk.rock(rockR(sk,sz,rc),sz,seed)); }
+/* HD ships drawn a little larger or smaller around their own point (the flame and the light stay with the ship) */
+(function(){ var SHIPK={fairy:0.82,vector:1.3,note:0.87};
+  Object.keys(SHIPK).forEach(function(id){ var sk=HDSK[id]; if(!sk||sk._shipK) return; var k=SHIPK[id], draw=sk.ship; sk._shipK=k;
+    sk.ship=function(x,y,t,blink){ if(blink) return; hx.save(); hx.translate(x,y); hx.scale(k,k); hx.translate(-x,-y); try{ draw.call(this,x,y,t,blink); } finally { hx.restore(); } }; }); })();
+/* for tests/skin_sizes.js: a skin's rocks and ship as the game draws them, measured in game pixels — the body (alpha ≥ 128), its size
+   against the core's circle and how far its middle sits from the point the game draws it at */
+function sizeProbe(id,mode){ var sk=mode==='pixel'?SKINS[id]:HDSK[id]; if(!sk) return null; var keepL=lx, keepH=hx, keepHs=hs, SC=4, W=120, H=100, out={rocks:[],ship:null};
+  if(!hdCv) hdSize();
+  function grab(fn){ var c=document.createElement('canvas'); noLight=true;
+    try{ if(mode==='pixel'){ c.width=W; c.height=H; lx=c.getContext('2d'); lx.imageSmoothingEnabled=false; fn(lx); }
+      else { c.width=W*SC; c.height=H*SC; hx=c.getContext('2d'); hx.setTransform(SC,0,0,SC,0,0); hs=SC; fn(hx); } }
+    finally { lx=keepL; hx=keepH; hs=keepHs; noLight=false; lights=[]; }
+    var b=alphaBox(c), s=mode==='pixel'?1:SC; return b?{w:b.w/s,h:b.h/s,dx:b.cx/s-W/2,dy:b.cy/s-H/2}:null; }
+  try{ var t=document.createElement('canvas'); t.width=LW; t.height=LH; if(mode==='pixel'){ lx=t.getContext('2d'); sk.sky(0,0); } else { hx=t.getContext('2d'); sk.sky(0,0); } }catch(e){} lx=keepL; hx=keepH;
+  [0,1,2].forEach(function(sz){ var hit=2*Core.R_SIZE[sz]*K, n=0, pc=0, dx=0, dy=0;                           // six rocks, four turns each
+    for(var seed=3;seed<9;seed++){ var sp=makeSkinRock(sk,sz,Core.R_SIZE[sz],seed*17+sz); sp.after=null;   // the body only (not the fairy cloud's lightning)
+      for(var q=0;q<4;q++){ var m=grab(function(ctx){ if(sk.drawRock){ var r0=sp.rot; sp.rot=q*4; sk.drawRock(sp,W/2,H/2); sp.rot=r0; }
+          else ctx.drawImage(sp.frames[q*4%sp.frames.length],Math.round(W/2-sp.size/2+(sp.ox||0)),Math.round(H/2-sp.size/2+(sp.oy||0))); });
+        if(m){ n++; pc+=Math.max(m.w,m.h)/hit; dx+=m.dx; dy+=m.dy; } } }
+    out.rocks.push(n?{pct:Math.round(100*pc/n),dx:+(dx/n).toFixed(1),dy:+(dy/n).toFixed(1)}:null); });
+  var s=grab(function(){ sk.ship(W/2,H/2,0.3,false); }); out.ship=s?+s.w.toFixed(1):0;
+  return out; }
 /* ── SCREENS AND THE GAME LOOP ──
    First launch: language → sound volume → put the phone down → microphone → take your hand away → wave → game.
    Later launches: title → take your hand away → wave → game. After each command a pause ring fills (1.5 s),
@@ -2587,15 +2650,15 @@ function fx(x){ return x*K+SAFE.l; }
 /* rock pictures: 6 per size, drawn ahead of time (a few per frame on the calm screens) — drawing one mid-flight took a frame (v0.16) */
 var POOL_N=6, pool={K:0,list:[[],[],[]]};
 function poolFill(budget){ if(pool.K!==K||pool.skin!==SK||(SK.hd&&pool.hs!==hs)){ pool={K:K,skin:SK,hs:hs,list:[[],[],[]]}; rockSpr={}; } for(var n=0;n<budget;n++){ var sz=[0,1,2].filter(function(i){ return pool.list[i].length<POOL_N; })[0]; if(sz===undefined) return;
-  pool.list[sz].push(SK.rock(Math.max(3,Math.round(Core.R_SIZE[sz]*K)),sz,pool.list[sz].length*17+sz)); } }   // v0.70: the skin's rocks
-function rockFromPool(r){ poolFill(0); var l=pool.list[r.sz]; if(!l||!l.length) return SK.rock(Math.max(3,Math.round(r.r*K)),r.sz,r.id);
+  pool.list[sz].push(makeSkinRock(SK,sz,Core.R_SIZE[sz],pool.list[sz].length*17+sz)); } }   // v0.70: the skin's rocks
+function rockFromPool(r){ poolFill(0); var l=pool.list[r.sz]; if(!l||!l.length) return makeSkinRock(SK,r.sz,r.r,r.id);
   var b=l[r.id%l.length], o={}; for(var k in b) o[k]=b[k]; o.ox=b.ox||0; o.rot=(r.id*5)%16; o.vr=b.vr===0?0:((r.id*7)%11-5); return o; }
 function field(dt,speed){ poolFill(0); SK.sky(dt,speed);
   if(!g) return;
   if(g.state!=='play'){ g.bullets=[]; g.ebullets=[]; g.rocks.forEach(function(r){ r.x+=r.vx*dt; r.y+=r.vy*dt; }); if(g.ufo) g.ufo.x-=6*dt; }   // after the game: things drift on, for the look only
   g.rocks.forEach(function(r){ var sp=rockSpr[r.id]; if(!sp){ sp=rockSpr[r.id]=rockFromPool(r); }
     sp.rot=(sp.rot+sp.vr*dt+16)%16; if(SK.drawRock){ SK.drawRock(sp,fx(r.x),r.y*K); return; }
-    var fr=sp.frames[Math.floor(sp.rot)%16]; lx.drawImage(fr,Math.round(fx(r.x)-sp.size/2+(sp.ox||0)),Math.round(r.y*K-sp.size/2)); });
+    var fr=sp.frames[Math.floor(sp.rot)%16]; lx.drawImage(fr,Math.round(fx(r.x)-sp.size/2+(sp.ox||0)),Math.round(r.y*K-sp.size/2+(sp.oy||0))); });
   g.picks.forEach(function(p){ var x=fx(p.x), y=p.y*K+Math.sin(clock*3)*2; if(!SK.hd){ x=Math.round(x); y=Math.round(y); }
     SK.pick(x,y,p.type); });
   if(g.ufo){ var u=g.ufo, big=u.kind==='big', ux=SK.hd?fx(u.x):Math.round(fx(u.x)), uy=SK.hd?u.y*K:Math.round(u.y*K);
@@ -2950,7 +3013,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:') navigator.service
 go('hub');   // v0.70: the games' screen first (always the menu first since 0.44; a new player's first "Play" walks through the instruction)
 requestAnimationFrame(loop);
 /* test hooks: headless tests drive the screens through these (harmless in the game) */
-window.__sonaroids={skinProbe:skinProbe,hdProbe:hdProbe,hdIds:hdIds,pixIds:function(){ return SKIN_IDS.filter(function(i){ return !!SKINS[i]; }); },skinIds:function(){ return SKIN_IDS.slice(); },go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },
+window.__sonaroids={skinProbe:skinProbe,hdProbe:hdProbe,sizeProbe:sizeProbe,hdIds:hdIds,pixIds:function(){ return SKIN_IDS.filter(function(i){ return !!SKINS[i]; }); },skinIds:function(){ return SKIN_IDS.slice(); },go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },
   setBooted:function(v){ booted=v; },
   board:function(){ return {tbl:tblBox,nick:nickEl?{shown:nickEl.style.display!=='none',rect:nickEl.getBoundingClientRect().toJSON()}:null}; },
   side:function(){ return {hand:handSide(),rel:handRel,cam:camEnd(),stored:store.get('sonaroids_rel',''),say:sayLast}; }, wave:function(){ toWave(); },

@@ -25,7 +25,7 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
   while(T()<70){
     await p.waitForTimeout(100);
     const s=await p.evaluate(()=>{ const s=__sonaroids.state(), st=Sonar.state(); return {scr:s.scr,caught:s.caught,hand:(st&&st.present&&s.T)?Tune.fracOf(s.T,st.height):null,
-      car:s.g&&s.g.car?(s.g.car.y-Race.centre(s.g,s.g.d+s.g.car.x))/s.g.FH:null,   /* v0.87: the car's place across the road */ gstate:s.g?s.g.state:null, score:s.g?s.g.score:null}; });
+      car:s.g&&s.g.car?s.g.car.y/s.g.FH:null, gstate:s.g?s.g.state:null, score:s.g?s.g.score:null}; });
     if(s.scr!==last){ seen.push(s.scr+'@'+T().toFixed(1)); last=s.scr; }
     if(s.scr==='probe') await p.evaluate(()=>__sonaroids.act.probe_norm());
     if(s.scr==='wave'&&s.caught&&T()>=17&&!startAt){ await shot('02_try'); startAt=T(); await p.evaluate(()=>__sonaroids.act.start()); }
@@ -48,7 +48,7 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
   let ok=true; const out=[], check=(n,g,i)=>{ ok=ok&&g; out.push(`${n}: ${i||''} ${g?'ok':'FAIL'}`); };
   check('the card opens the race menu',menu.scr==='rtitle'&&menu.mode==='race'&&menu.btn.includes('play')&&menu.btn.includes('hub'),menu.btn.join(','));
   check('screens',['probe','away','wave','count','play'].every(k=>seen.some(q=>q.startsWith(k+'@'))),seen.join(' '));
-  // the car follows the palm: correlation of the palm and the car's place across the road (a higher palm: the car nearer the upper kerb, y falls)
+  // the car follows the palm: correlation of palm and car heights (the car is higher on screen for a higher palm: y falls)
   const n=follow.length, mh=follow.reduce((a,q)=>a+q[0],0)/n, mc=follow.reduce((a,q)=>a+q[1],0)/n; let sxy=0,sxx=0,syy=0; follow.forEach(q=>{ sxy+=(q[0]-mh)*(q[1]-mc); sxx+=(q[0]-mh)**2; syy+=(q[1]-mc)**2; });
   const corr=n>20?sxy/Math.sqrt(sxx*syy):0; check('the car follows the palm',corr<-0.8,`correlation ${corr.toFixed(2)} over ${n} samples`);
   check('the candy land is drawn',drawn&&drawn.shown&&drawn.choc>0.05&&drawn.pink>0.1,drawn?`road ${(100*drawn.choc).toFixed(0)}%, glaze ${(100*drawn.pink).toFixed(0)}%`:'none');

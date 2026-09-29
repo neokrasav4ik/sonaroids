@@ -280,7 +280,7 @@ function raceDemoStep(rg){ var s=rg.car, cx=rg.d+s.x, road=Race.at(rg,cx+40), ty
     rg.cars.forEach(function(c){ var dx=c.x-cx, cy=Race.centre(rg,c.x)+c.o; if(dx>-20&&dx<110){ var tr=Math.max(0,dx+18)/Math.max(10,rg.v-c.v), py=s.y+Math.sign(yy-s.y)*Math.min(Math.abs(yy-s.y),110*tr); if(Math.abs(py-cy)<12) sc-=6-dx/30; if(dx<20&&cy>Math.min(s.y,yy)-10&&cy<Math.max(s.y,yy)+10) sc-=6; } });
     rg.items.forEach(function(p){ var dx=p.x-cx; if(dx>4&&dx<120&&Math.abs(Race.centre(rg,p.x)+p.o-yy)<7) sc+=1; });
     if(sc>best){ best=sc; ty=yy; } }
-  Race.step(rg,Math.max(0,Math.min(1,0.5-(ty-road.c)/(2*(road.hw+Race.OFFW))))); rg.fuel=100; }
+  Race.step(rg,(Race.FH-Race.MARGIN-ty)/(Race.FH-2*Race.MARGIN)); rg.fuel=100; }
 
 /* ── v0.87: SonaRace on the drawn phones of the getting ready and the instructions (the maintainer: «в стиле гонок»; the candy land
    behind the screens was tried and dropped — «фон слишком на себя отвлекает»): the road with the rocket car at the palm's height ── */

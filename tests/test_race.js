@@ -1,5 +1,5 @@
 /* The race core (src/14_race.js): deterministic, the car follows the palm, the fuel ends the race, and the bot driver's races
-   last as tuned (29 Sep: a middling driver 2–6 min — v0.87: steering across the road, more gifts and sodas made it easier —, a weak one shorter). Run: node tests/test_race.js */
+   last as tuned (29 Sep: a middling driver 2–6 min — v0.87: more gifts and sodas made it easier —, a weak one shorter). Run: node tests/test_race.js */
 const Race=require('../src/14_race.js'), bot=require('./race_bot.js');
 let ok=true; const out=[]; const check=(name,good,info)=>{ ok=ok&&good; out.push(`${name}: ${info||''} ${good?'ok':'FAIL'}`); };
 // a wobbling palm with gaps (no palm seen)
@@ -9,9 +9,7 @@ const a=play(42), b=play(42), c=play(43), r=Race.replay(42,390,hands);
 check('same seed and palm → same race',a.score===b.score&&a.d===b.d&&a.t===b.t,`score ${a.score}, ${Math.floor(a.d/10)} m, ${a.t.toFixed(1)} s`);
 check('replay gives the same race',r.score===a.score&&r.d===a.d,`${r.score}`);
 check('another seed → another race',c.score!==a.score||c.d!==a.d);
-{ const g=Race.create(1,390); for(let i=0;i<18;i++) Race.step(g,1); const r=Race.at(g,g.d+g.car.x); check('a palm at the top: the car past the upper kerb',g.car.y<r.c-r.hw,`y ${g.car.y.toFixed(1)}, road ${(r.c-r.hw).toFixed(0)}–${(r.c+r.hw).toFixed(0)}`); }
-{ const g=Race.create(3,390); const offs=[]; for(let i=0;i<60*40;i++){ Race.step(g,0.62); if(i>60){ const r=Race.at(g,g.d+g.car.x); offs.push((g.car.y-r.c)/r.hw); } } const lo=Math.min(...offs), hi=Math.max(...offs);   // v0.87
-  check('a still palm keeps its place across the road through the bends',hi-lo<0.12,`across the road ${lo.toFixed(2)}…${hi.toFixed(2)} of the half-width`); }
+{ const g=Race.create(1,390); for(let i=0;i<18;i++) Race.step(g,1); check('the car follows the palm to the top',Math.abs(g.car.y-Race.MARGIN)<Race.FH*0.01,`y ${g.car.y.toFixed(1)}`); }
 { const g=Race.create(1,390); let n=0; while(g.state!=='over'&&n<60*600){ Race.step(g,0); n++; }   // stuck at the bottom, off the road: no sodas, slow
   check('no fuel → the car rolls to a stop, the race is over',g.state==='over'&&g.fuel===0&&g.v===0,`${(g.t).toFixed(0)} s, ${Math.floor(g.d/10)} m`); }
 { const g=Race.create(5,390); let off=0, on=0; for(let i=0;i<60*8;i++){ Race.step(g,0); } off=g.v; const h=Race.create(5,390); for(let i=0;i<60*8;i++){ const road=Race.at(h,h.d+h.car.x+10); Race.step(h,(Race.FH-Race.MARGIN-road.c)/(Race.FH-2*Race.MARGIN)); } on=h.v;

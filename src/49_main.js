@@ -477,21 +477,18 @@ function sRTitle(){ raceDemoTick(); raceScene(rDemo,rDemo.d,rDemo.car.y,DT);
   if(raceBest>0) text(L('best')+' '+raceBest,cx0,LH-SAFE.b-28,P.text,'center');
   say('SonaRace. '+L('play')); }
 /* the try-out before the race: an empty stretch of road rolls slowly, the car follows the palm */
-/* v0.87: before the race too the palm sets the car's place across the road (as in the race), not its height on the screen */
-var rCarYs=null;
-function raceCarY(rg,vd){ var t=Race.steerY(rg,vd+Race.CAR_X,lastHand===null?0.5:lastHand); rCarYs=rCarYs===null?t:rCarYs+(t-rCarYs)*0.49; return rCarYs; }
 function raceTry(){ followShip(); lx.clearRect(0,0,LW,LH); if(!rTry){ rTry=Race.create(7,raceFW(),Race.FH/2); rTryD=0; } rTryD+=45*DT;
-  raceScene(rTry,rTryD,raceCarY(rTry,rTryD),DT);
+  raceScene(rTry,rTryD,shipY/K,DT);
   titles(L('wave_ok'),L('r_try'));
   var items=[['start',L('play'),'primary'],['again',L('recal')]], bw=btnW(items.map(function(q){ return q[1]; })), lane=Math.round(fx(Race.CAR_X))+30;
   column(items,Math.round(LH*0.62),freeSide()==='left'?Math.max(sideX(bw),lane):undefined); stepSquares('wave'); }
 /* the countdown: the race's own road, still, the car at the palm */
-function raceCount(){ countT-=DT; followShip(); raceScene(g,g.d,raceCarY(g,g.d),DT);
+function raceCount(){ countT-=DT; followShip(); raceScene(g,g.d,shipY/K,DT);
   var n=Math.max(1,Math.ceil(countT)), cx0=Math.round(LW/2), cy0=Math.round(LH/2);
   ring(cx0,cy0,13,1-(countT-Math.floor(countT)),P.band); text(String(n),cx0,cy0-3,P.text,'center'); say(String(n));
   if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.play('tick');
   if(countT<=0) startGame(); }
-function raceStart(){ var y0=rCarYs===null?null:+rCarYs.toFixed(3); if(y0!==null) g.car.y=Math.max(Race.MARGIN,Math.min(Race.FH-Race.MARGIN,y0)); g.car.off=g.car.y-Race.centre(g,g.d+g.car.x);
+function raceStart(){ var y0=shipY===null?null:+(shipY/K).toFixed(3); if(y0!==null) g.car.y=Math.max(Race.MARGIN,Math.min(Race.FH-Race.MARGIN,y0));
   acc=0; parts=[]; raceNew=false; var I=Sonar.info();
   Logs.gameStart({core:Race.TAG,game:'race',seed:g.seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:'frozen',asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
     chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids'});
@@ -640,7 +637,10 @@ var verHold=null, verDown=false;   // verDown: the finger is still on the versio
 cv.addEventListener('pointerdown',function(e){ downOn=btnAt(e); if(verHold){ clearTimeout(verHold); verHold=null; }
   if(downOn==='ver'){ verDown=true; verHold=setTimeout(function(){ verHold=null; if(verDown){ verDown=false; ACT.ver(); Sfx.play('tap'); downOn=null; } },700); }
   e.preventDefault(); },{passive:false});
-cv.addEventListener('pointerup',function(e){ verDown=false; if(verHold){ clearTimeout(verHold); verHold=null; } var id=btnAt(e); if(id==='ver'){ downOn=null; e.preventDefault(); return; } if(id&&id===downOn&&!ACT[id]&&id.indexOf('aud:')===0){ Sfx.play('tap'); audAct(id); } else if(id&&id===downOn&&ACT[id]){ if(id!=='allow'&&id!=='play'&&id!=='retry'&&id!=='sfx'&&id!=='vol_dn'&&id!=='vol_up') Sfx.play('tap'); ACT[id](); } downOn=null; e.preventDefault(); },{passive:false});
+/* v0.87 (the maintainer): a short tap on the version on the games' screen reloads the page (a new version at once);
+   the long press still shows the service links */
+cv.addEventListener('pointerup',function(e){ verDown=false; var quick=!!verHold; if(verHold){ clearTimeout(verHold); verHold=null; } var id=btnAt(e);
+  if(id==='ver'){ if(quick&&downOn==='ver'&&scr==='hub'){ Logs.ev('обновление страницы по версии'); location.reload(); } downOn=null; e.preventDefault(); return; } if(id&&id===downOn&&!ACT[id]&&id.indexOf('aud:')===0){ Sfx.play('tap'); audAct(id); } else if(id&&id===downOn&&ACT[id]){ if(id!=='allow'&&id!=='play'&&id!=='retry'&&id!=='sfx'&&id!=='vol_dn'&&id!=='vol_up') Sfx.play('tap'); ACT[id](); } downOn=null; e.preventDefault(); },{passive:false});
 cv.addEventListener('pointercancel',function(){ downOn=null; });
 cv.addEventListener('touchend',function(){ verDown=false; });   // the hold ends when the finger lifts, even after a pointercancel
 ['gesturestart','gesturechange','gestureend','dblclick'].forEach(function(n){ document.addEventListener(n,function(e){ e.preventDefault(); },{passive:false}); });

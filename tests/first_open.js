@@ -9,10 +9,12 @@ const path=require('path'), ROOT=path.join(__dirname,'..');
   const s0=await p.evaluate(()=>__sonaroids.state().scr), g0=await p.evaluate(()=>__sonaroids.state().gfx);
   const hasPlay=await p.evaluate(()=>__sonaroids.btn().some(x=>x.id==='hub_play')&&__sonaroids.btn().some(x=>x.id==='hub_rocks'));   // v0.70: the games' screen
   const verTitle=await p.evaluate(()=>__sonaroids.btn().some(x=>x.id==='ver'));
-  // v0.56: a tap on the version does nothing, a long press (0.7 s) shows the service links
+  // v0.56: a long press (0.7 s) on the version shows the service links; v0.87: a short tap on it reloads the page (the games' screen only)
   const vb=await p.evaluate(()=>{ const q=__sonaroids.btn().find(x=>x.id==='ver'), s=__sonaroids.S(); return {x:(q.x+q.w/2)*s.S/s.DPR,y:(q.y+q.h/2)*s.S/s.DPR}; });
-  await p.evaluate(()=>{ Logs.has=()=>true; });
-  await p.mouse.click(vb.x,vb.y); await p.waitForTimeout(250); const afterTap=await p.evaluate(()=>__sonaroids.btn().some(x=>x.id==='logs'));
+  await p.evaluate(()=>{ window.__mark=1; });
+  await Promise.all([p.waitForNavigation({timeout:5000}).catch(()=>null),p.mouse.click(vb.x,vb.y)]); await p.waitForTimeout(800);
+  const reloaded=await p.evaluate(()=>window.__mark===undefined&&__sonaroids.scr()==='hub');
+  await p.evaluate(()=>{ Logs.has=()=>true; }); const afterTap=await p.evaluate(()=>__sonaroids.btn().some(x=>x.id==='logs'));
   await p.mouse.move(vb.x,vb.y); await p.mouse.down(); await p.waitForTimeout(900); await p.mouse.up(); await p.waitForTimeout(250);
   const afterHold=await p.evaluate(()=>__sonaroids.btn().some(x=>x.id==='logs')&&__sonaroids.btn().some(x=>x.id==='lab'));
   await p.evaluate(()=>__sonaroids.act.ver());
@@ -27,8 +29,8 @@ const path=require('path'), ROOT=path.join(__dirname,'..');
   const g1=await p.evaluate(()=>__sonaroids.state().gfx);
   await b.close();
   const gfxOk=g0==='hd'&&kept==='pixel'&&g1==='pixel';
-  const ok=gfxOk&&s0==='hub'&&hasPlay&&s1==='sound'&&verTitle&&verSetup&&logsShown&&!afterTap&&afterHold&&!errors.length;
+  const ok=gfxOk&&s0==='hub'&&hasPlay&&s1==='sound'&&verTitle&&verSetup&&logsShown&&reloaded&&!afterTap&&afterHold&&!errors.length;
   console.log(`graphics on the first open: ${g0} (want hd); pixels picked → stored ${kept}, after a restart ${g1} (want pixel)`);
-  console.log(`first open: ${s0} (want hub, the games' screen) → "play": ${s1} (want sound, the instruction); version switch on the title ${verTitle}, on the sound screen ${verSetup}, "logs" after a tap ${logsShown}; on the title a tap on the version shows logs ${afterTap} (want false), a long press shows logs and lab ${afterHold} (want true)`+(errors.length?' | errors: '+errors.join('; '):''));
+  console.log(`first open: ${s0} (want hub, the games' screen) → "play": ${s1} (want sound, the instruction); version switch on the title ${verTitle}, on the sound screen ${verSetup}, "logs" after a tap ${logsShown}; a tap on the version reloads the page ${reloaded}, and shows no logs ${!afterTap}, a long press shows logs and lab ${afterHold} (want true)`+(errors.length?' | errors: '+errors.join('; '):''));
   console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;
 })();

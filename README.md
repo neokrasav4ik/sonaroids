@@ -13,7 +13,7 @@ The phone lies flat on the table — or sits in your other hand. It plays an ina
 ## How to play
 
 1. Turn the phone sideways and lay it on the table, screen up — or hold it in your other hand, screen up.
-2. Set the **media volume** to 20–30% (the silent switch doesn't matter).
+2. Set the **media volume** to 20–30% (on iPhone 40–60%). If the game says the phone doesn't hear its sound, turn off silent mode — it can mute the game.
 3. Pick the probe: **wide** (cleaner control; children and pets may hear it) or **normal** (silent, slightly rougher control). The game asks before every game, there is no default.
 4. Allow the microphone. Take your hand away for a moment — the game listens to the empty room.
 5. Wave your palm up and down **5–10 cm above the table**, beside the phone — or, with the phone in your hand, move your palm, edge down, **5–15 cm from the phone's end** with the charging port (closer means lower). Don't cover the speaker or the microphone. The game fits the screen to your range, then shows the real ship following your palm — check the top and the bottom, and play (or recalibrate).

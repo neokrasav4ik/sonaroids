@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='0.85';
+var VERSION='0.86';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -437,9 +437,9 @@ if(typeof module!=='undefined') module.exports=Core;
 var Race=(function(){
   var DT=1/60, FH=180, MARGIN=FH*0.04, CAR_X=40, FOLLOW=0.48658;          // the car follows the palm with the ship's 25 ms lag
   var CAR={hl:9,hw:4.6};                                                   // half the car's length and width (every car the same)
-  var TUNE={V0:112,V1:205,VT:240, ACC:55, BRAKE:120, OFF:0.5, KERB:0.9, KERB_W:4, SYRUP:0.62, SYRUP_T:0.7,
+  var TUNE={V0:92,V1:200,VT:300, ACC:55, BRAKE:120, OFF:0.5, KERB:0.9, KERB_W:4, SYRUP:0.62, SYRUP_T:0.7,
     HW0:0.25*FH, HW1:0.185*FH, HWD:40000, FUEL:100, BURN0:2.0, BURN1:3.2, BURNT:360, SODA:30, CRASH_V:0.35, CRASH_FUEL:6, INV:1.1,
-    SODA_GAP:[1200,1600], SODA_GROW:60000, GIFT_GAP:[2400,3400], COIN_GAP:[330,620], CAR_GAP:[150,320], PUD_GAP:[520,980],
+    SODA_GAP:[1000,1350], SODA_GROW:60000, GIFT_GAP:[2400,3400], COIN_GAP:[330,620], CAR_GAP:[240,480], PUD_GAP:[520,980],
     MAGNET:6, BUBBLE:12, PASS:25, COIN:10, LINE:50};
   function rng(seed){ var a=seed>>>0; return function(){ a=(a+0x6D2B79F5)>>>0; var t=a; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
   function rnd(g,a,b){ return a+g.rand()*(b-a); }
@@ -447,7 +447,9 @@ var Race=(function(){
   /* how far into the race, 0 → 1: by distance for the road, by time for the pace */
   function farD(d){ return clamp(d/TUNE.HWD,0,1); }
   function farT(t){ return clamp(t/TUNE.VT,0,1); }
-  function vmax(t){ return TUNE.V0+(TUNE.V1-TUNE.V0)*farT(t); }
+  /* v0.86 (the maintainer: «скорость пусть возрастает постепеннее, не сразу быстро»): slower at first and speeding up slowly, then faster —
+     f^1.5 (by sqrt: exact on every engine): 92 at the start, ~100 at 1 min, ~120 at 2, ~140 at 3, ~170 at 4, 200 from 5 */
+  function vmax(t){ var f=farT(t); return TUNE.V0+(TUNE.V1-TUNE.V0)*f*Math.sqrt(f); }
   function burn(t){ return TUNE.BURN0+(TUNE.BURN1-TUNE.BURN0)*clamp(t/TUNE.BURNT,0,1); }
   function density(t){ return 1+0.9*farT(t); }                              // cars and puddles: up to 1.9× as often
   /* the road: a middle line through key points every 90–200 units, joined by smoothstep (flat at each point — soft S-bends) */
@@ -1140,6 +1142,8 @@ var Board=(function(){
 /* ── UI strings, English. All caps: the game's pixel font is drawn in capitals on screen. ── */
 var STR={};
 STR.en={
+  volume_ios:'SET THE VOLUME TO 40–60%', volume_direct_ios:'THE VOLUME IS TOO LOW — TURN IT UP TO 40–60%', volume_loud_ios:'THE VOLUME IS TOO HIGH — TURN IT DOWN TO 40–60%',
+  volume_silent:"THE PHONE DOESN'T HEAR ITS SOUND — TURN OFF SILENT MODE AND TURN THE VOLUME UP", volume_silent_s:'SILENT MODE CAN MUTE THE GAME',
   r_s:'THE CAR DRIVES ITSELF — YOUR PALM STEERS', r_try:'THE CAR FOLLOWS YOUR PALM — TRY THE TOP AND THE BOTTOM', r_fuel:'FUEL', r_out:'OUT OF FUEL', r_m:'M', r_finish:'FINISH',
   r_dist:'DISTANCE', r_coins:'CANDY COINS', r_passed:'CARS PASSED', r_rules:'SODA — FUEL, MAGNET, GUM BUBBLE — A SHIELD',
   title:'SONAROIDS', android:'ON ANDROID IT DOES NOT WORK ON EVERY PHONE', source:'SOURCE CODE', version:'VERSION', play:'PLAY', recal:'RECALIBRATE', howto:'HOW TO PLAY', or:'OR', covered:"DON'T COVER THE SPEAKER AND MIC", fullscr:'FOR FULL SCREEN MODE, ADD THE SITE TO YOUR HOME SCREEN', lang:'РУССКИЙ', sfx_row:'SOUNDS', sfx_off:'SOUNDS: OFF',
@@ -1170,6 +1174,8 @@ STR.en={
 };
 /* ── UI strings, Russian ── */
 STR.ru={
+  volume_ios:'УСТАНОВИ ГРОМКОСТЬ НА 40–60%', volume_direct_ios:'ГРОМКОСТЬ СЛИШКОМ ТИХАЯ — ПРИБАВЬ ДО 40–60%', volume_loud_ios:'ГРОМКОСТЬ СЛИШКОМ БОЛЬШАЯ — УБАВЬ ДО 40–60%',
+  volume_silent:'ТЕЛЕФОН НЕ СЛЫШИТ СВОЙ ЗВУК — ВЫКЛЮЧИ БЕСШУМНЫЙ РЕЖИМ И ПРИБАВЬ ГРОМКОСТЬ', volume_silent_s:'БЕСШУМНЫЙ РЕЖИМ МОЖЕТ ГЛУШИТЬ ИГРУ',
   r_s:'МАШИНКА ЕДЕТ САМА — ЛАДОНЬ РУЛИТ', r_try:'МАШИНКА ИДЁТ ЗА ЛАДОНЬЮ — ПРОВЕРЬ ВЕРХ И НИЗ', r_fuel:'ТОПЛИВО', r_out:'ТОПЛИВО КОНЧИЛОСЬ', r_m:'М', r_finish:'ФИНИШ',
   r_dist:'ПРОЕХАЛ', r_coins:'КОНФЕТ-МОНЕТОК', r_passed:'ОБОГНАЛ МАШИН', r_rules:'ГАЗИРОВКА — ТОПЛИВО, МАГНИТ, ПУЗЫРЬ — ЗАЩИТА',
   title:'SONAROIDS', android:'НА ANDROID РАБОТАЕТ НЕ НА ВСЕХ ТЕЛЕФОНАХ', source:'ИСХОДНЫЙ КОД', version:'ВЕРСИЯ', play:'ИГРАТЬ', recal:'ПЕРЕКАЛИБРОВАТЬ', howto:'ИНСТРУКЦИЯ', or:'ИЛИ', covered:'НЕ ЗАКРЫВАЙ ДИНАМИК И МИКРОФОН', fullscr:'ДЛЯ ПОЛНОЭКРАННОГО РЕЖИМА — ДОБАВЬ САЙТ НА ЭКРАН «ДОМОЙ»', lang:'ENGLISH', sfx_row:'ЗВУКИ', sfx_off:'ЗВУКИ: ВЫКЛ',
@@ -1526,9 +1532,9 @@ var SPEAKER=['...11....','..111..1.','11111...1','11111.1.1','11111...1','..111.
 function soundVolume(t){ var k=Math.max(3,Math.round(LH/55)), cy=Math.round(LH*0.5), x2=Math.round(LW/2-13*k);
   if(uiS>1){ lx.fillStyle=P.text; lx.beginPath(); lx.moveTo(x2,cy-2*k); lx.lineTo(x2+2*k,cy-2*k); lx.lineTo(x2+5*k,cy-4.5*k); lx.lineTo(x2+5*k,cy+3.5*k); lx.lineTo(x2+2*k,cy+1*k); lx.lineTo(x2,cy+1*k); lx.closePath(); lx.fill();
     lx.strokeStyle=P.text; lx.lineWidth=0.8*k; lx.lineCap='round'; [2.2,4].forEach(function(rr){ lx.beginPath(); lx.arc(x2+5.5*k,cy-0.5*k,rr*k,-0.8,0.8); lx.stroke(); }); } else bigBlit(SPEAKER,P.text,x2,cy-4*k,k);
-  var lvl=Math.min(3,Math.floor((t%3)*3)+1), bx=x2+11*k;   // v0.45: the band marks 20–30% (bars 2–3 of 10), was 30–70%
+  var ios=isIOS(), top=ios?6:3, lvl=Math.min(top,Math.floor((t%3)*top)+1), bx=x2+11*k;   // v0.86: an iPhone's band is 40–60% (bars 4–6)   // v0.45: the band marks 20–30% (bars 2–3 of 10), was 30–70%
   for(var j=0;j<10;j++){ var h=Math.round((3+j*1.1)*k*0.6), xb=bx+j*Math.round(k*1.6), yb=cy+3*k-h;
-    if(j>=1&&j<=2) R(P.band,xb-1,yb-1,Math.round(k)+2,h+2); R(j<lvl?P.text:P.line,xb,yb,Math.round(k),h); } }
+    if(ios?(j>=3&&j<=5):(j>=1&&j<=2)) R(P.band,xb-1,yb-1,Math.round(k)+2,h+2); R(j<lvl?P.text:P.line,xb,yb,Math.round(k),h); } }
 /* draw a picture function into the side canvas and copy it onto the screen, mirrored when the port is on the left */
 function picture(fn,mirror){
   var keep=lx, pcx=pc.getContext('2d'); pcx.clearRect(0,0,LW,LH); lx=pcx; var labels;
@@ -2632,6 +2638,15 @@ function rCar(px,py,body,dark,player){ var L=19, W=10, glass='rgba(40,20,60,0.75
   rx.fillStyle=glass; rx.beginPath(); rx.roundRect(px-2,py-3.3,7,6.6,2.5); rx.fill(); rx.fillStyle='rgba(255,255,255,0.7)'; rx.beginPath(); rx.roundRect(px-1.2,py-2.6,2.4,1.4,0.7); rx.fill();
   if(player){ rx.fillStyle='#ffffff'; rx.fillRect(px-L/2+1,py-0.8,5,1.6); rx.fillStyle='rgba(255,240,180,0.95)'; rx.beginPath(); rx.ellipse(px+L/2-0.5,py-3,0.9,1.3,0,0,6.2832); rx.ellipse(px+L/2-0.5,py+3,0.9,1.3,0,0,6.2832); rx.fill(); }
   else { rx.fillStyle='rgba(255,60,60,0.9)'; rx.fillRect(px-L/2,py-3.6,0.9,1.6); rx.fillRect(px-L/2,py+2,0.9,1.6); } }
+/* v0.86: the player's car — a rocket car (the maintainer: «наша машинка должна быть непохожа на все остальные, не только цветом», his pick
+   «В»): a long round mint body with a pink nose cone, two pink fins at the back, a round window; the candy exhaust puffs are drawn live */
+function rRocket(px,py){ rx.fillStyle='rgba(40,10,30,0.22)'; rx.beginPath(); rx.ellipse(px+1.5,py+2,11,4.5,0,0,6.2832); rx.fill();
+  rx.fillStyle='#2a1a28'; [[-5,-5],[5,-5],[-5,5],[5,5]].forEach(function(w){ rx.beginPath(); rx.roundRect(px+w[0]-2.2,py+w[1]-1.3,4.4,2.6,1); rx.fill(); });
+  rx.fillStyle='#ff4f7a'; rx.beginPath(); rx.moveTo(px-7,py-3); rx.lineTo(px-11,py-7); rx.lineTo(px-4,py-3); rx.closePath(); rx.fill(); rx.beginPath(); rx.moveTo(px-7,py+3); rx.lineTo(px-11,py+7); rx.lineTo(px-4,py+3); rx.closePath(); rx.fill();
+  var g=rx.createLinearGradient(0,py-4,0,py+4); g.addColorStop(0,'#ffffff'); g.addColorStop(0.3,'#2fe0b0'); g.addColorStop(1,'#0f8a6a'); rx.fillStyle=g;
+  rx.beginPath(); rx.moveTo(px-9,py-3.6); rx.lineTo(px+4,py-3.6); rx.quadraticCurveTo(px+11,py-2.5,px+11,py); rx.quadraticCurveTo(px+11,py+2.5,px+4,py+3.6); rx.lineTo(px-9,py+3.6); rx.closePath(); rx.fill(); rx.strokeStyle='#0a5a44'; rx.lineWidth=0.6; rx.stroke();
+  rx.fillStyle='#ff4f7a'; rx.beginPath(); rx.moveTo(px+6,py-3.2); rx.quadraticCurveTo(px+11,py-2.5,px+11,py); rx.quadraticCurveTo(px+11,py+2.5,px+6,py+3.2); rx.closePath(); rx.fill();
+  rx.fillStyle='rgba(40,20,60,0.8)'; rx.beginPath(); rx.arc(px+1,py,2.2,0,6.2832); rx.fill(); rx.fillStyle='rgba(255,255,255,0.8)'; rx.beginPath(); rx.arc(px+0.4,py-0.8,0.7,0,6.2832); rx.fill(); }
 function rFuel(px,py){ rx.fillStyle='rgba(0,0,0,0.18)'; rx.beginPath(); rx.ellipse(px+1,py+6,5,1.6,0,0,6.2832); rx.fill();
   rx.fillStyle='#3fd07a'; rx.beginPath(); rx.roundRect(px-3.5,py-3,7,9,2.2); rx.fill(); rx.fillRect(px-1.4,py-6.5,2.8,4); rx.fillStyle='#e8363a'; rx.fillRect(px-1.8,py-7.5,3.6,1.6);
   rx.fillStyle='#fff6d0'; rx.fillRect(px-3.5,py,7,2.6); rx.fillStyle='#e8363a'; rx.beginPath(); rx.moveTo(px+0.6,py+0.2); rx.lineTo(px-1.2,py+1.5); rx.lineTo(px,py+1.5); rx.lineTo(px-0.6,py+2.5); rx.lineTo(px+1.2,py+1.1); rx.lineTo(px,py+1.1); rx.closePath(); rx.fill();
@@ -2651,7 +2666,8 @@ function rBubble(px,py){ rx.fillStyle='rgba(0,0,0,0.14)'; rx.beginPath(); rx.ell
   rx.strokeStyle='#a01a68'; rx.lineWidth=0.6; rx.stroke(); rx.fillStyle='rgba(255,255,255,0.9)'; rx.beginPath(); rx.ellipse(px-1.8,py-2,1.4,0.8,-0.6,0,6.2832); rx.fill(); rx.beginPath(); rx.arc(px+2,py+1.8,0.5,0,6.2832); rx.fill(); }
 /* a sprite: w×h sketch pixels around its middle, at this phone's HD scale */
 function rSprite(key,w,h,draw){ var s=RC.sp[key]; if(s) return s; var KS=rKS(), o=hdOff(w*KS,h*KS,hs); rx=o.x; rx.setTransform(hs*KS,0,0,hs*KS,0,0); rx.translate(w/2,h/2); draw(); return RC.sp[key]={c:o.c,w:w*KS,h:h*KS}; }
-function rCarSprite(kind,player){ var col=player?R_PLAYER:R_CARS[kind%R_CARS.length]; return rSprite((player?'p':'c'+kind%R_CARS.length),28,20,function(){ rCar(0,0,col[0],col[1],player); }); }
+function rCarSprite(kind,player){ if(player) return rSprite('p',30,20,function(){ rx.translate(1.5,0); rRocket(0,0); });   // the middle of its body stays the car's point
+  var col=R_CARS[kind%R_CARS.length]; return rSprite('c'+kind%R_CARS.length,28,20,function(){ rCar(0,0,col[0],col[1],false); }); }
 function rGiftSprite(t){ return rSprite('g'+t,16,18,function(){ if(t==='fuel') rFuel(0,0); else if(t==='coin') rCoin(0,0); else if(t==='magnet') rMagnet(0,0); else rBubble(0,0); }); }
 function rBlit(s,X,Y,a){ if(a){ hx.save(); hx.translate(X,Y); hx.rotate(a); hx.drawImage(s.c,-s.w/2,-s.h/2,s.w,s.h); hx.restore(); } else hx.drawImage(s.c,X-s.w/2,Y-s.h/2,s.w,s.h); }
 /* the road's direction at a place (radians; drawing only) */
@@ -2677,7 +2693,10 @@ function raceScene(rg,vd,carY,dt){ rReset(rg.seed); var KS=rKS(), X0=rX0===null?
     var vy=rPrevY===null||!dt?0:(carY-rPrevY)/dt; rPrevY=carY; var want=Math.max(-0.5,Math.min(0.5,Math.atan2(vy,Math.max(60,rg.v||0))));   // the car turns the way it goes, 30° at most rTilt+=(want-rTilt)*Math.min(1,(dt||0)*12);
     var blink=s.inv>0&&Math.floor(clock*14)%2===0;
     if(s.magnet>0&&(s.magnet>2||Math.floor(clock*8)%2)){ for(var m=0;m<3;m++){ var ph=((clock*1.4+m/3)%1); hx.strokeStyle='rgba(232,40,74,'+(0.5*(1-ph)).toFixed(3)+')'; hx.lineWidth=0.8; hx.beginPath(); hx.arc(X,Y,(10+ph*30)*K/SU,-0.9,0.9); hx.stroke(); } }
-    if(!blink) rBlit(rCarSprite(0,true),X,Y,rTilt);
+    if(!blink){ var ks=K/SU, sp=Math.min(1,(rg.v||40)/120); hx.save(); hx.translate(X,Y); hx.rotate(rTilt);           // candy puffs behind it, livelier the faster it goes
+      [[0,'#ffe0f0',2.4],[1,'#ffd23f',1.8],[2,'#ffb3d9',1.3]].forEach(function(q){ var ph=(clock*6+q[0]*0.33)%1, r=q[2]*(0.7+0.5*sp)*(1-ph*0.4)*ks; hx.globalAlpha=0.9-ph*0.5;
+        hx.fillStyle=q[1]; hx.beginPath(); hx.arc((-11.5-q[0]*2.6-ph*4*sp)*ks,(q[0]===1?-0.9:q[0]===2?0.8:0)*ks,r,0,6.2832); hx.fill(); });
+      hx.globalAlpha=1; hx.restore(); rBlit(rCarSprite(0,true),X,Y,rTilt); }
     if(s.bubble>0&&(s.bubble>3||Math.floor(clock*8)%2)){ var R0=13*K/SU; hx.fillStyle='rgba(255,138,196,0.28)'; hx.beginPath(); hx.arc(X,Y,R0,0,6.2832); hx.fill(); hx.strokeStyle='rgba(224,64,154,0.8)'; hx.lineWidth=0.8; hx.stroke();
       hx.fillStyle='rgba(255,255,255,0.75)'; hx.beginPath(); hx.ellipse(X-R0*0.4,Y-R0*0.5,R0*0.25,R0*0.12,-0.6,0,6.2832); hx.fill(); } }
 }
@@ -2774,7 +2793,7 @@ var lang=store.get('sonaroids_lang',((navigator.language||'').toLowerCase().inde
 function L(k){ return STR[lang][k]||k; }
 var PAUSE=3.5, AWAY_T0=0.6, AWAY_T1=2.8, WAVE_PAUSE=2.5,           // v0.16: more time to take the hand away, and the drawn hand leaves slower (0.6–2.8 s)
  STEPS=['sound','phone','mic','probe','away','wave'];
-var scr=null, scrT=0, clock=0, onboarding=false, direct=false, dirLoud=false, booted=false, errKind=null;
+var scr=null, scrT=0, clock=0, onboarding=false, direct=false, dirLoud=false, dirSilent=false, silentRetry=false, booted=false, errKind=null;
 var handSaved=store.get('sonaroids_hand',''), acoustic=false;
 var prep=null, T=null, caught=false, g=null, acc=0, countT=0, overT=0, shake=0, flash=0, rockSpr={}, best=+store.get('sonaroids_best','0')||0;
 /* own sounds louder than this in the microphone are turned down (v0.19: 0.05, was 0.3). iPhone: peaks 0.007–0.013 with sounds on — never ducks */
@@ -2956,7 +2975,12 @@ function sTitle(){
   items.forEach(function(b){ if(b[2]==='skin') skinRow(bx0,y,w,h); else button(b[0],b[1],bx0,y,w,h,b[2]||'',Math.floor(clock*2)%2===0); y+=h+gap; });
   var a0=freeSide()==='left'?band1:SAFE.l, a1=freeSide()==='left'?LW-SAFE.r:band0, lsc=PF.width('SonaFly',2)<=a1-a0-12?2:1; text('SonaFly',Math.round((a0+a1)/2),Math.round(LH*0.16),P.band,'center',lsc);
   say('SonaFly. '+L('play')+'. '+L('skin')+': '+L('skin_'+skinId)); }
-function sSound(){ sky(DT,0.3); titles(L(direct?(dirLoud?'volume_loud':'volume_direct'):'volume'),L('volume_s')); soundVolume(scrT); nextBtn('next',L('next')); stepSquares('sound'); }
+/* v0.86: an iPhone asks for 40–60% (the maintainer's iPhone, 29 Sep: at 30–40% its probe came 3 dB over the bar — once it steered, once
+   not; the iPhone gives the game its call volume while the microphone is on, lower than the media one); the phone that does not hear its
+   own probe at all (a level 40 dB under the bar, the probe band empty) is told about silent mode — it can mute the game after all */
+function isIOS(){ var ua=navigator.userAgent||''; return /iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1); }
+function volKey(k){ return isIOS()&&STR[lang][k+'_ios']?k+'_ios':k; }
+function sSound(){ sky(DT,0.3); titles(L(direct?(dirSilent?'volume_silent':volKey(dirLoud?'volume_loud':'volume_direct')):volKey('volume')),L(direct&&dirSilent?'volume_silent_s':'volume_s')); soundVolume(scrT); nextBtn('next',L('next')); stepSquares('sound'); }
 /* v0.41: the Android app (android/, a WebView over this very page) gives a small native helper: media volume, audio route.
    In the browser it does not exist, and nothing changes there */
 var APP=(typeof window!=='undefined'&&window.SonaroidsApp)||null;
@@ -2988,7 +3012,9 @@ function sAway(){ sky(DT,0.3); var m=handSide()==='left', aw=Math.min(1,Math.max
   ringUI(st==='wait'?scrT/PAUSE:st==='ok'?1:Math.min(0.95,(scrT-PAUSE)/3.2),st);
   if(scrT>=PAUSE&&!prep) startPrepare();
   if(prep&&prep.res){ if(prep.res.ok){ if(scrT-prep.doneT>1.5) toWave(); }       // «the room is quiet» stays for 1.5 s
-    else { direct=true; dirLoud=prep.res.why==='loud'; onboarding=false; go('sound'); } }
+    else { var silent=prep.res.why==='noprobe'||(prep.res.why==='quiet'&&typeof prep.res.snr==='number'&&prep.res.snr<10);   // not heard at all: every heard probe on record had 24–48 dB
+      if(silent&&!silentRetry){ silentRetry=true; Logs.ev('зонд не слышно — ещё раз'); prep=null; scrT=PAUSE; return; }            // once more at once: a sound that did not start
+      silentRetry=false; direct=true; dirLoud=prep.res.why==='loud'; dirSilent=silent; onboarding=false; go('sound'); } }
   stepSquares('away');  }
 /* v0.69: the probe plays from the front camera's end and that end is on the left — a right-handed player has to turn the phone round.
    The screen goes dark: «turn the phone round, by 180° if you play with your right hand», the phone with two arrows round it, «round like a
@@ -3321,7 +3347,7 @@ function boot(then){ Sonar.boot().then(function(){ booted=true; Sfx.play('tap');
   .catch(function(e){ errKind=(e&&e.message&&/webaudio|worklet/.test(e.message))?'audio':'mic'; Board.setup(errKind==='mic'?'nomic':'noaudio'); go('nomic'); }); }
 /* v0.40 (27 Sep): before every game — the probe choice, no default: «wide» (cleaner control, children and animals may hear it) or «normal» (silent) */
 function toAway(){ prep=null; go('probe'); }
-function toRoom(b){ Sonar.setBand(b); prep=null; go('away'); }
+function toRoom(b){ Sonar.setBand(b); prep=null; silentRetry=false; go('away'); }
 function toWave(){ T=Tune.create(+store.get('sonaroids_field','100')||100,true); caught=false; flips=0; flipT=-9; seenT=0; go('wave'); }
 function pauseGame(){ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; go('paused'); } }
 function startCount(){ if(resumeAfterPrep&&g&&g.state!=='over'){ resumeAfterPrep=false; countT=3; go('count-resume'); return; }
@@ -3338,7 +3364,8 @@ function startGame(){ if(mode==='race'){ raceStart(); return; }
 var ACT={
   en:function(){ lang='en'; store.set('sonaroids_lang','en'); go('sound'); },
   ru:function(){ lang='ru'; store.set('sonaroids_lang','ru'); go('sound'); },
-  next:function(){ if(scr==='sound'){ if(direct) (booted?toAway():go('mic')); else go('phone'); } else if(scr==='phone'){ if(booted) toAway(); else go('mic'); } },
+  next:function(){ if(scr==='sound'){ if(direct&&dirSilent){ dirSilent=false; Sonar.restart(); booted=false; boot(toAway); return; }   // the sound anew, from this tap
+    if(direct) (booted?toAway():go('mic')); else go('phone'); } else if(scr==='phone'){ if(booted) toAway(); else go('mic'); } },
   allow:function(){ boot(toAway); },
   appupd:function(){ try{ APP.checkUpdate(); }catch(e){} setTimeout(function(){ location.reload(); },600); },
   probe_wide:function(){ toRoom('wide'); }, probe_norm:function(){ toRoom('normal'); },

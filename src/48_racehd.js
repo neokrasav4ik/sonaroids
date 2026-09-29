@@ -205,6 +205,15 @@ function rCar(px,py,body,dark,player){ var L=19, W=10, glass='rgba(40,20,60,0.75
   rx.fillStyle=glass; rx.beginPath(); rx.roundRect(px-2,py-3.3,7,6.6,2.5); rx.fill(); rx.fillStyle='rgba(255,255,255,0.7)'; rx.beginPath(); rx.roundRect(px-1.2,py-2.6,2.4,1.4,0.7); rx.fill();
   if(player){ rx.fillStyle='#ffffff'; rx.fillRect(px-L/2+1,py-0.8,5,1.6); rx.fillStyle='rgba(255,240,180,0.95)'; rx.beginPath(); rx.ellipse(px+L/2-0.5,py-3,0.9,1.3,0,0,6.2832); rx.ellipse(px+L/2-0.5,py+3,0.9,1.3,0,0,6.2832); rx.fill(); }
   else { rx.fillStyle='rgba(255,60,60,0.9)'; rx.fillRect(px-L/2,py-3.6,0.9,1.6); rx.fillRect(px-L/2,py+2,0.9,1.6); } }
+/* v0.86: the player's car — a rocket car (the maintainer: «наша машинка должна быть непохожа на все остальные, не только цветом», his pick
+   «В»): a long round mint body with a pink nose cone, two pink fins at the back, a round window; the candy exhaust puffs are drawn live */
+function rRocket(px,py){ rx.fillStyle='rgba(40,10,30,0.22)'; rx.beginPath(); rx.ellipse(px+1.5,py+2,11,4.5,0,0,6.2832); rx.fill();
+  rx.fillStyle='#2a1a28'; [[-5,-5],[5,-5],[-5,5],[5,5]].forEach(function(w){ rx.beginPath(); rx.roundRect(px+w[0]-2.2,py+w[1]-1.3,4.4,2.6,1); rx.fill(); });
+  rx.fillStyle='#ff4f7a'; rx.beginPath(); rx.moveTo(px-7,py-3); rx.lineTo(px-11,py-7); rx.lineTo(px-4,py-3); rx.closePath(); rx.fill(); rx.beginPath(); rx.moveTo(px-7,py+3); rx.lineTo(px-11,py+7); rx.lineTo(px-4,py+3); rx.closePath(); rx.fill();
+  var g=rx.createLinearGradient(0,py-4,0,py+4); g.addColorStop(0,'#ffffff'); g.addColorStop(0.3,'#2fe0b0'); g.addColorStop(1,'#0f8a6a'); rx.fillStyle=g;
+  rx.beginPath(); rx.moveTo(px-9,py-3.6); rx.lineTo(px+4,py-3.6); rx.quadraticCurveTo(px+11,py-2.5,px+11,py); rx.quadraticCurveTo(px+11,py+2.5,px+4,py+3.6); rx.lineTo(px-9,py+3.6); rx.closePath(); rx.fill(); rx.strokeStyle='#0a5a44'; rx.lineWidth=0.6; rx.stroke();
+  rx.fillStyle='#ff4f7a'; rx.beginPath(); rx.moveTo(px+6,py-3.2); rx.quadraticCurveTo(px+11,py-2.5,px+11,py); rx.quadraticCurveTo(px+11,py+2.5,px+6,py+3.2); rx.closePath(); rx.fill();
+  rx.fillStyle='rgba(40,20,60,0.8)'; rx.beginPath(); rx.arc(px+1,py,2.2,0,6.2832); rx.fill(); rx.fillStyle='rgba(255,255,255,0.8)'; rx.beginPath(); rx.arc(px+0.4,py-0.8,0.7,0,6.2832); rx.fill(); }
 function rFuel(px,py){ rx.fillStyle='rgba(0,0,0,0.18)'; rx.beginPath(); rx.ellipse(px+1,py+6,5,1.6,0,0,6.2832); rx.fill();
   rx.fillStyle='#3fd07a'; rx.beginPath(); rx.roundRect(px-3.5,py-3,7,9,2.2); rx.fill(); rx.fillRect(px-1.4,py-6.5,2.8,4); rx.fillStyle='#e8363a'; rx.fillRect(px-1.8,py-7.5,3.6,1.6);
   rx.fillStyle='#fff6d0'; rx.fillRect(px-3.5,py,7,2.6); rx.fillStyle='#e8363a'; rx.beginPath(); rx.moveTo(px+0.6,py+0.2); rx.lineTo(px-1.2,py+1.5); rx.lineTo(px,py+1.5); rx.lineTo(px-0.6,py+2.5); rx.lineTo(px+1.2,py+1.1); rx.lineTo(px,py+1.1); rx.closePath(); rx.fill();
@@ -224,7 +233,8 @@ function rBubble(px,py){ rx.fillStyle='rgba(0,0,0,0.14)'; rx.beginPath(); rx.ell
   rx.strokeStyle='#a01a68'; rx.lineWidth=0.6; rx.stroke(); rx.fillStyle='rgba(255,255,255,0.9)'; rx.beginPath(); rx.ellipse(px-1.8,py-2,1.4,0.8,-0.6,0,6.2832); rx.fill(); rx.beginPath(); rx.arc(px+2,py+1.8,0.5,0,6.2832); rx.fill(); }
 /* a sprite: w×h sketch pixels around its middle, at this phone's HD scale */
 function rSprite(key,w,h,draw){ var s=RC.sp[key]; if(s) return s; var KS=rKS(), o=hdOff(w*KS,h*KS,hs); rx=o.x; rx.setTransform(hs*KS,0,0,hs*KS,0,0); rx.translate(w/2,h/2); draw(); return RC.sp[key]={c:o.c,w:w*KS,h:h*KS}; }
-function rCarSprite(kind,player){ var col=player?R_PLAYER:R_CARS[kind%R_CARS.length]; return rSprite((player?'p':'c'+kind%R_CARS.length),28,20,function(){ rCar(0,0,col[0],col[1],player); }); }
+function rCarSprite(kind,player){ if(player) return rSprite('p',30,20,function(){ rx.translate(1.5,0); rRocket(0,0); });   // the middle of its body stays the car's point
+  var col=R_CARS[kind%R_CARS.length]; return rSprite('c'+kind%R_CARS.length,28,20,function(){ rCar(0,0,col[0],col[1],false); }); }
 function rGiftSprite(t){ return rSprite('g'+t,16,18,function(){ if(t==='fuel') rFuel(0,0); else if(t==='coin') rCoin(0,0); else if(t==='magnet') rMagnet(0,0); else rBubble(0,0); }); }
 function rBlit(s,X,Y,a){ if(a){ hx.save(); hx.translate(X,Y); hx.rotate(a); hx.drawImage(s.c,-s.w/2,-s.h/2,s.w,s.h); hx.restore(); } else hx.drawImage(s.c,X-s.w/2,Y-s.h/2,s.w,s.h); }
 /* the road's direction at a place (radians; drawing only) */
@@ -250,7 +260,10 @@ function raceScene(rg,vd,carY,dt){ rReset(rg.seed); var KS=rKS(), X0=rX0===null?
     var vy=rPrevY===null||!dt?0:(carY-rPrevY)/dt; rPrevY=carY; var want=Math.max(-0.5,Math.min(0.5,Math.atan2(vy,Math.max(60,rg.v||0))));   // the car turns the way it goes, 30° at most rTilt+=(want-rTilt)*Math.min(1,(dt||0)*12);
     var blink=s.inv>0&&Math.floor(clock*14)%2===0;
     if(s.magnet>0&&(s.magnet>2||Math.floor(clock*8)%2)){ for(var m=0;m<3;m++){ var ph=((clock*1.4+m/3)%1); hx.strokeStyle='rgba(232,40,74,'+(0.5*(1-ph)).toFixed(3)+')'; hx.lineWidth=0.8; hx.beginPath(); hx.arc(X,Y,(10+ph*30)*K/SU,-0.9,0.9); hx.stroke(); } }
-    if(!blink) rBlit(rCarSprite(0,true),X,Y,rTilt);
+    if(!blink){ var ks=K/SU, sp=Math.min(1,(rg.v||40)/120); hx.save(); hx.translate(X,Y); hx.rotate(rTilt);           // candy puffs behind it, livelier the faster it goes
+      [[0,'#ffe0f0',2.4],[1,'#ffd23f',1.8],[2,'#ffb3d9',1.3]].forEach(function(q){ var ph=(clock*6+q[0]*0.33)%1, r=q[2]*(0.7+0.5*sp)*(1-ph*0.4)*ks; hx.globalAlpha=0.9-ph*0.5;
+        hx.fillStyle=q[1]; hx.beginPath(); hx.arc((-11.5-q[0]*2.6-ph*4*sp)*ks,(q[0]===1?-0.9:q[0]===2?0.8:0)*ks,r,0,6.2832); hx.fill(); });
+      hx.globalAlpha=1; hx.restore(); rBlit(rCarSprite(0,true),X,Y,rTilt); }
     if(s.bubble>0&&(s.bubble>3||Math.floor(clock*8)%2)){ var R0=13*K/SU; hx.fillStyle='rgba(255,138,196,0.28)'; hx.beginPath(); hx.arc(X,Y,R0,0,6.2832); hx.fill(); hx.strokeStyle='rgba(224,64,154,0.8)'; hx.lineWidth=0.8; hx.stroke();
       hx.fillStyle='rgba(255,255,255,0.75)'; hx.beginPath(); hx.ellipse(X-R0*0.4,Y-R0*0.5,R0*0.25,R0*0.12,-0.6,0,6.2832); hx.fill(); } }
 }

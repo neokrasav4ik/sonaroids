@@ -8,7 +8,7 @@ var lang=store.get('sonaroids_lang',((navigator.language||'').toLowerCase().inde
 function L(k){ return STR[lang][k]||k; }
 var PAUSE=3.5, AWAY_T0=0.6, AWAY_T1=2.8, WAVE_PAUSE=2.5,           // v0.16: more time to take the hand away, and the drawn hand leaves slower (0.6–2.8 s)
  STEPS=['sound','phone','mic','probe','away','wave'];
-var scr=null, scrT=0, clock=0, onboarding=false, direct=false, dirLoud=false, booted=false, errKind=null;
+var scr=null, scrT=0, clock=0, onboarding=false, direct=false, dirLoud=false, dirSilent=false, silentRetry=false, booted=false, errKind=null;
 var handSaved=store.get('sonaroids_hand',''), acoustic=false;
 var prep=null, T=null, caught=false, g=null, acc=0, countT=0, overT=0, shake=0, flash=0, rockSpr={}, best=+store.get('sonaroids_best','0')||0;
 /* own sounds louder than this in the microphone are turned down (v0.19: 0.05, was 0.3). iPhone: peaks 0.007–0.013 with sounds on — never ducks */
@@ -190,7 +190,12 @@ function sTitle(){
   items.forEach(function(b){ if(b[2]==='skin') skinRow(bx0,y,w,h); else button(b[0],b[1],bx0,y,w,h,b[2]||'',Math.floor(clock*2)%2===0); y+=h+gap; });
   var a0=freeSide()==='left'?band1:SAFE.l, a1=freeSide()==='left'?LW-SAFE.r:band0, lsc=PF.width('SonaFly',2)<=a1-a0-12?2:1; text('SonaFly',Math.round((a0+a1)/2),Math.round(LH*0.16),P.band,'center',lsc);
   say('SonaFly. '+L('play')+'. '+L('skin')+': '+L('skin_'+skinId)); }
-function sSound(){ sky(DT,0.3); titles(L(direct?(dirLoud?'volume_loud':'volume_direct'):'volume'),L('volume_s')); soundVolume(scrT); nextBtn('next',L('next')); stepSquares('sound'); }
+/* v0.86: an iPhone asks for 40–60% (the maintainer's iPhone, 29 Sep: at 30–40% its probe came 3 dB over the bar — once it steered, once
+   not; the iPhone gives the game its call volume while the microphone is on, lower than the media one); the phone that does not hear its
+   own probe at all (a level 40 dB under the bar, the probe band empty) is told about silent mode — it can mute the game after all */
+function isIOS(){ var ua=navigator.userAgent||''; return /iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1); }
+function volKey(k){ return isIOS()&&STR[lang][k+'_ios']?k+'_ios':k; }
+function sSound(){ sky(DT,0.3); titles(L(direct?(dirSilent?'volume_silent':volKey(dirLoud?'volume_loud':'volume_direct')):volKey('volume')),L(direct&&dirSilent?'volume_silent_s':'volume_s')); soundVolume(scrT); nextBtn('next',L('next')); stepSquares('sound'); }
 /* v0.41: the Android app (android/, a WebView over this very page) gives a small native helper: media volume, audio route.
    In the browser it does not exist, and nothing changes there */
 var APP=(typeof window!=='undefined'&&window.SonaroidsApp)||null;
@@ -222,7 +227,9 @@ function sAway(){ sky(DT,0.3); var m=handSide()==='left', aw=Math.min(1,Math.max
   ringUI(st==='wait'?scrT/PAUSE:st==='ok'?1:Math.min(0.95,(scrT-PAUSE)/3.2),st);
   if(scrT>=PAUSE&&!prep) startPrepare();
   if(prep&&prep.res){ if(prep.res.ok){ if(scrT-prep.doneT>1.5) toWave(); }       // «the room is quiet» stays for 1.5 s
-    else { direct=true; dirLoud=prep.res.why==='loud'; onboarding=false; go('sound'); } }
+    else { var silent=prep.res.why==='noprobe'||(prep.res.why==='quiet'&&typeof prep.res.snr==='number'&&prep.res.snr<10);   // not heard at all: every heard probe on record had 24–48 dB
+      if(silent&&!silentRetry){ silentRetry=true; Logs.ev('зонд не слышно — ещё раз'); prep=null; scrT=PAUSE; return; }            // once more at once: a sound that did not start
+      silentRetry=false; direct=true; dirLoud=prep.res.why==='loud'; dirSilent=silent; onboarding=false; go('sound'); } }
   stepSquares('away');  }
 /* v0.69: the probe plays from the front camera's end and that end is on the left — a right-handed player has to turn the phone round.
    The screen goes dark: «turn the phone round, by 180° if you play with your right hand», the phone with two arrows round it, «round like a
@@ -555,7 +562,7 @@ function boot(then){ Sonar.boot().then(function(){ booted=true; Sfx.play('tap');
   .catch(function(e){ errKind=(e&&e.message&&/webaudio|worklet/.test(e.message))?'audio':'mic'; Board.setup(errKind==='mic'?'nomic':'noaudio'); go('nomic'); }); }
 /* v0.40 (27 Sep): before every game — the probe choice, no default: «wide» (cleaner control, children and animals may hear it) or «normal» (silent) */
 function toAway(){ prep=null; go('probe'); }
-function toRoom(b){ Sonar.setBand(b); prep=null; go('away'); }
+function toRoom(b){ Sonar.setBand(b); prep=null; silentRetry=false; go('away'); }
 function toWave(){ T=Tune.create(+store.get('sonaroids_field','100')||100,true); caught=false; flips=0; flipT=-9; seenT=0; go('wave'); }
 function pauseGame(){ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; go('paused'); } }
 function startCount(){ if(resumeAfterPrep&&g&&g.state!=='over'){ resumeAfterPrep=false; countT=3; go('count-resume'); return; }
@@ -572,7 +579,8 @@ function startGame(){ if(mode==='race'){ raceStart(); return; }
 var ACT={
   en:function(){ lang='en'; store.set('sonaroids_lang','en'); go('sound'); },
   ru:function(){ lang='ru'; store.set('sonaroids_lang','ru'); go('sound'); },
-  next:function(){ if(scr==='sound'){ if(direct) (booted?toAway():go('mic')); else go('phone'); } else if(scr==='phone'){ if(booted) toAway(); else go('mic'); } },
+  next:function(){ if(scr==='sound'){ if(direct&&dirSilent){ dirSilent=false; Sonar.restart(); booted=false; boot(toAway); return; }   // the sound anew, from this tap
+    if(direct) (booted?toAway():go('mic')); else go('phone'); } else if(scr==='phone'){ if(booted) toAway(); else go('mic'); } },
   allow:function(){ boot(toAway); },
   appupd:function(){ try{ APP.checkUpdate(); }catch(e){} setTimeout(function(){ location.reload(); },600); },
   probe_wide:function(){ toRoom('wide'); }, probe_norm:function(){ toRoom('normal'); },

@@ -18,6 +18,7 @@ echo; echo "== leaderboard server (temporary database) =="; node --no-warnings t
 echo; echo "== which end of the phone the hand plays at (Chromium) =="; node tests/side.js
 echo; echo "== first open shows the menu (Chromium) =="; node tests/first_open.js
 echo; echo "== the media volume before getting ready (Chromium) =="; node tests/volume.js
+echo; echo "== a phone that does not hear its own probe (Chromium) =="; node tests/silent.js
 echo; echo "== the app's own sound: frames through the app, the service screen (Chromium) =="; node tests/native_audio.js
 echo; echo "== skins: every object readable on its sky (Chromium) =="; node tests/skin_audit.js
 echo; echo "== HD skins: every object readable on its sky (Chromium) =="; HD=1 node tests/skin_audit.js

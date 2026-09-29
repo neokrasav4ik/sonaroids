@@ -15,9 +15,9 @@
 var Race=(function(){
   var DT=1/60, FH=180, MARGIN=FH*0.04, CAR_X=40, FOLLOW=0.48658;          // the car follows the palm with the ship's 25 ms lag
   var CAR={hl:9,hw:4.6};                                                   // half the car's length and width (every car the same)
-  var TUNE={V0:112,V1:205,VT:240, ACC:55, BRAKE:120, OFF:0.5, KERB:0.9, KERB_W:4, SYRUP:0.62, SYRUP_T:0.7,
+  var TUNE={V0:92,V1:200,VT:300, ACC:55, BRAKE:120, OFF:0.5, KERB:0.9, KERB_W:4, SYRUP:0.62, SYRUP_T:0.7,
     HW0:0.25*FH, HW1:0.185*FH, HWD:40000, FUEL:100, BURN0:2.0, BURN1:3.2, BURNT:360, SODA:30, CRASH_V:0.35, CRASH_FUEL:6, INV:1.1,
-    SODA_GAP:[1200,1600], SODA_GROW:60000, GIFT_GAP:[2400,3400], COIN_GAP:[330,620], CAR_GAP:[150,320], PUD_GAP:[520,980],
+    SODA_GAP:[1000,1350], SODA_GROW:60000, GIFT_GAP:[2400,3400], COIN_GAP:[330,620], CAR_GAP:[240,480], PUD_GAP:[520,980],
     MAGNET:6, BUBBLE:12, PASS:25, COIN:10, LINE:50};
   function rng(seed){ var a=seed>>>0; return function(){ a=(a+0x6D2B79F5)>>>0; var t=a; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
   function rnd(g,a,b){ return a+g.rand()*(b-a); }
@@ -25,7 +25,9 @@ var Race=(function(){
   /* how far into the race, 0 → 1: by distance for the road, by time for the pace */
   function farD(d){ return clamp(d/TUNE.HWD,0,1); }
   function farT(t){ return clamp(t/TUNE.VT,0,1); }
-  function vmax(t){ return TUNE.V0+(TUNE.V1-TUNE.V0)*farT(t); }
+  /* v0.86 (the maintainer: «скорость пусть возрастает постепеннее, не сразу быстро»): slower at first and speeding up slowly, then faster —
+     f^1.5 (by sqrt: exact on every engine): 92 at the start, ~100 at 1 min, ~120 at 2, ~140 at 3, ~170 at 4, 200 from 5 */
+  function vmax(t){ var f=farT(t); return TUNE.V0+(TUNE.V1-TUNE.V0)*f*Math.sqrt(f); }
   function burn(t){ return TUNE.BURN0+(TUNE.BURN1-TUNE.BURN0)*clamp(t/TUNE.BURNT,0,1); }
   function density(t){ return 1+0.9*farT(t); }                              // cars and puddles: up to 1.9× as often
   /* the road: a middle line through key points every 90–200 units, joined by smoothstep (flat at each point — soft S-bends) */

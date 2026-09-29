@@ -53,7 +53,7 @@ function phoneIso(o,cm,portOn,cam){                                          // 
 /* v0.76 (the maintainer: the drawn phone's game in the chosen skin and graphics): the skin's own world — its sky, rocks, saucer, shots and
    ship, the ship at the palm's height — drawn off-screen (pixels, or the HD pictures) and laid onto the phone's screen in perspective */
 var phoneSt={}, phoneC=null, phoneHC=null, phoneAt=-1, PHONE_SHIPK=4;   // v0.84: the ship on the drawn phone ~3× larger (the maintainer: «оочень маленький кораблик — его вообще не видно», his pick «А»)
-function phoneWorld(f){ var sk=SK, k=PHONE_SHIPK, hh=Math.max(LH*0.12,7*k+4), sy=hh+(1-f)*(LH-2*hh), sx=LW*0.12+10*(k-1.4);
+function phoneWorld(f){ if(mode==='race') return racePhone(f); var sk=SK, k=PHONE_SHIPK, hh=Math.max(LH*0.12,7*k+4), sy=hh+(1-f)*(LH-2*hh), sx=LW*0.12+10*(k-1.4);
   if(phoneAt===clock) return sk.hd?phoneHC:phoneC; phoneAt=clock;                       // two phones in one picture share the frame
   if(sk.hd){ var q=Math.min(hs,1.5); if(!phoneHC||phoneHC.width!==Math.round(LW*q)||phoneHC.height!==Math.round(LH*q)){ phoneHC=document.createElement('canvas'); phoneHC.width=Math.round(LW*q); phoneHC.height=Math.round(LH*q); }
     var keep=hx; hx=phoneHC.getContext('2d'); hx.setTransform(q,0,0,q,0,0); hx.imageSmoothingEnabled=true; noLight=true;

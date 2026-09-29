@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='0.86';
+var VERSION='0.87';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -439,7 +439,7 @@ var Race=(function(){
   var CAR={hl:9,hw:4.6};                                                   // half the car's length and width (every car the same)
   var TUNE={V0:92,V1:200,VT:300, ACC:55, BRAKE:120, OFF:0.5, KERB:0.9, KERB_W:4, SYRUP:0.62, SYRUP_T:0.7,
     HW0:0.25*FH, HW1:0.185*FH, HWD:40000, FUEL:100, BURN0:2.0, BURN1:3.2, BURNT:360, SODA:30, CRASH_V:0.35, CRASH_FUEL:6, INV:1.1,
-    SODA_GAP:[1000,1350], SODA_GROW:60000, GIFT_GAP:[2400,3400], COIN_GAP:[330,620], CAR_GAP:[240,480], PUD_GAP:[520,980],
+    SODA_GAP:[800,1050], SODA_GROW:40000, GIFT_GAP:[1600,2300], COIN_GAP:[330,620], CAR_GAP:[240,480], PUD_GAP:[520,980],
     MAGNET:6, BUBBLE:12, PASS:25, COIN:10, LINE:50};
   function rng(seed){ var a=seed>>>0; return function(){ a=(a+0x6D2B79F5)>>>0; var t=a; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
   function rnd(g,a,b){ return a+g.rand()*(b-a); }
@@ -464,11 +464,15 @@ var Race=(function(){
   function at(g,x){ while(g.keys[g.keys.length-1].x<=x+2) addKey(g); var i=seg(g,x), a=g.keys[i], b=g.keys[i+1], u=(x-a.x)/(b.x-a.x); u=clamp(u,0,1); var s=u*u*(3-2*u);
     return {c:a.c+(b.c-a.c)*s,hw:a.hw+(b.hw-a.hw)*s}; }
   function centre(g,x){ return at(g,x).c; }
+  /* the palm (0 bottom … 1 top) → the place across the road: the whole palm range spans the road and OFFW units past each kerb */
+  var OFFW=12;
+  function offOf(g,x,hand){ var r=at(g,x); return (0.5-hand)*2*(r.hw+OFFW); }
+  function steerY(g,x,hand){ var r=at(g,x); return clamp(r.c+(0.5-hand)*2*(r.hw+OFFW),MARGIN,FH-MARGIN); }
   function create(seed,FW,y0){
     var g={seed:seed>>>0,FW:FW||380,FH:FH,rand:rng(seed),n:0,t:0,state:'play',score:0,d:0,v:0,fuel:TUNE.FUEL,coins:0,passed:0,crashes:0,
-      car:{x:CAR_X,y:FH/2,inv:0,rub:0,bubble:0,magnet:0,syrup:0,on:'road'},keys:[{x:-300,c:FH/2,hw:TUNE.HW0},{x:260,c:FH/2,hw:TUNE.HW0}],ki:0,straight:0,roadRand:rng((seed^0x5bd1e995)>>>0),
+      car:{x:CAR_X,y:FH/2,off:0,inv:0,rub:0,bubble:0,magnet:0,syrup:0,on:'road'},keys:[{x:-300,c:FH/2,hw:TUNE.HW0},{x:260,c:FH/2,hw:TUNE.HW0}],ki:0,straight:0,roadRand:rng((seed^0x5bd1e995)>>>0),
       cars:[],items:[],puddles:[],nextCar:420,nextSoda:900,nextGift:1500,nextCoin:260,nextPud:1400,line:0,lines:{},lineN:0,kind:0,nextId:1,events:[],fx:[]};
-    g.car.y=(y0===undefined||y0===null)?FH/2:clamp(y0,MARGIN,FH-MARGIN); g.v=TUNE.V0*0.55; return g; }
+    g.car.y=(y0===undefined||y0===null)?FH/2:clamp(y0,MARGIN,FH-MARGIN); g.car.off=g.car.y-at(g,g.car.x).c; g.v=TUNE.V0*0.55; return g; }   // y0: where the car starts (the palm at the start)
   /* what is at a place ahead: is it free of cars (for a new car or a gift) */
   function freeAt(g,x,o,dx,dy){ for(var i=0;i<g.cars.length;i++){ var c=g.cars[i]; if(c.x-x<dx&&x-c.x<dx&&c.o-o<dy&&o-c.o<dy) return false; } return true; }
   function lane(g,x){ var r=at(g,x), m=r.hw-CAR.hw-3; return rnd(g,-m,m); }
@@ -498,7 +502,10 @@ var Race=(function(){
     g.events=[]; g.fx=[]; if(g.state==='over') return g;
     g.n++; g.t=g.n*DT;
     var s=g.car, i, c, p, dx, dy;
-    if(hand!==null&&hand!==undefined&&g.state==='play'){ var ty=FH-MARGIN-hand*(FH-2*MARGIN); s.y+=(ty-s.y)*FOLLOW; }
+    // v0.87 (the maintainer: «часто надо держать позицию на одном уровне… а сонар дрожит и ладонь дрожит»): the palm sets the car's place
+    // ACROSS THE ROAD, not its height on the screen — a still palm keeps its lane through the bends; the car follows the road by itself
+    if(hand!==null&&hand!==undefined&&g.state==='play') s.off=offOf(g,g.d+s.x,hand);
+    var rr0=at(g,g.d+s.x), ty=clamp(rr0.c+s.off,MARGIN,FH-MARGIN); s.y+=(ty-s.y)*FOLLOW;
     if(s.inv>0) s.inv-=DT; if(s.bubble>0) s.bubble-=DT; if(s.magnet>0) s.magnet-=DT; if(s.syrup>0) s.syrup-=DT; if(s.rub>0) s.rub-=DT;
     // where the car is: on the road, on the kerb or off it
     var cx=g.d+s.x, r=at(g,cx), off=s.y-r.c; if(off<0) off=-off;
@@ -540,8 +547,8 @@ var Race=(function(){
     for(var i=0;i<g.cars.length;i++){ var c=g.cars[i]; if(c===me) continue; var dx=c.x-me.x; if(dx<40&&dx>-40){ var lo=Math.min(me.o,o)-CAR.hw*2-3, hi=Math.max(me.o,o)+CAR.hw*2+3; if(c.o>lo&&c.o<hi) return false; } } return true; }
   /* a whole race from a palm trajectory (one value per step, −1 = no palm): what a server would run */
   function replay(seed,FW,hands,y0){ var g=create(seed,FW,y0); for(var i=0;i<hands.length&&g.state!=='over';i++) step(g,hands[i]<0?null:hands[i]); return g; }
-  var TAG='race-1';
-  return {TAG:TAG,TUNE:TUNE,CAR:CAR,CAR_X:CAR_X,DT:DT,FH:FH,MARGIN:MARGIN,create:create,step:step,replay:replay,at:at,centre:centre,vmax:vmax,burn:burn};
+  var TAG='race-2';   // v0.87: steering across the road
+  return {TAG:TAG,TUNE:TUNE,CAR:CAR,CAR_X:CAR_X,OFFW:OFFW,offOf:offOf,steerY:steerY,DT:DT,FH:FH,MARGIN:MARGIN,create:create,step:step,replay:replay,at:at,centre:centre,vmax:vmax,burn:burn};
 })();
 if(typeof module!=='undefined') module.exports=Race;
 /* ── SONAR: speaker probe, microphone, echo processing. Moved over from the lab (04_audio_engine, 06_side_pick, 07_calibration)
@@ -1458,7 +1465,7 @@ function phoneIso(o,cm,portOn,cam){                                          // 
 /* v0.76 (the maintainer: the drawn phone's game in the chosen skin and graphics): the skin's own world — its sky, rocks, saucer, shots and
    ship, the ship at the palm's height — drawn off-screen (pixels, or the HD pictures) and laid onto the phone's screen in perspective */
 var phoneSt={}, phoneC=null, phoneHC=null, phoneAt=-1, PHONE_SHIPK=4;   // v0.84: the ship on the drawn phone ~3× larger (the maintainer: «оочень маленький кораблик — его вообще не видно», his pick «А»)
-function phoneWorld(f){ var sk=SK, k=PHONE_SHIPK, hh=Math.max(LH*0.12,7*k+4), sy=hh+(1-f)*(LH-2*hh), sx=LW*0.12+10*(k-1.4);
+function phoneWorld(f){ if(mode==='race') return racePhone(f); var sk=SK, k=PHONE_SHIPK, hh=Math.max(LH*0.12,7*k+4), sy=hh+(1-f)*(LH-2*hh), sx=LW*0.12+10*(k-1.4);
   if(phoneAt===clock) return sk.hd?phoneHC:phoneC; phoneAt=clock;                       // two phones in one picture share the frame
   if(sk.hd){ var q=Math.min(hs,1.5); if(!phoneHC||phoneHC.width!==Math.round(LW*q)||phoneHC.height!==Math.round(LH*q)){ phoneHC=document.createElement('canvas'); phoneHC.width=Math.round(LW*q); phoneHC.height=Math.round(LH*q); }
     var keep=hx; hx=phoneHC.getContext('2d'); hx.setTransform(q,0,0,q,0,0); hx.imageSmoothingEnabled=true; noLight=true;
@@ -1722,7 +1729,14 @@ SKINS.fairy={id:'fairy', glow:false, ink:'sel', motes:['#ffffff','#f4f3ff','#fff
    place of the game's teal on the buttons, rings, links and highlights. The games' screen keeps the game's own colours */
 SKINS.fairy.ui={veil:0.5,band:'#ffd23f',btn:'#e0a020',btnHi:'#ffd23f'};
 function uiColours(themed){ var u=themed&&SK&&SK.ui; P.band=u?u.band:P.band0; P.btn=u?u.btn:P.ship[1]; P.btnHi=u?u.btnHi:P.ship[2]; }
-function sky(dt,s){ if(!SK) return spaceSky(dt,s); SK.sky(dt,s); if(SK.ui){ lx.globalAlpha=SK.ui.veil; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; } }
+/* v0.87: the getting ready and the instructions on a plain dark ground, for every game and skin (the maintainer: «для всех игр сделать в
+   этих экранах нейтральный тёмный фон, а сами игры показываются на нарисованных смартфонах») */
+var PREP_BG='flat', PREP_SCR={lang:1,sound:1,phone:1,mic:1,probe:1,away:1,wave:1,lost:1,nomic:1};
+function prepGround(){ if(PREP_BG==='off'||!PREP_SCR[scr]||(scr==='wave'&&caught&&scrT-caughtT>=CAUGHT_SHOW)) return false;
+  lx.fillStyle='#15141c'; lx.fillRect(0,0,LW,LH);
+  if(PREP_BG==='vig'){ var g=lx.createRadialGradient(LW/2,LH*0.45,LH*0.1,LW/2,LH*0.5,LW*0.62); g.addColorStop(0,'#24222e'); g.addColorStop(1,'#0e0d13'); lx.fillStyle=g; lx.fillRect(0,0,LW,LH); }
+  return true; }
+function sky(dt,s){ if(prepGround()) return; if(!SK) return spaceSky(dt,s); SK.sky(dt,s); if(SK.ui){ lx.globalAlpha=SK.ui.veil; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; } }
 var skinId=(function(){ var s=null; try{ s=localStorage.getItem('sonaroids_skin'); }catch(e){} return SKIN_IDS.indexOf(s)>=0?s:'space'; })(), SK=SKINS[skinId]||SKINS.space;
 function setSkin(id){ if(!SKINS[id]&&!(typeof HDSK!=='undefined'&&HDSK[id])) return; skinId=id; SK=skinView(id); try{ localStorage.setItem('sonaroids_skin',id); }catch(e){} }
 /* v0.72: the pictures a skin is drawn with — its HD ones when HD is chosen and it has them (they share the pixel skin's menu colours) */
@@ -2627,7 +2641,11 @@ function rChunk(rg,i){ var c=RC.ch[i]; if(c) return c;
   rChocRoad(road,x0s,W+3/KS); if(river) rBridge(road,river.cx);
   if(z==='city'&&r()<0.35){ var zx=20+r()*(W-40); rx.save(); rRoadPath(road,0); rx.clip(); var za=rAt(road,zx); for(var k=-4;k<=4;k++){ rx.fillStyle=k%2?'#fff4f8':'#2a1420'; rx.fillRect(zx-4,za[0]+k*za[1]*2/9-za[1]/9,8,za[1]*2/9); } rx.restore(); rLight3(zx-8,za[0]-za[1]-5); }
   c=RC.ch[i]={c:o.c,w:RCW*K+3,h:LH}; return c; }
-function rReset(seed){ var key=LW+'x'+LH+'x'+hs; if(RC.seed!==seed||RC.key!==key){ RC.seed=seed; RC.key=key; RC.ch={}; RC.zones=null; RC.sp={}; } }
+/* a land per race and scale: the menu's race, the backdrop, the drawn phone's screen and the real race each keep their own (v0.87) */
+var RCS={}, RCN=[];
+function rReset(seed){ var key=seed+'|'+LW+'x'+LH+'x'+hs; if(RC.key===key) return; var c=RCS[key];
+  if(!c){ c=RCS[key]={seed:seed,key:key,ch:{},zones:null,sp:{}}; RCN.push(key); while(RCN.length>5){ delete RCS[RCN.shift()]; } }
+  RC=c; }
 /* ── the cars, the gifts: small sprites, made once per colour ── */
 var R_CARS=[['#ff4f8b','#b0184f'],['#ffb52e','#b06a00'],['#4fb8ff','#1a6aa8'],['#9b5bff','#4a1aa0'],['#f4ecff','#8a78b8'],['#e8284a','#8a0c20']], R_PLAYER=['#2fe0b0','#0f8a6a'];
 function rCar(px,py,body,dark,player){ var L=19, W=10, glass='rgba(40,20,60,0.75)';
@@ -2674,7 +2692,7 @@ function rBlit(s,X,Y,a){ if(a){ hx.save(); hx.translate(X,Y); hx.rotate(a); hx.d
 function rSlope(rg,wx){ return Math.atan2(Race.centre(rg,wx+4)-Race.centre(rg,wx-4),8); }
 /* ── the whole scene: the land, the puddles, the gifts, the cars, the player's car. vd: how far the view has gone (field units), cy: the
    player's car (field units) or null, ang: its turn ── */
-var rPrevY=null, rTilt=0;
+var rPrevY=null, rTilt=0, rCarK=1;   // rCarK: the player's car drawn larger (the drawn phone's screen, v0.87)
 function raceScene(rg,vd,carY,dt){ rReset(rg.seed); var KS=rKS(), X0=rX0===null?SAFE.l:rX0, i0=Math.floor((vd-X0/K)/RCW), i1=Math.floor((vd+(LW-X0)/K)/RCW);
   hx.setTransform(hs,0,0,hs,0,0); hx.imageSmoothingEnabled=true;
   var made=0; for(var i=i0;i<=i1;i++){ var ch=RC.ch[i]; if(!ch){ ch=rChunk(rg,i); made++; } hx.setTransform(hs,0,0,hs,0,0); hx.drawImage(ch.c,X0+(i*RCW-vd)*K,0,ch.w,ch.h); }
@@ -2693,10 +2711,10 @@ function raceScene(rg,vd,carY,dt){ rReset(rg.seed); var KS=rKS(), X0=rX0===null?
     var vy=rPrevY===null||!dt?0:(carY-rPrevY)/dt; rPrevY=carY; var want=Math.max(-0.5,Math.min(0.5,Math.atan2(vy,Math.max(60,rg.v||0))));   // the car turns the way it goes, 30° at most rTilt+=(want-rTilt)*Math.min(1,(dt||0)*12);
     var blink=s.inv>0&&Math.floor(clock*14)%2===0;
     if(s.magnet>0&&(s.magnet>2||Math.floor(clock*8)%2)){ for(var m=0;m<3;m++){ var ph=((clock*1.4+m/3)%1); hx.strokeStyle='rgba(232,40,74,'+(0.5*(1-ph)).toFixed(3)+')'; hx.lineWidth=0.8; hx.beginPath(); hx.arc(X,Y,(10+ph*30)*K/SU,-0.9,0.9); hx.stroke(); } }
-    if(!blink){ var ks=K/SU, sp=Math.min(1,(rg.v||40)/120); hx.save(); hx.translate(X,Y); hx.rotate(rTilt);           // candy puffs behind it, livelier the faster it goes
+    if(!blink){ var ks=K/SU*rCarK, sp=Math.min(1,(rg.v||40)/120); hx.save(); hx.translate(X,Y); hx.rotate(rTilt);           // candy puffs behind it, livelier the faster it goes
       [[0,'#ffe0f0',2.4],[1,'#ffd23f',1.8],[2,'#ffb3d9',1.3]].forEach(function(q){ var ph=(clock*6+q[0]*0.33)%1, r=q[2]*(0.7+0.5*sp)*(1-ph*0.4)*ks; hx.globalAlpha=0.9-ph*0.5;
         hx.fillStyle=q[1]; hx.beginPath(); hx.arc((-11.5-q[0]*2.6-ph*4*sp)*ks,(q[0]===1?-0.9:q[0]===2?0.8:0)*ks,r,0,6.2832); hx.fill(); });
-      hx.globalAlpha=1; hx.restore(); rBlit(rCarSprite(0,true),X,Y,rTilt); }
+      hx.globalAlpha=1; hx.restore(); var cs=rCarSprite(0,true); if(rCarK!==1){ hx.save(); hx.translate(X,Y); hx.rotate(rTilt); hx.drawImage(cs.c,-cs.w*rCarK/2,-cs.h*rCarK/2,cs.w*rCarK,cs.h*rCarK); hx.restore(); } else rBlit(cs,X,Y,rTilt); }
     if(s.bubble>0&&(s.bubble>3||Math.floor(clock*8)%2)){ var R0=13*K/SU; hx.fillStyle='rgba(255,138,196,0.28)'; hx.beginPath(); hx.arc(X,Y,R0,0,6.2832); hx.fill(); hx.strokeStyle='rgba(224,64,154,0.8)'; hx.lineWidth=0.8; hx.stroke();
       hx.fillStyle='rgba(255,255,255,0.75)'; hx.beginPath(); hx.ellipse(X-R0*0.4,Y-R0*0.5,R0*0.25,R0*0.12,-0.6,0,6.2832); hx.fill(); } }
 }
@@ -2709,7 +2727,17 @@ function raceDemoStep(rg){ var s=rg.car, cx=rg.d+s.x, road=Race.at(rg,cx+40), ty
     rg.cars.forEach(function(c){ var dx=c.x-cx, cy=Race.centre(rg,c.x)+c.o; if(dx>-20&&dx<110){ var tr=Math.max(0,dx+18)/Math.max(10,rg.v-c.v), py=s.y+Math.sign(yy-s.y)*Math.min(Math.abs(yy-s.y),110*tr); if(Math.abs(py-cy)<12) sc-=6-dx/30; if(dx<20&&cy>Math.min(s.y,yy)-10&&cy<Math.max(s.y,yy)+10) sc-=6; } });
     rg.items.forEach(function(p){ var dx=p.x-cx; if(dx>4&&dx<120&&Math.abs(Race.centre(rg,p.x)+p.o-yy)<7) sc+=1; });
     if(sc>best){ best=sc; ty=yy; } }
-  Race.step(rg,(Race.FH-Race.MARGIN-ty)/(Race.FH-2*Race.MARGIN)); rg.fuel=100; }
+  Race.step(rg,Math.max(0,Math.min(1,0.5-(ty-road.c)/(2*(road.hw+Race.OFFW))))); rg.fuel=100; }
+
+/* ── v0.87: SonaRace on the drawn phones of the getting ready and the instructions (the maintainer: «в стиле гонок»; the candy land
+   behind the screens was tried and dropped — «фон слишком на себя отвлекает»): the road with the rocket car at the palm's height ── */
+var rPh=null, rPhD=0, rPhC=null, rPhAt=-1;
+function racePhone(f){ if(rPhAt===clock&&rPhC) return rPhC; rPhAt=clock; var q=Math.min(hs,1.5);
+  if(!rPhC||rPhC.width!==Math.round(LW*q)||rPhC.height!==Math.round(LH*q)){ rPhC=document.createElement('canvas'); rPhC.width=Math.round(LW*q); rPhC.height=Math.round(LH*q); }
+  if(!rPh) rPh=Race.create(515151,Race.FH*LW/LH,Race.FH/2); rPhD+=60*DT;
+  var keepH=hx, keepS=hs; hx=rPhC.getContext('2d'); hs=q; rX0=0; noLight=true;
+  try{ var cy=Race.FH*(0.14+(1-f)*0.72); rPh.v=120; rPh.car.x=Race.CAR_X+20; rCarK=3; raceScene(rPh,rPhD,cy,DT); } finally { hx=keepH; hs=keepS; rX0=null; noLight=false; rCarK=1; }   // the car 3× as the ship there
+  return rPhC; }
 /* ── v0.79: every skin draws its objects the size of what the game counts (the maintainer: «на сказке в пикселе объекты больше, чем в HD»).
    Hits, points and the server's replay live in the core (src/13_core.js) and are the same for every skin and both graphics; only the pictures
    differed — a rock was drawn from 80% (space, pixels) to 152% (fairy tale, pixels, small cloud) of the circle it is hit in. Now:
@@ -3262,18 +3290,21 @@ function sRTitle(){ raceDemoTick(); raceScene(rDemo,rDemo.d,rDemo.car.y,DT);
   if(raceBest>0) text(L('best')+' '+raceBest,cx0,LH-SAFE.b-28,P.text,'center');
   say('SonaRace. '+L('play')); }
 /* the try-out before the race: an empty stretch of road rolls slowly, the car follows the palm */
+/* v0.87: before the race too the palm sets the car's place across the road (as in the race), not its height on the screen */
+var rCarYs=null;
+function raceCarY(rg,vd){ var t=Race.steerY(rg,vd+Race.CAR_X,lastHand===null?0.5:lastHand); rCarYs=rCarYs===null?t:rCarYs+(t-rCarYs)*0.49; return rCarYs; }
 function raceTry(){ followShip(); lx.clearRect(0,0,LW,LH); if(!rTry){ rTry=Race.create(7,raceFW(),Race.FH/2); rTryD=0; } rTryD+=45*DT;
-  raceScene(rTry,rTryD,shipY/K,DT);
+  raceScene(rTry,rTryD,raceCarY(rTry,rTryD),DT);
   titles(L('wave_ok'),L('r_try'));
   var items=[['start',L('play'),'primary'],['again',L('recal')]], bw=btnW(items.map(function(q){ return q[1]; })), lane=Math.round(fx(Race.CAR_X))+30;
   column(items,Math.round(LH*0.62),freeSide()==='left'?Math.max(sideX(bw),lane):undefined); stepSquares('wave'); }
 /* the countdown: the race's own road, still, the car at the palm */
-function raceCount(){ countT-=DT; followShip(); raceScene(g,g.d,shipY/K,DT);
+function raceCount(){ countT-=DT; followShip(); raceScene(g,g.d,raceCarY(g,g.d),DT);
   var n=Math.max(1,Math.ceil(countT)), cx0=Math.round(LW/2), cy0=Math.round(LH/2);
   ring(cx0,cy0,13,1-(countT-Math.floor(countT)),P.band); text(String(n),cx0,cy0-3,P.text,'center'); say(String(n));
   if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.play('tick');
   if(countT<=0) startGame(); }
-function raceStart(){ var y0=shipY===null?null:+(shipY/K).toFixed(3); if(y0!==null) g.car.y=Math.max(Race.MARGIN,Math.min(Race.FH-Race.MARGIN,y0));
+function raceStart(){ var y0=rCarYs===null?null:+rCarYs.toFixed(3); if(y0!==null) g.car.y=Math.max(Race.MARGIN,Math.min(Race.FH-Race.MARGIN,y0)); g.car.off=g.car.y-Race.centre(g,g.d+g.car.x);
   acc=0; parts=[]; raceNew=false; var I=Sonar.info();
   Logs.gameStart({core:Race.TAG,game:'race',seed:g.seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:'frozen',asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
     chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids'});
@@ -3544,8 +3575,8 @@ window.__sonaroids={skinProbe:skinProbe,hdProbe:hdProbe,sizeProbe:sizeProbe,hdId
     g=Core.create(1,Core.FH*(LW-SAFE.l)/LH); for(var i=0;i<300;i++) Core.step(g,0.5); g.state='over'; },state:function(){ return {scr:scr,g:g,T:T,caught:caught,prep:prep,lang:lang,linkCode:linkCode,gfx:gfxMode,mode:mode}; },
   race:function(){ mode='race'; booted=true; prep={res:{ok:true},doneT:-9}; T=Tune.create(100,true); T.ok=true; caught=true;   // a stand-in race for layout checks
     g=Race.create(1,raceFW(),90); for(var i=0;i<60*20;i++) raceDemoStep(g); g.fuel=40; },
-  phoneK:function(k){ PHONE_SHIPK=k; },
-  raceChunkMs:function(n){ var rg=Race.create(5,raceFW(),90), t0=performance.now(); rReset(-1); rReset(5); for(var i=0;i<n;i++) rChunk(rg,i); var ms=(performance.now()-t0)/n; RC.ch={}; return ms; } };
+  phoneK:function(k){ PHONE_SHIPK=k; }, prepBg:function(v){ PREP_BG=v; },
+  raceChunkMs:function(n){ var rg=Race.create(5,raceFW(),90), t0=performance.now(); rReset(5); RC.ch={}; for(var i=0;i<n;i++) rChunk(rg,i); var ms=(performance.now()-t0)/n; RC.ch={}; return ms; } };
 })();
 </script>
 </body>

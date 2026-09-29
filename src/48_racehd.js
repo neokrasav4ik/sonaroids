@@ -194,7 +194,11 @@ function rChunk(rg,i){ var c=RC.ch[i]; if(c) return c;
   rChocRoad(road,x0s,W+3/KS); if(river) rBridge(road,river.cx);
   if(z==='city'&&r()<0.35){ var zx=20+r()*(W-40); rx.save(); rRoadPath(road,0); rx.clip(); var za=rAt(road,zx); for(var k=-4;k<=4;k++){ rx.fillStyle=k%2?'#fff4f8':'#2a1420'; rx.fillRect(zx-4,za[0]+k*za[1]*2/9-za[1]/9,8,za[1]*2/9); } rx.restore(); rLight3(zx-8,za[0]-za[1]-5); }
   c=RC.ch[i]={c:o.c,w:RCW*K+3,h:LH}; return c; }
-function rReset(seed){ var key=LW+'x'+LH+'x'+hs; if(RC.seed!==seed||RC.key!==key){ RC.seed=seed; RC.key=key; RC.ch={}; RC.zones=null; RC.sp={}; } }
+/* a land per race and scale: the menu's race, the backdrop, the drawn phone's screen and the real race each keep their own (v0.87) */
+var RCS={}, RCN=[];
+function rReset(seed){ var key=seed+'|'+LW+'x'+LH+'x'+hs; if(RC.key===key) return; var c=RCS[key];
+  if(!c){ c=RCS[key]={seed:seed,key:key,ch:{},zones:null,sp:{}}; RCN.push(key); while(RCN.length>5){ delete RCS[RCN.shift()]; } }
+  RC=c; }
 /* ── the cars, the gifts: small sprites, made once per colour ── */
 var R_CARS=[['#ff4f8b','#b0184f'],['#ffb52e','#b06a00'],['#4fb8ff','#1a6aa8'],['#9b5bff','#4a1aa0'],['#f4ecff','#8a78b8'],['#e8284a','#8a0c20']], R_PLAYER=['#2fe0b0','#0f8a6a'];
 function rCar(px,py,body,dark,player){ var L=19, W=10, glass='rgba(40,20,60,0.75)';
@@ -241,7 +245,7 @@ function rBlit(s,X,Y,a){ if(a){ hx.save(); hx.translate(X,Y); hx.rotate(a); hx.d
 function rSlope(rg,wx){ return Math.atan2(Race.centre(rg,wx+4)-Race.centre(rg,wx-4),8); }
 /* ── the whole scene: the land, the puddles, the gifts, the cars, the player's car. vd: how far the view has gone (field units), cy: the
    player's car (field units) or null, ang: its turn ── */
-var rPrevY=null, rTilt=0;
+var rPrevY=null, rTilt=0, rCarK=1;   // rCarK: the player's car drawn larger (the drawn phone's screen, v0.87)
 function raceScene(rg,vd,carY,dt){ rReset(rg.seed); var KS=rKS(), X0=rX0===null?SAFE.l:rX0, i0=Math.floor((vd-X0/K)/RCW), i1=Math.floor((vd+(LW-X0)/K)/RCW);
   hx.setTransform(hs,0,0,hs,0,0); hx.imageSmoothingEnabled=true;
   var made=0; for(var i=i0;i<=i1;i++){ var ch=RC.ch[i]; if(!ch){ ch=rChunk(rg,i); made++; } hx.setTransform(hs,0,0,hs,0,0); hx.drawImage(ch.c,X0+(i*RCW-vd)*K,0,ch.w,ch.h); }
@@ -260,10 +264,10 @@ function raceScene(rg,vd,carY,dt){ rReset(rg.seed); var KS=rKS(), X0=rX0===null?
     var vy=rPrevY===null||!dt?0:(carY-rPrevY)/dt; rPrevY=carY; var want=Math.max(-0.5,Math.min(0.5,Math.atan2(vy,Math.max(60,rg.v||0))));   // the car turns the way it goes, 30° at most rTilt+=(want-rTilt)*Math.min(1,(dt||0)*12);
     var blink=s.inv>0&&Math.floor(clock*14)%2===0;
     if(s.magnet>0&&(s.magnet>2||Math.floor(clock*8)%2)){ for(var m=0;m<3;m++){ var ph=((clock*1.4+m/3)%1); hx.strokeStyle='rgba(232,40,74,'+(0.5*(1-ph)).toFixed(3)+')'; hx.lineWidth=0.8; hx.beginPath(); hx.arc(X,Y,(10+ph*30)*K/SU,-0.9,0.9); hx.stroke(); } }
-    if(!blink){ var ks=K/SU, sp=Math.min(1,(rg.v||40)/120); hx.save(); hx.translate(X,Y); hx.rotate(rTilt);           // candy puffs behind it, livelier the faster it goes
+    if(!blink){ var ks=K/SU*rCarK, sp=Math.min(1,(rg.v||40)/120); hx.save(); hx.translate(X,Y); hx.rotate(rTilt);           // candy puffs behind it, livelier the faster it goes
       [[0,'#ffe0f0',2.4],[1,'#ffd23f',1.8],[2,'#ffb3d9',1.3]].forEach(function(q){ var ph=(clock*6+q[0]*0.33)%1, r=q[2]*(0.7+0.5*sp)*(1-ph*0.4)*ks; hx.globalAlpha=0.9-ph*0.5;
         hx.fillStyle=q[1]; hx.beginPath(); hx.arc((-11.5-q[0]*2.6-ph*4*sp)*ks,(q[0]===1?-0.9:q[0]===2?0.8:0)*ks,r,0,6.2832); hx.fill(); });
-      hx.globalAlpha=1; hx.restore(); rBlit(rCarSprite(0,true),X,Y,rTilt); }
+      hx.globalAlpha=1; hx.restore(); var cs=rCarSprite(0,true); if(rCarK!==1){ hx.save(); hx.translate(X,Y); hx.rotate(rTilt); hx.drawImage(cs.c,-cs.w*rCarK/2,-cs.h*rCarK/2,cs.w*rCarK,cs.h*rCarK); hx.restore(); } else rBlit(cs,X,Y,rTilt); }
     if(s.bubble>0&&(s.bubble>3||Math.floor(clock*8)%2)){ var R0=13*K/SU; hx.fillStyle='rgba(255,138,196,0.28)'; hx.beginPath(); hx.arc(X,Y,R0,0,6.2832); hx.fill(); hx.strokeStyle='rgba(224,64,154,0.8)'; hx.lineWidth=0.8; hx.stroke();
       hx.fillStyle='rgba(255,255,255,0.75)'; hx.beginPath(); hx.ellipse(X-R0*0.4,Y-R0*0.5,R0*0.25,R0*0.12,-0.6,0,6.2832); hx.fill(); } }
 }
@@ -276,4 +280,14 @@ function raceDemoStep(rg){ var s=rg.car, cx=rg.d+s.x, road=Race.at(rg,cx+40), ty
     rg.cars.forEach(function(c){ var dx=c.x-cx, cy=Race.centre(rg,c.x)+c.o; if(dx>-20&&dx<110){ var tr=Math.max(0,dx+18)/Math.max(10,rg.v-c.v), py=s.y+Math.sign(yy-s.y)*Math.min(Math.abs(yy-s.y),110*tr); if(Math.abs(py-cy)<12) sc-=6-dx/30; if(dx<20&&cy>Math.min(s.y,yy)-10&&cy<Math.max(s.y,yy)+10) sc-=6; } });
     rg.items.forEach(function(p){ var dx=p.x-cx; if(dx>4&&dx<120&&Math.abs(Race.centre(rg,p.x)+p.o-yy)<7) sc+=1; });
     if(sc>best){ best=sc; ty=yy; } }
-  Race.step(rg,(Race.FH-Race.MARGIN-ty)/(Race.FH-2*Race.MARGIN)); rg.fuel=100; }
+  Race.step(rg,Math.max(0,Math.min(1,0.5-(ty-road.c)/(2*(road.hw+Race.OFFW))))); rg.fuel=100; }
+
+/* ── v0.87: SonaRace on the drawn phones of the getting ready and the instructions (the maintainer: «в стиле гонок»; the candy land
+   behind the screens was tried and dropped — «фон слишком на себя отвлекает»): the road with the rocket car at the palm's height ── */
+var rPh=null, rPhD=0, rPhC=null, rPhAt=-1;
+function racePhone(f){ if(rPhAt===clock&&rPhC) return rPhC; rPhAt=clock; var q=Math.min(hs,1.5);
+  if(!rPhC||rPhC.width!==Math.round(LW*q)||rPhC.height!==Math.round(LH*q)){ rPhC=document.createElement('canvas'); rPhC.width=Math.round(LW*q); rPhC.height=Math.round(LH*q); }
+  if(!rPh) rPh=Race.create(515151,Race.FH*LW/LH,Race.FH/2); rPhD+=60*DT;
+  var keepH=hx, keepS=hs; hx=rPhC.getContext('2d'); hs=q; rX0=0; noLight=true;
+  try{ var cy=Race.FH*(0.14+(1-f)*0.72); rPh.v=120; rPh.car.x=Race.CAR_X+20; rCarK=3; raceScene(rPh,rPhD,cy,DT); } finally { hx=keepH; hs=keepS; rX0=null; noLight=false; rCarK=1; }   // the car 3× as the ship there
+  return rPhC; }

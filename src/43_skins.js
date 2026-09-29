@@ -128,7 +128,14 @@ SKINS.fairy={id:'fairy', glow:false, ink:'sel', motes:['#ffffff','#f4f3ff','#fff
    place of the game's teal on the buttons, rings, links and highlights. The games' screen keeps the game's own colours */
 SKINS.fairy.ui={veil:0.5,band:'#ffd23f',btn:'#e0a020',btnHi:'#ffd23f'};
 function uiColours(themed){ var u=themed&&SK&&SK.ui; P.band=u?u.band:P.band0; P.btn=u?u.btn:P.ship[1]; P.btnHi=u?u.btnHi:P.ship[2]; }
-function sky(dt,s){ if(!SK) return spaceSky(dt,s); SK.sky(dt,s); if(SK.ui){ lx.globalAlpha=SK.ui.veil; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; } }
+/* v0.87: the getting ready and the instructions on a plain dark ground, for every game and skin (the maintainer: «для всех игр сделать в
+   этих экранах нейтральный тёмный фон, а сами игры показываются на нарисованных смартфонах») */
+var PREP_BG='flat', PREP_SCR={lang:1,sound:1,phone:1,mic:1,probe:1,away:1,wave:1,lost:1,nomic:1};
+function prepGround(){ if(PREP_BG==='off'||!PREP_SCR[scr]||(scr==='wave'&&caught&&scrT-caughtT>=CAUGHT_SHOW)) return false;
+  lx.fillStyle='#15141c'; lx.fillRect(0,0,LW,LH);
+  if(PREP_BG==='vig'){ var g=lx.createRadialGradient(LW/2,LH*0.45,LH*0.1,LW/2,LH*0.5,LW*0.62); g.addColorStop(0,'#24222e'); g.addColorStop(1,'#0e0d13'); lx.fillStyle=g; lx.fillRect(0,0,LW,LH); }
+  return true; }
+function sky(dt,s){ if(prepGround()) return; if(!SK) return spaceSky(dt,s); SK.sky(dt,s); if(SK.ui){ lx.globalAlpha=SK.ui.veil; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; } }
 var skinId=(function(){ var s=null; try{ s=localStorage.getItem('sonaroids_skin'); }catch(e){} return SKIN_IDS.indexOf(s)>=0?s:'space'; })(), SK=SKINS[skinId]||SKINS.space;
 function setSkin(id){ if(!SKINS[id]&&!(typeof HDSK!=='undefined'&&HDSK[id])) return; skinId=id; SK=skinView(id); try{ localStorage.setItem('sonaroids_skin',id); }catch(e){} }
 /* v0.72: the pictures a skin is drawn with — its HD ones when HD is chosen and it has them (they share the pixel skin's menu colours) */

@@ -152,7 +152,8 @@ HDSK.note={id:'note', hd:true, glow:false, nolight:true, motes:['#8a8a90','#9a9a
     hx.fillStyle=col; for(var i=0;i<5;i++){ hx.beginPath(); hx.arc(-6+i*3,1,0.6,0,6.2832); hx.fill(); } hx.restore(); },
   pick:function(x,y,type){ hx.fillStyle='rgba(255,226,40,0.65)'; hx.fillRect(x-6,y-6,12,12);
     penLine(function(j){ hx.beginPath(); hx.rect(x-6+j*0.3,y-6-j*0.2,12,12); },PEN,1.0); hx.save(); hx.translate(x,y); hdIcon(type,PEN); hx.restore(); },
-  bullet:function(x,y){ penLine(function(){ hx.beginPath(); hx.moveTo(x-3.5,y); hx.lineTo(x+2,y); },PEN,0.9,1); },
+  // v0.85: the shot thicker and darker, a hard-pressed dark-blue pen (the maintainer: «сделай выстрелы повиднее», his pick «А» of four sketches)
+  bullet:function(x,y){ penLine(function(){ hx.beginPath(); hx.moveTo(x-4,y); hx.lineTo(x+2.3,y); },'#0a1f6a',1.7,1); },
   ebullet:function(x,y){ penLine(function(){ hx.beginPath(); hx.moveTo(x-2,y-2); hx.lineTo(x+2,y+2); hx.moveTo(x+2,y-2); hx.lineTo(x-2,y+2); },RED,0.95,1); },
   bursts:function(){ return {rock:['#1d3fa0','#3a5ac0','#6a7ab0'],ufo:['#c8283a','#e05060'],ship:['#1d3fa0','#e0701a','#c8283a'],pick:['#e0b000','#1d3fa0']}; },
   parts:function(){ parts.forEach(function(p){ var f=p.life/p.max, c=p.cols[Math.min(p.cols.length-1,Math.floor((1-f)*p.cols.length))]; hx.globalAlpha=Math.min(1,f*1.6); hx.strokeStyle=c; hx.lineWidth=lwMin(0.4); hx.lineCap='round';

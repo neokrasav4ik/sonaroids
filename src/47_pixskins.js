@@ -125,6 +125,6 @@ SKINS.note={id:'note', glow:false, nolight:true, motes:['#9a9aa4'],
       for(i=0;i<5;i++) p.put(c-6*k+i*3*k,cy+1,col); }); },
   ufo:function(ux,uy,big,hurt){ lx.drawImage(this.ufoPix(big,!!hurt),Math.round(ux)-13,Math.round(uy)-8); },
   pick:function(x,y,type){ x=Math.round(x); y=Math.round(y); R('#ffe44a',x-6,y-6,12,12); var c=pixOnce('nb-pick',14,14,function(p){ p.path([[1,1],[12,1],[12,12],[1,12]],NPEN,true); p.line(2,0,12,0,NPEN_L); }); lx.drawImage(c,x-7,y-7); blit(PICONS[type],['#1d3fa0'],x-3,y-3); },
-  bullet:function(x,y){ x=Math.round(x); y=Math.round(y); R('#1d3fa0',x-4,y,6,1); R('#6a80c8',x-3,y+1,4,1); },
+  bullet:function(x,y){ x=Math.round(x); y=Math.round(y); R('#0a1f6a',x-4,y,7,2); },   // v0.85: thicker and darker (his pick «А»)
   ebullet:function(x,y){ x=Math.round(x); y=Math.round(y); var c=pixOnce('nb-eb',6,6,function(p){ p.line(0,0,4,4,NRED); p.line(4,0,0,4,NRED); p.line(1,0,5,4,NRED); p.line(5,0,1,4,NRED); }); lx.drawImage(c,x-3,y-2); },
   bursts:function(){ return HDSK.note.bursts(); }, shield:function(){ return '#1d3fa0'; }, mini:function(){ return ['#1d3fa0','#6a80c8']; } };

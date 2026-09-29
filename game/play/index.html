@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='0.76';
+var VERSION='0.77';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -1303,10 +1303,10 @@ function phoneWorld(f){ var sk=SK, sy=LH*(0.12+(1-f)*0.76), sx=LW*0.12;
   if(phoneAt===clock) return sk.hd?phoneHC:phoneC; phoneAt=clock;                       // two phones in one picture share the frame
   if(sk.hd){ var q=Math.min(hs,1.5); if(!phoneHC||phoneHC.width!==Math.round(LW*q)||phoneHC.height!==Math.round(LH*q)){ phoneHC=document.createElement('canvas'); phoneHC.width=Math.round(LW*q); phoneHC.height=Math.round(LH*q); }
     var keep=hx; hx=phoneHC.getContext('2d'); hx.setTransform(q,0,0,q,0,0); hx.imageSmoothingEnabled=true; noLight=true;
-    try{ drawDemo(sk,DT,sx,phoneSt,sy,0.15); } finally { hx=keep; noLight=false; } return phoneHC; }
+    try{ drawDemo(sk,DT,sx,phoneSt,sy,0.15,1.4); } finally { hx=keep; noLight=false; } return phoneHC; }
   if(!phoneC||phoneC.width!==LW||phoneC.height!==LH){ phoneC=document.createElement('canvas'); phoneC.width=LW; phoneC.height=LH; }
   var kl=lx; lx=phoneC.getContext('2d'); lx.setTransform(1,0,0,1,0,0); lx.imageSmoothingEnabled=false; noLight=true;
-  try{ drawDemo(sk,DT,sx,phoneSt,sy,0.15); } finally { lx=kl; noLight=false; } return phoneC; }
+  try{ drawDemo(sk,DT,sx,phoneSt,sy,0.15,1.4); } finally { lx=kl; noLight=false; } return phoneC; }   // v0.77: the ship 1.4× (the maintainer: «прям чуток»)
 function phoneGame(ph,o,cm,f,T,mirror){
   var m=0.9*cm, x0=ph.X0+m, x1=ph.X1-m, y0=ph.Y0+m, y1=ph.Y1-m, W0=x1-x0, H0=y1-y0;
   function at(u,v){ if(!mirror) return iso(x0+u*W0,y0+v*H0,ph.Zp,o); var p=iso(x0+(1-u)*W0,y0+v*H0,ph.Zp,o); return [LW-p[0],p[1]]; }
@@ -1575,7 +1575,7 @@ function demoMake(){ var R2=srand(5), d={rocks:[],shots:[],ufo:{x:LW*0.8,y:LH*0.
   for(var i=0;i<7;i++) d.rocks.push({x:LW*(0.3+R2()*0.8),y:LH*(0.12+R2()*0.76),sz:i%3===0?0:i%3===1?1:2,v:10+R2()*14,id:i});
   return d; }
 function demoRock(sk,sz,id){ var k=sk.id+(sk.hd?'hd'+hs:'')+':'+sz+':'+id+':'+K; if(!demoSpr[k]) demoSpr[k]=sk.rock(Math.max(3,Math.round(Core.R_SIZE[sz]*K)),sz,id*13+sz); return demoSpr[k]; }
-function drawDemo(sk,dt,shipX,st,shipY,skyS){ var d;                            // v0.76: st — a demo of its own (the drawn phone's screen), shipY — the ship's height, skyS — the sky's speed
+function drawDemo(sk,dt,shipX,st,shipY,skyS,shipK){ var d;                   // v0.77: shipK — the ship a little larger (the drawn phone's screen)                            // v0.76: st — a demo of its own (the drawn phone's screen), shipY — the ship's height, skyS — the sky's speed
   if(st){ if(!st.d||st.d.LW!==LW){ st.d=demoMake(); st.d.LW=LW; } d=st.d; } else { if(!demo||demo.LW!==LW){ demo=demoMake(); demo.LW=LW; } d=demo; } d.t+=dt;
   sk.sky(dt,skyS===undefined?0.5:skyS);
   d.rocks.forEach(function(r){ r.x-=r.v*K*dt; if(r.x<-20){ r.x=LW+20; r.y=LH*(0.12+Math.random()*0.76); }
@@ -1585,7 +1585,8 @@ function drawDemo(sk,dt,shipX,st,shipY,skyS){ var d;                            
   if(Math.floor(d.t*6)!==Math.floor((d.t-dt)*6)) d.shots.push({x:sx+16,y:sy});
   d.shots=d.shots.filter(function(b){ b.x+=190*K*dt; return b.x<LW+10; }); d.shots.forEach(function(b){ sk.bullet(b.x,b.y); });
   var u=d.ufo; u.x-=6*K*dt; if(u.x<-30) u.x=LW+60; sk.ufo(Math.round(u.x),Math.round(u.y+Math.sin(d.t*1.7)*6),true,false);
-  sk.ship(sx,sy,d.t,false); }
+  if(shipK&&shipK!==1){ var c=sk.hd?hx:lx; c.save(); c.translate(sx+8,sy); c.scale(shipK,shipK); c.translate(-sx-8,-sy); sk.ship(sx,sy,d.t,false); c.restore(); }
+  else sk.ship(sx,sy,d.t,false); }
 /* a demo frame of skin sk into an off-screen canvas at the screen's size (for the games' cards and the games' screen background) */
 var demoC=null;
 function demoInto(sk,dt){ if(!demoC||demoC.width!==LW||demoC.height!==LH){ demoC=document.createElement('canvas'); demoC.width=LW; demoC.height=LH; }

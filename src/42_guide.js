@@ -57,10 +57,10 @@ function phoneWorld(f){ var sk=SK, sy=LH*(0.12+(1-f)*0.76), sx=LW*0.12;
   if(phoneAt===clock) return sk.hd?phoneHC:phoneC; phoneAt=clock;                       // two phones in one picture share the frame
   if(sk.hd){ var q=Math.min(hs,1.5); if(!phoneHC||phoneHC.width!==Math.round(LW*q)||phoneHC.height!==Math.round(LH*q)){ phoneHC=document.createElement('canvas'); phoneHC.width=Math.round(LW*q); phoneHC.height=Math.round(LH*q); }
     var keep=hx; hx=phoneHC.getContext('2d'); hx.setTransform(q,0,0,q,0,0); hx.imageSmoothingEnabled=true; noLight=true;
-    try{ drawDemo(sk,DT,sx,phoneSt,sy,0.15); } finally { hx=keep; noLight=false; } return phoneHC; }
+    try{ drawDemo(sk,DT,sx,phoneSt,sy,0.15,1.4); } finally { hx=keep; noLight=false; } return phoneHC; }
   if(!phoneC||phoneC.width!==LW||phoneC.height!==LH){ phoneC=document.createElement('canvas'); phoneC.width=LW; phoneC.height=LH; }
   var kl=lx; lx=phoneC.getContext('2d'); lx.setTransform(1,0,0,1,0,0); lx.imageSmoothingEnabled=false; noLight=true;
-  try{ drawDemo(sk,DT,sx,phoneSt,sy,0.15); } finally { lx=kl; noLight=false; } return phoneC; }
+  try{ drawDemo(sk,DT,sx,phoneSt,sy,0.15,1.4); } finally { lx=kl; noLight=false; } return phoneC; }   // v0.77: the ship 1.4× (the maintainer: «прям чуток»)
 function phoneGame(ph,o,cm,f,T,mirror){
   var m=0.9*cm, x0=ph.X0+m, x1=ph.X1-m, y0=ph.Y0+m, y1=ph.Y1-m, W0=x1-x0, H0=y1-y0;
   function at(u,v){ if(!mirror) return iso(x0+u*W0,y0+v*H0,ph.Zp,o); var p=iso(x0+(1-u)*W0,y0+v*H0,ph.Zp,o); return [LW-p[0],p[1]]; }

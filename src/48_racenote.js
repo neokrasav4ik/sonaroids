@@ -5,6 +5,8 @@
    pixels (CSS pixels at 844×390, two of them to a sketch pixel of 48_racehd.js), so the sizes are the candy land's: what is drawn and what
    the game counts agree. ── */
 var RN_INK='#23264a';
+/* v1.02: the paper, its grid, the pencil on the road, the doodles' strength (the maintainer: «дорогу чуть темнее, а обочину и пр. чуть светлее — варианты») */
+var RN_LOOK={paper:'#ffffff',grid:'#edf2f8',base:0.2,h1:0.36,h2:0.2,doodle:1};   // his pick: «дорога графит, бумага светлее, объекты не смягчай»
 function nFt(col,w){ rx.strokeStyle=col; rx.lineWidth=w||3; rx.lineCap='round'; rx.lineJoin='round'; }
 /* the felt-tip world round the road (around 0,0, in the sketches' pixels) */
 var RN_DOODLE={
@@ -23,21 +25,21 @@ var RN_DOODLE={
 var RN_KINDS=['tree','tree','fir','tree','flowers','fir','tree','fir'], RN_RARE=['house','pond','cloud','plane','cat','sign','sun','house','cloud'];
 /* the grid of the paper, the pencil road with the highlighter, the doodles — a chunk of the land (as rChunk in 48_racehd.js) */
 function noteChunk(rg,i,W,H){ var r=rR(rHash(RC.seed,i)+7), road=rChunkRoad(rg,i), x0s=i*W, x, k;
-  rx.fillStyle='#fbfaf4'; rx.fillRect(-2,-2,W+8,H+4);
-  rx.strokeStyle='#d8e6f4'; rx.lineWidth=0.4; for(x=8-(x0s%8);x<W+6;x+=8){ rx.beginPath(); rx.moveTo(x,-2); rx.lineTo(x,H+2); rx.stroke(); } for(var y=0;y<H+2;y+=8){ rx.beginPath(); rx.moveTo(-2,y); rx.lineTo(W+6,y); rx.stroke(); }
+  rx.fillStyle=RN_LOOK.paper; rx.fillRect(-2,-2,W+8,H+4);
+  rx.strokeStyle=RN_LOOK.grid; rx.lineWidth=0.4; for(x=8-(x0s%8);x<W+6;x+=8){ rx.beginPath(); rx.moveTo(x,-2); rx.lineTo(x,H+2); rx.stroke(); } for(var y=0;y<H+2;y+=8){ rx.beginPath(); rx.moveTo(-2,y); rx.lineTo(W+6,y); rx.stroke(); }
   // the doodles: a few kinds, one rare one now and then, none on the road, none over another
   var placed=[], list=[]; for(k=0;k<5;k++) list.push(RN_KINDS[Math.floor(r()*RN_KINDS.length)]); if(r()<0.7) list.unshift(RN_RARE[Math.floor(r()*RN_RARE.length)]);
   list.forEach(function(name){ var d=RN_DOODLE[name], rad=d[1]/2+1; for(var t=0;t<30;t++){ var px=rad+r()*(W-2*rad), py=26+r()*(H-36); if(!rOff(road,px,py,rad+4)) continue;
       if(placed.some(function(q){ var dx=q[0]-px, dy=q[1]-py; return dx*dx+dy*dy<(q[2]+rad+2)*(q[2]+rad+2); })) continue; placed.push([px,py,rad]);
-      rx.save(); rx.translate(px,py); rx.scale(0.5,0.5); d[0](r); rx.restore(); break; } });
+      rx.save(); rx.globalAlpha=RN_LOOK.doodle; rx.translate(px,py); rx.scale(0.5,0.5); d[0](r); rx.restore(); break; } });
   // the road: pencil shading (keeps to the world), the highlighter along the edges, a hand-drawn edge twice, a white dashed middle
-  rx.save(); rRoadPath(road,0); rx.clip(); rx.lineWidth=0.6; rx.strokeStyle='rgba(80,80,100,0.22)'; var tn=Math.tan(0.35)*H;
+  rx.save(); rRoadPath(road,0); rx.clip(); if(RN_LOOK.base){ rx.fillStyle='rgba(90,90,110,'+RN_LOOK.base+')'; rx.fillRect(-2,-2,W+8,H+4); } rx.lineWidth=0.6; rx.strokeStyle='rgba(80,80,100,'+RN_LOOK.h1+')'; var tn=Math.tan(0.35)*H;
   for(x=-H-(x0s%1.75);x<W+H;x+=1.75){ rx.beginPath(); rx.moveTo(x,0); rx.lineTo(x+tn,H); rx.stroke(); }
-  rx.strokeStyle='rgba(80,80,100,0.12)'; rx.lineWidth=0.5; tn=Math.tan(-0.5)*H; for(x=-(x0s%2.5);x<W+H;x+=2.5){ rx.beginPath(); rx.moveTo(x,0); rx.lineTo(x+tn,H); rx.stroke(); } rx.restore();
+  rx.strokeStyle='rgba(80,80,100,'+RN_LOOK.h2+')'; rx.lineWidth=0.5; tn=Math.tan(-0.5)*H; for(x=-(x0s%2.5);x<W+H;x+=2.5){ rx.beginPath(); rx.moveTo(x,0); rx.lineTo(x+tn,H); rx.stroke(); } rx.restore();
   rx.lineCap='round'; rx.lineJoin='round';
   [-1,1].forEach(function(sd){ rx.strokeStyle='rgba(255,226,80,0.55)'; rx.lineWidth=4.5; rEdge(road,sd,-2.5); rx.stroke();
     [0,0.6].forEach(function(j){ rx.strokeStyle='rgba(60,60,80,0.8)'; rx.lineWidth=0.8; rx.beginPath(); for(var q=0;q<road.m.length;q++){ var px=-4+q*2; rx.lineTo(px,road.m[q]+sd*(road.w[q]+j)+Math.sin((x0s+px)*0.11+j*3)*0.35); } rx.stroke(); }); });
-  rx.setLineDash([6,6]); rx.lineDashOffset=x0s%12; rx.strokeStyle='#fbfaf4'; rx.lineWidth=1.75; rx.beginPath(); for(k=0;k<road.m.length;k++) rx.lineTo(-4+k*2,road.m[k]); rx.stroke(); rx.setLineDash([]); rx.lineDashOffset=0; }
+  rx.setLineDash([6,6]); rx.lineDashOffset=x0s%12; rx.strokeStyle=RN_LOOK.paper; rx.lineWidth=1.75; rx.beginPath(); for(k=0;k<road.m.length;k++) rx.lineTo(-4+k*2,road.m[k]); rx.stroke(); rx.setLineDash([]); rx.lineDashOffset=0; }
 /* ── the cars and the gifts (around 0,0, in the sketches' pixels; rSprite scales them by a half) ── */
 function nWheel(x,y,w,h){ rx.fillStyle=RN_INK; rx.beginPath(); rx.roundRect(x-w/2,y-h/2,w,h,2); rx.fill(); }
 function nRocket(){ [[-10,-12],[12,-12],[-10,12],[12,12]].forEach(function(q){ nWheel(q[0],q[1],9,5); }); rx.strokeStyle=RN_INK; rx.lineWidth=2; rx.lineJoin='round';

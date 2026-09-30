@@ -2,7 +2,9 @@
 
 Plain Node, no npm packages: `node:http`, `node:sqlite`, `node:zlib`, `node:crypto`. Needs **Node 22.13 or newer**.
 Every game the page sends is **replayed with the game's own rules** (`src/13_core.js`, the same file the browser runs);
-only a score the replay reproduces is stored. Russian step-by-step guide: `docs/ru/server.md`.
+only a score the replay reproduces is stored. **SonaRace** (v1.01): a race comes with `game:'race'` and its steering (`height` | `road`) and is
+replayed with `src/14_race.js` by the race's own rules (a race played with the test switches is refused); it has its own tables
+(`/v1/top?…&game=race`), its metres stand in the level column. The `game` and `steer` columns are added to an existing database on start. Russian step-by-step guide: `docs/ru/server.md`.
 
 | file | what it is |
 |---|---|
@@ -24,8 +26,8 @@ the sample rate, probe level and SNR, the band equalizer, input drops and relock
 auto gain were really off. The server keeps only these keys (`cleanDev`), plus the share of steps the palm was seen; no user agent string and no IP are stored.
 The columns `dev` and `seen` are added to an existing database on start.
 
-**Rules change → tag change.** When a change in `src/13_core.js` alters play, bump `TAG` there and update the server
-together with the site: games played by other rules are refused (`409 core`), and the page asks for an update.
+**Rules change → tag change.** When a change in `src/13_core.js` (or, for SonaRace, `src/14_race.js`) alters play, bump `TAG` there and
+update the server together with the site: games played by other rules are refused (`409 core`), and the page asks for an update.
 
 ## Install (Ubuntu / Debian VPS)
 
@@ -44,7 +46,7 @@ sudo git clone https://github.com/neokrasav4ik/sonaroids.git /opt/sonaroids
 
 sudo cp /opt/sonaroids/server/sonaroids-api.service /etc/systemd/system/
 sudo systemctl daemon-reload && sudo systemctl enable --now sonaroids-api
-curl http://127.0.0.1:8787/v1/health              # {"ok":true,"core":"rules-3"}
+curl http://127.0.0.1:8787/v1/health              # {"ok":true,"core":"rules-3","race":"race-11"}
 
 sudo cp /opt/sonaroids/server/Caddyfile /etc/caddy/Caddyfile && sudo systemctl reload caddy   # or add the block to an existing Caddyfile
 sudo ufw allow 80,443/tcp                          # only if ufw is on
@@ -55,7 +57,7 @@ curl https://api.sonaroids.app/v1/health
 ```
 
 **Update:** `cd /opt/sonaroids && sudo git pull && sudo systemctl restart sonaroids-api`.
-**Which phones play, and how well the sonar works on them** (since 0.29): `sudo -u sonaroids DB=/var/lib/sonaroids/sonaroids.db node --no-warnings server/stats.js 30` (days) — games, players, median score, share of time the palm was seen, probe SNR, how often the equalizer, noise suppression and echo cancelling were on, per system / browser / model; then how getting ready went for every player, also those who never got to play (`POST /v1/setup`: caught | nocatch | quiet | noprobe | error | nomic | noaudio | lost, seconds to catch, end-of-phone flips, the same phone note; 30 a minute per address). Read-only.
+**Which phones play, and how well the sonar works on them** (since 0.29): `sudo -u sonaroids DB=/var/lib/sonaroids/sonaroids.db node --no-warnings server/stats.js 30` (days; add `race` for SonaRace's games) — games, players, median score, share of time the palm was seen, probe SNR, how often the equalizer, noise suppression and echo cancelling were on, per system / browser / model; then how getting ready went for every player, also those who never got to play (`POST /v1/setup`: caught | nocatch | quiet | noprobe | error | nomic | noaudio | lost, seconds to catch, end-of-phone flips, the same phone note; 30 a minute per address). Read-only.
 **Logs:** `journalctl -u sonaroids-api -n 100`.
 Already running nginx on ports 80/443 (Caddy then fails with "address already in use")? Use nginx instead of Caddy:
 ```sh

@@ -76,6 +76,25 @@ function play(seed,amp,steps){ const hands=[], g=Core.create(seed,380,90); for(l
   check('server/drop_player.js: shows first, removes with --yes, keeps a copy', dry.status===0&&/Beta/.test(String(dry.stdout))&&nB0>0&&bad1.status!==0&&bad2.status!==0&&real.status===0&&nB1===0&&cp&&fs.existsSync(cp)&&!t.j.entries.some(e=>e.nick==='Beta'),
     String(real.stdout).trim().split('\n').slice(-1)[0]);
   try{ fs.unlinkSync(cp); }catch(e){}
+  // v1.01: SonaRace — replayed with its own core and rules, the steering sent; its own tables; test-switch games refused
+  { const Race=require('../src/14_race.js'), R=pid(), post=(u,h,b)=>fetch(base+u,{method:'POST',headers:Object.assign({'Content-Type':'application/json','Origin':'https://sonaroids.app'},h),body:JSON.stringify(b)}).then(async r=>({code:r.status,j:await r.json()})), XF={'X-Forwarded-For':'10.9.9.9'};   // another address: the write limit is 20 a minute
+    const race=(seed,steer)=>{ const g=Race.create(seed,370,88.123,steer), hs=[]; for(let i=0;i<60*150&&g.state!=='over';i++){ let h=0.5+0.3*Math.sin(i/53)+0.08*Math.sin(i/9); if(i%700===350) h=null; else h=Math.round(Math.max(0,Math.min(1,h))*4000)/4000; hs.push(h); Race.step(g,h); }
+      const buf=Buffer.alloc(hs.length*2); hs.forEach((h,i)=>buf.writeUInt16LE(h===null?65535:Math.round(h*4000),i*2));
+      return {g,body:{game:'race',steer,core:Race.TAG,seed,FW:370,y0:88.123,enc:'deflate',hands:zlib.deflateRawSync(buf).toString('base64'),score:g.score}}; };
+    const r1=race(501,'road'), r2=race(502,'height');
+    let rr=await post('/v1/game',XF,Object.assign({pid:R},r1.body)), m=db.prepare('SELECT game, steer, level, core FROM games WHERE seed=501').get();
+    check('SonaRace: a race is replayed with its own core and stored as a race', rr.code===200&&rr.j.ok&&rr.j.score===r1.g.score&&m.game==='race'&&m.steer==='road'&&m.core===Race.TAG&&m.level===Math.floor(r1.g.d/10),
+      `score ${r1.g.score}, ${m.level} m, steering ${m.steer}, rules ${m.core}`);
+    rr=await post('/v1/game',XF,Object.assign({pid:R},r2.body,{score:r2.g.score+500})); check('SonaRace: a forged score is refused', rr.code===422&&rr.j.error==='mismatch');
+    rr=await post('/v1/game',XF,Object.assign({pid:R},r2.body,{steer:'road'})); check('SonaRace: the other steering replays another race — refused', rr.code===422);
+    rr=await post('/v1/game',XF,Object.assign({pid:R},r2.body,{steer:'wheel'})); check('SonaRace: an unknown steering is refused', rr.code===400&&rr.j.error==='steer');
+    rr=await post('/v1/game',XF,Object.assign({pid:R},r2.body,{opt:{crashFuel:false}})); check('SonaRace: a race by the test switches is refused', rr.code===400&&rr.j.error==='opt');
+    rr=await post('/v1/game',XF,Object.assign({pid:R},r2.body,{core:Core.TAG})); check('SonaRace: the flight\'s rules tag is refused for a race', rr.code===409&&rr.j.error==='core'&&rr.j.core===Race.TAG);
+    rr=await post('/v1/game',XF,Object.assign({pid:R},r2.body)); await post('/v1/nick',XF,{pid:R,nick:'Racer'});
+    const tr=await get('/v1/top?period=all&game=race',{'X-Player':R}), tf=await get('/v1/top?period=all&limit=50');
+    check('SonaRace: its own table; the flight\'s table has no races', tr.j.game==='race'&&tr.j.entries.length===1&&tr.j.entries[0].nick==='Racer'&&tr.j.entries[0].score===Math.max(r1.g.score,r2.g.score)&&tr.j.me&&tr.j.me.rank===1&&!tf.j.entries.some(e=>e.nick==='Racer'),
+      `race table: ${JSON.stringify(tr.j.entries.map(e=>[e.nick,e.score,e.level]))}; flight table: ${tf.j.entries.length} names`);
+    const hl=await get('/v1/health'); check('health names both rules', hl.j.core===Core.TAG&&hl.j.race===Race.TAG, JSON.stringify(hl.j)); }
   server.close(); try{ fs.unlinkSync(tmp); fs.unlinkSync(tmp+'-wal'); fs.unlinkSync(tmp+'-shm'); }catch(e){}
   const ok=res.every(Boolean); console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1; setTimeout(()=>process.exit(process.exitCode),100);
 })();

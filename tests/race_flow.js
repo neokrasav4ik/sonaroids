@@ -14,7 +14,8 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
   const b=await chromium.launch(); const ctx=await b.newContext({viewport:{width:844,height:390},deviceScaleFactor:2});
   await ctx.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_lang','${process.env.LANG2||'en'}'); ${SRC}; window.makeSimSource=makeSimSource; window.__scen=${SCEN}; window.SONAROIDS_API='https://api.test';`);
   const p=await ctx.newPage(); const errors=[]; p.on('pageerror',e=>errors.push(e.message+(errors.length?'':' '+String(e.stack).split('\n').slice(0,4).join(' < '))));
-  await p.route('https://api.test/**',r=>r.fulfill({status:200,headers:{'Access-Control-Allow-Origin':'*'},contentType:'application/json',body:'{"ok":true}'}));
+  const sent=[]; await p.route('https://api.test/**',r=>{ if(/\/v1\/game$/.test(r.request().url())) try{ sent.push(JSON.parse(r.request().postData())); }catch(e){}   // v1.01: the race as the server would get it
+    r.fulfill({status:200,headers:{'Access-Control-Allow-Origin':'*'},contentType:'application/json',body:'{"ok":true}'}); });
   await p.goto('file://'+path.join(ROOT,'game','play','index.html')); await p.waitForTimeout(600);
   await p.evaluate(()=>{ Sonar.simulate({fs:48000,chan:'right',source:makeSimSource(window.__scen)}); });
   const shot=n=>p.screenshot({path:path.join(OUT,'race_'+n+'.png')});
@@ -30,7 +31,7 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
   while(T()<70){
     await p.waitForTimeout(100);
     const s=await p.evaluate(()=>{ const s=__sonaroids.state(), st=Sonar.state(); return {scr:s.scr,caught:s.caught,hand:(st&&st.present&&s.T)?Tune.fracOf(s.T,st.height):null,
-      car:s.g&&s.g.car?s.g.car.y/s.g.FH:null, gstate:s.g?s.g.state:null, score:s.g?s.g.score:null}; });
+      car:s.g&&s.g.car?(s.g.steer==='road'?(s.g.car.y-Race.centre(s.g,s.g.d+s.g.car.x))/s.g.FH:s.g.car.y/s.g.FH):null,   /* v1.01: steering along the road — the car's place across the road (its height follows the bends too) */ gstate:s.g?s.g.state:null, score:s.g?s.g.score:null}; });
     if(s.scr!==last){ seen.push(s.scr+'@'+T().toFixed(1)); last=s.scr; }
     if(s.scr==='probe') await p.evaluate(()=>__sonaroids.act.probe_norm());
     if(s.scr==='wave'&&s.caught&&T()>=17&&!startAt){ await shot('02_try'); startAt=T(); await p.evaluate(()=>__sonaroids.act.start()); }
@@ -60,6 +61,9 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
   check('the candy land is drawn',drawn&&drawn.shown&&drawn.choc>0.05&&drawn.pink>0.1,drawn?`road ${(100*drawn.choc).toFixed(0)}%, glaze ${(100*drawn.pink).toFixed(0)}%`:'none');
   check('the pause: go on, start over, end, exit, sounds; back to the race',!!paused&&paused.scr==='paused'&&['resume','restart','quit','exit'].every(k=>paused.btn.includes(k))&&!paused.btn.includes('gfx')&&paused.cr==='count-resume'&&paused.back==='play',paused?paused.btn.join(',')+' → '+paused.cr+' → '+paused.back:'none');
   check('the finish: the score, the best kept',!!over&&over.scr==='over'&&over.score>0&&over.best===over.score&&over.btn.includes('again')&&over.btn.includes('menu'),over?`score ${over.score}, best ${over.best}, "${over.say}"`:'none');
+  { const Race=require('../src/14_race.js'), zlib=require('zlib'), rb=sent.find(x=>x.game==='race'); let rs=null;   // v1.01: the server's replay of the race the page sent lands on the same score
+    if(rb){ const buf=rb.enc==='deflate'?zlib.inflateRawSync(Buffer.from(rb.hands,'base64')):Buffer.from(rb.hands,'base64'), hs=[]; for(let i=0;i<buf.length;i+=2){ const v=buf.readUInt16LE(i); hs.push(v===65535?-1:v/4000); } rs=Race.replay(rb.seed,rb.FW,hs,rb.y0,rb.steer,null).score; }
+    check('the race is sent to the tables and the server\'s replay gives its score',rb&&rb.core===Race.TAG&&(rb.steer==='road'||rb.steer==='height')&&rs===rb.score&&rb.score>0,rb?`sent ${rb.score}, replayed ${rs}, steering ${rb.steer}, ${Math.round(rb.hands.length*0.75)} B`:'nothing sent'); }
   check('no page errors',!errors.length,errors.join(' | '));
   out.forEach(s=>console.log(s)); console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;
 })();

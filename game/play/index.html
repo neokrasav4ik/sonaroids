@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='1.00';
+var VERSION='1.01';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -1137,7 +1137,7 @@ var Board=(function(){
   function nick(){ return ls('sonaroids_nick'); }
   /* the palm height the game steps with: rounded so that the server can repeat it exactly */
   function q(h){ return h===null||h===undefined?null:Math.round(h*Q)/Q; }
-  function start(seed,FW,y0){ cur={core:Core.TAG,seed:seed,FW:FW,y0:y0,q:[]}; last=null; }
+  function start(seed,FW,y0,x){ cur={core:x&&x.core||Core.TAG,seed:seed,FW:FW,y0:y0,q:[],game:x&&x.game||null,steer:x&&x.steer||null}; last=null; }   // v1.01: x — SonaRace: {game:'race', core, steer}
   function step(h){ if(cur) cur.q.push(h===null?NONE:Math.round(h*Q)); }
   function b64(u8){ var s='', CH=0x8000; for(var i=0;i<u8.length;i+=CH) s+=String.fromCharCode.apply(null,u8.subarray(i,i+CH)); return btoa(s); }
   function pack(qs){ var u8=new Uint8Array(qs.length*2); for(var i=0;i<qs.length;i++){ u8[2*i]=qs[i]&255; u8[2*i+1]=qs[i]>>8; }
@@ -1149,7 +1149,7 @@ var Board=(function(){
   function post(path,body){ return fetch(API+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){ return r.json().then(function(j){ j.http=r.status; return j; });   /* v0.33: was j.code — it overwrote the transfer code */ }); }
   /* a game is over (or dropped): send it. last — what the game-over screen shows: sending | done | offline | old | error */
   function finish(score){ var c=cur; cur=null; if(!c||!on()||!(score>0)||!c.q.length) return; last={state:'sending',score:score}; var d=dev();
-    pack(c.q).then(function(p){ var body={pid:pid(),core:c.core,seed:c.seed,FW:c.FW,y0:c.y0,enc:p.enc,hands:p.hands,score:score,dev:d};
+    pack(c.q).then(function(p){ var body={pid:pid(),core:c.core,seed:c.seed,FW:c.FW,y0:c.y0,enc:p.enc,hands:p.hands,score:score,dev:d}; if(c.game){ body.game=c.game; body.steer=c.steer; }
       return post('/v1/game',body).then(function(j){ cache={};
         if(j.ok) last={state:'done',score:j.score,ranks:j.ranks,here:j.here||null,listed:j.listed,named:j.named||!!nick()};
         else if(j.error==='core') last={state:'old'}; else last={state:'error',why:j.error}; },
@@ -1171,9 +1171,9 @@ var Board=(function(){
       var l=[]; try{ l=JSON.parse(ls('sonaroids_unsent')||'[]'); }catch(e){} l.forEach(function(b){ b.pid=j.pid; }); if(l.length) ls('sonaroids_unsent',JSON.stringify(l));
       ls('sonaroids_pid',j.pid); ls('sonaroids_nick',j.nick||null); cache={}; } return j; }); }
   /* a table: cached for 30 s; state loading | ok | offline */
-  function top(period){ var c=cache[period]; if(c&&(c.state==='loading'||Date.now()-c.at<30000)) return c;
-    c=cache[period]={state:'loading',at:Date.now()}; if(!on()){ c.state='offline'; return c; }
-    fetch(API+'/v1/top?period='+period+'&limit=10',{headers:{'X-Player':pid()}}).then(function(r){ return r.json(); })
+  function top(period,game){ var key=period+(game==='race'?'|race':''), c=cache[key]; if(c&&(c.state==='loading'||Date.now()-c.at<30000)) return c;   // v1.01: game 'race' — SonaRace's tables
+    c=cache[key]={state:'loading',at:Date.now()}; if(!on()){ c.state='offline'; return c; }
+    fetch(API+'/v1/top?period='+period+'&limit=10'+(game==='race'?'&game=race':''),{headers:{'X-Player':pid()}}).then(function(r){ return r.json(); })
       .then(function(j){ c.state='ok'; c.entries=j.entries||[]; c.me=j.me||null; c.at=Date.now(); },function(){ c.state='offline'; c.at=Date.now(); });
     return c; }
   return {setup:setup,link:link,claim:claim,devInfo:function(f){ devFn=f; },q:q,start:start,step:step,finish:finish,flush:flush,setNick:setNick,top:top,nick:nick,on:on,
@@ -3412,7 +3412,7 @@ function boardLine(){ var b=Board.last(); if(!b) return null;
   return [L('here_'+k).replace('{n}',h[k]),P.soft,L('pb_'+k).replace('{n}',r[k])]; }
 /* ── high scores (v0.25): today, this week, all time; the list on one side, the buttons on the free side ── */
 var tblBox=null, period='day', scoresFrom='title', nickFrom='title', nickAsked=false, nickMsg='', nickBusy=false, nickEl=null;
-function sScores(){ sky(DT,0.3); var c=Board.top(period);
+function sScores(){ var rc=mode==='race'; if(rc){ raceDemoTick(); raceScene(rDemo,rDemo.d,rDemo.car.y,DT); lx.globalAlpha=0.72; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; } else sky(DT,0.3); var c=Board.top(period,rc?'race':'fly');   // v1.01: SonaRace's tables over its road
   var nm=Board.nick(), items=[['p_day',L('p_day'),period==='day'?'primary':''],['p_week',L('p_week'),period==='week'?'primary':''],['p_all',L('p_all'),period==='all'?'primary':''],
     ['name',nm?L('name')+': '+nm:L('name_set')],['link',L('link')]], /* v0.48: «back» is the menu button in the corner (it goes back, as «back» did) */ bw=btnW(items.map(function(q){ return q[1]; })), bx=sideX(bw), m=Math.max(10,Math.round(LW*0.03));
   var x0=freeSide()==='left'?bx+bw+m:SAFE.l+m, x1=freeSide()==='left'?LW-SAFE.r-m:bx-m;          // the list takes the rest of the width
@@ -3540,7 +3540,7 @@ function newSeed(){ try{ var a=new Uint32Array(1); crypto.getRandomValues(a); re
 function raceDemoTick(){ if(!rDemo||rDemo.d>60000) rDemo=Race.create(20260929,raceFW(),Race.FH/2);
   if(rDemo._c===clock) return; rDemo._c=clock; for(var n=Math.max(1,Math.round(DT*60));n>0;n--) raceDemoStep(rDemo); }
 function sRTitle(){ raceDemoTick(); raceScene(rDemo,rDemo.d,rDemo.car.y,DT);
-  var items=[['play',L('play'),'primary'],['howto',L('howto')]].concat(RACE_TEST?[['rset',L('r_set')]]:[]).concat([['rskin',raceSkinLabel()],['gfx',L('gfx')+': '+(gfxMode==='hd'?'HD':L('gfx_pixel'))],['sfx','','sound'],['hub',L('all_games')]]), w=colW(items);
+  var items=[['play',L('play'),'primary'],['scores',L('scores')],['howto',L('howto')]].concat(RACE_TEST?[['rset',L('r_set')]]:[]).concat([['rskin',raceSkinLabel()],['gfx',L('gfx')+': '+(gfxMode==='hd'?'HD':L('gfx_pixel'))],['sfx','','sound'],['hub',L('all_games')]]), w=colW(items);
   var bx0=sideX(w), m=Math.max(8,Math.round(LW*0.04)), band0=freeSide()==='left'?0:bx0-m, band1=freeSide()==='left'?bx0+w+m:LW;
   lx.globalAlpha=0.55; R(P.bg,band0,0,band1-band0,LH); lx.globalAlpha=1;
   column(items,Math.round(LH*0.52),bx0,items.length>5?6:8);
@@ -3564,7 +3564,7 @@ function raceCount(){ countT-=DT; followShip(); raceScene(g,g.d,raceCarY(g,g.d),
   ring(cx0,cy0,13,1-(countT-Math.floor(countT)),P.band); text(String(n),cx0,cy0-3,P.text,'center'); say(String(n));
   if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.play('tick');
   if(countT<=0) startGame(); }
-function raceStart(){ var y0=raceSteer==='road'?(rCarYs===null?null:+rCarYs.toFixed(3)):(shipY===null?null:+(shipY/K).toFixed(3)); if(y0!==null) g.car.y=Math.max(Race.MARGIN,Math.min(Race.FH-Race.MARGIN,y0)); g.car.off=g.car.y-Race.centre(g,g.d+g.car.x);
+function raceStart(){ var y0=raceSteer==='road'?(rCarYs===null?null:+rCarYs.toFixed(3)):(shipY===null?null:+(shipY/K).toFixed(3)); if(y0!==null) g.car.y=Math.max(Race.MARGIN,Math.min(Race.FH-Race.MARGIN,y0)); g.car.y=+g.car.y.toFixed(3); g.car.off=g.car.y-Race.centre(g,g.d+g.car.x); if(!RACE_TEST) Board.start(g.seed,g.FW,g.car.y,{game:'race',core:Race.TAG,steer:g.steer});   /* v1.01: the race goes to the tables — the server replays it from this start */
   acc=0; parts=[]; raceNew=false; var I=Sonar.info();
   Logs.gameStart({core:Race.TAG,game:'race',steer:g.steer,opt:g.opt,seed:g.seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:'frozen',asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
     chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids'});
@@ -3591,7 +3591,7 @@ function raceHud(){ var cx0=Math.round(LW/2), y=topY(), f=g.fuel/Race.TUNE.FUEL,
   if(g.state==='coast'&&Math.floor(clock*3)%2===0) text(L('r_out'),cx0,Math.round(LH*0.3),P.hit,'center'); }
 function racePlay(){
   acc+=DT; var n=0;
-  while(acc>=Race.DT&&n<5){ acc-=Race.DT; n++; var h=Board.q(handFrac()); Race.step(g,h); Logs.step({n:g.n,FH:g.FH,ship:{y:g.car.y},lives:Math.round(g.fuel),score:g.score,events:g.events},h); raceReact(); if(g.state==='over') break; }
+  while(acc>=Race.DT&&n<5){ acc-=Race.DT; n++; var h=Board.q(handFrac()); Race.step(g,h); Board.step(h); Logs.step({n:g.n,FH:g.FH,ship:{y:g.car.y},lives:Math.round(g.fuel),score:g.score,events:g.events},h); raceReact(); if(g.state==='over') break; }
   if(n===5) acc=0;
   shake=Math.max(0,shake-DT); flash=Math.max(0,flash-DT);
   duckT-=DT; if(duckT<=0&&Sonar.peak()>DUCK_PEAK){ duckT=0.4; if(Sfx.duck()) Logs.gameEv('sounds down',+Sfx.level().toFixed(2)); }
@@ -3602,7 +3602,7 @@ function racePlay(){
   iconButton('pause',freeSide()==='left'?Math.round(SAFE.l*0.5)+10:LW-Math.round(SAFE.r*0.5)-10-(BH-3),SAFE.t+7); say(L('menu_a'));
   if(flash>0){ lx.globalAlpha=Math.min(0.3,flash); R('#ffffff',0,0,LW,LH); lx.globalAlpha=1; }
   if(g.state==='over') endGame(); }
-function raceEnd(){ g.state='over'; overT=0; Logs.gameStop(); if(g.score>raceBest){ raceBest=g.score; raceNew=true; store.set('sonaroids_race_best',raceBest); } go('over'); }
+function raceEnd(){ g.state='over'; overT=0; nickAsked=false; Logs.gameStop(); Board.finish(g.score); Board.flush(); if(g.score>raceBest){ raceBest=g.score; raceNew=true; store.set('sonaroids_race_best',raceBest); } go('over'); }
 function raceOver(){ overT+=DT; field(DT,0); lx.globalAlpha=0.35; R(P.bg,0,0,LW,LH); lx.globalAlpha=1;
   var cx0=freeSide()==='left'?Math.round(LW*0.6):Math.round(LW*0.4), y=Math.round(LH*0.22);
   text(L('r_finish'),cx0,y,P.text,'center'); text(String(g.score),cx0,y+13,P.band,'center',2);
@@ -3610,8 +3610,10 @@ function raceOver(){ overT+=DT; field(DT,0); lx.globalAlpha=0.35; R(P.bg,0,0,LW,
   ls.forEach(function(q,i){ text(q[0],cx0,y+38+i*11,q[1],'center'); });
   var vs='V'+VERSION, vr=freeSide()==='left', vx=vr?LW-SAFE.r-8:SAFE.l+8, vy=LH-SAFE.b-12, vw=PF.width(vs);
   text(vs,vx,vy,diag?P.band:P.soft,vr?'right':'left'); var bx0=Math.max(0,(vr?vx-vw:vx)-8), bx1=Math.min(LW,(vr?vx:vx+vw)+8), by0=vy-8; BTN.push({id:'ver',x:bx0,y:by0,w:bx1-bx0,h:Math.min(PF.CAP+16,LH-by0)});
-  say(L('r_finish')+' '+g.score);
-  if(overT>0.8) column([['again',L('again'),'primary'],['menu',L('menu')]].concat(diag&&Logs.has()?[['logs',L('logs')]]:[]),Math.round(LH*0.52)); }
+  var bl=boardLine(); if(bl){ text(bl[0],cx0,y+38+ls.length*11+4,bl[1],'center'); if(bl[2]) text(bl[2],cx0,y+38+ls.length*11+15,P.soft,'center'); }   // v1.01: the place in SonaRace's tables
+  say(L('r_finish')+' '+g.score+(bl?'. '+bl[0]:''));
+  var lb=Board.last(); if(lb&&lb.state==='done'&&lb.listed&&!lb.named&&!nickAsked&&overT>1.5){ nickAsked=true; nickFrom='over'; go('nick'); return; }
+  if(overT>0.8) column([['again',L('again'),'primary'],['menu',L('menu')],['scores',L('scores')]].concat(diag&&Logs.has()?[['logs',L('logs')]]:[]),Math.round(LH*0.52)); }
 
 /* ── actions ── */
 function startPrepare(){
@@ -3758,7 +3760,7 @@ function loop(now){
   DT=Math.min(0.05,Math.max(0,(now-lastNow)/1000)); lastNow=now; clock+=DT; scrT+=DT; BTN=[];
   if(LH>LW){ pauseGame(); sRotate(); present(0); return; }
   if(booted&&Sonar.lost()&&(scr==='wave'||scr==='count'||scr==='play'||scr==='over')){ if(g&&g.state==='play') Logs.gameStop(); Board.setup('lost'); go('lost'); }
-  var RS=mode==='race'&&(scr==='rtitle'||scr==='rset'||scr==='count'||scr==='count-resume'||scr==='play'||scr==='over'||scr==='paused'||scr==='restart'||(scr==='wave'&&caught&&scrT-caughtT>=CAUGHT_SHOW));
+  var RS=mode==='race'&&(scr==='rtitle'||scr==='rset'||scr==='scores'||scr==='count'||scr==='count-resume'||scr==='play'||scr==='over'||scr==='paused'||scr==='restart'||(scr==='wave'&&caught&&scrT-caughtT>=CAUGHT_SHOW));
   hdFrame(RS||(scr==='hub'?hdWanted(SKIN_IDS[hubSkin]):!!SK.hd),false);   // v0.84: SonaRace's screens smooth; v0.99: or in candy pixels, as the graphics switch says
   // v0.91: while a game runs (and in its pause) the sonar keeps the empty room's level as the getting ready left it (see src/11_dsp.js)
   var gameOn=!!(g&&g.state!=='over'&&(scr==='play'||scr==='count-resume'||scr==='paused'||scr==='restart')); if(gameOn!==floorHeld){ floorHeld=gameOn; try{ DSP2.set('holdfloor',gameOn); }catch(e){} }   // v0.74: a shapes-only skin with «pixels» — the same canvas at 1 px per game pixel   // v0.72: the HD world canvas under the pixel one

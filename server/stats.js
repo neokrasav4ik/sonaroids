@@ -1,5 +1,5 @@
 /* Which phones play and how well the sonar works on them (v0.29). Reads the database, changes nothing.
-   Run on the server:  cd /opt/sonaroids && sudo -u sonaroids DB=/var/lib/sonaroids/sonaroids.db node --no-warnings server/stats.js [days]
+   Run on the server:  cd /opt/sonaroids && sudo -u sonaroids DB=/var/lib/sonaroids/sonaroids.db node --no-warnings server/stats.js [days] [race]
    One row per kind of phone (system / browser / model): games, players, median score, median share of time the palm was seen,
    median probe signal-to-noise, how often the band equalizer was on, how often the browser left noise suppression / echo cancelling on.
    Games from before v0.29 have no phone data; they are counted in the last row.
@@ -8,11 +8,12 @@
    nomic — no microphone; lost — the probe went away mid-game; flips — the game suggested the other end of the phone. */
 const path=require('node:path');
 let DatabaseSync; try{ ({DatabaseSync}=require('node:sqlite')); }catch(e){ console.error('Node 22.13 or newer is needed (node:sqlite).'); process.exit(1); }
-const DB=process.env.DB||path.join(__dirname,'sonaroids.db'), days=+(process.argv[2]||30);
+const DB=process.env.DB||path.join(__dirname,'sonaroids.db'), days=+(process.argv[2]||30), GAME=process.argv[3]==='race'?'race':'fly';   // v1.01: SonaFly (default) or SonaRace: … stats.js 30 race
 let db; try{ db=new DatabaseSync(DB,{readOnly:true}); }catch(e){ db=new DatabaseSync(DB); }
 const cols=db.prepare('PRAGMA table_info(games)').all().map(c=>c.name);
-const rows=db.prepare(`SELECT player, score, ${cols.includes('dev')?'dev':'NULL AS dev'}, ${cols.includes('seen')?'seen':'NULL AS seen'} FROM games WHERE created>=?`)
-  .all(Date.now()-days*86400000);
+const rows=db.prepare(`SELECT player, score, ${cols.includes('dev')?'dev':'NULL AS dev'}, ${cols.includes('seen')?'seen':'NULL AS seen'} FROM games WHERE created>=?${cols.includes('game')?' AND game=?':''}`)
+  .all(...[Date.now()-days*86400000].concat(cols.includes('game')?[GAME]:[]));
+console.log(GAME==='race'?'SonaRace':'SonaFly');
 
 const kindOf=d=>d?[d.os||'?',d.br||'?',d.model||''].join(' / ').replace(/ \/ $/,'')+(d.app?(d.audio==='app'?' [app, app sound]':' [app]'):''):'(unknown)';   // v0.55: the Android app apart
 const med=a=>{ a=a.filter(v=>v!==null&&v!==undefined&&isFinite(v)).sort((x,y)=>x-y); return a.length?a[Math.floor((a.length-1)/2)]:null; };

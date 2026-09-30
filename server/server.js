@@ -2,13 +2,15 @@
    Every submitted game is replayed with the game's own core (src/13_core.js); only a score the replay reproduces is stored.
 
    API (JSON, CORS for the game's site):
-     POST /v1/game   {pid, core, seed, FW, y0, enc, hands, score}  → {ok, score, ranks:{day,week,all}, here:{day,week,all}, listed, named}
+     POST /v1/game   {pid, core, seed, FW, y0, enc, hands, score[, game:'race', steer]}  → {ok, score, ranks:{day,week,all}, here:{day,week,all}, listed, named}
+                     v1.01: game 'race' — SonaRace, replayed with src/14_race.js by its own rules (Race.OPT0) and the steering sent (height | road);
+                     its own tables. No game — SonaFly, as before
                      ranks — the place of the player's best game; here — the place of this very game (v0.32)
      POST /v1/nick   {pid, nick}                                    → {ok, nick}
      POST /v1/link   {pid}                                          → {ok, code, ttl}   a transfer code, 10 minutes (v0.32)
      POST /v1/claim  {pid, code}                                    → {ok, pid, nick}   take over the code's player, joining this one into it
-     GET  /v1/top?period=day|week|all&limit=N   (header X-Player: pid, optional) → {period, entries:[{rank,nick,score,level,t,me}], me}
-     GET  /v1/health                                                → {ok, core}
+     GET  /v1/top?period=day|week|all&limit=N[&game=race]   (header X-Player: pid, optional) → {period, game, entries:[{rank,nick,score,level,t,me}], me}
+     GET  /v1/health                                                → {ok, core, race}
    pid — a random secret the game keeps on the device; the database stores only its hash.
    Periods are UTC: "day" since midnight, "week" since Monday midnight.
 
@@ -17,6 +19,7 @@
 const http=require('node:http'), zlib=require('node:zlib'), crypto=require('node:crypto'), path=require('node:path');
 let DatabaseSync; try{ ({DatabaseSync}=require('node:sqlite')); }catch(e){ console.error('Node 22.13 or newer is needed (node:sqlite). This is '+process.version); process.exit(1); }
 const Core=require(path.join(__dirname,'..','src','13_core.js'));
+const Race=require(path.join(__dirname,'..','src','14_race.js'));   // v1.01: SonaRace's core, the same file the page runs
 
 const PORT=+(process.env.PORT||8787);
 const DB_PATH=process.env.DB||path.join(__dirname,'sonaroids.db');
@@ -39,9 +42,13 @@ CREATE INDEX IF NOT EXISTS setups_created ON setups(created);`);
 /* v0.29: what kind of phone played and how well it heard the probe (dev, JSON), and the share of steps the palm was seen (seen, 0…1).
    Added to an existing database in place; older games keep NULL there. */
 { const cols=db.prepare('PRAGMA table_info(games)').all().map(c=>c.name);
-  if(!cols.includes('dev')) db.exec('ALTER TABLE games ADD COLUMN dev TEXT'); if(!cols.includes('seen')) db.exec('ALTER TABLE games ADD COLUMN seen REAL'); }
+  if(!cols.includes('dev')) db.exec('ALTER TABLE games ADD COLUMN dev TEXT'); if(!cols.includes('seen')) db.exec('ALTER TABLE games ADD COLUMN seen REAL');
+  /* v1.01: which game — 'fly' (SonaFly; the games from before are that) or 'race' (SonaRace), and the race's steering (height | road) */
+  if(!cols.includes('game')){ db.exec("ALTER TABLE games ADD COLUMN game TEXT NOT NULL DEFAULT 'fly'"); } if(!cols.includes('steer')) db.exec('ALTER TABLE games ADD COLUMN steer TEXT');
+  db.exec('CREATE INDEX IF NOT EXISTS games_game ON games(game,created)'); }
+const GAMES=['fly','race'];
 const q={
-  insGame: db.prepare('INSERT INTO games(player,seed,core,score,level,t,created,fw,y0,replay,dev,seen) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)'),
+  insGame: db.prepare('INSERT INTO games(player,seed,core,score,level,t,created,fw,y0,replay,dev,seen,game,steer) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)'),
   insSetup: db.prepare('INSERT INTO setups(player,created,result,t,flips,dev) VALUES(?,?,?,?,?,?)'),
   insPlayer: db.prepare('INSERT OR IGNORE INTO players(player,nick,created) VALUES(?,NULL,?)'),
   getPlayer: db.prepare('SELECT nick FROM players WHERE player=?'),
@@ -49,15 +56,15 @@ const q={
   // best game per named player since a moment; ties: the earlier game first
   top: db.prepare(`SELECT p.player AS player, p.nick AS nick, g.score AS score, g.level AS level, g.t AS t, g.created AS created
     FROM games g JOIN players p ON p.player=g.player
-    WHERE g.created>=? AND p.nick IS NOT NULL AND g.id=(SELECT g2.id FROM games g2 WHERE g2.player=g.player AND g2.created>=? ORDER BY g2.score DESC, g2.created ASC LIMIT 1)
+    WHERE g.game=? AND g.created>=? AND p.nick IS NOT NULL AND g.id=(SELECT g2.id FROM games g2 WHERE g2.player=g.player AND g2.game=g.game AND g2.created>=? ORDER BY g2.score DESC, g2.created ASC LIMIT 1)
     ORDER BY g.score DESC, g.created ASC LIMIT ?`),
-  best: db.prepare('SELECT MAX(score) AS s FROM games WHERE player=? AND created>=?'),
+  best: db.prepare('SELECT MAX(score) AS s FROM games WHERE game=? AND player=? AND created>=?'),
   // v0.32: joining two players into one (the transfer code): games, getting-ready reports, the name
   mvGames: db.prepare('UPDATE OR IGNORE games SET player=? WHERE player=?'), delGames: db.prepare('DELETE FROM games WHERE player=?'),
   mvSetups: db.prepare('UPDATE setups SET player=? WHERE player=?'), delPlayer: db.prepare('DELETE FROM players WHERE player=?'),
   // how many named players did better than a score since a moment
   above: db.prepare(`SELECT COUNT(*) AS n FROM (SELECT g.player, MAX(g.score) AS s FROM games g JOIN players p ON p.player=g.player
-    WHERE g.created>=? AND p.nick IS NOT NULL AND g.player<>? GROUP BY g.player) WHERE s>?`),
+    WHERE g.game=? AND g.created>=? AND p.nick IS NOT NULL AND g.player<>? GROUP BY g.player) WHERE s>?`),
 };
 
 /* ── helpers ── */
@@ -68,7 +75,7 @@ function since(period,now){ const d=new Date(now);
   if(period==='day') return day;
   const dow=(d.getUTCDay()+6)%7; return day-dow*86400000; }                 // week: since Monday
 const PERIODS=['day','week','all'];
-function rankOf(player,score,period,now){ const n=q.above.get(since(period,now),player,score).n; return n+1; }
+function rankOf(game,player,score,period,now){ const n=q.above.get(game,since(period,now),player,score).n; return n+1; }
 
 /* nicknames: 1–16 Latin letters, digits and _ only (the maintainer's call, 25 Sep: nothing odd gets in); a short word filter.
    Queries are prepared statements anyway, and names are drawn by the game's own pixel font, never as HTML */
@@ -118,22 +125,28 @@ const ip=req=>{ const f=String(req.headers['x-forwarded-for']||'').split(',').ma
 
 function postGame(b,now){
   if(typeof b.pid!=='string'||!/^[0-9a-f]{32}$/.test(b.pid)) return [400,{ok:false,error:'pid'}];
-  if(b.core!==Core.TAG) return [409,{ok:false,error:'core',core:Core.TAG}];            // an old game version: the rules differ
+  const game=b.game===undefined||b.game===null?'fly':b.game; if(!GAMES.includes(game)) return [400,{ok:false,error:'game'}];
+  const race=game==='race', TAG=race?Race.TAG:Core.TAG, FH=race?Race.FH:Core.FH;
+  if(b.core!==TAG) return [409,{ok:false,error:'core',core:TAG}];            // an old game version: the rules differ
   const seed=b.seed>>>0, FW=+b.FW, y0=(b.y0===null||b.y0===undefined)?null:+b.y0;
-  if(seed!==b.seed||!(FW>=100&&FW<=700)||(y0!==null&&!(y0>=0&&y0<=Core.FH))) return [400,{ok:false,error:'args'}];
+  if(seed!==b.seed||!(FW>=100&&FW<=700)||(y0!==null&&!(y0>=0&&y0<=FH))) return [400,{ok:false,error:'args'}];
+  /* v1.01, SonaRace: only the game's own rules (the test switches' games are not for the tables) and one of the two ways to steer */
+  const steer=race?b.steer:null; if(race&&steer!=='height'&&steer!=='road') return [400,{ok:false,error:'steer'}];
+  if(race&&b.opt!==undefined&&b.opt!==null) return [400,{ok:false,error:'opt'}];
   let d; try{ d=decodeHands(b.enc,b.hands); }catch(e){ return [400,{ok:false,error:'hands'}]; }
-  const g=Core.replay(seed,FW,d.hands,y0);
+  const g=race?Race.replay(seed,FW,d.hands,y0,steer,null):Core.replay(seed,FW,d.hands,y0);
   if(g.score!==b.score) return [422,{ok:false,error:'mismatch',score:g.score}];
+  const level=race?Math.floor(g.d/10):g.level;   // a race has no levels: its metres there
   const player=hash(b.pid); q.insPlayer.run(player,now);
   let seen=0; for(const h of d.hands) if(h>=0) seen++; seen=+(seen/d.hands.length).toFixed(4);
-  try{ q.insGame.run(player,seed,Core.TAG,g.score,g.level,+g.t.toFixed(2),now,FW,y0,zlib.deflateRawSync(d.raw),cleanDev(b.dev),seen); }
+  try{ q.insGame.run(player,seed,TAG,g.score,level,+g.t.toFixed(2),now,FW,y0,zlib.deflateRawSync(d.raw),cleanDev(b.dev),seen,game,steer); }
   catch(e){ if(/UNIQUE/.test(String(e.message))) return [409,{ok:false,error:'dup'}]; throw e; }
   const ranks={}; let listed=false;
-  for(const p of PERIODS){ const best=q.best.get(player,since(p,now)).s; ranks[p]=rankOf(player,best,p,now); if(ranks[p]<=LISTED&&best===g.score) listed=true; }
+  for(const p of PERIODS){ const best=q.best.get(game,player,since(p,now)).s; ranks[p]=rankOf(game,player,best,p,now); if(ranks[p]<=LISTED&&best===g.score) listed=true; }
   // v0.32: where this very game stands — the players above it, counting the player's own better game (the table shows one game per player)
-  const here={}; for(const p of PERIODS){ const t0=since(p,now), own=q.best.get(player,t0).s; here[p]=q.above.get(t0,player,g.score).n+(own>g.score?1:0)+1; }
+  const here={}; for(const p of PERIODS){ const t0=since(p,now), own=q.best.get(game,player,t0).s; here[p]=q.above.get(game,t0,player,g.score).n+(own>g.score?1:0)+1; }
   const named=!!q.getPlayer.get(player).nick;
-  return [200,{ok:true,score:g.score,level:g.level,ranks,here,listed,named}];
+  return [200,{ok:true,score:g.score,level,ranks,here,listed,named}];
 }
 /* v0.29: how getting ready went — from every player, also those who never get to play; for server/stats.js only */
 const SETUP_RE=/^(caught|nocatch|quiet|loud|noprobe|error|nomic|noaudio|lost)$/;
@@ -170,12 +183,13 @@ function postNick(b){
 }
 function getTop(url,req,now){
   const period=PERIODS.includes(url.searchParams.get('period'))?url.searchParams.get('period'):'all';
+  const game=GAMES.includes(url.searchParams.get('game'))?url.searchParams.get('game'):'fly';
   const limit=Math.max(1,Math.min(LISTED,+url.searchParams.get('limit')||20)), t0=since(period,now);
   const pid=String(req.headers['x-player']||''), me=/^[0-9a-f]{32}$/.test(pid)?hash(pid):null;
-  const rows=q.top.all(t0,t0,limit);
+  const rows=q.top.all(game,t0,t0,limit);
   const entries=rows.map((r,i)=>({rank:i+1,nick:r.nick,score:r.score,level:r.level,t:r.t,me:r.player===me}));
-  let mine=null; if(me){ const best=q.best.get(me,t0).s; if(best!==null&&best!==undefined){ const p=q.getPlayer.get(me); mine={rank:rankOf(me,best,period,now),score:best,nick:p?p.nick:null}; } }
-  return [200,{period,entries,me:mine}];
+  let mine=null; if(me){ const best=q.best.get(game,me,t0).s; if(best!==null&&best!==undefined){ const p=q.getPlayer.get(me); mine={rank:rankOf(game,me,best,period,now),score:best,nick:p?p.nick:null}; } }
+  return [200,{period,game,entries,me:mine}];
 }
 
 const server=http.createServer(async(req,res)=>{
@@ -183,7 +197,7 @@ const server=http.createServer(async(req,res)=>{
   if(req.method==='OPTIONS'){ res.writeHead(204,origin?{'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Methods':'GET, POST','Access-Control-Allow-Headers':'Content-Type, X-Player','Access-Control-Max-Age':'86400','Vary':'Origin'}:{}); return res.end(); }
   const url=new URL(req.url,'http://x'), now=Date.now(), who=ip(req);
   try{
-    if(req.method==='GET'&&url.pathname==='/v1/health') return send(res,200,{ok:true,core:Core.TAG},origin);
+    if(req.method==='GET'&&url.pathname==='/v1/health') return send(res,200,{ok:true,core:Core.TAG,race:Race.TAG},origin);
     if(req.method==='GET'&&url.pathname==='/v1/top'){ if(!allow('r:'+who,120)) return send(res,429,{ok:false,error:'slow down'},origin); const [c,o]=getTop(url,req,now); return send(res,c,o,origin); }
     if(req.method==='POST'&&(url.pathname==='/v1/game'||url.pathname==='/v1/nick'||url.pathname==='/v1/setup'||url.pathname==='/v1/link'||url.pathname==='/v1/claim')){
       const lim=url.pathname==='/v1/setup'?['s:',30]:url.pathname==='/v1/claim'?['c:',10]:['w:',20];   // a code is guessed at most 10 times a minute
@@ -193,5 +207,5 @@ const server=http.createServer(async(req,res)=>{
     send(res,404,{ok:false,error:'not found'},origin);
   }catch(e){ send(res,e.message==='big'||e.message==='json'?400:500,{ok:false,error:e.message==='big'||e.message==='json'?e.message:'server'},origin); if(!/big|json/.test(e.message)) console.error(new Date().toISOString(),e); }
 });
-if(require.main===module) server.listen(PORT,'127.0.0.1',()=>console.log(`sonaroids leaderboard on 127.0.0.1:${PORT}, rules ${Core.TAG}, db ${DB_PATH}`));
+if(require.main===module) server.listen(PORT,'127.0.0.1',()=>console.log(`sonaroids leaderboard on 127.0.0.1:${PORT}, rules ${Core.TAG} and ${Race.TAG}, db ${DB_PATH}`));
 module.exports={server,cleanNick,cleanDev,since,decodeHands,db};

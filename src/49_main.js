@@ -157,7 +157,7 @@ function sHub(){ var fr;
   var ih=Math.max(24,playY-8-lab-top), cw=Math.min(Math.round(ih*LW/LH),Math.round((LW-SAFE.l-SAFE.r-40)/2)), gap=16;
   ih=Math.round(cw*LH/LW); var cx=Math.round(cx0-cw-gap/2), ty=Math.round(top+(playY-8-lab-top-ih)/2);
   hubCard('hub_rocks',cx,ty,cw,ih,fr,'SonaFly','',true);
-  hubCard('hub_race',cx+cw+gap,ty,cw,ih,raceCardHD(cw-4,ih),'SonaRace',L('r_test'),true);   // v0.84: the race is open; v0.92: «тестовая пока версия»
+  hubCard('hub_race',cx+cw+gap,ty,cw,ih,raceCardHD(cw-4,ih),'SonaRace','',true);   // v0.84: the race is open; v0.92: «тестовая пока версия»; v1.00: no longer («после добавления тетрадки надпись можно убирать»)
   if(narrow){ soundRow(Math.round(cx0-sw/2),playY,sw,BH);
     var x2=Math.round(cx0-bw-4); button('howto',L('howto'),x2,rowY,bw,BH,''); button('lang',L('lang'),x2+bw+8,rowY,bw,BH,''); }
   else { var tw=bw*2+sw+16, bx=Math.round(cx0-tw/2); button('howto',L('howto'),bx,rowY,bw,BH,''); button('lang',L('lang'),bx+bw+8,rowY,bw,BH,''); soundRow(bx+2*bw+16,rowY,sw,BH); }
@@ -472,6 +472,9 @@ var RACE_OPT_DEF=Race.optOf(null);   // v0.98: the rules of the game (Race.OPT0)
 var raceOpt=(function(){ var o=null; try{ o=JSON.parse(store.get('sonaroids_race_opt','')||'null'); }catch(e){} if(o&&o.syrup===false){ o.syrup=true; o.puddles=0; } if(o&&o.superN===undefined){ o.superN=o.superK===undefined?6:o.superK<0.9?8:o.superK<1.4?6:4; } if(o) delete o.superK; return Race.optOf(o||RACE_OPT_DEF); })();   // v0.93: 0.92's «syrup: no» is «puddles: none»
 /* v0.98: the test settings hidden (the maintainer: «спрячь меню тестов правил — если надо будет, я скажу, опять покажешь»): the race plays by the
    rules of the game, steering along the road; what was chosen in the tests stays on the phone for when RACE_TEST is back on */
+/* v1.00: the race's skins (the candy land, the notebook), kept on the phone; the switch is in the race's menu */
+var RACE_SKINS=['candy','note'], raceSkin=(function(){ var v=store.get('sonaroids_race_skin','candy'); return RACE_SKINS.indexOf(v)<0?'candy':v; })(); RSKIN=raceSkin;
+function raceSkinLabel(){ return L('r_skin')+': '+L('r_sk_'+raceSkin); }
 var RACE_TEST=false;
 function raceRules(){ return RACE_TEST?raceOpt:Race.optOf(null); }
 if(!RACE_TEST) raceSteer='road';
@@ -516,7 +519,7 @@ function newSeed(){ try{ var a=new Uint32Array(1); crypto.getRandomValues(a); re
 function raceDemoTick(){ if(!rDemo||rDemo.d>60000) rDemo=Race.create(20260929,raceFW(),Race.FH/2);
   if(rDemo._c===clock) return; rDemo._c=clock; for(var n=Math.max(1,Math.round(DT*60));n>0;n--) raceDemoStep(rDemo); }
 function sRTitle(){ raceDemoTick(); raceScene(rDemo,rDemo.d,rDemo.car.y,DT);
-  var items=[['play',L('play'),'primary'],['howto',L('howto')]].concat(RACE_TEST?[['rset',L('r_set')]]:[]).concat([['gfx',L('gfx')+': '+(gfxMode==='hd'?'HD':L('gfx_pixel'))],['sfx','','sound'],['hub',L('all_games')]]), w=colW(items);
+  var items=[['play',L('play'),'primary'],['howto',L('howto')]].concat(RACE_TEST?[['rset',L('r_set')]]:[]).concat([['rskin',raceSkinLabel()],['gfx',L('gfx')+': '+(gfxMode==='hd'?'HD':L('gfx_pixel'))],['sfx','','sound'],['hub',L('all_games')]]), w=colW(items);
   var bx0=sideX(w), m=Math.max(8,Math.round(LW*0.04)), band0=freeSide()==='left'?0:bx0-m, band1=freeSide()==='left'?bx0+w+m:LW;
   lx.globalAlpha=0.55; R(P.bg,band0,0,band1-band0,LH); lx.globalAlpha=1;
   column(items,Math.round(LH*0.52),bx0,items.length>5?6:8);
@@ -644,7 +647,7 @@ var ACT={
   lefty:function(){ lefty=true; store.set('sonaroids_lefty','1'); turnShown=false; Logs.ev('играю левой'); seenT=scrT; },
   hub:function(){ mode='fly'; go('hub'); },
   rset:function(){ go('rset'); },
-  hub_rocks:function(){ mode='fly'; go('title'); }, hub_play:function(){ mode='fly'; go('title'); }, hub_race:function(){ mode='race'; go('rtitle'); },
+  hub_rocks:function(){ mode='fly'; go('title'); }, rskin:function(){ raceSkin=RACE_SKINS[(RACE_SKINS.indexOf(raceSkin)+1)%RACE_SKINS.length]; RSKIN=raceSkin; store.set('sonaroids_race_skin',raceSkin); }, hub_play:function(){ mode='fly'; go('title'); }, hub_race:function(){ mode='race'; go('rtitle'); },
   gfx:function(){ setGfx(gfxMode==='hd'?'pixel':'hd'); pool={K:0,list:[[],[],[]]}; },
   skin_prev:function(){ var i=SKIN_IDS.indexOf(skinId); setSkin(SKIN_IDS[(i+SKIN_IDS.length-1)%SKIN_IDS.length]); },
   skin_next:function(){ var i=SKIN_IDS.indexOf(skinId); setSkin(SKIN_IDS[(i+1)%SKIN_IDS.length]); },

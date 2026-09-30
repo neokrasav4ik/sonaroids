@@ -516,7 +516,7 @@ function newSeed(){ try{ var a=new Uint32Array(1); crypto.getRandomValues(a); re
 function raceDemoTick(){ if(!rDemo||rDemo.d>60000) rDemo=Race.create(20260929,raceFW(),Race.FH/2);
   if(rDemo._c===clock) return; rDemo._c=clock; for(var n=Math.max(1,Math.round(DT*60));n>0;n--) raceDemoStep(rDemo); }
 function sRTitle(){ raceDemoTick(); raceScene(rDemo,rDemo.d,rDemo.car.y,DT);
-  var items=[['play',L('play'),'primary'],['howto',L('howto')]].concat(RACE_TEST?[['rset',L('r_set')]]:[]).concat([['sfx','','sound'],['hub',L('all_games')]]), w=colW(items);
+  var items=[['play',L('play'),'primary'],['howto',L('howto')]].concat(RACE_TEST?[['rset',L('r_set')]]:[]).concat([['gfx',L('gfx')+': '+(gfxMode==='hd'?'HD':L('gfx_pixel'))],['sfx','','sound'],['hub',L('all_games')]]), w=colW(items);
   var bx0=sideX(w), m=Math.max(8,Math.round(LW*0.04)), band0=freeSide()==='left'?0:bx0-m, band1=freeSide()==='left'?bx0+w+m:LW;
   lx.globalAlpha=0.55; R(P.bg,band0,0,band1-band0,LH); lx.globalAlpha=1;
   column(items,Math.round(LH*0.52),bx0,items.length>5?6:8);
@@ -561,8 +561,9 @@ function raceFuelBar(bx,by,bw,bh,f){ var low=f<0.15, col=f<0.15?'#ff3b5c':f<0.35
   if(!low||Math.floor(clock*5)%2){ lx.fillStyle=col; lx.beginPath(); lx.roundRect(bx,by,Math.max(bh/2,bw*f),bh,bh/2); lx.fill(); } }
 function raceTimers(gx,cy,r){ [['turbo','#ffd23f',g.car.turbo,Race.TUNE.TURBO],['bubble','#ff8ac4',g.car.bubble,Race.TUNE.BUBBLE],['magnet','#e8284a',g.car.magnet,Race.TUNE.MAGNET]].forEach(function(q){ if(q[2]<=0) return;
     lx.fillStyle='rgba(40,12,30,0.55)'; lx.beginPath(); lx.arc(gx+r,cy,r+1,0,6.2832); lx.fill(); lx.fillStyle=q[1]; lx.beginPath(); lx.moveTo(gx+r,cy); lx.arc(gx+r,cy,r,-Math.PI/2,-Math.PI/2+6.2832*Math.min(1,q[2]/q[3])); lx.closePath(); lx.fill(); gx+=2*r+5; }); }
-function raceHud(){ var cx0=Math.round(LW/2), y=topY(), f=g.fuel/Race.TUNE.FUEL, bw=96, bx=cx0-bw/2, by=y+12;   // v0.97: the score as it was, the bar longer and thicker with an F, no metres
-  text(String(g.score).padStart(6,'0'),cx0,y,P.text,'center'); raceFuelBar(bx,by,bw,6,f); text('F',bx-6,by-2.5,'#3fd07a','right',1.3); raceTimers(bx+bw+8,by+3,5);
+function raceHud(){ var cx0=Math.round(LW/2), y=topY(), f=g.fuel/Race.TUNE.FUEL, bw=96, sc=String(g.score).padStart(6,'0'), sw=PF.width(sc), fw=PF.width('F')*1.3, tw=fw+4+bw+10+sw, x0=Math.round(cx0-tw/2), bx=x0+fw+4, by=y+1;
+  /* v0.99: one line — the F, the fuel bar, then the score (the maintainer: «кол-во очков и полоску топлива сделаем в одну строку, размеры как сейчас, сначала полоска, потом очки») */
+  text('F',x0,y-1,'#3fd07a','left',1.3); raceFuelBar(bx,by,bw,6,f); text(sc,bx+bw+10,y,P.text,'left'); raceTimers(bx,by+15,5);   // the gift timers under the bar (beside the score they ran into the site's name)
   if(g.state==='coast'&&Math.floor(clock*3)%2===0) text(L('r_out'),cx0,Math.round(LH*0.3),P.hit,'center'); }
 function racePlay(){
   acc+=DT; var n=0;
@@ -734,7 +735,7 @@ function loop(now){
   if(LH>LW){ pauseGame(); sRotate(); present(0); return; }
   if(booted&&Sonar.lost()&&(scr==='wave'||scr==='count'||scr==='play'||scr==='over')){ if(g&&g.state==='play') Logs.gameStop(); Board.setup('lost'); go('lost'); }
   var RS=mode==='race'&&(scr==='rtitle'||scr==='rset'||scr==='count'||scr==='count-resume'||scr==='play'||scr==='over'||scr==='paused'||scr==='restart'||(scr==='wave'&&caught&&scrT-caughtT>=CAUGHT_SHOW));
-  hdFrame(RS||(scr==='hub'?hdWanted(SKIN_IDS[hubSkin]):!!SK.hd),RS);   // v0.84: SonaRace's screens smooth
+  hdFrame(RS||(scr==='hub'?hdWanted(SKIN_IDS[hubSkin]):!!SK.hd),false);   // v0.84: SonaRace's screens smooth; v0.99: or in candy pixels, as the graphics switch says
   // v0.91: while a game runs (and in its pause) the sonar keeps the empty room's level as the getting ready left it (see src/11_dsp.js)
   var gameOn=!!(g&&g.state!=='over'&&(scr==='play'||scr==='count-resume'||scr==='paused'||scr==='restart')); if(gameOn!==floorHeld){ floorHeld=gameOn; try{ DSP2.set('holdfloor',gameOn); }catch(e){} }   // v0.74: a shapes-only skin with «pixels» — the same canvas at 1 px per game pixel   // v0.72: the HD world canvas under the pixel one
   uiColours(scr!=='hub');

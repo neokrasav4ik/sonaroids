@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='0.96';
+var VERSION='0.97';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -477,7 +477,7 @@ var Race=(function(){
   function create(seed,FW,y0,steer,opt){
     var g={seed:seed>>>0,FW:FW||380,FH:FH,rand:rng(seed),n:0,t:0,state:'play',score:0,d:0,v:0,fuel:TUNE.FUEL,coins:0,passed:0,crashes:0,
       steer:steer==='road'?'road':'height',opt:optOf(opt),car:{x:CAR_X,y:FH/2,off:0,gap:0,glide:0,turbo:0,inv:0,rub:0,bubble:0,magnet:0,syrup:0,on:'road'},keys:[{x:-300,c:FH/2,hw:TUNE.HW0},{x:260,c:FH/2,hw:TUNE.HW0}],ki:0,straight:0,roadRand:rng((seed^0x5bd1e995)>>>0),
-      cars:[],items:[],puddles:[],nextCar:420,nextSoda:900,nextGift:1500,nextCoin:260,nextPud:1400,line:0,lines:{},lineN:0,kind:0,nextId:1,events:[],fx:[]};
+      cars:[],items:[],puddles:[],nextCar:420,nextSoda:900,nextGift:1500,bagI:0,bagAt:0,nextCoin:260,nextPud:1400,line:0,lines:{},lineN:0,kind:0,nextId:1,events:[],fx:[]};
     g.car.y=(y0===undefined||y0===null)?FH/2:clamp(y0,MARGIN,FH-MARGIN); g.car.off=g.car.y-at(g,g.car.x).c; g.v=TUNE.V0*0.55; return g; }   // y0: where the car starts (the palm at the start)
   /* what is at a place ahead: is it free of cars (for a new car or a gift) */
   function freeAt(g,x,o,dx,dy){ for(var i=0;i<g.cars.length;i++){ var c=g.cars[i]; if(c.x-x<dx&&x-c.x<dx&&c.o-o<dy&&o-c.o<dy) return false; } return true; }
@@ -487,7 +487,11 @@ var Race=(function(){
       for(i=0;i<4;i++){ o=lane(g,x); if(freeAt(g,x,o,34,CAR.hw*2+4)) break; }
       if(i<4) g.cars.push({id:g.nextId++,x:x,o:o,to:o,v:vmax(t)*rnd(g,0.42,0.72),kind:(g.kind=(g.kind+1+Math.floor(g.rand()*5))%6),turnT:rnd(g,1.5,4)}); }
     while(g.nextSoda<far){ x=g.nextSoda; g.nextSoda+=rnd(g,TUNE.SODA_GAP[0],TUNE.SODA_GAP[1])*(1+g.d/TUNE.SODA_GROW); g.items.push({id:g.nextId++,type:'fuel',x:x,o:lane(g,x)}); }
-    while(g.nextGift<far){ x=g.nextGift; g.nextGift+=rnd(g,TUNE.GIFT_GAP[0],TUNE.GIFT_GAP[1]); var k=g.rand(), gs=GIFTS.filter(function(q){ return g.opt.gifts[q[0]]; }).map(function(q){ return q[0]==='tmagnet'?[q[0],q[1]*g.opt.superK]:q; }), tw=0, a;   /* v0.96: the super gift more often (superK) */   // v0.92: only the gifts switched on, in their shares
+    while(g.nextGift<far){ x=g.nextGift; g.nextGift+=rnd(g,TUNE.GIFT_GAP[0],TUNE.GIFT_GAP[1]); var k=g.rand(), gs=GIFTS.filter(function(q){ return g.opt.gifts[q[0]]; }), tw=0, a, N=g.opt.superN;   // v0.92: only the gifts switched on, in their shares
+      /* v0.98: the super gift from a bag (the maintainer: «сделай, чтоб 1 из 6 гарантированно был суперпризом»): of every N gifts exactly one,
+         at a random place among them — as often as before on average, but never a long run without it (at most 2N−2 others in a row) */
+      if(N>0&&g.opt.gifts.tmagnet&&gs.length>1){ if(g.bagI===0) g.bagAt=Math.floor(g.rand()*N); var sup=g.bagI===g.bagAt; g.bagI=(g.bagI+1)%N;
+        gs=sup?[['tmagnet',1]]:gs.filter(function(q){ return q[0]!=='tmagnet'; }); }
       gs.forEach(function(q){ tw+=q[1]; }); if(tw>0){ for(a=0;a<gs.length-1&&k*tw>=gs[a][1];a++) k-=gs[a][1]/tw; g.items.push({id:g.nextId++,type:gs[a][0],x:x,o:lane(g,x)}); } }
     while(g.nextCoin<far){ x=g.nextCoin; g.nextCoin+=rnd(g,TUNE.COIN_GAP[0],TUNE.COIN_GAP[1]); var ln=++g.line, o0=lane(g,x), o1=lane(g,x+64);
       g.lines[ln]=0; for(i=0;i<5;i++) g.items.push({id:g.nextId++,type:'coin',x:x+i*16,o:o0+(o1-o0)*i/4,line:ln}); }
@@ -495,7 +499,7 @@ var Race=(function(){
   /* v0.92, test switches (the maintainer: «наделай мне включателей и выключателей тех или иных условий, чтобы я поигрался — как лучше и
      играбельнее»): what a knock does, which gifts come, how many cars, how fast, fuel, syrup, the verge. Without opt — the tuned rules */
   var GIFTS=[['magnet',0.34],['bubble',0.34],['tbubble',0.19],['tmagnet',0.13]];
-  var OPT0={crashSlow:true,crashFuel:true,gifts:{magnet:true,bubble:true,tbubble:true,tmagnet:true},traffic:1,speed:1,burn:true,syrup:true,offSlow:true,puddles:1,bubblePop:true,superK:1};
+  var OPT0={crashSlow:true,crashFuel:true,gifts:{magnet:true,bubble:true,tbubble:true,tmagnet:true},traffic:1,speed:1,burn:true,syrup:true,offSlow:true,puddles:1,bubblePop:true,superN:0};
   function optOf(o){ var r={}, k; for(k in OPT0) r[k]=OPT0[k]; if(o) for(k in o) if(o[k]!==undefined) r[k]=o[k]; var gf={}; for(k in OPT0.gifts) gf[k]=(o&&o.gifts&&o.gifts[k]!==undefined)?!!o.gifts[k]:OPT0.gifts[k]; r.gifts=gf; return r; }
   function knock(g,c){ var s=g.car; if(s.inv>0) return;
     c.hit=true; c.v+=20;                                                    // the other car is pushed on a little
@@ -568,7 +572,7 @@ var Race=(function(){
     for(var i=0;i<g.cars.length;i++){ var c=g.cars[i]; if(c===me) continue; var dx=c.x-me.x; if(dx<40&&dx>-40){ var lo=Math.min(me.o,o)-CAR.hw*2-3, hi=Math.max(me.o,o)+CAR.hw*2+3; if(c.o>lo&&c.o<hi) return false; } } return true; }
   /* a whole race from a palm trajectory (one value per step, −1 = no palm): what a server would run */
   function replay(seed,FW,hands,y0,steer,opt){ var g=create(seed,FW,y0,steer,opt); for(var i=0;i<hands.length&&g.state!=='over';i++) step(g,hands[i]<0?null:hands[i]); return g; }
-  var TAG='race-8';   // v0.96: how often the super gift comes —   // v0.93: the number of puddles, no cars, a bubble that does not pop —   // v0.92: test switches (g.opt) —   // v0.91: the car glides back to a palm seen again; turbo gifts   // v0.89: the speed rises earlier (race-3: 0.87's gifts and sodas; race-2, steering across the road, was tried and dropped)
+  var TAG='race-9';   // v0.98: the super gift from a bag of N —   // v0.96: how often the super gift comes —   // v0.93: the number of puddles, no cars, a bubble that does not pop —   // v0.92: test switches (g.opt) —   // v0.91: the car glides back to a palm seen again; turbo gifts   // v0.89: the speed rises earlier (race-3: 0.87's gifts and sodas; race-2, steering across the road, was tried and dropped)
   return {TAG:TAG,OPT0:OPT0,optOf:optOf,TUNE:TUNE,CAR:CAR,CAR_X:CAR_X,OFFW:OFFW,offOf:offOf,steerY:steerY,DT:DT,FH:FH,MARGIN:MARGIN,create:create,step:step,replay:replay,at:at,centre:centre,vmax:vmax,burn:burn};
 })();
 if(typeof module!=='undefined') module.exports=Race;
@@ -3021,16 +3025,17 @@ function sHub(){ var fr;
   text('SONAROIDS',cx0,y,P.band,'center',2); if(sub) text(L('hub_s'),cx0,y+19,P.soft,'center');
   // two rows under the cards: «play» (and, on a narrow screen, the sounds beside it), then «how to play», the language (and the sounds);
   // with the service links shown (a long press on the version) everything moves up a line to make room for them
-  var bw=btnW([L('howto'),L('lang')]), sw=soundW(), pw=btnW([L('play')]), narrow=bw*2+sw+16>LW-SAFE.l-SAFE.r-16;
-  var vy=LH-SAFE.b-12, rowY=vy-8-BH-(diag?16:0), playY=rowY-8-BH, top=y+(sub?31:20), lab=24;
+  // v0.97: no «play» button — a tap on a card starts its game (the maintainer: «убери кнопку „играть“ с первого экрана, у нас тап по карточке же»);
+  // one row under the cards, or two on a narrow screen (the sounds above «how to play» and the language)
+  var bw=btnW([L('howto'),L('lang')]), sw=soundW(), narrow=bw*2+sw+16>LW-SAFE.l-SAFE.r-16;
+  var vy=LH-SAFE.b-12, rowY=vy-8-BH-(diag?16:0), playY=narrow?rowY-8-BH:rowY, top=y+(sub?31:20), lab=24;
   var ih=Math.max(24,playY-8-lab-top), cw=Math.min(Math.round(ih*LW/LH),Math.round((LW-SAFE.l-SAFE.r-40)/2)), gap=16;
   ih=Math.round(cw*LH/LW); var cx=Math.round(cx0-cw-gap/2), ty=Math.round(top+(playY-8-lab-top-ih)/2);
   hubCard('hub_rocks',cx,ty,cw,ih,fr,'SonaFly','',true);
   hubCard('hub_race',cx+cw+gap,ty,cw,ih,raceCardHD(cw-4,ih),'SonaRace',L('r_test'),true);   // v0.84: the race is open; v0.92: «тестовая пока версия»
-  if(narrow){ var t1=pw+8+sw, x1=Math.round(cx0-t1/2); button('hub_play',L('play'),x1,playY,pw,BH,'primary',Math.floor(clock*2)%2===0); soundRow(x1+pw+8,playY,sw,BH);
+  if(narrow){ soundRow(Math.round(cx0-sw/2),playY,sw,BH);
     var x2=Math.round(cx0-bw-4); button('howto',L('howto'),x2,rowY,bw,BH,''); button('lang',L('lang'),x2+bw+8,rowY,bw,BH,''); }
-  else { button('hub_play',L('play'),cx0-Math.round(pw/2),playY,pw,BH,'primary',Math.floor(clock*2)%2===0);
-    var tw=bw*2+sw+16, bx=Math.round(cx0-tw/2); button('howto',L('howto'),bx,rowY,bw,BH,''); button('lang',L('lang'),bx+bw+8,rowY,bw,BH,''); soundRow(bx+2*bw+16,rowY,sw,BH); }
+  else { var tw=bw*2+sw+16, bx=Math.round(cx0-tw/2); button('howto',L('howto'),bx,rowY,bw,BH,''); button('lang',L('lang'),bx+bw+8,rowY,bw,BH,''); soundRow(bx+2*bw+16,rowY,sw,BH); }
   // v0.71 (the maintainer): the source bottom left, the app's update bottom centre, the version bottom right (a long press on it shows the
   // service links: logs, sound, lab)
   var vr=freeSide()==='left';
@@ -3338,8 +3343,8 @@ function raceRowLabel(){ return L('r_steer')+': '+L(raceSteer==='road'?'r_steer_
 /* v0.92, «НАСТРОЙКИ ТЕСТА» (the maintainer: «наделай мне включателей и выключателей тех или иных условий, чтобы я поигрался — как лучше и
    играбельнее»; «давай попробуем не замедляться при врезании»; «оставим только „магнит + защита + ускорение“»): kept on the phone, written
    into each race's log. The defaults are his latest words: a knock does not slow, only the turbo+magnet+bubble gift */
-var RACE_OPT_DEF={crashSlow:false,crashFuel:true,gifts:{magnet:false,bubble:false,tbubble:false,tmagnet:true},traffic:1,speed:1,burn:true,syrup:true,offSlow:true,puddles:1,bubblePop:true,superK:1.05};   // = set А (the super gift 1 in 6)
-var raceOpt=(function(){ var o=null; try{ o=JSON.parse(store.get('sonaroids_race_opt','')||'null'); }catch(e){} if(o&&o.syrup===false){ o.syrup=true; o.puddles=0; } if(o&&o.superK===undefined) o.superK=1.05; return Race.optOf(o||RACE_OPT_DEF); })();   // v0.93: 0.92's «syrup: no» is «puddles: none»
+var RACE_OPT_DEF={crashSlow:false,crashFuel:true,gifts:{magnet:false,bubble:false,tbubble:false,tmagnet:true},traffic:1,speed:1,burn:true,syrup:true,offSlow:true,puddles:1,bubblePop:true,superN:6};   // = set А (the super gift 1 in 6)
+var raceOpt=(function(){ var o=null; try{ o=JSON.parse(store.get('sonaroids_race_opt','')||'null'); }catch(e){} if(o&&o.syrup===false){ o.syrup=true; o.puddles=0; } if(o&&o.superN===undefined){ o.superN=o.superK===undefined?6:o.superK<0.9?8:o.superK<1.4?6:4; } if(o) delete o.superK; return Race.optOf(o||RACE_OPT_DEF); })();   // v0.93: 0.92's «syrup: no» is «puddles: none»
 function raceOptSave(){ store.set('sonaroids_race_opt',JSON.stringify(raceOpt)); }
 /* v0.93: how many cars and puddles — none, very few, few, some, many, very many (a share of the tuned number) */
 var R_LEVELS=[[0,'r_none'],[0.3,'r_vfew'],[0.6,'r_few'],[1,'r_mid'],[1.5,'r_many'],[2.2,'r_vmany']];
@@ -3353,7 +3358,7 @@ var RSET=[['rs_steer',function(){ return raceRowLabel(); },function(){ raceSteer
   ['rs_bub',function(){ return L('r_bub')+': '+L(raceOpt.gifts.bubble?'r_yes':'r_no'); },function(){ raceOpt.gifts.bubble=!raceOpt.gifts.bubble; }],
   ['rs_tbub',function(){ return L('r_tbub')+': '+L(raceOpt.gifts.tbubble?'r_yes':'r_no'); },function(){ raceOpt.gifts.tbubble=!raceOpt.gifts.tbubble; }],
   ['rs_tmag',function(){ return L('r_tmag')+': '+L(raceOpt.gifts.tmagnet?'r_yes':'r_no'); },function(){ raceOpt.gifts.tmagnet=!raceOpt.gifts.tmagnet; }],
-  ['rs_super',function(){ return L('r_super')+': '+L('r_1of')+' '+(raceOpt.superK<0.9?8:raceOpt.superK<1.4?6:4); },function(){ raceOpt.superK=raceOpt.superK<0.9?1.05:raceOpt.superK<1.4?1.75:0.75; }],   // v0.96: with magnet and bubble on — 1 gift in 8, 6, 4 (the maintainer's numbers)
+  ['rs_super',function(){ return L('r_super')+': '+L('r_1of')+' '+raceOpt.superN; },function(){ raceOpt.superN=raceOpt.superN===8?6:raceOpt.superN===6?4:8; }],   // v0.96: 1 gift in 8, 6, 4 (the maintainer's numbers); v0.98: exactly one in every 8, 6, 4
   ['rs_bpop',function(){ return L('r_bpop')+': '+L(raceOpt.bubblePop?'r_yes':'r_no'); },function(){ raceOpt.bubblePop=!raceOpt.bubblePop; }],
   ['rs_cars',function(){ return L('r_cars')+': '+rLevel(raceOpt.traffic); },function(){ raceOpt.traffic=rNext(raceOpt.traffic); }],   // v0.93: none … very many
   ['rs_puds',function(){ return L('r_puds')+': '+rLevel(raceOpt.puddles); },function(){ raceOpt.puddles=rNext(raceOpt.puddles); }],
@@ -3370,9 +3375,9 @@ function sRSet(){ raceDemoTick(); raceScene(rDemo,rDemo.d,rDemo.car.y,DT); lx.gl
 /* v0.94, rule sets (the maintainer: «полное описание настроек на А, Д и Е»): the bot's 30 races each picked these three to try by hand —
    А his own, Д lively and long (turbo+bubble too, a higher speed), Е strict and short (a knock slows, many cars and puddles). The steering is not part of a set */
 var R_GIFT1={magnet:false,bubble:false,tbubble:false,tmagnet:true};
-var R_PRESETS=[['rp_a','r_pa',{crashSlow:false,crashFuel:true,gifts:R_GIFT1,traffic:1,puddles:1,bubblePop:true,superK:1.05,speed:1,burn:true,syrup:true,offSlow:true}],
-  ['rp_d','r_pd',{crashSlow:false,crashFuel:true,gifts:{magnet:false,bubble:false,tbubble:true,tmagnet:true},traffic:1,puddles:1,bubblePop:true,superK:1.05,speed:1.15,burn:true,syrup:true,offSlow:true}],
-  ['rp_e','r_pe',{crashSlow:true,crashFuel:true,gifts:R_GIFT1,traffic:1.5,puddles:1.5,bubblePop:true,superK:1.05,speed:1,burn:true,syrup:true,offSlow:true}]];
+var R_PRESETS=[['rp_a','r_pa',{crashSlow:false,crashFuel:true,gifts:R_GIFT1,traffic:1,puddles:1,bubblePop:true,superN:6,speed:1,burn:true,syrup:true,offSlow:true}],
+  ['rp_d','r_pd',{crashSlow:false,crashFuel:true,gifts:{magnet:false,bubble:false,tbubble:true,tmagnet:true},traffic:1,puddles:1,bubblePop:true,superN:6,speed:1.15,burn:true,syrup:true,offSlow:true}],
+  ['rp_e','r_pe',{crashSlow:true,crashFuel:true,gifts:R_GIFT1,traffic:1.5,puddles:1.5,bubblePop:true,superN:6,speed:1,burn:true,syrup:true,offSlow:true}]];
 function rPresetNow(){ var k=JSON.stringify(Race.optOf(raceOpt)), f=null; R_PRESETS.forEach(function(q){ if(JSON.stringify(Race.optOf(q[2]))===k) f=q[0]; }); return f; }
 var rDemo=null, rTry=null, rTryD=0, raceBest=+store.get('sonaroids_race_best','0')||0, raceNew=false;
 function raceFW(){ return Race.FH*(LW-SAFE.l)/LH; }
@@ -3420,15 +3425,14 @@ function raceReact(){ var cX=fx(Race.CAR_X), cY=g.car.y*K;
     else if(k==='line') burst(cX+8,cY,14,R_BURST.coin,55*K); });
   (g.fx||[]).forEach(function(f){ burst(SAFE.l+f.x*K,f.y*K,f.pick==='coin'?6:14,R_BURST[f.pick]||R_BURST.coin,(f.pick==='coin'?35:50)*K); }); }
 /* the top: the score, the fuel under it (a soda bottle, the bar), the metres; the gifts at work beside the bar with the time they have left */
-function raceHud(){ var cx0=Math.round(LW/2), y=topY(), f=g.fuel/Race.TUNE.FUEL, bw=64, bx=cx0-bw/2, by=y+12, low=f<0.15;
-  text(String(g.score).padStart(6,'0'),cx0,y,P.text,'center');
-  var col=f<0.15?'#ff3b5c':f<0.35?'#ffb52e':'#3fd07a';
-  lx.fillStyle='rgba(40,12,30,0.55)'; lx.beginPath(); lx.roundRect(bx-1,by-1,bw+2,6,3); lx.fill();
-  if(!low||Math.floor(clock*5)%2){ lx.fillStyle=col; lx.beginPath(); lx.roundRect(bx,by,Math.max(2,bw*f),4,2); lx.fill(); }
-  lx.fillStyle='#3fd07a'; lx.beginPath(); lx.roundRect(bx-9,by-2,4,7,1.2); lx.fill(); lx.fillRect(bx-8,by-4,2,2); lx.fillStyle='#e8363a'; lx.fillRect(bx-8.5,by-4.6,3,1);
-  text(Math.floor(g.d/10)+' '+L('r_m'),cx0,by+8,P.soft,'center');
-  var gx=bx+bw+8; [['turbo','#ffd23f',g.car.turbo,Race.TUNE.TURBO],['bubble','#ff8ac4',g.car.bubble,Race.TUNE.BUBBLE],['magnet','#e8284a',g.car.magnet,Race.TUNE.MAGNET]].forEach(function(q){ if(q[2]<=0) return;
-    lx.fillStyle='rgba(40,12,30,0.55)'; lx.beginPath(); lx.arc(gx+4,by+2,5,0,6.2832); lx.fill(); lx.fillStyle=q[1]; lx.beginPath(); lx.moveTo(gx+4,by+2); lx.arc(gx+4,by+2,4,-Math.PI/2,-Math.PI/2+6.2832*Math.min(1,q[2]/q[3])); lx.closePath(); lx.fill(); gx+=12; });
+/* v0.97: the fuel bar (the maintainer: «сделай полоску топлива и очки в игре — больше и ниже»; from the sketches: «очки — как сейчас, полоска как на А, кол-во метров убери», an F instead of the bottle) */
+function raceFuelBar(bx,by,bw,bh,f){ var low=f<0.15, col=f<0.15?'#ff3b5c':f<0.35?'#ffb52e':'#3fd07a';
+  lx.fillStyle='rgba(40,12,30,0.6)'; lx.beginPath(); lx.roundRect(bx-1,by-1,bw+2,bh+2,(bh+2)/2); lx.fill();
+  if(!low||Math.floor(clock*5)%2){ lx.fillStyle=col; lx.beginPath(); lx.roundRect(bx,by,Math.max(bh/2,bw*f),bh,bh/2); lx.fill(); } }
+function raceTimers(gx,cy,r){ [['turbo','#ffd23f',g.car.turbo,Race.TUNE.TURBO],['bubble','#ff8ac4',g.car.bubble,Race.TUNE.BUBBLE],['magnet','#e8284a',g.car.magnet,Race.TUNE.MAGNET]].forEach(function(q){ if(q[2]<=0) return;
+    lx.fillStyle='rgba(40,12,30,0.55)'; lx.beginPath(); lx.arc(gx+r,cy,r+1,0,6.2832); lx.fill(); lx.fillStyle=q[1]; lx.beginPath(); lx.moveTo(gx+r,cy); lx.arc(gx+r,cy,r,-Math.PI/2,-Math.PI/2+6.2832*Math.min(1,q[2]/q[3])); lx.closePath(); lx.fill(); gx+=2*r+5; }); }
+function raceHud(){ var cx0=Math.round(LW/2), y=topY(), f=g.fuel/Race.TUNE.FUEL, bw=96, bx=cx0-bw/2, by=y+12;   // v0.97: the score as it was, the bar longer and thicker with an F, no metres
+  text(String(g.score).padStart(6,'0'),cx0,y,P.text,'center'); raceFuelBar(bx,by,bw,6,f); text('F',bx-6,by-2.5,'#3fd07a','right',1.3); raceTimers(bx+bw+8,by+3,5);
   if(g.state==='coast'&&Math.floor(clock*3)%2===0) text(L('r_out'),cx0,Math.round(LH*0.3),P.hit,'center'); }
 function racePlay(){
   acc+=DT; var n=0;

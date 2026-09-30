@@ -7,7 +7,7 @@ const path=require('path'), ROOT=path.join(__dirname,'..');
   const b=await chromium.launch(), p=await b.newPage({viewport:{width:844,height:390}}); const errors=[]; p.on('pageerror',e=>errors.push(e.message));
   await p.goto('file://'+path.join(ROOT,'game','play','index.html')); await p.waitForTimeout(400);
   const s0=await p.evaluate(()=>__sonaroids.state().scr), g0=await p.evaluate(()=>__sonaroids.state().gfx);
-  const hasPlay=await p.evaluate(()=>__sonaroids.btn().some(x=>x.id==='hub_play')&&__sonaroids.btn().some(x=>x.id==='hub_rocks'));   // v0.70: the games' screen
+  const hasPlay=await p.evaluate(()=>!__sonaroids.btn().some(x=>x.id==='hub_play')&&__sonaroids.btn().some(x=>x.id==='hub_rocks')&&__sonaroids.btn().some(x=>x.id==='hub_race'));   // v0.70: the games' screen; v0.97: the cards start the games, no «play» button
   const verTitle=await p.evaluate(()=>__sonaroids.btn().some(x=>x.id==='ver'));
   // v0.56: a long press (0.7 s) on the version shows the service links; v0.87: a short tap on it reloads the page (the games' screen only)
   const vb=await p.evaluate(()=>{ const q=__sonaroids.btn().find(x=>x.id==='ver'), s=__sonaroids.S(); return {x:(q.x+q.w/2)*s.S/s.DPR,y:(q.y+q.h/2)*s.S/s.DPR}; });

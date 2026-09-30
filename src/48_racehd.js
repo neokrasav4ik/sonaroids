@@ -220,8 +220,10 @@ function rRocket(px,py){ rx.fillStyle='rgba(40,10,30,0.22)'; rx.beginPath(); rx.
   rx.fillStyle='rgba(40,20,60,0.8)'; rx.beginPath(); rx.arc(px+1,py,2.2,0,6.2832); rx.fill(); rx.fillStyle='rgba(255,255,255,0.8)'; rx.beginPath(); rx.arc(px+0.4,py-0.8,0.7,0,6.2832); rx.fill(); }
 function rFuel(px,py){ rx.fillStyle='rgba(0,0,0,0.18)'; rx.beginPath(); rx.ellipse(px+1,py+6,5,1.6,0,0,6.2832); rx.fill();
   rx.fillStyle='#3fd07a'; rx.beginPath(); rx.roundRect(px-3.5,py-3,7,9,2.2); rx.fill(); rx.fillRect(px-1.4,py-6.5,2.8,4); rx.fillStyle='#e8363a'; rx.fillRect(px-1.8,py-7.5,3.6,1.6);
-  rx.fillStyle='#fff6d0'; rx.fillRect(px-3.5,py,7,2.6); rx.fillStyle='#e8363a'; rx.beginPath(); rx.moveTo(px+0.6,py+0.2); rx.lineTo(px-1.2,py+1.5); rx.lineTo(px,py+1.5); rx.lineTo(px-0.6,py+2.5); rx.lineTo(px+1.2,py+1.1); rx.lineTo(px,py+1.1); rx.closePath(); rx.fill();
-  rx.strokeStyle='#1a6a3a'; rx.lineWidth=0.5; rx.beginPath(); rx.roundRect(px-3.5,py-3,7,9,2.2); rx.stroke(); rx.fillStyle='rgba(255,255,255,0.6)'; rx.fillRect(px-2.6,py-2,1,6); }
+  rx.strokeStyle='#1a6a3a'; rx.lineWidth=0.5; rx.beginPath(); rx.roundRect(px-3.5,py-3,7,9,2.2); rx.stroke(); rx.fillStyle='rgba(255,255,255,0.45)'; rx.fillRect(px-2.8,py-2,0.7,6);
+  /* v0.96: a big F on the bottle (the maintainer: «на бутылочках с топливом должна быть большая буква F») */
+  rx.beginPath(); rx.moveTo(px-1.7,py+4.6); rx.lineTo(px-1.7,py-2); rx.lineTo(px+2.3,py-2); rx.lineTo(px+2.3,py-0.7); rx.lineTo(px-0.35,py-0.7); rx.lineTo(px-0.35,py+0.8); rx.lineTo(px+1.7,py+0.8); rx.lineTo(px+1.7,py+2.1); rx.lineTo(px-0.35,py+2.1); rx.lineTo(px-0.35,py+4.6); rx.closePath();
+  rx.fillStyle='#ffffff'; rx.fill(); rx.strokeStyle='#0f5a2e'; rx.lineWidth=0.45; rx.stroke(); }
 function rCoin(px,py){ rx.fillStyle='rgba(0,0,0,0.16)'; rx.beginPath(); rx.ellipse(px+1,py+4.2,3.8,1.2,0,0,6.2832); rx.fill();
   rx.fillStyle='#c8841a'; rx.beginPath(); rx.arc(px,py,4.2,0,6.2832); rx.fill(); rx.fillStyle='#ffd23f'; rx.beginPath(); rx.arc(px,py,3.5,0,6.2832); rx.fill();
   rx.strokeStyle='#e8a020'; rx.lineWidth=0.6; rx.beginPath(); rx.arc(px,py,2.5,0,6.2832); rx.stroke();
@@ -251,6 +253,16 @@ function rSprite(key,w,h,draw){ var s=RC.sp[key]; if(s) return s; var KS=rKS(), 
 function rCarSprite(kind,player){ if(player) return rSprite('p',30,20,function(){ rx.translate(1.5,0); rRocket(0,0); });   // the middle of its body stays the car's point
   var col=R_CARS[kind%R_CARS.length]; return rSprite('c'+kind%R_CARS.length,28,20,function(){ rCar(0,0,col[0],col[1],false); }); }
 function rGiftSprite(t){ return rSprite('g'+t,t[0]==='t'?22:16,18,function(){ if(t==='fuel') rFuel(0,0); else if(t==='coin') rCoin(0,0); else if(t==='magnet') rMagnet(0,0); else if(t==='tbubble') rTurboBubble(0,0); else if(t==='tmagnet') rTurboMagnet(0,0); else { rBubble(0,0); rShieldIcon(0.2,0.3,1); } }); }
+/* v0.96: the super gift stands out (the maintainer: «сделай суперподарок более заметным.. варианты») — sketch variants A…D; he picked A */
+var R_SUPER='A';   // his pick: bigger, with a golden glow
+function rSuper(s,X,Y,t,id){ var u=K/SU, v=R_SUPER, k=1.3, bob=Math.sin(t*3+id)*0.8*K, i;
+  if(v==='A'){ k=1.45+0.08*Math.sin(t*6); var gr=hx.createRadialGradient(X,Y+bob,2*u,X,Y+bob,16*u); gr.addColorStop(0,'rgba(255,236,120,0.95)'); gr.addColorStop(0.5,'rgba(255,200,40,'+(0.45+0.2*Math.sin(t*6))+')'); gr.addColorStop(1,'rgba(255,200,40,0)'); hx.fillStyle=gr; hx.beginPath(); hx.arc(X,Y+bob,16*u,0,6.2832); hx.fill(); }
+  else if(v==='B'){ hx.save(); hx.translate(X,Y+bob); hx.rotate(t*1.5); hx.fillStyle='rgba(255,214,60,0.8)'; for(i=0;i<12;i++){ hx.rotate(6.2832/12); hx.beginPath(); hx.moveTo(0,0); hx.lineTo(18*u,-2.6*u); hx.lineTo(18*u,2.6*u); hx.closePath(); hx.fill(); } hx.restore(); }
+  else if(v==='C'){ var cols=['#ff4f7a','#ffb52e','#ffe066','#3fd07a','#4fb8ff','#9b5bff']; hx.lineWidth=2.2*u; for(i=0;i<6;i++){ hx.strokeStyle=cols[i]; hx.beginPath(); hx.arc(X,Y+bob,12.5*u,t*2+i*1.0472,t*2+(i+1)*1.0472); hx.stroke(); }
+    for(i=0;i<3;i++){ var a=t*2.5+i*2.0944, sx0=X+Math.cos(a)*15*u, sy0=Y+bob+Math.sin(a)*15*u, r=(1.6+0.8*Math.sin(t*9+i))*u; hx.fillStyle='#ffffff'; hx.beginPath(); hx.moveTo(sx0,sy0-2*r); hx.lineTo(sx0+0.5*r,sy0-0.5*r); hx.lineTo(sx0+2*r,sy0); hx.lineTo(sx0+0.5*r,sy0+0.5*r); hx.lineTo(sx0,sy0+2*r); hx.lineTo(sx0-0.5*r,sy0+0.5*r); hx.lineTo(sx0-2*r,sy0); hx.lineTo(sx0-0.5*r,sy0-0.5*r); hx.closePath(); hx.fill(); } }
+  else if(v==='D'){ k=1.4; bob=-Math.abs(Math.sin(t*4+id))*6*u; hx.fillStyle='rgba(0,0,0,0.2)'; hx.beginPath(); hx.ellipse(X,Y+9*u,7*u*(1+bob/(20*u)),2*u,0,0,6.2832); hx.fill();
+    if(Math.floor(t*4)%2){ hx.strokeStyle='#ffffff'; hx.lineWidth=1.6*u; hx.beginPath(); hx.arc(X,Y+bob,11.5*u,0,6.2832); hx.stroke(); } }
+  hx.drawImage(s.c,X-s.w*k/2,Y+bob-s.h*k/2,s.w*k,s.h*k); }
 function rBlit(s,X,Y,a){ if(a){ hx.save(); hx.translate(X,Y); hx.rotate(a); hx.drawImage(s.c,-s.w/2,-s.h/2,s.w,s.h); hx.restore(); } else hx.drawImage(s.c,X-s.w/2,Y-s.h/2,s.w,s.h); }
 /* the road's direction at a place (radians; drawing only) */
 function rSlope(rg,wx){ return Math.atan2(Race.centre(rg,wx+4)-Race.centre(rg,wx-4),8); }
@@ -269,6 +281,7 @@ function raceScene(rg,vd,carY,dt){ rReset(rg.seed); var KS=rKS(), X0=rX0===null?
   var t=clock;
   (rg.items||[]).forEach(function(p){ var X=sx(p.x); if(X<-20||X>LW+20) return; var Y=(Race.centre(rg,p.x)+p.o)*K, s=rGiftSprite(p.type);
     if(p.type==='coin'){ var f=Math.abs(Math.cos(t*4+p.id)); hx.save(); hx.translate(X,Y); hx.scale(0.35+0.65*f,1); hx.drawImage(s.c,-s.w/2,-s.h/2,s.w,s.h); hx.restore(); }
+    else if(p.type==='tmagnet'&&R_SUPER) rSuper(s,X,Y,t,p.id);
     else rBlit(s,X,Y+Math.sin(t*3+p.id)*0.8*K,0); });
   (rg.cars||[]).forEach(function(c){ var X=sx(c.x); if(X<-30||X>LW+30) return; var Y=(Race.centre(rg,c.x)+c.o)*K; rBlit(rCarSprite(c.kind,false),X,Y,rSlope(rg,c.x)+(c.to-c.o)*0.02); });
   if(carY!==null&&carY!==undefined){ var s=rg.car, cx=vd+s.x, X=sx(cx), Y=carY*K;

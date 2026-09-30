@@ -467,8 +467,8 @@ function raceRowLabel(){ return L('r_steer')+': '+L(raceSteer==='road'?'r_steer_
 /* v0.92, «НАСТРОЙКИ ТЕСТА» (the maintainer: «наделай мне включателей и выключателей тех или иных условий, чтобы я поигрался — как лучше и
    играбельнее»; «давай попробуем не замедляться при врезании»; «оставим только „магнит + защита + ускорение“»): kept on the phone, written
    into each race's log. The defaults are his latest words: a knock does not slow, only the turbo+magnet+bubble gift */
-var RACE_OPT_DEF={crashSlow:false,crashFuel:true,gifts:{magnet:false,bubble:false,tbubble:false,tmagnet:true},traffic:1,speed:1,burn:true,syrup:true,offSlow:true,puddles:1,bubblePop:true};   // = set А
-var raceOpt=(function(){ var o=null; try{ o=JSON.parse(store.get('sonaroids_race_opt','')||'null'); }catch(e){} if(o&&o.syrup===false){ o.syrup=true; o.puddles=0; } return Race.optOf(o||RACE_OPT_DEF); })();   // v0.93: 0.92's «syrup: no» is «puddles: none»
+var RACE_OPT_DEF={crashSlow:false,crashFuel:true,gifts:{magnet:false,bubble:false,tbubble:false,tmagnet:true},traffic:1,speed:1,burn:true,syrup:true,offSlow:true,puddles:1,bubblePop:true,superK:1.05};   // = set А (the super gift 1 in 6)
+var raceOpt=(function(){ var o=null; try{ o=JSON.parse(store.get('sonaroids_race_opt','')||'null'); }catch(e){} if(o&&o.syrup===false){ o.syrup=true; o.puddles=0; } if(o&&o.superK===undefined) o.superK=1.05; return Race.optOf(o||RACE_OPT_DEF); })();   // v0.93: 0.92's «syrup: no» is «puddles: none»
 function raceOptSave(){ store.set('sonaroids_race_opt',JSON.stringify(raceOpt)); }
 /* v0.93: how many cars and puddles — none, very few, few, some, many, very many (a share of the tuned number) */
 var R_LEVELS=[[0,'r_none'],[0.3,'r_vfew'],[0.6,'r_few'],[1,'r_mid'],[1.5,'r_many'],[2.2,'r_vmany']];
@@ -482,6 +482,7 @@ var RSET=[['rs_steer',function(){ return raceRowLabel(); },function(){ raceSteer
   ['rs_bub',function(){ return L('r_bub')+': '+L(raceOpt.gifts.bubble?'r_yes':'r_no'); },function(){ raceOpt.gifts.bubble=!raceOpt.gifts.bubble; }],
   ['rs_tbub',function(){ return L('r_tbub')+': '+L(raceOpt.gifts.tbubble?'r_yes':'r_no'); },function(){ raceOpt.gifts.tbubble=!raceOpt.gifts.tbubble; }],
   ['rs_tmag',function(){ return L('r_tmag')+': '+L(raceOpt.gifts.tmagnet?'r_yes':'r_no'); },function(){ raceOpt.gifts.tmagnet=!raceOpt.gifts.tmagnet; }],
+  ['rs_super',function(){ return L('r_super')+': '+L('r_1of')+' '+(raceOpt.superK<0.9?8:raceOpt.superK<1.4?6:4); },function(){ raceOpt.superK=raceOpt.superK<0.9?1.05:raceOpt.superK<1.4?1.75:0.75; }],   // v0.96: with magnet and bubble on — 1 gift in 8, 6, 4 (the maintainer's numbers)
   ['rs_bpop',function(){ return L('r_bpop')+': '+L(raceOpt.bubblePop?'r_yes':'r_no'); },function(){ raceOpt.bubblePop=!raceOpt.bubblePop; }],
   ['rs_cars',function(){ return L('r_cars')+': '+rLevel(raceOpt.traffic); },function(){ raceOpt.traffic=rNext(raceOpt.traffic); }],   // v0.93: none … very many
   ['rs_puds',function(){ return L('r_puds')+': '+rLevel(raceOpt.puddles); },function(){ raceOpt.puddles=rNext(raceOpt.puddles); }],
@@ -498,9 +499,9 @@ function sRSet(){ raceDemoTick(); raceScene(rDemo,rDemo.d,rDemo.car.y,DT); lx.gl
 /* v0.94, rule sets (the maintainer: «полное описание настроек на А, Д и Е»): the bot's 30 races each picked these three to try by hand —
    А his own, Д lively and long (turbo+bubble too, a higher speed), Е strict and short (a knock slows, many cars and puddles). The steering is not part of a set */
 var R_GIFT1={magnet:false,bubble:false,tbubble:false,tmagnet:true};
-var R_PRESETS=[['rp_a','r_pa',{crashSlow:false,crashFuel:true,gifts:R_GIFT1,traffic:1,puddles:1,bubblePop:true,speed:1,burn:true,syrup:true,offSlow:true}],
-  ['rp_d','r_pd',{crashSlow:false,crashFuel:true,gifts:{magnet:false,bubble:false,tbubble:true,tmagnet:true},traffic:1,puddles:1,bubblePop:true,speed:1.15,burn:true,syrup:true,offSlow:true}],
-  ['rp_e','r_pe',{crashSlow:true,crashFuel:true,gifts:R_GIFT1,traffic:1.5,puddles:1.5,bubblePop:true,speed:1,burn:true,syrup:true,offSlow:true}]];
+var R_PRESETS=[['rp_a','r_pa',{crashSlow:false,crashFuel:true,gifts:R_GIFT1,traffic:1,puddles:1,bubblePop:true,superK:1.05,speed:1,burn:true,syrup:true,offSlow:true}],
+  ['rp_d','r_pd',{crashSlow:false,crashFuel:true,gifts:{magnet:false,bubble:false,tbubble:true,tmagnet:true},traffic:1,puddles:1,bubblePop:true,superK:1.05,speed:1.15,burn:true,syrup:true,offSlow:true}],
+  ['rp_e','r_pe',{crashSlow:true,crashFuel:true,gifts:R_GIFT1,traffic:1.5,puddles:1.5,bubblePop:true,superK:1.05,speed:1,burn:true,syrup:true,offSlow:true}]];
 function rPresetNow(){ var k=JSON.stringify(Race.optOf(raceOpt)), f=null; R_PRESETS.forEach(function(q){ if(JSON.stringify(Race.optOf(q[2]))===k) f=q[0]; }); return f; }
 var rDemo=null, rTry=null, rTryD=0, raceBest=+store.get('sonaroids_race_best','0')||0, raceNew=false;
 function raceFW(){ return Race.FH*(LW-SAFE.l)/LH; }
@@ -816,7 +817,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:') navigator.service
 go('hub');   // v0.70: the games' screen first (always the menu first since 0.44; a new player's first "Play" walks through the instruction)
 requestAnimationFrame(loop);
 /* test hooks: headless tests drive the screens through these (harmless in the game) */
-window.__sonaroids={racePal:function(pud,bub){ if(pud) for(var k in pud) R_PUD[k]=pud[k]; if(bub) for(var j in bub) R_BUB[j]=bub[j]; RC.sp={}; },skinProbe:skinProbe,hdProbe:hdProbe,sizeProbe:sizeProbe,hdIds:hdIds,pixIds:function(){ return SKIN_IDS.filter(function(i){ return !!SKINS[i]; }); },skinIds:function(){ return SKIN_IDS.slice(); },go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },
+window.__sonaroids={raceSuper:function(v){ R_SUPER=v; },racePal:function(pud,bub){ if(pud) for(var k in pud) R_PUD[k]=pud[k]; if(bub) for(var j in bub) R_BUB[j]=bub[j]; RC.sp={}; },skinProbe:skinProbe,hdProbe:hdProbe,sizeProbe:sizeProbe,hdIds:hdIds,pixIds:function(){ return SKIN_IDS.filter(function(i){ return !!SKINS[i]; }); },skinIds:function(){ return SKIN_IDS.slice(); },go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },
   setBooted:function(v){ booted=v; },
   board:function(){ return {tbl:tblBox,nick:nickEl?{shown:nickEl.style.display!=='none',rect:nickEl.getBoundingClientRect().toJSON()}:null}; },
   side:function(){ return {hand:handSide(),rel:handRel,cam:camEnd(),stored:store.get('sonaroids_rel',''),say:sayLast}; }, wave:function(){ toWave(); },

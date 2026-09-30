@@ -20,6 +20,10 @@ check('another seed → another race',c.score!==a.score||c.d!==a.d);
   const none=run({traffic:0,puddles:0}), lots=run({traffic:2.2,puddles:2.2}), mid=run({}), keep=run({traffic:1.5,bubblePop:false});
   check('switches: no cars and no puddles; very many — more than usual',none.cars===0&&none.puds===0&&lots.cars>mid.cars*1.6&&lots.puds>mid.puds*1.6,`cars ${none.cars}/${mid.cars}/${lots.cars}, puddles ${none.puds}/${mid.puds}/${lots.puds}`);
   check('switches: a bubble that does not pop takes the knocks',mid.pops>0&&keep.pops===0&&keep.boings>0&&keep.crashes===0,`usual: ${mid.pops} pops; keeping: ${keep.boings} knocks taken, ${keep.crashes} crashes`); }
+{ const share=k=>{ let t=0,s=0; for(let i=0;i<20;i++){ const g=Race.create(300+i,390,null,'height',{gifts:{magnet:true,bubble:true,tbubble:false,tmagnet:true},burn:false,superK:k}); const seen=new Set();   // v0.96: the super gift's share
+    for(let n=0;n<60*240;n++){ Race.step(g,0.5); g.items.forEach(p=>{ if(p.type!=='fuel'&&p.type!=='coin'&&!seen.has(p.id)){ seen.add(p.id); t++; if(p.type==='tmagnet') s++; } }); } } return s/t; };
+  const r1=share(0.75), r3=share(1.05), r2=share(1.75);
+  check('switches: the super gift 1 in 8, 6, 4',r1>0.07&&r1<0.18&&r3>0.12&&r3<0.23&&r2>0.19&&r2<0.33&&r1<r3&&r3<r2,`${(100*r1).toFixed(0)}%, ${(100*r3).toFixed(0)}%, ${(100*r2).toFixed(0)}%`); }
 { const g=Race.create(1,390); let n=0; while(g.state!=='over'&&n<60*600){ Race.step(g,0); n++; }   // stuck at the bottom, off the road: no sodas, slow
   check('no fuel → the car rolls to a stop, the race is over',g.state==='over'&&g.fuel===0&&g.v===0,`${(g.t).toFixed(0)} s, ${Math.floor(g.d/10)} m`); }
 { const g=Race.create(5,390); let off=0, on=0; for(let i=0;i<60*8;i++){ Race.step(g,0); } off=g.v; const h=Race.create(5,390); for(let i=0;i<60*8;i++){ const road=Race.at(h,h.d+h.car.x+10); Race.step(h,(Race.FH-Race.MARGIN-road.c)/(Race.FH-2*Race.MARGIN)); } on=h.v;

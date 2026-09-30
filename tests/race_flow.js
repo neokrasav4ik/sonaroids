@@ -20,6 +20,11 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
   const shot=n=>p.screenshot({path:path.join(OUT,'race_'+n+'.png')});
   await p.evaluate(()=>__sonaroids.act.hub_race()); await p.waitForTimeout(1500);
   const menu=await p.evaluate(()=>({scr:__sonaroids.scr(),mode:__sonaroids.state().mode,btn:__sonaroids.btn().map(b=>b.id)})); await shot('01_menu');
+  // v0.94: the rule sets — a tap puts all the switches, the set in use is lit; back to set А for the race below
+  const sets=await p.evaluate(async()=>{ __sonaroids.act.rset(); __sonaroids.act.rp_e(); await new Promise(r=>setTimeout(r,200)); const e=JSON.parse(localStorage.getItem('sonaroids_race_opt'));
+    __sonaroids.act.rp_d(); await new Promise(r=>setTimeout(r,200)); const d=JSON.parse(localStorage.getItem('sonaroids_race_opt')); __sonaroids.act.rs_cars(); await new Promise(r=>setTimeout(r,200)); const mixed=JSON.parse(localStorage.getItem('sonaroids_race_opt'));
+    __sonaroids.act.rp_a(); await new Promise(r=>setTimeout(r,200)); const a=JSON.parse(localStorage.getItem('sonaroids_race_opt')); __sonaroids.go('rtitle'); return {e,d,mixed,a}; });
+  const setsOk=sets.e.crashSlow&&sets.e.traffic===1.5&&sets.e.puddles===1.5&&sets.d.speed===1.15&&sets.d.gifts.tbubble&&!sets.d.crashSlow&&sets.mixed.traffic!==1&&sets.a.traffic===1&&!sets.a.gifts.tbubble&&sets.a.speed===1;
   await p.evaluate(()=>__sonaroids.act.play()); let t0=Date.now(); const T=()=>(Date.now()-t0)/1000;
   const seen=[]; let last=null, startAt=null, follow=[], shots={}, drawn=null, paused=null, over=null;
   while(T()<70){
@@ -47,6 +52,7 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
   await b.close();
   let ok=true; const out=[], check=(n,g,i)=>{ ok=ok&&g; out.push(`${n}: ${i||''} ${g?'ok':'FAIL'}`); };
   check('the card opens the race menu',menu.scr==='rtitle'&&menu.mode==='race'&&menu.btn.includes('play')&&menu.btn.includes('hub'),menu.btn.join(','));
+  check('the rule sets put all the switches (Е, Д, a switch changed, А)',setsOk,`Е cars ${sets.e.traffic} knock slows ${sets.e.crashSlow}; Д speed ${sets.d.speed}; changed cars ${sets.mixed.traffic}; А cars ${sets.a.traffic}`);
   check('screens',['probe','away','wave','count','play'].every(k=>seen.some(q=>q.startsWith(k+'@'))),seen.join(' '));
   // the car follows the palm: correlation of palm and car heights (the car is higher on screen for a higher palm: y falls)
   const n=follow.length, mh=follow.reduce((a,q)=>a+q[0],0)/n, mc=follow.reduce((a,q)=>a+q[1],0)/n; let sxy=0,sxx=0,syy=0; follow.forEach(q=>{ sxy+=(q[0]-mh)*(q[1]-mc); sxx+=(q[0]-mh)**2; syy+=(q[1]-mc)**2; });

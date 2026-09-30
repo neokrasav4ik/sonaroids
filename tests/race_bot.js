@@ -2,12 +2,12 @@
    coins, and steps round syrup. Human limits as in tests/bot.js: it sees 0.25 s late (more for a weaker driver), its palm shakes a little
    and moves at most about one screen height per half second. Usage: node tests/race_bot.js [races] [skill 0…1] */
 const Race=require('../src/14_race.js');
-function botRace(seed,skill,FW,steer){
-  const g=Race.create(seed,FW||390,null,steer), FH=Race.FH, M=Race.MARGIN, delay=Math.round(0.25*60*(1.6-skill)), hist=[];
+function botRace(seed,skill,FW,steer,opt){
+  const g=Race.create(seed,FW||390,null,steer,opt), FH=Race.FH, M=Race.MARGIN, delay=Math.round(0.25*60*(1.6-skill)), hist=[];
   let hand=0.5, noise=0, s=seed>>>0; const rnd=()=>{ s=(s*1664525+1013904223)>>>0; return s/4294967296; };
   const seen=()=>({d:g.d,sodaIn:g.items.filter(p=>p.type==='fuel').length,y:g.car.y,cars:g.cars.map(c=>({x:c.x,y:Race.centre(g,c.x)+c.o})),items:g.items.map(p=>({x:p.x,y:Race.centre(g,p.x)+p.o,type:p.type})),
     puds:g.puddles.map(p=>({x:p.x,y:Race.centre(g,p.x)+p.o,r:p.r}))});
-  let offT=0, fuelLow=null;
+  let offT=0, fuelLow=null; const ev={};   // v0.93: the rules to play by (opt) and what happened, for comparing rule sets
   while(g.state!=='over'&&g.t<1500){
     hist.push(seen()); const v=hist.length>delay?hist[hist.length-1-delay]:hist[0]; if(hist.length>delay+2) hist.shift();
     const cx=g.d+g.car.x, y=g.car.y, look=cx+30*(1+skill), road=Race.at(g,look);
@@ -25,9 +25,9 @@ function botRace(seed,skill,FW,steer){
     let w=steer==='road'?0.5-(ty-road.c)/(2*(Race.at(g,cx).hw+Race.OFFW)):(FH-M-ty)/(FH-2*M); w=Math.max(0,Math.min(1,w));   // along the road: the place across it
     noise=noise*0.95+(rnd()-0.5)*0.02*(1.5-skill); const st=1/30;
     hand+=Math.max(-st,Math.min(st,w-hand)); Race.step(g,Math.max(0,Math.min(1,hand+noise)));
-    if(g.car.on==='off') offT+=Race.DT; if(g.fuel<20&&fuelLow===null) fuelLow=g.t;
+    if(g.car.on==='off') offT+=Race.DT; if(g.fuel<20&&fuelLow===null) fuelLow=g.t; g.events.forEach(e=>{ ev[e]=(ev[e]||0)+1; });
   }
-  return {t:g.t,score:g.score,m:Math.floor(g.d/10),coins:g.coins,passed:g.passed,crashes:g.crashes,offT,fuelLow,vEnd:Race.vmax(g.t)};
+  return {t:g.t,score:g.score,m:Math.floor(g.d/10),coins:g.coins,passed:g.passed,crashes:g.crashes,offT,fuelLow,vEnd:Race.vmax(g.t),ev};
 }
 if(require.main===module){
   const n=+(process.argv[2]||20), skill=+(process.argv[3]||0.6), res=[];

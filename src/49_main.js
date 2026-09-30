@@ -467,7 +467,7 @@ function raceRowLabel(){ return L('r_steer')+': '+L(raceSteer==='road'?'r_steer_
 /* v0.92, «НАСТРОЙКИ ТЕСТА» (the maintainer: «наделай мне включателей и выключателей тех или иных условий, чтобы я поигрался — как лучше и
    играбельнее»; «давай попробуем не замедляться при врезании»; «оставим только „магнит + защита + ускорение“»): kept on the phone, written
    into each race's log. The defaults are his latest words: a knock does not slow, only the turbo+magnet+bubble gift */
-var RACE_OPT_DEF={crashSlow:false,crashFuel:true,gifts:{magnet:false,bubble:false,tbubble:false,tmagnet:true},traffic:1,speed:1,burn:true,syrup:true,offSlow:true,puddles:1,bubblePop:true};
+var RACE_OPT_DEF={crashSlow:false,crashFuel:true,gifts:{magnet:false,bubble:false,tbubble:false,tmagnet:true},traffic:1,speed:1,burn:true,syrup:true,offSlow:true,puddles:1,bubblePop:true};   // = set А
 var raceOpt=(function(){ var o=null; try{ o=JSON.parse(store.get('sonaroids_race_opt','')||'null'); }catch(e){} if(o&&o.syrup===false){ o.syrup=true; o.puddles=0; } return Race.optOf(o||RACE_OPT_DEF); })();   // v0.93: 0.92's «syrup: no» is «puddles: none»
 function raceOptSave(){ store.set('sonaroids_race_opt',JSON.stringify(raceOpt)); }
 /* v0.93: how many cars and puddles — none, very few, few, some, many, very many (a share of the tuned number) */
@@ -490,9 +490,18 @@ var RSET=[['rs_steer',function(){ return raceRowLabel(); },function(){ raceSteer
   ['rs_verge',function(){ return L('r_verge')+': '+L(raceOpt.offSlow?'r_yes':'r_no'); },function(){ raceOpt.offSlow=!raceOpt.offSlow; }]];
 function sRSet(){ raceDemoTick(); raceScene(rDemo,rDemo.d,rDemo.car.y,DT); lx.globalAlpha=0.7; R(P.bg,0,0,LW,LH); lx.globalAlpha=1;
   var y=titles(L('r_set')), nc=3, n=Math.ceil(RSET.length/nc), gap=6, w=Math.min(btnW(RSET.map(function(q){ return q[1](); })),Math.floor((LW-SAFE.l-SAFE.r-12-gap*(nc-1))/nc)), x0=Math.round((SAFE.l+LW-SAFE.r)/2-(nc*w+(nc-1)*gap)/2);   // v0.93: three columns for thirteen
-  var room=LH-SAFE.b-6-(y+4), g2=Math.max(2,Math.min(6,Math.floor((room-n*BH)/(n-1)))), y0=y+4+Math.max(0,Math.round((room-(n*BH+(n-1)*g2))/2));
+  var nr=n+1, room=LH-SAFE.b-6-(y+4), g2=Math.max(2,Math.min(6,Math.floor((room-nr*BH-4)/(nr-1)))), y0=y+4+Math.max(0,Math.round((room-(nr*BH+(nr-1)*g2+4))/2));
   RSET.forEach(function(q,i){ var c=Math.floor(i/n), r=i%n; button(q[0],q[1](),x0+c*(w+gap),y0+r*(BH+g2),w,BH,''); });
+  var yp=y0+n*(BH+g2)+4, cur=rPresetNow();   // v0.94: the three rule sets under the switches, the one in use lit
+  R_PRESETS.forEach(function(q,i){ button(q[0],L(q[1]),x0+i*(w+gap),yp,w,BH,q[0]===cur?'primary':''); });
   say(L('r_set')); }
+/* v0.94, rule sets (the maintainer: «полное описание настроек на А, Д и Е»): the bot's 30 races each picked these three to try by hand —
+   А his own, Д lively and long (turbo+bubble too, a higher speed), Е strict and short (a knock slows, many cars and puddles). The steering is not part of a set */
+var R_GIFT1={magnet:false,bubble:false,tbubble:false,tmagnet:true};
+var R_PRESETS=[['rp_a','r_pa',{crashSlow:false,crashFuel:true,gifts:R_GIFT1,traffic:1,puddles:1,bubblePop:true,speed:1,burn:true,syrup:true,offSlow:true}],
+  ['rp_d','r_pd',{crashSlow:false,crashFuel:true,gifts:{magnet:false,bubble:false,tbubble:true,tmagnet:true},traffic:1,puddles:1,bubblePop:true,speed:1.15,burn:true,syrup:true,offSlow:true}],
+  ['rp_e','r_pe',{crashSlow:true,crashFuel:true,gifts:R_GIFT1,traffic:1.5,puddles:1.5,bubblePop:true,speed:1,burn:true,syrup:true,offSlow:true}]];
+function rPresetNow(){ var k=JSON.stringify(Race.optOf(raceOpt)), f=null; R_PRESETS.forEach(function(q){ if(JSON.stringify(Race.optOf(q[2]))===k) f=q[0]; }); return f; }
 var rDemo=null, rTry=null, rTryD=0, raceBest=+store.get('sonaroids_race_best','0')||0, raceNew=false;
 function raceFW(){ return Race.FH*(LW-SAFE.l)/LH; }
 function newSeed(){ try{ var a=new Uint32Array(1); crypto.getRandomValues(a); return a[0]; }catch(e){ return Math.floor(Math.random()*4294967296); } }
@@ -666,7 +675,8 @@ var ACT={
   exit:function(){ if(g&&g.state==='play'){ Logs.gameEv('ended by the player'); endGame(); } go('title'); },
   resume:function(){ if(pausedFrom==='play'){ if(booted&&Sonar.healthy()){ countT=3; go('count-resume'); } else { resumeAfterPrep=true; ensure(null); } } else ensure(startCount); }
 };
-RSET.forEach(function(q){ ACT[q[0]]=function(){ q[2](); raceOptSave(); }; });   // v0.92: the test switches
+RSET.forEach(function(q){ ACT[q[0]]=function(){ q[2](); raceOptSave(); }; });
+R_PRESETS.forEach(function(q){ ACT[q[0]]=function(){ raceOpt=Race.optOf(JSON.parse(JSON.stringify(q[2]))); raceOptSave(); }; });   // v0.92: the test switches
 /* buttons act when the finger lifts (on the same button it went down on): iPhone lets a page share files or open the microphone
    only from a finished tap — acting on touch-down made "logs" work only on the second tap (v0.12) */
 var downOn=null;

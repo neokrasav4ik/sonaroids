@@ -73,7 +73,9 @@ var Race=(function(){
   /* v0.92, test switches (the maintainer: «наделай мне включателей и выключателей тех или иных условий, чтобы я поигрался — как лучше и
      играбельнее»): what a knock does, which gifts come, how many cars, how fast, fuel, syrup, the verge. Without opt — the tuned rules */
   var GIFTS=[['magnet',0.34],['bubble',0.34],['tbubble',0.19],['tmagnet',0.13]];
-  var OPT0={crashSlow:true,crashFuel:true,gifts:{magnet:true,bubble:true,tbubble:true,tmagnet:true},traffic:1,speed:1,burn:true,syrup:true,offSlow:true,puddles:1,bubblePop:true,superN:0};
+  /* v0.98, the rules of the game (the maintainer, 30 Sep, after a day of test switches: «правила игры делаем такими — достаточно сбалансированно»):
+     a knock slows and costs fuel; magnet, bubble and the super gift (one in every 6 gifts); cars «some», puddles «few», speed «higher»; fuel used; the verge slows */
+  var OPT0={crashSlow:true,crashFuel:true,gifts:{magnet:true,bubble:true,tbubble:false,tmagnet:true},traffic:1,speed:1.15,burn:true,syrup:true,offSlow:true,puddles:0.6,bubblePop:true,superN:6};
   function optOf(o){ var r={}, k; for(k in OPT0) r[k]=OPT0[k]; if(o) for(k in o) if(o[k]!==undefined) r[k]=o[k]; var gf={}; for(k in OPT0.gifts) gf[k]=(o&&o.gifts&&o.gifts[k]!==undefined)?!!o.gifts[k]:OPT0.gifts[k]; r.gifts=gf; return r; }
   function knock(g,c){ var s=g.car; if(s.inv>0) return;
     c.hit=true; c.v+=20;                                                    // the other car is pushed on a little
@@ -109,7 +111,11 @@ var Race=(function(){
     // where the car is: on the road, on the kerb or off it
     var cx=g.d+s.x, r=at(g,cx), off=s.y-r.c; if(off<0) off=-off;
     s.on=off<=r.hw-TUNE.KERB_W?'road':off<=r.hw+1?'kerb':'off';
-    for(i=0;i<g.puddles.length;i++){ p=g.puddles[i]; dx=p.x-cx; dy=r.c+p.o-s.y; if(dx<p.r+CAR.hl-3&&dx>-p.r-CAR.hl+3&&dy<p.r+CAR.hw-1&&dy>-p.r-CAR.hw+1){ if(s.syrup<=0) g.events.push('syrup'); s.syrup=TUNE.SYRUP_T; } }
+    /* v0.98, syrup (the maintainer: «заметно, что цепляют слишком сильно от краёв — лучше наоборот, чтоб чуть более простительными были»): the puddle is
+       where it is drawn (its own road centre — it was taken at our car's, off by the slope on a bend) and counts as an oval a little inside
+       the drawn one (0.9r × 0.45r against the drawn 1.15r × 0.62r) touching the car's body a little inside its drawing */
+    for(i=0;i<g.puddles.length;i++){ p=g.puddles[i]; dx=p.x-cx; dy=centre(g,p.x)+p.o-s.y; var qx=clamp(dx,-(CAR.hl-2),CAR.hl-2), qy=clamp(dy,-(CAR.hw-1),CAR.hw-1), ex=(dx-qx)/(0.9*p.r), ey=(dy-qy)/(0.45*p.r);
+      if(ex*ex+ey*ey<1){ if(s.syrup<=0) g.events.push('syrup'); s.syrup=TUNE.SYRUP_T; } }
     // speed: towards the top speed, less off the road, on the kerb, in syrup; nothing when the fuel is out
     var top=vmax(g.t)*g.opt.speed*(s.on==='off'?(g.opt.offSlow?TUNE.OFF:1):s.on==='kerb'?(g.opt.offSlow?TUNE.KERB:1):1)*(s.syrup>0?TUNE.SYRUP:1)*(s.turbo>0?TUNE.TURBO_K:1);
     if(g.state==='coast') top=0;
@@ -146,7 +152,7 @@ var Race=(function(){
     for(var i=0;i<g.cars.length;i++){ var c=g.cars[i]; if(c===me) continue; var dx=c.x-me.x; if(dx<40&&dx>-40){ var lo=Math.min(me.o,o)-CAR.hw*2-3, hi=Math.max(me.o,o)+CAR.hw*2+3; if(c.o>lo&&c.o<hi) return false; } } return true; }
   /* a whole race from a palm trajectory (one value per step, −1 = no palm): what a server would run */
   function replay(seed,FW,hands,y0,steer,opt){ var g=create(seed,FW,y0,steer,opt); for(var i=0;i<hands.length&&g.state!=='over';i++) step(g,hands[i]<0?null:hands[i]); return g; }
-  var TAG='race-9';   // v0.98: the super gift from a bag of N —   // v0.96: how often the super gift comes —   // v0.93: the number of puddles, no cars, a bubble that does not pop —   // v0.92: test switches (g.opt) —   // v0.91: the car glides back to a palm seen again; turbo gifts   // v0.89: the speed rises earlier (race-3: 0.87's gifts and sodas; race-2, steering across the road, was tried and dropped)
+  var TAG='race-11';   // v0.98: the maintainer's rules are the game's —   // v0.98: syrup puddles where drawn, forgiving —   // v0.98: the super gift from a bag of N —   // v0.96: how often the super gift comes —   // v0.93: the number of puddles, no cars, a bubble that does not pop —   // v0.92: test switches (g.opt) —   // v0.91: the car glides back to a palm seen again; turbo gifts   // v0.89: the speed rises earlier (race-3: 0.87's gifts and sodas; race-2, steering across the road, was tried and dropped)
   return {TAG:TAG,OPT0:OPT0,optOf:optOf,TUNE:TUNE,CAR:CAR,CAR_X:CAR_X,OFFW:OFFW,offOf:offOf,steerY:steerY,DT:DT,FH:FH,MARGIN:MARGIN,create:create,step:step,replay:replay,at:at,centre:centre,vmax:vmax,burn:burn};
 })();
 if(typeof module!=='undefined') module.exports=Race;

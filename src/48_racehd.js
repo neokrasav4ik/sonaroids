@@ -200,7 +200,7 @@ function rReset(seed){ var key=seed+'|'+LW+'x'+LH+'x'+hs; if(RC.key===key) retur
   if(!c){ c=RCS[key]={seed:seed,key:key,ch:{},zones:null,sp:{}}; RCN.push(key); while(RCN.length>5){ delete RCS[RCN.shift()]; } }
   RC=c; }
 /* ── the cars, the gifts: small sprites, made once per colour ── */
-var R_CARS=[['#ff4f8b','#b0184f'],['#ffb52e','#b06a00'],['#4fb8ff','#1a6aa8'],['#9b5bff','#4a1aa0'],['#f4ecff','#8a78b8'],['#e8284a','#8a0c20']], R_PLAYER=['#2fe0b0','#0f8a6a'];
+var R_CARS=[['#ff4f8b','#b0184f'],['#ffb52e','#b06a00'],['#4fb8ff','#1a6aa8'],['#2f47c9','#141d66'],['#f4ecff','#8a78b8'],['#e8284a','#8a0c20']], R_PLAYER=['#2fe0b0','#0f8a6a'];
 function rCar(px,py,body,dark,player){ var L=19, W=10, glass='rgba(40,20,60,0.75)';
   rx.fillStyle='rgba(40,10,30,0.22)'; rx.beginPath(); rx.roundRect(px-L/2+1.5,py-W/2+2,L,W,4); rx.fill();
   rx.fillStyle='#2a1a28'; [[-6,-5.4],[5,-5.4],[-6,5.4],[5,5.4]].forEach(function(w){ rx.beginPath(); rx.roundRect(px+w[0]-2.2,py+w[1]-1.3,4.4,2.6,1); rx.fill(); });
@@ -234,8 +234,8 @@ function rMagnet(px,py){ rx.fillStyle='rgba(0,0,0,0.16)'; rx.beginPath(); rx.ell
   rx.strokeStyle='#ffffff'; rx.beginPath(); rx.moveTo(px-3.6,py+3); rx.lineTo(px-3.6,py+5); rx.moveTo(px+3.6,py+3); rx.lineTo(px+3.6,py+5); rx.stroke();
   rx.strokeStyle='#8a0c20'; rx.lineWidth=0.5; rx.beginPath(); rx.arc(px,py-0.5,5.3,Math.PI,0,false); rx.lineTo(px+5.3,py+5); rx.lineTo(px+1.9,py+5); rx.lineTo(px+1.9,py-0.5); rx.arc(px,py-0.5,1.9,0,Math.PI,true); rx.lineTo(px-1.9,py+5); rx.lineTo(px-5.3,py+5); rx.closePath(); rx.stroke();
   rx.strokeStyle='rgba(255,255,255,0.7)'; rx.lineWidth=0.8; rx.beginPath(); rx.arc(px,py-0.5,4.4,Math.PI*1.15,Math.PI*1.45); rx.stroke(); }
-/* v0.95: the colours of the syrup puddles and of the gum bubble, apart: blueberry puddles (variant Б), a shield on the bubble gift (the maintainer: «сделай лужи и пузыри разного цвета — сейчас сливаются») */
-var R_PUD={fill:'rgba(70,40,150,0.92)',rim:'rgba(170,140,255,0.9)',shine:'rgba(220,210,255,0.7)'}, R_BUB={hi:'#ffe0f0',mid:'#ff8ac4',lo:'#e0409a',rim:'#a01a68',glass:'rgba(255,138,196,',edge:'rgba(224,64,154,'};
+/* v0.95: the colours of the syrup puddles and of the gum bubble, apart: blueberry puddles (variant Б; v0.98: lighter, blue-lilac — the violet car had their very colour and is dark blue now), a shield on the bubble gift (the maintainer: «сделай лужи и пузыри разного цвета — сейчас сливаются») */
+var R_PUD={fill:'rgba(125,120,235,0.92)',rim:'rgba(215,210,255,0.95)',shine:'rgba(245,240,255,0.8)'}, R_BUB={hi:'#ffe0f0',mid:'#ff8ac4',lo:'#e0409a',rim:'#a01a68',glass:'rgba(255,138,196,',edge:'rgba(224,64,154,'};
 function rShieldIcon(px,py,s){ rx.beginPath(); rx.moveTo(px-2.5*s,py-2.3*s); rx.quadraticCurveTo(px,py-3.4*s,px+2.5*s,py-2.3*s); rx.lineTo(px+2.3*s,py+0.4*s); rx.quadraticCurveTo(px+1.7*s,py+2.4*s,px,py+3.3*s); rx.quadraticCurveTo(px-1.7*s,py+2.4*s,px-2.3*s,py+0.4*s); rx.closePath();
   rx.fillStyle='rgba(255,255,255,0.95)'; rx.fill(); rx.strokeStyle=R_BUB.rim; rx.lineWidth=0.5; rx.stroke(); rx.beginPath(); rx.moveTo(px,py-2.6*s); rx.lineTo(px,py+2.6*s); rx.moveTo(px-2.1*s,py-0.6*s); rx.lineTo(px+2.1*s,py-0.6*s); rx.lineWidth=0.45; rx.strokeStyle=R_BUB.lo; rx.stroke(); }   // v0.95: the bubble gift is a shield («на пузыре значок щита надо»)
 function rBubble(px,py){ rx.fillStyle='rgba(0,0,0,0.14)'; rx.beginPath(); rx.ellipse(px+1,py+5.5,4.5,1.3,0,0,6.2832); rx.fill();
@@ -252,7 +252,9 @@ function rTurboMagnet(px,py){ rx.fillStyle='rgba(0,0,0,0.14)'; rx.beginPath(); r
 function rSprite(key,w,h,draw){ var s=RC.sp[key]; if(s) return s; var KS=rKS(), o=hdOff(w*KS,h*KS,hs); rx=o.x; rx.setTransform(hs*KS,0,0,hs*KS,0,0); rx.translate(w/2,h/2); draw(); return RC.sp[key]={c:o.c,w:w*KS,h:h*KS}; }
 function rCarSprite(kind,player){ if(player) return rSprite('p',30,20,function(){ rx.translate(1.5,0); rRocket(0,0); });   // the middle of its body stays the car's point
   var col=R_CARS[kind%R_CARS.length]; return rSprite('c'+kind%R_CARS.length,28,20,function(){ rCar(0,0,col[0],col[1],false); }); }
-function rGiftSprite(t){ return rSprite('g'+t,t[0]==='t'?22:16,18,function(){ if(t==='fuel') rFuel(0,0); else if(t==='coin') rCoin(0,0); else if(t==='magnet') rMagnet(0,0); else if(t==='tbubble') rTurboBubble(0,0); else if(t==='tmagnet') rTurboMagnet(0,0); else { rBubble(0,0); rShieldIcon(0.2,0.3,1); } }); }
+var R_FUELK=1.2, R_BUBK=1.1;   // v0.98: the fuel bottle's and the shield bubble's sizes (the audit: the most needed thing was one of the smallest)
+function rGiftSprite(t){ if(t==='fuel') return rSprite('gfuel',Math.ceil(16*R_FUELK),Math.ceil(18*R_FUELK),function(){ rx.scale(R_FUELK,R_FUELK); rFuel(0,0); });
+  if(t==='bubble') return rSprite('gbubble',Math.ceil(16*R_BUBK),Math.ceil(18*R_BUBK),function(){ rx.scale(R_BUBK,R_BUBK); rBubble(0,0); rShieldIcon(0.2,0.3,1); }); return rSprite('g'+t,t[0]==='t'?22:16,18,function(){ if(t==='fuel') rFuel(0,0); else if(t==='coin') rCoin(0,0); else if(t==='magnet') rMagnet(0,0); else if(t==='tbubble') rTurboBubble(0,0); else if(t==='tmagnet') rTurboMagnet(0,0); else { rBubble(0,0); rShieldIcon(0.2,0.3,1); } }); }
 /* v0.96: the super gift stands out (the maintainer: «сделай суперподарок более заметным.. варианты») — sketch variants A…D; he picked A */
 var R_SUPER='A';   // his pick: bigger, with a golden glow
 function rSuper(s,X,Y,t,id){ var u=K/SU, v=R_SUPER, k=1.3, bob=Math.sin(t*3+id)*0.8*K, i;

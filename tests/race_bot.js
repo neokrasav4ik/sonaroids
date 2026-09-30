@@ -22,7 +22,18 @@ function botRace(seed,skill,FW,steer,opt){
       v.items.forEach(p=>{ const dx=p.x-cx; if(dx>4&&dx<140*(0.5+skill)&&Math.abs(p.y-yy)<7) sc+=want(p)*(1-dx/250); });
       if(sc>best){ best=sc; ty=yy; } }
     ty=Math.max(road.c-road.hw+6,Math.min(road.c+road.hw-6,ty));
-    let w=steer==='road'?0.5-(ty-road.c)/(2*(Race.at(g,cx).hw+Race.OFFW)):(FH-M-ty)/(FH-2*M); w=Math.max(0,Math.min(1,w));   // along the road: the place across it
+    let w=(FH-M-ty)/(FH-2*M);
+    if(steer==='road'){ /* v0.98: steering along the road plans in places across the road — the car follows the bends by itself, so where it will be
+         at a car or a gift ahead is that road's centre there plus its place across (planning in heights made the good bot worse than the weak one) */
+      const here=Race.at(g,cx), off=y-here.c, C=x=>Race.centre(g,x); let to=0, bo=-1e9;
+      for(let oo=-road.hw+6;oo<=road.hw-6;oo+=3){ let sc=-Math.abs(oo-off)*0.02-Math.abs(oo)*0.01;
+        v.cars.forEach(c=>{ const dx=c.x-cx, co=c.y-C(c.x); if(dx>-20&&dx<50+70*skill){ const tr=Math.max(0,dx+18)/Math.max(10,g.v*0.45), po=off+Math.sign(oo-off)*Math.min(Math.abs(oo-off),110*tr); if(Math.abs(po-co)<12) sc-=6-dx/30;
+          if(dx<20){ const lo=Math.min(off,oo)-10, hi=Math.max(off,oo)+10; if(co>lo&&co<hi) sc-=6; } } });
+        v.puds.forEach(p=>{ const dx=p.x-cx; if(dx>-10&&dx<50&&Math.abs(p.y-C(p.x)-oo)<p.r+7) sc-=1.5; });
+        v.items.forEach(p=>{ const dx=p.x-cx; if(dx>4&&dx<140*(0.5+skill)&&Math.abs(p.y-C(p.x)-oo)<7) sc+=want(p)*(1-dx/250); });
+        if(sc>bo){ bo=sc; to=oo; } }
+      w=0.5-to/(2*(here.hw+Race.OFFW)); }
+    w=Math.max(0,Math.min(1,w));
     noise=noise*0.95+(rnd()-0.5)*0.02*(1.5-skill); const st=1/30;
     hand+=Math.max(-st,Math.min(st,w-hand)); Race.step(g,Math.max(0,Math.min(1,hand+noise)));
     if(g.car.on==='off') offT+=Race.DT; if(g.fuel<20&&fuelLow===null) fuelLow=g.t; g.events.forEach(e=>{ ev[e]=(ev[e]||0)+1; });

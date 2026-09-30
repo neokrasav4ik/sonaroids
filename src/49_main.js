@@ -463,13 +463,18 @@ function sRotate(){ lx.fillStyle=P.bg; lx.fillRect(0,0,LW,LH); var y=Math.round(
    for the ship. Drawn in HD only for now; the best race is kept on the phone ('sonaroids_race_best'), no table yet ════ */
 /* v0.90, for testing (the maintainer: «верни для тестов выбор „руль по дороге“»): in SonaRace's menu the steering — by the height on the
    screen, or along the road as in 0.87 (v0.91: the «wide range» switch is gone — «это решается перекалибровкой») */
-var raceSteer=store.get('sonaroids_race_steer','height')==='road'?'road':'height';
+var raceSteer=store.get('sonaroids_race_steer','road')==='height'?'height':'road';   // v0.98: along the road by default («так управляется лучше»)
 function raceRowLabel(){ return L('r_steer')+': '+L(raceSteer==='road'?'r_steer_r':'r_steer_h'); }
 /* v0.92, «НАСТРОЙКИ ТЕСТА» (the maintainer: «наделай мне включателей и выключателей тех или иных условий, чтобы я поигрался — как лучше и
    играбельнее»; «давай попробуем не замедляться при врезании»; «оставим только „магнит + защита + ускорение“»): kept on the phone, written
    into each race's log. The defaults are his latest words: a knock does not slow, only the turbo+magnet+bubble gift */
-var RACE_OPT_DEF={crashSlow:false,crashFuel:true,gifts:{magnet:false,bubble:false,tbubble:false,tmagnet:true},traffic:1,speed:1,burn:true,syrup:true,offSlow:true,puddles:1,bubblePop:true,superN:6};   // = set А (the super gift 1 in 6)
+var RACE_OPT_DEF=Race.optOf(null);   // v0.98: the rules of the game (Race.OPT0)
 var raceOpt=(function(){ var o=null; try{ o=JSON.parse(store.get('sonaroids_race_opt','')||'null'); }catch(e){} if(o&&o.syrup===false){ o.syrup=true; o.puddles=0; } if(o&&o.superN===undefined){ o.superN=o.superK===undefined?6:o.superK<0.9?8:o.superK<1.4?6:4; } if(o) delete o.superK; return Race.optOf(o||RACE_OPT_DEF); })();   // v0.93: 0.92's «syrup: no» is «puddles: none»
+/* v0.98: the test settings hidden (the maintainer: «спрячь меню тестов правил — если надо будет, я скажу, опять покажешь»): the race plays by the
+   rules of the game, steering along the road; what was chosen in the tests stays on the phone for when RACE_TEST is back on */
+var RACE_TEST=false;
+function raceRules(){ return RACE_TEST?raceOpt:Race.optOf(null); }
+if(!RACE_TEST) raceSteer='road';
 function raceOptSave(){ store.set('sonaroids_race_opt',JSON.stringify(raceOpt)); }
 /* v0.93: how many cars and puddles — none, very few, few, some, many, very many (a share of the tuned number) */
 var R_LEVELS=[[0,'r_none'],[0.3,'r_vfew'],[0.6,'r_few'],[1,'r_mid'],[1.5,'r_many'],[2.2,'r_vmany']];
@@ -500,7 +505,7 @@ function sRSet(){ raceDemoTick(); raceScene(rDemo,rDemo.d,rDemo.car.y,DT); lx.gl
 /* v0.94, rule sets (the maintainer: «полное описание настроек на А, Д и Е»): the bot's 30 races each picked these three to try by hand —
    А his own, Д lively and long (turbo+bubble too, a higher speed), Е strict and short (a knock slows, many cars and puddles). The steering is not part of a set */
 var R_GIFT1={magnet:false,bubble:false,tbubble:false,tmagnet:true};
-var R_PRESETS=[['rp_a','r_pa',{crashSlow:false,crashFuel:true,gifts:R_GIFT1,traffic:1,puddles:1,bubblePop:true,superN:6,speed:1,burn:true,syrup:true,offSlow:true}],
+var R_PRESETS=[['rp_a','r_pa',Race.optOf(null)],   // v0.98: set А is the rules of the game
   ['rp_d','r_pd',{crashSlow:false,crashFuel:true,gifts:{magnet:false,bubble:false,tbubble:true,tmagnet:true},traffic:1,puddles:1,bubblePop:true,superN:6,speed:1.15,burn:true,syrup:true,offSlow:true}],
   ['rp_e','r_pe',{crashSlow:true,crashFuel:true,gifts:R_GIFT1,traffic:1.5,puddles:1.5,bubblePop:true,superN:6,speed:1,burn:true,syrup:true,offSlow:true}]];
 function rPresetNow(){ var k=JSON.stringify(Race.optOf(raceOpt)), f=null; R_PRESETS.forEach(function(q){ if(JSON.stringify(Race.optOf(q[2]))===k) f=q[0]; }); return f; }
@@ -511,7 +516,7 @@ function newSeed(){ try{ var a=new Uint32Array(1); crypto.getRandomValues(a); re
 function raceDemoTick(){ if(!rDemo||rDemo.d>60000) rDemo=Race.create(20260929,raceFW(),Race.FH/2);
   if(rDemo._c===clock) return; rDemo._c=clock; for(var n=Math.max(1,Math.round(DT*60));n>0;n--) raceDemoStep(rDemo); }
 function sRTitle(){ raceDemoTick(); raceScene(rDemo,rDemo.d,rDemo.car.y,DT);
-  var items=[['play',L('play'),'primary'],['howto',L('howto')],['rset',L('r_set')],['sfx','','sound'],['hub',L('all_games')]], w=colW(items);
+  var items=[['play',L('play'),'primary'],['howto',L('howto')]].concat(RACE_TEST?[['rset',L('r_set')]]:[]).concat([['sfx','','sound'],['hub',L('all_games')]]), w=colW(items);
   var bx0=sideX(w), m=Math.max(8,Math.round(LW*0.04)), band0=freeSide()==='left'?0:bx0-m, band1=freeSide()==='left'?bx0+w+m:LW;
   lx.globalAlpha=0.55; R(P.bg,band0,0,band1-band0,LH); lx.globalAlpha=1;
   column(items,Math.round(LH*0.52),bx0,items.length>5?6:8);
@@ -614,7 +619,7 @@ function toWave(){ T=Tune.create(+store.get('sonaroids_field','100')||100,true);
 function pauseGame(){ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; go('paused'); } }
 function startCount(){ if(resumeAfterPrep&&g&&g.state!=='over'){ resumeAfterPrep=false; countT=3; go('count-resume'); return; }
   resumeAfterPrep=false; countT=3; if(scr!=='wave') shipY=null; lastHand=handFrac()===null?lastHand:handFrac(); /* from the try-out the ship goes on where it is */ Logs.ev('отсчёт',{field:+T.field.toFixed(1),auto:T.auto}); store.set('sonaroids_field',Math.round(T.field));
-  if(mode==='race'){ g=Race.create(newSeed(),raceFW(),shipY===null?null:shipY/K,raceSteer,raceOpt); rTry=null; } go('count'); }
+  if(mode==='race'){ g=Race.create(newSeed(),raceFW(),shipY===null?null:shipY/K,raceSteer,raceRules()); rTry=null; } go('count'); }
 function startGame(){ if(mode==='race'){ raceStart(); return; }
   var seed=0; try{ var a=new Uint32Array(1); crypto.getRandomValues(a); seed=a[0]; }catch(e){ seed=Math.floor(Math.random()*4294967296); }
   var y0=shipY===null?null:+(shipY/K).toFixed(3);

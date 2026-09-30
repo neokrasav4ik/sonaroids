@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='0.97';
+var VERSION='0.98';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -499,7 +499,9 @@ var Race=(function(){
   /* v0.92, test switches (the maintainer: «наделай мне включателей и выключателей тех или иных условий, чтобы я поигрался — как лучше и
      играбельнее»): what a knock does, which gifts come, how many cars, how fast, fuel, syrup, the verge. Without opt — the tuned rules */
   var GIFTS=[['magnet',0.34],['bubble',0.34],['tbubble',0.19],['tmagnet',0.13]];
-  var OPT0={crashSlow:true,crashFuel:true,gifts:{magnet:true,bubble:true,tbubble:true,tmagnet:true},traffic:1,speed:1,burn:true,syrup:true,offSlow:true,puddles:1,bubblePop:true,superN:0};
+  /* v0.98, the rules of the game (the maintainer, 30 Sep, after a day of test switches: «правила игры делаем такими — достаточно сбалансированно»):
+     a knock slows and costs fuel; magnet, bubble and the super gift (one in every 6 gifts); cars «some», puddles «few», speed «higher»; fuel used; the verge slows */
+  var OPT0={crashSlow:true,crashFuel:true,gifts:{magnet:true,bubble:true,tbubble:false,tmagnet:true},traffic:1,speed:1.15,burn:true,syrup:true,offSlow:true,puddles:0.6,bubblePop:true,superN:6};
   function optOf(o){ var r={}, k; for(k in OPT0) r[k]=OPT0[k]; if(o) for(k in o) if(o[k]!==undefined) r[k]=o[k]; var gf={}; for(k in OPT0.gifts) gf[k]=(o&&o.gifts&&o.gifts[k]!==undefined)?!!o.gifts[k]:OPT0.gifts[k]; r.gifts=gf; return r; }
   function knock(g,c){ var s=g.car; if(s.inv>0) return;
     c.hit=true; c.v+=20;                                                    // the other car is pushed on a little
@@ -535,7 +537,11 @@ var Race=(function(){
     // where the car is: on the road, on the kerb or off it
     var cx=g.d+s.x, r=at(g,cx), off=s.y-r.c; if(off<0) off=-off;
     s.on=off<=r.hw-TUNE.KERB_W?'road':off<=r.hw+1?'kerb':'off';
-    for(i=0;i<g.puddles.length;i++){ p=g.puddles[i]; dx=p.x-cx; dy=r.c+p.o-s.y; if(dx<p.r+CAR.hl-3&&dx>-p.r-CAR.hl+3&&dy<p.r+CAR.hw-1&&dy>-p.r-CAR.hw+1){ if(s.syrup<=0) g.events.push('syrup'); s.syrup=TUNE.SYRUP_T; } }
+    /* v0.98, syrup (the maintainer: «заметно, что цепляют слишком сильно от краёв — лучше наоборот, чтоб чуть более простительными были»): the puddle is
+       where it is drawn (its own road centre — it was taken at our car's, off by the slope on a bend) and counts as an oval a little inside
+       the drawn one (0.9r × 0.45r against the drawn 1.15r × 0.62r) touching the car's body a little inside its drawing */
+    for(i=0;i<g.puddles.length;i++){ p=g.puddles[i]; dx=p.x-cx; dy=centre(g,p.x)+p.o-s.y; var qx=clamp(dx,-(CAR.hl-2),CAR.hl-2), qy=clamp(dy,-(CAR.hw-1),CAR.hw-1), ex=(dx-qx)/(0.9*p.r), ey=(dy-qy)/(0.45*p.r);
+      if(ex*ex+ey*ey<1){ if(s.syrup<=0) g.events.push('syrup'); s.syrup=TUNE.SYRUP_T; } }
     // speed: towards the top speed, less off the road, on the kerb, in syrup; nothing when the fuel is out
     var top=vmax(g.t)*g.opt.speed*(s.on==='off'?(g.opt.offSlow?TUNE.OFF:1):s.on==='kerb'?(g.opt.offSlow?TUNE.KERB:1):1)*(s.syrup>0?TUNE.SYRUP:1)*(s.turbo>0?TUNE.TURBO_K:1);
     if(g.state==='coast') top=0;
@@ -572,7 +578,7 @@ var Race=(function(){
     for(var i=0;i<g.cars.length;i++){ var c=g.cars[i]; if(c===me) continue; var dx=c.x-me.x; if(dx<40&&dx>-40){ var lo=Math.min(me.o,o)-CAR.hw*2-3, hi=Math.max(me.o,o)+CAR.hw*2+3; if(c.o>lo&&c.o<hi) return false; } } return true; }
   /* a whole race from a palm trajectory (one value per step, −1 = no palm): what a server would run */
   function replay(seed,FW,hands,y0,steer,opt){ var g=create(seed,FW,y0,steer,opt); for(var i=0;i<hands.length&&g.state!=='over';i++) step(g,hands[i]<0?null:hands[i]); return g; }
-  var TAG='race-9';   // v0.98: the super gift from a bag of N —   // v0.96: how often the super gift comes —   // v0.93: the number of puddles, no cars, a bubble that does not pop —   // v0.92: test switches (g.opt) —   // v0.91: the car glides back to a palm seen again; turbo gifts   // v0.89: the speed rises earlier (race-3: 0.87's gifts and sodas; race-2, steering across the road, was tried and dropped)
+  var TAG='race-11';   // v0.98: the maintainer's rules are the game's —   // v0.98: syrup puddles where drawn, forgiving —   // v0.98: the super gift from a bag of N —   // v0.96: how often the super gift comes —   // v0.93: the number of puddles, no cars, a bubble that does not pop —   // v0.92: test switches (g.opt) —   // v0.91: the car glides back to a palm seen again; turbo gifts   // v0.89: the speed rises earlier (race-3: 0.87's gifts and sodas; race-2, steering across the road, was tried and dropped)
   return {TAG:TAG,OPT0:OPT0,optOf:optOf,TUNE:TUNE,CAR:CAR,CAR_X:CAR_X,OFFW:OFFW,offOf:offOf,steerY:steerY,DT:DT,FH:FH,MARGIN:MARGIN,create:create,step:step,replay:replay,at:at,centre:centre,vmax:vmax,burn:burn};
 })();
 if(typeof module!=='undefined') module.exports=Race;
@@ -1176,7 +1182,7 @@ var Board=(function(){
 /* ── UI strings, English. All caps: the game's pixel font is drawn in capitals on screen. ── */
 var STR={};
 STR.en={
-  r_test:'TEST VERSION', r_set:'TEST SETTINGS', r_yes:'YES', r_no:'NO', r_knock:'A KNOCK SLOWS', r_kfuel:'A KNOCK COSTS FUEL', r_mag:'MAGNET', r_bub:'BUBBLE', r_tbub:'TURBO+BUBBLE', r_tmag:'TURBO+MAGNET+BUBBLE', r_pa:'SET A: YOURS', r_pd:'SET D: FAST', r_pe:'SET E: STRICT', r_super:'SUPER GIFT', r_1of:'1 IN', r_bpop:'A KNOCK POPS THE BUBBLE', r_puds:'PUDDLES', r_none:'NONE', r_vfew:'VERY FEW', r_vmany:'VERY MANY',
+  r_test:'TEST VERSION', r_set:'TEST SETTINGS', r_yes:'YES', r_no:'NO', r_knock:'A KNOCK SLOWS', r_kfuel:'A KNOCK COSTS FUEL', r_mag:'MAGNET', r_bub:'BUBBLE', r_tbub:'TURBO+BUBBLE', r_tmag:'TURBO+MAGNET+BUBBLE', r_pa:'GAME RULES', r_pd:'SET D: FAST', r_pe:'SET E: STRICT', r_super:'SUPER GIFT', r_1of:'1 IN', r_bpop:'A KNOCK POPS THE BUBBLE', r_puds:'PUDDLES', r_none:'NONE', r_vfew:'VERY FEW', r_vmany:'VERY MANY',
   r_cars:'CARS', r_few:'FEW', r_mid:'SOME', r_many:'MANY', r_speed:'SPEED', r_slow:'LOWER', r_norm:'USUAL', r_fast:'HIGHER', r_burn:'FUEL', r_burn_y:'IS USED', r_burn_n:'NOT USED', r_verge:'THE VERGE SLOWS',
   r_steer:'STEERING', r_steer_h:'BY HEIGHT', r_steer_r:'ALONG THE ROAD',
   volume_ios:'SET THE VOLUME TO 40–60%', volume_direct_ios:'THE VOLUME IS TOO LOW — TURN IT UP TO 40–60%', volume_loud_ios:'THE VOLUME IS TOO HIGH — TURN IT DOWN TO 40–60%',
@@ -1211,7 +1217,7 @@ STR.en={
 };
 /* ── UI strings, Russian ── */
 STR.ru={
-  r_test:'ТЕСТОВАЯ ВЕРСИЯ', r_set:'НАСТРОЙКИ ТЕСТА', r_yes:'ДА', r_no:'НЕТ', r_knock:'УДАР ТОРМОЗИТ', r_kfuel:'ТОПЛИВО ЗА УДАР', r_mag:'МАГНИТ', r_bub:'ПУЗЫРЬ', r_tbub:'ТУРБО+ПУЗЫРЬ', r_tmag:'ТУРБО+МАГНИТ+ПУЗЫРЬ', r_pa:'НАБОР А: ТВОЙ', r_pd:'НАБОР Д: БЫСТРЫЙ', r_pe:'НАБОР Е: ЖЁСТКИЙ', r_super:'СУПЕР-ПРИЗ', r_1of:'1 ИЗ', r_bpop:'УДАР ЛОПАЕТ ПУЗЫРЬ', r_puds:'ЛУЖ', r_none:'НЕТ', r_vfew:'ОЧЕНЬ МАЛО', r_vmany:'ОЧЕНЬ МНОГО',
+  r_test:'ТЕСТОВАЯ ВЕРСИЯ', r_set:'НАСТРОЙКИ ТЕСТА', r_yes:'ДА', r_no:'НЕТ', r_knock:'УДАР ТОРМОЗИТ', r_kfuel:'ТОПЛИВО ЗА УДАР', r_mag:'МАГНИТ', r_bub:'ПУЗЫРЬ', r_tbub:'ТУРБО+ПУЗЫРЬ', r_tmag:'ТУРБО+МАГНИТ+ПУЗЫРЬ', r_pa:'ПРАВИЛА ИГРЫ', r_pd:'НАБОР Д: БЫСТРЫЙ', r_pe:'НАБОР Е: ЖЁСТКИЙ', r_super:'СУПЕР-ПРИЗ', r_1of:'1 ИЗ', r_bpop:'УДАР ЛОПАЕТ ПУЗЫРЬ', r_puds:'ЛУЖ', r_none:'НЕТ', r_vfew:'ОЧЕНЬ МАЛО', r_vmany:'ОЧЕНЬ МНОГО',
   r_cars:'МАШИН', r_few:'МАЛО', r_mid:'СРЕДНЕ', r_many:'МНОГО', r_speed:'СКОРОСТЬ', r_slow:'НИЖЕ', r_norm:'ОБЫЧНАЯ', r_fast:'ВЫШЕ', r_burn:'ТОПЛИВО', r_burn_y:'ТРАТИТСЯ', r_burn_n:'НЕ ТРАТИТСЯ', r_verge:'ОБОЧИНА ТОРМОЗИТ',
   r_steer:'РУЛЬ', r_steer_h:'ПО ВЫСОТЕ', r_steer_r:'ПО ДОРОГЕ',
   volume_ios:'УСТАНОВИ ГРОМКОСТЬ НА 40–60%', volume_direct_ios:'ГРОМКОСТЬ СЛИШКОМ ТИХАЯ — ПРИБАВЬ ДО 40–60%', volume_loud_ios:'ГРОМКОСТЬ СЛИШКОМ БОЛЬШАЯ — УБАВЬ ДО 40–60%',
@@ -2683,7 +2689,7 @@ function rReset(seed){ var key=seed+'|'+LW+'x'+LH+'x'+hs; if(RC.key===key) retur
   if(!c){ c=RCS[key]={seed:seed,key:key,ch:{},zones:null,sp:{}}; RCN.push(key); while(RCN.length>5){ delete RCS[RCN.shift()]; } }
   RC=c; }
 /* ── the cars, the gifts: small sprites, made once per colour ── */
-var R_CARS=[['#ff4f8b','#b0184f'],['#ffb52e','#b06a00'],['#4fb8ff','#1a6aa8'],['#9b5bff','#4a1aa0'],['#f4ecff','#8a78b8'],['#e8284a','#8a0c20']], R_PLAYER=['#2fe0b0','#0f8a6a'];
+var R_CARS=[['#ff4f8b','#b0184f'],['#ffb52e','#b06a00'],['#4fb8ff','#1a6aa8'],['#2f47c9','#141d66'],['#f4ecff','#8a78b8'],['#e8284a','#8a0c20']], R_PLAYER=['#2fe0b0','#0f8a6a'];
 function rCar(px,py,body,dark,player){ var L=19, W=10, glass='rgba(40,20,60,0.75)';
   rx.fillStyle='rgba(40,10,30,0.22)'; rx.beginPath(); rx.roundRect(px-L/2+1.5,py-W/2+2,L,W,4); rx.fill();
   rx.fillStyle='#2a1a28'; [[-6,-5.4],[5,-5.4],[-6,5.4],[5,5.4]].forEach(function(w){ rx.beginPath(); rx.roundRect(px+w[0]-2.2,py+w[1]-1.3,4.4,2.6,1); rx.fill(); });
@@ -2717,8 +2723,8 @@ function rMagnet(px,py){ rx.fillStyle='rgba(0,0,0,0.16)'; rx.beginPath(); rx.ell
   rx.strokeStyle='#ffffff'; rx.beginPath(); rx.moveTo(px-3.6,py+3); rx.lineTo(px-3.6,py+5); rx.moveTo(px+3.6,py+3); rx.lineTo(px+3.6,py+5); rx.stroke();
   rx.strokeStyle='#8a0c20'; rx.lineWidth=0.5; rx.beginPath(); rx.arc(px,py-0.5,5.3,Math.PI,0,false); rx.lineTo(px+5.3,py+5); rx.lineTo(px+1.9,py+5); rx.lineTo(px+1.9,py-0.5); rx.arc(px,py-0.5,1.9,0,Math.PI,true); rx.lineTo(px-1.9,py+5); rx.lineTo(px-5.3,py+5); rx.closePath(); rx.stroke();
   rx.strokeStyle='rgba(255,255,255,0.7)'; rx.lineWidth=0.8; rx.beginPath(); rx.arc(px,py-0.5,4.4,Math.PI*1.15,Math.PI*1.45); rx.stroke(); }
-/* v0.95: the colours of the syrup puddles and of the gum bubble, apart: blueberry puddles (variant Б), a shield on the bubble gift (the maintainer: «сделай лужи и пузыри разного цвета — сейчас сливаются») */
-var R_PUD={fill:'rgba(70,40,150,0.92)',rim:'rgba(170,140,255,0.9)',shine:'rgba(220,210,255,0.7)'}, R_BUB={hi:'#ffe0f0',mid:'#ff8ac4',lo:'#e0409a',rim:'#a01a68',glass:'rgba(255,138,196,',edge:'rgba(224,64,154,'};
+/* v0.95: the colours of the syrup puddles and of the gum bubble, apart: blueberry puddles (variant Б; v0.98: lighter, blue-lilac — the violet car had their very colour and is dark blue now), a shield on the bubble gift (the maintainer: «сделай лужи и пузыри разного цвета — сейчас сливаются») */
+var R_PUD={fill:'rgba(125,120,235,0.92)',rim:'rgba(215,210,255,0.95)',shine:'rgba(245,240,255,0.8)'}, R_BUB={hi:'#ffe0f0',mid:'#ff8ac4',lo:'#e0409a',rim:'#a01a68',glass:'rgba(255,138,196,',edge:'rgba(224,64,154,'};
 function rShieldIcon(px,py,s){ rx.beginPath(); rx.moveTo(px-2.5*s,py-2.3*s); rx.quadraticCurveTo(px,py-3.4*s,px+2.5*s,py-2.3*s); rx.lineTo(px+2.3*s,py+0.4*s); rx.quadraticCurveTo(px+1.7*s,py+2.4*s,px,py+3.3*s); rx.quadraticCurveTo(px-1.7*s,py+2.4*s,px-2.3*s,py+0.4*s); rx.closePath();
   rx.fillStyle='rgba(255,255,255,0.95)'; rx.fill(); rx.strokeStyle=R_BUB.rim; rx.lineWidth=0.5; rx.stroke(); rx.beginPath(); rx.moveTo(px,py-2.6*s); rx.lineTo(px,py+2.6*s); rx.moveTo(px-2.1*s,py-0.6*s); rx.lineTo(px+2.1*s,py-0.6*s); rx.lineWidth=0.45; rx.strokeStyle=R_BUB.lo; rx.stroke(); }   // v0.95: the bubble gift is a shield («на пузыре значок щита надо»)
 function rBubble(px,py){ rx.fillStyle='rgba(0,0,0,0.14)'; rx.beginPath(); rx.ellipse(px+1,py+5.5,4.5,1.3,0,0,6.2832); rx.fill();
@@ -2735,7 +2741,9 @@ function rTurboMagnet(px,py){ rx.fillStyle='rgba(0,0,0,0.14)'; rx.beginPath(); r
 function rSprite(key,w,h,draw){ var s=RC.sp[key]; if(s) return s; var KS=rKS(), o=hdOff(w*KS,h*KS,hs); rx=o.x; rx.setTransform(hs*KS,0,0,hs*KS,0,0); rx.translate(w/2,h/2); draw(); return RC.sp[key]={c:o.c,w:w*KS,h:h*KS}; }
 function rCarSprite(kind,player){ if(player) return rSprite('p',30,20,function(){ rx.translate(1.5,0); rRocket(0,0); });   // the middle of its body stays the car's point
   var col=R_CARS[kind%R_CARS.length]; return rSprite('c'+kind%R_CARS.length,28,20,function(){ rCar(0,0,col[0],col[1],false); }); }
-function rGiftSprite(t){ return rSprite('g'+t,t[0]==='t'?22:16,18,function(){ if(t==='fuel') rFuel(0,0); else if(t==='coin') rCoin(0,0); else if(t==='magnet') rMagnet(0,0); else if(t==='tbubble') rTurboBubble(0,0); else if(t==='tmagnet') rTurboMagnet(0,0); else { rBubble(0,0); rShieldIcon(0.2,0.3,1); } }); }
+var R_FUELK=1.2, R_BUBK=1.1;   // v0.98: the fuel bottle's and the shield bubble's sizes (the audit: the most needed thing was one of the smallest)
+function rGiftSprite(t){ if(t==='fuel') return rSprite('gfuel',Math.ceil(16*R_FUELK),Math.ceil(18*R_FUELK),function(){ rx.scale(R_FUELK,R_FUELK); rFuel(0,0); });
+  if(t==='bubble') return rSprite('gbubble',Math.ceil(16*R_BUBK),Math.ceil(18*R_BUBK),function(){ rx.scale(R_BUBK,R_BUBK); rBubble(0,0); rShieldIcon(0.2,0.3,1); }); return rSprite('g'+t,t[0]==='t'?22:16,18,function(){ if(t==='fuel') rFuel(0,0); else if(t==='coin') rCoin(0,0); else if(t==='magnet') rMagnet(0,0); else if(t==='tbubble') rTurboBubble(0,0); else if(t==='tmagnet') rTurboMagnet(0,0); else { rBubble(0,0); rShieldIcon(0.2,0.3,1); } }); }
 /* v0.96: the super gift stands out (the maintainer: «сделай суперподарок более заметным.. варианты») — sketch variants A…D; he picked A */
 var R_SUPER='A';   // his pick: bigger, with a golden glow
 function rSuper(s,X,Y,t,id){ var u=K/SU, v=R_SUPER, k=1.3, bob=Math.sin(t*3+id)*0.8*K, i;
@@ -3338,13 +3346,18 @@ function sRotate(){ lx.fillStyle=P.bg; lx.fillRect(0,0,LW,LH); var y=Math.round(
    for the ship. Drawn in HD only for now; the best race is kept on the phone ('sonaroids_race_best'), no table yet ════ */
 /* v0.90, for testing (the maintainer: «верни для тестов выбор „руль по дороге“»): in SonaRace's menu the steering — by the height on the
    screen, or along the road as in 0.87 (v0.91: the «wide range» switch is gone — «это решается перекалибровкой») */
-var raceSteer=store.get('sonaroids_race_steer','height')==='road'?'road':'height';
+var raceSteer=store.get('sonaroids_race_steer','road')==='height'?'height':'road';   // v0.98: along the road by default («так управляется лучше»)
 function raceRowLabel(){ return L('r_steer')+': '+L(raceSteer==='road'?'r_steer_r':'r_steer_h'); }
 /* v0.92, «НАСТРОЙКИ ТЕСТА» (the maintainer: «наделай мне включателей и выключателей тех или иных условий, чтобы я поигрался — как лучше и
    играбельнее»; «давай попробуем не замедляться при врезании»; «оставим только „магнит + защита + ускорение“»): kept on the phone, written
    into each race's log. The defaults are his latest words: a knock does not slow, only the turbo+magnet+bubble gift */
-var RACE_OPT_DEF={crashSlow:false,crashFuel:true,gifts:{magnet:false,bubble:false,tbubble:false,tmagnet:true},traffic:1,speed:1,burn:true,syrup:true,offSlow:true,puddles:1,bubblePop:true,superN:6};   // = set А (the super gift 1 in 6)
+var RACE_OPT_DEF=Race.optOf(null);   // v0.98: the rules of the game (Race.OPT0)
 var raceOpt=(function(){ var o=null; try{ o=JSON.parse(store.get('sonaroids_race_opt','')||'null'); }catch(e){} if(o&&o.syrup===false){ o.syrup=true; o.puddles=0; } if(o&&o.superN===undefined){ o.superN=o.superK===undefined?6:o.superK<0.9?8:o.superK<1.4?6:4; } if(o) delete o.superK; return Race.optOf(o||RACE_OPT_DEF); })();   // v0.93: 0.92's «syrup: no» is «puddles: none»
+/* v0.98: the test settings hidden (the maintainer: «спрячь меню тестов правил — если надо будет, я скажу, опять покажешь»): the race plays by the
+   rules of the game, steering along the road; what was chosen in the tests stays on the phone for when RACE_TEST is back on */
+var RACE_TEST=false;
+function raceRules(){ return RACE_TEST?raceOpt:Race.optOf(null); }
+if(!RACE_TEST) raceSteer='road';
 function raceOptSave(){ store.set('sonaroids_race_opt',JSON.stringify(raceOpt)); }
 /* v0.93: how many cars and puddles — none, very few, few, some, many, very many (a share of the tuned number) */
 var R_LEVELS=[[0,'r_none'],[0.3,'r_vfew'],[0.6,'r_few'],[1,'r_mid'],[1.5,'r_many'],[2.2,'r_vmany']];
@@ -3375,7 +3388,7 @@ function sRSet(){ raceDemoTick(); raceScene(rDemo,rDemo.d,rDemo.car.y,DT); lx.gl
 /* v0.94, rule sets (the maintainer: «полное описание настроек на А, Д и Е»): the bot's 30 races each picked these three to try by hand —
    А his own, Д lively and long (turbo+bubble too, a higher speed), Е strict and short (a knock slows, many cars and puddles). The steering is not part of a set */
 var R_GIFT1={magnet:false,bubble:false,tbubble:false,tmagnet:true};
-var R_PRESETS=[['rp_a','r_pa',{crashSlow:false,crashFuel:true,gifts:R_GIFT1,traffic:1,puddles:1,bubblePop:true,superN:6,speed:1,burn:true,syrup:true,offSlow:true}],
+var R_PRESETS=[['rp_a','r_pa',Race.optOf(null)],   // v0.98: set А is the rules of the game
   ['rp_d','r_pd',{crashSlow:false,crashFuel:true,gifts:{magnet:false,bubble:false,tbubble:true,tmagnet:true},traffic:1,puddles:1,bubblePop:true,superN:6,speed:1.15,burn:true,syrup:true,offSlow:true}],
   ['rp_e','r_pe',{crashSlow:true,crashFuel:true,gifts:R_GIFT1,traffic:1.5,puddles:1.5,bubblePop:true,superN:6,speed:1,burn:true,syrup:true,offSlow:true}]];
 function rPresetNow(){ var k=JSON.stringify(Race.optOf(raceOpt)), f=null; R_PRESETS.forEach(function(q){ if(JSON.stringify(Race.optOf(q[2]))===k) f=q[0]; }); return f; }
@@ -3386,7 +3399,7 @@ function newSeed(){ try{ var a=new Uint32Array(1); crypto.getRandomValues(a); re
 function raceDemoTick(){ if(!rDemo||rDemo.d>60000) rDemo=Race.create(20260929,raceFW(),Race.FH/2);
   if(rDemo._c===clock) return; rDemo._c=clock; for(var n=Math.max(1,Math.round(DT*60));n>0;n--) raceDemoStep(rDemo); }
 function sRTitle(){ raceDemoTick(); raceScene(rDemo,rDemo.d,rDemo.car.y,DT);
-  var items=[['play',L('play'),'primary'],['howto',L('howto')],['rset',L('r_set')],['sfx','','sound'],['hub',L('all_games')]], w=colW(items);
+  var items=[['play',L('play'),'primary'],['howto',L('howto')]].concat(RACE_TEST?[['rset',L('r_set')]]:[]).concat([['sfx','','sound'],['hub',L('all_games')]]), w=colW(items);
   var bx0=sideX(w), m=Math.max(8,Math.round(LW*0.04)), band0=freeSide()==='left'?0:bx0-m, band1=freeSide()==='left'?bx0+w+m:LW;
   lx.globalAlpha=0.55; R(P.bg,band0,0,band1-band0,LH); lx.globalAlpha=1;
   column(items,Math.round(LH*0.52),bx0,items.length>5?6:8);
@@ -3489,7 +3502,7 @@ function toWave(){ T=Tune.create(+store.get('sonaroids_field','100')||100,true);
 function pauseGame(){ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; go('paused'); } }
 function startCount(){ if(resumeAfterPrep&&g&&g.state!=='over'){ resumeAfterPrep=false; countT=3; go('count-resume'); return; }
   resumeAfterPrep=false; countT=3; if(scr!=='wave') shipY=null; lastHand=handFrac()===null?lastHand:handFrac(); /* from the try-out the ship goes on where it is */ Logs.ev('отсчёт',{field:+T.field.toFixed(1),auto:T.auto}); store.set('sonaroids_field',Math.round(T.field));
-  if(mode==='race'){ g=Race.create(newSeed(),raceFW(),shipY===null?null:shipY/K,raceSteer,raceOpt); rTry=null; } go('count'); }
+  if(mode==='race'){ g=Race.create(newSeed(),raceFW(),shipY===null?null:shipY/K,raceSteer,raceRules()); rTry=null; } go('count'); }
 function startGame(){ if(mode==='race'){ raceStart(); return; }
   var seed=0; try{ var a=new Uint32Array(1); crypto.getRandomValues(a); seed=a[0]; }catch(e){ seed=Math.floor(Math.random()*4294967296); }
   var y0=shipY===null?null:+(shipY/K).toFixed(3);

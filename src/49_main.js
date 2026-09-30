@@ -458,9 +458,10 @@ function gfxLabel(){ return L('gfx')+': '+(gfxMode==='hd'?'HD'+(hdAvail(skinId)?
    «◀ skin ▶» (the maintainer: «добавить выбор скина и в меню игры»), graphics, sounds; the skin changes at once, the game waits */
 function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('paused'));
   var act=[['resume',L('resume'),'primary']].concat(pausedFrom==='play'?[['restart',L('restart')],['quit',L('quit')]]:[]).concat([['exit',L('exit')]]),
-      look=mode==='race'?[['sfx','','sound']]:[['skin','','skin'],['gfx',gfxLabel()],['sfx','','sound']], top=topY()+12, bot=LH-SAFE.b-4;
+      look=mode==='race'?[['rskin',raceSkinLabel()],['gfx',L('gfx')+': '+(gfxMode==='hd'?'HD':L('gfx_pixel'))],['sfx','','sound']]:[['skin','','skin'],['gfx',gfxLabel()],['sfx','','sound']], top=topY()+12, bot=LH-SAFE.b-4;
+  // v1.03: SonaRace's pause as SonaFly's — the skin and the graphics beside the actions (Den: «во флае можно скин и графику менять прямо во время игры в меню паузы, в гонках надо сделать аналогичное»)
   var w1=colW(act), w2=colW(look), g=10, left=freeSide()==='left', x1=sideX(w1), x2=left?x1+w1+g:x1-g-w2, cy=Math.min(Math.round(LH*0.55),Math.round((top+bot)/2));
-  if(mode==='race'||w1+g+w2>LW-SAFE.l-SAFE.r-2*Math.max(8,Math.round(LW*0.04))){                     // the race: one column (only the sounds beside the actions)                                   // too narrow for two (a tablet in Russian): one tight column
+  if(w1+g+w2>LW-SAFE.l-SAFE.r-2*Math.max(8,Math.round(LW*0.04))){                                        // too narrow for two (a tablet in Russian): one tight column
     var it=act.concat(look), gap=Math.max(2,Math.min(8,Math.floor((bot-top+2-it.length*BH)/(it.length-1))));
     column(it,Math.round((top+bot)/2),undefined,gap); return; }
   column(act,cy,x1,8); column(look,cy,x2,8); }

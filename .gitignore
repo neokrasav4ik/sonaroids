@@ -151,3 +151,5 @@ android/build/
 android/app/build/
 android/app/release.jks
 android/local.properties
+promo/frames_*/
+game/play/__promo.html

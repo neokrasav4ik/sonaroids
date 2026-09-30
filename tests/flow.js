@@ -30,7 +30,7 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
   await shot('01_title');
   await p.evaluate(()=>__sonaroids.act.play()); t0=Date.now();
   let appShare=null, probeSeen=0, probeBtns=[]; let logs={setup:null,game:null}, pausedOk=false, nickScreen=null, afterNick=null, restartOk=false, restartInfo='', healthyAfter=null, again=null, seen2=[], last2=null, caughtAt=null, startAt=null, range=null, follow=[], shots={};
-  while(T()<95){
+  while(T()<150){   // v1.04: was 95 s — on a slower machine the logs at game over took so long that «again» was cut off before its screens
     await p.waitForTimeout(100);
     const s=await p.evaluate(()=>{ const s=__sonaroids.state(), st=Sonar.state(); return {scr:s.scr,caught:s.caught,
       ok:s.prep&&s.prep.res&&s.prep.res.ok, T:s.T?{field:s.T.field,last:s.T.last}:null,
@@ -90,6 +90,7 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
   const m=rep.match(/дальность \|Δ\| медиана ([\d.]+) мм/);   // the echo range as the page saw it vs the replay: the log carries everything needed
   console.log('screens:',seen.join(' → '));
   console.log(`range caught at ${caughtAt===null?'never':caughtAt.toFixed(1)+' s'}; at START the waved range sits at ${range?(range[0]*100).toFixed(0)+'–'+(range[1]*100).toFixed(0)+'% of the screen, field '+range[2].toFixed(0)+' mm':'?'} (want ~6–90%)`);
+  console.log(`(«again» pressed at ${again===null?'—':again.toFixed(1)+' s'})`);
   console.log(`microphone gone while in the background noticed: ${healthyAfter===false?'yes':'NO'}; “again” then: ${seen2.join(' → ')} (want → away → wave)`);
   console.log(`flight: ship follows the palm, correlation ${corr.toFixed(3)} over ${follow.length} samples`);
   console.log(`logs: setup ${logs.setup?(logs.setup.length/1024).toFixed(0)+' KB':'none'}, game ${logs.game?(logs.game.length/1024).toFixed(0)+' KB':'none'}; lab replay of the setup log: echo range differs from the page by ${m?m[1]:'?'} mm (median)`);

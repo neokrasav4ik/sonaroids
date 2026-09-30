@@ -25,7 +25,7 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
   const sets=await p.evaluate(async()=>{ __sonaroids.act.rset(); __sonaroids.act.rp_e(); await new Promise(r=>setTimeout(r,200)); const e=JSON.parse(localStorage.getItem('sonaroids_race_opt'));
     __sonaroids.act.rp_d(); await new Promise(r=>setTimeout(r,200)); const d=JSON.parse(localStorage.getItem('sonaroids_race_opt')); __sonaroids.act.rs_cars(); await new Promise(r=>setTimeout(r,200)); const mixed=JSON.parse(localStorage.getItem('sonaroids_race_opt'));
     __sonaroids.act.rp_a(); await new Promise(r=>setTimeout(r,200)); const a=JSON.parse(localStorage.getItem('sonaroids_race_opt')); __sonaroids.go('rtitle'); return {e,d,mixed,a}; });
-  const setsOk=sets.e.crashSlow&&sets.e.traffic===1.5&&sets.e.puddles===1.5&&sets.d.speed===1.15&&sets.d.gifts.tbubble&&!sets.d.crashSlow&&sets.mixed.traffic!==1&&sets.a.traffic===1&&!sets.a.gifts.tbubble&&sets.a.speed===1.15&&sets.a.superN===6&&sets.a.puddles===0.6;
+  const setsOk=sets.e.crashSlow&&sets.e.traffic===1.5&&sets.e.puddles===1.5&&sets.d.speed===1.15&&sets.d.gifts.tbubble&&!sets.d.crashSlow&&sets.mixed.traffic!==1&&sets.a.traffic===1&&!sets.a.gifts.tbubble&&sets.a.speed===1.15&&sets.a.superN===8&&sets.a.puddles===0.6;
   await p.evaluate(()=>__sonaroids.act.play()); let t0=Date.now(); const T=()=>(Date.now()-t0)/1000;
   const seen=[]; let last=null, startAt=null, follow=[], shots={}, drawn=null, paused=null, over=null;
   while(T()<70){
@@ -59,7 +59,7 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
   const n=follow.length, mh=follow.reduce((a,q)=>a+q[0],0)/n, mc=follow.reduce((a,q)=>a+q[1],0)/n; let sxy=0,sxx=0,syy=0; follow.forEach(q=>{ sxy+=(q[0]-mh)*(q[1]-mc); sxx+=(q[0]-mh)**2; syy+=(q[1]-mc)**2; });
   const corr=n>20?sxy/Math.sqrt(sxx*syy):0; check('the car follows the palm',corr<-0.8,`correlation ${corr.toFixed(2)} over ${n} samples`);
   check('the candy land is drawn',drawn&&drawn.shown&&drawn.choc>0.05&&drawn.pink>0.1,drawn?`road ${(100*drawn.choc).toFixed(0)}%, glaze ${(100*drawn.pink).toFixed(0)}%`:'none');
-  check('the pause: go on, start over, end, exit, sounds; back to the race',!!paused&&paused.scr==='paused'&&['resume','restart','quit','exit'].every(k=>paused.btn.includes(k))&&!paused.btn.includes('gfx')&&paused.cr==='count-resume'&&paused.back==='play',paused?paused.btn.join(',')+' → '+paused.cr+' → '+paused.back:'none');
+  check('the pause: go on, start over, end, exit, the skin, the graphics, sounds; back to the race',!!paused&&paused.scr==='paused'&&['resume','restart','quit','exit','rskin','gfx','sfx'].every(k=>paused.btn.includes(k))&&paused.cr==='count-resume'&&paused.back==='play',paused?paused.btn.join(',')+' → '+paused.cr+' → '+paused.back:'none');
   check('the finish: the score, the best kept',!!over&&over.scr==='over'&&over.score>0&&over.best===over.score&&over.btn.includes('again')&&over.btn.includes('menu'),over?`score ${over.score}, best ${over.best}, "${over.say}"`:'none');
   { const Race=require('../src/14_race.js'), zlib=require('zlib'), rb=sent.find(x=>x.game==='race'); let rs=null;   // v1.01: the server's replay of the race the page sent lands on the same score
     if(rb){ const buf=rb.enc==='deflate'?zlib.inflateRawSync(Buffer.from(rb.hands,'base64')):Buffer.from(rb.hands,'base64'), hs=[]; for(let i=0;i<buf.length;i+=2){ const v=buf.readUInt16LE(i); hs.push(v===65535?-1:v/4000); } rs=Race.replay(rb.seed,rb.FW,hs,rb.y0,rb.steer,null).score; }

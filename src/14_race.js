@@ -15,7 +15,7 @@
 var Race=(function(){
   var DT=1/60, FH=180, MARGIN=FH*0.04, CAR_X=40, FOLLOW=0.48658, GLIDE=0.12;   // GLIDE: after the palm was lost (v0.91)          // the car follows the palm with the ship's 25 ms lag
   var CAR={hl:9,hw:4.6};                                                   // half the car's length and width (every car the same)
-  var TUNE={V0:98,V1:200,VT:300, ACC:55, BRAKE:120, OFF:0.5, KERB:0.9, KERB_W:4, SYRUP:0.62, SYRUP_T:0.7,
+  var TUNE={V0:98,V1:200,VT:280, ACC:55, BRAKE:120, OFF:0.5, KERB:0.9, KERB_W:4, SYRUP:0.62, SYRUP_T:0.7,
     HW0:0.25*FH, HW1:0.185*FH, HWD:40000, FUEL:100, BURN0:2.0, BURN1:3.2, BURNT:360, SODA:30, CRASH_V:0.35, CRASH_FUEL:6, INV:1.1,
     SODA_GAP:[800,1050], SODA_GROW:40000, GIFT_GAP:[1600,2300], COIN_GAP:[330,620], CAR_GAP:[240,480], PUD_GAP:[520,980],
     MAGNET:6, BUBBLE:12, TURBO:5, TURBO_K:1.33, PASS:25, COIN:10, LINE:50};
@@ -29,7 +29,9 @@ var Race=(function(){
      f^1.5 (by sqrt: exact on every engine): 92 at the start, ~100 at 1 min, ~120 at 2, ~140 at 3, ~170 at 4, 200 from 5 */
   /* v0.89 («скорость чуть пораньше начала развиваться… первую минуту скучновато»): half straight, half f^1.5 — 98 at the start, ~113 at
      1 min, ~130 at 2, ~150 at 3, ~175 at 4, 200 from 5 (0.86–0.88: 92, ~100, ~120, ~140, ~170) */
-  function vmax(t){ var f=farT(t); return TUNE.V0+(TUNE.V1-TUNE.V0)*(f+f*Math.sqrt(f))/2; }
+  /* v1.03 (Den: «скорость пусть чуть побыстрее растёт и пораньше начинает рост, чуть-чуть»): 60% straight, 40% f^1.5, the top reached
+     at 4 min 40 s (VT 280, was 300) — 98 at the start, ~115 at 1 min, ~136 at 2, ~158 at 3, ~183 at 4 (1.02: ~113, ~131, ~152, ~175) */
+  function vmax(t){ var f=farT(t); return TUNE.V0+(TUNE.V1-TUNE.V0)*(0.6*f+0.4*f*Math.sqrt(f)); }
   function burn(t){ return TUNE.BURN0+(TUNE.BURN1-TUNE.BURN0)*clamp(t/TUNE.BURNT,0,1); }
   function density(t){ return 1+0.9*farT(t); }                              // cars and puddles: up to 1.9× as often
   /* the road: a middle line through key points every 90–200 units, joined by smoothstep (flat at each point — soft S-bends) */
@@ -75,7 +77,7 @@ var Race=(function(){
   var GIFTS=[['magnet',0.34],['bubble',0.34],['tbubble',0.19],['tmagnet',0.13]];
   /* v0.98, the rules of the game (the maintainer, 30 Sep, after a day of test switches: «правила игры делаем такими — достаточно сбалансированно»):
      a knock slows and costs fuel; magnet, bubble and the super gift (one in every 6 gifts); cars «some», puddles «few», speed «higher»; fuel used; the verge slows */
-  var OPT0={crashSlow:true,crashFuel:true,gifts:{magnet:true,bubble:true,tbubble:false,tmagnet:true},traffic:1,speed:1.15,burn:true,syrup:true,offSlow:true,puddles:0.6,bubblePop:true,superN:6};
+  var OPT0={crashSlow:true,crashFuel:true,gifts:{magnet:true,bubble:true,tbubble:false,tmagnet:true},traffic:1,speed:1.15,burn:true,syrup:true,offSlow:true,puddles:0.6,bubblePop:true,superN:8};   // v1.03: the super gift one in 8 (Den: «суперприз 1 из 8 вместо 1 из 6, а то слишком легко»)
   function optOf(o){ var r={}, k; for(k in OPT0) r[k]=OPT0[k]; if(o) for(k in o) if(o[k]!==undefined) r[k]=o[k]; var gf={}; for(k in OPT0.gifts) gf[k]=(o&&o.gifts&&o.gifts[k]!==undefined)?!!o.gifts[k]:OPT0.gifts[k]; r.gifts=gf; return r; }
   function knock(g,c){ var s=g.car; if(s.inv>0) return;
     c.hit=true; c.v+=20;                                                    // the other car is pushed on a little
@@ -152,7 +154,7 @@ var Race=(function(){
     for(var i=0;i<g.cars.length;i++){ var c=g.cars[i]; if(c===me) continue; var dx=c.x-me.x; if(dx<40&&dx>-40){ var lo=Math.min(me.o,o)-CAR.hw*2-3, hi=Math.max(me.o,o)+CAR.hw*2+3; if(c.o>lo&&c.o<hi) return false; } } return true; }
   /* a whole race from a palm trajectory (one value per step, −1 = no palm): what a server would run */
   function replay(seed,FW,hands,y0,steer,opt){ var g=create(seed,FW,y0,steer,opt); for(var i=0;i<hands.length&&g.state!=='over';i++) step(g,hands[i]<0?null:hands[i]); return g; }
-  var TAG='race-11';   // v0.98: the maintainer's rules are the game's —   // v0.98: syrup puddles where drawn, forgiving —   // v0.98: the super gift from a bag of N —   // v0.96: how often the super gift comes —   // v0.93: the number of puddles, no cars, a bubble that does not pop —   // v0.92: test switches (g.opt) —   // v0.91: the car glides back to a palm seen again; turbo gifts   // v0.89: the speed rises earlier (race-3: 0.87's gifts and sodas; race-2, steering across the road, was tried and dropped)
+  var TAG='race-12';   // v1.03: the super gift one in 8, the speed a little quicker to grow —   // v0.98: the maintainer's rules are the game's —   // v0.98: syrup puddles where drawn, forgiving —   // v0.98: the super gift from a bag of N —   // v0.96: how often the super gift comes —   // v0.93: the number of puddles, no cars, a bubble that does not pop —   // v0.92: test switches (g.opt) —   // v0.91: the car glides back to a palm seen again; turbo gifts   // v0.89: the speed rises earlier (race-3: 0.87's gifts and sodas; race-2, steering across the road, was tried and dropped)
   return {TAG:TAG,OPT0:OPT0,optOf:optOf,TUNE:TUNE,CAR:CAR,CAR_X:CAR_X,OFFW:OFFW,offOf:offOf,steerY:steerY,DT:DT,FH:FH,MARGIN:MARGIN,create:create,step:step,replay:replay,at:at,centre:centre,vmax:vmax,burn:burn};
 })();
 if(typeof module!=='undefined') module.exports=Race;

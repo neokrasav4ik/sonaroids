@@ -1,103 +1,147 @@
-# Sonaroids
+# sonaroids.app
 
 **English** · [Русский](README.ru.md)
 
-A tiny retro space game for phones that you steer with your palm — **without touching the screen**.
+<p align="center"><img src="promo/sonaroids_en.gif" width="640" alt="A phone floating in the air with a palm at its charging end. The palm moves to and from the phone, ultrasound arcs run from the end to it, and the screen goes through four games — space, a race across a notebook, neon, a race through a candy land — with the ship or the car following the palm: nearer means lower"></p>
 
-<p align="center"><img src="promo/sonaroids_both_table.gif" width="720" alt="Two ways to play, side by side: a palm moving up and down beside the lying phone, or a palm moving to and from the phone's end; on both screens the ship follows the palm and shoots rocks"></p>
+**Games you play with your palm in mid-air.** You never touch the screen: the phone plays an inaudible ultrasonic tone through its own speaker, listens to the echo with its own microphone and works out how far your palm is. That distance becomes the height of your ship or your car. No camera, no extra hardware, nothing to install — it is a web page.
 
-The phone lies flat on the table — or sits in your other hand. It plays an inaudible ultrasonic tone through its own speaker and listens to the echo with its own microphone. How far your palm is from the phone becomes the height of your ship: a palm above the lying phone, or a palm at the end of the held one. The ship fires on its own — you only choose where to be.
+**▶ Play: [sonaroids.app](https://sonaroids.app)**
+- **iPhone:** open it in Safari and add it to the Home Screen.
+- **Android:** best in the app — [download the APK](https://github.com/neokrasav4ik/sonaroids/releases/latest/download/sonaroids.apk) (the link is on the games' screen too).
 
-**▶ Play: [sonaroids.app](https://sonaroids.app)** — on iPhone from the Home Screen; on Android best in the app (the link is on the game's title screen, or [the latest release](https://github.com/neokrasav4ik/sonaroids/releases/latest/download/sonaroids.apk)).
+## The games
+
+<p align="center"><img src="promo/games.png" width="640" alt="The games' screen: two cards, SonaFly (a ship among rocks) and SonaRace (a car on a chocolate road)"></p>
+
+### SonaFly — a space shooter
+
+The ship fires on its own; all you choose is where it is.
+
+- **Rocks** split when hit: large → two medium → two small.
+- **Points** depend on height: the middle of the screen ×3, then ×2, the edges ×1. Hits in a row add a **streak** multiplier, up to ×4.
+- **Power-ups** — fly into them: a shield (takes one hit), triple shot, slow motion (once the game has sped up), a heart (an extra life, after you've lost one).
+- **Saucers:** a large one from level 2, a small one that aims at you from level 4. Line up with them and they sidestep.
+- **Six skins:** space, fairy tale, vector 80s, neon, notebook, retro LCD — each in **HD** or in **pixels**. In every skin things are drawn exactly the size the game counts them.
+
+### SonaRace — a race along a winding road
+
+<p align="center"><img src="promo/sonarace_candy.png" width="49%" alt="SonaRace in the candy land: a rocket car on a chocolate road, a soda bottle with an F, candy coins, a magnet, a shield bubble, the glowing super gift, other cars, a syrup puddle"> <img src="promo/sonarace_notebook.png" width="49%" alt="SonaRace in the notebook: a striped rocket car on a pencil-shaded road across squared paper, a petrol pump, stars, a magnet, a knight's shield, the sun with a magnet, an ink blot, a truck, a bus and cars, felt-tip trees and houses around"></p>
+
+The car drives itself and slowly speeds up; your palm steers it across the road.
+
+- **Fuel** runs out as you go. Pick up the bottles marked **F** (the pumps in the notebook); when the fuel is gone, so is the race.
+- **Coins** (stars in the notebook): a whole line of them is worth more. Every car you pass scores too.
+- **Knocking into a car** slows you down and costs fuel. The verge slows you too, and so does a syrup puddle (an ink blot in the notebook) — though just touching one with an edge is forgiven.
+- **Gifts:** a magnet pulls coins and gifts in, a shield bubble takes one knock. The **super gift** — turbo, magnet and shield at once — comes exactly once in every eight gifts.
+- **Two skins:** the candy land and the notebook, each in HD or in pixels. Steering: along the road (the default — the car keeps its place across the road through the bends) or by height.
 
 ## How to play
 
-1. Turn the phone sideways and lay it on the table, screen up — or hold it in your other hand, screen up.
-2. Set the **media volume** to 20–30% (on iPhone 40–60%). If the game says the phone doesn't hear its sound, turn off silent mode — it can mute the game.
-3. Pick the probe: **wide** (cleaner control; children and pets may hear it) or **normal** (silent, slightly rougher control). The game asks before every game, there is no default.
-4. Allow the microphone. Take your hand away for a moment — the game listens to the empty room.
-5. Wave your palm up and down **5–10 cm above the table**, beside the phone — or, with the phone in your hand, move your palm, edge down, **5–15 cm from the phone's end** with the charging port (closer means lower). Don't cover the speaker or the microphone. The game fits the screen to your range, then shows the real ship following your palm — check the top and the bottom, and play (or recalibrate).
-6. Fly: dodge the rocks, stay in the middle for more points, catch power-ups.
+There are two ways:
+
+| on the table | in your hand |
+|---|---|
+| The phone lies sideways, screen up; your palm moves up and down **5–10 cm above the table** beside it | The phone is in one hand; the other palm, edge down, moves **5–15 cm from the end with the charging port** |
+
+1. Set the **media volume** to 20–30% (40–60% on iPhone). If the game says the phone can't hear its own sound, turn off silent mode — it can mute the game.
+2. Pick the probe. **Wide** gives cleaner control, but children and pets may hear it. **Normal** is silent but slightly rougher. The game asks before every game.
+3. Allow the microphone and take your hand away for a moment: the game learns how the empty room sounds.
+4. Wave your palm. Nearer the phone — the ship goes lower; farther — higher. Don't cover the speaker or the microphone. The game fits the screen to your range, then shows the real ship (or car) following your palm. Check the top and the bottom, and play.
 
 A game lasts a few minutes: the pace keeps growing, and a hand held in the air gets tired too — that's part of it.
 
-## The game
+**The pause** in both games: go on, start over (straight away or with a new fit), end the game, exit to the menu. Beside them are the skin, the graphics (HD or pixels) and the sounds "- SOUNDS ▮▮▮▮▮▮▯▯ +": eight levels, a tap in the middle switches them off and on. The skin and the graphics can be changed in the middle of a game. If the game's own sounds get too loud for the microphone, it turns them down by itself.
 
-- **Rocks** split into smaller ones when hit: large → two medium → two small.
-- **Points by height:** the middle of the screen ×3, then ×2, the edges ×1; plus a **streak** multiplier for hits in a row (up to ×4).
-- **Power-ups** — fly into them: shield (takes one hit), triple shot, slow motion (once the game has sped up), and a heart — an extra life (only after you've lost one, never above three).
-- **Saucers:** a large one from level 2, a small one that aims at you from level 4. They sidestep when you line up with them; the large one takes two hits.
-- **Pause menu:** go on, start over (straight away or recalibrate), end the game, exit, and the sound row.
-- **Sounds:** "- SOUNDS ▮▮▮▮▮▮▯▯ +" in the menu and in the pause — 8 levels, a tap in the middle switches them off and on. If the game's own sounds get too loud for the microphone, it turns them down by itself.
-- **High scores:** today, this week, all time. Every game is on a freshly generated layout. The first time a game makes the table, the game asks for a name (Latin letters, digits, `_`).
-
-In flight the screen shows only the score and, small in the top corner, sonaroids.app — no labels, no numbers popping up. The picture is drawn at low resolution in whole pixels, with soft light on top; graphics, sounds and the 5×7 pixel font are all made in code.
+**If something's wrong:** a tap on the version on the games' screen reloads the page, and a long press opens "Logs". They record what the phone heard and can be attached to an issue.
 
 ## Phones
 
-**iPhone** works well in Safari. On **Android** the phone's speaker and microphone decide how well the 16–20 kHz band gets through, and in a browser the page doesn't control the rest: which microphone records (on some Xiaomi phones the one at the port or the one at the front camera, launch to launch) and how loud the phone plays. That is what **the Android app** is for (`android/`): a thin shell over the same site — the game in it is the site's and updates by itself — that records and plays the sound itself. Before a game it tries the phone's built-in microphones in about two seconds and keeps the steadiest and cleanest one for this phone (the bottom microphone and the VOICE_RECOGNITION source unless another is clearly better), sets the media volume to about 25% and adjusts it by measurement, and switches the phone's own noise suppression, gain control and echo cancelling off. The app updates itself: "Update" downloads the new build and opens the phone's installer.
+**iPhone** plays well in Safari.
 
-With the app and the wide probe a **Mi 9 Lite** (2019) plays like an iPhone, on the table and in the hand. A **Redmi Note 10S** is still fussy: its microphone sits by the speaker, and the palm is heard reliably only within about 10 cm. Earlier, in a browser: OnePlus 13 — poor on the table, but held in the hand almost as good as an iPhone; the notes games send to the server show the palm heard on Galaxy S25, Pixel 8 Pro, Nothing Phone (3a), realme GT Neo 5 and Honor 600 Lite; OnePlus 9 Pro is too quiet. The game learns which end of the phone your hand should be at, lights that edge up while you wave, and says so if it can't hear the palm. Details: `docs/design.md`, section 2.
+On **Android** a lot depends on the phone itself: how well its speaker and microphone pass 16–20 kHz. In a browser the page can't choose which microphone records, and doesn't know how loud the phone plays. That is what **the app** (`android/`) is for. Inside it shows the same site, so the games in it are always current, but it records and plays the sound itself:
+- before a game it tries the built-in microphones in a couple of seconds and keeps the steadiest;
+- it sets the volume by measurement;
+- it switches off the phone's noise suppression, gain control and echo cancelling;
+- it updates itself.
 
-If the palm isn't heard, a **long press on the version** (in the corner of the screen) shows "Logs": they record what the phone heard, and can be attached to an issue.
-
-## How the sonar works, in short
-
-- The probe is a periodic multi-tone signal: 512 samples at 48 kHz, 23 tones from 18.4 to 20.4 kHz (the normal probe) or 48 tones from 16 to 20.5 kHz (the wide probe). An AudioWorklet delivers the microphone stream sample-exact, so the echo picture is computed coherently every 10.7 ms.
-- The wider the band, the finer the distance: about 8 cm for the normal probe, about 4 for the wide one. Against a ruler the wide probe followed the palm about twice as cleanly (spread 2.2 mm against 5.3).
-- Palm **motion** comes from the phase change of the echo (sub-millimetre, but it drifts); palm **position** comes from where the echo sits compared with the empty room (noisy, but it doesn't drift). The two are fused: motion drives the ship, position keeps it from wandering.
-- The echo is measured against the direct sound's own level; on phones whose speaker fades toward 20 kHz the band is equalized; if the phone drops a stretch of input, the direct sound is found again.
-- With the phone in the hand the whole echo picture sometimes jumps in time at once, with no gap in the input (by 256 samples on an iPhone, ~144 on a OnePlus). When the direct sound disappears, the sonar looks for a shifted copy of the whole response, gathered over a third of a second so that the moving palm's echo cancels out, and moves there. Only if there is none is the speaker taken as covered, and the game says so.
-- No separate calibration: before each game you take your hand away (the empty room), then wave — and the screen is fitted to your range.
-- The sonar hears one thing: how far the palm is. With one microphone (all Safari gives — its second channel is empty) a palm moved left or right by the same amount sounds the same; a second speaker doesn't help either — with the microphone open, the iPhone's other channel reaches the microphone about 60 times weaker and from the same place as the bottom speaker. Two palms, a fist and a palm, a near and a far hand don't separate either: one microphone only tells that both hands move in step. The lab tried all of it in September 2026; a stereo recording through the Android app is next.
-
-Measurements, experiments and what didn't work: `lab/HANDOVER.md` (Russian).
+With the app and the wide probe a **Mi 9 Lite** (from 2019) plays like an iPhone. The notes games send to the server show the palm heard on Galaxy S25, Pixel 8 Pro, Nothing Phone (3a), realme GT Neo 5 and Honor 600 Lite. A OnePlus 13 is poor on the table but almost as good as an iPhone in the hand. A Redmi Note 10S hears the palm reliably only within about 10 cm. A OnePlus 9 Pro is too quiet. The game works out which end of the phone your hand should be at, and says so if it can't hear the palm. Details: `docs/design.md`, section 2.
 
 ## High scores and fair play
 
-A game is sent to the server not as a score but as the game itself: the layout number and the palm height at every step (a few KB). The flight is deterministic — fixed 60 Hz steps, a seeded random generator, no transcendental functions — so the server replays it with the very same code (`src/13_core.js`) and stores only a score that repeats. The player is a random key kept on the phone; the server stores only its hash. With each game goes a short note on the phone — iOS or Android, the kind of browser, the model on Android, the app or a browser and whose sound, which probe, the media volume, how well it heard the probe — to see where the sonar works; no user agent string or IP is stored. The server is plain Node + SQLite: `server/`.
+Each game has its own tables: today, this week and all time. The first time a game makes a table, it asks for a name (Latin letters, digits, `_`). A transfer code moves your name and scores to another browser or phone.
 
-## Repository
+What goes to the server is not a score but the game itself: the layout number and the palm height at every step, a few KB. Both games are deterministic — even steps 60 times a second, random numbers from a seed, no transcendental functions. So the server replays every game with the very same code (`src/13_core.js` for SonaFly, `src/14_race.js` for SonaRace) and keeps the score only if it repeats.
+
+A player is a random key kept on the phone; the server stores only its hash. With each game goes a short note on the phone: iOS or Android, the browser, the model (on Android), which probe, the volume, how well it heard the probe. That shows where the sonar works. The server stores no user agent string and no IP. It is plain Node + SQLite, in `server/`.
+
+## How the sonar works
+
+- **The probe** is a repeating multi-tone signal: 512 samples at 48 kHz, 23 tones from 18.4 to 20.4 kHz (normal) or 48 tones from 16 to 20.5 kHz (wide). An AudioWorklet delivers the microphone stream sample-exact, and the echo picture is worked out every 10.7 ms.
+- **The wider the band, the finer the distance:** about 8 cm for the normal probe, about 4 cm for the wide one. Against a ruler the wide probe followed the palm about twice as smoothly (spread 2.2 mm against 5.3).
+- **Motion and position.** The palm's motion comes from the phase shift of the echo: sub-millimetre, but it drifts. Its position comes from where the echo sits compared with the empty room: noisy, but it doesn't drift. The two are fused: motion drives the ship, position keeps it from wandering. While a game runs, the empty room's picture is held still, so a palm that stays in one place doesn't slowly fade into the background.
+- **Fitting each phone.** The echo is measured against the direct sound's own level. If the phone's speaker fades toward 20 kHz, the band is evened out. If the phone drops a stretch of sound, or the whole echo picture shifts in time (it happens with the phone in the hand), the direct sound is found again.
+- **What it can't do.** The sonar hears one thing: how far the palm is. With one microphone (all Safari gives) left and right sound the same, and two hands don't separate either. The lab tried all of it in September 2026; notes in `lab/HANDOVER.md` (Russian).
+
+## For developers
+
+### What's where
 
 | path | what's inside |
 |---|---|
-| `src/` | the game's source in numbered parts; `build.py` joins them into one file, `game/play/index.html` |
-| `game/` | the published site: `index.html` sends visitors straight into the game, `play/` — the game (built file, icons, manifest, service worker), `proto/` — the style prototype (unlinked), `font.js`, `robots.txt` |
-| `server/` | the high-score server (api.sonaroids.app): `server.js`, backups, systemd unit, Caddy/nginx configs. Install: `server/README.md`, in Russian `docs/ru/server.md` |
-| `android/` | the Android app: a WebView shell over sonaroids.app/play/ with its own sound (`NativeAudio.java`), volume, file saving and self-update; built on GitHub Actions into the latest release (`android/README.md`, in Russian) |
-| `tests/` | the game's and the server's checks: `sh tests/run.sh` |
-| `lab/` | the sonar lab: the test app `lab/app/sonar_lab3.html` (published unlinked at `/lab/sonar_lab3.html`; in the Android app it opens from the service screen), its sources and offline benches, and recordings for trying new ways to steer (the phone upright, the palm to the side, two speakers); notes in Russian |
+| `src/` | the games' source in numbered parts; `build.py` joins them into one file, `game/play/index.html` |
+| `game/` | the site: `index.html` sends visitors into the games, `play/` is the games (built file, icons, manifest, service worker), `font.js`, `robots.txt` |
+| `server/` | the high-score server (api.sonaroids.app): `server.js`, backups, stats, systemd unit, Caddy and nginx configs. Install: `server/README.md`, in Russian `docs/ru/server.md` |
+| `android/` | the Android app: a WebView over sonaroids.app/play/ with its own sound, volume, file saving and self-update. Built on GitHub Actions into the latest release (`android/README.md`, in Russian) |
+| `tests/` | the games' and the server's checks: `sh tests/run.sh` |
+| `lab/` | the sonar lab: the test app `lab/app/sonar_lab3.html`, its sources, benches and recordings; notes in Russian |
 | `font/` | the 5×7 pixel font (Latin and Cyrillic): `font5x7.txt` is the drawing, `make_font.py` packs it into `game/font.js` |
-| `promo/` | the GIFs, drawn by the game's own code: `sonaroids_both_table.gif` (above — both ways, with the table and the holding hand), `sonaroids.gif` (both ways, only the phones and the palms), `sonaroids_table.gif`, `sonaroids_hand.gif`; all of them: `sh promo/make_all.sh` |
-| `docs/` | the design document `design.md` (Russian original in `docs/ru/`), the server install guide in Russian |
+| `promo/` | the GIFs and pictures in this README, taken from the real games (see below) |
+| `docs/` | the design document `design.md` (Russian original in `docs/ru/`) and the server install guide in Russian |
 
-### The game's code (`src/`)
+### The games' code (`src/`)
 
 | part | what it does |
 |---|---|
 | `00_head.html`, `99_end.html` | the page around the script |
-| `10_worklet.js`, `11_dsp.js` | microphone frames and the echo processing (DSP2) — the same code as in the lab |
-| `12_tune.js` | fitting the screen to the waved palm range (pure, tested in Node) |
-| `13_core.js` | the flight and the rules, deterministic, with the rules tag the server checks |
-| `20_sonar.js` | speaker and microphone: probe (normal / wide), side check, auto level and media volume, getting ready; in the Android app — the app's own sound and the microphone test; `Sonar.simulate()` feeds synthetic frames in tests |
-| `21_log.js` | setup and game logs (WAV + JSON) for analysis with the lab's tools |
-| `22_sfx.js` | event sounds, all below 6 kHz so they stay out of the probe's band |
-| `23_net.js` | the high-score client: sends a game, the name, reads the tables |
-| `30_lang_en.js`, `31_lang_ru.js` | interface strings |
-| `40_gfx.js`, `41_sprites.js`, `42_guide.js`, `49_main.js` | drawing, sprites, first-launch pictures, screens and the game loop |
+| `10_worklet.js`, `11_dsp.js` | microphone frames and the echo processing — the same code as in the lab |
+| `12_tune.js` | fitting the screen to the palm's range |
+| `13_core.js` | SonaFly: the flight and its rules; deterministic, with the rules tag the server checks |
+| `14_race.js` | SonaRace: the road, the cars, the gifts and the rules; deterministic, with its own rules tag |
+| `20_sonar.js` | speaker and microphone: the probe, side check, levels and volume, getting ready; the Android app's own sound |
+| `21_log.js` | setup and game logs (WAV + JSON) for the lab's tools |
+| `22_sfx.js` | the game's sounds — all below 6 kHz, out of the probe's way |
+| `23_net.js` | the high-score client: sends a game and the name, reads the tables |
+| `30_lang_en.js`, `31_lang_ru.js` | interface texts |
+| `40_gfx.js`, `41_sprites.js`, `42_guide.js` | drawing, pixel sprites, the drawn phones of getting ready and the instructions |
+| `43_skins.js`, `45_hd.js`, `46_vecskins.js`, `47_pixskins.js`, `48_sizes.js` | SonaFly's skins: pixels, HD, shape skins; things drawn the size the game counts them |
+| `48_racehd.js`, `48_racenote.js` | SonaRace's candy land and notebook, in HD and in pixels |
+| `49_main.js` | the screens, the menus and the game loop |
 
-## Building and checks
+### Building and checks
 
 ```sh
 python3 build.py                 # src/ → game/play/index.html (python3 font/make_font.py after changing the font)
-python3 build.py --icons         # redraw the home-screen icons (needs Pillow)
-sh tests/run.sh                  # the game and the server
+python3 build.py --icons         # redraw the Home Screen icons (needs Pillow)
+sh tests/run.sh                  # the games and the server
 cd lab && sh tools/run_all.sh    # the sonar lab
 ```
 
-Node 22.13+ (the server uses `node:sqlite`) and Python 3. The screen and full-game checks run the game in headless Chromium with a synthetic microphone and a fake high-score server; they need Playwright and are skipped without it. GitHub Actions runs the checks on every push to `main` and publishes the site only if they pass.
+Node 22.13+ (the server uses `node:sqlite`) and Python 3. The screen and full-game checks play both games in headless Chromium with a synthetic microphone and a fake high-score server. They need Playwright and are skipped without it. On every check bots drive over a hundred SonaRace races to keep a race's length and difficulty where they were tuned. GitHub Actions runs the checks on every push to `main` and publishes the site only if they pass.
 
-The game's version is in `VERSION` (shown on the title screen and written into the logs); `CHANGELOG.md` says what each version changed. When a change alters play, the rules tag in `src/13_core.js` changes too, and the server is updated together with the site.
+The version is in `VERSION`: it shows on the games' screen and goes into the logs. `CHANGELOG.md` says what each version changed and why. When a change alters play, the rules tag in `src/13_core.js` or `src/14_race.js` changes too, and the server is updated together with the site.
+
+### GIFs and pictures
+
+All taken from the real games in headless Chromium (needs Playwright):
+
+```sh
+NODE_PATH=$(npm root -g) node promo/make_promo.js && python3 promo/make_promo.py   # the GIFs at the top: promo/sonaroids_en.gif, sonaroids_ru.gif (+ *_full.gif, 800×450)
+NODE_PATH=$(npm root -g) node promo/make_shots.js                                  # the games' pictures: promo/games.png, sonarace_*.png
+sh promo/make_all.sh                                                               # the older pixel GIFs (table and hand)
+```
+
+The GIFs also need numpy, Pillow and ffmpeg. The palm in them is drawn by code (`promo/promo_hand.py`); the games on the screen really play, steered by that same palm.
 
 ## License
 

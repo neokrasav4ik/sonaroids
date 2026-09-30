@@ -467,9 +467,14 @@ function raceRowLabel(){ return L('r_steer')+': '+L(raceSteer==='road'?'r_steer_
 /* v0.92, «НАСТРОЙКИ ТЕСТА» (the maintainer: «наделай мне включателей и выключателей тех или иных условий, чтобы я поигрался — как лучше и
    играбельнее»; «давай попробуем не замедляться при врезании»; «оставим только „магнит + защита + ускорение“»): kept on the phone, written
    into each race's log. The defaults are his latest words: a knock does not slow, only the turbo+magnet+bubble gift */
-var RACE_OPT_DEF={crashSlow:false,crashFuel:true,gifts:{magnet:false,bubble:false,tbubble:false,tmagnet:true},traffic:1,speed:1,burn:true,syrup:true,offSlow:true};
-var raceOpt=(function(){ var o=null; try{ o=JSON.parse(store.get('sonaroids_race_opt','')||'null'); }catch(e){} return Race.optOf(o||RACE_OPT_DEF); })();
+var RACE_OPT_DEF={crashSlow:false,crashFuel:true,gifts:{magnet:false,bubble:false,tbubble:false,tmagnet:true},traffic:1,speed:1,burn:true,syrup:true,offSlow:true,puddles:1,bubblePop:true};
+var raceOpt=(function(){ var o=null; try{ o=JSON.parse(store.get('sonaroids_race_opt','')||'null'); }catch(e){} if(o&&o.syrup===false){ o.syrup=true; o.puddles=0; } return Race.optOf(o||RACE_OPT_DEF); })();   // v0.93: 0.92's «syrup: no» is «puddles: none»
 function raceOptSave(){ store.set('sonaroids_race_opt',JSON.stringify(raceOpt)); }
+/* v0.93: how many cars and puddles — none, very few, few, some, many, very many (a share of the tuned number) */
+var R_LEVELS=[[0,'r_none'],[0.3,'r_vfew'],[0.6,'r_few'],[1,'r_mid'],[1.5,'r_many'],[2.2,'r_vmany']];
+function rLevelI(v){ var b=0; R_LEVELS.forEach(function(q,i){ if(Math.abs(q[0]-v)<Math.abs(R_LEVELS[b][0]-v)) b=i; }); return b; }
+function rLevel(v){ return L(R_LEVELS[rLevelI(v)][1]); }
+function rNext(v){ return R_LEVELS[(rLevelI(v)+1)%R_LEVELS.length][0]; }
 var RSET=[['rs_steer',function(){ return raceRowLabel(); },function(){ raceSteer=raceSteer==='road'?'height':'road'; store.set('sonaroids_race_steer',raceSteer); rCarYs=null; }],
   ['rs_knock',function(){ return L('r_knock')+': '+L(raceOpt.crashSlow?'r_yes':'r_no'); },function(){ raceOpt.crashSlow=!raceOpt.crashSlow; }],
   ['rs_kfuel',function(){ return L('r_kfuel')+': '+L(raceOpt.crashFuel?'r_yes':'r_no'); },function(){ raceOpt.crashFuel=!raceOpt.crashFuel; }],
@@ -477,15 +482,16 @@ var RSET=[['rs_steer',function(){ return raceRowLabel(); },function(){ raceSteer
   ['rs_bub',function(){ return L('r_bub')+': '+L(raceOpt.gifts.bubble?'r_yes':'r_no'); },function(){ raceOpt.gifts.bubble=!raceOpt.gifts.bubble; }],
   ['rs_tbub',function(){ return L('r_tbub')+': '+L(raceOpt.gifts.tbubble?'r_yes':'r_no'); },function(){ raceOpt.gifts.tbubble=!raceOpt.gifts.tbubble; }],
   ['rs_tmag',function(){ return L('r_tmag')+': '+L(raceOpt.gifts.tmagnet?'r_yes':'r_no'); },function(){ raceOpt.gifts.tmagnet=!raceOpt.gifts.tmagnet; }],
-  ['rs_cars',function(){ return L('r_cars')+': '+L(raceOpt.traffic<1?'r_few':raceOpt.traffic>1?'r_many':'r_mid'); },function(){ raceOpt.traffic=raceOpt.traffic<1?1:raceOpt.traffic>1?0.6:1.5; }],
+  ['rs_bpop',function(){ return L('r_bpop')+': '+L(raceOpt.bubblePop?'r_yes':'r_no'); },function(){ raceOpt.bubblePop=!raceOpt.bubblePop; }],
+  ['rs_cars',function(){ return L('r_cars')+': '+rLevel(raceOpt.traffic); },function(){ raceOpt.traffic=rNext(raceOpt.traffic); }],   // v0.93: none … very many
+  ['rs_puds',function(){ return L('r_puds')+': '+rLevel(raceOpt.puddles); },function(){ raceOpt.puddles=rNext(raceOpt.puddles); }],
   ['rs_speed',function(){ return L('r_speed')+': '+L(raceOpt.speed<1?'r_slow':raceOpt.speed>1?'r_fast':'r_norm'); },function(){ raceOpt.speed=raceOpt.speed<1?1:raceOpt.speed>1?0.85:1.15; }],
   ['rs_burn',function(){ return L('r_burn')+': '+L(raceOpt.burn?'r_burn_y':'r_burn_n'); },function(){ raceOpt.burn=!raceOpt.burn; }],
-  ['rs_syrup',function(){ return L('r_syrup')+': '+L(raceOpt.syrup?'r_yes':'r_no'); },function(){ raceOpt.syrup=!raceOpt.syrup; }],
   ['rs_verge',function(){ return L('r_verge')+': '+L(raceOpt.offSlow?'r_yes':'r_no'); },function(){ raceOpt.offSlow=!raceOpt.offSlow; }]];
 function sRSet(){ raceDemoTick(); raceScene(rDemo,rDemo.d,rDemo.car.y,DT); lx.globalAlpha=0.7; R(P.bg,0,0,LW,LH); lx.globalAlpha=1;
-  var y=titles(L('r_set')), n=Math.ceil(RSET.length/2), gap=6, w=Math.min(btnW(RSET.map(function(q){ return q[1](); })),Math.floor((LW-SAFE.l-SAFE.r-12-gap)/2)), x0=Math.round((SAFE.l+LW-SAFE.r)/2-w-gap/2);
+  var y=titles(L('r_set')), nc=3, n=Math.ceil(RSET.length/nc), gap=6, w=Math.min(btnW(RSET.map(function(q){ return q[1](); })),Math.floor((LW-SAFE.l-SAFE.r-12-gap*(nc-1))/nc)), x0=Math.round((SAFE.l+LW-SAFE.r)/2-(nc*w+(nc-1)*gap)/2);   // v0.93: three columns for thirteen
   var room=LH-SAFE.b-6-(y+4), g2=Math.max(2,Math.min(6,Math.floor((room-n*BH)/(n-1)))), y0=y+4+Math.max(0,Math.round((room-(n*BH+(n-1)*g2))/2));
-  RSET.forEach(function(q,i){ var c=i<n?0:1, r=i<n?i:i-n; button(q[0],q[1](),x0+c*(w+gap),y0+r*(BH+g2),w,BH,''); });
+  RSET.forEach(function(q,i){ var c=Math.floor(i/n), r=i%n; button(q[0],q[1](),x0+c*(w+gap),y0+r*(BH+g2),w,BH,''); });
   say(L('r_set')); }
 var rDemo=null, rTry=null, rTryD=0, raceBest=+store.get('sonaroids_race_best','0')||0, raceNew=false;
 function raceFW(){ return Race.FH*(LW-SAFE.l)/LH; }
@@ -529,6 +535,7 @@ function raceReact(){ var cX=fx(Race.CAR_X), cY=g.car.y*K;
     if(k==='crash'){ flash=0.25; shake=0.35; burst(cX+6,cY,24,['#ffffff','#ff4f8b','#ffd23f','#6fd7ff'],70*K); }
     else if(k==='rub'){ shake=Math.max(shake,0.1); burst(cX,cY,6,['#ffffff','#ffd23f'],40*K); }
     else if(k==='pop') burst(cX,cY,20,R_BURST.bubble,60*K);
+    else if(k==='boing') burst(cX,cY,8,R_BURST.bubble,40*K);   // v0.93: the bubble took the knock and stays
     else if(k==='line') burst(cX+8,cY,14,R_BURST.coin,55*K); });
   (g.fx||[]).forEach(function(f){ burst(SAFE.l+f.x*K,f.y*K,f.pick==='coin'?6:14,R_BURST[f.pick]||R_BURST.coin,(f.pick==='coin'?35:50)*K); }); }
 /* the top: the score, the fuel under it (a soda bottle, the bar), the metres; the gifts at work beside the bar with the time they have left */

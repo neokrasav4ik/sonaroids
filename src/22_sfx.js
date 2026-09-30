@@ -59,6 +59,7 @@ var Sfx=(function(){
     else if(kind==='magnet'||kind==='bubble'){ tone(880,1760,0.14,'triangle',0.35); tone(1320,2640,0.1,'triangle',0.25,0.1); }
     else if(kind==='turbo'){ tone(300,1400,0.35,'sawtooth',0.22); tone(880,1760,0.14,'triangle',0.3,0.05); }
     else if(kind==='pop'){ crash(0.2,2600,0.5); tone(1400,500,0.16,'triangle',0.35); }
+    else if(kind==='boing'){ tone(520,260,0.08,'triangle',0.35); tone(260,780,0.14,'triangle',0.3,0.07); }   // v0.93: a knock on a bubble that does not pop
     else if(kind==='syrup'){ tone(260,140,0.22,'triangle',0.25); }
     else if(kind==='empty'){ tone(700,180,0.7,'triangle',0.4); }
   }

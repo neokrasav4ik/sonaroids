@@ -48,7 +48,7 @@ const SCREENS=['lang','hub','title','sound','phone','mic','probe','wave','wave-t
       const {LW,LH}=r.S;
       if(s==='race-try'&&!(r.btn.some(q=>q.id==='start')&&r.btn.some(q=>q.id==='again'))) bad.push(`${w}x${h} ${lang} ${hand}: the race's try-out lacks play/recalibrate`);
       if(s==='race-menu'&&!['play','howto','hub'].every(id=>r.btn.some(q=>q.id===id))) bad.push(`${w}x${h} ${lang} ${hand}: the race menu lacks its buttons`);
-      if(s==='race-set'&&r.btn.filter(q=>q.id.indexOf('rs_')===0).length!==12) bad.push(`${w}x${h} ${lang} ${hand}: the test settings lack switches`);
+      if(s==='race-set'&&r.btn.filter(q=>q.id.indexOf('rs_')===0).length!==13) bad.push(`${w}x${h} ${lang} ${hand}: the test settings lack switches`);
       if(s==='race-play'&&!r.btn.some(q=>q.id==='pause')) bad.push(`${w}x${h} ${lang} ${hand}: no menu button in the race`);
       if(s==='race-pause'&&!(['resume','restart','quit','exit'].every(id=>r.btn.some(q=>q.id===id)))) bad.push(`${w}x${h} ${lang} ${hand}: the race's pause lacks resume/end`);
       if(s==='race-over'&&!(['again','menu','ver'].every(id=>r.btn.some(q=>q.id===id)))) bad.push(`${w}x${h} ${lang} ${hand}: the race's finish lacks again/menu`);

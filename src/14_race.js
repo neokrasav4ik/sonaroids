@@ -57,7 +57,7 @@ var Race=(function(){
   function freeAt(g,x,o,dx,dy){ for(var i=0;i<g.cars.length;i++){ var c=g.cars[i]; if(c.x-x<dx&&x-c.x<dx&&c.o-o<dy&&o-c.o<dy) return false; } return true; }
   function lane(g,x){ var r=at(g,x), m=r.hw-CAR.hw-3; return rnd(g,-m,m); }
   function spawnAhead(g){ var far=g.d+g.FW+40, t=g.t, dn=density(t), x, o, i;
-    while(g.nextCar<far){ x=g.nextCar; g.nextCar+=rnd(g,TUNE.CAR_GAP[0],TUNE.CAR_GAP[1])/dn/g.opt.traffic;
+    while(g.nextCar<far){ x=g.nextCar; g.nextCar+=rnd(g,TUNE.CAR_GAP[0],TUNE.CAR_GAP[1])/dn/(g.opt.traffic||1); if(!(g.opt.traffic>0)) continue;   /* v0.93: traffic 0 — no cars */
       for(i=0;i<4;i++){ o=lane(g,x); if(freeAt(g,x,o,34,CAR.hw*2+4)) break; }
       if(i<4) g.cars.push({id:g.nextId++,x:x,o:o,to:o,v:vmax(t)*rnd(g,0.42,0.72),kind:(g.kind=(g.kind+1+Math.floor(g.rand()*5))%6),turnT:rnd(g,1.5,4)}); }
     while(g.nextSoda<far){ x=g.nextSoda; g.nextSoda+=rnd(g,TUNE.SODA_GAP[0],TUNE.SODA_GAP[1])*(1+g.d/TUNE.SODA_GROW); g.items.push({id:g.nextId++,type:'fuel',x:x,o:lane(g,x)}); }
@@ -65,15 +65,15 @@ var Race=(function(){
       gs.forEach(function(q){ tw+=q[1]; }); if(tw>0){ for(a=0;a<gs.length-1&&k*tw>=gs[a][1];a++) k-=gs[a][1]/tw; g.items.push({id:g.nextId++,type:gs[a][0],x:x,o:lane(g,x)}); } }
     while(g.nextCoin<far){ x=g.nextCoin; g.nextCoin+=rnd(g,TUNE.COIN_GAP[0],TUNE.COIN_GAP[1]); var ln=++g.line, o0=lane(g,x), o1=lane(g,x+64);
       g.lines[ln]=0; for(i=0;i<5;i++) g.items.push({id:g.nextId++,type:'coin',x:x+i*16,o:o0+(o1-o0)*i/4,line:ln}); }
-    while(g.nextPud<far){ x=g.nextPud; g.nextPud+=rnd(g,TUNE.PUD_GAP[0],TUNE.PUD_GAP[1])/dn; if(g.t>12&&g.opt.syrup) g.puddles.push({id:g.nextId++,x:x,o:lane(g,x),r:rnd(g,6,9)}); } }
+    while(g.nextPud<far){ x=g.nextPud; g.nextPud+=rnd(g,TUNE.PUD_GAP[0],TUNE.PUD_GAP[1])/dn/(g.opt.puddles||1); if(g.t>12&&g.opt.syrup&&g.opt.puddles>0) g.puddles.push({id:g.nextId++,x:x,o:lane(g,x),r:rnd(g,6,9)}); } }
   /* v0.92, test switches (the maintainer: «наделай мне включателей и выключателей тех или иных условий, чтобы я поигрался — как лучше и
      играбельнее»): what a knock does, which gifts come, how many cars, how fast, fuel, syrup, the verge. Without opt — the tuned rules */
   var GIFTS=[['magnet',0.34],['bubble',0.34],['tbubble',0.19],['tmagnet',0.13]];
-  var OPT0={crashSlow:true,crashFuel:true,gifts:{magnet:true,bubble:true,tbubble:true,tmagnet:true},traffic:1,speed:1,burn:true,syrup:true,offSlow:true};
+  var OPT0={crashSlow:true,crashFuel:true,gifts:{magnet:true,bubble:true,tbubble:true,tmagnet:true},traffic:1,speed:1,burn:true,syrup:true,offSlow:true,puddles:1,bubblePop:true};
   function optOf(o){ var r={}, k; for(k in OPT0) r[k]=OPT0[k]; if(o) for(k in o) if(o[k]!==undefined) r[k]=o[k]; var gf={}; for(k in OPT0.gifts) gf[k]=(o&&o.gifts&&o.gifts[k]!==undefined)?!!o.gifts[k]:OPT0.gifts[k]; r.gifts=gf; return r; }
   function knock(g,c){ var s=g.car; if(s.inv>0) return;
     c.hit=true; c.v+=20;                                                    // the other car is pushed on a little
-    if(s.bubble>0){ s.bubble=0; s.inv=0.6; g.events.push('pop'); return; }
+    if(s.bubble>0){ if(g.opt.bubblePop){ s.bubble=0; g.events.push('pop'); } else g.events.push('boing'); s.inv=0.6; return; }   /* v0.93: a bubble can keep for its whole time */
     if(g.opt.crashSlow) g.v*=TUNE.CRASH_V; if(g.opt.crashFuel) g.fuel=Math.max(0,g.fuel-TUNE.CRASH_FUEL); s.inv=TUNE.INV; g.crashes++; g.events.push('crash'); }
   /* side by side: a rub, not a crash — both cars are pushed apart and ours loses a little speed */
   function rub(g,c,dy){ var s=g.car, push=(2*CAR.hw-1-(dy<0?-dy:dy))/2+0.5, dir=dy<0?-1:1;
@@ -142,7 +142,7 @@ var Race=(function(){
     for(var i=0;i<g.cars.length;i++){ var c=g.cars[i]; if(c===me) continue; var dx=c.x-me.x; if(dx<40&&dx>-40){ var lo=Math.min(me.o,o)-CAR.hw*2-3, hi=Math.max(me.o,o)+CAR.hw*2+3; if(c.o>lo&&c.o<hi) return false; } } return true; }
   /* a whole race from a palm trajectory (one value per step, −1 = no palm): what a server would run */
   function replay(seed,FW,hands,y0,steer,opt){ var g=create(seed,FW,y0,steer,opt); for(var i=0;i<hands.length&&g.state!=='over';i++) step(g,hands[i]<0?null:hands[i]); return g; }
-  var TAG='race-6';   // v0.92: test switches (g.opt) —   // v0.91: the car glides back to a palm seen again; turbo gifts   // v0.89: the speed rises earlier (race-3: 0.87's gifts and sodas; race-2, steering across the road, was tried and dropped)
+  var TAG='race-7';   // v0.93: the number of puddles, no cars, a bubble that does not pop —   // v0.92: test switches (g.opt) —   // v0.91: the car glides back to a palm seen again; turbo gifts   // v0.89: the speed rises earlier (race-3: 0.87's gifts and sodas; race-2, steering across the road, was tried and dropped)
   return {TAG:TAG,OPT0:OPT0,optOf:optOf,TUNE:TUNE,CAR:CAR,CAR_X:CAR_X,OFFW:OFFW,offOf:offOf,steerY:steerY,DT:DT,FH:FH,MARGIN:MARGIN,create:create,step:step,replay:replay,at:at,centre:centre,vmax:vmax,burn:burn};
 })();
 if(typeof module!=='undefined') module.exports=Race;

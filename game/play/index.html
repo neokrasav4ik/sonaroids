@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='1.08';
+var VERSION='1.09';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -72,7 +72,7 @@ var DSP2=(function(){
   var holdFloor=false, Es,hold,present,refr,Q_FLOOR=-28,T_ON=-16,T_INT=-30,HOLD_S=1.5,tauE=0.15,REFR_S=0.35,TAU_BG=2.0,TAU=1.5;
   var eqW=null,eqDb=0,EQ_ON=16,ACC_N=24,FINE_N=188,EQ_MAX=10,gN=null,drops=0,sinceDrop=1e9,covered=false,lastPeak=null,d0B=0,fineN=-1,fR=null,fI=null,refR=null,refI=null,acR=null,acI=null,acN=0,moveN=0,scanWait=0,relocks=0,eAvg=0,TE=3,E_FAST=12,ePres=0,why='',rngBuf=[],xBuf=[],centered=false,autoC=false,presN=0,x,fast,cal={k:0.75,o:1,s:0.8},eHold=null,lowN=0,resS=-99,resFloor=null,upN=0,warm=0,absBuf=[],ABS_MED=15,DEADB=5,DEADB_UP=15,dirS=null,lostN=0,lost=false;
   /* v1.08, the live mode (an experiment, off unless set('live',1)): see liveNoise and the background learnt round the palm below */
-  var live=false,nD=0,nBase=null,nX=0,burst=0,nMin=null,nzK=null,nzC=null,nzS=null,nzP=null,nzN=0,zc=null,lagB=[],lagD=null,lagR=null,gStill=0,postB=0,fresh=0,EsR=-80,STILL=0.003,TAU_SW=10,TAU_ST=2,TAU_ALL=0.2,MOVW=0.3,BURST=1;
+  var live=false,nD=0,nS=0,NXT=0.07,NXK=2,BURSTK=100,BEND=0,BMAX=0.4,NZH=1,NZG=4,nBase=null,nX=0,burst=0,nMin=null,nzK=null,nzC=null,nzS=null,nzP=null,nzN=0,zc=null,lagB=[],lagD=null,lagR=null,gStill=0,postB=0,fresh=0,EsR=-80,STILL=0.003,TAU_SW=10,TAU_ST=2,TAU_ALL=0.2,MOVW=0.3,BURST=1;
   function init(sampleRate,parity){
     fs=sampleRate; var df=fs/N; kLo=Math.ceil(18300/df); if(BAND_LO) kLo=Math.ceil(BAND_LO/df); kHi=Math.floor(20500/df); kc=Math.floor((kLo+kHi)/2);
     ks=[]; for(var k=kLo;k<=kHi;k++) if(parity===undefined||parity==='all'||k%2===parity) ks.push(k);
@@ -83,7 +83,7 @@ var DSP2=(function(){
     cosT=new Float64Array(M*N); sinT=new Float64Array(M*N);
     for(q=0;q<M;q++){ var w=-2*Math.PI*ks[q]/N; for(var n=0;n<N;n++){ cosT[q*N+n]=Math.cos(w*n); sinT[q*N+n]=Math.sin(w*n); } }
     d0=null; dref=null; eqW=null; eqDb=0; gN=null; drops=0; sinceDrop=1e9; covered=false; lastPeak=null; d0B=0; fineN=-1; fR=null; fI=null; refR=null; refI=null; acR=null; acI=null; acN=0; moveN=0; scanWait=0; relocks=0; boot=[]; prevH=null; hist=[]; prom=null; noProbe=false;
-    bgAcc=null; bgN=0; bgR=null; bgI=null; Es=-80; hold=0; present=false; refr=0; x=null; fast=0; eHold=null; ePres=0; why=""; rngBuf=[]; xBuf=[]; centered=false; presN=0; lowN=0; resS=-99; resFloor=null; upN=0; warm=0; absBuf=[]; dirS=null; lostN=0; lost=false; fzF=[]; fzA=[]; fzN=0; fzHold=0; frozen=false; frozenN=0; nD=0; nBase=null; nX=0; burst=0; nMin=null; nzK=null; nzC=null; nzS=null; nzP=null; nzN=0; lagB=[]; lagD=null; lagR=null; gStill=0; postB=0; fresh=0; EsR=-80; zc=null;
+    bgAcc=null; bgN=0; bgR=null; bgI=null; Es=-80; hold=0; present=false; refr=0; x=null; fast=0; eHold=null; ePres=0; why=""; rngBuf=[]; xBuf=[]; centered=false; presN=0; lowN=0; resS=-99; resFloor=null; upN=0; warm=0; absBuf=[]; dirS=null; lostN=0; lost=false; fzF=[]; fzA=[]; fzN=0; fzHold=0; frozen=false; frozenN=0; nD=0; nS=0; nBase=null; nX=0; burst=0; nMin=null; nzK=null; nzC=null; nzS=null; nzP=null; nzN=0; lagB=[]; lagD=null; lagR=null; gStill=0; postB=0; fresh=0; EsR=-80; zc=null;
   }
   function bandSpec(fr){
     var Hr=new Float64Array(M),Hi=new Float64Array(M),q,n;
@@ -174,23 +174,23 @@ var DSP2=(function(){
        reach them — a palm's motion spreads its echo over all delays (tried: the far delays rose 20 dB with the palm in), but not out of
        the band. Their change from frame to frame is the noise; scaled to one delay of the response, it is taken off the motion energy and
        off the echo over the room. Noise in the band (keys, rustle, a kettle) had read as a moving palm and pulled the height to the middle */
-    if(live){ if(!nzC){ nzK=[]; for(var kz=kLo-12;kz<=kLo-3;kz++) if(kz*fs/N>=14000) nzK.push(kz); for(kz=kHi+3;kz<=kHi+12;kz++) if(kz<N/2-2) nzK.push(kz);
-        nzC=new Float64Array(nzK.length*N); nzS=new Float64Array(nzK.length*N); for(var jz=0;jz<nzK.length;jz++) for(n=0;n<N;n++){ nzC[jz*N+n]=Math.cos(2*Math.PI*nzK[jz]*n/N); nzS[jz*N+n]=Math.sin(2*Math.PI*nzK[jz]*n/N); } }
+    if(live){ if(!nzC){ nzK=[]; for(var kz=kLo-12;kz<=kLo-NZG;kz++) if(kz*fs/N>=14000) nzK.push(kz); for(kz=kHi+NZG;kz<=kHi+12;kz++) if(kz<N/2-2) nzK.push(kz);
+        nzC=new Float64Array(nzK.length*N); nzS=new Float64Array(nzK.length*N); for(var jz=0;jz<nzK.length;jz++) for(n=0;n<N;n++){ var wz=NZH?0.5-0.5*Math.cos(2*Math.PI*n/N):1; nzC[jz*N+n]=wz*Math.cos(2*Math.PI*nzK[jz]*n/N); nzS[jz*N+n]=wz*Math.sin(2*Math.PI*nzK[jz]*n/N); } }
       var nzF=new Float64Array(2*nzK.length); for(jz=0;jz<nzK.length;jz++){ var zr0=0,zi0=0; for(n=0;n<N;n++){ zr0+=fr[n]*nzC[jz*N+n]; zi0+=fr[n]*nzS[jz*N+n]; } nzF[2*jz]=zr0; nzF[2*jz+1]=zi0; }
       if(nzP&&nzK.length){ var dz=new Float64Array(nzK.length); for(jz=0;jz<nzK.length;jz++){ var u1=nzF[2*jz]-nzP[2*jz], u2=nzF[2*jz+1]-nzP[2*jz+1]; dz[jz]=u1*u1+u2*u2; }
         var sw2=0; for(var qz=0;qz<M;qz++) sw2+=eqW?eqW[qz]*eqW[qz]:1;
         // one tone's noise power (the median of a noise power is 0.69 of its mean; a difference of two frames doubles it) → one delay of the
         // response: Σ over the band's tones /N², the normalisation by the direct sound; the same as the change of one delay over L frames
-        var md=Array.prototype.slice.call(dz).sort(function(p,q){return p-q;})[dz.length>>1]/0.69/2*sw2/(N*N)*dref/(gN[0]*gN[0]+gN[1]*gN[1]);
-        if(nzN++===0) nD=md; nD+=0.15*(md-nD);
+        var md=Array.prototype.slice.call(dz).sort(function(p,q){return p-q;})[dz.length>>1]/0.69/2/(NZH?0.375:1)*sw2/(N*N)*dref/(gN[0]*gN[0]+gN[1]*gN[1]);
+        if(nzN++===0){ nD=md; nS=md; } nD+=0.15*(md-nD); nS+=(1-Math.exp(-1/(NXT*fs/N)))*(md-nS);
         /* a burst of noise (keys, a spoon): 20 dB over the quiet of the last seconds (nMin: the least noise, rising 10 dB in 5 s; the palm
            itself coming and going lifts these tones 10–16 dB, the labelled recordings). While it lasts and until it falls back to 6 dB
            over that quiet, nothing is decided: the palm is neither taken nor dropped, nothing learnt, the echo's centre does not pull the
            height (the motion still steers: the game's own sounds are such bursts, 35–90 in a game, and freezing it lost the palm's moves).
            Never longer than 0.4 s: a noise that stays (a kettle) is the room's noise then */
         nMin=nMin===null?nD:Math.min(nMin*Math.pow(10,1/(5*fs/N)),nD);
-        if(BURST&&!burst&&md>100*nMin) burst=1; else if(burst&&(md<4*nMin||++burst>0.4*fs/N)){ if(burst>0.4*fs/N) nMin=nD; burst=0; }   // by this frame's own noise: it starts and ends at once
-        nX=nBase===null?0:Math.max(0,nD-2*nBase); }   // the noise over twice the room's own when its empty level was learnt: only that is taken off (the estimate itself wavers ±3 dB)
+        if(BURST&&!burst&&md>BURSTK*nMin) burst=1; else if(burst&&((BEND?nD:md)<4*nMin||++burst>BMAX*fs/N)){ if(burst>BMAX*fs/N) nMin=nD; burst=0; }   // by this frame's own noise: it starts and ends at once
+        nX=nBase===null?0:Math.max(0,nS-NXK*nBase); }   // the noise over twice the room's own when its empty level was learnt: only that is taken off (the estimate itself wavers ±3 dB)
       nzP=nzF; }
     if(!prevH){ prevH=h; return null; }
     var h2=[new Float64Array(G),new Float64Array(G)];
@@ -320,7 +320,7 @@ var DSP2=(function(){
   function shift(d){ var i; cal.o+=d; for(i=0;i<absBuf.length;i++) absBuf[i]+=d; if(x!==null) x+=d; for(i=0;i<xBuf.length;i++) xBuf[i]+=d; centered=true; }
   return {init:init,frame:frame,recenter:recenter,shift:shift,
     setCal:function(c){ cal.k=c.k; cal.o=c.o; cal.s=c.s; },
-    set:function(k,v){ if(k==='flo') BAND_LO=v||null; if(k==='tint') T_INT=v; if(k==='tau') TAU=v; if(k==='absmed') ABS_MED=Math.max(1,Math.round(v)); if(k==='deadband') DEADB=Math.max(0,v); if(k==='autocenter') autoC=!!v; if(k==='holdfloor') holdFloor=!!v; if(k==='live') live=!!v; if(k==='tausw') TAU_SW=v; if(k==='taust') TAU_ST=v; if(k==='still') STILL=v; if(k==='tauall') TAU_ALL=v; if(k==='movw') MOVW=v; if(k==='burst') BURST=v; },
+    set:function(k,v){ if(k==='flo') BAND_LO=v||null; if(k==='tint') T_INT=v; if(k==='tau') TAU=v; if(k==='absmed') ABS_MED=Math.max(1,Math.round(v)); if(k==='deadband') DEADB=Math.max(0,v); if(k==='autocenter') autoC=!!v; if(k==='holdfloor') holdFloor=!!v; if(k==='live') live=!!v; if(k==='tausw') TAU_SW=v; if(k==='taust') TAU_ST=v; if(k==='still') STILL=v; if(k==='tauall') TAU_ALL=v; if(k==='movw') MOVW=v; if(k==='burst') BURST=v; if(k==='nxt') NXT=v; if(k==='nxk') NXK=v; if(k==='burstk') BURSTK=v; if(k==='bend') BEND=v; if(k==='bmax') BMAX=v; if(k==='nzh'){ NZH=v; nzC=null; } if(k==='nzg'){ NZG=v; nzC=null; } },
     info:function(){ return {covered:covered,eq_db:eqDb,eq:!!eqW,relocks:relocks,drops:drops,d0:d0,prom:prom,noProbe:noProbe,lost:lost,ready:bgR!==null,mm:mm,centered:centered,band:[kLo,kHi],frozen:frozenN,cal:{k:cal.k,o:cal.o,s:cal.s},live:live,noise:live?+(10*Math.log10(nD/dref+1e-30)).toFixed(1):null,zone:zc===null?null:+((gA+zc)*mm).toFixed(0)}; }};
 })();
 if(typeof module!=='undefined') module.exports=DSP2;

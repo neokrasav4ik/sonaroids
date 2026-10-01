@@ -1,12 +1,12 @@
 /* ── UI strings, English. All caps: the game's pixel font is drawn in capitals on screen. ── */
 var STR={};
 STR.en={
-  r_test:'TEST VERSION', r_set:'TEST SETTINGS', r_yes:'YES', r_no:'NO', r_knock:'A KNOCK SLOWS', r_kfuel:'A KNOCK COSTS FUEL', r_mag:'MAGNET', r_bub:'BUBBLE', r_tbub:'TURBO+BUBBLE', r_tmag:'TURBO+MAGNET+BUBBLE', r_pa:'GAME RULES', r_pd:'SET D: FAST', r_pe:'SET E: STRICT', r_super:'SUPER GIFT', r_1of:'1 IN', r_skin:'LOOK', r_sk_candy:'CANDY', r_sk_note:'NOTEBOOK', r_bpop:'A KNOCK POPS THE BUBBLE', r_puds:'PUDDLES', r_none:'NONE', r_vfew:'VERY FEW', r_vmany:'VERY MANY',
+  r_test:'TEST VERSION', r_set:'TEST SETTINGS', r_yes:'YES', r_no:'NO', r_knock:'A KNOCK SLOWS', r_kfuel:'A KNOCK COSTS FUEL', r_mag:'MAGNET', r_bub:'BUBBLE', r_tbub:'TURBO+BUBBLE', r_tmag:'TURBO+MAGNET+BUBBLE', r_pa:'GAME RULES', r_pd:'SET D: FAST', r_pe:'SET E: STRICT', r_super:'SUPER GIFT', r_1of:'1 IN', r_skin:'LOOK', r_sk_candy:'CANDY', r_sk_note:'NOTEBOOK', r_sk_pirate:'PIRATES', r_bpop:'A KNOCK POPS THE BUBBLE', r_puds:'PUDDLES', r_none:'NONE', r_vfew:'VERY FEW', r_vmany:'VERY MANY',
   r_cars:'CARS', r_few:'FEW', r_mid:'SOME', r_many:'MANY', r_speed:'SPEED', r_slow:'LOWER', r_norm:'USUAL', r_fast:'HIGHER', r_burn:'FUEL', r_burn_y:'IS USED', r_burn_n:'NOT USED', r_verge:'THE VERGE SLOWS',
   r_steer:'STEERING', r_steer_h:'BY HEIGHT', r_steer_r:'ALONG THE ROAD',
   volume_ios:'SET THE VOLUME TO 40–60%', volume_direct_ios:'THE VOLUME IS TOO LOW — TURN IT UP TO 40–60%', volume_loud_ios:'THE VOLUME IS TOO HIGH — TURN IT DOWN TO 40–60%',
   volume_silent:"THE PHONE DOESN'T HEAR ITS SOUND — TURN OFF SILENT MODE AND TURN THE VOLUME UP", volume_silent_s:'SILENT MODE CAN MUTE THE GAME',
-  r_s:'THE CAR DRIVES ITSELF — YOUR PALM STEERS', r_try:'THE CAR FOLLOWS YOUR PALM — TRY THE TOP AND THE BOTTOM', r_fuel:'FUEL', r_out:'OUT OF FUEL', r_m:'M', r_finish:'FINISH',
+  r_s:'THE CAR DRIVES ITSELF — YOUR PALM STEERS', r_try:'THE CAR FOLLOWS YOUR PALM — TRY THE TOP AND THE BOTTOM', r_s_boat:'THE BOAT SAILS ITSELF — YOUR PALM STEERS', r_try_boat:'THE BOAT FOLLOWS YOUR PALM — TRY THE TOP AND THE BOTTOM', r_fuel:'FUEL', r_out:'OUT OF FUEL', r_m:'M', r_finish:'FINISH',
   r_dist:'DISTANCE', r_coins:'CANDY COINS', r_passed:'CARS PASSED', r_rules:'SODA — FUEL, MAGNET, GUM BUBBLE — A SHIELD',
   title:'SONAROIDS', android:'ON ANDROID IT DOES NOT WORK ON EVERY PHONE', source:'SOURCE CODE', version:'VERSION', play:'PLAY', recal:'RECALIBRATE', howto:'HOW TO PLAY', or:'OR', covered:"DON'T COVER THE SPEAKER AND MIC", fullscr:'FOR FULL SCREEN MODE, ADD THE SITE TO YOUR HOME SCREEN', lang:'РУССКИЙ', sfx_row:'SOUNDS', sfx_off:'SOUNDS: OFF',
   next:'NEXT', volume:'SET THE VOLUME TO 20–30%', volume_s:'WITH THE VOLUME BUTTONS', volume_direct:'THE VOLUME IS TOO LOW — TURN IT UP TO 20–30%', volume_loud:'THE VOLUME IS TOO HIGH — TURN IT DOWN TO 20–30%',

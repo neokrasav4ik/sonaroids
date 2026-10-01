@@ -184,6 +184,7 @@ function rBridge(road,cx){ var half=19, p, sd;
 function rChunk(rg,i){ var c=RC.ch[i]; if(c) return c;
   var KS=rKS(), W=RCW*SU, H=LH/KS, o=hdOff(RCW*K+3,LH,hs); rx=o.x; rx.setTransform(hs*KS,0,0,hs*KS,0,0);
   if(RSKIN==='note'){ noteChunk(rg,i,W,H); if(RPX) pxHard(o.c,false); return RC.ch[i]={c:o.c,w:RCW*K+3,h:LH}; }
+  if(RSKIN==='pirate'){ var ov=pirateChunk(rg,i,W,H); if(RPX) pxHard(o.c,false); return RC.ch[i]={c:o.c,w:RCW*K+3,h:LH,o:ov}; }
   var r=rR(rHash(RC.seed,i)), road=rChunkRoad(rg,i), x0s=i*W, z=rZone(i).type, keep=[];
   rx.fillStyle='#ffd8ec'; rx.fillRect(-2,-2,W+8,H+4); rSprinkles(r,Math.round(W*H/340),W+3,H,['#ffffff','#6fd7ff','#ffe066','#9b7bff']);
   var feat=null; if(i>2&&z==='meadow'){ var f=r(); if(f<0.16) feat='river'; else if(f<0.27) feat='cafe'; else if(f<0.36) feat='station'; }
@@ -258,16 +259,16 @@ function rTurboMagnet(px,py){ rx.fillStyle='rgba(0,0,0,0.14)'; rx.beginPath(); r
    with a dark one-pixel outline to stand out; the cars and the rocket are drawn turned in steps (no blurry turning); the effects are drawn
    in whole pixels. The shapes and sizes stay the HD ones, so what is drawn and what the game counts do not part. ── */
 var RSKIN='candy';   // v1.00: the race's skin — 'candy' or 'note' (48_racenote.js)
-var RPX=false, R_PALH=['0a5a44','0f5a2e','0f8a6a','141d66','1a6a3a','1a6aa8','2a1420','2a1a28','2a7ab0','2f47c9','2fd08a','2fe0b0','3a1a10','3a2a40','3fc7ff','3fd07a','4a2410','4fb8ff','5a2e16','6b3a22','6fc8ff','6fd7ff','7a3a20','7be38f','7fd88a','8a0c20','8a4a00','8a4a1a','8a4a2a','8a78b8','8fd8ff','8fdcff','9b5bff','9b7bff','a01a68','a8dcff','a8f0c8','b0184f','b06a00','b86a32','b87a3a','b890f0','b8f0d0','b8f0ff','b98cff','bfefb0','c07a3a','c8841a','c8a070','c8a0ff','c98a5a','c9f0ff','d08a48','d6f0ff','d6f5ff','d8a060','d8c2ff','d99a66','e0409a','e0a060','e0a860','e0d0c0','e8123a','e8284a','e8363a','e8a020','e8a060','e8dcc8','f0c070','f3c9a0','f4ecff','f4f4f8','f6efe6','ff2f55','ff3b5c','ff4f7a','ff4f8b','ff4f9a','ff4fa0','ff5a8a','ff5ab0','ff6f8a','ff7ab8','ff8a3d','ff8ab8','ff8ac4','ff9ccc','ffa870','ffb3d0','ffb3d9','ffb52e','ffd23f','ffd24a','ffd6ea','ffd6f0','ffd8ec','ffe066','ffe0b8','ffe0f0','fff0a0','fff0c0','fff0f6','fff3a8','fff3b0','fff4e6','fff4f8','fff6e8','fffaf0','ffffff','4a1a30','7a3a58','c890b0','fbfaf4','d8e6f4','23264a','3c3c50','eeeef0','dcdce4','c8c8d4','9a9aac','5a5a6e','f4f0e0','fbf0a0','f8e890','8a8aa0','bfe8ff','ff5a8a','1f3fa8','f0a020','e0602a','3fae4a','1f8a5a','8a5a2a','b85ae8','2a8ad8','6fb8ff','2a5ad8','e87a20','e0402a','8a5ae8','b87a3a','edf2f8','b4b4c0','a0a0ae','e040c0','8a1070'], R_PAL=null, R_PALC={};
-function rPalNear(r,g,b){ var k=(r>>2)<<12|(g>>2)<<6|(b>>2), q=R_PALC[k]; if(q!==undefined) return q;
-  if(!R_PAL) R_PAL=R_PALH.map(function(h){ var n=parseInt(h,16); return [(n>>16)&255,(n>>8)&255,n&255]; });
-  var best=0, bd=1e9; for(var i=0;i<R_PAL.length;i++){ var c=R_PAL[i], dr=c[0]-r, dg=c[1]-g, db=c[2]-b, d=2*dr*dr+4*dg*dg+3*db*db; if(d<bd){ bd=d; best=i; } }
-  return R_PALC[k]=best; }
+var RPX=false, R_PALH=['0a5a44','0f5a2e','0f8a6a','141d66','1a6a3a','1a6aa8','2a1420','2a1a28','2a7ab0','2f47c9','2fd08a','2fe0b0','3a1a10','3a2a40','3fc7ff','3fd07a','4a2410','4fb8ff','5a2e16','6b3a22','6fc8ff','6fd7ff','7a3a20','7be38f','7fd88a','8a0c20','8a4a00','8a4a1a','8a4a2a','8a78b8','8fd8ff','8fdcff','9b5bff','9b7bff','a01a68','a8dcff','a8f0c8','b0184f','b06a00','b86a32','b87a3a','b890f0','b8f0d0','b8f0ff','b98cff','bfefb0','c07a3a','c8841a','c8a070','c8a0ff','c98a5a','c9f0ff','d08a48','d6f0ff','d6f5ff','d8a060','d8c2ff','d99a66','e0409a','e0a060','e0a860','e0d0c0','e8123a','e8284a','e8363a','e8a020','e8a060','e8dcc8','f0c070','f3c9a0','f4ecff','f4f4f8','f6efe6','ff2f55','ff3b5c','ff4f7a','ff4f8b','ff4f9a','ff4fa0','ff5a8a','ff5ab0','ff6f8a','ff7ab8','ff8a3d','ff8ab8','ff8ac4','ff9ccc','ffa870','ffb3d0','ffb3d9','ffb52e','ffd23f','ffd24a','ffd6ea','ffd6f0','ffd8ec','ffe066','ffe0b8','ffe0f0','fff0a0','fff0c0','fff0f6','fff3a8','fff3b0','fff4e6','fff4f8','fff6e8','fffaf0','ffffff','4a1a30','7a3a58','c890b0','fbfaf4','d8e6f4','23264a','3c3c50','eeeef0','dcdce4','c8c8d4','9a9aac','5a5a6e','f4f0e0','fbf0a0','f8e890','8a8aa0','bfe8ff','ff5a8a','1f3fa8','f0a020','e0602a','3fae4a','1f8a5a','8a5a2a','b85ae8','2a8ad8','6fb8ff','2a5ad8','e87a20','e0402a','8a5ae8','b87a3a','edf2f8','b4b4c0','a0a0ae','e040c0','8a1070'], R_PAL=null, R_PALC={}, R_PALS={}, R_PALCS={};   // v1.06: each skin its own palette (the pirates' 34 colours)
+function rPalList(){ var sk=RSKIN==='pirate'?'p':'c'; return R_PALS[sk]||(R_PALS[sk]=(sk==='p'?RP_PALH:R_PALH).map(function(h){ var n=parseInt(h,16); return [(n>>16)&255,(n>>8)&255,n&255]; })); }
+function rPalNear(r,g,b){ var C=R_PALCS[RSKIN==='pirate'?'p':'c']||(R_PALCS[RSKIN==='pirate'?'p':'c']={}), k=(r>>2)<<12|(g>>2)<<6|(b>>2), q=C[k]; if(q!==undefined) return q;
+  var P=rPalList(), best=0, bd=1e9; for(var i=0;i<P.length;i++){ var c=P[i], dr=c[0]-r, dg=c[1]-g, db=c[2]-b, d=2*dr*dr+4*dg*dg+3*db*db; if(d<bd){ bd=d; best=i; } }
+  return C[k]=best; }
 /* harden a picture into pixel art: alpha to all or nothing (a faint dark shadow stays a flat shadow), colours to the palette, an outline (line) */
 function pxHard(c,line){ var x=c.getContext('2d'), W=c.width, H=c.height; if(!W||!H) return; var im=x.getImageData(0,0,W,H), d=im.data, i, on=new Uint8Array(W*H);
   for(i=0;i<W*H;i++){ var o=i*4, a=d[o+3];
-    if(a>=128){ var qi=rPalNear(d[o],d[o+1],d[o+2]), q=R_PAL[qi]; d[o]=q[0]; d[o+1]=q[1]; d[o+2]=q[2]; d[o+3]=255; on[i]=1; }
-    else if(a>=24&&d[o]+d[o+1]+d[o+2]<240){ d[o]=40; d[o+1]=10; d[o+2]=30; d[o+3]=64; on[i]=2; }
+    if(a>=128){ var qi=rPalNear(d[o],d[o+1],d[o+2]), q=rPalList()[qi]; d[o]=q[0]; d[o+1]=q[1]; d[o+2]=q[2]; d[o+3]=255; on[i]=1; }
+    else if(a>=24&&d[o]+d[o+1]+d[o+2]<240){ if(RSKIN==='pirate'){ d[o]=10; d[o+1]=24; d[o+2]=34; } else { d[o]=40; d[o+1]=10; d[o+2]=30; } d[o+3]=64; on[i]=2; }
     else { d[o+3]=0; } }
   if(line) for(var y=0;y<H;y++) for(var X=0;X<W;X++){ i=y*W+X; if(on[i]===1) continue;
     if((X>0&&on[i-1]===1)||(X<W-1&&on[i+1]===1)||(y>0&&on[i-W]===1)||(y<H-1&&on[i+W]===1)){ var o2=i*4; d[o2]=42; d[o2+1]=20; d[o2+2]=32; d[o2+3]=255; } }
@@ -285,7 +286,7 @@ function rSprite(key,w,h,draw,flat){ var s=RC.sp[key]; if(s) return s; var KS=rK
 /* candy pixels: a car turned in steps of 0.1 rad, each step its own hardened picture */
 function rTurned(key,w,h,a,draw){ var q=key==='p'?(a>0.12?3:a<-0.12?-3:0):0,   /* other cars straight, the rocket in three steps: small pixel pictures turned by less read as noise */ m=Math.ceil(Math.sqrt(w*w+h*h))*(q?1:0)||0;
   return rSprite(key+'@'+q,q?m:w,q?m:h,function(){ rx.rotate(q/10); draw(); }); }
-function rCarSprite(kind,player,a){ if(RSKIN==='note'){ var nk=player?'np':'nc'+kind%RN_CARS.length, nd=function(){ noteCar(kind,player); }; return RPX?rTurned(player?'p':nk,player?30:28,20,a||0,nd):rSprite(nk,player?30:28,player?20:22,nd); }
+function rCarSprite(kind,player,a){ if(RSKIN==='pirate') return rpBoatSprite(player?-1:kind%RP_BOATS.length,a); if(RSKIN==='note'){ var nk=player?'np':'nc'+kind%RN_CARS.length, nd=function(){ noteCar(kind,player); }; return RPX?rTurned(player?'p':nk,player?30:28,20,a||0,nd):rSprite(nk,player?30:28,player?20:22,nd); }
   if(player) return RPX?rTurned('p',30,20,a||0,function(){ rx.translate(1.5,0); rRocket(0,0); }):rSprite('p',30,20,function(){ rx.translate(1.5,0); rRocket(0,0); });   // the middle of its body stays the car's point
   var col=R_CARS[kind%R_CARS.length]; return RPX?rTurned('c'+kind%R_CARS.length,28,20,a||0,function(){ rCar(0,0,col[0],col[1],false); }):rSprite('c'+kind%R_CARS.length,28,20,function(){ rCar(0,0,col[0],col[1],false); }); }
 /* candy pixels: the letter F and the shield drawn pixel by pixel over the hardened picture (smoothed and hardened they came out a smudge) */
@@ -300,7 +301,7 @@ function rYellowRing(sp,w){ if(sp.ring) return sp; sp.ring=1; var c=sp.c, W2=c.w
   tx.drawImage(c,0,0); tx.globalCompositeOperation='source-in'; tx.fillStyle='#ffd21e'; tx.fillRect(0,0,W2,H2);
   var r=document.createElement('canvas'); r.width=W2; r.height=H2; var q=r.getContext('2d'); for(var k=0;k<16;k++){ var a=k/16*6.2832; q.drawImage(t,Math.cos(a)*w,Math.sin(a)*w); } q.drawImage(t,0,0);
   var x=c.getContext('2d'); x.save(); x.setTransform(1,0,0,1,0,0); x.globalCompositeOperation='destination-over'; x.drawImage(r,0,0); x.restore(); return sp; }
-function rGiftSprite(t){ var sp; if(RSKIN==='note'){ var gs=RN_GIFT[t]||[16,16]; sp=rSprite('n'+t,gs[0],gs[1],function(){ noteGift(t); }); return t==='tmagnet'||t==='tbubble'?sp:rYellowRing(sp,Math.max(1,Math.round(1.8*rKS()*hs))); }
+function rGiftSprite(t){ var sp; if(RSKIN==='pirate') return rpGiftSprite(t); if(RSKIN==='note'){ var gs=RN_GIFT[t]||[16,16]; sp=rSprite('n'+t,gs[0],gs[1],function(){ noteGift(t); }); return t==='tmagnet'||t==='tbubble'?sp:rYellowRing(sp,Math.max(1,Math.round(1.8*rKS()*hs))); }
   if(t==='fuel'){ sp=rSprite('gfuel',Math.ceil(16*R_FUELK),Math.ceil(18*R_FUELK),function(){ rx.scale(R_FUELK,R_FUELK); if(RPX) rFuelBody(0,0); else rFuel(0,0); }); return RPX?rPxIcon(sp,PX_F,{1:'#ffffff'},1):sp; }
   if(t==='coin'&&RPX){ sp=rSprite('gcoin',16,18,function(){ rCoin.noStar=true; rCoin(0,0); rCoin.noStar=false; }); return rPxIcon(sp,PX_STAR,{1:'#ff4f7a'},0); }
   if(t==='bubble'){ sp=rSprite('gbubble',Math.ceil(16*R_BUBK),Math.ceil(18*R_BUBK),function(){ rx.scale(R_BUBK,R_BUBK); rBubble(0,0); if(!RPX) rShieldIcon(0.2,0.3,1); }); return RPX?rPxIcon(sp,PX_SHIELD,{1:'#ffffff',2:'#e0409a'},0):sp; } return rSprite('g'+t,t[0]==='t'?22:16,18,function(){ if(t==='fuel') rFuel(0,0); else if(t==='coin') rCoin(0,0); else if(t==='magnet') rMagnet(0,0); else if(t==='tbubble') rTurboBubble(0,0); else if(t==='tmagnet') rTurboMagnet(0,0); else { rBubble(0,0); rShieldIcon(0.2,0.3,1); } }); }
@@ -310,7 +311,7 @@ function rSuperPx(X,Y,t,id){ var u=K/SU, bob=Math.round(Math.sin(t*3+id)*0.8*K),
   hx.fillStyle='#ffd23f'; for(var j=-R0;j<=R0;j++) for(var i=-R0;i<=R0;i++){ var d2=i*i+j*j; if(d2<=R0*R0&&d2>=(R0-4)*(R0-4)&&((i+j+Math.floor(t*6))&1)===0) hx.fillRect(x+i,y+j,1,1); }
   pxRing(x,y,R0,'#fff3a8');
   var big=rPxIcon(rSprite('gtmagnetB',22*1.45,18*1.45,function(){ rx.scale(1.45,1.45); rTurboMagnet(0,0); }),PX_BOLT,{1:'#ffffff'},3); rBlit(big,x,y,0); }
-function rSuper(s,X,Y,t,id){ if(RSKIN==='note'){ var kk=1+0.07*Math.sin(t*6); if(RPX){ rBlit(s,X,Y,0); return; } hx.drawImage(s.c,X-s.w*kk/2,Y-s.h*kk/2,s.w*kk,s.h*kk); return; } if(RPX){ rSuperPx(X,Y,t,id); return; } var u=K/SU, v=R_SUPER, k=1.3, bob=Math.sin(t*3+id)*0.8*K, i;
+function rSuper(s,X,Y,t,id){ if(RSKIN==='pirate'){ rpSuper(s,X,Y,t,id); return; } if(RSKIN==='note'){ var kk=1+0.07*Math.sin(t*6); if(RPX){ rBlit(s,X,Y,0); return; } hx.drawImage(s.c,X-s.w*kk/2,Y-s.h*kk/2,s.w*kk,s.h*kk); return; } if(RPX){ rSuperPx(X,Y,t,id); return; } var u=K/SU, v=R_SUPER, k=1.3, bob=Math.sin(t*3+id)*0.8*K, i;
   if(v==='A'){ k=1.45+0.08*Math.sin(t*6); var gr=hx.createRadialGradient(X,Y+bob,2*u,X,Y+bob,16*u); gr.addColorStop(0,'rgba(255,236,120,0.95)'); gr.addColorStop(0.5,'rgba(255,200,40,'+(0.45+0.2*Math.sin(t*6))+')'); gr.addColorStop(1,'rgba(255,200,40,0)'); hx.fillStyle=gr; hx.beginPath(); hx.arc(X,Y+bob,16*u,0,6.2832); hx.fill(); }
   else if(v==='B'){ hx.save(); hx.translate(X,Y+bob); hx.rotate(t*1.5); hx.fillStyle='rgba(255,214,60,0.8)'; for(i=0;i<12;i++){ hx.rotate(6.2832/12); hx.beginPath(); hx.moveTo(0,0); hx.lineTo(18*u,-2.6*u); hx.lineTo(18*u,2.6*u); hx.closePath(); hx.fill(); } hx.restore(); }
   else if(v==='C'){ var cols=['#ff4f7a','#ffb52e','#ffe066','#3fd07a','#4fb8ff','#9b5bff']; hx.lineWidth=2.2*u; for(i=0;i<6;i++){ hx.strokeStyle=cols[i]; hx.beginPath(); hx.arc(X,Y+bob,12.5*u,t*2+i*1.0472,t*2+(i+1)*1.0472); hx.stroke(); }
@@ -324,14 +325,15 @@ function rSlope(rg,wx){ return Math.atan2(Race.centre(rg,wx+4)-Race.centre(rg,wx
 /* ── the whole scene: the land, the puddles, the gifts, the cars, the player's car. vd: how far the view has gone (field units), cy: the
    player's car (field units) or null, ang: its turn ── */
 var rPrevY=null, rTilt=0, rCarK=1;   // rCarK: the player's car drawn larger (the drawn phone's screen, v0.87)
-function raceScene(rg,vd,carY,dt){ RPX=hdPix&&hs===1; rReset(rg.seed); var KS=rKS(), X0=rX0===null?SAFE.l:rX0, i0=Math.floor((vd-X0/K)/RCW), i1=Math.floor((vd+(LW-X0)/K)/RCW);
+function raceScene(rg,vd,carY,dt){ RPX=hdPix&&hs===1; rReset(rg.seed); if(RSKIN==='pirate') rpWarm(); var KS=rKS(), X0=rX0===null?SAFE.l:rX0, i0=Math.floor((vd-X0/K)/RCW), i1=Math.floor((vd+(LW-X0)/K)/RCW);
   hx.setTransform(hs,0,0,hs,0,0); hx.imageSmoothingEnabled=!RPX;
   var made=0; for(var i=i0;i<=i1;i++){ var ch=RC.ch[i]; if(!ch){ ch=rChunk(rg,i); made++; } hx.setTransform(hs,0,0,hs,0,0); if(RPX) hx.drawImage(ch.c,Math.round(X0+(i*RCW-vd)*K),0); else hx.drawImage(ch.c,X0+(i*RCW-vd)*K,0,ch.w,ch.h); }
   if(!made&&!RC.ch[i1+1]) rChunk(rg,i1+1);                                                     // the next one ahead, made while nothing else was
   hx.setTransform(hs,0,0,hs,0,0);
   for(var k in RC.ch) if(+k<i0-1) delete RC.ch[k];
   function sx(wx){ return X0+(wx-vd)*K; }
-  if(RSKIN==='note') (rg.puddles||[]).forEach(function(p){ var rr=Math.round(p.r*2)/2, sp=rSprite('blot'+rr,rr*2.9*SU,rr*1.7*SU,function(){ nBlot(rr*SU); },true); rBlit(sp,sx(p.x),(Race.centre(rg,p.x)+p.o)*K,0); });
+  if(RSKIN==='pirate') (rg.puddles||[]).forEach(function(p){ var rr=Math.round(p.r*2)/2; rBlit(rpWhirlSprite(rr),sx(p.x),(Race.centre(rg,p.x)+p.o)*K,0); });
+  else if(RSKIN==='note') (rg.puddles||[]).forEach(function(p){ var rr=Math.round(p.r*2)/2, sp=rSprite('blot'+rr,rr*2.9*SU,rr*1.7*SU,function(){ nBlot(rr*SU); },true); rBlit(sp,sx(p.x),(Race.centre(rg,p.x)+p.o)*K,0); });
   else if(RPX) (rg.puddles||[]).forEach(function(p){ var rr=Math.round(p.r*2)/2, sp=rSprite('pud'+rr,rr*2.6*SU,rr*1.6*SU,function(){ var r=rr*SU; rx.fillStyle=R_PUD.fill; rx.beginPath(); rx.ellipse(0,0,r*1.15,r*0.62,0.1,0,6.2832); rx.ellipse(r*0.6,r*0.25,r*0.45,r*0.3,0,0,6.2832); rx.fill();
       rx.strokeStyle=R_PUD.rim; rx.lineWidth=1.2; rx.stroke(); rx.fillStyle=R_PUD.shine; rx.beginPath(); rx.ellipse(-r*0.35,-r*0.18,r*0.35,r*0.12,0.1,0,6.2832); rx.fill(); },true);
     rBlit(sp,sx(p.x),(Race.centre(rg,p.x)+p.o)*K,0); });
@@ -343,10 +345,11 @@ function raceScene(rg,vd,carY,dt){ RPX=hdPix&&hs===1; rReset(rg.seed); var KS=rK
     else if(p.type==='coin'){ var f=Math.abs(Math.cos(t*4+p.id)); hx.save(); hx.translate(X,Y); hx.scale(0.35+0.65*f,1); hx.drawImage(s.c,-s.w/2,-s.h/2,s.w,s.h); hx.restore(); }
     else if(p.type==='tmagnet'&&R_SUPER) rSuper(s,X,Y,t,p.id);
     else rBlit(s,X,Y+Math.sin(t*3+p.id)*0.8*K,0); });
-  (rg.cars||[]).forEach(function(c){ var X=sx(c.x); if(X<-30||X>LW+30) return; var Y=(Race.centre(rg,c.x)+c.o)*K; var ca=rSlope(rg,c.x)+(c.to-c.o)*0.02; rBlit(rCarSprite(c.kind,false,ca),X,Y,ca); });
+  (rg.cars||[]).forEach(function(c){ var X=sx(c.x); if(X<-30||X>LW+30) return; var Y=(Race.centre(rg,c.x)+c.o)*K; var ca=rSlope(rg,c.x)+(c.to-c.o)*0.02; if(RSKIN==='pirate') rBlit(rpWakeSprite(c.kind%RP_BOATS.length),X,Y,ca); rBlit(rCarSprite(c.kind,false,ca),X,Y,ca); });
   if(carY!==null&&carY!==undefined){ var s=rg.car, cx=vd+s.x, X=sx(cx), Y=carY*K;
     var vy=rPrevY===null||!dt?0:(carY-rPrevY)/dt; rPrevY=carY; var want=Math.max(-0.5,Math.min(0.5,Math.atan2(vy,Math.max(60,rg.v||0))));   // the car turns the way it goes, 30° at most rTilt+=(want-rTilt)*Math.min(1,(dt||0)*12);
     var blink=s.inv>0&&Math.floor(clock*14)%2===0;
+    if(RSKIN==='pirate'){ rpPlayer(rg,s,X,Y,blink); rOver(i0,i1,X0,vd); return; }
     if(RPX){ rPlayerPx(rg,s,X,Y,blink); return; }
     if(s.magnet>0&&(s.magnet>2||Math.floor(clock*8)%2)){ for(var m=0;m<3;m++){ var ph=((clock*1.4+m/3)%1); hx.strokeStyle='rgba(232,40,74,'+(0.5*(1-ph)).toFixed(3)+')'; hx.lineWidth=0.8; hx.beginPath(); hx.arc(X,Y,(10+ph*30)*K/SU,-0.9,0.9); hx.stroke(); } }
     if(!blink){ var ks=K/SU*rCarK, sp=Math.min(1,(rg.v||40)/120); hx.save(); hx.translate(X,Y); hx.rotate(rTilt);           // candy puffs behind it, livelier the faster it goes
@@ -357,7 +360,10 @@ function raceScene(rg,vd,carY,dt){ RPX=hdPix&&hs===1; rReset(rg.seed); var KS=rK
       hx.globalAlpha=1; hx.restore(); var cs=rCarSprite(0,true); if(rCarK!==1){ hx.save(); hx.translate(X,Y); hx.rotate(rTilt); hx.drawImage(cs.c,-cs.w*rCarK/2,-cs.h*rCarK/2,cs.w*rCarK,cs.h*rCarK); hx.restore(); } else rBlit(cs,X,Y,rTilt); }
     if(s.bubble>0&&(s.bubble>3||Math.floor(clock*8)%2)){ var R0=13*K/SU, nb=RSKIN==='note'; hx.fillStyle=nb?'rgba(79,184,255,0.25)':R_BUB.glass+'0.28)'; hx.beginPath(); hx.arc(X,Y,R0,0,6.2832); hx.fill(); hx.strokeStyle=nb?'rgba(35,38,74,0.8)':R_BUB.edge+'0.8)'; hx.lineWidth=0.8; hx.stroke();
       hx.fillStyle='rgba(255,255,255,0.75)'; hx.beginPath(); hx.ellipse(X-R0*0.4,Y-R0*0.5,R0*0.25,R0*0.12,-0.6,0,6.2832); hx.fill(); } }
+  else if(RSKIN==='pirate') rOver(i0,i1,X0,vd);
 }
+/* v1.06: the chunks' top layers (the pirates' bridges), over the boats */
+function rOver(i0,i1,X0,vd){ hx.setTransform(hs,0,0,hs,0,0); for(var i=i0;i<=i1;i++){ var ch=RC.ch[i]; if(!ch||!ch.o) continue; if(RPX) hx.drawImage(ch.o,Math.round(X0+(i*RCW-vd)*K),0); else hx.drawImage(ch.o,X0+(i*RCW-vd)*K,0,ch.w,ch.h); } }
 /* candy pixels: the player's car and what goes with it, in whole pixels — the magnet's waves as dotted arcs, the turbo's lines and flame,
    the candy puffs, the bubble as a one-pixel ring over a dithered glass */
 function rPlayerPx(rg,s,X,Y,blink){ var u=K/SU*rCarK, sp=Math.min(1,(rg.v||40)/120), x=Math.round(X), y=Math.round(Y), i;

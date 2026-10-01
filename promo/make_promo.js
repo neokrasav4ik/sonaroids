@@ -6,10 +6,13 @@
    and subtitle), mask.png (the screen's shape), over.png (the island and the glass glare), sub_en.png / sub_ru.png; meta.json.
    Then python3 promo/make_promo.py puts them together. Run from the repository: NODE_PATH=$(npm root -g) node promo/make_promo.js */
 const {chromium}=require('playwright'), fs=require('fs'), path=require('path'), G=require('./promo_game.js');
-const OUT=path.join(__dirname,'frames_promo'), T=15, FPS=20, N=T*FPS, Q=N/4, X=2;   // X — rendered at twice the GIF's size
+/* PROMO=pixel (v1.05, the maintainer: «вариант нашей промогифки с играми на телефоне в графике пикселей, для сообществ ретроигр» — the hand and
+   the phone in HD, the games on the screen in pixels) → promo/frames_promo_pixel/, then PROMO=pixel python3 promo/make_promo.py */
+const PV=process.env.PROMO==='pixel'?'pixel':'hd';
+const OUT=path.join(__dirname,PV==='pixel'?'frames_promo_pixel':'frames_promo'), T=15, FPS=20, N=T*FPS, Q=N/4, X=2;   // X — rendered at twice the GIF's size
 /* the palm: 0 — near the phone (the ship low), 1 — far (high); loops every T seconds (Den's pick «второй») */
 const U=t=>0.5+0.3*Math.sin(2*Math.PI*t*4/T)+0.14*Math.sin(2*Math.PI*t*11/T+1.0);
-const GAMES=[{fly:'space',k:0.84,b:0.08,warm:2},{race:'note',k:0.44,b:0.28,warm:2},{fly:'neon',k:0.84,b:0.08,warm:3},{race:'candy',k:0.44,b:0.28,warm:9}];
+const GAMES=[{fly:'space',k:0.84,b:0.08,warm:2},{race:'note',k:0.44,b:0.28,warm:2},{fly:'neon',k:0.84,b:0.08,warm:3},{race:'candy',k:0.44,b:0.28,warm:9}].map(g=>Object.assign(g,{gfx:PV}));
 const PW=530, PH=248, TH=24, SW=500, SH=231, CX=310, CY=240, RIG='rotateY(18deg)';
 function scene(mode,lang){
   const sub=lang==='ru'?'ИГРЫ, КОТОРЫМИ УПРАВЛЯЕТ ЛАДОНЬ В ВОЗДУХЕ':'GAMES YOU PLAY WITH YOUR PALM IN MID-AIR';
@@ -57,6 +60,6 @@ function scene(mode,lang){
   const ctx=await b.newContext({viewport:{width:844,height:390},deviceScaleFactor:X}), file=G.patched(), M=2;
   for(let k=0;k<4;k++){ const g=GAMES[k], i0=k*Q-M, n=Q+2*M, t0=i0/FPS;
     const st=await G.play(ctx,file,g,t=>g.b+g.k*U(t0+t),g.warm,n,FPS,(j,buf)=>fs.writeFileSync(path.join(OUT,`g${k}_${String(((i0+j)%N+N)%N).padStart(4,"0")}.png`),buf));
-    console.log('game',k,g.fly||g.race,'frames',i0,'…',i0+n-1,st); }
-  meta.M=M; fs.writeFileSync(path.join(OUT,'meta.json'),JSON.stringify(meta));
+    console.log('game',k,g.fly||g.race,PV,'frames',i0,'…',i0+n-1,st.scr); meta.S=st.S; }
+  meta.M=M; meta.V=PV; fs.writeFileSync(path.join(OUT,'meta.json'),JSON.stringify(meta));
   await b.close(); fs.unlinkSync(file); })();

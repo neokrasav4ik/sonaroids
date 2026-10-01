@@ -493,7 +493,8 @@ var raceOpt=(function(){ var o=null; try{ o=JSON.parse(store.get('sonaroids_race
 /* v0.98: the test settings hidden (the maintainer: «спрячь меню тестов правил — если надо будет, я скажу, опять покажешь»): the race plays by the
    rules of the game, steering along the road; what was chosen in the tests stays on the phone for when RACE_TEST is back on */
 /* v1.00: the race's skins (the candy land, the notebook), kept on the phone; the switch is in the race's menu */
-var RACE_SKINS=['candy','note'], raceSkin=(function(){ var v=store.get('sonaroids_race_skin','candy'); return RACE_SKINS.indexOf(v)<0?'candy':v; })(); RSKIN=raceSkin;
+var RACE_SKINS=['candy','note','pirate'],   // v1.06: the pirate world
+    raceSkin=(function(){ var v=store.get('sonaroids_race_skin','candy'); return RACE_SKINS.indexOf(v)<0?'candy':v; })(); RSKIN=raceSkin;
 function raceSkinLabel(){ return L('r_skin')+': '+L('r_sk_'+raceSkin); }
 var RACE_TEST=false;
 function raceRules(){ return RACE_TEST?raceOpt:Race.optOf(null); }
@@ -545,7 +546,7 @@ function sRTitle(){ raceDemoTick(); raceScene(rDemo,rDemo.d,rDemo.car.y,DT);
   column(items,Math.round(LH*0.52),bx0,items.length>5?6:8);
   var a0=freeSide()==='left'?band1:SAFE.l, a1=freeSide()==='left'?LW-SAFE.r:band0, cx0=Math.round((a0+a1)/2), lsc=PF.width('SonaRace',2)<=a1-a0-12?2:1, y=Math.round(LH*0.14);
   text('SonaRace',cx0,y,P.band,'center',lsc); y+=lsc*10+6;
-  PF.wrap(L('r_s'),a1-a0-16,1).forEach(function(l){ text(l,cx0,y,P.text,'center'); y+=10; });
+  PF.wrap(L(RSKIN==='pirate'?'r_s_boat':'r_s'),a1-a0-16,1).forEach(function(l){ text(l,cx0,y,P.text,'center'); y+=10; });
   if(raceBest>0) text(L('best')+' '+raceBest,cx0,LH-SAFE.b-28,P.text,'center');
   say('SonaRace. '+L('play')); }
 /* the try-out before the race: an empty stretch of road rolls slowly, the car follows the palm */
@@ -554,7 +555,7 @@ var rCarYs=null;
 function raceCarY(rg,vd){ if(raceSteer!=='road') return shipY/K; var t=Race.steerY(rg,vd+Race.CAR_X,lastHand===null?0.5:lastHand); rCarYs=rCarYs===null?t:rCarYs+(t-rCarYs)*0.49; return rCarYs; }
 function raceTry(){ followShip(); lx.clearRect(0,0,LW,LH); if(!rTry){ rTry=Race.create(7,raceFW(),Race.FH/2); rTryD=0; } rTryD+=45*DT;
   raceScene(rTry,rTryD,raceCarY(rTry,rTryD),DT);
-  titles(L('wave_ok'),L('r_try'));
+  titles(L('wave_ok'),L(RSKIN==='pirate'?'r_try_boat':'r_try'));   // v1.06: the pirates' is a boat
   var items=[['start',L('play'),'primary'],['again',L('recal')]], bw=btnW(items.map(function(q){ return q[1]; })), lane=Math.round(fx(Race.CAR_X))+30;
   column(items,Math.round(LH*0.62),freeSide()==='left'?Math.max(sideX(bw),lane):undefined); stepSquares('wave'); }
 /* the countdown: the race's own road, still, the car at the palm */
@@ -571,12 +572,12 @@ function raceStart(){ var y0=raceSteer==='road'?(rCarYs===null?null:+rCarYs.toFi
 var R_BURST={tbubble:['#ffffff','#ffd23f','#ff8ac4'],tmagnet:['#ffffff','#ffd23f','#e8284a'],coin:['#ffffff','#ffd23f','#ff4f7a'],fuel:['#ffffff','#3fd07a','#8fdcff'],magnet:['#ffffff','#e8284a','#ffd23f'],bubble:['#ffffff','#ff8ac4','#e0409a']};
 function raceReact(){ var cX=fx(Race.CAR_X), cY=g.car.y*K;
   g.events.forEach(function(k){ if(k!=='over') Sfx.play(k);
-    if(k==='crash'){ flash=0.25; shake=0.35; burst(cX+6,cY,24,['#ffffff','#ff4f8b','#ffd23f','#6fd7ff'],70*K); }
+    if(k==='crash'){ flash=0.25; shake=0.35; burst(cX+6,cY,24,RSKIN==='pirate'?RP_BURST.crash:['#ffffff','#ff4f8b','#ffd23f','#6fd7ff'],70*K); }   // v1.06: the pirates' splash
     else if(k==='rub'){ shake=Math.max(shake,0.1); burst(cX,cY,6,['#ffffff','#ffd23f'],40*K); }
-    else if(k==='pop') burst(cX,cY,20,R_BURST.bubble,60*K);
+    else if(k==='pop') burst(cX,cY,20,(RSKIN==='pirate'?RP_BURST:R_BURST).bubble,60*K);
     else if(k==='boing') burst(cX,cY,8,R_BURST.bubble,40*K);   // v0.93: the bubble took the knock and stays
     else if(k==='line') burst(cX+8,cY,14,R_BURST.coin,55*K); });
-  (g.fx||[]).forEach(function(f){ burst(SAFE.l+f.x*K,f.y*K,f.pick==='coin'?6:14,R_BURST[f.pick]||R_BURST.coin,(f.pick==='coin'?35:50)*K); }); }
+  var BU2=RSKIN==='pirate'?RP_BURST:R_BURST; (g.fx||[]).forEach(function(f){ burst(SAFE.l+f.x*K,f.y*K,f.pick==='coin'?6:14,BU2[f.pick]||BU2.coin,(f.pick==='coin'?35:50)*K); }); }
 /* the top: the score, the fuel under it (a soda bottle, the bar), the metres; the gifts at work beside the bar with the time they have left */
 /* v0.97: the fuel bar (the maintainer: «сделай полоску топлива и очки в игре — больше и ниже»; from the sketches: «очки — как сейчас, полоска как на А, кол-во метров убери», an F instead of the bottle) */
 function raceFuelBar(bx,by,bw,bh,f){ var low=f<0.15, col=f<0.15?'#ff3b5c':f<0.35?'#ffb52e':'#3fd07a';

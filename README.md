@@ -27,14 +27,15 @@ The ship fires on its own; all you choose is where it is.
 ### SonaRace — a race along a winding road
 
 <p align="center"><img src="promo/sonarace_candy.png" width="49%" alt="SonaRace in the candy land: a rocket car on a chocolate road, a soda bottle with an F, candy coins, a magnet, a shield bubble, the glowing super gift, other cars, a syrup puddle"> <img src="promo/sonarace_notebook.png" width="49%" alt="SonaRace in the notebook: a striped rocket car on a pencil-shaded road across squared paper, a petrol pump, stars, a magnet, a knight's shield, the sun with a magnet, an ink blot, a truck, a bus and cars, felt-tip trees and houses around"></p>
+<p align="center"><img src="promo/sonarace_pirates.png" width="49%" alt="SonaRace in the pirate world, the lagoon: a red speedboat with a big wake on a turquoise river between beaches with palms, whale skeletons and a wrecked ship; a canister with an F, coins with a skull, a lifebuoy, the golden ship's wheel, a whirlpool, a raft, a swan pedalo and an emerald galleon"> <img src="promo/sonarace_pirates_pixels.png" width="49%" alt="SonaRace in the pirate world in pixels, the fjords: a dark river between snowy rocks, a stone bridge over it, the boat, the gifts and the rivals in pixel art"></p>
 
 The car drives itself and slowly speeds up; your palm steers it across the road.
 
-- **Fuel** runs out as you go. Pick up the bottles marked **F** (the pumps in the notebook); when the fuel is gone, so is the race.
-- **Coins** (stars in the notebook): a whole line of them is worth more. Every car you pass scores too.
-- **Knocking into a car** slows you down and costs fuel. The verge slows you too, and so does a syrup puddle (an ink blot in the notebook) — though just touching one with an edge is forgiven.
+- **Fuel** runs out as you go. Pick up the bottles marked **F** (the pumps in the notebook, the canisters with the pirates); when the fuel is gone, so is the race.
+- **Coins** (stars in the notebook, doubloons with a skull with the pirates): a whole line of them is worth more. Every car you pass scores too.
+- **Knocking into a car** slows you down and costs fuel. The verge slows you too, and so does a syrup puddle (an ink blot in the notebook, a whirlpool with the pirates) — though just touching one with an edge is forgiven.
 - **Gifts:** a magnet pulls coins and gifts in, a shield bubble takes one knock. The **super gift** — turbo, magnet and shield at once — comes exactly once in every eight gifts.
-- **Two skins:** the candy land and the notebook, each in HD or in pixels. Steering: along the road (the default — the car keeps its place across the road through the bends) or by height.
+- **Three skins:** the candy land, the notebook and the pirate world — a red speedboat down a river from a tropical lagoon through a Finnish forest to the Viking fjords and back, past rafts, longships, canoes, swan pedalos and galleons — each in HD or in pixels. Steering: along the road (the default — the car keeps its place across the road through the bends) or by height.
 
 ## How to play
 
@@ -117,7 +118,7 @@ A player is a random key kept on the phone; the server stores only its hash. Wit
 | `40_gfx.js`, `41_sprites.js`, `42_guide.js` | drawing, pixel sprites, the drawn phones of getting ready and the instructions |
 | `42_hands.js` | the hands of those pictures in HD, as pictures — made by `hands/make_hands.py` |
 | `43_skins.js`, `45_hd.js`, `46_vecskins.js`, `47_pixskins.js`, `48_sizes.js` | SonaFly's skins: pixels, HD, shape skins; things drawn the size the game counts them |
-| `48_racehd.js`, `48_racenote.js` | SonaRace's candy land and notebook, in HD and in pixels |
+| `48_racehd.js`, `48_racenote.js`, `48_racepirate.js` | SonaRace's candy land, notebook and pirate world, in HD and in pixels |
 | `49_main.js` | the screens, the menus and the game loop |
 
 ### Building and checks
@@ -139,6 +140,7 @@ All taken from the real games in headless Chromium (needs Playwright):
 
 ```sh
 NODE_PATH=$(npm root -g) node promo/make_promo.js && python3 promo/make_promo.py   # the GIFs at the top: promo/sonaroids_en.gif, sonaroids_ru.gif (+ *_full.gif, 800×450)
+PROMO=pixel NODE_PATH=$(npm root -g) node promo/make_promo.js && PROMO=pixel python3 promo/make_promo.py   # the same with the games in pixels: promo/sonaroids_pixel_*.gif
 NODE_PATH=$(npm root -g) node promo/make_shots.js                                  # the games' pictures: promo/games.png, sonarace_*.png
 sh promo/make_all.sh                                                               # the older pixel GIFs (table and hand)
 ```

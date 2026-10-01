@@ -25,11 +25,11 @@ async function play(ctx,file,spec,palm,warm,n,fps,shot){
   for(let t=-warm-3.2;t<0;t+=dt) await step(dt,palm(t));       // the countdown and the warm-up, not recorded
   await p.evaluate(()=>{ const g=__sonaroids.state().g; if(g&&g.lives!==undefined) g.lives=9; if(g&&g.fuel!==undefined) g.fuel=Race.TUNE.FUEL; });   // a hit or an empty tank costs nothing in the picture
   for(let i=0;i<n;i++){ for(let k=0;k<sub;k++) await step(dt,palm(i/fps+k*dt)); await shot(i,await p.screenshot()); }
-  const st=await p.evaluate(()=>__sonaroids.scr()); await p.close(); if(errs.length) console.log('page errors:',errs.join('; ')); return st; }
+  const st=await p.evaluate(()=>({scr:__sonaroids.scr(),S:__sonaroids.S().S})); await p.close(); if(errs.length) console.log('page errors:',errs.join('; ')); return st; }
 module.exports={patched,play};
 if(require.main===module)(async()=>{ const b=await chromium.launch(), ctx=await b.newContext({viewport:{width:844,height:390},deviceScaleFactor:2});
   const file=patched(), OUT=path.join(__dirname,'frames_game'); fs.mkdirSync(OUT,{recursive:true});
   const palm=t=>0.5+0.4*Math.sin(2*Math.PI*t/3);
   for(const [name,spec] of [['space',{fly:'space'}],['note',{race:'note'}],['neon',{fly:'neon'}],['candy',{race:'candy'}]]){
-    const st=await play(ctx,file,spec,palm,2,+(process.env.N||1),20,(i,buf)=>fs.writeFileSync(path.join(OUT,name+'_'+String(i).padStart(4,'0')+'.png'),buf)); console.log(name,st); }
+    const st=await play(ctx,file,spec,palm,2,+(process.env.N||1),20,(i,buf)=>fs.writeFileSync(path.join(OUT,name+'_'+String(i).padStart(4,'0')+'.png'),buf)); console.log(name,st.scr); }
   await b.close(); fs.unlinkSync(file); })();

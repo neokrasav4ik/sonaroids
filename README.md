@@ -54,9 +54,9 @@ A game lasts a few minutes: the pace keeps growing, and a hand held in the air g
 
 **The pause** in both games: go on, start over (straight away or with a new fit), end the game, exit to the menu. Beside them are the skin, the graphics (HD or pixels) and the sounds "- SOUNDS ▮▮▮▮▮▮▯▯ +": eight levels, a tap in the middle switches them off and on. The skin and the graphics can be changed in the middle of a game. If the game's own sounds get too loud for the microphone, it turns them down by itself.
 
-**Settings** (the games' screen): sounds; graphics (chosen in the game, always HD or always pixels); the probe band (chosen before a game, always wide or always normal); auto-calibration; advanced probe settings.
+**Settings** (the games' screen): sounds; graphics (chosen in the game, always HD or always pixels); the probe band (chosen before a game, always wide or always normal); auto-calibration; advanced probe settings (only in the Android app — the microphone, the speaker, the volume).
 
-**Auto-calibration** (on by default after the first game; v1.08 called it the live mode): the game gets ready in about 5 seconds (no waving — the range saved from the last games), "Again" goes straight to the countdown, and the echo processing keeps learning the room during the game — a noisier room or a thing put down near the phone no longer takes the palm or the control away.
+**Auto-calibration** (an experiment, off by default): play one game the usual way (with the waving), then switch it on. From then on the game gets ready in a couple of seconds with no waving — it takes the range and the middle of your last manual calibration (the middle 6 mm farther from the phone, so the bottom of the screen doesn't end up at the port), "Again" goes straight to the countdown, and the echo processing keeps learning the room during the game — a noisier room or a thing put down near the phone doesn't take the palm away. The screen itself is not refitted to the palm in flight: every try at that (1.10–1.13) steered worse. If it steers worse, switch it off, play with the manual calibration, switch it on again.
 
 **If something's wrong:** a tap on the version on the games' screen reloads the page, and a long press opens "Logs". They record what the phone heard and can be attached to an issue.
 

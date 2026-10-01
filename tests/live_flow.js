@@ -20,9 +20,9 @@ const SCEN=`function(t){ const n=performance.now()/1000; if(n<window.__palmAt) r
   await p.route('https://api.test/**',r=>r.fulfill({status:200,headers:{'Access-Control-Allow-Origin':'*'},contentType:'application/json',body:'{"ok":true}'}));
   await p.goto('file://'+path.join(ROOT,'game','play','index.html')); await p.waitForTimeout(600);
   await p.evaluate(()=>{ const FPS=48000/512; Sonar.simulate({fs:48000,chan:'right',source:makeSimSource(window.__scen,{noise:()=>performance.now()/1000>=window.__noiseAt?10:1})}); });
-  // the switch: the service screen in a browser shows only it
-  const sw=await p.evaluate(async()=>{ const S=__sonaroids, w=ms=>new Promise(r=>setTimeout(r,ms)); S.go('audio'); await w(300); const btn=S.btn().map(b=>b.id);
-    S.aud('aud:live:1'); const on=localStorage.getItem('sonaroids_live'); S.aud('aud:live:0'); const off=localStorage.getItem('sonaroids_live'); S.aud('aud:live:1'); S.go('title'); await w(300);
+  // the switch: in the settings (v1.18: no longer on the service «sound» screen)
+  const sw=await p.evaluate(async()=>{ const S=__sonaroids, w=ms=>new Promise(r=>setTimeout(r,ms)); S.go('hub'); S.act.settings(); await w(300); const btn=S.btn().map(b=>b.id);
+    S.act.set_live_next(); const on=localStorage.getItem('sonaroids_live'); S.act.set_live_next(); const off=localStorage.getItem('sonaroids_live'); S.act.set_live_next(); S.go('title'); await w(300);
     return {btn,on,off,now:localStorage.getItem('sonaroids_live')}; });
   await p.screenshot({path:path.join(OUT,'live_01_title.png')});
   // «Play»: the palm comes 1.5 s after the tap
@@ -44,7 +44,7 @@ const SCEN=`function(t){ const n=performance.now()/1000; if(n<window.__palmAt) r
         if(!again) again={dt:null,scr:await p.evaluate(()=>__sonaroids.scr())}; break; } }
   }
   // the switch off: «Play» from the title goes through the usual getting ready (the probe choice first)
-  const offFlow=await p.evaluate(async()=>{ const S=__sonaroids, w=ms=>new Promise(r=>setTimeout(r,ms)); S.act.pause&&S.act.pause(); S.act.quit&&S.act.quit(); await w(300); S.go('audio'); await w(200); S.aud('aud:live:0'); S.go('title'); await w(300);
+  const offFlow=await p.evaluate(async()=>{ const S=__sonaroids, w=ms=>new Promise(r=>setTimeout(r,ms)); S.act.pause&&S.act.pause(); S.act.quit&&S.act.quit(); await w(300); S.go('hub'); S.act.settings(); await w(200); S.act.set_live_next(); S.go('title'); await w(300);
     S.act.play(); const seen=[]; for(let i=0;i<120;i++){ await w(100); const sc=S.scr(); if(seen[seen.length-1]!==sc) seen.push(sc); if(sc==='wave') break; } return {seen,live:localStorage.getItem('sonaroids_live')}; });
   // v1.10: the hand stays over the phone while the room is learnt (the OnePlus, 18:17) — the room is measured once more, then the game goes on
   const p2=await ctx.newPage(); p2.on('pageerror',e=>errors.push(e.message)); await p2.route('https://api.test/**',r=>r.fulfill({status:200,headers:{'Access-Control-Allow-Origin':'*'},contentType:'application/json',body:'{"ok":true}'}));
@@ -56,7 +56,7 @@ const SCEN=`function(t){ const n=performance.now()/1000; if(n<window.__palmAt) r
   await b.close();
   const r=a=>a.length?a.reduce((u,v)=>u+v,0)/a.length:NaN;
   let ok=true; const out=[], check=(n,g,i)=>{ ok=ok&&g; out.push(`${n}: ${i||''} ${g?'ok':'FAIL'}`); };
-  check('the switch on the service screen (a browser: only it)',sw.btn.includes('aud:live:0')&&sw.btn.includes('aud:live:1')&&sw.on==='1'&&sw.off==='0'&&sw.now==='1',JSON.stringify(sw));
+  check('the switch in the settings',sw.btn.includes('set_live_next')&&sw.on==='1'&&sw.off==='0'&&sw.now==='1',JSON.stringify(sw));
   check('no probe choice and no waving with it on',!seen.some(x=>/^(probe|wave)@/.test(x)),seen.join(' '));
   check('«Play» → the countdown in ≤ 6 s',tCount!==null&&tCount<=6,tCount===null?'never':tCount.toFixed(1)+' s');
   check('v1.14–1.15: the middle from the last hand calibration (saved 80 mm) + 6 mm',midAt!==null&&Math.abs(midAt-86)<0.5,midAt===null?'–':midAt.toFixed(1)+' mm');

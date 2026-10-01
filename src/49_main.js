@@ -58,7 +58,7 @@ function diagCorner(label,top,ty,flip,ax){ var vr=ty?(freeSide()!=='left')!==!!f
     text(ls,lx0,ly,P.band,'left'); R(P.band,lx0,ly+PF.CAP+2,lw,1); BTN.push({id:'logs',x:lx0-8,y:ly-6,w:lw+16,h:PF.CAP+12}); }
   // v0.58: at the bottom (the title screen) — a row of service links on the line above the version, the same on every phone:
   // «logs» (when there are any), «sound» (the Android app), «lab» (always — the lab opens in the same tab / app)
-  if(!top&&diag){ var its=[]; if(Logs.has()) its.push(['logs',L('logs')]); if(!isIOS()) its.push(['audio',L('aud_link')]); its.push(['lab',L('aud_lab')]);   // v1.08: «sound» in a browser too — the live mode's switch
+  if(!top&&diag){ var its=[]; if(Logs.has()) its.push(['logs',L('logs')]); its.push(['lab',L('aud_lab')]);   // v1.18: no «sound» here — it is the settings' «advanced probe settings» now (the maintainer: «оно теперь в настройках есть же»)
     var ly2=vy-16, xx=vx; (vr?its:its).forEach(function(it){ var w=PF.width(it[1]), x0=vr?xx-w:xx;
       text(it[1],x0,ly2,P.band,'left'); R(P.band,x0,ly2+PF.CAP+2,w,1); BTN.push({id:it[0],x:x0-8,y:ly2-4,w:w+16,h:PF.CAP+8}); xx=vr?x0-24:x0+w+24; }); }
   // v0.50: in the app, on the title screen — «sound»: the app's own sound, the microphone and the speaker (a service screen for trying phones)
@@ -212,8 +212,9 @@ function arrowRow(id,label,x,y,w,h){ var s=Math.round(h*0.9);
   text(label,x+w/2,y+Math.round((h-7)/2),P.text,'center',1,true); if(fit<1) lx.restore();
   BTN.push({id:id+'_prev',x:x,y:y,w:s+4,h:h}); BTN.push({id:id+'_next',x:x+s+4,y:y,w:w-s-4,h:h}); }
 function sSettings(){ sky(DT,0.3); var y=titles(L('settings_t')), cx0=Math.round((SAFE.l+LW-SAFE.r)/2), mw=LW-SAFE.l-SAFE.r-2*(BH+24);   // clear of the menu button and the version in the corners
-  var lab=function(r){ return L(r[0])+': '+L(r[1]()); }, w=Math.min(mw,Math.max(soundW(),btnW(SET_ROWS.map(lab).concat([L('set_expert')]))+2*BH)), x=Math.round(cx0-w/2), ex=!isIOS();   // v1.14: no service «sound» on an iPhone (the maintainer: «убери служебное меню звук на айфоне»)
-  var desc=PF.wrap(L(setLive()?'set_live_on_s':'set_live_off_s'),w,1), need=(ex?5:4)*BH+desc.length*10+2, room=LH-SAFE.b-6-(y+4), g=Math.max(3,Math.min(6,Math.floor((room-need)/4)));
+  var lab=function(r){ return L(r[0])+': '+L(r[1]()); }, w=Math.min(mw,Math.max(soundW(),btnW(SET_ROWS.map(lab).concat([L('set_expert')]))+2*BH)), x=Math.round(cx0-w/2), ex=Sonar.nativeAvail();   // v1.14: no service «sound» on an iPhone (the maintainer: «убери служебное меню звук на айфоне»); v1.18: only in the app — in a browser it had nothing but the auto-calibration's switch, now gone
+  var desc=PF.wrap(L(!setLive()?'set_live_off_s':store.get('sonaroids_mid_r','')?'set_live_on_s':'set_live_new_s'),w,1)   /* v1.17: how to use it (the maintainer: «надо так в меню настроек и написать, чтоб понятно было, для чего и как это использовать») */
+  , need=(ex?5:4)*BH+desc.length*10+2, room=LH-SAFE.b-6-(y+4), g=Math.max(3,Math.min(6,Math.floor((room-need)/4)));
   y+=Math.max(2,Math.min(6,room-need-4*g)); soundRow(x,y,w,BH); y+=BH+g;
   SET_ROWS.forEach(function(r){ arrowRow(r[0],lab(r),x,y,w,BH); y+=BH+(r[0]==='set_live'?2:g); });
   desc.forEach(function(l){ text(l,cx0,y+1,P.soft,'center'); y+=10; }); y+=g-1;
@@ -848,16 +849,12 @@ function audLabel(m){ var p=m.pos_mm, where='', ad=String(m.address||'').toLower
     lo=Math.min.apply(null,ys), hi=Math.max.apply(null,ys); where=p[2]<0?L('aud_back'):(hi-lo>20?(p[1]<=lo+(hi-lo)/2?L('aud_bottom'):L('aud_top')):''); }
   return (where?where+' ':'')+(m.desc?String(m.desc).toUpperCase().slice(0,14):''); }
 function chip(id,label,x,y,on){ var w=PF.width(label)+12, h=PF.CAP+10; R(on?P.band:P.bg,x,y,w,h); frame(x,y,w,h,on?P.band:P.line); text(label,x+6,y+5,on?P.bg:P.text,'left',1,on); BTN.push({id:id,x:x,y:y,w:w,h:h}); return x+w+6; }
-/* v1.08: the live mode's switch — on top in the app, the only row in a browser (the rest is the app's own sound) */
-function liveRow(x0,y,lw){ var on=liveOn(), x;
-  text(L('aud_live'),x0,y+5,P.soft,'left'); x=x0+lw; x=chip('aud:live:0',L('aud_off'),x,y,!on); chip('aud:live:1',L('aud_on'),x,y,on);
-  y+=PF.CAP+11; PF.wrap(L('aud_live_s'),LW-x0-SAFE.r-12,1).forEach(function(q){ text(q,x0,y,P.soft,'left'); y+=10; }); return y+4; }
+/* v1.18: the live mode's switch (1.08) is gone from here — the auto-calibration is in the settings (the maintainer: «убери из этого меню „живой режим“») */
 function sAudio(){ sky(DT,0.3); var A=window.SonaroidsApp;
-  if(!Sonar.nativeAvail()){ titles(L('aud_t2'),L('aud_s2')); liveRow(Math.round(LW*0.1),Math.round(LH*0.3),PF.width(L('aud_live'))+10); say(L('aud_t2')); return; }
+  if(!Sonar.nativeAvail()){ titles(L('aud_t2'),L('aud_s2')); say(L('aud_t2')); return; }
   if(!audDev||scrT-audT>2){ audT=scrT; try{ audDev=JSON.parse(A.audioDevices()); }catch(e){ audDev={}; } try{ audSt=Sonar.native()?JSON.parse(A.audioStatus()):null; }catch(e){ audSt=null; } }
   titles(L('aud_t'),L('aud_s'));
-  var x0=Math.round(LW*0.1), y=Math.round(LH*0.2), mode=store.get('sonaroids_audio','app'), lw=Math.max(PF.width(L('aud_live')),PF.width(L('aud_autotest')),PF.width(L('aud_mode')),PF.width(L('aud_mic')),PF.width(L('aud_out')),PF.width(L('aud_src')),PF.width(L('aud_usage')),PF.width(L('aud_end')))+10, x;
-  y=liveRow(x0,y,lw);
+  var x0=Math.round(LW*0.1), y=Math.round(LH*0.2), mode=store.get('sonaroids_audio','app'), lw=Math.max(PF.width(L('aud_autotest')),PF.width(L('aud_mode')),PF.width(L('aud_mic')),PF.width(L('aud_out')),PF.width(L('aud_src')),PF.width(L('aud_usage')),PF.width(L('aud_end')))+10, x;
   text(L('aud_mode'),x0,y+5,P.soft,'left'); x=x0+lw;
   x=chip('aud:mode:browser',L('aud_browser'),x,y,mode!=='app'); chip('aud:mode:app',L('aud_app'),x,y,mode==='app'); y+=PF.CAP+11;
   var ap=null; try{ ap=JSON.parse(store.get('sonaroids_autoaudio','')||'null'); }catch(e){}
@@ -892,7 +889,6 @@ function sAudio(){ sky(DT,0.3); var A=window.SonaroidsApp;
   var ls=L('aud_lab'), lw2=PF.width(ls), lx=LW-SAFE.r-12-lw2, ly=LH-SAFE.b-14; text(ls,lx,ly,P.band,'left'); R(P.band,lx,ly+PF.CAP+2,lw2,1); BTN.push({id:'aud:lab:1',x:lx-8,y:ly-5,w:lw2+16,h:PF.CAP+10});
   say(L('aud_t')); }
 function audAct(id){ var p=id.split(':'), k=p[1], v=p.slice(2).join(':');
-  if(k==='live'){ store.set('sonaroids_live',v==='1'?'1':'0'); Logs.ev(v?'живой режим включён':'живой режим выключен'); acoustic=false; return; }   // the next «Play» gets ready anew, in the chosen mode
   if(k==='mode') store.set('sonaroids_audio',v); else if(k==='mic') store.set('sonaroids_mic',v); else if(k==='out') store.set('sonaroids_out',v);
   else if(k==='src') store.set('sonaroids_src',v); else if(k==='end') store.set('sonaroids_probe_end',v); else if(k==='vol') store.set('sonaroids_vol',v); else if(k==='usage') store.set('sonaroids_usage',v);
   else if(k==='retest') Sonar.audioRetest();

@@ -311,7 +311,8 @@ var Sonar=(function(){
      упираться в разъём»; the middle 70 mm, the lower half's end 51 mm, the port read 51–57) */
   var LIVE_UP=6;
   function liveMid(){ try{ var v=+localStorage.getItem('sonaroids_mid_r'); return v>=55&&v<=140?v+LIVE_UP:LIVE_MID; }catch(e){ return LIVE_MID; } }
-  function liveOn(){ try{ var v=localStorage.getItem('sonaroids_live'); return v===null||v===''?localStorage.getItem('sonaroids_seen')==='1':v==='1'; }catch(e){ return false; } }
+  // v1.16: an experiment, off unless switched on in the settings (the maintainer: «автокалибровка — это экспериментальный режим, и по умолчанию включена ручная»)
+  function liveOn(){ try{ return localStorage.getItem('sonaroids_live')==='1'; }catch(e){ return false; } }
   function prepare(onStage,vol){
     active=false; last=null; lost=false; PROBE_G=0.25; volLog=[]; reasserts=0; refLv=null; jumpN=0;
     onStage&&onStage('side');

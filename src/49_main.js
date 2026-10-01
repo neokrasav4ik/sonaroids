@@ -248,7 +248,11 @@ function sAway(){ sky(DT,0.3); var PAUSE=awayPause(), m=handSide()==='left', aw=
   var st=scrT<PAUSE?'wait':(prep&&prep.res&&prep.res.ok)?'ok':'listen';
   titles(L('away_t'),st==='ok'?L('away_ok'):L('away_s'));
   ringUI(st==='wait'?scrT/PAUSE:st==='ok'?1:Math.min(0.95,(scrT-PAUSE)/3.2),st);
-  if((scrT>=PAUSE||liveOn())&&!prep) startPrepare();   // the live mode: the channel and the level are found while the hand goes away; the room is measured last (~1.5 s on)
+  if(scrT>=PAUSE&&!prep) startPrepare();
+  /* v1.10, the live mode: the room measured with the hand still there (the maintainer's OnePlus, 1 Oct 18:17: the palm seen while the room was
+     learnt, the probe stood only 13 dB over the rest — 28–31 on that phone otherwise — the height went from −4 to 16 cm and «почти нет управления»):
+     once more from «take your hand away», once */
+  if(liveOn()&&prep&&prep.res&&prep.res.ok&&!roomAgain){ var stR=Sonar.state(), pr=DSP2.info().prom; if((stR&&stR.present)||(pr!==null&&pr<18)){ roomAgain=true; Logs.ev('живой режим: комната с рукой — ещё раз',{prom:pr===null?null:+pr.toFixed(1),hand:!!(stR&&stR.present)}); prep=null; scrT=0; return; } }
   if(prep&&prep.res){ if(prep.res.ok){ if(scrT-prep.doneT>(liveOn()?0.4:1.5)) afterRoom(); }       // «the room is quiet» stays for 1.5 s (the live mode: 0.4 s)
     else { var silent=prep.res.why==='noprobe'||(prep.res.why==='quiet'&&typeof prep.res.snr==='number'&&prep.res.snr<10);   // not heard at all: every heard probe on record had 24–48 dB
       if(silent&&!silentRetry){ silentRetry=true; Logs.ev('зонд не слышно — ещё раз'); prep=null; scrT=PAUSE; return; }            // once more at once: a sound that did not start
@@ -650,16 +654,17 @@ function toAway(){ prep=null; var b=liveOn()?store.get('sonaroids_band_last','')
 /* v1.08, the live mode (an experiment, the service «ЗВУК» screen; the maintainer: «игра готовилась, калибровалась и игралась одновременно
    и постоянно… если удастся добиться моментального старта и точного управления — включим в игру»). The echo processing learns the room
    all the time, during the game too (src/11_dsp.js), and the palm's range follows the play (Tune.stepLive) — so the getting ready is cut
-   short: the probe as last time (no choice screen), «take your hand away» 1.2 s instead of 3.5, «the room is quiet» 0.4 s instead of 1.5,
+   short: the probe as last time (no choice screen), «take your hand away» 2.5 s instead of 3.5 (1.2 in 1.08), «the room is quiet» 0.4 s instead of 1.5, the room once more if the palm was in it,
    no waving (the range saved from the last games; the middle is found by the first second of the palm), straight to the countdown. Once
    ready, «Play» and «Again» go straight to the countdown while the microphone works — the room is not measured anew */
 function liveOn(){ return Sonar.live(); }
-function awayPause(){ return liveOn()?1.2:PAUSE; }
+function awayPause(){ return liveOn()?2.5:PAUSE; }   // v1.10: 1.2 s was too short to take the hand away (the OnePlus 18:17)
+var roomAgain=false;
 function liveReady(){ return liveOn()&&booted&&Sonar.healthy()&&acoustic&&T!==null; }
 function afterRoom(){ if(!liveOn()){ toWave(); return; }
   T=Tune.create(+store.get('sonaroids_field','100')||100,true); T.ok=true; caught=true; caughtT=-9; Logs.ev('живой режим: без взмахов',{field:T.field}); startCount(); }
 function quickOr(full){ if(liveReady()){ Logs.ev('живой режим: сразу отсчёт'); dropGame(); resumeAfterPrep=false; startCount(); } else full(); }
-function toRoom(b){ Sonar.setBand(b); store.set('sonaroids_band_last',b); prep=null; silentRetry=false; go('away'); }
+function toRoom(b){ roomAgain=false; Sonar.setBand(b); store.set('sonaroids_band_last',b); prep=null; silentRetry=false; go('away'); }
 function toWave(){ T=Tune.create(+store.get('sonaroids_field','100')||100,true); caught=false; flips=0; flipT=-9; seenT=0; go('wave'); }
 function pauseGame(){ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; go('paused'); } }
 function startCount(){ if(resumeAfterPrep&&g&&g.state!=='over'){ resumeAfterPrep=false; countT=3; go('count-resume'); return; }
@@ -782,8 +787,8 @@ function loop(now){
   hdFrame(RS||(scr==='hub'?hubBg==='race'||hdWanted(SKIN_IDS[hubSkin]):!!SK.hd),false);   // v0.84: SonaRace's screens smooth; v0.99: or in candy pixels, as the graphics switch says
   // v0.91: while a game runs (and in its pause) the sonar keeps the empty room's level as the getting ready left it (see src/11_dsp.js)
   var gameOn=!!(g&&g.state!=='over'&&(scr==='play'||scr==='count-resume'||scr==='paused'||scr==='restart')); if(gameOn!==floorHeld){ floorHeld=gameOn; try{ DSP2.set('holdfloor',gameOn); }catch(e){} }
-  // v1.08, the live mode: in flight and its countdown the palm's range keeps being followed (Tune.stepLive: slowly, within bounds)
-  if(liveOn()&&T&&(scr==='play'||scr==='count'||scr==='count-resume')){ var tl=Tune.stepLive(T,DT,Sonar.state(),Sonar.shift); if(tl&&(tl.d!==0||tl.df!==0)) Logs.gameEv('range followed',tl); }   // v0.74: a shapes-only skin with «pixels» — the same canvas at 1 px per game pixel   // v0.72: the HD world canvas under the pixel one
+  // v1.08, the live mode: in flight and its countdown the screen's edges are kept within the palm's reach (Tune.stepLive)
+  if(liveOn()&&T&&(scr==='play'||scr==='count'||scr==='count-resume')){ var tl=Tune.stepLive(T,DT,Sonar.state(),Sonar.shift,DSP2.info().cal.k); if(tl) Logs.gameEv('range followed',tl); }   // v0.74: a shapes-only skin with «pixels» — the same canvas at 1 px per game pixel   // v0.72: the HD world canvas under the pixel one
   uiColours(scr!=='hub');
   switch(scr){
     case 'lang': sLang(); break; case 'title': sTitle(); break; case 'rtitle': sRTitle(); break; case 'rset': sRSet(); break; case 'hub': sHub(); break;

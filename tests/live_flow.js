@@ -3,14 +3,14 @@
    включим в игру». The switch (shown in a browser too); then «Play» with it on: the probe as last time (no choice screen), «take your hand
    away» short, no waving — straight to the countdown; the game; mid-game the room gets 20 dB noisier; the end; «Again» — straight to the
    countdown, the room not measured anew.
-   Checks: the switch turns on and off; no probe and no waving screens; from «Play» to the countdown ≤ 4 s (it was ~15 s with the waving);
+   Checks: the switch turns on and off; no probe and no waving screens; from «Play» to the countdown ≤ 6 s (it was ~15 s with the waving);
    the palm is seen and the ship follows it — before and after the noise; «Again» to the countdown < 1 s; the switch off — the getting
    ready is the usual one again. Run: node tests/live_flow.js */
 let chromium; try{ ({chromium}=require('playwright')); }catch(e){ console.log('playwright not installed — skipped'); console.log('RESULT: ok'); process.exit(0); }
 const fs=require('fs'), path=require('path');
 const ROOT=path.join(__dirname,'..'), OUT=path.join(__dirname,'out'); fs.mkdirSync(OUT,{recursive:true});
 const SRC=fs.readFileSync(path.join(__dirname,'sim_source.js'),'utf8');
-// the palm: away for the first 1.5 s after «Play» (the hand that tapped goes off), then waving 100±40 mm (4 s period) all the time;
+// the palm: away for the first 5.5 s after «Play» (the hand that tapped goes off), then waving 100±40 mm (4 s period) all the time;
 // the room's noise ×10 (20 dB) from the game's 8th second on (window.__noiseAt, set by the check; the page's clock too)
 const SCEN=`function(t){ const n=performance.now()/1000; if(n<window.__palmAt) return null; return 100+40*Math.sin(2*Math.PI*(n-window.__palmAt)/4); }`;   // by the page's clock: the frames come in real time
 (async()=>{
@@ -27,7 +27,7 @@ const SCEN=`function(t){ const n=performance.now()/1000; if(n<window.__palmAt) r
   await p.screenshot({path:path.join(OUT,'live_01_title.png')});
   // «Play»: the palm comes 1.5 s after the tap
   const simNow=()=>p.evaluate(()=>performance.now()/1000);
-  const t0=await p.evaluate(()=>{ const n=performance.now()/1000; window.__palmAt=n+1.5; __sonaroids.act.play(); return n; });
+  const t0=await p.evaluate(()=>{ const n=performance.now()/1000; window.__palmAt=n+5.5; __sonaroids.act.play(); return n; });   // the palm back once the room is learnt (v1.10: in it, the room is measured again)
   const seen=[]; let last=null, tCount=null, tPlay=null, follow0=[], follow1=[], over=null, again=null;
   const T=async()=>(await simNow())-t0;
   while(await T()<40){
@@ -46,12 +46,19 @@ const SCEN=`function(t){ const n=performance.now()/1000; if(n<window.__palmAt) r
   // the switch off: «Play» from the title goes through the usual getting ready (the probe choice first)
   const offFlow=await p.evaluate(async()=>{ const S=__sonaroids, w=ms=>new Promise(r=>setTimeout(r,ms)); S.act.pause&&S.act.pause(); S.act.quit&&S.act.quit(); await w(300); S.go('audio'); await w(200); S.aud('aud:live:'); S.go('title'); await w(300);
     S.act.play(); const seen=[]; for(let i=0;i<40;i++){ await w(100); const sc=S.scr(); if(seen[seen.length-1]!==sc) seen.push(sc); if(sc==='probe'||sc==='wave') break; } return {seen,live:localStorage.getItem('sonaroids_live')}; });
+  // v1.10: the hand stays over the phone while the room is learnt (the OnePlus, 18:17) — the room is measured once more, then the game goes on
+  const p2=await ctx.newPage(); p2.on('pageerror',e=>errors.push(e.message)); await p2.route('https://api.test/**',r=>r.fulfill({status:200,headers:{'Access-Control-Allow-Origin':'*'},contentType:'application/json',body:'{"ok":true}'}));
+  await p2.goto('file://'+path.join(ROOT,'game','play','index.html')); await p2.waitForTimeout(600);
+  const again2=await p2.evaluate(async()=>{ localStorage.setItem('sonaroids_live','1'); window.__palmAt=0; window.__noiseAt=1e9; Sonar.simulate({fs:48000,chan:'right',source:makeSimSource(window.__scen)});
+    const S=__sonaroids, w=ms=>new Promise(r=>setTimeout(r,ms)); const t0=performance.now(); S.act.play(); const seen=[];
+    for(let i=0;i<150;i++){ await w(100); const sc=S.scr(); if(seen[seen.length-1]!==sc) seen.push(sc); if(sc==='count') break; }
+    return {seen,count:S.scr()==='count',t:(performance.now()-t0)/1000}; });
   await b.close();
   const r=a=>a.length?a.reduce((u,v)=>u+v,0)/a.length:NaN;
   let ok=true; const out=[], check=(n,g,i)=>{ ok=ok&&g; out.push(`${n}: ${i||''} ${g?'ok':'FAIL'}`); };
   check('the switch on the service screen (a browser: only it)',sw.btn.includes('aud:live:')&&sw.btn.includes('aud:live:1')&&sw.on==='1'&&sw.off===''&&sw.now==='1',JSON.stringify(sw));
   check('no probe choice and no waving with it on',!seen.some(x=>/^(probe|wave)@/.test(x)),seen.join(' '));
-  check('«Play» → the countdown in ≤ 4 s',tCount!==null&&tCount<=4,tCount===null?'never':tCount.toFixed(1)+' s');
+  check('«Play» → the countdown in ≤ 6 s',tCount!==null&&tCount<=6,tCount===null?'never':tCount.toFixed(1)+' s');
   check('the game runs, the echo processing in the live mode',tPlay!==null&&seen.some(x=>/^play@/.test(x)),'');
   const corr=a=>{ const q=a.filter(z=>z[3]!==null&&z[2]!==null), n=q.length; if(n<10) return NaN; const mx=r(q.map(z=>z[2])), my=r(q.map(z=>z[3])); let sxy=0,sxx=0,syy=0;
     q.forEach(z=>{ sxy+=(z[2]-mx)*(z[3]-my); sxx+=(z[2]-mx)**2; syy+=(z[3]-my)**2; }); return sxy/Math.sqrt(sxx*syy); };
@@ -60,6 +67,7 @@ const SCEN=`function(t){ const n=performance.now()/1000; if(n<window.__palmAt) r
   check('… and after the room got 20 dB noisier',r(follow1.map(q=>q[0]))>=0.85&&c1>=0.9,`seen ${(100*r(follow1.map(q=>q[0]))).toFixed(0)}%, the height with the palm ${c1.toFixed(2)}`);
   check('«Again» → the countdown at once',over==='over'&&again&&again.scr==='count'&&again.dt<1,JSON.stringify({over,again}));
   check('the switch off: the usual getting ready',offFlow.live===''&&offFlow.seen.includes('probe'),offFlow.seen.join(' '));
+  check('the hand left over the phone while the room is learnt: the room once more, then the countdown',again2.count&&again2.t>tCount+2,again2.seen.join(' ')+` in ${again2.t.toFixed(1)} s (the hand away: ${tCount===null?'–':tCount.toFixed(1)} s)`);
   check('no page errors',!errors.length,errors.slice(0,3).join(' | '));
   out.forEach(s=>console.log(s)); console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;
 })();

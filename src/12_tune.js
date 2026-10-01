@@ -35,23 +35,30 @@ var Tune=(function(){
     if(Math.abs(d)>0.2||Math.abs(T.field-f0)>0.2) return {d:+d.toFixed(1),field:+T.field.toFixed(1),span:+r.span.toFixed(0),wave:r.wave};
     return null;
   }
-  /* v1.08, the live mode (an experiment): in flight the palm's range keeps being followed, slowly and within bounds — the last 20 s of heights
-     (once 10 s are there and the palm went over 4 cm or more): each second the field and the middle take 5% of the way to what waving would
-     give, never more than 1 mm a second. A drift of the phone or the room moves the screen with it, not out from under the palm; a dodge to
-     one edge in a few seconds changes nothing that can be felt */
-  var L_WIN=20, L_MIN=10, L_STEP=1, L_K=0.05, L_MAX=1;
-  function stepLive(T,dt,st,shift){
-    if(!T.lb){ T.lb=[]; T.lt=0; T.la=0; }
-    T.lt+=dt; if(st&&st.present) T.lb.push({t:T.lt,h:st.height});
+  /* v1.08, the live mode (an experiment): in flight the screen keeps its bottom just above the palm's floor.
+     v1.10 (the maintainer, 1 Oct): «часто было сложно опустить корабль вниз — ладонь уже упиралась в разъём» (18:01) and, the other way,
+     «слишком далеко ладонь от телефона» (18:22). 1.08 moved the middle so that the lowest 5% of the palm's heights landed at 6% of the screen,
+     as the waving does — but in flight the player follows the ship: pushing it against the bottom lowers those heights, the screen goes up,
+     the player pushes lower (18:01 drifted 8 mm so; in its last half-minute the ship could not go under 12%); and with no waving the middle
+     was where the palm happened to be in its first second (18:22: far — the whole game was played 3 cm farther than before). Now it is set by
+     the echo's own range, which no moving of the screen changes, and by the phone's end: a palm at the port reads ~45 mm of range in every
+     game of 1 Oct (iPhone, Mi 9 Lite; 47–48 in the iPhone games of 27 Sep). «The palm at 48 mm», turned into a height the way the last 10 s
+     turned ranges into heights (the median of height − k·range), is kept 2–14 mm under the bottom of the screen: too high — the screen
+     comes down, too low — up; 3 mm a second in the first 15 s, then 1. The palm's own lowest point is not used: the player follows the ship,
+     so it is always just under the bottom, wherever the bottom is */
+  var L_WIN=10, L_MIN=5, L_STEP=0.5, L_LO=-14, L_HI=-2, L_MID=-8, R_FLOOR=48;
+  function stepLive(T,dt,st,shift,k){ k=k||1.4;
+    if(!T.lb){ T.lb=[]; T.lt=0; T.la=0; T.ln=0; }
+    T.lt+=dt; if(st&&st.present&&typeof st.range==='number'){ T.lb.push({t:T.lt,o:st.height-k*st.range}); T.ln+=dt; }
     while(T.lb.length&&T.lb[0].t<T.lt-L_WIN) T.lb.shift();
     T.la+=dt; if(T.la<L_STEP) return null; T.la=0;
-    if(T.lb.length<60||T.lb[T.lb.length-1].t-T.lb[0].t<L_MIN) return null;
-    var h=T.lb.map(function(q){return q.h;}).sort(function(a,b){return a-b;}), p=function(f){ return h[Math.min(h.length-1,Math.floor(f*(h.length-1)))]; };
-    var lo=p(0.05), hi=p(0.95); if(hi-lo<40) return null;
-    var f0=T.field; if(T.auto){ var F=(hi-lo)/((0.5-B)*2/(1+ASYM)+(TP-0.5)*2*ASYM/(1+ASYM)); F=Math.max(F_MIN,Math.min(F_MAX,F)); T.field+=Math.max(-L_MAX,Math.min(L_MAX,(F-T.field)*L_K)); }
-    var cen=lo+(0.5-B)*2*T.field/(1+ASYM), d=Math.max(-L_MAX,Math.min(L_MAX,(cen-100)*-L_K));
-    if(Math.abs(d)>0.05){ shift(d); T.lb.forEach(function(q){ q.h+=d; }); }
-    return {d:+d.toFixed(2),field:+T.field.toFixed(1),df:+(T.field-f0).toFixed(2),span:+(hi-lo).toFixed(0)};
+    if(T.ln<L_MIN||T.lb.length<30) return null;
+    var o=T.lb.map(function(q){return q.o;}).sort(function(a,b){return a-b;})[T.lb.length>>1];
+    var h0=100-T.field/(1+ASYM), e=o+k*R_FLOOR-h0;   // where the palm's floor reads, against the bottom
+    if(e>=L_LO&&e<=L_HI) return null;
+    var v=(T.ln<15?3:1)*L_STEP, d=Math.max(-v,Math.min(v,L_MID-e));
+    shift(d); T.lb.forEach(function(q){ q.o+=d; });
+    return {d:+d.toFixed(2),floor:+e.toFixed(1)};
   }
   return {create:create,fracOf:fracOf,pick:pick,step:step,stepLive:stepLive,ASYM:ASYM};
 })();

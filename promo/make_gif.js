@@ -69,7 +69,7 @@ const PHONE=`(function(){
 (async()=>{
   fs.rmSync(OUT,{recursive:true,force:true}); fs.mkdirSync(OUT,{recursive:true});
   const b=await chromium.launch(), ctx=await b.newContext({viewport:{width:W,height:H},deviceScaleFactor:1});
-  await ctx.addInitScript(`localStorage.setItem('sonaroids_lang','en'); localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_gfx','pixel');`);   // v0.78: the game starts in HD; the gifs keep their pixel look
+  await ctx.addInitScript(`localStorage.setItem('sonaroids_lang','en'); localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_live','0'); localStorage.setItem('sonaroids_gfx','pixel');`);   // v0.78: the game starts in HD; the gifs keep their pixel look
   const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.goto('file://'+tmp); await p.waitForTimeout(500);
   await p.evaluate(PHONE); await p.evaluate(()=>{ window.__gifMode=true; });

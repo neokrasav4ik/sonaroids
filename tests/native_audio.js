@@ -25,7 +25,7 @@ const APPSTUB=`(function(){ var st={on:false,g:[0,0,0,0],probes:0,iv:null,frames
       return true; } }; })();`;
 (async()=>{
   const b=await chromium.launch(), ctx=await b.newContext({viewport:{width:844,height:390}});
-  await ctx.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_lang','ru'); localStorage.setItem('sonaroids_audio','app'); ${SRC}; ${APPSTUB} window.SONAROIDS_API='https://api.test';`);
+  await ctx.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_live','0'); localStorage.setItem('sonaroids_lang','ru'); localStorage.setItem('sonaroids_audio','app'); ${SRC}; ${APPSTUB} window.SONAROIDS_API='https://api.test';`);
   const p=await ctx.newPage(); const errors=[]; p.on('pageerror',e=>errors.push(e.message));
   await p.route('https://api.test/**',r=>r.fulfill({status:200,headers:{'Access-Control-Allow-Origin':'*'},contentType:'application/json',body:'{"ok":true}'}));
   await p.goto('file://'+path.join(ROOT,'game','play','index.html')); await p.waitForTimeout(300);

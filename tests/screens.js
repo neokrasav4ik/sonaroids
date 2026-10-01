@@ -4,18 +4,18 @@
 let chromium; try{ ({chromium}=require('playwright')); }catch(e){ console.log('playwright not installed — skipped'); process.exit(0); }
 const fs=require('fs'), path=require('path'); const ROOT=path.join(__dirname,'..'), OUT=path.join(__dirname,'out','screens'); fs.mkdirSync(OUT,{recursive:true});
 const SIZES=[[568,320],[667,375],[740,360],[844,390],[932,430],[1024,768],[1366,1024]];
-const SCREENS=['lang','hub','title','sound','phone','mic','probe','wave','wave-try','count','play','pause-play','restart','over','over-here','scores','nick','link','linkshow','linkin','linkdone','lost','nomic',
+const SCREENS=['lang','hub','settings','title','sound','phone','mic','probe','wave','wave-try','count','play','pause-play','restart','over','over-here','scores','nick','link','linkshow','linkin','linkdone','lost','nomic',
   'race-menu','race-set','race-try','race-count','race-play','race-pause','race-over'];   // v0.84: SonaRace's own screens (its menu, the try-out with the car, the race, its pause and finish)
 // v1.07: the buttons each screen must show (checked below) — waited for before the checks, so a slow frame is not a failure
 const WANT={'wave-try':['start','again'],'race-try':['start','again'],'race-menu':['play','howto','hub'],'race-set':['rs_*'],'race-play':['pause'],'race-pause':['resume','restart','quit','exit'],
-  'race-over':['again','menu','ver'],'play':['pause'],'restart':['rs_go','rs_cal','rs_back'],'pause-play':['resume','restart','quit','exit'],'over':['ver']};
+  'race-over':['again','menu','ver'],'play':['pause'],'restart':['rs_go','rs_cal','rs_back'],'pause-play':['resume','restart','quit','exit'],'over':['ver'],'settings':['vol_dn','set_gfx_prev','set_band_next','set_live_next','set_expert','set_back']};   // v1.12: the settings
 (async()=>{
   const b=await chromium.launch(); const bad=[]; const errors=[]; let n=0;
   // v1.07: the 28 sizes × languages × hands are independent — several at once (each its own browser context), the waits overlap (SCREENS_JOBS, default 4)
   const combos=[]; for(const [w,h] of SIZES) for(const lang of ['en','ru']) for(const hand of ['right','left']) combos.push([w,h,lang,hand]);
   async function one([w,h,lang,hand]){
     const ctx=await b.newContext({viewport:{width:w,height:h},deviceScaleFactor:w<700?2:3});
-    await ctx.addInitScript(`localStorage.setItem('sonaroids_lang','${lang}'); localStorage.setItem('sonaroids_hand','${hand}'); localStorage.setItem('sonaroids_seen','1');`);
+    await ctx.addInitScript(`localStorage.setItem('sonaroids_lang','${lang}'); localStorage.setItem('sonaroids_hand','${hand}'); localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_live','0');`);
     const p=await ctx.newPage(); p.on('pageerror',e=>errors.push(e.message));
     // the leaderboard server, faked at the HTTP level: the transfer code and its claim (tables are not needed here)
     await p.route('https://api.sonaroids.app/**',async route=>{ const r=route.request(), u=new URL(r.url()), cors={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'Content-Type, X-Player'};

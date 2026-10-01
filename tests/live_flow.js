@@ -1,6 +1,6 @@
 /* The live mode (v1.08, an experiment behind the service «ЗВУК» screen's switch) in headless Chromium with a synthetic microphone.
    The maintainer: «перед каждой игрой у нас долгая подготовка и калибровка… если удастся добиться моментального старта и точного управления —
-   включим в игру». The switch (shown in a browser too); then «Play» with it on: the probe as last time (no choice screen), «take your hand
+   включим в игру». The switch (shown in a browser too); then «Play» with it on: the band from the settings (no choice screen), «take your hand
    away» short, no waving — straight to the countdown; the game; mid-game the room gets 20 dB noisier; the end; «Again» — straight to the
    countdown, the room not measured anew.
    Checks: the switch turns on and off; no probe and no waving screens; from «Play» to the countdown ≤ 6 s (it was ~15 s with the waving);
@@ -15,14 +15,14 @@ const SRC=fs.readFileSync(path.join(__dirname,'sim_source.js'),'utf8');
 const SCEN=`function(t){ const n=performance.now()/1000; if(n<window.__palmAt) return null; return 100+40*Math.sin(2*Math.PI*(n-window.__palmAt)/4); }`;   // by the page's clock: the frames come in real time
 (async()=>{
   const b=await chromium.launch(); const ctx=await b.newContext({viewport:{width:844,height:390},deviceScaleFactor:2});
-  await ctx.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_lang','en'); localStorage.setItem('sonaroids_band_last','normal'); ${SRC}; window.makeSimSource=makeSimSource; window.__palmAt=1e9; window.__noiseAt=1e9; window.__scen=${SCEN}; window.SONAROIDS_API='https://api.test';`);
+  await ctx.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_lang','en'); localStorage.setItem('sonaroids_band_lock','normal'); ${SRC}; window.makeSimSource=makeSimSource; window.__palmAt=1e9; window.__noiseAt=1e9; window.__scen=${SCEN}; window.SONAROIDS_API='https://api.test';`);
   const p=await ctx.newPage(); const errors=[]; p.on('pageerror',e=>errors.push(e.message));
   await p.route('https://api.test/**',r=>r.fulfill({status:200,headers:{'Access-Control-Allow-Origin':'*'},contentType:'application/json',body:'{"ok":true}'}));
   await p.goto('file://'+path.join(ROOT,'game','play','index.html')); await p.waitForTimeout(600);
   await p.evaluate(()=>{ const FPS=48000/512; Sonar.simulate({fs:48000,chan:'right',source:makeSimSource(window.__scen,{noise:()=>performance.now()/1000>=window.__noiseAt?10:1})}); });
   // the switch: the service screen in a browser shows only it
   const sw=await p.evaluate(async()=>{ const S=__sonaroids, w=ms=>new Promise(r=>setTimeout(r,ms)); S.go('audio'); await w(300); const btn=S.btn().map(b=>b.id);
-    S.aud('aud:live:1'); const on=localStorage.getItem('sonaroids_live'); S.aud('aud:live:'); const off=localStorage.getItem('sonaroids_live'); S.aud('aud:live:1'); S.go('title'); await w(300);
+    S.aud('aud:live:1'); const on=localStorage.getItem('sonaroids_live'); S.aud('aud:live:0'); const off=localStorage.getItem('sonaroids_live'); S.aud('aud:live:1'); S.go('title'); await w(300);
     return {btn,on,off,now:localStorage.getItem('sonaroids_live')}; });
   await p.screenshot({path:path.join(OUT,'live_01_title.png')});
   // «Play»: the palm comes 1.5 s after the tap
@@ -44,8 +44,8 @@ const SCEN=`function(t){ const n=performance.now()/1000; if(n<window.__palmAt) r
         if(!again) again={dt:null,scr:await p.evaluate(()=>__sonaroids.scr())}; break; } }
   }
   // the switch off: «Play» from the title goes through the usual getting ready (the probe choice first)
-  const offFlow=await p.evaluate(async()=>{ const S=__sonaroids, w=ms=>new Promise(r=>setTimeout(r,ms)); S.act.pause&&S.act.pause(); S.act.quit&&S.act.quit(); await w(300); S.go('audio'); await w(200); S.aud('aud:live:'); S.go('title'); await w(300);
-    S.act.play(); const seen=[]; for(let i=0;i<40;i++){ await w(100); const sc=S.scr(); if(seen[seen.length-1]!==sc) seen.push(sc); if(sc==='probe'||sc==='wave') break; } return {seen,live:localStorage.getItem('sonaroids_live')}; });
+  const offFlow=await p.evaluate(async()=>{ const S=__sonaroids, w=ms=>new Promise(r=>setTimeout(r,ms)); S.act.pause&&S.act.pause(); S.act.quit&&S.act.quit(); await w(300); S.go('audio'); await w(200); S.aud('aud:live:0'); S.go('title'); await w(300);
+    S.act.play(); const seen=[]; for(let i=0;i<120;i++){ await w(100); const sc=S.scr(); if(seen[seen.length-1]!==sc) seen.push(sc); if(sc==='wave') break; } return {seen,live:localStorage.getItem('sonaroids_live')}; });
   // v1.10: the hand stays over the phone while the room is learnt (the OnePlus, 18:17) — the room is measured once more, then the game goes on
   const p2=await ctx.newPage(); p2.on('pageerror',e=>errors.push(e.message)); await p2.route('https://api.test/**',r=>r.fulfill({status:200,headers:{'Access-Control-Allow-Origin':'*'},contentType:'application/json',body:'{"ok":true}'}));
   await p2.goto('file://'+path.join(ROOT,'game','play','index.html')); await p2.waitForTimeout(600);
@@ -56,7 +56,7 @@ const SCEN=`function(t){ const n=performance.now()/1000; if(n<window.__palmAt) r
   await b.close();
   const r=a=>a.length?a.reduce((u,v)=>u+v,0)/a.length:NaN;
   let ok=true; const out=[], check=(n,g,i)=>{ ok=ok&&g; out.push(`${n}: ${i||''} ${g?'ok':'FAIL'}`); };
-  check('the switch on the service screen (a browser: only it)',sw.btn.includes('aud:live:')&&sw.btn.includes('aud:live:1')&&sw.on==='1'&&sw.off===''&&sw.now==='1',JSON.stringify(sw));
+  check('the switch on the service screen (a browser: only it)',sw.btn.includes('aud:live:0')&&sw.btn.includes('aud:live:1')&&sw.on==='1'&&sw.off==='0'&&sw.now==='1',JSON.stringify(sw));
   check('no probe choice and no waving with it on',!seen.some(x=>/^(probe|wave)@/.test(x)),seen.join(' '));
   check('«Play» → the countdown in ≤ 6 s',tCount!==null&&tCount<=6,tCount===null?'never':tCount.toFixed(1)+' s');
   check('the game runs, the echo processing in the live mode',tPlay!==null&&seen.some(x=>/^play@/.test(x)),'');
@@ -66,7 +66,7 @@ const SCEN=`function(t){ const n=performance.now()/1000; if(n<window.__palmAt) r
   check('the palm seen and followed before the noise',r(follow0.map(q=>q[0]))>=0.85&&c0>=0.9,`seen ${(100*r(follow0.map(q=>q[0]))).toFixed(0)}%, the height with the palm ${c0.toFixed(2)}`);
   check('… and after the room got 20 dB noisier',r(follow1.map(q=>q[0]))>=0.85&&c1>=0.9,`seen ${(100*r(follow1.map(q=>q[0]))).toFixed(0)}%, the height with the palm ${c1.toFixed(2)}`);
   check('«Again» → the countdown at once',over==='over'&&again&&again.scr==='count'&&again.dt<1,JSON.stringify({over,again}));
-  check('the switch off: the usual getting ready',offFlow.live===''&&offFlow.seen.includes('probe'),offFlow.seen.join(' '));
+  check('the switch off: the usual getting ready (with the waving)',offFlow.live==='0'&&offFlow.seen.includes('wave'),offFlow.seen.join(' '));
   check('the hand left over the phone while the room is learnt: the room once more, then the countdown',again2.count&&again2.t>tCount+2,again2.seen.join(' ')+` in ${again2.t.toFixed(1)} s (the hand away: ${tCount===null?'–':tCount.toFixed(1)} s)`);
   check('no page errors',!errors.length,errors.slice(0,3).join(' | '));
   out.forEach(s=>console.log(s)); console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;

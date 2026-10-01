@@ -37,6 +37,7 @@ LANE_B = [  # phase 2, beside lane A: the rest
     ('leaderboard server (temporary database)', f'{H} tests/test_server.js'),
     ('first open shows the menu (Chromium)', f'{H} tests/first_open.js'),
     ('buttons light up under the finger (Chromium)', f'{H} tests/press.js'),
+    ('the settings: defaults, graphics, band, auto-calibration (Chromium)', f'{H} tests/settings.js'),
     ('skins: every object readable on its sky (Chromium)', f'{H} tests/skin_audit.js'),
     ('HD skins: every object readable on its sky (Chromium)', f'env HD=1 {H} tests/skin_audit.js'),
     ('graphics: pixels / HD (Chromium)', f'{H} tests/hd.js'),

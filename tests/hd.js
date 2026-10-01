@@ -9,7 +9,7 @@ const path=require('path'), ROOT=path.join(__dirname,'..'), GAME='file://'+path.
   const ids=['space','fairy','vector','neon','note','lcd'], shapesOnly=['lcd'];   // v0.74: skins drawn only as shapes; v0.76: vector, neon and notebook have pixel pictures of their own, the LCD's HD picture is already whole pixels
   for(const id of ids){
     const p=await b.newPage({viewport:{width:844,height:390},deviceScaleFactor:2}); const errors=[]; p.on('pageerror',e=>errors.push(e.message));
-    await p.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_skin','${id}'); localStorage.setItem('sonaroids_gfx','hd');`);
+    await p.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_live','0'); localStorage.setItem('sonaroids_skin','${id}'); localStorage.setItem('sonaroids_gfx','hd');`);
     await p.goto(GAME); await p.waitForTimeout(300); await p.evaluate(()=>__sonaroids.act.hub_rocks()); await p.waitForTimeout(700);
     const look=()=>p.evaluate(()=>{ const c=document.getElementById('hd'); if(!c||c.style.display==='none') return {shown:false};
       const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data; let lit=0; for(let i=3;i<d.length;i+=4*97) if(d[i]>0) lit++;
@@ -26,7 +26,7 @@ const path=require('path'), ROOT=path.join(__dirname,'..'), GAME='file://'+path.
     await p.close(); }
   // the games' screen in HD: the card is cut out of the pixel canvas (transparent there) and drawn sharp on the HD one
   const p=await b.newPage({viewport:{width:844,height:390},deviceScaleFactor:2}); const errors=[]; p.on('pageerror',e=>errors.push(e.message));
-  await p.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_gfx','hd'); Math.random=()=>0.1;`);
+  await p.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_live','0'); localStorage.setItem('sonaroids_gfx','hd'); Math.random=()=>0.1;`);
   await p.goto(GAME); await p.waitForTimeout(800);
   const hub=await p.evaluate(()=>{ const q=__sonaroids.btn().find(x=>x.id==='hub_rocks'), c=document.getElementById('hd'), cv=document.querySelector('canvas:not(#hd)');
     const k=cv.width/__sonaroids.S().LW, px=cv.getContext('2d').getImageData(Math.round((q.x+q.w/2)*k),Math.round((q.y+q.h/3)*k),1,1).data;   // v0.75: in HD the canvas is k device pixels per game pixel

@@ -4,7 +4,7 @@ const {chromium}=require('playwright'), path=require('path'), ROOT=path.join(__d
 (async()=>{ const b=await chromium.launch(); const ctx=await b.newContext({viewport:{width:844,height:390},deviceScaleFactor:1.5});
   for(const [skin,gfx,name,d0,d1] of [['candy','hd','sonarace_candy'],['note','hd','sonarace_notebook'],['candy','pixel','sonarace_pixels'],['pirate','hd','sonarace_pirates',3900,4900],['pirate','pixel','sonarace_pirates_pixels',2450,3350]]){   // v1.06: the pirates — the lagoon in HD, the fjords in pixels (where the zones are: src/48_racepirate.js, rpZone)
     const p=await ctx.newPage(); p.on('pageerror',e=>console.log('ERR',e.message));
-    await p.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_lang','en'); localStorage.setItem('sonaroids_gfx','${gfx}'); localStorage.setItem('sonaroids_race_skin','${skin}');`);
+    await p.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_live','0'); localStorage.setItem('sonaroids_lang','en'); localStorage.setItem('sonaroids_gfx','${gfx}'); localStorage.setItem('sonaroids_race_skin','${skin}');`);
     await p.goto('file://'+path.join(ROOT,'game','play','index.html')); await p.waitForTimeout(600);
     if(name==='sonarace_candy'){ await p.screenshot({path:path.join(__dirname,'games.png')}); }
     await p.evaluate(()=>{ __sonaroids.fake(); __sonaroids.act.hub_race(); __sonaroids.race(); __sonaroids.go('count'); }); await p.waitForTimeout(300);

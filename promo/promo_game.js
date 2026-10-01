@@ -15,7 +15,7 @@ function patched(){ let html=fs.readFileSync(path.join(ROOT,'game','play','index
    warm — seconds played before the first frame; n frames at fps; shot(i,buf) gets each frame */
 async function play(ctx,file,spec,palm,warm,n,fps,shot){
   const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
-  await p.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_lang','en'); localStorage.setItem('sonaroids_gfx','${spec.gfx||'hd'}');`+
+  await p.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_live','0'); localStorage.setItem('sonaroids_lang','en'); localStorage.setItem('sonaroids_gfx','${spec.gfx||'hd'}');`+
     (spec.fly?`localStorage.setItem('sonaroids_skin','${spec.fly}');`:`localStorage.setItem('sonaroids_race_skin','${spec.race}');`)+`window.__gifMode=true; window.__safe={t:0,r:47,b:21,l:47};`);
   await p.goto('file://'+file); await p.waitForTimeout(300);
   let now=1000; const step=async(dt,h)=>{ now+=dt*1000; await p.evaluate(([t,h])=>{ window.__palm=h; window.__gifTick(t); },[now,h]); };

@@ -302,7 +302,8 @@ var Sonar=(function(){
     return step; }
   /* v1.08: the live mode — an experiment, switched on the service «ЗВУК» screen (store 'sonaroids_live'): the echo processing learns the room
      during the game too (DSP2 'live'), the palm's range follows the play (Tune.stepLive) and the getting ready is cut short (49_main) */
-  function liveOn(){ try{ return localStorage.getItem('sonaroids_live')==='1'; }catch(e){ return false; } }
+  // v1.12: «auto-calibration» in the settings; not set — on once the first game was played (the first, with the instruction, gets ready by hand)
+  function liveOn(){ try{ var v=localStorage.getItem('sonaroids_live'); return v===null||v===''?localStorage.getItem('sonaroids_seen')==='1':v==='1'; }catch(e){ return false; } }
   function prepare(onStage,vol){
     active=false; last=null; lost=false; PROBE_G=0.25; volLog=[]; reasserts=0; refLv=null; jumpN=0;
     onStage&&onStage('side');

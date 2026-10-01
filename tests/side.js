@@ -7,7 +7,7 @@ const path=require('path'), ROOT=path.join(__dirname,'..');
 (async()=>{
   const b=await chromium.launch(), ctx=await b.newContext({viewport:{width:844,height:390}});
   await ctx.addInitScript(`try{ Object.defineProperty(screen,'orientation',{configurable:true,get(){ return {angle:window.__angle===undefined?90:window.__angle,type:'landscape-primary',addEventListener(){}}; }}); }catch(e){}
-    localStorage.setItem('sonaroids_lang','ru'); localStorage.setItem('sonaroids_seen','1');`);
+    localStorage.setItem('sonaroids_lang','ru'); localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_live','0');`);
   const p=await ctx.newPage(); const errors=[]; p.on('pageerror',e=>errors.push(e.message));
   await p.goto('file://'+path.join(ROOT,'game','play','index.html')); await p.waitForTimeout(300);
   const s0=await p.evaluate(()=>__sonaroids.side());

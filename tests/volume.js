@@ -7,7 +7,7 @@
 let chromium; try{ ({chromium}=require('playwright')); }catch(e){ console.log('no playwright — skipped'); console.log('RESULT: ok'); process.exit(0); }
 const fs=require('fs'), path=require('path'), ROOT=path.join(__dirname,'..'), SRC=fs.readFileSync(path.join(__dirname,'sim_source.js'),'utf8');
 async function page(b){ const ctx=await b.newContext({viewport:{width:844,height:390}});
-  await ctx.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_lang','en'); ${SRC}; window.makeSimSource=makeSimSource; window.SONAROIDS_API='https://api.test';`);
+  await ctx.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_live','0'); localStorage.setItem('sonaroids_lang','en'); ${SRC}; window.makeSimSource=makeSimSource; window.SONAROIDS_API='https://api.test';`);
   const p=await ctx.newPage(); const errors=[]; p.on('pageerror',e=>errors.push(e.message)); await p.route('https://api.test/**',r=>r.fulfill({status:200,headers:{'Access-Control-Allow-Origin':'*'},contentType:'application/json',body:'{"ok":true}'}));
   await p.goto('file://'+path.join(ROOT,'game','play','index.html')); return {p,errors}; }
 async function direct(b,base,v0){ const {p,errors}=await page(b);

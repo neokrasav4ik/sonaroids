@@ -171,15 +171,15 @@ function sHub(){ var fr, rimg, fid=SKIN_IDS[hubSkin], rsk=RACE_SKINS[hubRace]; h
   // with the service links shown (a long press on the version) everything moves up a line to make room for them
   // v0.97: no «play» button — a tap on a card starts its game (the maintainer: «убери кнопку „играть“ с первого экрана, у нас тап по карточке же»);
   // one row under the cards, or two on a narrow screen (the sounds above «how to play» and the language)
-  var bw=btnW([L('howto'),L('lang')]), sw=soundW(), narrow=bw*2+sw+16>LW-SAFE.l-SAFE.r-16;
+  var bw=btnW([L('howto'),L('lang'),L('settings')]), sw=bw, narrow=bw*3+16>LW-SAFE.l-SAFE.r-16;   // v1.12: «settings» in place of the sounds (they moved there)
   var vy=LH-SAFE.b-12, rowY=vy-8-BH-(diag?16:0), playY=narrow?rowY-8-BH:rowY, top=y+(sub?31:20), lab=24;
   var ih=Math.max(24,playY-8-lab-top), cw=Math.min(Math.round(ih*LW/LH),Math.round((LW-SAFE.l-SAFE.r-40)/2)), gap=16;
   ih=Math.round(cw*LH/LW); var cx=Math.round(cx0-cw-gap/2), ty=Math.round(top+(playY-8-lab-top-ih)/2);
   hubCard('hub_rocks',cx,ty,cw,ih,fr,'SonaFly','',true);
   hubCard('hub_race',cx+cw+gap,ty,cw,ih,rimg||withRaceSkin(rsk,function(){ return raceCardHD(cw-4,ih); }),'SonaRace','',true);   // v0.84: the race is open; v0.92: «тестовая пока версия»; v1.00: no longer («после добавления тетрадки надпись можно убирать»)
-  if(narrow){ soundRow(Math.round(cx0-sw/2),playY,sw,BH);
+  if(narrow){ button('settings',L('settings'),Math.round(cx0-sw/2),playY,sw,BH,'');
     var x2=Math.round(cx0-bw-4); button('howto',L('howto'),x2,rowY,bw,BH,''); button('lang',L('lang'),x2+bw+8,rowY,bw,BH,''); }
-  else { var tw=bw*2+sw+16, bx=Math.round(cx0-tw/2); button('howto',L('howto'),bx,rowY,bw,BH,''); button('lang',L('lang'),bx+bw+8,rowY,bw,BH,''); soundRow(bx+2*bw+16,rowY,sw,BH); }
+  else { var tw=bw*2+sw+16, bx=Math.round(cx0-tw/2); button('howto',L('howto'),bx,rowY,bw,BH,''); button('lang',L('lang'),bx+bw+8,rowY,bw,BH,''); button('settings',L('settings'),bx+2*bw+16,rowY,sw,BH,''); }
   // v0.71 (the maintainer): the source bottom left, the app's update bottom centre, the version bottom right (a long press on it shows the
   // service links: logs, sound, lab)
   var vr=freeSide()==='left';
@@ -190,6 +190,35 @@ function sHub(){ var fr, rimg, fid=SKIN_IDS[hubSkin], rsk=RACE_SKINS[hubRace]; h
   if(/Android/i.test(navigator.userAgent)&&!APP){ var as=L('get_apk'), aw=PF.width(as), ax=vr?LW-SAFE.r-8-aw:SAFE.l+8, ay=SAFE.t+8;
     text(as,ax,ay,P.band,'left'); R(P.band,ax,ay+PF.CAP+2,aw,1); BTN.push({id:'apk',x:ax-6,y:ay-6,w:aw+12,h:PF.CAP+12}); }
   say('Sonaroids. SonaFly. '+L('play')); }
+/* v1.12, «settings» on the games' screen (the maintainer: «пора вводить кнопку „настройки“ на главном экране»; his sketch А — rows with ◀ ▶
+   as the skin's): the sounds (they left the games' screen; still in the games' menus and the pause), the graphics (always HD / always
+   pixels / chosen in the game — the first two take «graphics» out of the games' menus and the pause), the probe's band (always wide /
+   always normal / chosen before a game — the first two skip that screen), the auto-calibration (the live mode: on by default once the
+   first game was played, the first one — with the instruction — gets ready by hand), and the probe's advanced settings (the service «sound») */
+function setGfx3(){ return store.get('sonaroids_gfx_lock',''); }
+function setBand3(){ return store.get('sonaroids_band_lock',''); }
+function setLive(){ return liveOn(); }
+function gfxFree(){ return !setGfx3(); }
+function gfxLockApply(){ var v=setGfx3(); if((v==='hd'||v==='pixel')&&gfxMode!==v){ setGfx(v); pool={K:0,list:[[],[],[]]}; } }
+var SET_ROWS=[
+  ['set_gfx',function(){ var v=setGfx3(); return v==='hd'?'set_gfx_hd':v==='pixel'?'set_gfx_px':'set_gfx_menu'; },function(dir){ var o=['','hd','pixel'], i=(o.indexOf(setGfx3())+dir+3)%3; store.set('sonaroids_gfx_lock',o[i]); gfxLockApply(); }],
+  ['set_band',function(){ var v=setBand3(); return v==='wide'?'set_band_w':v==='normal'?'set_band_n':'set_band_ask'; },function(dir){ var o=['','wide','normal'], i=(o.indexOf(setBand3())+dir+3)%3; store.set('sonaroids_band_lock',o[i]); }],
+  ['set_live',function(){ return setLive()?'set_on':'set_off'; },function(){ store.set('sonaroids_live',setLive()?'0':'1'); acoustic=false; Logs.ev(setLive()?'автокалибровка включена':'автокалибровка выключена'); }]];
+function arrowRow(id,label,x,y,w,h){ var s=Math.round(h*0.9);
+  R(P.bg,x,y,w,h); frame(x,y,w,h,P.line);
+  polyFill([[x+s/2+2,y+h/2-4],[x+s/2+2,y+h/2+4],[x+s/2-3,y+h/2]],P.band); polyFill([[x+w-s/2-2,y+h/2-4],[x+w-s/2-2,y+h/2+4],[x+w-s/2+3,y+h/2]],P.band);
+  var tw=PF.width(label), fit=Math.min(1,(w-2*s-8)/Math.max(1,tw));
+  if(fit<1){ lx.save(); lx.translate(x+w/2,0); lx.scale(fit,1); lx.translate(-(x+w/2),0); }
+  text(label,x+w/2,y+Math.round((h-7)/2),P.text,'center',1,true); if(fit<1) lx.restore();
+  BTN.push({id:id+'_prev',x:x,y:y,w:s+4,h:h}); BTN.push({id:id+'_next',x:x+s+4,y:y,w:w-s-4,h:h}); }
+function sSettings(){ sky(DT,0.3); var y=titles(L('settings_t')), cx0=Math.round((SAFE.l+LW-SAFE.r)/2), mw=LW-SAFE.l-SAFE.r-2*(BH+24);   // clear of the menu button and the version in the corners
+  var lab=function(r){ return L(r[0])+': '+L(r[1]()); }, w=Math.min(mw,Math.max(soundW(),btnW(SET_ROWS.map(lab).concat([L('set_expert')]))+2*BH)), x=Math.round(cx0-w/2);
+  var desc=PF.wrap(L(setLive()?'set_live_on_s':'set_live_off_s'),w,1), need=5*BH+desc.length*10+2, room=LH-SAFE.b-6-(y+4), g=Math.max(3,Math.min(6,Math.floor((room-need)/4)));
+  y+=Math.max(2,Math.min(6,room-need-4*g)); soundRow(x,y,w,BH); y+=BH+g;
+  SET_ROWS.forEach(function(r){ arrowRow(r[0],lab(r),x,y,w,BH); y+=BH+(r[0]==='set_live'?2:g); });
+  desc.forEach(function(l){ text(l,cx0,y+1,P.soft,'center'); y+=10; }); y+=g-1;
+  button('set_expert',L('set_expert'),x,y,w,BH,'');
+  say(L('settings_t')+'. '+SET_ROWS.map(lab).join('. ')); }
 /* ── the game's own screen (SonaFly): the chosen skin flies behind, the buttons on the free side over a dim band:
    play, high scores, how to play, «◀ skin: … ▶» (the picture changes at once), «← all games» ── */
 /* v1.07: the dots under it — how many skins and which — in the middle of the gap to the next button (they were 1 px from it); the race has them too */
@@ -204,7 +233,7 @@ function skinRow(x,y,w,h,gap,race){ var s=Math.round(h*0.9), ty=y+Math.round((h-
 function sTitle(){
   // v0.72: «graphics: pixels / HD» under the skin (a skin without HD pictures yet says «soon»)
   var gl2=gfxLabel();
-  var items=[['play',L('play'),'primary'],['scores',L('scores')],['howto',L('howto')],['skin','','skin'],['gfx',gl2],['sfx','','sound'],['hub',L('all_games')]];   // v1.07: the sounds here too, as in SonaRace's menu (Den: «почему в меню сонофлая нет настройки звука, а в гонках есть?» — they went to the games' screen in 0.70)
+  var items=[['play',L('play'),'primary'],['scores',L('scores')],['howto',L('howto')],['skin','','skin']].concat(gfxFree()?[['gfx',gl2]]:[]).concat([['sfx','','sound'],['hub',L('all_games')]]);   // v1.07: the sounds here too, as in SonaRace's menu (Den: «почему в меню сонофлая нет настройки звука, а в гонках есть?» — they went to the games' screen in 0.70)
   var w=Math.max(btnW(items.filter(function(b){ return b[1]; }).map(function(b){ return b[1]; })),PF.width(L('skin')+': '+L('skin_'+SKIN_IDS.reduce(function(a,k){ return PF.width(L('skin_'+k))>PF.width(L('skin_'+a))?k:a; })))+2*Math.round(BH*0.9)+24,soundW());
   var bx0=sideX(w), band0=freeSide()==='left'?0:bx0-Math.max(8,Math.round(LW*0.04)), band1=freeSide()==='left'?bx0+w+Math.max(8,Math.round(LW*0.04)):LW;
   noLight=true; drawDemo(SK,DT,freeSide()==='left'?band1+16:SAFE.l+16); noLight=false;           // the ship flies beside the buttons' band; no soft light over the buttons
@@ -469,7 +498,7 @@ function gfxLabel(){ return L('gfx')+': '+(gfxMode==='hd'?'HD'+(hdAvail(skinId)?
    «◀ skin ▶» (the maintainer: «добавить выбор скина и в меню игры»), graphics, sounds; the skin changes at once, the game waits */
 function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('paused'));
   var act=[['resume',L('resume'),'primary']].concat(pausedFrom==='play'?[['restart',L('restart')],['quit',L('quit')]]:[]).concat([['exit',L('exit')]]),
-      look=mode==='race'?[['rskin',raceSkinLabel(),'rskin'],['gfx',L('gfx')+': '+(gfxMode==='hd'?'HD':L('gfx_pixel'))],['sfx','','sound']]:[['skin','','skin'],['gfx',gfxLabel()],['sfx','','sound']], top=topY()+12, bot=LH-SAFE.b-4;
+      look=(mode==='race'?[['rskin',raceSkinLabel(),'rskin']]:[['skin','','skin']]).concat(gfxFree()?[['gfx',mode==='race'?L('gfx')+': '+(gfxMode==='hd'?'HD':L('gfx_pixel')):gfxLabel()]]:[]).concat([['sfx','','sound']]), top=topY()+12, bot=LH-SAFE.b-4;
   // v1.03: SonaRace's pause as SonaFly's — the skin and the graphics beside the actions (Den: «во флае можно скин и графику менять прямо во время игры в меню паузы, в гонках надо сделать аналогичное»)
   var w1=colW(act), w2=colW(look), g=10, left=freeSide()==='left', x1=sideX(w1), x2=left?x1+w1+g:x1-g-w2, cy=Math.min(Math.round(LH*0.55),Math.round((top+bot)/2));
   if(w1+g+w2>LW-SAFE.l-SAFE.r-2*Math.max(8,Math.round(LW*0.04))){                                        // too narrow for two (a tablet in Russian): one tight column
@@ -550,7 +579,7 @@ function newSeed(){ try{ var a=new Uint32Array(1); crypto.getRandomValues(a); re
 function raceDemoTick(){ if(!rDemo||rDemo.d>60000) rDemo=Race.create(20260929,raceFW(),Race.FH/2);
   if(rDemo._c===clock) return; rDemo._c=clock; for(var n=Math.max(1,Math.round(DT*60));n>0;n--) raceDemoStep(rDemo); }
 function sRTitle(){ raceDemoTick(); raceScene(rDemo,rDemo.d,rDemo.car.y,DT);
-  var items=[['play',L('play'),'primary'],['scores',L('scores')],['howto',L('howto')]].concat(RACE_TEST?[['rset',L('r_set')]]:[]).concat([['rskin',raceSkinLabel(),'rskin'],['gfx',L('gfx')+': '+(gfxMode==='hd'?'HD':L('gfx_pixel'))],['sfx','','sound'],['hub',L('all_games')]]), w=colW(items);
+  var items=[['play',L('play'),'primary'],['scores',L('scores')],['howto',L('howto')]].concat(RACE_TEST?[['rset',L('r_set')]]:[]).concat([['rskin',raceSkinLabel(),'rskin']]).concat(gfxFree()?[['gfx',L('gfx')+': '+(gfxMode==='hd'?'HD':L('gfx_pixel'))]]:[]).concat([['sfx','','sound'],['hub',L('all_games')]]), w=colW(items);
   var bx0=sideX(w), m=Math.max(8,Math.round(LW*0.04)), band0=freeSide()==='left'?0:bx0-m, band1=freeSide()==='left'?bx0+w+m:LW;
   lx.globalAlpha=0.55; R(P.bg,band0,0,band1-band0,LH); lx.globalAlpha=1;
   column(items,Math.round(LH*0.52),bx0,items.length>5?6:8);
@@ -650,7 +679,7 @@ function ensure(then){ if(booted&&Sonar.healthy()) then(); else { Sonar.restart(
 function boot(then){ Sonar.boot().then(function(){ booted=true; Sfx.play('tap'); then(); })
   .catch(function(e){ errKind=(e&&e.message&&/webaudio|worklet/.test(e.message))?'audio':'mic'; Board.setup(errKind==='mic'?'nomic':'noaudio'); go('nomic'); }); }
 /* v0.40 (27 Sep): before every game — the probe choice, no default: «wide» (cleaner control, children and animals may hear it) or «normal» (silent) */
-function toAway(){ prep=null; var b=liveOn()?store.get('sonaroids_band_last',''):''; if(b==='wide'||b==='normal'){ Logs.ev('живой режим: зонд как в прошлый раз',{band:b}); toRoom(b); return; } go('probe'); }
+function toAway(){ prep=null; var b=setBand3(); if(b==='wide'||b==='normal'){ Logs.ev('полоса из настроек',{band:b}); toRoom(b); return; } go('probe'); }   // v1.12: the band from the settings, or chosen before the game (1.08's live mode took the last one)
 /* v1.08, the live mode (an experiment, the service «ЗВУК» screen; the maintainer: «игра готовилась, калибровалась и игралась одновременно
    и постоянно… если удастся добиться моментального старта и точного управления — включим в игру»). The echo processing learns the room
    all the time, during the game too (src/11_dsp.js), and the palm's range follows the play (Tune.stepLive) — so the getting ready is cut
@@ -664,7 +693,7 @@ function liveReady(){ return liveOn()&&booted&&Sonar.healthy()&&acoustic&&T!==nu
 function afterRoom(){ if(!liveOn()){ toWave(); return; }
   T=Tune.create(+store.get('sonaroids_field','100')||100,true); T.ok=true; caught=true; caughtT=-9; Logs.ev('живой режим: без взмахов',{field:T.field}); startCount(); }
 function quickOr(full){ if(liveReady()){ Logs.ev('живой режим: сразу отсчёт'); dropGame(); resumeAfterPrep=false; startCount(); } else full(); }
-function toRoom(b){ roomAgain=false; Sonar.setBand(b); store.set('sonaroids_band_last',b); prep=null; silentRetry=false; go('away'); }
+function toRoom(b){ roomAgain=false; Sonar.setBand(b); prep=null; silentRetry=false; go('away'); }
 function toWave(){ T=Tune.create(+store.get('sonaroids_field','100')||100,true); caught=false; flips=0; flipT=-9; seenT=0; go('wave'); }
 function pauseGame(){ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; go('paused'); } }
 function startCount(){ if(resumeAfterPrep&&g&&g.state!=='over'){ resumeAfterPrep=false; countT=3; go('count-resume'); return; }
@@ -689,9 +718,12 @@ var ACT={
   play:function(){ if(store.get('sonaroids_seen','')!=='1'){ ACT.howto(); return; } onboarding=false; direct=false; quickOr(function(){ ensure(toAway); }); },
   howto:function(){ onboarding=true; direct=false; go('sound'); },
   /* a deep recalibration: forget the saved palm range, close the microphone and start from "put the phone down" */
-  recal:function(){ onboarding=false; direct=false; store.set('sonaroids_field','100'); store.set('sonaroids_band_last',''); Sonar.restart(); booted=false; acoustic=false; go('phone'); },
+  recal:function(){ onboarding=false; direct=false; store.set('sonaroids_field','100'); Sonar.restart(); booted=false; acoustic=false; go('phone'); },
   lefty:function(){ lefty=true; store.set('sonaroids_lefty','1'); turnShown=false; Logs.ev('играю левой'); seenT=scrT; },
   hub:function(){ mode='fly'; go('hub'); },
+  settings:function(){ go('settings'); }, set_expert:function(){ audDev=null; audFrom='settings'; go('audio'); }, set_back:function(){ go('hub'); },
+  set_gfx_prev:function(){ SET_ROWS[0][2](-1); }, set_gfx_next:function(){ SET_ROWS[0][2](1); }, set_band_prev:function(){ SET_ROWS[1][2](-1); }, set_band_next:function(){ SET_ROWS[1][2](1); },
+  set_live_prev:function(){ SET_ROWS[2][2](-1); }, set_live_next:function(){ SET_ROWS[2][2](1); },
   rset:function(){ go('rset'); },
   hub_rocks:function(){ mode='fly'; go('title'); }, rskin:function(){ raceSkin=RACE_SKINS[(RACE_SKINS.indexOf(raceSkin)+1)%RACE_SKINS.length]; RSKIN=raceSkin; store.set('sonaroids_race_skin',raceSkin); }, rskin_next:function(){ ACT.rskin(); }, rskin_prev:function(){ raceSkin=RACE_SKINS[(RACE_SKINS.indexOf(raceSkin)+RACE_SKINS.length-1)%RACE_SKINS.length]; RSKIN=raceSkin; store.set('sonaroids_race_skin',raceSkin); }, hub_play:function(){ mode='fly'; go('title'); }, hub_race:function(){ mode='race'; go('rtitle'); },
   gfx:function(){ setGfx(gfxMode==='hd'?'pixel':'hd'); pool={K:0,list:[[],[],[]]}; },
@@ -716,7 +748,7 @@ var ACT={
   link_done:function(){ period='all'; go('scores'); },
   nick_later:function(){ nickField(false); nickMsg=''; go(nickFrom==='over'?'over':'scores'); },
   logs:function(){ Logs.share(); },
-  audio:function(){ audDev=null; go('audio'); },
+  audio:function(){ audDev=null; audFrom=null; go('audio'); },
   lab:function(){ location.href='../lab/sonar_lab3.html'; },
   ver:function(){ diag=!diag; },
   apk:function(){ try{ window.open('https://github.com/neokrasav4ik/sonaroids/releases/latest/download/sonaroids.apk','_blank','noopener'); }catch(e){} },
@@ -795,7 +827,7 @@ function loop(now){
     case 'sound': sSound(); break;
     case 'phone': sPhone(); break; case 'mic': sMic(); break; case 'probe': sProbe(); break; case 'away': sAway(); break; case 'wave': sWave(); break;
     case 'count': sCount(); break; case 'count-resume': sCountResume(); break; case 'play': sPlay(); break; case 'over': sOver(); break;
-    case 'audio': sAudio(); break; case 'paused': sPaused(); break; case 'restart': sRestart(); break; case 'scores': sScores(); break; case 'nick': sNick(); break; case 'lost': sLost(); break; case 'nomic': sNomic(); break; case 'link': sLink(); break; case 'linkshow': sLinkShow(); break; case 'linkin': sLinkIn(); break; case 'linkdone': sLinkDone(); break;
+    case 'audio': sAudio(); break; case 'settings': sSettings(); break; case 'paused': sPaused(); break; case 'restart': sRestart(); break; case 'scores': sScores(); break; case 'nick': sNick(); break; case 'lost': sLost(); break; case 'nomic': sNomic(); break; case 'link': sLink(); break; case 'linkshow': sLinkShow(); break; case 'linkin': sLinkIn(); break; case 'linkdone': sLinkDone(); break;
   }
   chrome(); pressGlow();
   present(scr==='play'?shake:0);
@@ -807,7 +839,7 @@ function loop(now){
 /* v0.50: the app's sound — a service screen (in the app; the title screen, a tap on the version, then «sound»). Where the game's sound comes
    from (the browser or the app itself), and in the app's mode which microphone and which speaker; the phone's microphones with where they
    are (Android 9+ tells the position), what is really in use now. A change closes the microphone: the next «Play» opens it anew. */
-var audDev=null, audSt=null, audT=0;
+var audDev=null, audSt=null, audT=0, audFrom=null;
 function audGet(k){ return store.get(k,''); }
 var AUD_ADDR={bottom:'aud_bottom',back:'aud_back',top:'aud_top',front:'aud_top'};
 function audLabel(m){ var p=m.pos_mm, where='', ad=String(m.address||'').toLowerCase(); if(AUD_ADDR[ad]) return L(AUD_ADDR[ad]);
@@ -816,8 +848,8 @@ function audLabel(m){ var p=m.pos_mm, where='', ad=String(m.address||'').toLower
   return (where?where+' ':'')+(m.desc?String(m.desc).toUpperCase().slice(0,14):''); }
 function chip(id,label,x,y,on){ var w=PF.width(label)+12, h=PF.CAP+10; R(on?P.band:P.bg,x,y,w,h); frame(x,y,w,h,on?P.band:P.line); text(label,x+6,y+5,on?P.bg:P.text,'left',1,on); BTN.push({id:id,x:x,y:y,w:w,h:h}); return x+w+6; }
 /* v1.08: the live mode's switch — on top in the app, the only row in a browser (the rest is the app's own sound) */
-function liveRow(x0,y,lw){ var on=store.get('sonaroids_live','')==='1', x;
-  text(L('aud_live'),x0,y+5,P.soft,'left'); x=x0+lw; x=chip('aud:live:',L('aud_off'),x,y,!on); chip('aud:live:1',L('aud_on'),x,y,on);
+function liveRow(x0,y,lw){ var on=liveOn(), x;
+  text(L('aud_live'),x0,y+5,P.soft,'left'); x=x0+lw; x=chip('aud:live:0',L('aud_off'),x,y,!on); chip('aud:live:1',L('aud_on'),x,y,on);
   y+=PF.CAP+11; PF.wrap(L('aud_live_s'),LW-x0-SAFE.r-12,1).forEach(function(q){ text(q,x0,y,P.soft,'left'); y+=10; }); return y+4; }
 function sAudio(){ sky(DT,0.3); var A=window.SonaroidsApp;
   if(!Sonar.nativeAvail()){ titles(L('aud_t2'),L('aud_s2')); liveRow(Math.round(LW*0.1),Math.round(LH*0.3),PF.width(L('aud_live'))+10); say(L('aud_t2')); return; }
@@ -859,7 +891,7 @@ function sAudio(){ sky(DT,0.3); var A=window.SonaroidsApp;
   var ls=L('aud_lab'), lw2=PF.width(ls), lx=LW-SAFE.r-12-lw2, ly=LH-SAFE.b-14; text(ls,lx,ly,P.band,'left'); R(P.band,lx,ly+PF.CAP+2,lw2,1); BTN.push({id:'aud:lab:1',x:lx-8,y:ly-5,w:lw2+16,h:PF.CAP+10});
   say(L('aud_t')); }
 function audAct(id){ var p=id.split(':'), k=p[1], v=p.slice(2).join(':');
-  if(k==='live'){ store.set('sonaroids_live',v); Logs.ev(v?'живой режим включён':'живой режим выключен'); acoustic=false; return; }   // the next «Play» gets ready anew, in the chosen mode
+  if(k==='live'){ store.set('sonaroids_live',v==='1'?'1':'0'); Logs.ev(v?'живой режим включён':'живой режим выключен'); acoustic=false; return; }   // the next «Play» gets ready anew, in the chosen mode
   if(k==='mode') store.set('sonaroids_audio',v); else if(k==='mic') store.set('sonaroids_mic',v); else if(k==='out') store.set('sonaroids_out',v);
   else if(k==='src') store.set('sonaroids_src',v); else if(k==='end') store.set('sonaroids_probe_end',v); else if(k==='vol') store.set('sonaroids_vol',v); else if(k==='usage') store.set('sonaroids_usage',v);
   else if(k==='retest') Sonar.audioRetest();
@@ -868,7 +900,7 @@ function audAct(id){ var p=id.split(':'), k=p[1], v=p.slice(2).join(':');
 var NO_MENU={hub:1,title:1,rtitle:1,lang:1,paused:1,restart:1,play:1}, NO_VER={rset:1,hub:1,over:1,play:1,count:1,'count-resume':1,paused:1,restart:1};
 function chrome(){ if(LH>LW) return;
   var s=BH-3, vr=freeSide()!=='left', x=vr?LW-Math.round(SAFE.r*0.5)-10-s:Math.round(SAFE.l*0.5)+10, y=SAFE.t+7;
-  if(!NO_MENU[scr]) iconButton(scr==='count'||scr==='count-resume'?'pause':scr==='scores'?'sc_back':'menu',x,y);
+  if(!NO_MENU[scr]) iconButton(scr==='count'||scr==='count-resume'?'pause':scr==='scores'?'sc_back':scr==='settings'?'set_back':scr==='audio'&&audFrom==='settings'?'settings':'menu',x,y);
   // the wave screen: the try-out ship flies up the free side's edge — the version goes to the other top corner (by the "wave here" beacon)
   // the try-out ship flies up the left edge: there the version goes to the top right corner; on the scores screen the buttons' column
   // starts right under the menu button — the version stands beside it
@@ -876,7 +908,7 @@ function chrome(){ if(LH>LW) return;
   if((scr==='wave'&&!vr)||scr==='title'||scr==='rtitle') diagCorner('V'+VERSION,true,SAFE.t+8,scr==='title'||scr==='rtitle'?vr===(freeSide()!=='left'):true);   // the game's screen: the corner away from its buttons
   else if(scr==='scores') diagCorner('V'+VERSION,true,y+Math.round((s-PF.CAP)/2),false,vr?x-16:x+s+16);
   else diagCorner('V'+VERSION,true,y+s+14); }
-SK=skinView(skinId); resize(); Board.flush();
+gfxLockApply(); SK=skinView(skinId); resize(); Board.flush();
 if('serviceWorker' in navigator&&location.protocol==='https:') navigator.serviceWorker.register('sw.js').then(function(r){ r.update(); }).catch(function(){});   // works offline; checks for a new version on every launch
 go('hub');   // v0.70: the games' screen first (always the menu first since 0.44; a new player's first "Play" walks through the instruction)
 requestAnimationFrame(loop);

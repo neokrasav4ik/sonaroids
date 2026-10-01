@@ -8,7 +8,7 @@ const path=require('path'), ROOT=path.join(__dirname,'..');
 (async()=>{ const b=await chromium.launch(); let ok=true; const errors=[];
   for(const [w,h] of [[568,320],[844,390],[1024,768]]){
     const p=await b.newPage({viewport:{width:w,height:h},deviceScaleFactor:2}); p.on('pageerror',e=>errors.push(e.message));
-    await p.addInitScript(`localStorage.setItem('sonaroids_seen','1'); Math.random=(()=>{ let s=7; return ()=>((s=s*16807%2147483647)/2147483647); })();`);
+    await p.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_live','0'); Math.random=(()=>{ let s=7; return ()=>((s=s*16807%2147483647)/2147483647); })();`);
     await p.goto('file://'+path.join(ROOT,'game','play','index.html')); await p.waitForTimeout(300);
     const ids=await p.evaluate(()=>__sonaroids.skinIds());
     for(const id of ids) for(const m of ['pixel','hd']){ const r=await p.evaluate(([i,m])=>__sonaroids.sizeProbe(i,m),[id,m]); if(!r) continue;

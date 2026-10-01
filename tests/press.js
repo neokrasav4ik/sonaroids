@@ -6,7 +6,7 @@ let chromium; try{ ({chromium}=require('playwright')); }catch(e){ console.log('n
 const path=require('path'), ROOT=path.join(__dirname,'..');
 (async()=>{
   const b=await chromium.launch(), ctx=await b.newContext({viewport:{width:844,height:390}});
-  await ctx.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_lang','en');`);
+  await ctx.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_live','0'); localStorage.setItem('sonaroids_lang','en');`);
   const p=await ctx.newPage(); const errors=[]; p.on('pageerror',e=>errors.push(e.message));
   await p.goto('file://'+path.join(ROOT,'game','play','index.html')); await p.waitForTimeout(700);
   // the mean lightness of a button's middle, from a screenshot

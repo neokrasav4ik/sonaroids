@@ -126,7 +126,7 @@
 ```sh
 python3 build.py                 # src/ → game/play/index.html (после правки шрифта — python3 font/make_font.py)
 python3 build.py --icons         # перерисовать иконки для экрана «Домой» (нужен Pillow)
-sh tests/run.sh                  # игры и сервер
+sh tests/run.sh                  # игры и сервер (~9 мин: сначала проверки в реальном времени по одной, потом остальные по две сразу)
 cd lab && sh tools/run_all.sh    # лаборатория сонара
 ```
 

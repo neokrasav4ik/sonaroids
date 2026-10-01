@@ -126,7 +126,7 @@ A player is a random key kept on the phone; the server stores only its hash. Wit
 ```sh
 python3 build.py                 # src/ → game/play/index.html (python3 font/make_font.py after changing the font)
 python3 build.py --icons         # redraw the Home Screen icons (needs Pillow)
-sh tests/run.sh                  # the games and the server
+sh tests/run.sh                  # the games and the server (~9 min: the real-time ones alone, then the rest two at once)
 cd lab && sh tools/run_all.sh    # the sonar lab
 ```
 

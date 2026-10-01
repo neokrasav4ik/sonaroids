@@ -1,29 +1,7 @@
 #!/bin/sh
 # All game checks without a phone. From the repository root: sh tests/run.sh
-# Needs node 18+ and python3. tests/flow.js and tests/screens.js also need Playwright with Chromium; without it they are skipped.
+# Needs node 18+ and python3. The Chromium checks also need Playwright with Chromium; without it they are skipped.
+# v1.07: tests/run_par.py — the real-time checks alone first, then the rest in two lanes at once; SERIAL=1 for one after another.
 set -e
 cd "$(dirname "$0")/.."
-echo "== the built game matches src/ ==";        python3 build.py --check
-echo; echo "== the font matches its drawing ==";  python3 font/make_font.py --check
-echo; echo "== DSP2 is the lab's ==";              node tests/test_same_dsp.js
-echo; echo "== flight core: deterministic ==";     node tests/test_core.js
-echo; echo "== game rules and difficulty (bot) ==";  node tests/test_rules.js
-echo; echo "== race core: deterministic, rules and length (bot) =="; node tests/test_race.js
-echo; echo "== wave tuning on a synthetic palm =="; node tests/test_tune.js
-echo; echo "== band equalizer (Android) ==";           node tests/test_eq.js
-echo; echo "== is the probe heard: muted vs noisy =="; node tests/test_quiet.js
-echo; echo "== strings and font ==";               node tests/test_text.js
-echo; echo "== screens fit, all sizes (Chromium) =="; node tests/screens.js
-echo; echo "== leaderboard server (temporary database) =="; node --no-warnings tests/test_server.js
-echo; echo "== which end of the phone the hand plays at (Chromium) =="; node tests/side.js
-echo; echo "== first open shows the menu (Chromium) =="; node tests/first_open.js
-echo; echo "== the media volume before getting ready (Chromium) =="; node tests/volume.js
-echo; echo "== a phone that does not hear its own probe (Chromium) =="; node tests/silent.js
-echo; echo "== buttons light up under the finger (Chromium) =="; node tests/press.js
-echo; echo "== the app's own sound: frames through the app, the service screen (Chromium) =="; node tests/native_audio.js
-echo; echo "== skins: every object readable on its sky (Chromium) =="; node tests/skin_audit.js
-echo; echo "== HD skins: every object readable on its sky (Chromium) =="; HD=1 node tests/skin_audit.js
-echo; echo "== graphics: pixels / HD (Chromium) =="; node tests/hd.js
-echo; echo "== skins: objects drawn the size the game counts (Chromium) =="; node tests/skin_sizes.js
-echo; echo "== the whole game, synthetic microphone (Chromium) =="; node tests/flow.js
-echo; echo "== SonaRace, synthetic microphone (Chromium) =="; node tests/race_flow.js
+exec python3 tests/run_par.py

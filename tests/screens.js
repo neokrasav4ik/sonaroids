@@ -6,9 +6,14 @@ const fs=require('fs'), path=require('path'); const ROOT=path.join(__dirname,'..
 const SIZES=[[568,320],[667,375],[740,360],[844,390],[932,430],[1024,768],[1366,1024]];
 const SCREENS=['lang','hub','title','sound','phone','mic','probe','wave','wave-try','count','play','pause-play','restart','over','over-here','scores','nick','link','linkshow','linkin','linkdone','lost','nomic',
   'race-menu','race-set','race-try','race-count','race-play','race-pause','race-over'];   // v0.84: SonaRace's own screens (its menu, the try-out with the car, the race, its pause and finish)
+// v1.07: the buttons each screen must show (checked below) — waited for before the checks, so a slow frame is not a failure
+const WANT={'wave-try':['start','again'],'race-try':['start','again'],'race-menu':['play','howto','hub'],'race-set':['rs_*'],'race-play':['pause'],'race-pause':['resume','restart','quit','exit'],
+  'race-over':['again','menu','ver'],'play':['pause'],'restart':['rs_go','rs_cal','rs_back'],'pause-play':['resume','restart','quit','exit'],'over':['ver']};
 (async()=>{
   const b=await chromium.launch(); const bad=[]; const errors=[]; let n=0;
-  for(const [w,h] of SIZES) for(const lang of ['en','ru']) for(const hand of ['right','left']){
+  // v1.07: the 28 sizes × languages × hands are independent — several at once (each its own browser context), the waits overlap (SCREENS_JOBS, default 4)
+  const combos=[]; for(const [w,h] of SIZES) for(const lang of ['en','ru']) for(const hand of ['right','left']) combos.push([w,h,lang,hand]);
+  async function one([w,h,lang,hand]){
     const ctx=await b.newContext({viewport:{width:w,height:h},deviceScaleFactor:w<700?2:3});
     await ctx.addInitScript(`localStorage.setItem('sonaroids_lang','${lang}'); localStorage.setItem('sonaroids_hand','${hand}'); localStorage.setItem('sonaroids_seen','1');`);
     const p=await ctx.newPage(); p.on('pageerror',e=>errors.push(e.message));
@@ -43,7 +48,11 @@ const SCREENS=['lang','hub','title','sound','phone','mic','probe','wave','wave-t
         else { if(s==='over'){ g.state='over'; g.score=12480; } __sonaroids.go(s); } },s);
       await p.waitForTimeout(s==='over'||s==='over-here'||s==='race-over'?1000:s==='phone'||s==='wave-try'||s==='race-try'?1300:150); n++;
       // v0.78: the game starts in HD — a big screen draws slowly here without a GPU (1366×1024: ~12 frames/s), so wait for the calibrated screen's buttons
-      if(s==='wave-try'||s==='race-try') for(let i=0;i<40&&!(await p.evaluate(()=>__sonaroids.btn().some(q=>q.id==='start')));i++) await p.waitForTimeout(100);
+      // v1.07: and so for every screen whose buttons are checked below: a few frames drawn, then until they are there (up to 8 s) — with other checks
+      // running beside this one (tests/run_par.py) a fixed wait was sometimes too short; what is checked is the same
+      await p.evaluate(()=>new Promise(r=>{ let k=0; (function f(){ if(++k>=3) r(); else requestAnimationFrame(f); })(); }));
+      const want=WANT[s]; if(want) for(let i=0;i<80&&!(await p.evaluate(ids=>{ const b=__sonaroids.btn().map(q=>q.id); return ids.every(id=>id==='rs_*'?b.filter(x=>x.indexOf('rs_')===0).length===14:b.includes(id)); },want));i++) await p.waitForTimeout(100);
+      if(s==='linkin') for(let i=0;i<40&&!(await p.evaluate(()=>{ const el=document.querySelector('input'); return el&&el.style.display!=='none'&&el.getAttribute('data-mode')==='code'; }));i++) await p.waitForTimeout(100);
       const r=await p.evaluate(()=>({btn:__sonaroids.btn(),S:__sonaroids.S()}));
       const {LW,LH}=r.S;
       if(s==='race-try'&&!(r.btn.some(q=>q.id==='start')&&r.btn.some(q=>q.id==='again'))) bad.push(`${w}x${h} ${lang} ${hand}: the race's try-out lacks play/recalibrate`);
@@ -70,6 +79,8 @@ const SCREENS=['lang','hub','title','sound','phone','mic','probe','wave','wave-t
     }
     await ctx.close();
   }
+  const JOBS=Math.max(1,+(process.env.SCREENS_JOBS||4)); let next=0;
+  await Promise.all(Array.from({length:JOBS},async()=>{ while(next<combos.length) await one(combos[next++]); }));
   const pc=await b.newContext({viewport:{width:390,height:844},deviceScaleFactor:3}); const pp=await pc.newPage();
   await pp.goto('file://'+path.join(ROOT,'game','play','index.html')); await pp.waitForTimeout(300); await pp.screenshot({path:path.join(OUT,'portrait.png')});
   const rot=await pp.evaluate(()=>document.getElementById('say').textContent); await b.close();

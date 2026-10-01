@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='1.06';
+var VERSION='1.07';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -3555,11 +3555,13 @@ function sideX(w){ return freeSide()==='left'?SAFE.l+Math.max(8,Math.round(LW*0.
 /* a column of buttons on the free side, vertically centred on y0 */
 function colW(items){ var w=btnW(items.filter(function(b){ return b[2]!=='sound'&&b[2]!=='skin'; }).map(function(b){ return b[1]; }));
   if(items.some(function(b){ return b[2]==='skin'; })) w=Math.max(w,skinW());
+  if(items.some(function(b){ return b[2]==='rskin'; })) w=Math.max(w,rskinW());
   return items.some(function(b){ return b[2]==='sound'; })?Math.max(w,soundW()):w; }
 /* the «◀ skin: … ▶» row's width: the longest skin name between the arrows */
+function rskinW(){ var lw=PF.width(L('r_skin')+': '+L('r_sk_'+RACE_SKINS.reduce(function(a,k){ return PF.width(L('r_sk_'+k))>PF.width(L('r_sk_'+a))?k:a; }))); return R_SKIN_ROW==='A'?lw+2*Math.round(BH*0.9)+24:lw+20; }
 function skinW(){ return PF.width(L('skin')+': '+L('skin_'+SKIN_IDS.reduce(function(a,k){ return PF.width(L('skin_'+k))>PF.width(L('skin_'+a))?k:a; })))+2*Math.round(BH*0.9)+24; }
 function column(items,y0,x0,gap){ var w=colW(items), h=BH; gap=gap===undefined?10:gap; var y=Math.round(y0-(items.length*(h+gap)-gap)/2), x=x0===undefined?sideX(w):x0;
-  items.forEach(function(b){ if(b[2]==='sound') soundRow(x,y,w,h); else if(b[2]==='skin') skinRow(x,y,w,h); else button(b[0],b[1],x,y,w,h,b[2]||'',Math.floor(clock*2)%2===0); y+=h+gap; }); }
+  items.forEach(function(b){ if(b[2]==='sound') soundRow(x,y,w,h); else if(b[2]==='skin') skinRow(x,y,w,h,gap); else if(b[2]==='rskin') rskinRow(x,y,w,h,gap); else button(b[0],b[1],x,y,w,h,b[2]||'',Math.floor(clock*2)%2===0); y+=h+gap; }); }
 /* v0.36: the sound row in the menu and the pause — [ - | SOUNDS ▮▮▮▮▮▯▯▯ | + ]; the middle switches the sounds on and off */
 function soundW(){ return PF.width(L('sfx_off'))+6+Sfx.steps*4+2*Math.round(BH*0.9)+12; }
 function soundRow(x,y,w,h){ var on=Sfx.on(), n=Sfx.steps, lv=Sfx.lvl(), s=Math.round(h*0.9), ty=y+Math.round((h-7)/2);
@@ -3674,22 +3676,25 @@ function sHub(){ var fr, rimg, fid=SKIN_IDS[hubSkin], rsk=RACE_SKINS[hubRace]; h
   say('Sonaroids. SonaFly. '+L('play')); }
 /* ── the game's own screen (SonaFly): the chosen skin flies behind, the buttons on the free side over a dim band:
    play, high scores, how to play, «◀ skin: … ▶» (the picture changes at once), «← all games» ── */
-function skinRow(x,y,w,h){ var s=Math.round(h*0.9), ty=y+Math.round((h-7)/2);
+/* v1.07: the dots under it — how many skins and which — in the middle of the gap to the next button (they were 1 px from it); the race has them too */
+function skinDots(x,y,w,h,gap,n,i0){ if(gap<5) return; var dy=y+h+Math.floor((gap-3)/2), dx=Math.round(x+w/2-(n*6-2)/2); for(var i=0;i<n;i++) R(i===i0?P.band:P.line,dx+i*6,dy,3,3); }
+function rskinRow(x,y,w,h,gap){ if(R_SKIN_ROW==='A'){ skinRow(x,y,w,h,gap,true); return; } button('rskin',raceSkinLabel(),x,y,w,h,''); skinDots(x,y,w,h,gap===undefined?7:gap,RACE_SKINS.length,RACE_SKINS.indexOf(raceSkin)); }
+function skinRow(x,y,w,h,gap,race){ var s=Math.round(h*0.9), ty=y+Math.round((h-7)/2);
   R(P.bg,x,y,w,h); frame(x,y,w,h,P.band);
   polyFill([[x+s/2+2,y+h/2-4],[x+s/2+2,y+h/2+4],[x+s/2-3,y+h/2]],P.band); polyFill([[x+w-s/2-2,y+h/2-4],[x+w-s/2-2,y+h/2+4],[x+w-s/2+3,y+h/2]],P.band);
-  text(L('skin')+': '+L('skin_'+skinId),x+w/2,ty,P.text,'center',1,true);
-  BTN.push({id:'skin_prev',x:x,y:y,w:s+6,h:h}); BTN.push({id:'skin_next',x:x+w-s-6,y:y,w:s+6,h:h}); BTN.push({id:'skin_next',x:x+s+6,y:y,w:w-2*s-12,h:h});
-  var n=SKIN_IDS.length, i0=SKIN_IDS.indexOf(skinId), dx=Math.round(x+w/2-(n*6-2)/2); for(var i=0;i<n;i++) R(i===i0?P.band:P.line,dx+i*6,y+h+3,3,3); }
+  var pre=race?'rskin':'skin'; text(race?raceSkinLabel():L('skin')+': '+L('skin_'+skinId),x+w/2,ty,P.text,'center',1,true);
+  BTN.push({id:pre+'_prev',x:x,y:y,w:s+6,h:h}); BTN.push({id:pre+'_next',x:x+w-s-6,y:y,w:s+6,h:h}); BTN.push({id:pre+'_next',x:x+s+6,y:y,w:w-2*s-12,h:h});
+  if(race) skinDots(x,y,w,h,gap===undefined?7:gap,RACE_SKINS.length,RACE_SKINS.indexOf(raceSkin)); else skinDots(x,y,w,h,gap===undefined?7:gap,SKIN_IDS.length,SKIN_IDS.indexOf(skinId)); }
 function sTitle(){
   // v0.72: «graphics: pixels / HD» under the skin (a skin without HD pictures yet says «soon»)
   var gl2=gfxLabel();
-  var items=[['play',L('play'),'primary'],['scores',L('scores')],['howto',L('howto')],['skin','','skin'],['gfx',gl2],['hub',L('all_games')]];
-  var w=Math.max(btnW(items.filter(function(b){ return b[1]; }).map(function(b){ return b[1]; })),PF.width(L('skin')+': '+L('skin_'+SKIN_IDS.reduce(function(a,k){ return PF.width(L('skin_'+k))>PF.width(L('skin_'+a))?k:a; })))+2*Math.round(BH*0.9)+24);
+  var items=[['play',L('play'),'primary'],['scores',L('scores')],['howto',L('howto')],['skin','','skin'],['gfx',gl2],['sfx','','sound'],['hub',L('all_games')]];   // v1.07: the sounds here too, as in SonaRace's menu (Den: «почему в меню сонофлая нет настройки звука, а в гонках есть?» — they went to the games' screen in 0.70)
+  var w=Math.max(btnW(items.filter(function(b){ return b[1]; }).map(function(b){ return b[1]; })),PF.width(L('skin')+': '+L('skin_'+SKIN_IDS.reduce(function(a,k){ return PF.width(L('skin_'+k))>PF.width(L('skin_'+a))?k:a; })))+2*Math.round(BH*0.9)+24,soundW());
   var bx0=sideX(w), band0=freeSide()==='left'?0:bx0-Math.max(8,Math.round(LW*0.04)), band1=freeSide()==='left'?bx0+w+Math.max(8,Math.round(LW*0.04)):LW;
   noLight=true; drawDemo(SK,DT,freeSide()==='left'?band1+16:SAFE.l+16); noLight=false;           // the ship flies beside the buttons' band; no soft light over the buttons
   lx.globalAlpha=0.55; R(P.bg,band0,0,band1-band0,LH); lx.globalAlpha=1;
-  var h=BH, gap=items.length>5?7:10, y=Math.round(LH*0.52-(items.length*(h+gap)-gap)/2);
-  items.forEach(function(b){ if(b[2]==='skin') skinRow(bx0,y,w,h); else button(b[0],b[1],bx0,y,w,h,b[2]||'',Math.floor(clock*2)%2===0); y+=h+gap; });
+  var h=BH, gap=items.length>6?6:items.length>5?7:10, y=Math.round(LH*0.52-(items.length*(h+gap)-gap)/2);
+  items.forEach(function(b){ if(b[2]==='skin') skinRow(bx0,y,w,h,gap); else if(b[2]==='sound') soundRow(bx0,y,w,h); else button(b[0],b[1],bx0,y,w,h,b[2]||'',Math.floor(clock*2)%2===0); y+=h+gap; });
   var a0=freeSide()==='left'?band1:SAFE.l, a1=freeSide()==='left'?LW-SAFE.r:band0, lsc=PF.width('SonaFly',2)<=a1-a0-12?2:1; text('SonaFly',Math.round((a0+a1)/2),Math.round(LH*0.16),P.band,'center',lsc);
   say('SonaFly. '+L('play')+'. '+L('skin')+': '+L('skin_'+skinId)); }
 /* v0.86: an iPhone asks for 40–60% (the maintainer's iPhone, 29 Sep: at 30–40% its probe came 3 dB over the bar — once it steered, once
@@ -3944,7 +3949,7 @@ function gfxLabel(){ return L('gfx')+': '+(gfxMode==='hd'?'HD'+(hdAvail(skinId)?
    «◀ skin ▶» (the maintainer: «добавить выбор скина и в меню игры»), graphics, sounds; the skin changes at once, the game waits */
 function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('paused'));
   var act=[['resume',L('resume'),'primary']].concat(pausedFrom==='play'?[['restart',L('restart')],['quit',L('quit')]]:[]).concat([['exit',L('exit')]]),
-      look=mode==='race'?[['rskin',raceSkinLabel()],['gfx',L('gfx')+': '+(gfxMode==='hd'?'HD':L('gfx_pixel'))],['sfx','','sound']]:[['skin','','skin'],['gfx',gfxLabel()],['sfx','','sound']], top=topY()+12, bot=LH-SAFE.b-4;
+      look=mode==='race'?[['rskin',raceSkinLabel(),'rskin'],['gfx',L('gfx')+': '+(gfxMode==='hd'?'HD':L('gfx_pixel'))],['sfx','','sound']]:[['skin','','skin'],['gfx',gfxLabel()],['sfx','','sound']], top=topY()+12, bot=LH-SAFE.b-4;
   // v1.03: SonaRace's pause as SonaFly's — the skin and the graphics beside the actions (Den: «во флае можно скин и графику менять прямо во время игры в меню паузы, в гонках надо сделать аналогичное»)
   var w1=colW(act), w2=colW(look), g=10, left=freeSide()==='left', x1=sideX(w1), x2=left?x1+w1+g:x1-g-w2, cy=Math.min(Math.round(LH*0.55),Math.round((top+bot)/2));
   if(w1+g+w2>LW-SAFE.l-SAFE.r-2*Math.max(8,Math.round(LW*0.04))){                                        // too narrow for two (a tablet in Russian): one tight column
@@ -3979,6 +3984,7 @@ var raceOpt=(function(){ var o=null; try{ o=JSON.parse(store.get('sonaroids_race
 /* v1.00: the race's skins (the candy land, the notebook), kept on the phone; the switch is in the race's menu */
 var RACE_SKINS=['candy','note','pirate'],   // v1.06: the pirate world
     raceSkin=(function(){ var v=store.get('sonaroids_race_skin','candy'); return RACE_SKINS.indexOf(v)<0?'candy':v; })(); RSKIN=raceSkin;
+var R_SKIN_ROW='A';   // v1.07: the race's skin row as SonaFly's — «◀ skin ▶» with the dots (sketch A) or the plain button with the dots (B)
 function raceSkinLabel(){ return L('r_skin')+': '+L('r_sk_'+raceSkin); }
 var RACE_TEST=false;
 function raceRules(){ return RACE_TEST?raceOpt:Race.optOf(null); }
@@ -4024,7 +4030,7 @@ function newSeed(){ try{ var a=new Uint32Array(1); crypto.getRandomValues(a); re
 function raceDemoTick(){ if(!rDemo||rDemo.d>60000) rDemo=Race.create(20260929,raceFW(),Race.FH/2);
   if(rDemo._c===clock) return; rDemo._c=clock; for(var n=Math.max(1,Math.round(DT*60));n>0;n--) raceDemoStep(rDemo); }
 function sRTitle(){ raceDemoTick(); raceScene(rDemo,rDemo.d,rDemo.car.y,DT);
-  var items=[['play',L('play'),'primary'],['scores',L('scores')],['howto',L('howto')]].concat(RACE_TEST?[['rset',L('r_set')]]:[]).concat([['rskin',raceSkinLabel()],['gfx',L('gfx')+': '+(gfxMode==='hd'?'HD':L('gfx_pixel'))],['sfx','','sound'],['hub',L('all_games')]]), w=colW(items);
+  var items=[['play',L('play'),'primary'],['scores',L('scores')],['howto',L('howto')]].concat(RACE_TEST?[['rset',L('r_set')]]:[]).concat([['rskin',raceSkinLabel(),'rskin'],['gfx',L('gfx')+': '+(gfxMode==='hd'?'HD':L('gfx_pixel'))],['sfx','','sound'],['hub',L('all_games')]]), w=colW(items);
   var bx0=sideX(w), m=Math.max(8,Math.round(LW*0.04)), band0=freeSide()==='left'?0:bx0-m, band1=freeSide()==='left'?bx0+w+m:LW;
   lx.globalAlpha=0.55; R(P.bg,band0,0,band1-band0,LH); lx.globalAlpha=1;
   column(items,Math.round(LH*0.52),bx0,items.length>5?6:8);
@@ -4154,7 +4160,7 @@ var ACT={
   lefty:function(){ lefty=true; store.set('sonaroids_lefty','1'); turnShown=false; Logs.ev('играю левой'); seenT=scrT; },
   hub:function(){ mode='fly'; go('hub'); },
   rset:function(){ go('rset'); },
-  hub_rocks:function(){ mode='fly'; go('title'); }, rskin:function(){ raceSkin=RACE_SKINS[(RACE_SKINS.indexOf(raceSkin)+1)%RACE_SKINS.length]; RSKIN=raceSkin; store.set('sonaroids_race_skin',raceSkin); }, hub_play:function(){ mode='fly'; go('title'); }, hub_race:function(){ mode='race'; go('rtitle'); },
+  hub_rocks:function(){ mode='fly'; go('title'); }, rskin:function(){ raceSkin=RACE_SKINS[(RACE_SKINS.indexOf(raceSkin)+1)%RACE_SKINS.length]; RSKIN=raceSkin; store.set('sonaroids_race_skin',raceSkin); }, rskin_next:function(){ ACT.rskin(); }, rskin_prev:function(){ raceSkin=RACE_SKINS[(RACE_SKINS.indexOf(raceSkin)+RACE_SKINS.length-1)%RACE_SKINS.length]; RSKIN=raceSkin; store.set('sonaroids_race_skin',raceSkin); }, hub_play:function(){ mode='fly'; go('title'); }, hub_race:function(){ mode='race'; go('rtitle'); },
   gfx:function(){ setGfx(gfxMode==='hd'?'pixel':'hd'); pool={K:0,list:[[],[],[]]}; },
   skin_prev:function(){ var i=SKIN_IDS.indexOf(skinId); setSkin(SKIN_IDS[(i+SKIN_IDS.length-1)%SKIN_IDS.length]); },
   skin_next:function(){ var i=SKIN_IDS.indexOf(skinId); setSkin(SKIN_IDS[(i+1)%SKIN_IDS.length]); },

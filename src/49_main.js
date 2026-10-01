@@ -788,7 +788,7 @@ function loop(now){
   // v0.91: while a game runs (and in its pause) the sonar keeps the empty room's level as the getting ready left it (see src/11_dsp.js)
   var gameOn=!!(g&&g.state!=='over'&&(scr==='play'||scr==='count-resume'||scr==='paused'||scr==='restart')); if(gameOn!==floorHeld){ floorHeld=gameOn; try{ DSP2.set('holdfloor',gameOn); }catch(e){} }
   // v1.08, the live mode: in flight and its countdown the screen's edges are kept within the palm's reach (Tune.stepLive)
-  if(liveOn()&&T&&(scr==='play'||scr==='count'||scr==='count-resume')){ var tl=Tune.stepLive(T,DT,Sonar.state(),Sonar.shift,DSP2.info().cal.k); if(tl) Logs.gameEv('range followed',tl); }   // v0.74: a shapes-only skin with «pixels» — the same canvas at 1 px per game pixel   // v0.72: the HD world canvas under the pixel one
+  if(liveOn()&&T&&(scr==='play'||scr==='count'||scr==='count-resume')){ var tl=Tune.stepLive(T,DT,Sonar.state(),Sonar.shift); if(tl) Logs.gameEv('range followed',tl); }   // v0.74: a shapes-only skin with «pixels» — the same canvas at 1 px per game pixel   // v0.72: the HD world canvas under the pixel one
   uiColours(scr!=='hub');
   switch(scr){
     case 'lang': sLang(); break; case 'title': sTitle(); break; case 'rtitle': sRTitle(); break; case 'rset': sRSet(); break; case 'hub': sHub(); break;

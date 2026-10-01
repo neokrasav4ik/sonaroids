@@ -35,30 +35,36 @@ var Tune=(function(){
     if(Math.abs(d)>0.2||Math.abs(T.field-f0)>0.2) return {d:+d.toFixed(1),field:+T.field.toFixed(1),span:+r.span.toFixed(0),wave:r.wave};
     return null;
   }
-  /* v1.08, the live mode (an experiment): in flight the screen keeps its bottom just above the palm's floor.
-     v1.10 (the maintainer, 1 Oct): «часто было сложно опустить корабль вниз — ладонь уже упиралась в разъём» (18:01) and, the other way,
-     «слишком далеко ладонь от телефона» (18:22). 1.08 moved the middle so that the lowest 5% of the palm's heights landed at 6% of the screen,
-     as the waving does — but in flight the player follows the ship: pushing it against the bottom lowers those heights, the screen goes up,
-     the player pushes lower (18:01 drifted 8 mm so; in its last half-minute the ship could not go under 12%); and with no waving the middle
-     was where the palm happened to be in its first second (18:22: far — the whole game was played 3 cm farther than before). Now it is set by
-     the echo's own range, which no moving of the screen changes, and by the phone's end: a palm at the port reads ~45 mm of range in every
-     game of 1 Oct (iPhone, Mi 9 Lite; 47–48 in the iPhone games of 27 Sep). «The palm at 48 mm», turned into a height the way the last 10 s
-     turned ranges into heights (the median of height − k·range), is kept 2–14 mm under the bottom of the screen: too high — the screen
-     comes down, too low — up; 3 mm a second in the first 15 s, then 1. The palm's own lowest point is not used: the player follows the ship,
-     so it is always just under the bottom, wherever the bottom is */
-  var L_WIN=10, L_MIN=5, L_STEP=0.5, L_LO=-14, L_HI=-2, L_MID=-8, R_FLOOR=48;
-  function stepLive(T,dt,st,shift,k){ k=k||1.4;
-    if(!T.lb){ T.lb=[]; T.lt=0; T.la=0; T.ln=0; }
-    T.lt+=dt; if(st&&st.present&&typeof st.range==='number'){ T.lb.push({t:T.lt,o:st.height-k*st.range}); T.ln+=dt; }
+  /* v1.08, the live mode (an experiment): in flight the screen keeps its bottom just above the phone's end.
+     The maintainer, 1 Oct: «часто было сложно опустить корабль вниз — ладонь уже упиралась в разъём» (18:01; and 18:59 on 1.10 still),
+     «слишком далеко ладонь от телефона» (18:22). 1.08 moved the middle so that the lowest 5% of the palm's heights landed at 6% of the
+     screen, as the waving does — but in flight the player follows the ship: pushing it against the bottom lowers those heights, the screen
+     goes up, the player pushes lower; and with no waving the middle was where the palm happened to be in its first second (18:22: 3 cm far).
+     1.10 kept «the palm at 48 mm of range» under the bottom through a straight line from heights to ranges — but near the phone the height
+     reads higher than that line (by 17 mm and more at the floor in the games of 1 Oct), and the bottom stayed out of reach.
+     Now it looks straight at the two things that matter, over the last 20 s, from the echo's own range (which no moving of the screen changes):
+     the palm at the phone's end (within 4 mm of range of the closest it came in the last minute, and under 58 mm — the port reads 45–57 mm,
+     by phone and session) while the ship is not at the very bottom (the middle of those moments over 1% of the screen) — the screen comes
+     down; the ship at the bottom while the palm is still ~2 cm above the port (range over 68 mm in the middle of those moments) — the screen
+     goes up. 3 mm a second in the first 15 s, then 1.
+     Neither — nothing: the player's own following does not move it */
+  var L_WIN=20, L_RWIN=60, L_MIN=3, L_STEP=0.5, R_NEAR=4, R_CAP=58, R_FAR=68, L_N=10, F_PORT=0.01;
+  function stepLive(T,dt,st,shift){
+    if(!T.lb){ T.lb=[]; T.rb=[]; T.lt=0; T.la=0; T.ln=0; }
+    T.lt+=dt; if(st&&st.present&&typeof st.range==='number'){ T.lb.push({t:T.lt,h:st.height,r:st.range}); T.rb.push({t:T.lt,r:st.range}); T.ln+=dt; }
     while(T.lb.length&&T.lb[0].t<T.lt-L_WIN) T.lb.shift();
+    while(T.rb.length&&T.rb[0].t<T.lt-L_RWIN) T.rb.shift();
     T.la+=dt; if(T.la<L_STEP) return null; T.la=0;
-    if(T.ln<L_MIN||T.lb.length<30) return null;
-    var o=T.lb.map(function(q){return q.o;}).sort(function(a,b){return a-b;})[T.lb.length>>1];
-    var h0=100-T.field/(1+ASYM), e=o+k*R_FLOOR-h0;   // where the palm's floor reads, against the bottom
-    if(e>=L_LO&&e<=L_HI) return null;
-    var v=(T.ln<15?3:1)*L_STEP, d=Math.max(-v,Math.min(v,L_MID-e));
-    shift(d); T.lb.forEach(function(q){ q.o+=d; });
-    return {d:+d.toFixed(2),floor:+e.toFixed(1)};
+    if(T.ln<L_MIN) return null;
+    var med=function(a){ a.sort(function(x,y){return x-y;}); return a[a.length>>1]; };
+    var rs=T.rb.map(function(q){ return q.r; }).sort(function(x,y){return x-y;}), rPort=Math.min(R_CAP,rs[Math.floor(0.01*(rs.length-1))]+R_NEAR);   // the closest the palm came in the last minute — but no phone's end reads over ~57 mm: a player who never goes low is not «at the port»
+    var atPort=T.lb.filter(function(q){ return q.r<=rPort; }).map(function(q){ return fracOf(T,q.h); }),
+        atBot=T.lb.filter(function(q){ return fracOf(T,q.h)<=0.02; }).map(function(q){ return q.r; });
+    var fPort=atPort.length>=L_N?med(atPort):null, rBot=atBot.length>=L_N?med(atBot):null, v=(T.ln<15?3:1)*L_STEP, d=0;
+    if(fPort!==null&&fPort>F_PORT) d=-v; else if(rBot!==null&&rBot>R_FAR) d=v;
+    if(!d) return null;
+    shift(d); T.lb.forEach(function(q){ q.h+=d; });
+    return {d:d,port:fPort===null?null:+fPort.toFixed(2),bottom:rBot===null?null:+rBot.toFixed(0)};
   }
   return {create:create,fracOf:fracOf,pick:pick,step:step,stepLive:stepLive,ASYM:ASYM};
 })();

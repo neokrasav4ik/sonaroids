@@ -23,19 +23,21 @@ const ok=T.ok&&lo>0.02&&lo<0.10&&hi>0.86&&hi<0.94&&T.field>95&&T.field<130; cons
    ship: the game wants the ship at a target (wandering over the screen, now and then at the very bottom or top); the palm goes there, but
    not closer than its floor (the phone's port, the echo's range 45 mm), and pushing at the bottom it overshoots by 1 cm. The maintainer,
    1 Oct: 1.08 chased that overshoot (18:01: the bottom out of reach) and took the middle from the palm's first second (18:22: the palm 3 cm
-   too far). Checks, 3 minutes each: the screen settles (its last minute moves ≤ 3 mm); the bottom reached; the palm's floor (45 mm; the rule
-   holds 48 mm 2–14 mm under the bottom) 5–19 mm of height under it — whether the game began with the bottom out of reach, with the palm far, about right, or with a player who
+   too far). Checks, 3 minutes each: the screen settles (its last minute moves ≤ 3 mm); the bottom reached; the palm at the port (45 mm)
+   puts the ship at the bottom, but not with 2.5 cm to spare (0–25 mm of height under it) — whether the game began with the bottom out of reach, with the palm far, about right, or with a player who
    never goes under a fifth of the screen */
-function player(o0,secs,lowest){ const k=1.4, T=Tune.create(85,true), FL=2*T.field/(1+Tune.ASYM), FU=2*Tune.ASYM*T.field/(1+Tune.ASYM); let off=0, atBot=0, n=0, seed=7, off60=null, rS=0;
+function player(o0,secs,lowest,fl){ fl=fl||45; const k=1.4, T=Tune.create(85,true), FL=2*T.field/(1+Tune.ASYM), FU=2*Tune.ASYM*T.field/(1+Tune.ASYM); let off=0, atBot=0, n=0, seed=7, off60=null, rS=0;
   const rnd=()=>{ seed=(seed*1664525+1013904223)>>>0; return seed/4294967296; }; let tgt=0.5, dt=1/60;
   for(let t=0;t<secs;t+=dt){ if(rnd()<dt/1.5){ const u=rnd(); tgt=u<0.15?0:u>0.85?1:rnd(); if(lowest) tgt=Math.max(lowest,tgt); }
-    const want=tgt<0.5?100+(tgt-0.5)*FL:100+(tgt-0.5)*FU, r=Math.max(45,(want-(tgt===0?10:0)-o0-off)/k), h=k*r+o0+off;   // the height reads k·range + offset
-    Tune.stepLive(T,dt,{present:true,height:h,range:r},d=>{ off+=d; },k);
+    // the height reads k·range + offset, and near the phone higher than that (1 Oct: up to 17 mm at the floor — the sonar sees the palm weaker there)
+    const hOf=r=>k*r+o0+off+0.8*Math.max(0,65-r), want=tgt<0.5?100+(tgt-0.5)*FL:100+(tgt-0.5)*FU, aim=want-(tgt===0?10:0);
+    let r=fl; while(r<400&&hOf(r)<aim) r+=0.25; const h=hOf(r);
+    Tune.stepLive(T,dt,{present:true,height:h,range:r},d=>{ off+=d; });
     if(t>=secs-60&&off60===null) off60=off;
     if(t>secs-30){ n++; rS+=r; if(Tune.fracOf(T,h)<=0.02) atBot++; } }
-  const floorGap=k*45+o0+off-(100-T.field/(1+Tune.ASYM));
+  const floorGap=k*fl+o0+off+0.8*Math.max(0,65-fl)-(100-T.field/(1+Tune.ASYM));
   return {off,settle:Math.abs(off-off60),bottom:atBot/n,floorGap,r:rS/n}; }
-{ const cases=[['the bottom out of reach',14],['the palm far',-60],['about right',-30],['never under a fifth',-30,0.2]]; let ok3=true;
-  cases.forEach(([name,o0,lo])=>{ const q=player(o0,180,lo); const g=q.settle<=3&&q.floorGap<=-5&&q.floorGap>=-19&&(lo||q.bottom>0.05);
+{ const cases=[['the bottom out of reach',14],['the palm far',-60],['about right',-30],['never under a fifth',-30,0.2],['the port reading 56 mm (iPhone, 18:57), out of reach',14,0,56],['the port reading 56 mm, the palm far',-60,0,56]]; let ok3=true;
+  cases.forEach(([name,o0,lo,fl])=>{ const q=player(o0,180,lo,fl); const g=q.settle<=3&&q.floorGap<=0&&q.floorGap>=-25&&(lo||q.bottom>0.05);
     console.log(`the live mode, in flight — ${name}: the screen moved ${q.off.toFixed(1)} mm (the last minute ${q.settle.toFixed(1)}), the floor ${q.floorGap.toFixed(1)} mm against the bottom, the ship at the bottom ${(100*q.bottom).toFixed(0)}%, the palm's range ${q.r.toFixed(0)} mm ${g?'ok':'FAIL'}`); ok3=ok3&&g; });
   console.log(ok3?'RESULT: ok':'RESULT: FAIL'); if(!ok3) process.exitCode=1; }

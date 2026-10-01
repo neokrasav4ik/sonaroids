@@ -305,7 +305,12 @@ var Sonar=(function(){
   // v1.12: «auto-calibration» in the settings; not set — on once the first game was played (the first, with the instruction, gets ready by hand)
   var LIVE_MID=82;
   // v1.14: the middle of the player's last hand calibration (the echo's range, mm; saved by 49_main at a manual countdown), else 8.2 cm
-  function liveMid(){ try{ var v=+localStorage.getItem('sonaroids_mid_r'); return v>=55&&v<=140?v:LIVE_MID; }catch(e){ return LIVE_MID; } }
+  /* v1.15: 6 mm higher than the hand calibration's middle — the echo's range of the same palm shifts by about half a centimetre from one getting
+     ready to the next (the phone's port read 46–57 mm on the maintainer's iPhone over 1 Oct), and a hand calibration puts the screen's bottom
+     right at the port (the waving goes down to it): copied as is, the bottom fell under the port (iPhone, 1.14 at 21:32: «в игре опять стал
+     упираться в разъём»; the middle 70 mm, the lower half's end 51 mm, the port read 51–57) */
+  var LIVE_UP=6;
+  function liveMid(){ try{ var v=+localStorage.getItem('sonaroids_mid_r'); return v>=55&&v<=140?v+LIVE_UP:LIVE_MID; }catch(e){ return LIVE_MID; } }
   function liveOn(){ try{ var v=localStorage.getItem('sonaroids_live'); return v===null||v===''?localStorage.getItem('sonaroids_seen')==='1':v==='1'; }catch(e){ return false; } }
   function prepare(onStage,vol){
     active=false; last=null; lost=false; PROBE_G=0.25; volLog=[]; reasserts=0; refLv=null; jumpN=0;

@@ -691,7 +691,7 @@ function awayPause(){ return liveOn()?2.5:PAUSE; }   // v1.10: 1.2 s was too sho
 var roomAgain=false;
 function liveReady(){ return liveOn()&&booted&&Sonar.healthy()&&acoustic&&T!==null; }
 function afterRoom(){ if(!liveOn()){ toWave(); return; }
-  T=Tune.create(+store.get('sonaroids_field','100')||100,true); T.ok=true; caught=true; caughtT=-9; Logs.ev('живой режим: без взмахов',{field:T.field}); startCount(); }
+  T=Tune.create(+store.get('sonaroids_field','100')||100,true); T.ok=true; caught=true; caughtT=-9; var cL=DSP2.info().cal; Logs.ev('живой режим: без взмахов',{field:T.field,mid_mm:+((100-cL.o)/cL.k).toFixed(1),saved_mm:+store.get('sonaroids_mid_r','')||null}); startCount(); }
 function quickOr(full){ if(liveReady()){ Logs.ev('живой режим: сразу отсчёт'); dropGame(); resumeAfterPrep=false; startCount(); } else full(); }
 function toRoom(b){ roomAgain=false; Sonar.setBand(b); prep=null; silentRetry=false; go('away'); }
 function toWave(){ T=Tune.create(+store.get('sonaroids_field','100')||100,true); caught=false; flips=0; flipT=-9; seenT=0; go('wave'); }

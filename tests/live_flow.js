@@ -59,7 +59,7 @@ const SCEN=`function(t){ const n=performance.now()/1000; if(n<window.__palmAt) r
   check('the switch on the service screen (a browser: only it)',sw.btn.includes('aud:live:0')&&sw.btn.includes('aud:live:1')&&sw.on==='1'&&sw.off==='0'&&sw.now==='1',JSON.stringify(sw));
   check('no probe choice and no waving with it on',!seen.some(x=>/^(probe|wave)@/.test(x)),seen.join(' '));
   check('«Play» → the countdown in ≤ 6 s',tCount!==null&&tCount<=6,tCount===null?'never':tCount.toFixed(1)+' s');
-  check('v1.14: the middle from the last hand calibration (saved 80 mm)',midAt!==null&&Math.abs(midAt-80)<0.5,midAt===null?'–':midAt.toFixed(1)+' mm');
+  check('v1.14–1.15: the middle from the last hand calibration (saved 80 mm) + 6 mm',midAt!==null&&Math.abs(midAt-86)<0.5,midAt===null?'–':midAt.toFixed(1)+' mm');
   check('the game runs, the echo processing in the live mode',tPlay!==null&&seen.some(x=>/^play@/.test(x)),'');
   const corr=a=>{ const q=a.filter(z=>z[3]!==null&&z[2]!==null), n=q.length; if(n<10) return NaN; const mx=r(q.map(z=>z[2])), my=r(q.map(z=>z[3])); let sxy=0,sxx=0,syy=0;
     q.forEach(z=>{ sxy+=(z[2]-mx)*(z[3]-my); sxx+=(z[2]-mx)**2; syy+=(z[3]-my)**2; }); return sxy/Math.sqrt(sxx*syy); };

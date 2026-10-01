@@ -23,6 +23,12 @@ function slab(bx,by,d,nb,len,z0,z1,t,ch,o,cF,cT,al){       // a block turned in 
   var ex=bx+d[0]*len, ey=by+d[1]*len, cx=ex-d[0]*ch, cy=ey-d[1]*ch, c2=Math.min(ch,(z1-z0)/2);
   polyA([iso(bx,by,z0,o),iso(cx,cy,z0,o),iso(ex,ey,z0+c2,o),iso(ex,ey,z1-c2,o),iso(cx,cy,z1,o),iso(bx,by,z1,o)],cF,al);
   polyA([iso(bx,by,z1,o),iso(cx,cy,z1,o),iso(cx+nb[0]*t,cy+nb[1]*t,z1,o),iso(bx+nb[0]*t,by+nb[1]*t,z1,o)],cT,al); }
+/* v1.05, HD: the drawn palms (src/42_hands.js, made by hands/make_hands.py in this very projection): a picture put at the wrist's
+   place, scaled to the scene — it only moves, so the pixel palms' motions stay as they were; until it has loaded, the pixel palm */
+var HANDI={};
+function handPic(k){ if(typeof HAND_PICS==='undefined') return null; var h=HANDI[k]; if(!h){ h=HANDI[k]=new Image(); h.src=HAND_PICS[k].src; } return h.complete&&h.naturalWidth?h:null; }
+function handSprite(k,X,Y,Z,unit,o,al){ var im=handPic(k); if(!im) return false; var d=HAND_PICS[k], s=unit/HAND_PICS.ppcm, p=iso(X,Y,Z,o);
+  lx.globalAlpha=Math.max(0,Math.min(1,al)); lx.imageSmoothingEnabled=true; lx.drawImage(im,p[0]-d.ox*s,p[1]-d.oy*s,d.w*s,d.h*s); lx.globalAlpha=1; return true; }
 function handIso(Xa,Yb,hz,o,cm,al){                                    // Xa — palm edge by the phone, Yb — wrist, hz — top of the palm
   var HS={t:P.hand[1],h:P.hand[2],x:P.hand[0],y:'#9A7274'}, w=8.5*cm, Xb=Xa+w, Ya=Yb-10*cm, th=2.4*cm, L=[7.4,8.4,7.9,6.3], fw=w/4, i;
   for(i=0;i<4;i++){ var fx0=Xa+i*fw+0.35*cm, fx1=Xa+(i+1)*fw-0.35*cm;
@@ -38,7 +44,21 @@ function handIso(Xa,Yb,hz,o,cm,al){                                    // Xa —
 var PSC=1.6;
 function portLabel(ph,o,labels){ var y=Math.round(iso(ph.X1,ph.Y1,0,o)[1])+5, x=Math.round(ph.port[0]);          // v0.35: under the phone, the arrow points up at the port
   labels.push({x:x,y:y,t:'↑',c:P.pick,a:'center'}); labels.push({x:x,y:y+10,t:L(ph.cam?'cam':'port'),c:P.pick,a:'center'}); }
+/* v1.05, HD (the maintainer: «перерисовать телефоны»): a phone with rounded corners, a metal side all round, a black bezel, the screen's
+   own rounded corners, the island at the camera's end and a glass glare — the same box as the pixel one, drawn smooth */
+function rrPts(x0,x1,y0,y1,r){ var pts=[], c=[[x1-r,y0+r,-1.5708],[x1-r,y1-r,0],[x0+r,y1-r,1.5708],[x0+r,y0+r,3.1416]];
+  c.forEach(function(q){ for(var a=0;a<=6;a++){ var an=q[2]+a/6*1.5708; pts.push([q[0]+Math.cos(an)*r,q[1]+Math.sin(an)*r]); } }); return pts; }
+function isoPath(pts,z,o){ lx.beginPath(); pts.forEach(function(p,i){ var q=iso(p[0],p[1],z,o); if(i) lx.lineTo(q[0],q[1]); else lx.moveTo(q[0],q[1]); }); lx.closePath(); }
+function phoneIsoHD(o,cm,portOn,cam){
+  var X0=-7.5*cm*PSC,X1=7.5*cm*PSC,Y0=-3.6*cm*PSC,Y1=3.6*cm*PSC,Zp=1.0*cm, r=1.9*cm, body=rrPts(X0,X1,Y0,Y1,r), n=Math.max(4,Math.round(Zp*uiS/0.6)), k;
+  for(k=0;k<=n;k++){ var q=k/n; lx.fillStyle='rgb('+Math.round(42+q*96)+','+Math.round(39+q*92)+','+Math.round(53+q*104)+')'; isoPath(body,Zp*q*0.98,o); lx.fill(); }   // the side: dark at the bottom, light at the top edge
+  lx.fillStyle='#0c0b14'; isoPath(body,Zp,o); lx.fill(); lx.strokeStyle='#5b5670'; lx.lineWidth=0.35; lx.stroke();
+  var m=0.55*cm; lx.fillStyle=P.bg; isoPath(rrPts(X0+m,X1-m,Y0+m,Y1-m,r-0.45*cm),Zp,o); lx.fill();
+  var PX=cam?X0:X1, sx=PX+(cam?0.28:-0.28)*cm, pa=iso(sx,-0.8*cm,Zp,o), pb=iso(sx,0.8*cm,Zp,o);                                      // the charging port, on the rim at its end
+  lx.strokeStyle=!cam&&portOn?P.pick:'#3a3648'; lx.lineWidth=0.5; lx.lineCap='round'; lx.beginPath(); lx.moveTo(pa[0],pa[1]); lx.lineTo(pb[0],pb[1]); lx.stroke();
+  return {X0:X0,X1:X1,Y0:Y0,Y1:Y1,Zp:Zp,port:cam?iso(X1-0.25*cm,0,Zp,o):iso(PX,0,Zp,o),cam:!!cam,hd:{m:m,r:r-0.45*cm,camOn:!!(cam&&portOn)}}; }
 function phoneIso(o,cm,portOn,cam){                                          // cam: the hand's end is the front-camera end (v0.17)
+  if(uiS>1) return phoneIsoHD(o,cm,portOn,cam);
   var X0=-7.5*cm*PSC,X1=7.5*cm*PSC,Y0=-3.6*cm*PSC,Y1=3.6*cm*PSC,Zp=1.0*cm, q;
   box(X0,X1,Y0,Y1,0,Zp,o,P.rock[2],P.rock[1],P.rock[0]);
   polyFill([iso(X0+0.5*cm,Y0+0.45*cm,Zp,o),iso(X1-0.5*cm,Y0+0.45*cm,Zp,o),iso(X1-0.5*cm,Y1-0.45*cm,Zp,o),iso(X0+0.5*cm,Y1-0.45*cm,Zp,o)],P.bg);
@@ -61,11 +81,21 @@ function phoneWorld(f){ if(mode==='race') return racePhone(f); var sk=SK, k=PHON
   if(!phoneC||phoneC.width!==LW||phoneC.height!==LH){ phoneC=document.createElement('canvas'); phoneC.width=LW; phoneC.height=LH; }
   var kl=lx; lx=phoneC.getContext('2d'); lx.setTransform(1,0,0,1,0,0); lx.imageSmoothingEnabled=false; noLight=true;
   try{ drawDemo(sk,DT,sx,phoneSt,sy,0.15,k); } finally { lx=kl; noLight=false; } return phoneC; }   // v0.77: the ship 1.4×; v0.84: 4× (PHONE_SHIPK)
-function phoneGame(ph,o,cm,f,T,mirror){
-  var m=0.9*cm, x0=ph.X0+m, x1=ph.X1-m, y0=ph.Y0+m, y1=ph.Y1-m, W0=x1-x0, H0=y1-y0;
+/* v1.05: whatever draws the screen, what lies on top of the phone (the holding hand's fingers, HD) comes after it */
+function phoneGame(ph,o,cm,f,T,mirror){ phoneGame0(ph,o,cm,f,T,mirror); if(ph.after) ph.after(mirror); }
+function phoneGame0(ph,o,cm,f,T,mirror){
+  var HD=ph.hd, m=HD?HD.m:0.9*cm, x0=ph.X0+m, x1=ph.X1-m, y0=ph.Y0+m, y1=ph.Y1-m, W0=x1-x0, H0=y1-y0;
   function at(u,v){ if(!mirror) return iso(x0+u*W0,y0+v*H0,ph.Zp,o); var p=iso(x0+(1-u)*W0,y0+v*H0,ph.Zp,o); return [LW-p[0],p[1]]; }
+  function uvPath(pts){ lx.beginPath(); pts.forEach(function(q,i){ var p=at(q[0],q[1]); if(i) lx.lineTo(p[0],p[1]); else lx.moveTo(p[0],p[1]); }); lx.closePath(); }
+  var scr=null;
+  if(HD){ scr=[]; var ru=HD.r/W0, rv=HD.r/H0; [[1-ru,rv,-1.5708],[1-ru,1-rv,0],[ru,1-rv,1.5708],[ru,rv,3.1416]].forEach(function(q){ for(var a=0;a<=6;a++){ var an=q[2]+a/6*1.5708; scr.push([q[0]+Math.cos(an)*ru,q[1]+Math.sin(an)*rv]); } }); }
   if(SK&&typeof drawDemo==='function'){ var wc=phoneWorld(f), a0=at(0,0), a1=at(1,0), a2=at(0,1);
-    lx.save(); lx.transform(a1[0]-a0[0],a1[1]-a0[1],a2[0]-a0[0],a2[1]-a0[1],a0[0],a0[1]); lx.imageSmoothingEnabled=true; lx.imageSmoothingQuality='high'; lx.drawImage(wc,0,0,1,1); lx.restore(); return; }
+    lx.save(); if(HD){ uvPath(scr); lx.clip(); } lx.transform(a1[0]-a0[0],a1[1]-a0[1],a2[0]-a0[0],a2[1]-a0[1],a0[0],a0[1]); lx.imageSmoothingEnabled=true; lx.imageSmoothingQuality='high'; lx.drawImage(wc,0,0,1,1); lx.restore();
+    if(HD){ var iu=ph.cam?0.955:0.045, iw=0.014, ih=0.2;                                                       // the island at the camera's end
+      uvPath([[iu-iw,0.5-ih],[iu+iw,0.5-ih],[iu+iw,0.5+ih],[iu-iw,0.5+ih]]); lx.fillStyle=HD.camOn?P.pick:'#000'; lx.fill(); lx.lineJoin='round'; lx.strokeStyle=HD.camOn?P.pick:'#000'; lx.lineWidth=1.2; lx.stroke();
+      var g0=at(0,0), g1=at(0.5,1), gr=lx.createLinearGradient(g0[0],g0[1],g1[0],g1[1]); gr.addColorStop(0,'rgba(255,255,255,0.12)'); gr.addColorStop(1,'rgba(255,255,255,0)');
+      uvPath(scr); lx.fillStyle=gr; lx.fill(); }
+    return; }
   if(uiS>1){ for(var i2=0;i2<14;i2++){ var u2=((i2*0.137+T*0.05*(1+i2%3))%1), v2=(i2*0.311)%1, p2=at(1-u2,v2); lx.fillStyle=i2%3?P.stars[1]:P.stars[2]; lx.beginPath(); lx.arc(p2[0],p2[1],0.45,0,6.2832); lx.fill(); }
     [[0.62,0.3,3],[0.83,0.68,2],[0.45,0.8,2]].forEach(function(r,j){ var u=(((r[0]-T*0.04*(j+1))%1)+1)%1*0.9+0.08, p=at(u,r[1]); lx.fillStyle=P.rock[3]; lx.beginPath(); lx.arc(p[0],p[1],r[2]*0.6,0,6.2832); lx.fill(); lx.fillStyle=P.rock[1]; lx.beginPath(); lx.arc(p[0]+r[2]*0.15,p[1]+r[2]*0.15,r[2]*0.4,0,6.2832); lx.fill(); });
     var sq=at(0.12,0.12+(1-f)*0.76), sx2=sq[0]+(mirror?-1:1)*2, d2=mirror?-1:1; lx.fillStyle=P.ship[2]; lx.beginPath(); lx.moveTo(sx2+d2*8,sq[1]); lx.lineTo(sx2,sq[1]-3.6); lx.lineTo(sx2+d2*1.5,sq[1]); lx.lineTo(sx2,sq[1]+3.6); lx.closePath(); lx.fill();
@@ -115,8 +145,8 @@ function scene(id,t,f,away,waves,T,lay){
   if(id==='wave'){ var rX=Xa+hw+8.5*cm, rY=Yb-12*cm, b0=iso(rX,rY,0,o), b5=iso(rX,rY,Z5,o), b15=iso(rX,rY,Z15,o);         // a 5–15 cm ruler
     dots(b0[0],b0[1],b15[1],P.soft); R(P.soft,b5[0]-3,b5[1],7,1); R(P.soft,b15[0]-3,b15[1],7,1);
     labels.push({x:b15[0]+6,y:b15[1]-3,t:'10 '+L('cm'),c:P.soft});   /* v0.31: the numbers say 5–10 (plays better, the maintainer); the ruler and tuning are unchanged */ labels.push({x:b5[0]+6,y:b5[1]-3,t:'5 '+L('cm'),c:P.soft}); }
-  if(al>0.5&&id!=='phone'){ var d0=iso(Xa+hw,Yb,0,o), d1=iso(Xa+hw,Yb,hz-2.4*cm*HSC,o); dots(d0[0],d1[1],d0[1],P.soft); }
-  if(al>0) handIso(Xa,Yb+dy,hz,o,cm*HSC,al);
+  if(al>0.5&&id!=='phone'&&uiS===1){ var d0=iso(Xa+hw,Yb,0,o), d1=iso(Xa+hw,Yb,hz-2.4*cm*HSC,o); dots(d0[0],d1[1],d0[1],P.soft); }   // v1.05: not in HD (the maintainer: «артефакт шкалы убрать»)
+  if(al>0&&!(uiS>1&&handSprite('table',Xa+hw/2,Yb+dy,hz-1.2*cm*HSC,cm*HSC*1.25,o,al))) handIso(Xa,Yb+dy,hz,o,cm*HSC,al);
   labels.screen={ph:ph,o:o,cm:cm,f:f,T:T};
   if(id==='phone') portLabel(ph,o,labels);
   return labels;
@@ -147,21 +177,23 @@ function sceneHand(id,t,f,away,waves,T,lay){
   var cm=Math.min(LH*0.024,LW*0.0135)*lay.k, o=[LW*lay.ox,LH*lay.oy+23.6*cm], labels=[];
   var HS={t:P.hand[1],h:P.hand[2],x:P.hand[0],y:'#9A7274'}, X0=-7.5*cm*PSC, Y0=-3.6*cm*PSC, Y1=3.6*cm*PSC, Zp=1.0*cm;
   // the holding hand (v0.35, the maintainer: the phone lies in the palm, the thumb under it, the other fingers over the far long edge)
-  var gx=-2.4*cm, ph, j;   // v0.69: the phone held in the middle (the maintainer: a hand at the end covers its microphone)
-  box(gx-1.8*cm,gx+6.6*cm,Y0+0.3*cm,Y1-0.2*cm,-2.4*cm,-0.05*cm,o,HS.t,HS.x,HS.y);                      // the palm under the phone, wide
-  for(j=0;j<4;j++) box(gx+0.1*cm+j*1.7*cm,gx+1.6*cm+j*1.7*cm,Y0-1.1*cm,Y0,-1.6*cm,Zp+0.9*cm,o,HS.t,HS.x,HS.y);   // fingers up the far side…
-  box(gx-2.0*cm,gx+5.4*cm,Y1-1.4*cm,Y1+9*cm,-7.4*cm,-2.0*cm,o,HS.t,HS.x,HS.y);                          // forearm towards the player and down
-  box(gx-2.0*cm,gx+5.4*cm,Y1+9*cm,Y1+14*cm,-9.8*cm,-4.4*cm,o,HS.t,HS.x,HS.y,0.55);
+  var HDH=uiS>1&&!!handPic('hold')&&!!handPic('end'), gx=-2.4*cm, ph, j;   // v1.05: HDH — the drawn hands; v0.69: the phone held in the middle (the maintainer: a hand at the end covers its microphone)
+  if(!HDH) box(gx-1.8*cm,gx+6.6*cm,Y0+0.3*cm,Y1-0.2*cm,-2.4*cm,-0.05*cm,o,HS.t,HS.x,HS.y);                      // the palm under the phone, wide
+  if(!HDH) for(j=0;j<4;j++) box(gx+0.1*cm+j*1.7*cm,gx+1.6*cm+j*1.7*cm,Y0-1.1*cm,Y0,-1.6*cm,Zp+0.9*cm,o,HS.t,HS.x,HS.y);   // fingers up the far side…
+  if(!HDH) box(gx-2.0*cm,gx+5.4*cm,Y1-1.4*cm,Y1+9*cm,-7.4*cm,-2.0*cm,o,HS.t,HS.x,HS.y);                          // forearm towards the player and down
+  if(!HDH) box(gx-2.0*cm,gx+5.4*cm,Y1+9*cm,Y1+14*cm,-9.8*cm,-4.4*cm,o,HS.t,HS.x,HS.y,0.55);
   ph=phoneIso(o,cm,id==='phone'&&Math.floor(T*3)%2===0,typeof camEnd==='function'&&camEnd());
-  for(j=0;j<4;j++) box(gx+0.1*cm+j*1.7*cm,gx+1.6*cm+j*1.7*cm,Y0-0.2*cm,Y0+(2.6-(j===3?0.7:0)-(j===0?0.3:0))*cm,Zp,Zp+0.9*cm,o,HS.t,HS.x,HS.y);   // …curled onto the top
-  box(gx+1.0*cm,gx+5.4*cm,Y1-0.6*cm,Y1+1.2*cm,-1.9*cm,-0.2*cm,o,HS.t,HS.x,HS.y);                       // the thumb under the near edge
+  if(!HDH) for(j=0;j<4;j++) box(gx+0.1*cm+j*1.7*cm,gx+1.6*cm+j*1.7*cm,Y0-0.2*cm,Y0+(2.6-(j===3?0.7:0)-(j===0?0.3:0))*cm,Zp,Zp+0.9*cm,o,HS.t,HS.x,HS.y);   // …curled onto the top
+  if(!HDH) box(gx+1.0*cm,gx+5.4*cm,Y1-0.6*cm,Y1+1.2*cm,-1.9*cm,-0.2*cm,o,HS.t,HS.x,HS.y);                       // the thumb under the near edge
   var al=1, gap=(5+10*f)*cm, dy=0;                                                             // v0.39: 5–15 cm from the end (the maintainer: on the OnePlus it plays better a bit farther)
   if(id==='phone') dy=(1-ease(t/1.8))*28*cm;
   if(away>0){ var q=ease(away); dy=q*30*cm; gap+=q*6*cm; al=1-q; }
   var Za=-4.2*cm, Zb=4.4*cm, Kx=ph.X1+gap+2.8*cm, Ky=-2.0*cm+dy, D=[0,-1], NB=[1,0], PL=8.5*cm, Wx=Kx-D[0]*PL, Wy=Ky-D[1]*PL;   // a straight hand along the phone's end (v0.35, the maintainer): knuckles K, wrist W, fingers along D, back of the hand along NB
   if(waves) for(var i=0;i<3;i++){ var rr=((T*6+i*4.5)%13.5)*cm+1*cm;
     for(var a=-1.2;a<=1.2;a+=0.06){ var pp=iso(ph.X1+Math.cos(a)*rr,0,Zp/2+Math.sin(a)*rr*0.8,o), pq=iso(ph.X0-Math.cos(a)*rr,0,Zp/2+Math.sin(a)*rr*0.8,o); if(Math.cos(a)*rr<gap) R(P.bullet,pp[0],pp[1],1,1); R(P.bullet,pq[0],pq[1],1,1); } }
-  if(al>0){ var fz=[2.9,0.6,-1.7,-3.9], fh=[1.5,1.5,1.45,1.3], L2=[7.6,8.6,8.0,6.2], k;            // index … little finger, top to bottom
+  if(HDH){ ph.after=function(mr){ lx.save(); if(mr){ lx.translate(LW,0); lx.scale(-1,1); } handSprite('hold',gx+2.4*cm,Y1-0.5*cm,-2.2*cm,cm,o,1); lx.restore(); };   // on top of the phone's screen: its hidden parts are left out of the picture
+    if(al>0) handSprite('end',Kx+0.95*cm,Ky+PL,(Za+Zb)/2,cm*1.05,o,al); }
+  else if(al>0){ var fz=[2.9,0.6,-1.7,-3.9], fh=[1.5,1.5,1.45,1.3], L2=[7.6,8.6,8.0,6.2], k;            // index … little finger, top to bottom
     for(k=3;k>=0;k--) slab(Kx-D[0]*0.6*cm,Ky-D[1]*0.6*cm,D,NB,(L2[k]+0.6)*cm,fz[k]*cm,(fz[k]+fh[k])*cm,0.9*cm,0.5*cm,o,HS.t,HS.h,al);
     if(al>0.5) for(k=0;k<3;k++){ var g0=iso(Kx,Ky,fz[k]*cm-0.4*cm,o), g1=iso(Kx+D[0]*(Math.min(L2[k],L2[k+1])-0.3)*cm,Ky+D[1]*(Math.min(L2[k],L2[k+1])-0.3)*cm,fz[k]*cm-0.4*cm,o);   // the lines between the fingers
       for(var u=0;u<=1;u+=0.02) R(HS.y,g0[0]+(g1[0]-g0[0])*u,g0[1]+(g1[1]-g0[1])*u,1,2); }

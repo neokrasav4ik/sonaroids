@@ -295,8 +295,10 @@ function sWave(){ sky(DT,0.3); poolFill(1); var m=handSide()==='left', f=handFra
    on the left — turning the phone by 180° swaps everything round (the screen turns, the game follows) */
 function handBeacon(){ var m=handSide()==='left', a=0.55+0.35*Math.sin(clock*5), ex=m?0:LW-4;
   lx.globalAlpha=a; R(P.band,ex,0,4,LH); lx.globalAlpha=a*0.45; R(P.band,m?4:LW-8,0,4,LH); lx.globalAlpha=a*0.2; R(P.band,m?8:LW-12,0,4,LH); lx.globalAlpha=1;
-  var o=portOr(), lab=L(!o?'here':camEnd()?'here_cam':'here_port'), x=m?SAFE.l+10:LW-SAFE.r-10, al=m?'left':'right', y=LH-SAFE.b-30;
-  text(lab,x,y,P.band,al); if(o) text(L('flip_hint'),x,y+12,P.soft,al); }
+  // v1.05: no «wave here» line (the maintainer: «фраза „маши здесь“ может дезориентировать, игрок может начать махать рядом с углом телефона… может её отовсюду убрать?») —
+  // the glowing edge shows the end; the hint about the other hand stays where the line was
+  var o=portOr(), x=m?SAFE.l+10:LW-SAFE.r-10, al=m?'left':'right', y=LH-SAFE.b-30;
+  if(o) text(L('flip_hint'),x,y+12,P.soft,al); }
 /* v0.17: once the range is caught the table picture goes and the real ship at game size follows the palm —
    the player sees at once whether the calibration came out right. "Play", and under it "recalibrate" (the empty room anew, then wave) */
 var CAUGHT_SHOW=1.0, caughtT=0;

@@ -95,6 +95,7 @@ A player is a random key kept on the phone; the server stores only its hash. Wit
 | `android/` | the Android app: a WebView over sonaroids.app/play/ with its own sound, volume, file saving and self-update. Built on GitHub Actions into the latest release (`android/README.md`, in Russian) |
 | `tests/` | the games' and the server's checks: `sh tests/run.sh` |
 | `lab/` | the sonar lab: the test app `lab/app/sonar_lab3.html`, its sources, benches and recordings; notes in Russian |
+| `hands/` | `make_hands.py` draws the HD hands of the getting-ready pictures into `src/42_hands.js` (with the promo GIF's hand, `promo/promo_hand.py`) |
 | `font/` | the 5×7 pixel font (Latin and Cyrillic): `font5x7.txt` is the drawing, `make_font.py` packs it into `game/font.js` |
 | `promo/` | the GIFs and pictures in this README, taken from the real games (see below) |
 | `docs/` | the design document `design.md` (Russian original in `docs/ru/`) and the server install guide in Russian |
@@ -114,6 +115,7 @@ A player is a random key kept on the phone; the server stores only its hash. Wit
 | `23_net.js` | the high-score client: sends a game and the name, reads the tables |
 | `30_lang_en.js`, `31_lang_ru.js` | interface texts |
 | `40_gfx.js`, `41_sprites.js`, `42_guide.js` | drawing, pixel sprites, the drawn phones of getting ready and the instructions |
+| `42_hands.js` | the hands of those pictures in HD, as pictures — made by `hands/make_hands.py` |
 | `43_skins.js`, `45_hd.js`, `46_vecskins.js`, `47_pixskins.js`, `48_sizes.js` | SonaFly's skins: pixels, HD, shape skins; things drawn the size the game counts them |
 | `48_racehd.js`, `48_racenote.js` | SonaRace's candy land and notebook, in HD and in pixels |
 | `49_main.js` | the screens, the menus and the game loop |

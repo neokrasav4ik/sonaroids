@@ -19,15 +19,18 @@ POSES = {
     'relaxed':  dict(flex=[[8, 14, 8], [7, 12, 8], [8, 14, 9], [10, 16, 10]], splay=[-5, -1, 3, 8], thumb=0.0),
     'open':     dict(flex=[[3, 5, 3], [2, 4, 3], [3, 5, 3], [4, 6, 4]], splay=[-10, -2, 6, 15], thumb=0.5),
     'cupped':   dict(flex=[[18, 26, 14], [16, 24, 14], [18, 26, 15], [20, 28, 16]], splay=[-3, 0, 2, 5], thumb=-0.3),
+    'end':      dict(flex=[[8, 14, 8], [7, 12, 8], [8, 14, 9], [10, 16, 10]], splay=[-5, -1, 3, 8], thumb=0.0, thumbL=0.85, thumbR=1.18, frad=1.12),   # at the phone's end: «relaxed», the thumb thicker and a little shorter, the fingers a little thicker
+    'hold':     dict(flex=[[0, 88, 80], [0, 88, 80], [0, 88, 80], [2, 12, 8]], splay=[-2, 0, 1, 3], thumb=-0.6, thumbZ=0.35, flen=0.82, frad=1.22),   # holding a phone from below: straight under it, up its far side, onto its top
     'straight': dict(flex=[[2, 3, 2], [1, 2, 2], [2, 3, 2], [3, 4, 3]], splay=[-3, -1, 1, 3], thumb=-0.2),
 }
 
-def build(pose):
+def build(pose, wide=1.0):
     P = POSES[pose]
     segs = []   # (a, b, r1, r2, k, tag, back)
-    base = [(-2.65, 9.0), (-0.85, 9.45), (0.95, 9.15), (2.6, 8.4)]
-    lens = [[4.0, 2.4, 1.9], [4.5, 2.8, 2.0], [4.2, 2.6, 1.95], [3.3, 1.95, 1.75]]
-    rads = [[0.93, 0.85, 0.78, 0.7], [0.96, 0.88, 0.8, 0.72], [0.91, 0.83, 0.76, 0.69], [0.8, 0.73, 0.67, 0.6]]
+    base = [(x * wide, y) for x, y in [(-2.65, 9.0), (-0.85, 9.45), (0.95, 9.15), (2.6, 8.4)]]   # wide: a broader palm
+    fl, fr = P.get('flen', 1.0), P.get('frad', 1.0)   # the fingers shorter / thicker
+    lens = [[v * fl for v in q] for q in [[4.0, 2.4, 1.9], [4.5, 2.8, 2.0], [4.2, 2.6, 1.95], [3.3, 1.95, 1.75]]]
+    rads = [[v * fr for v in q] for q in [[0.93, 0.85, 0.78, 0.7], [0.96, 0.88, 0.8, 0.72], [0.91, 0.83, 0.76, 0.69], [0.8, 0.73, 0.67, 0.6]]]
     knuck, pip = [], []
     for f in range(4):
         j = np.array([base[f][0], base[f][1], -0.1]); d = rz(-math.radians(P['splay'][f])) @ np.array([0, 1, 0.]); back = np.array([0, 0, 1.])
@@ -38,11 +41,12 @@ def build(pose):
             segs.append((j, e, rads[f][s], rads[f][s + 1], 0.12 if s else 0.75, 'nail' if s == 2 else 'f', back.copy()))
             if s < 2: pip.append(e.copy())
             j = e
-    t = P['thumb']
-    c0 = np.array([-2.7, 1.8, -0.7]); m1 = np.array([-4.7 - 0.5 * t, 4.4, -1.5 + 0.3 * t])
-    d1 = nrm(np.array([-0.35 - 0.3 * t, 1.0, -0.25])); p1 = m1 + d1 * 2.9; d2 = nrm(d1 + np.array([0.12, 0.05, -0.05])); p2 = p1 + d2 * 2.3
+    t = P['thumb']; tz = P.get('thumbZ', 0.0)   # thumbZ > 0: the thumb toward the back of the hand (under a phone lying on the palm)
+    c0 = np.array([-2.7, 1.8, -0.7]); m1 = np.array([-4.7 - 0.5 * t, 4.4, -1.5 + 0.3 * t + 1.2 * tz])
+    d1 = nrm(np.array([-0.35 - 0.3 * t, 1.0, -0.25 + tz])); tl, tr = P.get('thumbL', 1.0), P.get('thumbR', 1.0)   # the thumb shorter / thicker
+    p1 = m1 + d1 * 2.9 * tl; d2 = nrm(d1 + np.array([0.12, 0.05, -0.05])); p2 = p1 + d2 * 2.3 * tl
     tb = nrm([-0.75, 0.1, 0.65])
-    segs += [(c0, m1, 1.35, 1.0, 0.9, 'f', tb), (m1, p1, 1.0, 0.9, 0.15, 'f', tb), (p1, p2, 0.9, 0.78, 0.12, 'nail', tb)]
+    segs += [(c0, m1, 1.35 * tr, 1.0 * tr, 0.9, 'f', tb), (m1, p1, 1.0 * tr, 0.9 * tr, 0.15, 'f', tb), (p1, p2, 0.9 * tr, 0.78 * tr, 0.12, 'nail', tb)]
     return segs, knuck, pip
 
 def seg_d(p, a, b, r1, r2):
@@ -53,8 +57,8 @@ def smin(a, b, k):
     h = np.clip(0.5 + 0.5 * (b - a) / k, 0, 1); return b * (1 - h) + a * h - k * h * (1 - h)
 
 class Hand:
-    def __init__(self, pose, sleeve=False):
-        self.segs, self.knuck, self.pip = build(pose); self.sleeve = sleeve
+    def __init__(self, pose, sleeve=False, wide=1.0):
+        self.segs, self.knuck, self.pip = build(pose, wide); self.sleeve = sleeve; self.wide = wide
     def palm(self, p):
         q = p * np.array([1.0, 1.0, 1.3])
         d = None
@@ -64,7 +68,7 @@ class Hand:
             d = ds if d is None else smin(d, ds, 1.8)
         d = d / 1.1
         x, y, z = p[:, 0], p[:, 1], p[:, 2]
-        yy = np.clip(y / 9.0, 0, 1); hw = 2.1 + 0.55 * yy
+        yy = np.clip(y / 9.0, 0, 1); hw = (2.1 + 0.55 * yy) * self.wide
         xs = (x - 0.1) * 2.9 / hw; zz = z + 0.45 * (xs / 3.2) ** 2 - 0.05
         q2 = np.stack([np.abs(xs) - 2.6, np.abs(y - 4.5) - 3.0, np.abs(zz) - 0.05], 1)
         box = np.linalg.norm(np.maximum(q2, 0), axis=1) + np.minimum(q2.max(1), 0) - 1.2
@@ -87,8 +91,8 @@ class Hand:
         if full: return d, tag, bh, best
         return d
 
-def render(pose, out, W=520, H=760, ppcm=36.0, handA=45, rigY=-24, rigX=8, extra=None, sleeve=False, skin=(226, 170, 138), cx=-1.0, cy=4.0, dist=45.0, ss=2, fadeL=None):   # fadeL: the arm fades out this far (cm) from the wrist, along the arm
-    hand = Hand(pose, sleeve)
+def render(pose, out, W=520, H=760, ppcm=36.0, handA=45, rigY=-24, rigX=8, extra=None, sleeve=False, skin=(226, 170, 138), cx=-1.0, cy=4.0, dist=45.0, ss=2, fadeL=None, wide=1.0, oblique=None, occ=None):   # occ=(centre, half sizes): a box in the world that hides the hand behind it (the phone on the holding hand)   # oblique=(a, b): the games' own drawing — screen x = X + a·Z, y down = b·Z − Y (Z toward the viewer)   # fadeL: the arm fades out this far (cm) from the wrist, along the arm
+    hand = Hand(pose, sleeve, wide)
     R = ry(math.radians(rigY)) @ rx(-math.radians(rigX)) @ ry(math.radians(handA))
     if extra is not None: R = R @ np.asarray(extra, float)
     Rt = R.T
@@ -96,18 +100,29 @@ def render(pose, out, W=520, H=760, ppcm=36.0, handA=45, rigY=-24, rigX=8, extra
     xs = (np.arange(Wp) + 0.5 - Wp / 2) / (ppcm * ss) + cx
     ys = -(np.arange(Hp) + 0.5 - Hp / 2) / (ppcm * ss) + cy
     X, Y = np.meshgrid(xs, ys); n = X.size
-    eye = np.array([cx, cy, dist])
-    pix = np.stack([X.ravel(), Y.ravel(), np.zeros(n)], 1)
-    rd = pix - eye; rd /= np.linalg.norm(rd, axis=1)[:, None]
-    ro = np.tile(eye, (n, 1))
+    if oblique:                                   # parallel rays along the drawing's depth direction
+        a_, b_ = oblique; dv = np.array([-a_, b_, 1.0]); dv /= np.linalg.norm(dv); Zf = 25.0
+        ro = np.stack([X.ravel() - a_ * Zf, Y.ravel() + b_ * Zf, np.full(n, Zf)], 1); rd = np.tile(-dv, (n, 1)); dist = Zf / dv[2]
+    else:
+        eye = np.array([cx, cy, dist])
+        pix = np.stack([X.ravel(), Y.ravel(), np.zeros(n)], 1)
+        rd = pix - eye; rd /= np.linalg.norm(rd, axis=1)[:, None]
+        ro = np.tile(eye, (n, 1))
     # into the hand's frame
     rol = ro @ Rt.T; rdl = rd @ Rt.T
-    t = np.full(n, dist - 14.0); hit = np.zeros(n, bool); act = np.arange(n)
-    for it in range(140):
+    span = 30.0 if oblique else 14.0
+    t = np.full(n, dist - span); hit = np.zeros(n, bool); act = np.arange(n)
+    if occ is not None: oc, oh = np.asarray(occ[0], float), np.asarray(occ[1], float)
+    def occd(p):
+        q = np.abs(p @ R.T - oc) - oh; return np.linalg.norm(np.maximum(q, 0), axis=1) + np.minimum(q.max(1), 0)
+    for it in range(220 if oblique else 140):
         p = rol[act] + rdl[act] * t[act][:, None]; dd = hand.d(p)
+        if occ is not None:
+            do = occd(p); blocked = do < 0.004
+            act = act[~blocked]; p = p[~blocked]; dd = dd[~blocked]; dd = np.minimum(dd, do[~blocked])
         t[act] += dd * 0.9
         done = dd < 0.004; hit[act[done]] = True
-        act = act[~done & (t[act] < dist + 14)]
+        act = act[~done & (t[act] < dist + span)]
         if len(act) == 0: break
     idx = np.where(hit)[0]
     p = rol[idx] + rdl[idx] * t[idx][:, None]

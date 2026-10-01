@@ -19,6 +19,7 @@ REALTIME = [  # phase 1: real time with the synthetic microphone — alone on th
     ('a phone that does not hear its own probe (Chromium)', f'{H} tests/silent.js'),
     ('the media volume before getting ready (Chromium)', f'{H} tests/volume.js'),
     ('which end of the phone the hand plays at (Chromium)', f'{H} tests/side.js'),
+    ('the live mode: a quick start, a noisier room mid-game (Chromium)', f'{H} tests/live_flow.js'),
 ]
 LANE_A = [  # phase 2, beside lane B: the screens (their 28 sizes × languages × hands three at a time themselves)
     ('screens fit, all sizes (Chromium)', f'{H} tests/screens.js'),
@@ -29,6 +30,7 @@ LANE_B = [  # phase 2, beside lane A: the rest
     ("DSP2 is the lab's", f'{H} tests/test_same_dsp.js'),
     ('flight core: deterministic', f'{H} tests/test_core.js'),
     ('wave tuning on a synthetic palm', f'{H} tests/test_tune.js'),
+    ('the live mode: the room changing mid-game (DSP2 alone)', f'{H} tests/test_live.js'),
     ('band equalizer (Android)', f'{H} tests/test_eq.js'),
     ('is the probe heard: muted vs noisy', f'{H} tests/test_quiet.js'),
     ('strings and font', f'{H} tests/test_text.js'),

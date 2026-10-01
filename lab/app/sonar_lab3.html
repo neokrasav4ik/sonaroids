@@ -529,6 +529,8 @@ var DSP2=(function(){
   var d0,dref,boot,bootN=30,prevH,hist,L=4,prom,noProbe,bgAcc,bgN,bgR,bgI,BG_N=40;
   var holdFloor=false, Es,hold,present,refr,Q_FLOOR=-28,T_ON=-16,T_INT=-30,HOLD_S=1.5,tauE=0.15,REFR_S=0.35,TAU_BG=2.0,TAU=1.5;
   var eqW=null,eqDb=0,EQ_ON=16,ACC_N=24,FINE_N=188,EQ_MAX=10,gN=null,drops=0,sinceDrop=1e9,covered=false,lastPeak=null,d0B=0,fineN=-1,fR=null,fI=null,refR=null,refI=null,acR=null,acI=null,acN=0,moveN=0,scanWait=0,relocks=0,eAvg=0,TE=3,E_FAST=12,ePres=0,why='',rngBuf=[],xBuf=[],centered=false,autoC=false,presN=0,x,fast,cal={k:0.75,o:1,s:0.8},eHold=null,lowN=0,resS=-99,resFloor=null,upN=0,warm=0,absBuf=[],ABS_MED=15,DEADB=5,DEADB_UP=15,dirS=null,lostN=0,lost=false;
+  /* v1.08, the live mode (an experiment, off unless set('live',1)): see liveNoise and the background learnt round the palm below */
+  var live=false,nD=0,nBase=null,nX=0,burst=0,nMin=null,nzK=null,nzC=null,nzS=null,nzP=null,nzN=0,zc=null,lagB=[],lagD=null,lagR=null,gStill=0,postB=0,fresh=0,EsR=-80,STILL=0.003,TAU_SW=10,TAU_ST=2,TAU_ALL=0.2,MOVW=0.3,BURST=1;
   function init(sampleRate,parity){
     fs=sampleRate; var df=fs/N; kLo=Math.ceil(18300/df); if(BAND_LO) kLo=Math.ceil(BAND_LO/df); kHi=Math.floor(20500/df); kc=Math.floor((kLo+kHi)/2);
     ks=[]; for(var k=kLo;k<=kHi;k++) if(parity===undefined||parity==='all'||k%2===parity) ks.push(k);
@@ -539,7 +541,7 @@ var DSP2=(function(){
     cosT=new Float64Array(M*N); sinT=new Float64Array(M*N);
     for(q=0;q<M;q++){ var w=-2*Math.PI*ks[q]/N; for(var n=0;n<N;n++){ cosT[q*N+n]=Math.cos(w*n); sinT[q*N+n]=Math.sin(w*n); } }
     d0=null; dref=null; eqW=null; eqDb=0; gN=null; drops=0; sinceDrop=1e9; covered=false; lastPeak=null; d0B=0; fineN=-1; fR=null; fI=null; refR=null; refI=null; acR=null; acI=null; acN=0; moveN=0; scanWait=0; relocks=0; boot=[]; prevH=null; hist=[]; prom=null; noProbe=false;
-    bgAcc=null; bgN=0; bgR=null; bgI=null; Es=-80; hold=0; present=false; refr=0; x=null; fast=0; eHold=null; ePres=0; why=""; rngBuf=[]; xBuf=[]; centered=false; presN=0; lowN=0; resS=-99; resFloor=null; upN=0; warm=0; absBuf=[]; dirS=null; lostN=0; lost=false; fzF=[]; fzA=[]; fzN=0; fzHold=0; frozen=false; frozenN=0;
+    bgAcc=null; bgN=0; bgR=null; bgI=null; Es=-80; hold=0; present=false; refr=0; x=null; fast=0; eHold=null; ePres=0; why=""; rngBuf=[]; xBuf=[]; centered=false; presN=0; lowN=0; resS=-99; resFloor=null; upN=0; warm=0; absBuf=[]; dirS=null; lostN=0; lost=false; fzF=[]; fzA=[]; fzN=0; fzHold=0; frozen=false; frozenN=0; nD=0; nBase=null; nX=0; burst=0; nMin=null; nzK=null; nzC=null; nzS=null; nzP=null; nzN=0; lagB=[]; lagD=null; lagR=null; gStill=0; postB=0; fresh=0; EsR=-80; zc=null;
   }
   function bandSpec(fr){
     var Hr=new Float64Array(M),Hi=new Float64Array(M),q,n;
@@ -581,6 +583,9 @@ var DSP2=(function(){
     // давала остаток −10 дБ вместо −30, и ладонь тонула. Усиление учится только в тихой пустой комнате (как уровень пустоты):
     // рука рядом с телефоном просачивается в прямой отсчёт, и на iPhone иначе портилась высота
     var vd0=tap(H,d0); if(!gN) gN=[vd0[0],vd0[1]]; else if(!present&&!covered&&Es<Q_FLOOR){ gN[0]+=0.03*(vd0[0]-gN[0]); gN[1]+=0.03*(vd0[1]-gN[1]); }
+    /* live: the speaker-to-microphone gain is followed while the palm is there too (slowly), when the palm is 6 cm or more from the phone —
+       closer, its echo leaks into the direct sound. A gain that fell by 4 dB mid-game had left the whole still room as «echo» */
+    else if(live&&present&&!covered&&zc!==null&&(gA+zc)*mm>=60){ gN[0]+=0.01*(vd0[0]-gN[0]); gN[1]+=0.01*(vd0[1]-gN[1]); }
     var gm=gN[0]*gN[0]+gN[1]*gN[1], sq=Math.sqrt(dref), nr=sq*gN[0]/gm, ni=-sq*gN[1]/gm;
     var h=[new Float64Array(G),new Float64Array(G)];
     for(i=0;i<G;i++){ var v2=tap(H,(d0+gA+i)%T); h[0][i]=v2[0]*nr-v2[1]*ni; h[1][i]=v2[0]*ni+v2[1]*nr; }
@@ -623,6 +628,28 @@ var DSP2=(function(){
         if(Math.abs(fb)<2) fb=0;   /* ±1 — в пределах точности (на OnePlus и без сдвига оценка ходит на ±2) */
         if(fb!==0){ d0=(d0+fb+T)%T; gN=[fR[d0]/fineN,fI[d0]/fineN]; dirS=(gN[0]*gN[0]+gN[1]*gN[1]); prevH=null; hist=[]; }
         fineN=-1; fR=null; fI=null; if(fb!==0) return null; } }
+    /* live: the room's noise, from the tones just outside the probe's band (3–12 tones below and above it): the probe and its echoes never
+       reach them — a palm's motion spreads its echo over all delays (tried: the far delays rose 20 dB with the palm in), but not out of
+       the band. Their change from frame to frame is the noise; scaled to one delay of the response, it is taken off the motion energy and
+       off the echo over the room. Noise in the band (keys, rustle, a kettle) had read as a moving palm and pulled the height to the middle */
+    if(live){ if(!nzC){ nzK=[]; for(var kz=kLo-12;kz<=kLo-3;kz++) if(kz*fs/N>=14000) nzK.push(kz); for(kz=kHi+3;kz<=kHi+12;kz++) if(kz<N/2-2) nzK.push(kz);
+        nzC=new Float64Array(nzK.length*N); nzS=new Float64Array(nzK.length*N); for(var jz=0;jz<nzK.length;jz++) for(n=0;n<N;n++){ nzC[jz*N+n]=Math.cos(2*Math.PI*nzK[jz]*n/N); nzS[jz*N+n]=Math.sin(2*Math.PI*nzK[jz]*n/N); } }
+      var nzF=new Float64Array(2*nzK.length); for(jz=0;jz<nzK.length;jz++){ var zr0=0,zi0=0; for(n=0;n<N;n++){ zr0+=fr[n]*nzC[jz*N+n]; zi0+=fr[n]*nzS[jz*N+n]; } nzF[2*jz]=zr0; nzF[2*jz+1]=zi0; }
+      if(nzP&&nzK.length){ var dz=new Float64Array(nzK.length); for(jz=0;jz<nzK.length;jz++){ var u1=nzF[2*jz]-nzP[2*jz], u2=nzF[2*jz+1]-nzP[2*jz+1]; dz[jz]=u1*u1+u2*u2; }
+        var sw2=0; for(var qz=0;qz<M;qz++) sw2+=eqW?eqW[qz]*eqW[qz]:1;
+        // one tone's noise power (the median of a noise power is 0.69 of its mean; a difference of two frames doubles it) → one delay of the
+        // response: Σ over the band's tones /N², the normalisation by the direct sound; the same as the change of one delay over L frames
+        var md=Array.prototype.slice.call(dz).sort(function(p,q){return p-q;})[dz.length>>1]/0.69/2*sw2/(N*N)*dref/(gN[0]*gN[0]+gN[1]*gN[1]);
+        if(nzN++===0) nD=md; nD+=0.15*(md-nD);
+        /* a burst of noise (keys, a spoon): 20 dB over the quiet of the last seconds (nMin: the least noise, rising 10 dB in 5 s; the palm
+           itself coming and going lifts these tones 10–16 dB, the labelled recordings). While it lasts and until it falls back to 6 dB
+           over that quiet, nothing is decided: the palm is neither taken nor dropped, nothing learnt, the echo's centre does not pull the
+           height (the motion still steers: the game's own sounds are such bursts, 35–90 in a game, and freezing it lost the palm's moves).
+           Never longer than 0.4 s: a noise that stays (a kettle) is the room's noise then */
+        nMin=nMin===null?nD:Math.min(nMin*Math.pow(10,1/(5*fs/N)),nD);
+        if(BURST&&!burst&&md>100*nMin) burst=1; else if(burst&&(md<4*nMin||++burst>0.4*fs/N)){ if(burst>0.4*fs/N) nMin=nD; burst=0; }   // by this frame's own noise: it starts and ends at once
+        nX=nBase===null?0:Math.max(0,nD-2*nBase); }   // the noise over twice the room's own when its empty level was learnt: only that is taken off (the estimate itself wavers ±3 dB)
+      nzP=nzF; }
     if(!prevH){ prevH=h; return null; }
     var h2=[new Float64Array(G),new Float64Array(G)];
     for(i=0;i<G;i++){ h2[0][i]=0.5*(h[0][i]+prevH[0][i]); h2[1][i]=0.5*(h[1][i]+prevH[1][i]); }
@@ -637,31 +664,46 @@ var DSP2=(function(){
     hist.push(h2); if(hist.length>L+2) hist.shift();
     if(hist.length<L+2) return null;
     // быстрое: скорость вращения фазы по всей полосе
-    var a1=hist[L+1],b1=hist[1],a0=hist[L],b0=hist[0],rr=0,ri=0,e=0;
+    var a1=hist[L+1],b1=hist[1],a0=hist[L],b0=hist[0],rr=0,ri=0,e=0,mz=0,mzw=0, nXg=live?nX:0;
     for(i=0;i<G;i++){ var g1r=a1[0][i]-b1[0][i],g1i=a1[1][i]-b1[1][i],g0r=a0[0][i]-b0[0][i],g0i=a0[1][i]-b0[1][i];
-      rr+=g1r*g0r+g1i*g0i; ri+=g1i*g0r-g1r*g0i; e+=g1r*g1r+g1i*g1i; }
+      rr+=g1r*g0r+g1i*g0i; ri+=g1i*g0r-g1r*g0i; var em=g1r*g1r+g1i*g1i; e+=em; if(live){ var ex0=em-nD; if(ex0>0){ mz+=ex0*i; mzw+=ex0; } } }
+    var eR=e; if(live) e=Math.max(e-G*nXg,e*1e-4);
     var E=10*Math.log10(e/dref+1e-30), vel=-Math.atan2(ri,rr)*lam/(4*Math.PI);
+    // live: where the palm moves — the centre of the motion (still things have none); kept while the palm holds still
+    if(live&&mzw>0&&E>T_INT){ var zn=mz/mzw; zc=zc===null?zn:zc+0.3*(zn-zc); }
+    // live: how much each tap changed over the last second, and how much stands over the room there (both smoothed, τ 0.15 s)
+    if(live){ lagB.push(h2); var LG=Math.round(fs/N); if(lagB.length>LG+1) lagB.shift();
+      if(lagB.length===LG+1&&!(burst>0)){ var o1=lagB[0], aG=1-Math.exp(-1/(0.15*fs/N)); if(!lagD){ lagD=new Float64Array(G); lagR=new Float64Array(G); for(i=0;i<G;i++) lagD[i]=1e30; }
+        var sD1=0, sR1=0;
+        for(i=0;i<G;i++){ var q1=h2[0][i]-o1[0][i], q2=h2[1][i]-o1[1][i], q3=h2[0][i]-bgR[i], q4=h2[1][i]-bgI[i]; sD1+=q1*q1+q2*q2; sR1+=q3*q3+q4*q4;
+          lagD[i]=lagD[i]>1e29?q1*q1+q2*q2:lagD[i]+aG*(q1*q1+q2*q2-lagD[i]); lagR[i]+=aG*(q3*q3+q4*q4-lagR[i]); }
+        // and all the taps together, frame by frame (the sum over 76 taps is steady enough): «all of it stands still» 5 frames running
+        gStill=sD1-G*nD<STILL*Math.max(0,sR1-G*nD/2)?gStill+1:0; } }
     // медленное: центр тяжести эха относительно пустой комнаты
-    var sw=0,sx=0; for(i=0;i<G;i++){ var dr=h2[0][i]-bgR[i],di=h2[1][i]-bgI[i],p=dr*dr+di*di; sw+=p; sx+=p*(gA+i); }
+    var sw=0,sx=0,swr=0,nH=live?nX/2:0; for(i=0;i<G;i++){ var dr=h2[0][i]-bgR[i],di=h2[1][i]-bgI[i],p0=dr*dr+di*di,p=p0-nH; if(p<0) p=0; if(live&&lagD&&lagD[i]<1e29) p*=Math.min(1,Math.max(0,lagD[i]-nD)/(MOVW*Math.max(1e-30,lagR[i]-nD/2))); swr+=p0; sw+=p; sx+=p*(gA+i); }   // live: the noise's share of each tap off the centre
     var range=sx/(sw||1e-30)*mm, abs=cal.k*range+cal.o;
-    var fpsF=fs/N, aE=1-Math.exp(-1/(tauE*fpsF)); Es+=aE*(E-Es);
-    var resE=10*Math.log10(sw/dref+1e-30); resS+=0.2*(resE-resS);
+    var fpsF=fs/N, aE=1-Math.exp(-1/(tauE*fpsF)); Es+=aE*(E-Es); EsR+=aE*(10*Math.log10(eR/dref+1e-30)-EsR);   // live: EsR — with the noise in (the room's quiet frames are judged by it: noise taken off must not make a stir look quiet)
+    var resE=10*Math.log10(swr/dref+1e-30); resS+=0.2*(resE-resS);
+    // live: the empty room's level counts the noise too — louder noise lifts it (a palm's echo must stand over both to come or to stay)
+    var fl=resFloor; if(live&&resFloor!==null) fl=10*Math.log10(Math.pow(10,resFloor/10)+G*nH/dref+1e-30);
     // появление — только по движению: дрейф фона так не выглядит
-    if(Es>T_ON&&refr===0) hold=Math.max(hold,Math.round(HOLD_S*fpsF));
+    if(live){ if(burst>0) postB=Math.round(0.2*fpsF); else if(postB>0) postB--; }
+    if(Es>T_ON&&refr===0&&!(live&&(burst>0||postB>0))) hold=Math.max(hold,Math.round(HOLD_S*fpsF));   // live: a burst's own stir (and its tail) is not a palm's
     var moving=hold>0; if(hold>0) hold--;
     var was=present;
-    if(!present){
+    if(live&&burst>0){}
+    else if(!present){
       // уровень пустой комнаты учится только на тихих кадрах: если ладонь уже рядом и шевелится при старте,
       // он не выучит её эхо как «пустоту» (иначе потом неподвижная рука не видна — «видна рывками»)
       // v0.91 (the maintainer's race, 29 Sep 22:10: the palm lost 15 times — while it counted as gone the empty-room level crept up to the
       // palm's echo, and each loss made the next one easier): during a game the level stays as the getting ready left it (holdFloor);
       // the wait before a palm may be taken back 0.7 → 0.35 s. Checked on 13 game logs: the losses there 15 → 4, the time without the
       // palm 7.2% → 1.5%; the other logs unchanged, no new comings and goings
-      if(Es<Q_FLOOR&&!(holdFloor&&resFloor!==null)){ if(resFloor===null) resFloor=resS;
+      if((live?EsR:Es)<Q_FLOOR&&!(holdFloor&&resFloor!==null)){ if(resFloor===null) resFloor=resS;
         warm++;
         var tf=warm<fpsF?0.15:1.0;                                // первую секунду уровень пустой комнаты только учится
-        resFloor+=(1-Math.exp(-1/(tf*fpsF)))*(resS-resFloor); }
-      if(resFloor!==null&&warm>=fpsF&&resS>resFloor+15) upN++; else upN=0;   // вход по резкому росту эха над пустой комнатой
+        resFloor+=(1-Math.exp(-1/(tf*fpsF)))*(resS-resFloor); if(live){ nBase=nBase===null?nD:nBase+(1-Math.exp(-1/(tf*fpsF)))*(nD-nBase); } }
+      if(resFloor!==null&&warm>=fpsF&&resS>fl+15&&!(fresh>0)) upN++; else upN=0;   // вход по резкому росту эха над пустой комнатой
       if(refr===0&&(moving||upN>=4)){ present=true; eHold=resS; ePres=resS; lowN=0; why=moving?'движение':'эхо'; upN=0; }
     }
     else {
@@ -669,23 +711,36 @@ var DSP2=(function(){
       // Уходит, когда эхо опустилось почти до пустоты. Сравнивать с пиком нельзя: эхо сильно зависит от позы ладони.
       // Второй признак ухода: эхо упало на 18 дБ ниже своего уровня с рукой (поза меняет эхо лишь на ~10 дБ) и близко к пустоте.
       if(resS>ePres-6) ePres+=(1-Math.exp(-1/fpsF))*(resS-ePres);
-      var lowF=resFloor!==null&&resS<resFloor+10, lowD=resS<ePres-18&&(resFloor===null||resS<resFloor+15);
+      var lowF=resFloor!==null&&resS<fl+10, lowD=resS<ePres-18&&(resFloor===null||resS<fl+15||(live&&Es<Q_FLOOR));   // live: 18 dB under the palm's own and nothing moving — gone, whatever the room kept of it
       if(lowF||lowD) lowN++; else lowN=0;
-      if(lowN>=Math.round(0.3*fpsF)){ present=false; refr=Math.round(REFR_S*fpsF); hold=0; why=lowF?'уход: эхо у пустоты':'уход: эхо упало'; }
+      if(lowN>=Math.round(0.3*fpsF)){ present=false; refr=Math.round(REFR_S*fpsF); hold=0; if(live) fresh=Math.round(0.6*fpsF); why=lowF?'уход: эхо у пустоты':'уход: эхо упало'; }
     }
     if(refr>0) refr--;
     var started=present&&!was;
-    if(!present&&!covered){ var aB=1-Math.exp(-1/(TAU_BG*fpsF));      // без руки фон тихо обновляется
+    // live: the room is learnt without the palm only on quiet frames — the frames before a coming palm counts as «there» (it moves) left
+    // a few per cent of its echo in the room, and that stayed once it went
+    /* live: the palm has just gone — what its echo leaves (what the room learnt of it, a thing put down meanwhile) is room now: learnt at
+       once (0.6 s, τ 0.15 s), and meanwhile it may not count as a palm by its echo (only by moving) */
+    if(live&&fresh>0){ fresh--; if(!present&&!covered&&!(burst>0)){ var aF=1-Math.exp(-1/(0.15*fpsF)); for(i=0;i<G;i++){ bgR[i]+=aF*(h2[0][i]-bgR[i]); bgI[i]+=aF*(h2[1][i]-bgI[i]); } } else fresh=0; }
+    else if(!present&&!covered&&!(live&&(EsR>=Q_FLOOR||burst>0))){ var aB=1-Math.exp(-1/(TAU_BG*fpsF));      // без руки фон тихо обновляется
       for(i=0;i<G;i++){ bgR[i]+=aB*(h2[0][i]-bgR[i]); bgI[i]+=aB*(h2[1][i]-bgI[i]); } }
     /* с 0.44 (27.09, Redmi, рука у фронтальной камеры): после подготовки рядом появилось неподвижное эхо (~7 см), которого не было в пустой
        комнате, — абсолютная часть «застыла» на нём (дальность 6,5–8,2 см при руке, ходившей на 5–10 см), согласие частей 0,05, и она
        тянула корабль к одной высоте («уводит»). Если за 2 с быстрая часть прошла ≥ 30 мм, а абсолютная — меньше 0,35 от этого, фон учится
        и при руке (τ 10 с) ещё 10 с: движущаяся ладонь в фон не попадает (её эхо вращается по фазе и усредняется), неподвижное — уходит.
        Прогон журналов подготовки: Redmi 0.10 → 0.29, остальные 15 — без изменений (14) или лучше; записи с меткой — те же до цифры */
+    /* live: with the palm there, the room is learnt too — tap by tap, where the echo has stood still for the last second: its change over
+       1 s is under 0.003 (−25 dB) of what stands over the room there. A held palm still drifts and trembles (labelled recordings, holds:
+       −25…0 dB, mostly over −20); a cup, a laptop lid, a phone's own leftovers — −30…−55 dB. So a thing that appears or goes mid-game
+       becomes room in a few seconds, and the moving palm never does */
+    else if(live&&!covered&&burst===0&&lagD){ var aL=1-Math.exp(-1/(TAU_ST*fpsF));
+      var fz=present&&(frozen||fzHold>0); if(fz&&fzHold>0) fzHold--; var aW=fz?1-Math.exp(-1/(TAU_SW*fpsF)):0;
+      if(gStill>=5){ aL=1-Math.exp(-1/(TAU_ALL*fpsF)); aW=aL; }   // all of it stands still (what is left of a palm that went, a thing): learnt at once
+      for(i=0;i<G;i++){ var aT=lagD[i]-nD<STILL*Math.max(0,lagR[i]-nD/2)?aL:aW; bgR[i]+=aT*(h2[0][i]-bgR[i]); bgI[i]+=aT*(h2[1][i]-bgI[i]); } }
     else if(present&&!covered&&(frozen||fzHold>0)){ if(fzHold>0) fzHold--; var aP=1-Math.exp(-1/(10*fpsF));
       for(i=0;i<G;i++){ bgR[i]+=aP*(h2[0][i]-bgR[i]); bgI[i]+=aP*(h2[1][i]-bgI[i]); } }
     if(E>T_INT) fast+=vel;                                   // сырое смещение — для калибровки
-    if(!covered){ absBuf.push(abs); if(absBuf.length>ABS_MED) absBuf.shift(); }
+    if(!covered&&!(live&&burst>0)){ absBuf.push(abs); if(absBuf.length>ABS_MED) absBuf.shift(); }
     if(present&&!covered){ fzF.push(fast*cal.s); fzA.push(abs); if(fzF.length>Math.round(2*fpsF)){ fzF.shift(); fzA.shift(); }
       if(++fzN%10===0&&fzF.length>=Math.round(2*fpsF)){ var pf=Math.max.apply(null,fzF)-Math.min.apply(null,fzF), pa=Math.max.apply(null,fzA)-Math.min.apply(null,fzA);
         frozen=pf>=30&&pa<0.35*pf; if(frozen){ fzHold=Math.round(10*fpsF); frozenN++; } } } else { fzF=[]; fzA=[]; frozen=false; fzHold=0; }
@@ -699,7 +754,7 @@ var DSP2=(function(){
       // с 25.09: ниже середины абсолютная часть тянет ВВЕРХ без ускорения и с зоной ±15 мм: у стола (ладонь на 4–5 см) она врёт вверх
       // на 25–40 мм, и ускоренное подтягивание не пускало корабль вниз («резинка» внизу; запись с меткой 11:09 на 4–12 см:
       // форма 0.826 → 0.911, дрожь удержания 6.9 → 4.1 мм; 11:26 0.628 → 0.895; остальные записи те же или лучше)
-      if(!covered){ var up=eAvg>0&&x<100, kq=up?1:1+(eAvg/E_FAST)*(eAvg/E_FAST);
+      if(!covered&&!(live&&burst>0)){ var up=eAvg>0&&x<100, kq=up?1:1+(eAvg/E_FAST)*(eAvg/E_FAST);
       eAvg+=(1-Math.exp(-kq/(TE*fpsF)))*((absM-x)-eAvg);
       var db=up?DEADB_UP:DEADB, ex=Math.abs(eAvg)>db?eAvg-(eAvg>0?db:-db):0, dx=(1-Math.exp(-kq/(TAU*fpsF)))*ex;
       x+=dx; eAvg-=dx; } }
@@ -723,8 +778,8 @@ var DSP2=(function(){
   function shift(d){ var i; cal.o+=d; for(i=0;i<absBuf.length;i++) absBuf[i]+=d; if(x!==null) x+=d; for(i=0;i<xBuf.length;i++) xBuf[i]+=d; centered=true; }
   return {init:init,frame:frame,recenter:recenter,shift:shift,
     setCal:function(c){ cal.k=c.k; cal.o=c.o; cal.s=c.s; },
-    set:function(k,v){ if(k==='flo') BAND_LO=v||null; if(k==='tint') T_INT=v; if(k==='tau') TAU=v; if(k==='absmed') ABS_MED=Math.max(1,Math.round(v)); if(k==='deadband') DEADB=Math.max(0,v); if(k==='autocenter') autoC=!!v; if(k==='holdfloor') holdFloor=!!v; },
-    info:function(){ return {covered:covered,eq_db:eqDb,eq:!!eqW,relocks:relocks,drops:drops,d0:d0,prom:prom,noProbe:noProbe,lost:lost,ready:bgR!==null,mm:mm,centered:centered,band:[kLo,kHi],frozen:frozenN,cal:{k:cal.k,o:cal.o,s:cal.s}}; }};
+    set:function(k,v){ if(k==='flo') BAND_LO=v||null; if(k==='tint') T_INT=v; if(k==='tau') TAU=v; if(k==='absmed') ABS_MED=Math.max(1,Math.round(v)); if(k==='deadband') DEADB=Math.max(0,v); if(k==='autocenter') autoC=!!v; if(k==='holdfloor') holdFloor=!!v; if(k==='live') live=!!v; if(k==='tausw') TAU_SW=v; if(k==='taust') TAU_ST=v; if(k==='still') STILL=v; if(k==='tauall') TAU_ALL=v; if(k==='movw') MOVW=v; if(k==='burst') BURST=v; },
+    info:function(){ return {covered:covered,eq_db:eqDb,eq:!!eqW,relocks:relocks,drops:drops,d0:d0,prom:prom,noProbe:noProbe,lost:lost,ready:bgR!==null,mm:mm,centered:centered,band:[kLo,kHi],frozen:frozenN,cal:{k:cal.k,o:cal.o,s:cal.s},live:live,noise:live?+(10*Math.log10(nD/dref+1e-30)).toFixed(1):null,zone:zc===null?null:+((gA+zc)*mm).toFixed(0)}; }};
 })();
 /* ── ИГРА: логика отдельно от рисования, чтобы её можно было проверить на записи ── */
 var Game=(function(){
@@ -1261,8 +1316,9 @@ var rpMode='game'; try{ var sm=localStorage.getItem('sonar_right_mode'); if(RP_M
 function rpModeLabel(){ var t='Управление: '+RP_MNAME[rpMode]; ['rightMode','rpMode'].forEach(function(id){ el(id).textContent=t; }); }
 function rpModeNext(){ rpMode=RP_MODES[(RP_MODES.indexOf(rpMode)+1)%RP_MODES.length]; try{ localStorage.setItem('sonar_right_mode',rpMode); }catch(e){} rpModeLabel(); }
 function rpPatch(s,m){ var a,b;
-  if(m==='near'){ a='var sw=0,sx=0; for(i=0;i<G;i++){'; b='var sw=0,sx=0; for(i=0;i<Math.min(G,Math.round(160/mm)-gA);i++){'; }
-  else if(m==='motion'){ a='if(!covered){ var up=eAvg>0&&x<100'; b='if(false){ var up=eAvg>0&&x<100'; }
+  // v1.08 игры: DSP2 с живым режимом — строки-якоря правок поменялись вместе с ним
+  if(m==='near'){ a='nH=live?nX/2:0; for(i=0;i<G;i++){'; b='nH=live?nX/2:0; for(i=0;i<Math.min(G,Math.round(160/mm)-gA);i++){'; }
+  else if(m==='motion'){ a='if(!covered&&!(live&&burst>0)){ var up=eAvg>0&&x<100'; b='if(false){ var up=eAvg>0&&x<100'; }
   else return s;
   return s.split(a).length===2?s.replace(a,b):null; }
 function rpDSP(m){ if(m==='game') return DSP2; try{ var src=Array.prototype.map.call(document.scripts||[],function(x){ return x.textContent; }).join('\n');
@@ -1393,7 +1449,25 @@ var Tune=(function(){
     if(Math.abs(d)>0.2||Math.abs(T.field-f0)>0.2) return {d:+d.toFixed(1),field:+T.field.toFixed(1),span:+r.span.toFixed(0),wave:r.wave};
     return null;
   }
-  return {create:create,fracOf:fracOf,pick:pick,step:step,ASYM:ASYM};
+  /* v1.08, the live mode (an experiment): in flight the palm's range keeps being followed, slowly and within bounds — the last 20 s of heights
+     (once 10 s are there and the palm went over 4 cm or more): each second the field and the middle take 5% of the way to what waving would
+     give, never more than 1 mm a second. A drift of the phone or the room moves the screen with it, not out from under the palm; a dodge to
+     one edge in a few seconds changes nothing that can be felt */
+  var L_WIN=20, L_MIN=10, L_STEP=1, L_K=0.05, L_MAX=1;
+  function stepLive(T,dt,st,shift){
+    if(!T.lb){ T.lb=[]; T.lt=0; T.la=0; }
+    T.lt+=dt; if(st&&st.present) T.lb.push({t:T.lt,h:st.height});
+    while(T.lb.length&&T.lb[0].t<T.lt-L_WIN) T.lb.shift();
+    T.la+=dt; if(T.la<L_STEP) return null; T.la=0;
+    if(T.lb.length<60||T.lb[T.lb.length-1].t-T.lb[0].t<L_MIN) return null;
+    var h=T.lb.map(function(q){return q.h;}).sort(function(a,b){return a-b;}), p=function(f){ return h[Math.min(h.length-1,Math.floor(f*(h.length-1)))]; };
+    var lo=p(0.05), hi=p(0.95); if(hi-lo<40) return null;
+    var f0=T.field; if(T.auto){ var F=(hi-lo)/((0.5-B)*2/(1+ASYM)+(TP-0.5)*2*ASYM/(1+ASYM)); F=Math.max(F_MIN,Math.min(F_MAX,F)); T.field+=Math.max(-L_MAX,Math.min(L_MAX,(F-T.field)*L_K)); }
+    var cen=lo+(0.5-B)*2*T.field/(1+ASYM), d=Math.max(-L_MAX,Math.min(L_MAX,(cen-100)*-L_K));
+    if(Math.abs(d)>0.05){ shift(d); T.lb.forEach(function(q){ q.h+=d; }); }
+    return {d:+d.toFixed(2),field:+T.field.toFixed(1),df:+(T.field-f0).toFixed(2),span:+(hi-lo).toFixed(0)};
+  }
+  return {create:create,fracOf:fracOf,pick:pick,step:step,stepLive:stepLive,ASYM:ASYM};
 })();
 if(typeof module!=='undefined') module.exports=Tune;
 

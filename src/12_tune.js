@@ -35,6 +35,24 @@ var Tune=(function(){
     if(Math.abs(d)>0.2||Math.abs(T.field-f0)>0.2) return {d:+d.toFixed(1),field:+T.field.toFixed(1),span:+r.span.toFixed(0),wave:r.wave};
     return null;
   }
-  return {create:create,fracOf:fracOf,pick:pick,step:step,ASYM:ASYM};
+  /* v1.08, the live mode (an experiment): in flight the palm's range keeps being followed, slowly and within bounds — the last 20 s of heights
+     (once 10 s are there and the palm went over 4 cm or more): each second the field and the middle take 5% of the way to what waving would
+     give, never more than 1 mm a second. A drift of the phone or the room moves the screen with it, not out from under the palm; a dodge to
+     one edge in a few seconds changes nothing that can be felt */
+  var L_WIN=20, L_MIN=10, L_STEP=1, L_K=0.05, L_MAX=1;
+  function stepLive(T,dt,st,shift){
+    if(!T.lb){ T.lb=[]; T.lt=0; T.la=0; }
+    T.lt+=dt; if(st&&st.present) T.lb.push({t:T.lt,h:st.height});
+    while(T.lb.length&&T.lb[0].t<T.lt-L_WIN) T.lb.shift();
+    T.la+=dt; if(T.la<L_STEP) return null; T.la=0;
+    if(T.lb.length<60||T.lb[T.lb.length-1].t-T.lb[0].t<L_MIN) return null;
+    var h=T.lb.map(function(q){return q.h;}).sort(function(a,b){return a-b;}), p=function(f){ return h[Math.min(h.length-1,Math.floor(f*(h.length-1)))]; };
+    var lo=p(0.05), hi=p(0.95); if(hi-lo<40) return null;
+    var f0=T.field; if(T.auto){ var F=(hi-lo)/((0.5-B)*2/(1+ASYM)+(TP-0.5)*2*ASYM/(1+ASYM)); F=Math.max(F_MIN,Math.min(F_MAX,F)); T.field+=Math.max(-L_MAX,Math.min(L_MAX,(F-T.field)*L_K)); }
+    var cen=lo+(0.5-B)*2*T.field/(1+ASYM), d=Math.max(-L_MAX,Math.min(L_MAX,(cen-100)*-L_K));
+    if(Math.abs(d)>0.05){ shift(d); T.lb.forEach(function(q){ q.h+=d; }); }
+    return {d:+d.toFixed(2),field:+T.field.toFixed(1),df:+(T.field-f0).toFixed(2),span:+(hi-lo).toFixed(0)};
+  }
+  return {create:create,fracOf:fracOf,pick:pick,step:step,stepLive:stepLive,ASYM:ASYM};
 })();
 if(typeof module!=='undefined') module.exports=Tune;

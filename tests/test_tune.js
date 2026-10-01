@@ -19,3 +19,12 @@ const ok=T.ok&&lo>0.02&&lo<0.10&&hi>0.86&&hi<0.94&&T.field>95&&T.field<130; cons
   for(let i=0;i<Math.round(12*48000/512);i++){ const r=DSP2.frame(src2(i)); if(r) st2=r; if((i+1)*512/48000>=5) Tune.step(T2,512/48000,st2,true,d=>DSP2.shift(d)); }
   const ok2=!T2.ok&&Math.abs(T2.field-110)<0.01;
   console.log(`a ±2 cm wiggle: caught ${T2.ok}, field ${T2.field.toFixed(0)} mm (want: not caught, still 110)`); console.log(ok2?'RESULT: ok':'RESULT: FAIL'); if(!ok2) process.exitCode=1; }
+/* v1.08, the live mode: in flight the range is followed slowly (Tune.stepLive). Synthetic heights straight in (no sonar): the palm waves
+   100±40 mm, then its whole range drifts 30 mm up (the phone moved). Each second ≤ 1 mm of shift and of field; after a minute the middle has
+   followed most of the drift; a palm that only wiggles (±1.5 cm) changes nothing */
+{ const T3=Tune.create(100,true); let off=0, maxStep=0, dt=1/60; const sh=d=>{ off+=d; maxStep=Math.max(maxStep,Math.abs(d)); };
+  for(let t=0;t<90;t+=dt){ const h=100+40*Math.sin(2*Math.PI*t/4)+(t>20?30:0)+off; Tune.stepLive(T3,dt,{present:true,height:h},sh); }
+  const T4=Tune.create(100,true); let off4=0; for(let t=0;t<60;t+=dt) Tune.stepLive(T4,dt,{present:true,height:100+15*Math.sin(2*Math.PI*t/2)},d=>{ off4+=d; });
+  const ok3=maxStep<=1.0001&&off<-20&&off>-35&&T3.field>=50&&T3.field<=120&&off4===0&&T4.field===100;
+  console.log(`the live mode, in flight: a 30 mm drift followed by ${(-off).toFixed(1)} mm in 70 s, the biggest step ${maxStep.toFixed(2)} mm, field ${T3.field.toFixed(0)} mm; a ±1.5 cm wiggle moved ${off4.toFixed(1)} mm`);
+  console.log(ok3?'RESULT: ok':'RESULT: FAIL'); if(!ok3) process.exitCode=1; }

@@ -48,8 +48,9 @@ var rpMode='game'; try{ var sm=localStorage.getItem('sonar_right_mode'); if(RP_M
 function rpModeLabel(){ var t='Управление: '+RP_MNAME[rpMode]; ['rightMode','rpMode'].forEach(function(id){ el(id).textContent=t; }); }
 function rpModeNext(){ rpMode=RP_MODES[(RP_MODES.indexOf(rpMode)+1)%RP_MODES.length]; try{ localStorage.setItem('sonar_right_mode',rpMode); }catch(e){} rpModeLabel(); }
 function rpPatch(s,m){ var a,b;
-  if(m==='near'){ a='var sw=0,sx=0; for(i=0;i<G;i++){'; b='var sw=0,sx=0; for(i=0;i<Math.min(G,Math.round(160/mm)-gA);i++){'; }
-  else if(m==='motion'){ a='if(!covered){ var up=eAvg>0&&x<100'; b='if(false){ var up=eAvg>0&&x<100'; }
+  // v1.08 игры: DSP2 с живым режимом — строки-якоря правок поменялись вместе с ним
+  if(m==='near'){ a='nH=live?nX/2:0; for(i=0;i<G;i++){'; b='nH=live?nX/2:0; for(i=0;i<Math.min(G,Math.round(160/mm)-gA);i++){'; }
+  else if(m==='motion'){ a='if(!covered&&!(live&&burst>0)){ var up=eAvg>0&&x<100'; b='if(false){ var up=eAvg>0&&x<100'; }
   else return s;
   return s.split(a).length===2?s.replace(a,b):null; }
 function rpDSP(m){ if(m==='game') return DSP2; try{ var src=Array.prototype.map.call(document.scripts||[],function(x){ return x.textContent; }).join('\n');

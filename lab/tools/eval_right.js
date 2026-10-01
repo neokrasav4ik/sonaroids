@@ -24,8 +24,8 @@ function synthFrame(d,seed){ const S=synthInit(), out=new Float32Array(N), c=343
   let r=seed>>>0; for(let n=0;n<N;n++){ r=(r*1664525+1013904223)>>>0; out[n]+=(r/4294967296-0.5)*4e-4; } return out; }
 
 /* режимы пробы (с 27.09) — те же правки DSP2, что делает страница (lab/src/085_right.js, rpPatch) */
-function patchFor(mode){ return s=>{ let a,b; if(mode==='near'){ a='var sw=0,sx=0; for(i=0;i<G;i++){'; b='var sw=0,sx=0; for(i=0;i<Math.min(G,Math.round(160/mm)-gA);i++){'; }
-  else if(mode==='motion'){ a='if(!covered){ var up=eAvg>0&&x<100'; b='if(false){ var up=eAvg>0&&x<100'; } else return s;
+function patchFor(mode){ return s=>{ let a,b; if(mode==='near'){ a='nH=live?nX/2:0; for(i=0;i<G;i++){'; b='nH=live?nX/2:0; for(i=0;i<Math.min(G,Math.round(160/mm)-gA);i++){'; }   // якоря — по DSP2 игры 1.08
+  else if(mode==='motion'){ a='if(!covered&&!(live&&burst>0)){ var up=eAvg>0&&x<100'; b='if(false){ var up=eAvg>0&&x<100'; } else return s;
   if(s.split(a).length!==2) throw new Error('правка режима '+mode+' не нашла место в DSP2'); return s.replace(a,b); }; }
 function analyse(meta,x){ const flo=C.bandOf(meta), mode=meta.mode||'game'; let src=C.dspSrc().replace('Math.ceil(18300/df)','Math.ceil('+flo+'/df)'); src=patchFor(mode)(src);
   const D=new Function(src+'\nreturn DSP2;')(); D.init(SR,'all'); D.setCal(meta.cal); const rows=C.pass(D,x);

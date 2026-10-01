@@ -54,6 +54,8 @@ A game lasts a few minutes: the pace keeps growing, and a hand held in the air g
 
 **The pause** in both games: go on, start over (straight away or with a new fit), end the game, exit to the menu. Beside them are the skin, the graphics (HD or pixels) and the sounds "- SOUNDS ▮▮▮▮▮▮▯▯ +": eight levels, a tap in the middle switches them off and on. The skin and the graphics can be changed in the middle of a game. If the game's own sounds get too loud for the microphone, it turns them down by itself.
 
+**The live mode (an experiment, v1.08):** a long press on the version, then "Sound" → "Live mode: on". The game then gets ready in about 3 seconds (no probe choice, no waving — the range saved from the last games), "Again" goes straight to the countdown, and the echo processing keeps learning the room during the game — a noisier room or a thing put down near the phone no longer takes the palm or the control away. Off by default; it may become the normal way once tried on phones.
+
 **If something's wrong:** a tap on the version on the games' screen reloads the page, and a long press opens "Logs". They record what the phone heard and can be attached to an issue.
 
 ## Phones

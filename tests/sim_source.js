@@ -15,10 +15,14 @@ function makeSimSource(h, opts){
      so the page read 32 dB per unit of gain); opts.loud() — extra gain of the phone's speaker, for the media volume tests */
   return function(i,g){
     var gf=(g===undefined?1:g/0.25)*(opts.loud?opts.loud():1), t=(i+0.5)*N/SR, hh=h(t), paths=[{d:dDir,a:1},{d:dDir+62,a:0.35}], out=new Float32Array(N);
-    if(hh!==null) paths.push({d:dDir+2*hh/1000/343*SR,a:0.25});
+    if(hh!==null) paths.push({d:dDir+2*hh/1000/343*SR,a:opts.palmA?opts.palmA(t):0.25});
+    /* v1.08, the live mode's checks: opts.extra(t) — still things that come and go ([{mm,a}]: distance and strength), opts.gain(t) — the
+       speaker-to-microphone gain changing (the probe only), opts.noise(t) — the room's noise (×, in amplitude). Without them, as before */
+    if(opts.extra) opts.extra(t).forEach(function(e){ paths.push({d:dDir+2*e.mm/1000/343*SR,a:e.a}); });
+    if(opts.gain) gf*=opts.gain(t); var nz=opts.noise?opts.noise(t):1;
     paths.forEach(function(p){ ks.forEach(function(k){ var a=-2*Math.PI*k*p.d/N, c=Math.cos(a), sn=Math.sin(a), re=(Pre[k]*c-Pim[k]*sn)*2/N*p.a, im=(Pre[k]*sn+Pim[k]*c)*2/N*p.a;
       var Ck=C[k], Sk=Sn[k]; for(var n=0;n<N;n++) out[n]+=re*Ck[n]-im*Sk[n]; }); });
-    for(n=0;n<N;n++){ seed=(seed*1664525+1013904223)>>>0; out[n]=(out[n]*gf+(seed/4294967296-0.5)*2e-3)*LEVEL;   /* noise ~57 dB under the probe per line, as on the iPhone in a quiet room */ }
+    for(n=0;n<N;n++){ seed=(seed*1664525+1013904223)>>>0; out[n]=(out[n]*gf+(seed/4294967296-0.5)*2e-3*nz)*LEVEL;   /* noise ~57 dB under the probe per line, as on the iPhone in a quiet room */ }
     return out;
   };
 }

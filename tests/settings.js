@@ -43,6 +43,12 @@ const path=require('path'); const ROOT=path.join(__dirname,'..');
   const band2=await p.evaluate(async()=>{ const S=__sonaroids, w=ms=>new Promise(r=>setTimeout(r,ms)); S.go('hub'); S.act.settings(); S.act.set_band_prev(); const lock=localStorage.getItem('sonaroids_band_lock'); S.go('title'); S.act.play(); const seen=[]; for(let i=0;i<20;i++){ await w(100); const sc=S.scr(); if(seen[seen.length-1]!==sc) seen.push(sc); if(sc==='probe') break; } return {lock,seen}; });
   check('«chosen before a game»: the band\'s screen again',band2.lock===''&&band2.seen.includes('probe'),JSON.stringify(band2));
   await p.screenshot({path:path.join(__dirname,'out','settings_flow.png')});
+  // v1.14: no service «sound» on an iPhone (the maintainer: «убери служебное меню звук на айфоне»)
+  { const ctx=await b.newContext({viewport:{width:844,height:390},deviceScaleFactor:2,userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'});
+    await ctx.addInitScript(`localStorage.setItem('sonaroids_lang','en'); localStorage.setItem('sonaroids_seen','1');`); const pi=await ctx.newPage(); pi.on('pageerror',e=>errors.push(e.message));
+    await pi.goto('file://'+path.join(ROOT,'game','play','index.html')); await pi.waitForTimeout(700); await pi.evaluate(()=>__sonaroids.act.settings()); await pi.waitForTimeout(300);
+    const si=await ids(pi); await pi.screenshot({path:path.join(__dirname,'out','settings_iphone.png')});
+    check('an iPhone: the settings without the advanced probe settings',!si.includes('set_expert')&&si.includes('set_live_next')&&si.includes('set_back'),si.join(' ')); }
   await b.close();
   check('no page errors',!errors.length,errors.slice(0,3).join(' | '));
   out.forEach(s=>console.log(s)); console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;

@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='1.13';
+var VERSION='1.14';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -338,8 +338,7 @@ var Tune=(function(){
   var WAVE_MIN=50;       // mm: a range counts as waved from 5 cm (was 3 cm; 24 Sep a small wiggle after a game shrank the field to 66 mm and the ship got twitchy)
   function create(field,auto){ return {buf:[],t:0,acc:0,span:null,ok:false,field:field||100,auto:auto!==false,last:null}; }
   /* screen fraction from the bottom (0…1) for a palm height in mm; 100 mm is the middle */
-  /* v1.12: T.fl — the live mode's own travel for the lower half */
-  function fracOf(T,h){ var FL=T.fl||2*T.field/(1+ASYM), FU=2*ASYM*T.field/(1+ASYM); return Math.max(0,Math.min(1,h<100?0.5+(h-100)/FL:0.5+(h-100)/FU)); }
+  function fracOf(T,h){ var FL=2*T.field/(1+ASYM), FU=2*ASYM*T.field/(1+ASYM); return Math.max(0,Math.min(1,h<100?0.5+(h-100)/FL:0.5+(h-100)/FU)); }
   function pick(buf){
     if(buf.length<60) return null;
     var h=buf.map(function(q){return q.h;}).sort(function(a,b){return a-b;}), p=function(f){ return h[Math.min(h.length-1,Math.floor(f*(h.length-1)))]; };
@@ -362,50 +361,7 @@ var Tune=(function(){
     if(Math.abs(d)>0.2||Math.abs(T.field-f0)>0.2) return {d:+d.toFixed(1),field:+T.field.toFixed(1),span:+r.span.toFixed(0),wave:r.wave};
     return null;
   }
-  /* v1.08, the live mode (auto-calibration since 1.12): in flight the palm plays at a comfortable distance and still gets to the bottom.
-     The maintainer, 1 Oct: «сложно опустить корабль вниз — ладонь уже упиралась в разъём» (18:01, and 1.10 at 18:59), «слишком далеко
-     ладонь от телефона» (18:22), and on 1.11 (19:41): «рука теперь не доходит до разъёма, но приходится махать слишком далеко от телефона…
-     надо какой-то компромисс». 1.11 only moved the whole screen: down when the ship would not reach the bottom with the palm at the port, up
-     when it reached it with the palm far — and the two fought (19:41: 112 steps up, 125 down), the palm's middle stayed at 10 cm. Near the
-     phone the height reads higher than the palm's distance says (the sonar sees the palm weaker there): the lower half of the screen needs
-     more travel than the upper — moving the whole screen down for it takes the middle away from the phone.
-     Now two separate things, both by the echo's own range (which no moving of the screen changes):
-     the middle — the palm's median range over the last minute is kept at 7.2–8.8 cm (the games the maintainer had no complaint about the distance: 7.4–8.3; too far:
-     10.2–10.5): the whole screen moves 0.5 mm a second (1 when it is over a centimetre out);
-     the lower half (over the last 20 s) — the palm at the phone's end (within 4 mm of range of the closest it came in the last minute, under 58 mm) while the
-     ship is clearly not at the bottom (over 8% of the screen): the lower half gets more sensitive (its travel 1 mm shorter a second, down to
-     45% of the waving's; it starts at 70%); and the middle stays at least 3 cm over the port, so the lower half has room;
-     the ship at the bottom while the palm is still ~1.5 cm above the port: less (back up to 120%). The middle does not move for it */
-  var L_WIN=20, L_RWIN=60, L_MIN=3, L_STEP=0.5, R_NEAR=4, R_CAP=58, R_FAR=62, L_N=10, F_PORT=0.08, R_MID0=72, R_MID1=88, R_GAP=30, FL_START=0.7, FL_MIN=0.45, FL_MAX=1.2;
-  function stepLive(T,dt,st,shift){
-    if(!T.lb){ T.lb=[]; T.rb=[]; T.lt=0; T.la=0; T.ln=0; }
-    T.lt+=dt; if(st&&st.present&&typeof st.range==='number'){ T.lb.push({t:T.lt,h:st.height,r:st.range}); T.rb.push({t:T.lt,r:st.range}); T.ln+=dt; }
-    while(T.lb.length&&T.lb[0].t<T.lt-L_WIN) T.lb.shift();
-    while(T.rb.length&&T.rb[0].t<T.lt-L_RWIN) T.rb.shift();
-    T.la+=dt; if(T.la<L_STEP) return null; T.la=0;
-    if(T.ln<L_MIN||T.lb.length<L_N) return null;
-    var med=function(a){ a.sort(function(x,y){return x-y;}); return a[a.length>>1]; };
-    var fl0=2*T.field/(1+ASYM); if(!T.fl) T.fl=FL_START*fl0;
-    var rs=T.rb.map(function(q){ return q.r; }).sort(function(x,y){return x-y;}), rPort=Math.min(R_CAP,rs[Math.floor(0.01*(rs.length-1))]+R_NEAR);   // the closest the palm came in the last minute — but no phone's end reads over ~57 mm
-    var atPort=T.lb.filter(function(q){ return q.r<=rPort; }).map(function(q){ return fracOf(T,q.h); }),
-        atBot=T.lb.filter(function(q){ return fracOf(T,q.h)<=0.02; }).map(function(q){ return q.r; }), rMed=rs[rs.length>>1];   // the middle over the last minute: 20 s swing with the game's demands
-    var fPort=atPort.length>=L_N?med(atPort):null, rBot=atBot.length>=L_N?med(atBot):null, v=0.5*L_STEP, d=0, dfl=0;
-                         // the middle: too far — the screen up (the palm comes closer), too near — down
-    /* v1.13 (the maintainer, Mi 9 on 1.12, 20:21: «то надо слишком сильную амплитуду, то наоборот слишком чувствительное к малейшему
-       движению»): the screen was changing under the palm all game long — 107 mm of moving and the lower half's travel from 82 to 49 mm.
-       Now it settles in the first 25 s; after that it hardly moves: the middle at 0.2 mm a second, the lower half only when the bottom is
-       plainly out of reach (the ship over 15% with the palm at the port), half as fast, and never back */
-    var early=T.ln<25; if(!early) v=Math.min(v,0.1);
-    if(fPort!==null&&fPort>(early?F_PORT:0.15)) dfl=-Math.min(early?L_STEP:L_STEP/2,T.fl-FL_MIN*fl0); else if(early&&rBot!==null&&rBot>R_FAR) dfl=Math.min(L_STEP,FL_MAX*fl0-T.fl);
-    var rLow=rs[Math.floor(0.01*(rs.length-1))], port=rLow<=54?rLow+R_NEAR:50, m0=Math.max(R_MID0,port+R_GAP), m1=Math.max(R_MID1,m0+14);   // the port: where the palm came to it, else ~5 cm           // v1.13: never closer than 3 cm over the port — the lower half needs that room (20:15: 7.4 cm with the port at 5, and the ship would not go down)
-    if(T.ln<25&&(rMed>m1+10||rMed<m0-10)) v*=2;                               // far out of it, at the start: 1 mm a second
-    var hy=early?0:6;                                                          // after the start: only when plainly out (6 mm past the edge)
-    if(rMed>m1+hy) d=v; else if(rMed<m0-hy) d=-v;
-    if(d){ shift(d); T.lb.forEach(function(q){ q.h+=d; }); }
-    if(dfl) T.fl+=dfl;
-    return d||dfl?{d:d,fl:+T.fl.toFixed(1),mid:+rMed.toFixed(0),port:fPort===null?null:+fPort.toFixed(2),bottom:rBot===null?null:+rBot.toFixed(0)}:null;
-  }
-  return {create:create,fracOf:fracOf,pick:pick,step:step,stepLive:stepLive,ASYM:ASYM};
+  return {create:create,fracOf:fracOf,pick:pick,step:step,ASYM:ASYM};
 })();
 if(typeof module!=='undefined') module.exports=Tune;
 /* ── FLIGHT CORE: the game itself, without drawing. Deterministic: the same seed and the same palm inputs give the same game
@@ -986,9 +942,11 @@ var Sonar=(function(){
       n++; vol.set(nv); PROBE_G=0.25; setProbe('single-'+chan); return sleep(250).then(autoLevel).then(step); }
     return step; }
   /* v1.08: the live mode — an experiment, switched on the service «ЗВУК» screen (store 'sonaroids_live'): the echo processing learns the room
-     during the game too (DSP2 'live'), the palm's range follows the play (Tune.stepLive) and the getting ready is cut short (49_main) */
+     during the game too (DSP2 'live'), the getting ready is cut short (49_main) */
   // v1.12: «auto-calibration» in the settings; not set — on once the first game was played (the first, with the instruction, gets ready by hand)
   var LIVE_MID=82;
+  // v1.14: the middle of the player's last hand calibration (the echo's range, mm; saved by 49_main at a manual countdown), else 8.2 cm
+  function liveMid(){ try{ var v=+localStorage.getItem('sonaroids_mid_r'); return v>=55&&v<=140?v:LIVE_MID; }catch(e){ return LIVE_MID; } }
   function liveOn(){ try{ var v=localStorage.getItem('sonaroids_live'); return v===null||v===''?localStorage.getItem('sonaroids_seen')==='1':v==='1'; }catch(e){ return false; } }
   function prepare(onStage,vol){
     active=false; last=null; lost=false; PROBE_G=0.25; volLog=[]; reasserts=0; refLv=null; jumpN=0;
@@ -1011,10 +969,10 @@ var Sonar=(function(){
       // v0.67: in the app, the empty room is learnt only once the probe at the microphone holds still (settle)
       return (natOn?settle():Promise.resolve()).then(function(){
       DSP2.set('flo',band==='wide'?F_LO:null); DSP2.set('live',liveOn()?1:0); DSP2.init(fs,'all');
-      /* v1.13, auto-calibration: the middle of the screen at a palm 8.2 cm from the phone by the echo's own range, at once — not where the palm
-         happened to be in its first second (the maintainer's iPhone, 1.12 at 20:15: it started at 13 cm, «сначала руку приходилось держать
-         слишком далеко», and took a minute to come in) */
-      var c0=curCal(); if(liveOn()){ DSP2.setCal({k:c0.k,o:100-c0.k*LIVE_MID,s:c0.s}); DSP2.set('autocenter',0); } else { DSP2.setCal(c0); DSP2.set('autocenter',1); } active=true; onStage&&onStage('room');
+      /* v1.14, auto-calibration plays with the player's own last hand calibration: its middle (by the echo's range) and its field, nothing
+         changed in flight (1.10–1.13 fitted the screen to the palm while playing, and each made it worse — the maintainer's iPhone, 1.13:
+         «Внизу чувствительность очень высокая, а вверху наоборот»); no hand calibration yet — the middle at 8.2 cm (1.13) */
+      var c0=curCal(); if(liveOn()){ DSP2.setCal({k:c0.k,o:100-c0.k*liveMid(),s:c0.s}); DSP2.set('autocenter',0); } else { DSP2.setCal(c0); DSP2.set('autocenter',1); } active=true; onStage&&onStage('room');
       return waitReady().then(function(st){ if(st==='noprobe'){ active=false; setProbe('off'); autoRetest=true; return {ok:false,why:'noprobe'}; } return {ok:true,snr:L.snr}; }); });
     });
   }
@@ -1308,7 +1266,7 @@ STR.en={
   probe_t:'CHOOSE THE PROBE', probe_s:'WITH THIS SOUND THE PHONE HEARS YOUR HAND', probe_wide:'WIDE', probe_wide1:'CLEANER CONTROL', probe_wide2:'CHILDREN AND PETS MAY HEAR IT',
   probe_norm:'NORMAL', probe_norm1:'SILENT', probe_norm2:'SLIGHTLY ROUGHER CONTROL',
   away_t:'TAKE YOUR HAND AWAY', away_s:'LISTENING TO THE EMPTY ROOM', away_ok:'THE ROOM IS QUIET',
-  aud_fx:'PHONE PROCESSING:', aud_src:'SOURCE', aud_usage:'PROBE AS', aud_end:'PROBE FROM', turn_t:'TURN THE PHONE ROUND', hub_s:'GAMES YOU PLAY WITH YOUR PALM IN MID-AIR', soon:'SOON', all_games:'← ALL GAMES', skin:'SKIN', gfx:'GRAPHICS', gfx_pixel:'PIXELS', skin_space:'SPACE', skin_vector:'VECTOR 80S', skin_neon:'NEON', skin_note:'NOTEBOOK', skin_lcd:'RETRO LCD', skin_fairy:'FAIRY TALE', turn_s:'BY 180° IF YOU PLAY', turn_s2:'WITH YOUR RIGHT HAND', turn_h:'ROUND LIKE A WHEEL — DON\'T FLIP IT FACE DOWN', lefty:'I PLAY LEFT-HANDED', aud_vol:'VOLUME', aud_keep:'LEAVE AS IS', aud_cam:'CAMERA END', aud_port:'PORT END', aud_media:'MEDIA', aud_game:'GAME', aud_autotest:'AUTO PICK', aud_notyet:'NOT DONE YET', aud_retest:'TEST AGAIN', aud_lab:'LAB', aud_nextgame:'WITH THE NEXT GAME', aud_live:'AUTO-CALIBRATION', aud_on:'ON', aud_off:'OFF', aud_live_s:'THE SAME AS IN THE SETTINGS: READY IN A COUPLE OF SECONDS, FITS ITSELF WHILE YOU PLAY', aud_t2:'SOUND', aud_s2:'TRIALS OF THE ECHO PROCESSING', settings:'SETTINGS', settings_t:'SETTINGS', set_gfx:'GRAPHICS', set_gfx_menu:'CHOSEN IN THE GAME', set_gfx_hd:'ALWAYS HD', set_gfx_px:'ALWAYS PIXELS', set_band:'PROBE BAND', set_band_ask:'CHOSEN BEFORE A GAME', set_band_w:'ALWAYS WIDE', set_band_n:'ALWAYS NORMAL', set_live:'AUTO-CALIBRATION', set_on:'ON', set_off:'OFF', set_live_on_s:'THE GAME IS READY IN A COUPLE OF SECONDS AND FITS ITSELF TO THE PALM AND THE ROOM WHILE YOU PLAY', set_live_off_s:'BEFORE EVERY GAME: TAKE YOUR HAND AWAY, WAVE YOUR PALM, TAP «START»', set_expert:'ADVANCED PROBE SETTINGS', aud_link:'SOUND', aud_t:'APP SOUND', aud_s:'WHERE THE GAME TAKES THE MICROPHONE FROM AND WHERE THE PROBE PLAYS', aud_mode:'SOUND', aud_browser:'BROWSER', aud_app:'APP', aud_mic:'MICROPHONE', aud_out:'SPEAKER', aud_auto:'AUTO', aud_speaker:'SPEAKER', aud_earpiece:'EARPIECE', aud_bottom:'BOTTOM', aud_top:'TOP', aud_back:'BACK', aud_now:'NOW:', aud_active:'RECORDING:', aud_idle:'THE MICROPHONE OPENS WITH THE GAME', aud_browser_now:'NOW THE SOUND GOES THROUGH THE BROWSER: ANDROID PICKS THE MICROPHONE', aud_nopos:'THE PHONE DOES NOT TELL WHERE ITS MICROPHONES ARE',
+  aud_fx:'PHONE PROCESSING:', aud_src:'SOURCE', aud_usage:'PROBE AS', aud_end:'PROBE FROM', turn_t:'TURN THE PHONE ROUND', hub_s:'GAMES YOU PLAY WITH YOUR PALM IN MID-AIR', soon:'SOON', all_games:'← ALL GAMES', skin:'SKIN', gfx:'GRAPHICS', gfx_pixel:'PIXELS', skin_space:'SPACE', skin_vector:'VECTOR 80S', skin_neon:'NEON', skin_note:'NOTEBOOK', skin_lcd:'RETRO LCD', skin_fairy:'FAIRY TALE', turn_s:'BY 180° IF YOU PLAY', turn_s2:'WITH YOUR RIGHT HAND', turn_h:'ROUND LIKE A WHEEL — DON\'T FLIP IT FACE DOWN', lefty:'I PLAY LEFT-HANDED', aud_vol:'VOLUME', aud_keep:'LEAVE AS IS', aud_cam:'CAMERA END', aud_port:'PORT END', aud_media:'MEDIA', aud_game:'GAME', aud_autotest:'AUTO PICK', aud_notyet:'NOT DONE YET', aud_retest:'TEST AGAIN', aud_lab:'LAB', aud_nextgame:'WITH THE NEXT GAME', aud_live:'AUTO-CALIBRATION', aud_on:'ON', aud_off:'OFF', aud_live_s:'THE SAME AS IN THE SETTINGS: READY IN A COUPLE OF SECONDS, FITS ITSELF WHILE YOU PLAY', aud_t2:'SOUND', aud_s2:'TRIALS OF THE ECHO PROCESSING', settings:'SETTINGS', settings_t:'SETTINGS', set_gfx:'GRAPHICS', set_gfx_menu:'CHOSEN IN THE GAME', set_gfx_hd:'ALWAYS HD', set_gfx_px:'ALWAYS PIXELS', set_band:'PROBE BAND', set_band_ask:'CHOSEN BEFORE A GAME', set_band_w:'ALWAYS WIDE', set_band_n:'ALWAYS NORMAL', set_live:'AUTO-CALIBRATION', set_on:'ON', set_off:'OFF', set_live_on_s:'THE GAME IS READY IN A COUPLE OF SECONDS: THE PALM AS IN YOUR LAST MANUAL CALIBRATION, THE ROOM FOLLOWED WHILE YOU PLAY', set_live_off_s:'BEFORE EVERY GAME: TAKE YOUR HAND AWAY, WAVE YOUR PALM, TAP «START»', set_expert:'ADVANCED PROBE SETTINGS', aud_link:'SOUND', aud_t:'APP SOUND', aud_s:'WHERE THE GAME TAKES THE MICROPHONE FROM AND WHERE THE PROBE PLAYS', aud_mode:'SOUND', aud_browser:'BROWSER', aud_app:'APP', aud_mic:'MICROPHONE', aud_out:'SPEAKER', aud_auto:'AUTO', aud_speaker:'SPEAKER', aud_earpiece:'EARPIECE', aud_bottom:'BOTTOM', aud_top:'TOP', aud_back:'BACK', aud_now:'NOW:', aud_active:'RECORDING:', aud_idle:'THE MICROPHONE OPENS WITH THE GAME', aud_browser_now:'NOW THE SOUND GOES THROUGH THE BROWSER: ANDROID PICKS THE MICROPHONE', aud_nopos:'THE PHONE DOES NOT TELL WHERE ITS MICROPHONES ARE',
   wave_t:'WAVE YOUR PALM', wave_s:'5–10 CM ABOVE THE TABLE OR 5–15 CM FROM THE PHONE\'S END', wave_ok:'GOT YOUR RANGE', other_t:'WAVE ON THE OTHER SIDE', other_s:'THE PHONE DOES NOT HEAR THE PALM ON THIS SIDE', try_s:'THE SHIP FOLLOWS YOUR PALM — TRY THE TOP AND THE BOTTOM', cm:'CM',
   ring_wait:'GET READY', ring_listen:'LISTENING', ring_catch:'CATCHING THE RANGE', ring_ok:'DONE',
   start:'START', over:'GAME OVER', best:'BEST', again:'AGAIN', menu:'MENU', logs:'LOGS',
@@ -1343,7 +1301,7 @@ STR.ru={
   probe_t:'ВЫБЕРИ ЗОНД', probe_s:'ЭТИМ ЗВУКОМ ТЕЛЕФОН СЛЫШИТ ТВОЮ РУКУ', probe_wide:'ШИРОКИЙ', probe_wide1:'УПРАВЛЕНИЕ ЧИЩЕ', probe_wide2:'МОГУТ СЛЫШАТЬ ДЕТИ И ЖИВОТНЫЕ',
   probe_norm:'ОБЫЧНЫЙ', probe_norm1:'НЕ СЛЫШЕН', probe_norm2:'УПРАВЛЕНИЕ ЧУТЬ ГРУБЕЕ',
   away_t:'УБЕРИ РУКУ', away_s:'СЛУШАЮ ПУСТУЮ КОМНАТУ', away_ok:'КОМНАТА ТИХАЯ',
-  aud_fx:'ОБРАБОТКА ТЕЛЕФОНА:', aud_src:'ИСТОЧНИК', aud_usage:'ЗОНД КАК', aud_end:'ЗОНД ИЗ', turn_t:'РАЗВЕРНИ ТЕЛЕФОН', hub_s:'ИГРЫ, КОТОРЫМИ УПРАВЛЯЕТ ЛАДОНЬ В ВОЗДУХЕ', soon:'СКОРО', all_games:'← ВСЕ ИГРЫ', skin:'СКИН', gfx:'ГРАФИКА', gfx_pixel:'ПИКСЕЛИ', skin_space:'КОСМОС', skin_vector:'ВЕКТОР 80-Х', skin_neon:'НЕОН', skin_note:'ТЕТРАДКА', skin_lcd:'РЕТРО LCD', skin_fairy:'СКАЗКА', turn_s:'НА 180°, ЕСЛИ ИГРАЕШЬ', turn_s2:'ПРАВОЙ РУКОЙ', turn_h:'ПО КРУГУ, КАК РУЛЬ — НЕ ПЕРЕВОРАЧИВАЙ ЭКРАНОМ ВНИЗ', lefty:'ИГРАЮ ЛЕВОЙ РУКОЙ', aud_vol:'ГРОМКОСТЬ', aud_keep:'НЕ ТРОГАТЬ', aud_cam:'У КАМЕРЫ', aud_port:'У РАЗЪЁМА', aud_media:'МЕДИА', aud_game:'ИГРА', aud_autotest:'АВТОВЫБОР', aud_notyet:'ЕЩЁ НЕ ДЕЛАЛСЯ', aud_retest:'ПЕРЕПРОВЕРИТЬ', aud_lab:'ЛАБА', aud_nextgame:'БУДЕТ ПРИ СЛЕДУЮЩЕЙ ИГРЕ', aud_live:'АВТОКАЛИБРОВКА', aud_on:'ВКЛ', aud_off:'ВЫКЛ', aud_live_s:'ТО ЖЕ, ЧТО В НАСТРОЙКАХ: ИГРА ГОТОВА ЗА ПАРУ СЕКУНД И ПОДСТРАИВАЕТСЯ ПРЯМО В ИГРЕ', aud_t2:'ЗВУК', aud_s2:'ОПЫТЫ С ОБРАБОТКОЙ ЭХА', settings:'НАСТРОЙКИ', settings_t:'НАСТРОЙКИ', set_gfx:'ГРАФИКА', set_gfx_menu:'ВЫБОР В ИГРЕ', set_gfx_hd:'ВСЕГДА HD', set_gfx_px:'ВСЕГДА ПИКСЕЛИ', set_band:'ПОЛОСА ЗОНДА', set_band_ask:'ВЫБОР ПЕРЕД ИГРОЙ', set_band_w:'ВСЕГДА ШИРОКАЯ', set_band_n:'ВСЕГДА ОБЫЧНАЯ', set_live:'АВТОКАЛИБРОВКА', set_on:'ВКЛ', set_off:'ВЫКЛ', set_live_on_s:'ИГРА ГОТОВА ЗА ПАРУ СЕКУНД И ПОДСТРАИВАЕТСЯ ПОД ЛАДОНЬ И КОМНАТУ ПРЯМО ВО ВРЕМЯ ИГРЫ', set_live_off_s:'ПЕРЕД КАЖДОЙ ИГРОЙ: УБРАТЬ РУКУ, ПОМАХАТЬ ЛАДОНЬЮ, НАЖАТЬ «СТАРТ»', set_expert:'РАСШИРЕННЫЕ НАСТРОЙКИ ЗОНДА', aud_link:'ЗВУК', aud_t:'ЗВУК ПРИЛОЖЕНИЯ', aud_s:'ОТКУДА ИГРА БЕРЁТ МИКРОФОН И КУДА ИГРАЕТ ЗОНД', aud_mode:'ЗВУК', aud_browser:'БРАУЗЕР', aud_app:'ПРИЛОЖЕНИЕ', aud_mic:'МИКРОФОН', aud_out:'ДИНАМИК', aud_auto:'АВТО', aud_speaker:'ДИНАМИК', aud_earpiece:'РАЗГОВОРНЫЙ', aud_bottom:'НИЗ', aud_top:'ВЕРХ', aud_back:'СЗАДИ', aud_now:'СЕЙЧАС:', aud_active:'ПИШУТ:', aud_idle:'МИКРОФОН ОТКРОЕТСЯ ПРИ ИГРЕ', aud_browser_now:'СЕЙЧАС ЗВУК ЧЕРЕЗ БРАУЗЕР: МИКРОФОН ВЫБИРАЕТ ANDROID', aud_nopos:'ТЕЛЕФОН НЕ СООБЩАЕТ, ГДЕ МИКРОФОНЫ',
+  aud_fx:'ОБРАБОТКА ТЕЛЕФОНА:', aud_src:'ИСТОЧНИК', aud_usage:'ЗОНД КАК', aud_end:'ЗОНД ИЗ', turn_t:'РАЗВЕРНИ ТЕЛЕФОН', hub_s:'ИГРЫ, КОТОРЫМИ УПРАВЛЯЕТ ЛАДОНЬ В ВОЗДУХЕ', soon:'СКОРО', all_games:'← ВСЕ ИГРЫ', skin:'СКИН', gfx:'ГРАФИКА', gfx_pixel:'ПИКСЕЛИ', skin_space:'КОСМОС', skin_vector:'ВЕКТОР 80-Х', skin_neon:'НЕОН', skin_note:'ТЕТРАДКА', skin_lcd:'РЕТРО LCD', skin_fairy:'СКАЗКА', turn_s:'НА 180°, ЕСЛИ ИГРАЕШЬ', turn_s2:'ПРАВОЙ РУКОЙ', turn_h:'ПО КРУГУ, КАК РУЛЬ — НЕ ПЕРЕВОРАЧИВАЙ ЭКРАНОМ ВНИЗ', lefty:'ИГРАЮ ЛЕВОЙ РУКОЙ', aud_vol:'ГРОМКОСТЬ', aud_keep:'НЕ ТРОГАТЬ', aud_cam:'У КАМЕРЫ', aud_port:'У РАЗЪЁМА', aud_media:'МЕДИА', aud_game:'ИГРА', aud_autotest:'АВТОВЫБОР', aud_notyet:'ЕЩЁ НЕ ДЕЛАЛСЯ', aud_retest:'ПЕРЕПРОВЕРИТЬ', aud_lab:'ЛАБА', aud_nextgame:'БУДЕТ ПРИ СЛЕДУЮЩЕЙ ИГРЕ', aud_live:'АВТОКАЛИБРОВКА', aud_on:'ВКЛ', aud_off:'ВЫКЛ', aud_live_s:'ТО ЖЕ, ЧТО В НАСТРОЙКАХ: ИГРА ГОТОВА ЗА ПАРУ СЕКУНД И ПОДСТРАИВАЕТСЯ ПРЯМО В ИГРЕ', aud_t2:'ЗВУК', aud_s2:'ОПЫТЫ С ОБРАБОТКОЙ ЭХА', settings:'НАСТРОЙКИ', settings_t:'НАСТРОЙКИ', set_gfx:'ГРАФИКА', set_gfx_menu:'ВЫБОР В ИГРЕ', set_gfx_hd:'ВСЕГДА HD', set_gfx_px:'ВСЕГДА ПИКСЕЛИ', set_band:'ПОЛОСА ЗОНДА', set_band_ask:'ВЫБОР ПЕРЕД ИГРОЙ', set_band_w:'ВСЕГДА ШИРОКАЯ', set_band_n:'ВСЕГДА ОБЫЧНАЯ', set_live:'АВТОКАЛИБРОВКА', set_on:'ВКЛ', set_off:'ВЫКЛ', set_live_on_s:'ИГРА ГОТОВА ЗА ПАРУ СЕКУНД: ЛАДОНЬ — КАК В ПРОШЛОЙ РУЧНОЙ КАЛИБРОВКЕ, КОМНАТА ПОДСТРАИВАЕТСЯ ПРЯМО ВО ВРЕМЯ ИГРЫ', set_live_off_s:'ПЕРЕД КАЖДОЙ ИГРОЙ: УБРАТЬ РУКУ, ПОМАХАТЬ ЛАДОНЬЮ, НАЖАТЬ «СТАРТ»', set_expert:'РАСШИРЕННЫЕ НАСТРОЙКИ ЗОНДА', aud_link:'ЗВУК', aud_t:'ЗВУК ПРИЛОЖЕНИЯ', aud_s:'ОТКУДА ИГРА БЕРЁТ МИКРОФОН И КУДА ИГРАЕТ ЗОНД', aud_mode:'ЗВУК', aud_browser:'БРАУЗЕР', aud_app:'ПРИЛОЖЕНИЕ', aud_mic:'МИКРОФОН', aud_out:'ДИНАМИК', aud_auto:'АВТО', aud_speaker:'ДИНАМИК', aud_earpiece:'РАЗГОВОРНЫЙ', aud_bottom:'НИЗ', aud_top:'ВЕРХ', aud_back:'СЗАДИ', aud_now:'СЕЙЧАС:', aud_active:'ПИШУТ:', aud_idle:'МИКРОФОН ОТКРОЕТСЯ ПРИ ИГРЕ', aud_browser_now:'СЕЙЧАС ЗВУК ЧЕРЕЗ БРАУЗЕР: МИКРОФОН ВЫБИРАЕТ ANDROID', aud_nopos:'ТЕЛЕФОН НЕ СООБЩАЕТ, ГДЕ МИКРОФОНЫ',
   wave_t:'ПОМАШИ ЛАДОНЬЮ', wave_s:'5–10 СМ НАД СТОЛОМ ИЛИ 5–15 СМ ОТ ТОРЦА ТЕЛЕФОНА', wave_ok:'РАЗМАХ ПОЙМАН', other_t:'ПОМАШИ С ДРУГОЙ СТОРОНЫ', other_s:'С ЭТОЙ СТОРОНЫ ТЕЛЕФОН НЕ СЛЫШИТ ЛАДОНЬ', try_s:'КОРАБЛЬ ИДЁТ ЗА ЛАДОНЬЮ — ПРОВЕРЬ ВЕРХ И НИЗ', cm:'СМ',
   ring_wait:'ПРИГОТОВЬСЯ', ring_listen:'СЛУШАЮ', ring_catch:'ЛОВЛЮ РАЗМАХ', ring_ok:'ГОТОВО',
   start:'СТАРТ', over:'ИГРА ОКОНЧЕНА', best:'РЕКОРД', again:'ЕЩЁ РАЗ', menu:'МЕНЮ', logs:'ЖУРНАЛЫ',
@@ -3650,7 +3608,7 @@ function diagCorner(label,top,ty,flip,ax){ var vr=ty?(freeSide()!=='left')!==!!f
     text(ls,lx0,ly,P.band,'left'); R(P.band,lx0,ly+PF.CAP+2,lw,1); BTN.push({id:'logs',x:lx0-8,y:ly-6,w:lw+16,h:PF.CAP+12}); }
   // v0.58: at the bottom (the title screen) — a row of service links on the line above the version, the same on every phone:
   // «logs» (when there are any), «sound» (the Android app), «lab» (always — the lab opens in the same tab / app)
-  if(!top&&diag){ var its=[]; if(Logs.has()) its.push(['logs',L('logs')]); its.push(['audio',L('aud_link')]); its.push(['lab',L('aud_lab')]);   // v1.08: «sound» in a browser too — the live mode's switch
+  if(!top&&diag){ var its=[]; if(Logs.has()) its.push(['logs',L('logs')]); if(!isIOS()) its.push(['audio',L('aud_link')]); its.push(['lab',L('aud_lab')]);   // v1.08: «sound» in a browser too — the live mode's switch
     var ly2=vy-16, xx=vx; (vr?its:its).forEach(function(it){ var w=PF.width(it[1]), x0=vr?xx-w:xx;
       text(it[1],x0,ly2,P.band,'left'); R(P.band,x0,ly2+PF.CAP+2,w,1); BTN.push({id:it[0],x:x0-8,y:ly2-4,w:w+16,h:PF.CAP+8}); xx=vr?x0-24:x0+w+24; }); }
   // v0.50: in the app, on the title screen — «sound»: the app's own sound, the microphone and the speaker (a service screen for trying phones)
@@ -3804,12 +3762,12 @@ function arrowRow(id,label,x,y,w,h){ var s=Math.round(h*0.9);
   text(label,x+w/2,y+Math.round((h-7)/2),P.text,'center',1,true); if(fit<1) lx.restore();
   BTN.push({id:id+'_prev',x:x,y:y,w:s+4,h:h}); BTN.push({id:id+'_next',x:x+s+4,y:y,w:w-s-4,h:h}); }
 function sSettings(){ sky(DT,0.3); var y=titles(L('settings_t')), cx0=Math.round((SAFE.l+LW-SAFE.r)/2), mw=LW-SAFE.l-SAFE.r-2*(BH+24);   // clear of the menu button and the version in the corners
-  var lab=function(r){ return L(r[0])+': '+L(r[1]()); }, w=Math.min(mw,Math.max(soundW(),btnW(SET_ROWS.map(lab).concat([L('set_expert')]))+2*BH)), x=Math.round(cx0-w/2);
-  var desc=PF.wrap(L(setLive()?'set_live_on_s':'set_live_off_s'),w,1), need=5*BH+desc.length*10+2, room=LH-SAFE.b-6-(y+4), g=Math.max(3,Math.min(6,Math.floor((room-need)/4)));
+  var lab=function(r){ return L(r[0])+': '+L(r[1]()); }, w=Math.min(mw,Math.max(soundW(),btnW(SET_ROWS.map(lab).concat([L('set_expert')]))+2*BH)), x=Math.round(cx0-w/2), ex=!isIOS();   // v1.14: no service «sound» on an iPhone (the maintainer: «убери служебное меню звук на айфоне»)
+  var desc=PF.wrap(L(setLive()?'set_live_on_s':'set_live_off_s'),w,1), need=(ex?5:4)*BH+desc.length*10+2, room=LH-SAFE.b-6-(y+4), g=Math.max(3,Math.min(6,Math.floor((room-need)/4)));
   y+=Math.max(2,Math.min(6,room-need-4*g)); soundRow(x,y,w,BH); y+=BH+g;
   SET_ROWS.forEach(function(r){ arrowRow(r[0],lab(r),x,y,w,BH); y+=BH+(r[0]==='set_live'?2:g); });
   desc.forEach(function(l){ text(l,cx0,y+1,P.soft,'center'); y+=10; }); y+=g-1;
-  button('set_expert',L('set_expert'),x,y,w,BH,'');
+  if(ex) button('set_expert',L('set_expert'),x,y,w,BH,'');
   say(L('settings_t')+'. '+SET_ROWS.map(lab).join('. ')); }
 /* ── the game's own screen (SonaFly): the chosen skin flies behind, the buttons on the free side over a dim band:
    play, high scores, how to play, «◀ skin: … ▶» (the picture changes at once), «← all games» ── */
@@ -4274,7 +4232,7 @@ function boot(then){ Sonar.boot().then(function(){ booted=true; Sfx.play('tap');
 function toAway(){ prep=null; var b=setBand3(); if(b==='wide'||b==='normal'){ Logs.ev('полоса из настроек',{band:b}); toRoom(b); return; } go('probe'); }   // v1.12: the band from the settings, or chosen before the game (1.08's live mode took the last one)
 /* v1.08, the live mode (an experiment, the service «ЗВУК» screen; the maintainer: «игра готовилась, калибровалась и игралась одновременно
    и постоянно… если удастся добиться моментального старта и точного управления — включим в игру»). The echo processing learns the room
-   all the time, during the game too (src/11_dsp.js), and the palm's range follows the play (Tune.stepLive) — so the getting ready is cut
+   all the time, during the game too (src/11_dsp.js), the screen is the player's last hand calibration (v1.14) — so the getting ready is cut
    short: the probe as last time (no choice screen), «take your hand away» 2.5 s instead of 3.5 (1.2 in 1.08), «the room is quiet» 0.4 s instead of 1.5, the room once more if the palm was in it,
    no waving (the range saved from the last games; the middle is found by the first second of the palm), straight to the countdown. Once
    ready, «Play» and «Again» go straight to the countdown while the microphone works — the room is not measured anew */
@@ -4290,6 +4248,8 @@ function toWave(){ T=Tune.create(+store.get('sonaroids_field','100')||100,true);
 function pauseGame(){ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; go('paused'); } }
 function startCount(){ if(resumeAfterPrep&&g&&g.state!=='over'){ resumeAfterPrep=false; countT=3; go('count-resume'); return; }
   resumeAfterPrep=false; countT=3; if(scr!=='wave') shipY=null; lastHand=handFrac()===null?lastHand:handFrac(); /* from the try-out the ship goes on where it is */ Logs.ev('отсчёт',{field:+T.field.toFixed(1),auto:T.auto}); store.set('sonaroids_field',Math.round(T.field));
+  // v1.14: a hand calibration's middle (the echo's range) — the auto-calibration plays with it (20_sonar liveMid)
+  if(!liveOn()&&T.ok){ var cI=DSP2.info().cal, rMid=(100-cI.o)/cI.k; if(rMid>=55&&rMid<=140){ store.set('sonaroids_mid_r',rMid.toFixed(1)); Logs.ev('середина запомнена',{range_mm:+rMid.toFixed(1),field:Math.round(T.field)}); } }
   if(mode==='race'){ g=Race.create(newSeed(),raceFW(),shipY===null?null:shipY/K,raceSteer,raceRules()); rTry=null; } go('count'); }
 function startGame(){ if(mode==='race'){ raceStart(); return; }
   var seed=0; try{ var a=new Uint32Array(1); crypto.getRandomValues(a); seed=a[0]; }catch(e){ seed=Math.floor(Math.random()*4294967296); }
@@ -4310,7 +4270,7 @@ var ACT={
   play:function(){ if(store.get('sonaroids_seen','')!=='1'){ ACT.howto(); return; } onboarding=false; direct=false; quickOr(function(){ ensure(toAway); }); },
   howto:function(){ onboarding=true; direct=false; go('sound'); },
   /* a deep recalibration: forget the saved palm range, close the microphone and start from "put the phone down" */
-  recal:function(){ onboarding=false; direct=false; store.set('sonaroids_field','100'); Sonar.restart(); booted=false; acoustic=false; go('phone'); },
+  recal:function(){ onboarding=false; direct=false; store.set('sonaroids_field','100'); store.set('sonaroids_mid_r',''); Sonar.restart(); booted=false; acoustic=false; go('phone'); },
   lefty:function(){ lefty=true; store.set('sonaroids_lefty','1'); turnShown=false; Logs.ev('играю левой'); seenT=scrT; },
   hub:function(){ mode='fly'; go('hub'); },
   settings:function(){ go('settings'); }, set_expert:function(){ audDev=null; audFrom='settings'; go('audio'); }, set_back:function(){ go('hub'); },
@@ -4411,8 +4371,7 @@ function loop(now){
   hdFrame(RS||(scr==='hub'?hubBg==='race'||hdWanted(SKIN_IDS[hubSkin]):!!SK.hd),false);   // v0.84: SonaRace's screens smooth; v0.99: or in candy pixels, as the graphics switch says
   // v0.91: while a game runs (and in its pause) the sonar keeps the empty room's level as the getting ready left it (see src/11_dsp.js)
   var gameOn=!!(g&&g.state!=='over'&&(scr==='play'||scr==='count-resume'||scr==='paused'||scr==='restart')); if(gameOn!==floorHeld){ floorHeld=gameOn; try{ DSP2.set('holdfloor',gameOn); }catch(e){} }
-  // v1.08, the live mode: in flight and its countdown the screen's edges are kept within the palm's reach (Tune.stepLive)
-  if(liveOn()&&T&&(scr==='play'||scr==='count'||scr==='count-resume')){ var tl=Tune.stepLive(T,DT,Sonar.state(),Sonar.shift); if(tl) Logs.gameEv('range followed',tl); }   // v0.74: a shapes-only skin with «pixels» — the same canvas at 1 px per game pixel   // v0.72: the HD world canvas under the pixel one
+  // v0.74: a shapes-only skin with «pixels» — the same canvas at 1 px per game pixel   // v0.72: the HD world canvas under the pixel one
   uiColours(scr!=='hub');
   switch(scr){
     case 'lang': sLang(); break; case 'title': sTitle(); break; case 'rtitle': sRTitle(); break; case 'rset': sRSet(); break; case 'hub': sHub(); break;

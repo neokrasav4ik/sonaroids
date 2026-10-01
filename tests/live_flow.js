@@ -15,7 +15,7 @@ const SRC=fs.readFileSync(path.join(__dirname,'sim_source.js'),'utf8');
 const SCEN=`function(t){ const n=performance.now()/1000; if(n<window.__palmAt) return null; return 100+40*Math.sin(2*Math.PI*(n-window.__palmAt)/4); }`;   // by the page's clock: the frames come in real time
 (async()=>{
   const b=await chromium.launch(); const ctx=await b.newContext({viewport:{width:844,height:390},deviceScaleFactor:2});
-  await ctx.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_lang','en'); localStorage.setItem('sonaroids_band_lock','normal'); ${SRC}; window.makeSimSource=makeSimSource; window.__palmAt=1e9; window.__noiseAt=1e9; window.__scen=${SCEN}; window.SONAROIDS_API='https://api.test';`);
+  await ctx.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_lang','en'); localStorage.setItem('sonaroids_band_lock','normal'); localStorage.setItem('sonaroids_mid_r','80.0'); ${SRC}; window.makeSimSource=makeSimSource; window.__palmAt=1e9; window.__noiseAt=1e9; window.__scen=${SCEN}; window.SONAROIDS_API='https://api.test';`);
   const p=await ctx.newPage(); const errors=[]; p.on('pageerror',e=>errors.push(e.message));
   await p.route('https://api.test/**',r=>r.fulfill({status:200,headers:{'Access-Control-Allow-Origin':'*'},contentType:'application/json',body:'{"ok":true}'}));
   await p.goto('file://'+path.join(ROOT,'game','play','index.html')); await p.waitForTimeout(600);
@@ -28,14 +28,14 @@ const SCEN=`function(t){ const n=performance.now()/1000; if(n<window.__palmAt) r
   // «Play»: the palm comes 1.5 s after the tap
   const simNow=()=>p.evaluate(()=>performance.now()/1000);
   const t0=await p.evaluate(()=>{ const n=performance.now()/1000; window.__palmAt=n+5.5; __sonaroids.act.play(); return n; });   // the palm back once the room is learnt (v1.10: in it, the room is measured again)
-  const seen=[]; let last=null, tCount=null, tPlay=null, follow0=[], follow1=[], over=null, again=null;
+  const seen=[]; let last=null, midAt=null, tCount=null, tPlay=null, follow0=[], follow1=[], over=null, again=null;
   const T=async()=>(await simNow())-t0;
   while(await T()<40){
     await p.waitForTimeout(80);
     const s=await p.evaluate(()=>{ const s=__sonaroids.state(), st=Sonar.state(); return {scr:s.scr,hand:(st&&st.present&&s.T)?Tune.fracOf(s.T,st.height):null,present:!!(st&&st.present),ship:s.g&&s.g.ship?s.g.ship.y/s.g.FH:null,gstate:s.g?s.g.state:null,live:DSP2.info().live,palm:window.__scen(0)}; });
     const t=await T();
     if(s.scr!==last){ seen.push(s.scr+'@'+t.toFixed(1)); last=s.scr; }
-    if(s.scr==='count'&&tCount===null) tCount=t;
+    if(s.scr==='count'&&tCount===null){ tCount=t; midAt=await p.evaluate(()=>{ const c=DSP2.info().cal; return (100-c.o)/c.k; }); }
     if(s.scr==='play'){ if(tPlay===null){ tPlay=t; await p.evaluate(()=>{ window.__noiseAt=performance.now()/1000+8; }); } 
       const pt=t-tPlay; if(s.ship!==null&&(pt<7||pt>10)) (pt<8?follow0:follow1).push([s.present?1:0,s.ship,s.palm,s.hand]);   // around the noise's step (8 s) a second each side left out
       if(pt>16){ await p.screenshot({path:path.join(OUT,'live_02_play.png')}); await p.evaluate(()=>__sonaroids.act.quit()); await p.waitForTimeout(1200);
@@ -59,6 +59,7 @@ const SCEN=`function(t){ const n=performance.now()/1000; if(n<window.__palmAt) r
   check('the switch on the service screen (a browser: only it)',sw.btn.includes('aud:live:0')&&sw.btn.includes('aud:live:1')&&sw.on==='1'&&sw.off==='0'&&sw.now==='1',JSON.stringify(sw));
   check('no probe choice and no waving with it on',!seen.some(x=>/^(probe|wave)@/.test(x)),seen.join(' '));
   check('«Play» → the countdown in ≤ 6 s',tCount!==null&&tCount<=6,tCount===null?'never':tCount.toFixed(1)+' s');
+  check('v1.14: the middle from the last hand calibration (saved 80 mm)',midAt!==null&&Math.abs(midAt-80)<0.5,midAt===null?'–':midAt.toFixed(1)+' mm');
   check('the game runs, the echo processing in the live mode',tPlay!==null&&seen.some(x=>/^play@/.test(x)),'');
   const corr=a=>{ const q=a.filter(z=>z[3]!==null&&z[2]!==null), n=q.length; if(n<10) return NaN; const mx=r(q.map(z=>z[2])), my=r(q.map(z=>z[3])); let sxy=0,sxx=0,syy=0;
     q.forEach(z=>{ sxy+=(z[2]-mx)*(z[3]-my); sxx+=(z[2]-mx)**2; syy+=(z[3]-my)**2; }); return sxy/Math.sqrt(sxx*syy); };

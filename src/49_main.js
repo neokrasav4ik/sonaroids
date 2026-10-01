@@ -58,7 +58,7 @@ function diagCorner(label,top,ty,flip,ax){ var vr=ty?(freeSide()!=='left')!==!!f
     text(ls,lx0,ly,P.band,'left'); R(P.band,lx0,ly+PF.CAP+2,lw,1); BTN.push({id:'logs',x:lx0-8,y:ly-6,w:lw+16,h:PF.CAP+12}); }
   // v0.58: at the bottom (the title screen) — a row of service links on the line above the version, the same on every phone:
   // «logs» (when there are any), «sound» (the Android app), «lab» (always — the lab opens in the same tab / app)
-  if(!top&&diag){ var its=[]; if(Logs.has()) its.push(['logs',L('logs')]); its.push(['audio',L('aud_link')]); its.push(['lab',L('aud_lab')]);   // v1.08: «sound» in a browser too — the live mode's switch
+  if(!top&&diag){ var its=[]; if(Logs.has()) its.push(['logs',L('logs')]); if(!isIOS()) its.push(['audio',L('aud_link')]); its.push(['lab',L('aud_lab')]);   // v1.08: «sound» in a browser too — the live mode's switch
     var ly2=vy-16, xx=vx; (vr?its:its).forEach(function(it){ var w=PF.width(it[1]), x0=vr?xx-w:xx;
       text(it[1],x0,ly2,P.band,'left'); R(P.band,x0,ly2+PF.CAP+2,w,1); BTN.push({id:it[0],x:x0-8,y:ly2-4,w:w+16,h:PF.CAP+8}); xx=vr?x0-24:x0+w+24; }); }
   // v0.50: in the app, on the title screen — «sound»: the app's own sound, the microphone and the speaker (a service screen for trying phones)
@@ -212,12 +212,12 @@ function arrowRow(id,label,x,y,w,h){ var s=Math.round(h*0.9);
   text(label,x+w/2,y+Math.round((h-7)/2),P.text,'center',1,true); if(fit<1) lx.restore();
   BTN.push({id:id+'_prev',x:x,y:y,w:s+4,h:h}); BTN.push({id:id+'_next',x:x+s+4,y:y,w:w-s-4,h:h}); }
 function sSettings(){ sky(DT,0.3); var y=titles(L('settings_t')), cx0=Math.round((SAFE.l+LW-SAFE.r)/2), mw=LW-SAFE.l-SAFE.r-2*(BH+24);   // clear of the menu button and the version in the corners
-  var lab=function(r){ return L(r[0])+': '+L(r[1]()); }, w=Math.min(mw,Math.max(soundW(),btnW(SET_ROWS.map(lab).concat([L('set_expert')]))+2*BH)), x=Math.round(cx0-w/2);
-  var desc=PF.wrap(L(setLive()?'set_live_on_s':'set_live_off_s'),w,1), need=5*BH+desc.length*10+2, room=LH-SAFE.b-6-(y+4), g=Math.max(3,Math.min(6,Math.floor((room-need)/4)));
+  var lab=function(r){ return L(r[0])+': '+L(r[1]()); }, w=Math.min(mw,Math.max(soundW(),btnW(SET_ROWS.map(lab).concat([L('set_expert')]))+2*BH)), x=Math.round(cx0-w/2), ex=!isIOS();   // v1.14: no service «sound» on an iPhone (the maintainer: «убери служебное меню звук на айфоне»)
+  var desc=PF.wrap(L(setLive()?'set_live_on_s':'set_live_off_s'),w,1), need=(ex?5:4)*BH+desc.length*10+2, room=LH-SAFE.b-6-(y+4), g=Math.max(3,Math.min(6,Math.floor((room-need)/4)));
   y+=Math.max(2,Math.min(6,room-need-4*g)); soundRow(x,y,w,BH); y+=BH+g;
   SET_ROWS.forEach(function(r){ arrowRow(r[0],lab(r),x,y,w,BH); y+=BH+(r[0]==='set_live'?2:g); });
   desc.forEach(function(l){ text(l,cx0,y+1,P.soft,'center'); y+=10; }); y+=g-1;
-  button('set_expert',L('set_expert'),x,y,w,BH,'');
+  if(ex) button('set_expert',L('set_expert'),x,y,w,BH,'');
   say(L('settings_t')+'. '+SET_ROWS.map(lab).join('. ')); }
 /* ── the game's own screen (SonaFly): the chosen skin flies behind, the buttons on the free side over a dim band:
    play, high scores, how to play, «◀ skin: … ▶» (the picture changes at once), «← all games» ── */
@@ -682,7 +682,7 @@ function boot(then){ Sonar.boot().then(function(){ booted=true; Sfx.play('tap');
 function toAway(){ prep=null; var b=setBand3(); if(b==='wide'||b==='normal'){ Logs.ev('полоса из настроек',{band:b}); toRoom(b); return; } go('probe'); }   // v1.12: the band from the settings, or chosen before the game (1.08's live mode took the last one)
 /* v1.08, the live mode (an experiment, the service «ЗВУК» screen; the maintainer: «игра готовилась, калибровалась и игралась одновременно
    и постоянно… если удастся добиться моментального старта и точного управления — включим в игру»). The echo processing learns the room
-   all the time, during the game too (src/11_dsp.js), and the palm's range follows the play (Tune.stepLive) — so the getting ready is cut
+   all the time, during the game too (src/11_dsp.js), the screen is the player's last hand calibration (v1.14) — so the getting ready is cut
    short: the probe as last time (no choice screen), «take your hand away» 2.5 s instead of 3.5 (1.2 in 1.08), «the room is quiet» 0.4 s instead of 1.5, the room once more if the palm was in it,
    no waving (the range saved from the last games; the middle is found by the first second of the palm), straight to the countdown. Once
    ready, «Play» and «Again» go straight to the countdown while the microphone works — the room is not measured anew */
@@ -698,6 +698,8 @@ function toWave(){ T=Tune.create(+store.get('sonaroids_field','100')||100,true);
 function pauseGame(){ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; go('paused'); } }
 function startCount(){ if(resumeAfterPrep&&g&&g.state!=='over'){ resumeAfterPrep=false; countT=3; go('count-resume'); return; }
   resumeAfterPrep=false; countT=3; if(scr!=='wave') shipY=null; lastHand=handFrac()===null?lastHand:handFrac(); /* from the try-out the ship goes on where it is */ Logs.ev('отсчёт',{field:+T.field.toFixed(1),auto:T.auto}); store.set('sonaroids_field',Math.round(T.field));
+  // v1.14: a hand calibration's middle (the echo's range) — the auto-calibration plays with it (20_sonar liveMid)
+  if(!liveOn()&&T.ok){ var cI=DSP2.info().cal, rMid=(100-cI.o)/cI.k; if(rMid>=55&&rMid<=140){ store.set('sonaroids_mid_r',rMid.toFixed(1)); Logs.ev('середина запомнена',{range_mm:+rMid.toFixed(1),field:Math.round(T.field)}); } }
   if(mode==='race'){ g=Race.create(newSeed(),raceFW(),shipY===null?null:shipY/K,raceSteer,raceRules()); rTry=null; } go('count'); }
 function startGame(){ if(mode==='race'){ raceStart(); return; }
   var seed=0; try{ var a=new Uint32Array(1); crypto.getRandomValues(a); seed=a[0]; }catch(e){ seed=Math.floor(Math.random()*4294967296); }
@@ -718,7 +720,7 @@ var ACT={
   play:function(){ if(store.get('sonaroids_seen','')!=='1'){ ACT.howto(); return; } onboarding=false; direct=false; quickOr(function(){ ensure(toAway); }); },
   howto:function(){ onboarding=true; direct=false; go('sound'); },
   /* a deep recalibration: forget the saved palm range, close the microphone and start from "put the phone down" */
-  recal:function(){ onboarding=false; direct=false; store.set('sonaroids_field','100'); Sonar.restart(); booted=false; acoustic=false; go('phone'); },
+  recal:function(){ onboarding=false; direct=false; store.set('sonaroids_field','100'); store.set('sonaroids_mid_r',''); Sonar.restart(); booted=false; acoustic=false; go('phone'); },
   lefty:function(){ lefty=true; store.set('sonaroids_lefty','1'); turnShown=false; Logs.ev('играю левой'); seenT=scrT; },
   hub:function(){ mode='fly'; go('hub'); },
   settings:function(){ go('settings'); }, set_expert:function(){ audDev=null; audFrom='settings'; go('audio'); }, set_back:function(){ go('hub'); },
@@ -819,8 +821,7 @@ function loop(now){
   hdFrame(RS||(scr==='hub'?hubBg==='race'||hdWanted(SKIN_IDS[hubSkin]):!!SK.hd),false);   // v0.84: SonaRace's screens smooth; v0.99: or in candy pixels, as the graphics switch says
   // v0.91: while a game runs (and in its pause) the sonar keeps the empty room's level as the getting ready left it (see src/11_dsp.js)
   var gameOn=!!(g&&g.state!=='over'&&(scr==='play'||scr==='count-resume'||scr==='paused'||scr==='restart')); if(gameOn!==floorHeld){ floorHeld=gameOn; try{ DSP2.set('holdfloor',gameOn); }catch(e){} }
-  // v1.08, the live mode: in flight and its countdown the screen's edges are kept within the palm's reach (Tune.stepLive)
-  if(liveOn()&&T&&(scr==='play'||scr==='count'||scr==='count-resume')){ var tl=Tune.stepLive(T,DT,Sonar.state(),Sonar.shift); if(tl) Logs.gameEv('range followed',tl); }   // v0.74: a shapes-only skin with «pixels» — the same canvas at 1 px per game pixel   // v0.72: the HD world canvas under the pixel one
+  // v0.74: a shapes-only skin with «pixels» — the same canvas at 1 px per game pixel   // v0.72: the HD world canvas under the pixel one
   uiColours(scr!=='hub');
   switch(scr){
     case 'lang': sLang(); break; case 'title': sTitle(); break; case 'rtitle': sRTitle(); break; case 'rset': sRSet(); break; case 'hub': sHub(); break;

@@ -301,9 +301,11 @@ var Sonar=(function(){
       n++; vol.set(nv); PROBE_G=0.25; setProbe('single-'+chan); return sleep(250).then(autoLevel).then(step); }
     return step; }
   /* v1.08: the live mode — an experiment, switched on the service «ЗВУК» screen (store 'sonaroids_live'): the echo processing learns the room
-     during the game too (DSP2 'live'), the palm's range follows the play (Tune.stepLive) and the getting ready is cut short (49_main) */
+     during the game too (DSP2 'live'), the getting ready is cut short (49_main) */
   // v1.12: «auto-calibration» in the settings; not set — on once the first game was played (the first, with the instruction, gets ready by hand)
   var LIVE_MID=82;
+  // v1.14: the middle of the player's last hand calibration (the echo's range, mm; saved by 49_main at a manual countdown), else 8.2 cm
+  function liveMid(){ try{ var v=+localStorage.getItem('sonaroids_mid_r'); return v>=55&&v<=140?v:LIVE_MID; }catch(e){ return LIVE_MID; } }
   function liveOn(){ try{ var v=localStorage.getItem('sonaroids_live'); return v===null||v===''?localStorage.getItem('sonaroids_seen')==='1':v==='1'; }catch(e){ return false; } }
   function prepare(onStage,vol){
     active=false; last=null; lost=false; PROBE_G=0.25; volLog=[]; reasserts=0; refLv=null; jumpN=0;
@@ -326,10 +328,10 @@ var Sonar=(function(){
       // v0.67: in the app, the empty room is learnt only once the probe at the microphone holds still (settle)
       return (natOn?settle():Promise.resolve()).then(function(){
       DSP2.set('flo',band==='wide'?F_LO:null); DSP2.set('live',liveOn()?1:0); DSP2.init(fs,'all');
-      /* v1.13, auto-calibration: the middle of the screen at a palm 8.2 cm from the phone by the echo's own range, at once — not where the palm
-         happened to be in its first second (the maintainer's iPhone, 1.12 at 20:15: it started at 13 cm, «сначала руку приходилось держать
-         слишком далеко», and took a minute to come in) */
-      var c0=curCal(); if(liveOn()){ DSP2.setCal({k:c0.k,o:100-c0.k*LIVE_MID,s:c0.s}); DSP2.set('autocenter',0); } else { DSP2.setCal(c0); DSP2.set('autocenter',1); } active=true; onStage&&onStage('room');
+      /* v1.14, auto-calibration plays with the player's own last hand calibration: its middle (by the echo's range) and its field, nothing
+         changed in flight (1.10–1.13 fitted the screen to the palm while playing, and each made it worse — the maintainer's iPhone, 1.13:
+         «Внизу чувствительность очень высокая, а вверху наоборот»); no hand calibration yet — the middle at 8.2 cm (1.13) */
+      var c0=curCal(); if(liveOn()){ DSP2.setCal({k:c0.k,o:100-c0.k*liveMid(),s:c0.s}); DSP2.set('autocenter',0); } else { DSP2.setCal(c0); DSP2.set('autocenter',1); } active=true; onStage&&onStage('room');
       return waitReady().then(function(st){ if(st==='noprobe'){ active=false; setProbe('off'); autoRetest=true; return {ok:false,why:'noprobe'}; } return {ok:true,snr:L.snr}; }); });
     });
   }

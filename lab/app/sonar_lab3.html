@@ -1462,9 +1462,9 @@ var Tune=(function(){
      10.2–10.5): the whole screen moves 0.5 mm a second (1 when it is over a centimetre out);
      the lower half (over the last 20 s) — the palm at the phone's end (within 4 mm of range of the closest it came in the last minute, under 58 mm) while the
      ship is clearly not at the bottom (over 8% of the screen): the lower half gets more sensitive (its travel 1 mm shorter a second, down to
-     60% of the waving's; it starts at 80%);
+     45% of the waving's; it starts at 70%); and the middle stays at least 3 cm over the port, so the lower half has room;
      the ship at the bottom while the palm is still ~1.5 cm above the port: less (back up to 120%). The middle does not move for it */
-  var L_WIN=20, L_RWIN=60, L_MIN=3, L_STEP=0.5, R_NEAR=4, R_CAP=58, R_FAR=62, L_N=10, F_PORT=0.08, R_MID0=72, R_MID1=88, FL_START=0.8, FL_MIN=0.6, FL_MAX=1.2;
+  var L_WIN=20, L_RWIN=60, L_MIN=3, L_STEP=0.5, R_NEAR=4, R_CAP=58, R_FAR=62, L_N=10, F_PORT=0.08, R_MID0=72, R_MID1=88, R_GAP=30, FL_START=0.7, FL_MIN=0.45, FL_MAX=1.2;
   function stepLive(T,dt,st,shift){
     if(!T.lb){ T.lb=[]; T.rb=[]; T.lt=0; T.la=0; T.ln=0; }
     T.lt+=dt; if(st&&st.present&&typeof st.range==='number'){ T.lb.push({t:T.lt,h:st.height,r:st.range}); T.rb.push({t:T.lt,r:st.range}); T.ln+=dt; }
@@ -1478,9 +1478,17 @@ var Tune=(function(){
     var atPort=T.lb.filter(function(q){ return q.r<=rPort; }).map(function(q){ return fracOf(T,q.h); }),
         atBot=T.lb.filter(function(q){ return fracOf(T,q.h)<=0.02; }).map(function(q){ return q.r; }), rMed=rs[rs.length>>1];   // the middle over the last minute: 20 s swing with the game's demands
     var fPort=atPort.length>=L_N?med(atPort):null, rBot=atBot.length>=L_N?med(atBot):null, v=0.5*L_STEP, d=0, dfl=0;
-    if(rMed>R_MID1+10||rMed<R_MID0-10) v*=2;                                  // far out of it: 1 mm a second
-    if(rMed>R_MID1) d=v; else if(rMed<R_MID0) d=-v;                         // the middle: too far — the screen up (the palm comes closer), too near — down
-    if(fPort!==null&&fPort>F_PORT) dfl=-Math.min(L_STEP,T.fl-FL_MIN*fl0); else if(rBot!==null&&rBot>R_FAR) dfl=Math.min(L_STEP,FL_MAX*fl0-T.fl);
+                         // the middle: too far — the screen up (the palm comes closer), too near — down
+    /* v1.13 (the maintainer, Mi 9 on 1.12, 20:21: «то надо слишком сильную амплитуду, то наоборот слишком чувствительное к малейшему
+       движению»): the screen was changing under the palm all game long — 107 mm of moving and the lower half's travel from 82 to 49 mm.
+       Now it settles in the first 25 s; after that it hardly moves: the middle at 0.2 mm a second, the lower half only when the bottom is
+       plainly out of reach (the ship over 15% with the palm at the port), half as fast, and never back */
+    var early=T.ln<25; if(!early) v=Math.min(v,0.1);
+    if(fPort!==null&&fPort>(early?F_PORT:0.15)) dfl=-Math.min(early?L_STEP:L_STEP/2,T.fl-FL_MIN*fl0); else if(early&&rBot!==null&&rBot>R_FAR) dfl=Math.min(L_STEP,FL_MAX*fl0-T.fl);
+    var rLow=rs[Math.floor(0.01*(rs.length-1))], port=rLow<=54?rLow+R_NEAR:50, m0=Math.max(R_MID0,port+R_GAP), m1=Math.max(R_MID1,m0+14);   // the port: where the palm came to it, else ~5 cm           // v1.13: never closer than 3 cm over the port — the lower half needs that room (20:15: 7.4 cm with the port at 5, and the ship would not go down)
+    if(T.ln<25&&(rMed>m1+10||rMed<m0-10)) v*=2;                               // far out of it, at the start: 1 mm a second
+    var hy=early?0:6;                                                          // after the start: only when plainly out (6 mm past the edge)
+    if(rMed>m1+hy) d=v; else if(rMed<m0-hy) d=-v;
     if(d){ shift(d); T.lb.forEach(function(q){ q.h+=d; }); }
     if(dfl) T.fl+=dfl;
     return d||dfl?{d:d,fl:+T.fl.toFixed(1),mid:+rMed.toFixed(0),port:fPort===null?null:+fPort.toFixed(2),bottom:rBot===null?null:+rBot.toFixed(0)}:null;

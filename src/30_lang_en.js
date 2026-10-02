@@ -1,7 +1,7 @@
 /* ── UI strings, English. All caps: the game's pixel font is drawn in capitals on screen. ── */
 var STR={};
 STR.en={
-  r_test:'TEST VERSION', r_set:'TEST SETTINGS', r_yes:'YES', r_no:'NO', r_knock:'A KNOCK SLOWS', r_kfuel:'A KNOCK COSTS FUEL', r_mag:'MAGNET', r_bub:'BUBBLE', r_tbub:'TURBO+BUBBLE', r_tmag:'TURBO+MAGNET+BUBBLE', r_pa:'GAME RULES', r_pd:'SET D: FAST', r_pe:'SET E: STRICT', r_super:'SUPER GIFT', r_1of:'1 IN', r_skin:'SKIN', r_sk_candy:'CANDY', r_sk_note:'NOTEBOOK', r_sk_pirate:'RIVER', r_bpop:'A KNOCK POPS THE BUBBLE', r_puds:'PUDDLES', r_none:'NONE', r_vfew:'VERY FEW', r_vmany:'VERY MANY',
+  r_test:'TEST VERSION', r_set:'TEST SETTINGS', r_yes:'YES', r_no:'NO', r_knock:'A KNOCK SLOWS', r_kfuel:'A KNOCK COSTS FUEL', r_mag:'MAGNET', r_bub:'BUBBLE', r_tbub:'TURBO+BUBBLE', r_tmag:'TURBO+MAGNET+BUBBLE', r_pa:'GAME RULES', r_pd:'SET D: FAST', r_pe:'SET E: STRICT', r_super:'SUPER GIFT', r_1of:'1 IN', r_skin:'SKIN', r_sk_candy:'CANDY', r_sk_note:'NOTEBOOK', r_sk_pirate:'RIVER', r_sk_mix:'SHUFFLE', skin_mix:'SHUFFLE', r_bpop:'A KNOCK POPS THE BUBBLE', r_puds:'PUDDLES', r_none:'NONE', r_vfew:'VERY FEW', r_vmany:'VERY MANY',
   r_cars:'CARS', r_few:'FEW', r_mid:'SOME', r_many:'MANY', r_speed:'SPEED', r_slow:'LOWER', r_norm:'USUAL', r_fast:'HIGHER', r_burn:'FUEL', r_burn_y:'IS USED', r_burn_n:'NOT USED', r_verge:'THE VERGE SLOWS',
   r_steer:'STEERING', r_steer_h:'BY HEIGHT', r_steer_r:'ALONG THE ROAD',
   volume_ios:'SET THE VOLUME TO 40–60%', volume_direct_ios:'THE VOLUME IS TOO LOW — TURN IT UP TO 40–60%', volume_loud_ios:'THE VOLUME IS TOO HIGH — TURN IT DOWN TO 40–60%',

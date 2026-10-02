@@ -55,7 +55,7 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
       S.act.rskin(); await w(200); k.push(localStorage.getItem('sonaroids_race_skin')); S.act.rskin(); await w(1200); k.push(localStorage.getItem('sonaroids_race_skin'));
       const c=document.getElementById('hd'), x=c.getContext('2d'), d=x.getImageData(0,0,c.width,c.height).data; let sea=0, sand=0, n=0;
       for(let i=0;i<d.length;i+=4*97){ n++; const r=d[i],g=d[i+1],b=d[i+2]; if(b>150&&g>120&&r<150&&b>r+40) sea++; if(r>215&&g>190&&b>120&&b<200&&r>b+30) sand++; }
-      S.act.rskin(); await w(200); k.push(localStorage.getItem('sonaroids_race_skin')); return {k,sea:sea/n,sand:sand/n,shown:c.style.display!=='none'}; }); await shot('07_pirates'); }
+      S.act.rskin(); await w(200); k.push(localStorage.getItem('sonaroids_race_mix')==='1'?'mix':localStorage.getItem('sonaroids_race_skin')); S.act.rskin(); await w(200); k.push(localStorage.getItem('sonaroids_race_skin')); return {k,sea:sea/n,sand:sand/n,shown:c.style.display!=='none'}; }); await shot('07_pirates'); }   // v1.24: «ВСЁ ПОДРЯД» after the last
   await b.close();
   let ok=true; const out=[], check=(n,g,i)=>{ ok=ok&&g; out.push(`${n}: ${i||''} ${g?'ok':'FAIL'}`); };
   check('the card opens the race menu (v0.98: without the test settings)',menu.scr==='rtitle'&&menu.mode==='race'&&menu.btn.includes('play')&&menu.btn.includes('hub')&&!menu.btn.includes('rset'),menu.btn.join(','));
@@ -70,7 +70,7 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
   { const Race=require('../src/14_race.js'), zlib=require('zlib'), rb=sent.find(x=>x.game==='race'); let rs=null;   // v1.01: the server's replay of the race the page sent lands on the same score
     if(rb){ const buf=rb.enc==='deflate'?zlib.inflateRawSync(Buffer.from(rb.hands,'base64')):Buffer.from(rb.hands,'base64'), hs=[]; for(let i=0;i<buf.length;i+=2){ const v=buf.readUInt16LE(i); hs.push(v===65535?-1:v/4000); } rs=Race.replay(rb.seed,rb.FW,hs,rb.y0,rb.steer,null).score; }
     check('the race is sent to the tables and the server\'s replay gives its score',rb&&rb.core===Race.TAG&&(rb.steer==='road'||rb.steer==='height')&&rs===rb.score&&rb.score>0,rb?`sent ${rb.score}, replayed ${rs}, steering ${rb.steer}, ${Math.round(rb.hands.length*0.75)} B`:'nothing sent'); }
-  check('the skins go round: candy, notebook, pirates, candy; the pirates\' lagoon is drawn',!!pir&&pir.k.join(',')==='candy,note,pirate,candy'&&pir.shown&&pir.sea>0.1&&pir.sand>0.03,pir?`${pir.k.join(' → ')}; sea ${(100*pir.sea).toFixed(0)}%, sand ${(100*pir.sand).toFixed(0)}%`:'none');
+  check('the skins go round: candy, notebook, pirates, shuffle, candy; the pirates\' lagoon is drawn',!!pir&&pir.k.join(',')==='candy,note,pirate,mix,candy'&&pir.shown&&pir.sea>0.1&&pir.sand>0.03,pir?`${pir.k.join(' → ')}; sea ${(100*pir.sea).toFixed(0)}%, sand ${(100*pir.sand).toFixed(0)}%`:'none');
   check('no page errors',!errors.length,errors.join(' | '));
   out.forEach(s=>console.log(s)); console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;
 })();

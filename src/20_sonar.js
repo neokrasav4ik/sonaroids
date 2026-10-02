@@ -310,7 +310,11 @@ var Sonar=(function(){
      right at the port (the waving goes down to it): copied as is, the bottom fell under the port (iPhone, 1.14 at 21:32: «в игре опять стал
      упираться в разъём»; the middle 70 mm, the lower half's end 51 mm, the port read 51–57) */
   var LIVE_UP=6;
-  function liveMid(){ try{ var v=+localStorage.getItem('sonaroids_mid_r'); return v>=55&&v<=140?v+LIVE_UP:LIVE_MID; }catch(e){ return LIVE_MID; } }
+  // v1.19: kept per band (the maintainer's «А»); the one saved before 1.19 (no band) if this band has none
+  function savedMid(){ try{ var v=+localStorage.getItem('sonaroids_mid_r_'+band); if(!(v>=55&&v<=140)) v=+localStorage.getItem('sonaroids_mid_r'); return v>=55&&v<=140?v:null; }catch(e){ return null; } }
+  function liveMid(){ var v=savedMid(); return v===null?LIVE_MID:v+LIVE_UP; }
+  // v1.19: the room learnt in the game with the hand calibration too — a test switch (the maintainer: «3 — с переключателем, пока»)
+  function roomOn(){ try{ return localStorage.getItem('sonaroids_room')==='1'; }catch(e){ return false; } }
   // v1.16: an experiment, off unless switched on in the settings (the maintainer: «автокалибровка — это экспериментальный режим, и по умолчанию включена ручная»)
   function liveOn(){ try{ return localStorage.getItem('sonaroids_live')==='1'; }catch(e){ return false; } }
   function prepare(onStage,vol){
@@ -333,7 +337,7 @@ var Sonar=(function(){
       if(!vol&&PROBE_LVL>LOUD_LVL+lvlAdj){ setProbe('off'); return {ok:false,why:'loud',snr:L.snr,level:PROBE_LVL}; }
       // v0.67: in the app, the empty room is learnt only once the probe at the microphone holds still (settle)
       return (natOn?settle():Promise.resolve()).then(function(){
-      DSP2.set('flo',band==='wide'?F_LO:null); DSP2.set('live',liveOn()?1:0); DSP2.init(fs,'all');
+      DSP2.set('flo',band==='wide'?F_LO:null); DSP2.set('live',liveOn()||roomOn()?1:0); DSP2.init(fs,'all');
       /* v1.14, auto-calibration plays with the player's own last hand calibration: its middle (by the echo's range) and its field, nothing
          changed in flight (1.10–1.13 fitted the screen to the palm while playing, and each made it worse — the maintainer's iPhone, 1.13:
          «Внизу чувствительность очень высокая, а вверху наоборот»); no hand calibration yet — the middle at 8.2 cm (1.13) */
@@ -370,7 +374,7 @@ var Sonar=(function(){
     if(simIv){ clearInterval(simIv); simIv=null; } simStalled=false;     // in simulation a re-opened microphone works again
     ctx=null; stream=null; node=null; an=null; booted=false; active=false; collector=null; lastSeq=-1; last=null; lost=false; lastFrameAt=0;
   }
-  return {live:liveOn,boot:boot,prepare:prepare,setBand:setBand,band:function(){ return band; },simulate:simulate,healthy:healthy,restart:restart,simStall:function(v){ simStalled=!!v; },setProbe:setProbe,pause:pause,resume:resume,probeSNR:probeSNR,
+  return {live:liveOn,room:roomOn,savedMid:savedMid,boot:boot,prepare:prepare,setBand:setBand,band:function(){ return band; },simulate:simulate,healthy:healthy,restart:restart,simStall:function(v){ simStalled=!!v; },setProbe:setProbe,pause:pause,resume:resume,probeSNR:probeSNR,
     listen:function(f){ listeners.push(f); },
     state:function(){ return last; }, lost:function(){ return lost; }, clearLost:function(){ lost=false; },
     shift:function(d){ DSP2.shift(d); },

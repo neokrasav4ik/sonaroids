@@ -19,10 +19,10 @@ const path=require('path'); const ROOT=path.join(__dirname,'..');
   await p.evaluate(()=>__sonaroids.go('hub')); await p.waitForTimeout(300); const hub=await ids(p);
   check('the games\' screen: «settings», no sounds row',hub.includes('settings')&&!hub.includes('vol_dn'),hub.join(' '));
   await p.evaluate(()=>__sonaroids.act.settings()); await p.waitForTimeout(300); const st=await ids(p);
-  const want=['vol_dn','vol_up','sfx','set_gfx_prev','set_gfx_next','set_band_prev','set_band_next','set_live_prev','set_live_next','set_back'];
+  const want=['vol_dn','vol_up','sfx','set_gfx_prev','set_gfx_next','set_band_prev','set_band_next','set_live_prev','set_live_next','set_room_prev','set_room_next','set_back'];
   check('the settings: sounds, graphics, band, auto-calibration; no advanced in a browser (v1.18)',want.every(x=>st.includes(x))&&!st.includes('set_expert'),st.join(' '));
   const say0=await p.evaluate(()=>document.getElementById('say').textContent);
-  check('the defaults: graphics and band chosen in the game, auto-calibration off (an experiment)',/GRAPHICS: CHOSEN IN THE GAME/.test(say0)&&/PROBE BAND: CHOSEN BEFORE A GAME/.test(say0)&&/AUTO-CALIBRATION \(EXPERIMENTAL\): OFF/.test(say0),say0);
+  check('the defaults: graphics and band chosen in the game, auto-calibration off, the room following off (v1.19)',/GRAPHICS: CHOSEN IN THE GAME/.test(say0)&&/PROBE BAND: CHOSEN BEFORE A GAME/.test(say0)&&/AUTO-CALIBRATION: OFF/.test(say0)&&/ROOM FOLLOWING: OFF/.test(say0),say0);
   // graphics: always pixels → switched, and out of the menus
   await p.evaluate(()=>__sonaroids.act.set_gfx_next()); await p.evaluate(()=>__sonaroids.act.set_gfx_next()); await p.waitForTimeout(200);
   const gx=await p.evaluate(async()=>{ const S=__sonaroids, w=ms=>new Promise(r=>setTimeout(r,ms)); const r={lock:localStorage.getItem('sonaroids_gfx_lock'),mode:S.state().gfx};
@@ -44,6 +44,12 @@ const path=require('path'); const ROOT=path.join(__dirname,'..');
   const band2=await p.evaluate(async()=>{ const S=__sonaroids, w=ms=>new Promise(r=>setTimeout(r,ms)); S.go('hub'); S.act.settings(); S.act.set_band_prev(); const lock=localStorage.getItem('sonaroids_band_lock'); S.go('title'); S.act.play(); const seen=[]; for(let i=0;i<20;i++){ await w(100); const sc=S.scr(); if(seen[seen.length-1]!==sc) seen.push(sc); if(sc==='probe') break; } return {lock,seen}; });
   check('«chosen before a game»: the band\'s screen again',band2.lock===''&&band2.seen.includes('probe'),JSON.stringify(band2));
   await p.screenshot({path:path.join(__dirname,'out','settings_flow.png')});
+  // v1.19: the room following — its own row while the auto-calibration is off (the maintainer's «Б»), kept in 'sonaroids_room', the echo processing learns the room in the game
+  const room=await p.evaluate(async()=>{ const S=__sonaroids, w=ms=>new Promise(r=>setTimeout(r,ms)); localStorage.setItem('sonaroids_live','0'); S.go('hub'); S.act.settings(); await w(200);
+    S.act.set_room_next(); await w(150); const on=localStorage.getItem('sonaroids_room'), sonar=Sonar.room(), ids=S.btn().map(b=>b.id);
+    S.act.set_live_next(); await w(150); const hidden=!S.btn().some(b=>b.id==='set_room_next'); S.act.set_live_next(); S.act.set_room_next(); await w(150);
+    return {on,sonar,row:ids.includes('set_room_next'),hiddenInAuto:hidden,off:localStorage.getItem('sonaroids_room')}; });
+  check('v1.19: «room following» on/off, its row hidden while the auto-calibration is on',room.on==='1'&&room.sonar===true&&room.row&&room.hiddenInAuto&&room.off==='0',JSON.stringify(room));
   // v1.14: no service «sound» on an iPhone (the maintainer: «убери служебное меню звук на айфоне»)
   { const ctx=await b.newContext({viewport:{width:844,height:390},deviceScaleFactor:2,userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'});
     await ctx.addInitScript(`localStorage.setItem('sonaroids_lang','en'); localStorage.setItem('sonaroids_seen','1');`); const pi=await ctx.newPage(); pi.on('pageerror',e=>errors.push(e.message));

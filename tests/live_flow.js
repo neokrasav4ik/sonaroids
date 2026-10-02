@@ -28,13 +28,14 @@ const SCEN=`function(t){ const n=performance.now()/1000; if(n<window.__palmAt) r
   // «Play»: the palm comes 1.5 s after the tap
   const simNow=()=>p.evaluate(()=>performance.now()/1000);
   const t0=await p.evaluate(()=>{ const n=performance.now()/1000; window.__palmAt=n+5.5; __sonaroids.act.play(); return n; });   // the palm back once the room is learnt (v1.10: in it, the room is measured again)
-  const seen=[]; let last=null, midAt=null, tCount=null, tPlay=null, follow0=[], follow1=[], over=null, again=null;
+  const seen=[]; let last=null, tTry=null, tryInfo=null, midAt=null, tCount=null, tPlay=null, follow0=[], follow1=[], over=null, again=null;
   const T=async()=>(await simNow())-t0;
   while(await T()<40){
     await p.waitForTimeout(80);
     const s=await p.evaluate(()=>{ const s=__sonaroids.state(), st=Sonar.state(); return {scr:s.scr,hand:(st&&st.present&&s.T)?Tune.fracOf(s.T,st.height):null,present:!!(st&&st.present),ship:s.g&&s.g.ship?s.g.ship.y/s.g.FH:null,gstate:s.g?s.g.state:null,live:DSP2.info().live,palm:window.__scen(0)}; });
     const t=await T();
     if(s.scr!==last){ seen.push(s.scr+'@'+t.toFixed(1)); last=s.scr; }
+    if(s.scr==='wave'&&tTry===null){ tTry=t; tryInfo=await p.evaluate(()=>{ const s=__sonaroids.state(); return {copied:!!(s.T&&s.T.copied),btn:__sonaroids.btn().map(b=>b.id)}; }); await p.evaluate(()=>__sonaroids.act.start()); }   // v1.19: the try-out first
     if(s.scr==='count'&&tCount===null){ tCount=t; midAt=await p.evaluate(()=>{ const c=DSP2.info().cal; return (100-c.o)/c.k; }); }
     if(s.scr==='play'){ if(tPlay===null){ tPlay=t; await p.evaluate(()=>{ window.__noiseAt=performance.now()/1000+8; }); } 
       const pt=t-tPlay; if(s.ship!==null&&(pt<7||pt>10)) (pt<8?follow0:follow1).push([s.present?1:0,s.ship,s.palm,s.hand]);   // around the noise's step (8 s) a second each side left out
@@ -45,19 +46,27 @@ const SCEN=`function(t){ const n=performance.now()/1000; if(n<window.__palmAt) r
   }
   // the switch off: «Play» from the title goes through the usual getting ready (the probe choice first)
   const offFlow=await p.evaluate(async()=>{ const S=__sonaroids, w=ms=>new Promise(r=>setTimeout(r,ms)); S.act.pause&&S.act.pause(); S.act.quit&&S.act.quit(); await w(300); S.go('hub'); S.act.settings(); await w(200); S.act.set_live_next(); S.go('title'); await w(300);
-    S.act.play(); const seen=[]; for(let i=0;i<120;i++){ await w(100); const sc=S.scr(); if(seen[seen.length-1]!==sc) seen.push(sc); if(sc==='wave') break; } return {seen,live:localStorage.getItem('sonaroids_live')}; });
+    S.act.play(); const seen=[]; for(let i=0;i<250;i++){ await w(100); const sc=S.scr(); if(seen[seen.length-1]!==sc) seen.push(sc); if(sc==='wave') break; } return {seen,live:localStorage.getItem('sonaroids_live')}; });
+  // v1.19, the hand calibration: «again» after a game straight to the countdown, «recalibrate» beside it goes through the room and the waving
+  const manAgain=await p.evaluate(async()=>{ const S=__sonaroids, w=ms=>new Promise(r=>setTimeout(r,ms)); let r={};
+    for(let i=0;i<250&&!(S.state().caught&&S.btn().some(b=>b.id==='start'));i++) await w(100); r.tried=S.btn().map(b=>b.id).filter(x=>x==='start'||x==='again');
+    S.act.start(); for(let i=0;i<60&&S.scr()!=='play';i++) await w(100); S.act.pause(); await w(100); S.act.quit(); for(let i=0;i<30&&S.scr()!=='over';i++) await w(100);
+    for(let i=0;i<30&&!S.btn().some(b=>b.id==='over_cal');i++) await w(100); r.over=S.btn().map(b=>b.id).filter(x=>x==='again'||x==='over_cal');
+    const t0=performance.now(); S.act.again(); for(let i=0;i<40&&S.scr()!=='count';i++) await w(25); r.again={scr:S.scr(),dt:(performance.now()-t0)/1000};
+    for(let i=0;i<60&&S.scr()!=='play';i++) await w(100); S.act.pause(); await w(100); S.act.quit(); for(let i=0;i<30&&S.scr()!=='over';i++) await w(100);
+    for(let i=0;i<30&&!S.btn().some(b=>b.id==='over_cal');i++) await w(100); S.act.over_cal(); const seen=[]; for(let i=0;i<250;i++){ await w(100); const sc=S.scr(); if(seen[seen.length-1]!==sc) seen.push(sc); if(sc==='wave') break; } r.cal=seen; return r; });
   // v1.10: the hand stays over the phone while the room is learnt (the OnePlus, 18:17) — the room is measured once more, then the game goes on
   const p2=await ctx.newPage(); p2.on('pageerror',e=>errors.push(e.message)); await p2.route('https://api.test/**',r=>r.fulfill({status:200,headers:{'Access-Control-Allow-Origin':'*'},contentType:'application/json',body:'{"ok":true}'}));
   await p2.goto('file://'+path.join(ROOT,'game','play','index.html')); await p2.waitForTimeout(600);
   const again2=await p2.evaluate(async()=>{ localStorage.setItem('sonaroids_live','1'); window.__palmAt=0; window.__noiseAt=1e9; Sonar.simulate({fs:48000,chan:'right',source:makeSimSource(window.__scen)});
     const S=__sonaroids, w=ms=>new Promise(r=>setTimeout(r,ms)); const t0=performance.now(); S.act.play(); const seen=[];
-    for(let i=0;i<150;i++){ await w(100); const sc=S.scr(); if(seen[seen.length-1]!==sc) seen.push(sc); if(sc==='count') break; }
+    for(let i=0;i<150;i++){ await w(100); const sc=S.scr(); if(seen[seen.length-1]!==sc) seen.push(sc); if(sc==='wave') S.act.start(); if(sc==='count') break; }
     return {seen,count:S.scr()==='count',t:(performance.now()-t0)/1000}; });
   await b.close();
   const r=a=>a.length?a.reduce((u,v)=>u+v,0)/a.length:NaN;
   let ok=true; const out=[], check=(n,g,i)=>{ ok=ok&&g; out.push(`${n}: ${i||''} ${g?'ok':'FAIL'}`); };
   check('the switch in the settings',sw.btn.includes('set_live_next')&&sw.on==='1'&&sw.off==='0'&&sw.now==='1',JSON.stringify(sw));
-  check('no probe choice and no waving with it on',!seen.some(x=>/^(probe|wave)@/.test(x)),seen.join(' '));
+  check('no probe choice and no waving with it on: the try-out with the copied calibration, «play» / «recalibrate» (v1.19)',!seen.some(x=>/^probe@/.test(x))&&tryInfo&&tryInfo.copied&&tryInfo.btn.includes('start')&&tryInfo.btn.includes('try_wave'),seen.join(' ')+' '+JSON.stringify(tryInfo));
   check('«Play» → the countdown in ≤ 6 s',tCount!==null&&tCount<=6,tCount===null?'never':tCount.toFixed(1)+' s');
   check('v1.14–1.15: the middle from the last hand calibration (saved 80 mm) + 6 mm',midAt!==null&&Math.abs(midAt-86)<0.5,midAt===null?'–':midAt.toFixed(1)+' mm');
   check('the game runs, the echo processing in the live mode',tPlay!==null&&seen.some(x=>/^play@/.test(x)),'');
@@ -68,6 +77,7 @@ const SCEN=`function(t){ const n=performance.now()/1000; if(n<window.__palmAt) r
   check('… and after the room got 20 dB noisier',r(follow1.map(q=>q[0]))>=0.85&&c1>=0.9,`seen ${(100*r(follow1.map(q=>q[0]))).toFixed(0)}%, the height with the palm ${c1.toFixed(2)}`);
   check('«Again» → the countdown at once',over==='over'&&again&&again.scr==='count'&&again.dt<1,JSON.stringify({over,again}));
   check('the switch off: the usual getting ready (with the waving)',offFlow.live==='0'&&offFlow.seen.includes('wave'),offFlow.seen.join(' '));
+  check('v1.19, the hand calibration: «again» → the countdown at once, «recalibrate» → the room and the waving',manAgain.over.includes('over_cal')&&manAgain.again.scr==='count'&&manAgain.again.dt<1&&manAgain.cal.includes('away')&&manAgain.cal[manAgain.cal.length-1]==='wave',JSON.stringify(manAgain));
   check('the hand left over the phone while the room is learnt: the room once more, then the countdown',again2.count&&again2.t>tCount+2,again2.seen.join(' ')+` in ${again2.t.toFixed(1)} s (the hand away: ${tCount===null?'–':tCount.toFixed(1)} s)`);
   check('no page errors',!errors.length,errors.slice(0,3).join(' | '));
   out.forEach(s=>console.log(s)); console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;

@@ -204,6 +204,15 @@ var SET_ROWS=[
   ['set_gfx',function(){ var v=setGfx3(); return v==='hd'?'set_gfx_hd':v==='pixel'?'set_gfx_px':'set_gfx_menu'; },function(dir){ var o=['','hd','pixel'], i=(o.indexOf(setGfx3())+dir+3)%3; store.set('sonaroids_gfx_lock',o[i]); gfxLockApply(); }],
   ['set_band',function(){ var v=setBand3(); return v==='wide'?'set_band_w':v==='normal'?'set_band_n':'set_band_ask'; },function(dir){ var o=['','wide','normal'], i=(o.indexOf(setBand3())+dir+3)%3; store.set('sonaroids_band_lock',o[i]); }],
   ['set_live',function(){ return setLive()?'set_on':'set_off'; },function(){ store.set('sonaroids_live',setLive()?'0':'1'); acoustic=false; Logs.ev(setLive()?'автокалибровка включена':'автокалибровка выключена'); }]];
+/* v1.19: the room learnt in the game with the hand calibration too — its own row under the auto-calibration, shown while that is off (in the
+   auto-calibration it is always on); off by default (the maintainer: «3 — с переключателем, пока»; his pick «Б» of two sketches, no «test» in it) */
+function setRoom(){ return Sonar.room(); }
+var SET_ROOM=['set_room',function(){ return setRoom()?'set_on':'set_off'; },function(){ store.set('sonaroids_room',setRoom()?'0':'1'); acoustic=false; Logs.ev(setRoom()?'подстройка под комнату включена':'подстройка под комнату выключена'); }];
+function setRows(){ return setLive()?SET_ROWS:SET_ROWS.concat([SET_ROOM]); }
+/* v1.19: the line under the auto-calibration — with the date of the hand calibration it copies (the maintainer's «Г») */
+function liveDesc(){ if(!setLive()) return L('set_live_off_s'); if(Sonar.savedMid()===null&&!store.get('sonaroids_mid_r_wide','')&&!store.get('sonaroids_mid_r_normal','')) return L('set_live_new_s');
+  var t=+store.get('sonaroids_mid_t',''); if(!t) return L('set_live_on_s'); var d=new Date(t), p=function(n){ return (n<10?'0':'')+n; };
+  return L('set_live_on_d').replace('{d}',p(d.getDate())+'.'+p(d.getMonth()+1)+', '+p(d.getHours())+':'+p(d.getMinutes())); }
 function arrowRow(id,label,x,y,w,h){ var s=Math.round(h*0.9);
   R(P.bg,x,y,w,h); frame(x,y,w,h,P.line);
   polyFill([[x+s/2+2,y+h/2-4],[x+s/2+2,y+h/2+4],[x+s/2-3,y+h/2]],P.band); polyFill([[x+w-s/2-2,y+h/2-4],[x+w-s/2-2,y+h/2+4],[x+w-s/2+3,y+h/2]],P.band);
@@ -212,14 +221,14 @@ function arrowRow(id,label,x,y,w,h){ var s=Math.round(h*0.9);
   text(label,x+w/2,y+Math.round((h-7)/2),P.text,'center',1,true); if(fit<1) lx.restore();
   BTN.push({id:id+'_prev',x:x,y:y,w:s+4,h:h}); BTN.push({id:id+'_next',x:x+s+4,y:y,w:w-s-4,h:h}); }
 function sSettings(){ sky(DT,0.3); var y=titles(L('settings_t')), cx0=Math.round((SAFE.l+LW-SAFE.r)/2), mw=LW-SAFE.l-SAFE.r-2*(BH+24);   // clear of the menu button and the version in the corners
-  var lab=function(r){ return L(r[0])+': '+L(r[1]()); }, w=Math.min(mw,Math.max(soundW(),btnW(SET_ROWS.map(lab).concat([L('set_expert')]))+2*BH)), x=Math.round(cx0-w/2), ex=Sonar.nativeAvail();   // v1.14: no service «sound» on an iPhone (the maintainer: «убери служебное меню звук на айфоне»); v1.18: only in the app — in a browser it had nothing but the auto-calibration's switch, now gone
-  var desc=PF.wrap(L(!setLive()?'set_live_off_s':store.get('sonaroids_mid_r','')?'set_live_on_s':'set_live_new_s'),w,1)   /* v1.17: how to use it (the maintainer: «надо так в меню настроек и написать, чтоб понятно было, для чего и как это использовать») */
-  , need=(ex?5:4)*BH+desc.length*10+2, room=LH-SAFE.b-6-(y+4), g=Math.max(3,Math.min(6,Math.floor((room-need)/4)));
+  var lab=function(r){ return L(r[0])+': '+L(r[1]()); }, w=Math.min(mw,Math.max(soundW(),btnW(setRows().map(lab).concat([L('set_expert')]))+2*BH)), x=Math.round(cx0-w/2), ex=Sonar.nativeAvail();   // v1.14: no service «sound» on an iPhone (the maintainer: «убери служебное меню звук на айфоне»); v1.18: only in the app — in a browser it had nothing but the auto-calibration's switch, now gone
+  var desc=PF.wrap(liveDesc(),w,1)   /* v1.17: how to use it (the maintainer: «надо так в меню настроек и написать, чтоб понятно было, для чего и как это использовать») */
+  , rows=setRows(), need=(ex?2:1+rows.length)*BH+(ex?rows.length*BH:0)+desc.length*10+2, room=LH-SAFE.b-6-(y+4), g=Math.max(3,Math.min(6,Math.floor((room-need)/4)));
   y+=Math.max(2,Math.min(6,room-need-4*g)); soundRow(x,y,w,BH); y+=BH+g;
-  SET_ROWS.forEach(function(r){ arrowRow(r[0],lab(r),x,y,w,BH); y+=BH+(r[0]==='set_live'?2:g); });
+  rows.forEach(function(r){ if(r[0]==='set_room'){ desc.forEach(function(l){ text(l,cx0,y+1,P.soft,'center'); y+=10; }); y+=g-1; desc=[]; } arrowRow(r[0],lab(r),x,y,w,BH); y+=BH+(r[0]==='set_live'?2:g); });
   desc.forEach(function(l){ text(l,cx0,y+1,P.soft,'center'); y+=10; }); y+=g-1;
   if(ex) button('set_expert',L('set_expert'),x,y,w,BH,'');
-  say(L('settings_t')+'. '+SET_ROWS.map(lab).join('. ')); }
+  say(L('settings_t')+'. '+setRows().map(lab).join('. ')); }
 /* ── the game's own screen (SonaFly): the chosen skin flies behind, the buttons on the free side over a dim band:
    play, high scores, how to play, «◀ skin: … ▶» (the picture changes at once), «← all games» ── */
 /* v1.07: the dots under it — how many skins and which — in the middle of the gap to the next button (they were 1 px from it); the race has them too */
@@ -282,7 +291,8 @@ function sAway(){ sky(DT,0.3); var PAUSE=awayPause(), m=handSide()==='left', aw=
   /* v1.10, the live mode: the room measured with the hand still there (the maintainer's OnePlus, 1 Oct 18:17: the palm seen while the room was
      learnt, the probe stood only 13 dB over the rest — 28–31 on that phone otherwise — the height went from −4 to 16 cm and «почти нет управления»):
      once more from «take your hand away», once */
-  if(liveOn()&&prep&&prep.res&&prep.res.ok&&!roomAgain){ var stR=Sonar.state(), pr=DSP2.info().prom; if((stR&&stR.present)||(pr!==null&&pr<18)){ roomAgain=true; Logs.ev('живой режим: комната с рукой — ещё раз',{prom:pr===null?null:+pr.toFixed(1),hand:!!(stR&&stR.present)}); prep=null; scrT=0; return; } }
+  /* v1.19: the hand calibration too (the maintainer: «переносим в ручную») */
+  if(prep&&prep.res&&prep.res.ok&&!roomAgain){ var stR=Sonar.state(), pr=DSP2.info().prom; if((stR&&stR.present)||(pr!==null&&pr<18)){ roomAgain=true; Logs.ev('комната с рукой — ещё раз',{prom:pr===null?null:+pr.toFixed(1),hand:!!(stR&&stR.present)}); prep=null; scrT=0; return; } }
   if(prep&&prep.res){ if(prep.res.ok){ if(scrT-prep.doneT>(liveOn()?0.4:1.5)) afterRoom(); }       // «the room is quiet» stays for 1.5 s (the live mode: 0.4 s)
     else { var silent=prep.res.why==='noprobe'||(prep.res.why==='quiet'&&typeof prep.res.snr==='number'&&prep.res.snr<10);   // not heard at all: every heard probe on record had 24–48 dB
       if(silent&&!silentRetry){ silentRetry=true; Logs.ev('зонд не слышно — ещё раз'); prep=null; scrT=PAUSE; return; }            // once more at once: a sound that did not start
@@ -344,9 +354,9 @@ var CAUGHT_SHOW=1.0, caughtT=0;
 function followShip(){ var f=handFrac(); if(f!==null) lastHand=f;
   var ty=(Core.FH-Core.MARGIN-(lastHand===null?0.5:lastHand)*(Core.FH-2*Core.MARGIN))*K; shipY=shipY===null?ty:shipY+(ty-shipY)*0.49; return f!==null; }
 function sTry(){ if(mode==='race'){ raceTry(); return; } followShip(); /* the sky is already drawn by sWave */ SK.ship(fx(Core.SHIP_X),shipY,clock,false);
-  titles(L('wave_ok'),L('try_s'));
+  titles(L(autoTry?'auto_ok':'wave_ok'),L('try_s'));
   // buttons on the free side, but never over the ship's lane (it flies at the left edge of the field)
-  var items=[['start',L('play'),'primary'],['again',L('recal')]], bw=btnW(items.map(function(q){ return q[1]; })), lane=Math.round(fx(Core.SHIP_X))+34;
+  var items=[['start',L('play'),'primary'],autoTry?['try_wave',L('recal')]:['again',L('recal')]], bw=btnW(items.map(function(q){ return q[1]; })), lane=Math.round(fx(Core.SHIP_X))+34;
   column(items,Math.round(LH*0.62),freeSide()==='left'?Math.max(sideX(bw),lane):undefined);
   stepSquares('wave'); }
 /* the flight field: rocks, bullets, ship. The core counts in field units (180 high); K turns them into game pixels */
@@ -437,7 +447,7 @@ function sOver(){ if(mode==='race'&&g&&g.car){ raceOver(); return; } overT+=DT; 
   var bl=boardLine(); if(bl){ text(bl[0],cx0,y+43,bl[1],'center'); if(bl[2]) text(bl[2],cx0,y+55,P.soft,'center'); }
   say(L('over')+' '+g.score+(bl?'. '+bl[0]:''));
   var lb=Board.last(); if(lb&&lb.state==='done'&&lb.listed&&!lb.named&&!nickAsked&&overT>1.5){ nickAsked=true; nickFrom='over'; go('nick'); return; }   // the first place in a table: ask the name once
-  if(overT>0.8) column([['again',L('again'),'primary'],['menu',L('menu')],['scores',L('scores')]].concat(diag&&Logs.has()?[['logs',L('logs')]]:[]),Math.round(LH*0.52)); }
+  if(overT>0.8) column([['again',L('again'),'primary'],['over_cal',L('recal')],['menu',L('menu')],['scores',L('scores')]].concat(diag&&Logs.has()?[['logs',L('logs')]]:[]),Math.round(LH*0.52)); }
 /* the game-over screen's line about the table: [text, colour] or null */
 function boardLine(){ var b=Board.last(); if(!b) return null;
   if(b.state==='sending') return [L('sending'),P.soft]; if(b.state==='offline') return [L('sent_off'),P.soft]; if(b.state==='old') return [L('old'),P.soft];
@@ -595,8 +605,8 @@ var rCarYs=null;
 function raceCarY(rg,vd){ if(raceSteer!=='road') return shipY/K; var t=Race.steerY(rg,vd+Race.CAR_X,lastHand===null?0.5:lastHand); rCarYs=rCarYs===null?t:rCarYs+(t-rCarYs)*0.49; return rCarYs; }
 function raceTry(){ followShip(); lx.clearRect(0,0,LW,LH); if(!rTry){ rTry=Race.create(7,raceFW(),Race.FH/2); rTryD=0; } rTryD+=45*DT;
   raceScene(rTry,rTryD,raceCarY(rTry,rTryD),DT);
-  titles(L('wave_ok'),L(RSKIN==='pirate'?'r_try_boat':'r_try'));   // v1.06: the pirates' is a boat
-  var items=[['start',L('play'),'primary'],['again',L('recal')]], bw=btnW(items.map(function(q){ return q[1]; })), lane=Math.round(fx(Race.CAR_X))+30;
+  titles(L(autoTry?'auto_ok':'wave_ok'),L(RSKIN==='pirate'?'r_try_boat':'r_try'));   // v1.06: the pirates' is a boat
+  var items=[['start',L('play'),'primary'],autoTry?['try_wave',L('recal')]:['again',L('recal')]], bw=btnW(items.map(function(q){ return q[1]; })), lane=Math.round(fx(Race.CAR_X))+30;
   column(items,Math.round(LH*0.62),freeSide()==='left'?Math.max(sideX(bw),lane):undefined); stepSquares('wave'); }
 /* the countdown: the race's own road, still, the car at the palm */
 function raceCount(){ countT-=DT; followShip(); raceScene(g,g.d,raceCarY(g,g.d),DT);
@@ -606,7 +616,7 @@ function raceCount(){ countT-=DT; followShip(); raceScene(g,g.d,raceCarY(g,g.d),
   if(countT<=0) startGame(); }
 function raceStart(){ var y0=raceSteer==='road'?(rCarYs===null?null:+rCarYs.toFixed(3)):(shipY===null?null:+(shipY/K).toFixed(3)); if(y0!==null) g.car.y=Math.max(Race.MARGIN,Math.min(Race.FH-Race.MARGIN,y0)); g.car.y=+g.car.y.toFixed(3); g.car.off=g.car.y-Race.centre(g,g.d+g.car.x); if(!RACE_TEST) Board.start(g.seed,g.FW,g.car.y,{game:'race',core:Race.TAG,steer:g.steer});   /* v1.01: the race goes to the tables — the server replays it from this start */
   acc=0; parts=[]; raceNew=false; var I=Sonar.info();
-  Logs.gameStart({core:Race.TAG,game:'race',steer:g.steer,opt:g.opt,seed:g.seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:liveOn()?'live':'frozen',live:liveOn(),asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
+  Logs.gameStart({core:Race.TAG,game:'race',steer:g.steer,opt:g.opt,seed:g.seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:liveOn()?'live':'frozen',live:liveOn(),room:Sonar.room(),asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
     chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids'});
   Sfx.play('start'); go('play'); }
 var R_BURST={tbubble:['#ffffff','#ffd23f','#ff8ac4'],tmagnet:['#ffffff','#ffd23f','#e8284a'],coin:['#ffffff','#ffd23f','#ff4f7a'],fuel:['#ffffff','#3fd07a','#8fdcff'],magnet:['#ffffff','#e8284a','#ffd23f'],bubble:['#ffffff','#ff8ac4','#e0409a']};
@@ -653,7 +663,7 @@ function raceOver(){ overT+=DT; field(DT,0); lx.globalAlpha=0.35; R(P.bg,0,0,LW,
   var bl=boardLine(); if(bl){ text(bl[0],cx0,y+38+ls.length*11+4,bl[1],'center'); if(bl[2]) text(bl[2],cx0,y+38+ls.length*11+15,P.soft,'center'); }   // v1.01: the place in SonaRace's tables
   say(L('r_finish')+' '+g.score+(bl?'. '+bl[0]:''));
   var lb=Board.last(); if(lb&&lb.state==='done'&&lb.listed&&!lb.named&&!nickAsked&&overT>1.5){ nickAsked=true; nickFrom='over'; go('nick'); return; }
-  if(overT>0.8) column([['again',L('again'),'primary'],['menu',L('menu')],['scores',L('scores')]].concat(diag&&Logs.has()?[['logs',L('logs')]]:[]),Math.round(LH*0.52)); }
+  if(overT>0.8) column([['again',L('again'),'primary'],['over_cal',L('recal')],['menu',L('menu')],['scores',L('scores')]].concat(diag&&Logs.has()?[['logs',L('logs')]]:[]),Math.round(LH*0.52)); }
 
 /* ── actions ── */
 function startPrepare(){
@@ -665,7 +675,7 @@ function startPrepare(){
   var vol=null; if(APP){ try{ if(store.get('sonaroids_vol','auto')==='keep') vol={get:function(){ return APP.getVolume(); },set:function(){},keep:true};
     else { var v0=APP.getVolume(); if(v0<0.2||v0>0.3) APP.setVolume(0.25); vol={get:function(){ return APP.getVolume(); },set:function(v){ APP.setVolume(v); }}; } }catch(e){ vol=null; } }
   var logged=false; function slog(){ var I=Sonar.info(); logged=true;
-      Logs.setupStart({kind:'подготовка',cal:I.cal,autocenter:true,tune:liveOn()?'saved':'waves',live:liveOn(),asym:Tune.ASYM,field_auto:true,field_mm:+store.get('sonaroids_field','100')||100,
+      Logs.setupStart({kind:'подготовка',cal:I.cal,autocenter:true,tune:liveOn()?'saved':'waves',live:liveOn(),room:Sonar.room(),asym:Tune.ASYM,field_auto:true,field_mm:+store.get('sonaroids_field','100')||100,
         chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,prom:null,sfx:Sfx.state(),vol_fit:I.vol_fit,auto_audio:I.auto_audio,route:I.route,settle:I.settle,started:new Date().toISOString(),app:APP?'sonaroids-android':'sonaroids',native:APP?(function(){ try{ return JSON.parse(APP.info()); }catch(e){ return null; } })():undefined}); }
   Sonar.prepare(function(stage){ if(stage==='room') slog(); },vol)
   // v0.46: a setup stopped before the room step (too quiet, too loud) still leaves a setup log — the probe, its level and the volume steps —
@@ -691,22 +701,26 @@ function liveOn(){ return Sonar.live(); }
 function awayPause(){ return liveOn()?2.5:PAUSE; }   // v1.10: 1.2 s was too short to take the hand away (the OnePlus 18:17)
 var roomAgain=false;
 function liveReady(){ return liveOn()&&booted&&Sonar.healthy()&&acoustic&&T!==null; }
-function afterRoom(){ if(!liveOn()){ toWave(); return; }
-  T=Tune.create(+store.get('sonaroids_field','100')||100,true); T.ok=true; caught=true; caughtT=-9; var cL=DSP2.info().cal; Logs.ev('живой режим: без взмахов',{field:T.field,mid_mm:+((100-cL.o)/cL.k).toFixed(1),saved_mm:+store.get('sonaroids_mid_r','')||null}); startCount(); }
-function quickOr(full){ if(liveReady()){ Logs.ev('живой режим: сразу отсчёт'); dropGame(); resumeAfterPrep=false; startCount(); } else full(); }
+function afterRoom(){ if(!liveOn()||forceWave){ toWave(); return; }
+  /* v1.19: the try-out first — the ship follows the palm with the copied calibration, «play» or «recalibrate» (the maintainer's pick «В») */
+  T=Tune.create(+store.get('sonaroids_field','100')||100,true); T.ok=true; T.copied=true; caught=true; caughtT=-9; autoTry=true; var cL=DSP2.info().cal; Logs.ev('живой режим: без взмахов',{field:T.field,mid_mm:+((100-cL.o)/cL.k).toFixed(1),saved_mm:Sonar.savedMid()}); go('wave'); caughtT=-9; }
+/* v1.19: «again» after a game straight to the countdown with the same calibration, in the hand calibration too (the maintainer: «переносим в ручную»; within one launch the readings don't drift); «recalibrate» beside it */
+function readyNow(){ return booted&&Sonar.healthy()&&acoustic&&T!==null&&T.ok; }
+var forceWave=false, autoTry=false;
+function quickOr(full,any){ if(any?readyNow():liveReady()){ Logs.ev('живой режим: сразу отсчёт'); dropGame(); resumeAfterPrep=false; startCount(); } else full(); }
 function toRoom(b){ roomAgain=false; Sonar.setBand(b); prep=null; silentRetry=false; go('away'); }
-function toWave(){ T=Tune.create(+store.get('sonaroids_field','100')||100,true); caught=false; flips=0; flipT=-9; seenT=0; go('wave'); }
+function toWave(){ forceWave=false; autoTry=false; T=Tune.create(+store.get('sonaroids_field','100')||100,true); caught=false; flips=0; flipT=-9; seenT=0; go('wave'); }
 function pauseGame(){ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; go('paused'); } }
 function startCount(){ if(resumeAfterPrep&&g&&g.state!=='over'){ resumeAfterPrep=false; countT=3; go('count-resume'); return; }
   resumeAfterPrep=false; countT=3; if(scr!=='wave') shipY=null; lastHand=handFrac()===null?lastHand:handFrac(); /* from the try-out the ship goes on where it is */ Logs.ev('отсчёт',{field:+T.field.toFixed(1),auto:T.auto}); store.set('sonaroids_field',Math.round(T.field));
   // v1.14: a hand calibration's middle (the echo's range) — the auto-calibration plays with it (20_sonar liveMid)
-  if(!liveOn()&&T.ok){ var cI=DSP2.info().cal, rMid=(100-cI.o)/cI.k; if(rMid>=55&&rMid<=140){ store.set('sonaroids_mid_r',rMid.toFixed(1)); Logs.ev('середина запомнена',{range_mm:+rMid.toFixed(1),field:Math.round(T.field)}); } }
+  if(T.ok&&!T.copied){ var cI=DSP2.info().cal, rMid=(100-cI.o)/cI.k; if(rMid>=55&&rMid<=140){ store.set('sonaroids_mid_r_'+Sonar.band(),rMid.toFixed(1)); store.set('sonaroids_mid_t',String(Date.now()));   /* v1.19: per band (А), with the time (Г) */ Logs.ev('середина запомнена',{range_mm:+rMid.toFixed(1),field:Math.round(T.field)}); } }
   if(mode==='race'){ g=Race.create(newSeed(),raceFW(),shipY===null?null:shipY/K,raceSteer,raceRules()); rTry=null; } go('count'); }
 function startGame(){ if(mode==='race'){ raceStart(); return; }
   var seed=0; try{ var a=new Uint32Array(1); crypto.getRandomValues(a); seed=a[0]; }catch(e){ seed=Math.floor(Math.random()*4294967296); }
   var y0=shipY===null?null:+(shipY/K).toFixed(3);
   g=Core.create(seed,Core.FH*(LW-SAFE.l)/LH,y0); Board.start(seed,g.FW,y0); nickAsked=false; acc=0; rockSpr={}; parts=[]; livesT=0; var I=Sonar.info();
-  Logs.gameStart({core:Core.TAG,seed:seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:liveOn()?'live':'frozen',live:liveOn(),asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
+  Logs.gameStart({core:Core.TAG,seed:seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:liveOn()?'live':'frozen',live:liveOn(),room:Sonar.room(),asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
     chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids'});
   Sfx.play('start'); go('play');
 }
@@ -721,12 +735,12 @@ var ACT={
   play:function(){ if(store.get('sonaroids_seen','')!=='1'){ ACT.howto(); return; } onboarding=false; direct=false; quickOr(function(){ ensure(toAway); }); },
   howto:function(){ onboarding=true; direct=false; go('sound'); },
   /* a deep recalibration: forget the saved palm range, close the microphone and start from "put the phone down" */
-  recal:function(){ onboarding=false; direct=false; store.set('sonaroids_field','100'); store.set('sonaroids_mid_r',''); Sonar.restart(); booted=false; acoustic=false; go('phone'); },
+  recal:function(){ onboarding=false; direct=false; store.set('sonaroids_field','100'); store.set('sonaroids_mid_r',''); store.set('sonaroids_mid_r_wide',''); store.set('sonaroids_mid_r_normal',''); store.set('sonaroids_mid_t',''); Sonar.restart(); booted=false; acoustic=false; go('phone'); },
   lefty:function(){ lefty=true; store.set('sonaroids_lefty','1'); turnShown=false; Logs.ev('играю левой'); seenT=scrT; },
   hub:function(){ mode='fly'; go('hub'); },
   settings:function(){ go('settings'); }, set_expert:function(){ audDev=null; audFrom='settings'; go('audio'); }, set_back:function(){ go('hub'); },
   set_gfx_prev:function(){ SET_ROWS[0][2](-1); }, set_gfx_next:function(){ SET_ROWS[0][2](1); }, set_band_prev:function(){ SET_ROWS[1][2](-1); }, set_band_next:function(){ SET_ROWS[1][2](1); },
-  set_live_prev:function(){ SET_ROWS[2][2](-1); }, set_live_next:function(){ SET_ROWS[2][2](1); },
+  set_live_prev:function(){ SET_ROWS[2][2](-1); }, set_live_next:function(){ SET_ROWS[2][2](1); }, set_room_prev:function(){ SET_ROOM[2](-1); }, set_room_next:function(){ SET_ROOM[2](1); },
   rset:function(){ go('rset'); },
   hub_rocks:function(){ mode='fly'; go('title'); }, rskin:function(){ raceSkin=RACE_SKINS[(RACE_SKINS.indexOf(raceSkin)+1)%RACE_SKINS.length]; RSKIN=raceSkin; store.set('sonaroids_race_skin',raceSkin); }, rskin_next:function(){ ACT.rskin(); }, rskin_prev:function(){ raceSkin=RACE_SKINS[(RACE_SKINS.indexOf(raceSkin)+RACE_SKINS.length-1)%RACE_SKINS.length]; RSKIN=raceSkin; store.set('sonaroids_race_skin',raceSkin); }, hub_play:function(){ mode='fly'; go('title'); }, hub_race:function(){ mode='race'; go('rtitle'); },
   gfx:function(){ setGfx(gfxMode==='hd'?'pixel':'hd'); pool={K:0,list:[[],[],[]]}; },
@@ -735,7 +749,9 @@ var ACT={
   lang:function(){ lang=lang==='en'?'ru':'en'; store.set('sonaroids_lang',lang); },
   sfx:function(){ Sfx.toggle(); }, vol_dn:function(){ Sfx.down(); }, vol_up:function(){ Sfx.up(); },
   start:function(){ ensure(startCount); },
-  again:function(){ if(scr==='over'){ quickOr(function(){ ensure(toAway); }); return; } ensure(toAway); },                 // before every game: the empty room anew, then wave (v0.16: things drift over a game); the live mode: straight on
+  again:function(){ if(scr==='over'){ quickOr(function(){ ensure(toAway); },true); return; } ensure(toAway); },
+  over_cal:function(){ forceWave=true; ensure(toAway); },   // v1.19: the game-over «recalibrate» — the waving even with the auto-calibration
+  try_wave:function(){ toWave(); },   // v1.19: the auto-calibration's try-out «recalibrate»: the room is fresh, straight to the waving                 // before every game: the empty room anew, then wave (v0.16: things drift over a game); the live mode: straight on
   menu:function(){ go('title'); },
   scores:function(){ period='day'; scoresFrom=scr; go('scores'); },
   p_day:function(){ period='day'; }, p_week:function(){ period='week'; }, p_all:function(){ period='all'; },

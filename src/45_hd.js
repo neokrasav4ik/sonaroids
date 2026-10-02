@@ -149,34 +149,59 @@ HDSK.space={id:'space', hd:true, glow:true, veil:'rgba(10,8,30,0.55)', motes:['#
     hx.fillStyle='rgba(60,40,80,0.45)'; sp.gr.forEach(function(g2){ var ga=g2[0]+a0; hx.fillRect(Math.cos(ga)*g2[1]*r,Math.sin(ga)*g2[1]*r,Math.max(0.3,r*0.05),Math.max(0.3,r*0.05)); });
     hx.fillStyle='rgba(255,236,246,0.8)'; hx.beginPath(); hx.ellipse(-r*0.38,-r*0.42,r*0.27,r*0.13,-0.6,0,6.2832); hx.fill();
     hx.restore(); inkSmooth(hx,P); hx.strokeStyle='#4a3868'; hx.lineJoin='round'; hx.lineWidth=Math.max(0.55,r*0.065); hx.stroke(); hx.restore(); },
-  /* the fighter: a cached sprite (glossy hull, panel lines, canopy, ink), a live flame */
-  shipMake:function(){ var o=hdOff(24,14), x=o.x; x.translate(1,7);
+  /* v1.25, the fighter «БВ1» (the maintainer chose it from mixes of the detailed old ship and a heavy interceptor: «корабль всетаки бв1
+     будет лучше»): the old ship's silhouette in full detail — a two-tone mint hull, panel seams and rivets, an intake grille, orange-and-yellow
+     stripes on the wings, the pilot in a red helmet under the canopy — with the interceptor's twin engines and a missile under each wing.
+     A cached sprite; the blue plasma flames with their shock rings and the blinking wing-tip lights live. */
+  shipMake:function(){ var o=hdOff(24,14), x=o.x; x.translate(1,7); x.lineJoin='round'; x.lineCap='round';
+    var lg=function(x0,y0,x1,y1,st){ var g=x.createLinearGradient(x0,y0,x1,y1); st.forEach(function(c,i){ g.addColorStop(i/(st.length-1),c); }); return g; };
+    var dot=function(X,Y,r,c){ x.fillStyle=c; x.beginPath(); x.arc(X,Y,r,0,6.2832); x.fill(); };
     var hull=function(){ x.beginPath(); x.moveTo(20,0); x.bezierCurveTo(15,-2.2,10,-3,7,-6); x.lineTo(3,-6); x.lineTo(5,-2); x.lineTo(1.5,-1.6); x.lineTo(1.5,1.6); x.lineTo(5,2); x.lineTo(3,6); x.lineTo(7,6); x.bezierCurveTo(10,3,15,2.2,20,0); x.closePath(); };
-    hull(); var hg=x.createLinearGradient(0,-6,0,6); hg.addColorStop(0,'#b4ffe8'); hg.addColorStop(0.4,'#4fd6b4'); hg.addColorStop(0.62,'#2a9a86'); hg.addColorStop(1,'#1a6a60'); x.fillStyle=hg; x.fill();
-    x.strokeStyle='rgba(255,255,255,0.85)'; x.lineWidth=0.5; x.lineCap='round'; x.beginPath(); x.moveTo(7.5,-4.6); x.quadraticCurveTo(12,-2.6,18,-0.6); x.stroke();
-    x.strokeStyle='rgba(20,80,72,0.7)'; x.lineWidth=0.3; x.beginPath(); x.moveTo(6,-3.4); x.lineTo(10.5,-1.6); x.moveTo(6,3.4); x.lineTo(10.5,1.6); x.moveTo(3.5,-0.9); x.lineTo(8,-0.9); x.moveTo(3.5,0.9); x.lineTo(8,0.9); x.stroke();
-    x.fillStyle='#145048'; [[7,-1.8],[7,1.8],[17.4,0]].forEach(function(p){ x.beginPath(); x.arc(p[0],p[1],0.3,0,6.2832); x.fill(); });
-    x.fillStyle='#ffcf3a'; x.fillRect(4.4,-5.3,1.8,0.7); x.fillRect(4.4,4.6,1.8,0.7);
-    x.strokeStyle='#0c4a40'; x.lineWidth=0.6; x.lineJoin='round'; hull(); x.stroke();
-    var cg=x.createLinearGradient(11,-2,15,1); cg.addColorStop(0,'#ffffff'); cg.addColorStop(0.35,'#9ff0ff'); cg.addColorStop(1,'#2a78a8'); x.fillStyle=cg; x.beginPath(); x.ellipse(13.2,-0.5,3.3,1.4,0,0,6.2832); x.fill(); x.lineWidth=0.45; x.stroke();
-    x.fillStyle='#ffffff'; x.beginPath(); x.ellipse(12.4,-1,1.1,0.35,-0.2,0,6.2832); x.fill();
+    [-1.15,1.15].forEach(function(dy){ x.fillStyle=lg(0,dy-0.95,0,dy+0.95,['#7a8a98','#3a4a58','#222c36']); x.beginPath(); x.roundRect(0.1,dy-0.95,2.6,1.9,0.6); x.fill(); x.strokeStyle='#0c2a30'; x.lineWidth=0.35; x.stroke();
+      x.strokeStyle='rgba(220,235,240,0.55)'; x.lineWidth=0.25; x.beginPath(); x.moveTo(0.8,dy-0.85); x.lineTo(0.8,dy+0.85); x.stroke(); });
+    hull(); x.fillStyle=lg(0,-6,0,6,['#e8fff8','#8ff0d6','#3fc4a6','#1d7c6c','#14544c']); x.fill();
+    x.save(); hull(); x.clip(); x.fillStyle=lg(0,-1,0,6,['rgba(10,60,55,0)','rgba(10,60,55,0.35)']); x.fillRect(0,0.4,22,7);
+    [-1,1].forEach(function(s){ x.fillStyle='#ff6a3c'; x.beginPath(); x.moveTo(3.4,s*6); x.lineTo(5.4,s*6); x.lineTo(7.4,s*3.2); x.lineTo(5.6,s*3.2); x.fill();
+      x.fillStyle='#ffd23f'; x.beginPath(); x.moveTo(5.6,s*6); x.lineTo(6.4,s*6); x.lineTo(8.2,s*3.8); x.lineTo(7.4,s*3.4); x.fill(); });
+    x.strokeStyle='rgba(12,60,56,0.75)'; x.lineWidth=0.25; x.beginPath(); x.moveTo(9.4,-3.1); x.lineTo(9.4,3.1); x.moveTo(16,-1.4); x.lineTo(16,1.4); x.moveTo(5,-1.9); x.lineTo(10.5,-1.6); x.moveTo(5,1.9); x.lineTo(10.5,1.6); x.stroke();
+    [[6,-1],[6,1],[8.6,-2.3],[8.6,2.3],[17.4,0.5],[17.4,-0.5]].forEach(function(p){ dot(p[0],p[1],0.2,'#0d4a44'); });
+    x.fillStyle='#143a40'; for(var i=0;i<3;i++) x.fillRect(3.2+i*0.7,-0.9,0.35,1.8); x.restore();
+    x.strokeStyle='rgba(255,255,255,0.9)'; x.lineWidth=0.45; x.beginPath(); x.moveTo(7.6,-4.7); x.quadraticCurveTo(12,-2.7,18.6,-0.5); x.stroke(); x.strokeStyle='#08362f'; x.lineWidth=0.55; hull(); x.stroke();
+    [-4.4,4.4].forEach(function(Y){ x.fillStyle=lg(0,Y-0.55,0,Y+0.55,['#ffffff','#c8ced8','#7a8090']); x.beginPath(); x.moveTo(4.6,Y-0.5); x.lineTo(8.8,Y-0.5); x.quadraticCurveTo(10.2,Y,8.8,Y+0.5); x.lineTo(4.6,Y+0.5); x.closePath(); x.fill();
+      x.strokeStyle='#3a4050'; x.lineWidth=0.22; x.stroke(); x.fillStyle='#e8303a'; x.fillRect(8.2,Y-0.5,0.6,1); x.fillStyle='#3a4050'; var f=Y<0?-1:1; x.beginPath(); x.moveTo(4.6,Y-0.5*f); x.lineTo(3.9,Y-1.1*f); x.lineTo(5.5,Y-0.5*f); x.fill(); });
+    var X=13.2, Y=-0.4; x.fillStyle=lg(X-2,Y-2,X+2,Y+1,['#ffffff','#9ff0ff','#2a78a8','#1a3a68']); x.beginPath(); x.ellipse(X,Y,3.4,1.5,0,0,6.2832); x.fill();
+    x.save(); x.beginPath(); x.ellipse(X,Y,3.4,1.5,0,0,6.2832); x.clip(); dot(X-0.8,Y+0.1,0.95,'#e8303a'); x.fillStyle='rgba(40,40,60,0.85)'; x.beginPath(); x.ellipse(X-0.3,Y+0.1,0.45,0.75,0,0,6.2832); x.fill(); x.restore();
+    x.strokeStyle='#08362f'; x.lineWidth=0.4; x.beginPath(); x.ellipse(X,Y,3.4,1.5,0,0,6.2832); x.stroke(); x.fillStyle='rgba(255,255,255,0.85)'; x.beginPath(); x.ellipse(X+1.2,Y-0.7,1.1,0.32,-0.2,0,6.2832); x.fill();
     return o.c; },
+  /* the twin blue plasma: a white-hot core, a fading blue tongue, two shock rings */
+  plasma:function(x,y,t,dy){ var fl=0.85+0.15*Math.sin(t*41+dy), Y=y+dy; hGlow(x-1,Y,5,'110,200,255',0.55);
+    var g=hx.createLinearGradient(x+1,0,x-9,0); g.addColorStop(0,'#ffffff'); g.addColorStop(0.45,'#7fdcff'); g.addColorStop(1,'rgba(60,120,255,0)'); hx.fillStyle=g;
+    hx.beginPath(); hx.moveTo(x+1,Y-0.95); hx.quadraticCurveTo(x-9*fl,Y,x+1,Y+0.95); hx.fill();
+    hx.fillStyle='rgba(225,250,255,0.85)'; hx.beginPath(); hx.ellipse(x-2.2*fl,Y,0.45,0.7,0,0,6.2832); hx.fill(); hx.fillStyle='rgba(225,250,255,0.55)'; hx.beginPath(); hx.ellipse(x-4.6*fl,Y,0.45,0.55,0,0,6.2832); hx.fill(); },
   ship:function(x,y,t,blink){ if(blink) return; if(!this._ship||this._shipKey!==hdKey){ this._ship=this.shipMake(); this._shipKey=hdKey; }
-    var fl=0.8+0.2*Math.sin(t*40)+0.1*Math.sin(t*23);
-    if(!shipBare){ hGlow(x,y,7,'255,170,100',0.6);
-    hx.fillStyle='#ff8a3c'; hx.beginPath(); hx.moveTo(x+1.5,y-1.7); hx.quadraticCurveTo(x-9*fl,y,x+1.5,y+1.7); hx.fill();
-    hx.fillStyle='#ffd070'; hx.beginPath(); hx.moveTo(x+1.5,y-1.1); hx.quadraticCurveTo(x-6*fl,y,x+1.5,y+1.1); hx.fill(); }
-    hx.fillStyle='#fff8e0'; hx.beginPath(); hx.moveTo(x+1.5,y-0.55); hx.quadraticCurveTo(x-2.5*fl,y,x+1.5,y+0.55); hx.fill();
+    if(!shipBare){ this.plasma(x,y,t,-1.15); this.plasma(x,y,t,1.15); }
     hx.drawImage(this._ship,x-1,y-7,24,14);
-    if(Math.floor(t*3)%2){ hGlow(x+5.2,y-5.7,1.8,'255,90,90',0.9); hGlow(x+5.2,y+5.7,1.8,'120,255,170',0.9); } light(x-2,y,9*K,'255,184,107',0.4); },
-  ufo:function(ux,uy,big,hurt){ var k=big?1:0.72, t=performance.now()/1000, H=hurt?'#ffffff':null;
-    hGlow(ux,uy,16*k,hurt?'255,255,255':'200,140,255',0.3); hx.save(); hx.translate(ux,uy); hx.scale(k,k); hx.lineJoin='round';
-    hx.beginPath(); hx.ellipse(0,-1.6,4.6,4.4,0,Math.PI,0); hx.closePath(); var dg=hx.createLinearGradient(-3,-6,3,0); dg.addColorStop(0,'#ffffff'); dg.addColorStop(1,'#7fcfff'); hx.fillStyle=H||dg; hx.fill(); hx.strokeStyle='#5a1a78'; hx.lineWidth=0.6; hx.stroke();
-    hx.fillStyle='rgba(255,255,255,0.9)'; hx.beginPath(); hx.ellipse(-1.8,-3.7,1.2,0.5,-0.5,0,6.2832); hx.fill();
-    hx.beginPath(); hx.ellipse(0,0.6,10,3,0,0,6.2832); var bg=hx.createLinearGradient(0,-2.4,0,3.6); bg.addColorStop(0,'#fcd2ff'); bg.addColorStop(0.5,'#e08af0'); bg.addColorStop(1,'#9a4ac0'); hx.fillStyle=H||bg; hx.fill(); hx.stroke();
-    hx.strokeStyle='rgba(255,220,255,0.7)'; hx.lineWidth=0.4; hx.beginPath(); hx.ellipse(0,0.2,8.6,2,0,Math.PI*1.1,Math.PI*1.9); hx.stroke();
-    for(var i=0;i<6;i++){ var a=i/6*6.2832+t*3, lx2=Math.cos(a)*7.2, ly=1+Math.sin(a)*1.2; if(Math.sin(a)>-0.15){ hx.fillStyle=i%2?'#ffe66d':'#7affc8'; hx.beginPath(); hx.arc(lx2,ly,0.75,0,6.2832); hx.fill(); } }
-    hx.restore(); light(ux,uy,(big?22:16)*K,'180,140,255',0.35); },
+    var bl=Math.floor(t*3)%2; hGlow(x+3.3,y-6,1.9,'255,80,80',bl?0.95:0.4); hGlow(x+3.3,y+6,1.9,'110,255,170',bl?0.4:0.95);
+    hx.fillStyle='#ff8080'; hx.beginPath(); hx.arc(x+3.3,y-6,0.4,0,6.2832); hx.fill(); hx.fillStyle='#9affc8'; hx.beginPath(); hx.arc(x+3.3,y+6,0.4,0,6.2832); hx.fill();
+    light(x-2,y,9*K,'130,200,255',0.4); },
+  /* v1.25, the saucer «В1»: a jellyfish — a glass dome with ribs and a pulsing core with rays, a thick ring with running lights, three
+     feelers with glowing tips swaying under it */
+  ufo:function(ux,uy,big,hurt){ var k=big?1:0.72, t=performance.now()/1000, H=hurt?'#ffffff':null, i;
+    hGlow(ux,uy,17*k,hurt?'255,255,255':'255,120,200',0.3); hx.save(); hx.translate(ux,uy); hx.scale(k,k); hx.lineJoin='round'; hx.lineCap='round';
+    var dome=function(){ hx.beginPath(); hx.ellipse(0,0,7.6,7,0,Math.PI,0); hx.closePath(); };
+    [-4,0,4].forEach(function(X,j){ hx.strokeStyle=H||'rgba(255,150,225,0.9)'; hx.lineWidth=0.85; hx.beginPath(); var px=X, py=2;
+      for(var q=0;q<=8;q++){ var s=q/8; px=X+Math.sin(t*4+j*1.7+s*3.2)*1.5*s; py=2+s*6.5; if(q) hx.lineTo(px,py); else hx.moveTo(px,py); } hx.stroke();
+      if(!H) hGlow(px,py,1.6,'255,240,170',0.7); hx.fillStyle=H||'#fff0a8'; hx.beginPath(); hx.arc(px,py,0.6,0,6.2832); hx.fill(); });
+    dome(); if(H) hx.fillStyle=H; else { var dg=hx.createRadialGradient(-2.45,-5.4,0.35,0,-2.6,7.5); dg.addColorStop(0,'#ffe4ff'); dg.addColorStop(0.5,'#e090ec'); dg.addColorStop(1,'#a040c0'); hx.fillStyle=dg; } hx.fill();
+    if(!H){ hx.save(); dome(); hx.clip(); hx.strokeStyle='rgba(120,30,130,0.35)'; hx.lineWidth=0.3; [2.4,4.8,6.6].forEach(function(r){ hx.beginPath(); hx.ellipse(0,0,r,7,0,Math.PI,0); hx.stroke(); }); hx.beginPath(); hx.ellipse(0,0,7.6,3.4,0,Math.PI,0); hx.stroke(); hx.restore();
+      var pu=0.5+0.5*Math.sin(t*6); hGlow(0,-2.8,4.4,'255,255,200',0.55+0.35*pu); hx.strokeStyle='rgba(255,250,210,'+(0.5+0.4*pu)+')'; hx.lineWidth=0.3; hx.beginPath();
+      for(i=0;i<8;i++){ var a=i/8*6.2832+t; hx.moveTo(Math.cos(a)*1.8,-2.8+Math.sin(a)*1.8); hx.lineTo(Math.cos(a)*2.8,-2.8+Math.sin(a)*2.8); } hx.stroke();
+      hx.fillStyle='#fff7c8'; hx.beginPath(); hx.arc(0,-2.8,1.5,0,6.2832); hx.fill(); hx.fillStyle='#ffffff'; hx.beginPath(); hx.arc(-0.4,-3.2,0.5,0,6.2832); hx.fill(); }
+    dome(); hx.strokeStyle='#7a1a78'; hx.lineWidth=0.55; hx.stroke(); hx.strokeStyle='rgba(255,255,255,0.8)'; hx.lineWidth=0.6; hx.beginPath(); hx.ellipse(0,0,6,5.5,0,3.5,4.4); hx.stroke();
+    hx.beginPath(); hx.ellipse(0,0.6,9.4,2.2,0,0,6.2832); hx.strokeStyle='#7a1a78'; hx.lineWidth=1.9; hx.stroke(); hx.strokeStyle=H||'#ffd0f0'; hx.lineWidth=1.2; hx.stroke();
+    hx.strokeStyle='rgba(255,255,255,0.8)'; hx.lineWidth=0.3; hx.beginPath(); hx.ellipse(0,0.3,9.2,2,0,Math.PI*1.1,Math.PI*1.9); hx.stroke();
+    if(!H) for(i=0;i<10;i++){ var b=i/10*6.2832+t*2.4; if(Math.sin(b)>-0.2){ hx.fillStyle=['#ffe66d','#7affc8','#ffffff'][i%3]; hx.beginPath(); hx.arc(Math.cos(b)*9.4,0.6+Math.sin(b)*2.2,0.55,0,6.2832); hx.fill(); } }
+    hx.restore(); light(ux,uy,(big?22:16)*K,'255,140,220',0.35); },
   pick:function(x,y,type){ var t=performance.now()/1000, p=0.8+0.2*Math.sin(t*4);
     hGlow(x,y,11,'255,220,100',0.45*p); hx.save(); hx.translate(x,y); hx.rotate(Math.sin(t*1.5)*0.12);
     if(!this._pg||this._pgc!==hx){ var kg=hx.createLinearGradient(0,-6,0,6); kg.addColorStop(0,'#fff4b0'); kg.addColorStop(0.5,'#ffd24a'); kg.addColorStop(1,'#e8a41c'); this._pg=kg; this._pgc=hx; }

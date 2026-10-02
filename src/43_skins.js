@@ -70,12 +70,43 @@ function hill(x,w,base,amp,seed){ var a=2*Math.PI*x/w; return base+amp*(0.6*Math
 
 var SKINS={};
 /* ═══ space — the game as it was ═══ */
+/* v1.25, the space skin's pixel ship «БВ1» and saucer «В1» (the HD pictures in 45_hd.js, drawn again pixel by pixel): the old ship's
+   silhouette with its orange-and-yellow wing stripes, the intake grille, the pilot in a red helmet under the canopy, twin engines and a
+   missile under each wing; the jellyfish — a glass dome with its glowing core on a pink ring, feelers swaying under it (live) */
+var SP_SHIP=[
+ '...kkkkk.............',
+ '...kooylk............',
+ '....ksssssr..........',
+ '....kmllldlk.........',
+ 'gGgkklllldllwwk......',
+ 'gGgkllllllkcccWckwk..',
+ '..kdmdmmmmkbrnbbkmmlk',
+ 'gGgkmmmmmmmmkkkmdk...',
+ 'gGgkkddddkddddk......',
+ '....kddddkdk.........',
+ '....ksssssr..........',
+ '...kooydk............',
+ '...kkkkk.............'
+].map(function(r){ return r.replace(/ /g,'k'); });
+var SP_SHIP_PAL={s:'#e8ecf2',k:'#0c3a34',d:'#1d7c6c',m:'#3fc4a6',l:'#8ff0d6',w:'#e8fff8',g:'#3a4a58',G:'#8a9aa8',o:'#ff6a3c',y:'#ffd23f',c:'#9ff0ff',b:'#2a78a8',r:'#e8303a',n:'#283040',W:'#ffffff'};
+var SP_UFO=['......KKKKK......','.....KqWPPPK.....','....KqPyYyPpK....','...KqPPyYyPppK...','...KPPPPyPPppK...','.KKRRRpppppRRRKK.','KRRRRRRRRRRRRRRRK','.KKrrrrrrrrrrrKK.','...KKKKKKKKKKK...'];
+var SP_UFO_S=['.....KKK.....','...KqWPPpK...','..KqPyYyPpK..','..KPPPyPppK..','.KKRRpppRRKK.','KRRRRRRRRRRRK','.KKrrrrrrrKK.'];
+var SP_UFO_PAL={K:'#7a1a78',p:'#b04ac8',P:'#e090ec',q:'#ffd8ff',W:'#ffffff',y:'#ffe9a0',Y:'#fffbe0',R:'#ffd0f0',r:'#c050c8'};
 SKINS.space={id:'space', glow:true,
   sky:function(dt,s){ spaceSky(dt,s); lx.fillStyle='rgba(10,6,26,0.45)'; lx.fillRect(0,0,LW,LH); },   // v0.81: the background dimmed like in HD (the rocks stood out half as much)
   rock:function(r){ return makeRock(r); },
-  ship:function(x,y,t,blink){ drawShip(x,y,t,blink); },
-  ufo:function(ux,uy,big,hurt){ blit(big?UFO_BIG:UFO_SMALL,hurt?[P.text,P.text,P.text,P.text]:P.ufo,ux-(big?9:6),uy-(big?4:2));
-    if(Math.floor(clock*6)%2){ R(P.ufo[3],ux-(big?5:3),uy+1,1,1); R(P.ufo[3],ux+(big?4:2),uy+1,1,1); } light(ux,uy,(big?22:16)*K,hex(P.ufo[2]).join(','),0.35); },
+  ship:function(x,y,t,blink){ if(blink) return; var sx=Math.round(x), sy=Math.round(y), fl=Math.floor(t*20)%3;
+    if(!shipBare) [[-2,-1],[1,2]].forEach(function(r2){ var a=r2[0], b=r2[1], c=r2[0]<0?a:b, e=r2[0]<0?b:a;   // two rows each: the outer one short, the inner one long and white-hot
+      R('#4a90ff',sx-3-(fl>>1),sy+c,3+(fl>>1),1); R('#3a7cff',sx-6-fl,sy+e,6+fl,1); R('#9fe6ff',sx-4-(fl>>1),sy+e,4+(fl>>1),1); R('#ffffff',sx-2,sy+e,2,1); if(fl!==1) R('#d8f6ff',sx-4-(fl>>1),sy+c,1,1); });
+    lx.drawImage(mapCanvas('spship1',SP_SHIP,SP_SHIP_PAL),sx,sy-6);
+    var bl=Math.floor(t*3)%2; R(bl?'#ff6060':'#7a2020',sx+3,sy-6,1,1); R(bl?'#2a6a40':'#7affb0',sx+3,sy+6,1,1); light(x-2,y,9*K,'130,200,255',0.4); },
+  ufo:function(ux,uy,big,hurt){ var m=big?SP_UFO:SP_UFO_S, w=big?17:13, cx=Math.round(ux), cy=Math.round(uy), ox=cx-(w>>1), top=cy-(big?6:5), t=clock, i;
+    var fc=hurt?'#ffffff':'#ff96e1';
+    (big?[-4,0,4]:[-3,0,3]).forEach(function(X,j){ var n=big?5:3; for(var q=1;q<=n;q++){ var s=q/n, px=cx+X+Math.round(Math.sin(t*4+j*1.7+s*3.2)*1.2*s); R(q===n?(hurt?'#ffffff':'#fff0a8'):fc,px,cy+(big?2:1)+q,1,1); } });
+    lx.drawImage(mapCanvas('spufo'+big+hurt,hurt?whiteMap(m):m,hurt?{w:'#ffffff'}:SP_UFO_PAL),ox,top);
+    if(!hurt){ if(Math.sin(t*6)>0.3) R('#ffffff',cx,cy-(big?4:3),1,1);
+      var nL=big?7:5, rx=big?7:5; for(i=0;i<nL;i++){ var a=i/nL*6.2832+t*2.4; if(Math.sin(a)>0.1) R(['#ffe66d','#7affc8','#ffffff'][i%3],cx+Math.round(Math.cos(a)*rx),cy,1,1); } }
+    light(ux,uy,(big?22:16)*K,'255,140,220',0.35); },
   pick:function(x,y,type){ R(P.pick,x-6,y-6,13,13); R(P.bg,x-4,y-4,9,9); blit(ICON[type],[P.pick],x-3,y-3); light(x,y,14*K,P.glowP,0.4); },   // v0.81: 13 pixels (the core's zone) with a two-pixel frame (was 11 with one)
   bullet:function(x,y){ R(P.bullet,x-3,y,6,1); light(x,y,6*K,P.glowB,0.45); },   // v0.83: 6 long (was 4), like the other skins' shots
   ebullet:function(x,y){ R(P.ebullet,x-1,y-2,2,4); R(P.ebullet,x-2,y-1,4,2);   // v0.83: a 4-pixel round (was 2×2)

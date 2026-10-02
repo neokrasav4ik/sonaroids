@@ -13,6 +13,12 @@ const path=require('path'); const ROOT=path.join(__dirname,'..');
   let p=await open(); const fly=await p.evaluate(async()=>{ const S=__sonaroids, w=ms=>new Promise(r=>setTimeout(r,ms)); S.fake(); S.go('title'); await w(200); const k=[];
     for(let i=0;i<7;i++){ S.act.skin_next(); await w(30); const m=S.mixInfo(); k.push(m.fly?'mix':m.cur); } S.act.skin_prev(); await w(30); k.push(S.mixInfo().fly?'mix':S.mixInfo().cur); return {k,kept:localStorage.getItem('sonaroids_skin_mix')}; });
   check('SonaFly: the skins, then «SHUFFLE», then the first again; back is «SHUFFLE»',fly.k.join(',')==='fairy,vector,neon,note,lcd,mix,space,mix'&&fly.kept==='1',fly.k.join(' → '));
+  // v1.25: getting ready is drawn on the skin the game will start on (the maintainer: «подготовка и калибровка должна проходить тоже на рандомном, который первый в игре будет»)
+  for(const mode of ['fly','race']){
+    p=await open(`localStorage.setItem('sonaroids_skin_mix','1'); localStorage.setItem('sonaroids_race_mix','1');`);
+    const r=await p.evaluate(async(mode)=>{ const S=__sonaroids, w=ms=>new Promise(r=>setTimeout(r,ms)); S.fake(); if(mode==='race'){ S.act.hub_race(); await w(50); } S.go(mode==='race'?'rtitle':'title'); await w(100);
+      const a=S.mixInfo().cur; S.go('away'); await w(50); const b=S.mixInfo().cur; S.go('wave'); await w(50); const c=S.mixInfo().cur; S.mixStart(); await w(50); const d=S.mixInfo().cur; return {a,b,c,d,scr:S.scr()}; },mode);
+    check(`${mode}: the shuffle's first skin is picked as getting ready begins and the game starts on it`,r.b!==r.a&&r.c===r.b&&r.d===r.b,`title ${r.a} → getting ready ${r.b} → wave ${r.c} → the count ${r.d}`); await p.close(); }
   // in a game: the change and its timing, both graphics, both games
   for(const gfx of ['hd','pixel']) for(const mode of ['fly','race']){
     p=await open(`localStorage.setItem('sonaroids_gfx','${gfx}'); localStorage.setItem('sonaroids_skin_mix','1'); localStorage.setItem('sonaroids_race_mix','1');`);

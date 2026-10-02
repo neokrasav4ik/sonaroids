@@ -5,7 +5,8 @@
      skin, both graphics, at 90–112% on common screens), and a sprite whose body sits off its centre is moved back onto it (ox / oy);
    · ships: 21–25 game pixels long in every skin (the space pixel ship and the LCD ship redrawn larger / smaller; the HD fairy dragon,
      the HD vector ship and the HD notebook ship scaled by shipK). ── */
-var RK={ 'space':[1.13,1.13,1.13], 'space/hd':[1.01,1,1], 'fairy':[0.82,0.73,0.6], 'fairy/hd':[0.89,1,0.85],
+var RK={ 'space':[1.13,1.13,1.13], 'space/hd':[0.98,0.97,0.94], 'fairy':[0.84,0.89,0.68], 'fairy/hd':[0.85,0.91,0.79],   // v1.27: L and M the same in both graphics (the small cloud is 3–4 whole pixels: ±10%)
+ 
   'vector':[0.91,0.88,0.73], 'vector/hd':[0.97,0.97,0.95], 'neon':[0.96,0.98,0.95], 'neon/hd':[0.97,0.99,0.99], 'note':[0.96,0.93,0.9], 'note/hd':[0.96,0.98,0.95],
   'lcd/hd':[0.91,0.86,0.79] };
 function rockK(sk,sz){ var f=sk&&RK[sk.id+(sk.hd?'/hd':'')]; return f?f[sz]:1; }
@@ -25,7 +26,8 @@ function rockCentre(sp){ try{
 /* every rock the game draws is made here: the skin's picture at its own size, centred */
 function makeSkinRock(sk,sz,rc,seed){ return rockCentre(sk.rock(rockR(sk,sz,rc),sz,seed)); }
 /* HD ships drawn a little larger or smaller around their own point (the flame and the light stay with the ship) */
-(function(){ var SHIPK={fairy:0.82,vector:1.15,note:1.14};   // v0.83: by the hull, without the flame: vector 17 → 20, notebook 15 → 20 (0.79 measured the flame with them)
+(function(){ var SHIPK={fairy:0.72,vector:1.15,note:1.14};   // v1.27: the detailed fairy dragon a little smaller (its tail and tips reach further)
+    // v0.83: by the hull, without the flame: vector 17 → 20, notebook 15 → 20 (0.79 measured the flame with them)
   Object.keys(SHIPK).forEach(function(id){ var sk=HDSK[id]; if(!sk||sk._shipK) return; var k=SHIPK[id], draw=sk.ship; sk._shipK=k;
     sk.ship=function(x,y,t,blink){ if(blink) return; hx.save(); hx.translate(x,y); hx.scale(k,k); hx.translate(-x,-y); try{ draw.call(this,x,y,t,blink); } finally { hx.restore(); } }; }); })();
 /* v0.81: power-ups the size of what the game counts (the maintainer: «в рамках их зон и одинаковыми размерами в скинах/графиках»): the core

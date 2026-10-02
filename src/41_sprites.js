@@ -84,6 +84,7 @@ function drawParts(dt){
   parts.forEach(function(p){ p.x+=p.vx*dt; p.y+=p.vy*dt; p.vx*=0.985; p.vy*=0.985; p.life-=dt; });
   parts=parts.filter(function(p){ return p.life>0; });
   if(SK&&SK.hd){ hdParts(); return; }   // v0.72: HD sparks
+  if(SK&&SK.pxParts){ SK.pxParts(); return; }   // v1.27: a skin's own pixel sparks (space)
   parts.forEach(function(p){ var f=p.life/p.max, c=p.cols[Math.min(p.cols.length-1,Math.floor((1-f)*p.cols.length))]; R(c,p.x,p.y,1,1); if(f>0.6) light(p.x,p.y,3*K,hex(c).join(','),0.2); });
 }
 /* a pixel ring: progress p (0…1) in colour col over a dim full circle */

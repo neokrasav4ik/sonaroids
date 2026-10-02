@@ -146,7 +146,7 @@ function rSlope(rg,wx){ return Math.atan2(Race.centre(rg,wx+4)-Race.centre(rg,wx
 /* ── the whole scene: the land, the puddles, the gifts, the cars, the player's car. vd: how far the view has gone (field units), cy: the
    player's car (field units) or null, ang: its turn ── */
 var rPrevY=null, rTilt=0, rCarK=1;   // rCarK: the player's car drawn larger (the drawn phone's screen, v0.87)
-function raceScene(rg,vd,carY,dt){ RPX=hdPix&&hs===1; rReset(rg.seed); if(RSKIN==='pirate') rpWarm(); else if(RSKIN==='candy') cwWarm(); var KS=rKS(), X0=rX0===null?SAFE.l:rX0, i0=Math.floor((vd-X0/K)/RCW), i1=Math.floor((vd+(LW-X0)/K)/RCW);
+function raceScene(rg,vd,carY,dt){ RPX=hdPix&&hs===1; rReset(rg.seed); if(RSKIN==='pirate') rpWarm(); else if(RSKIN==='candy') cwWarm(); else if(RSKIN==='note') nWarm(); var KS=rKS(), X0=rX0===null?SAFE.l:rX0, i0=Math.floor((vd-X0/K)/RCW), i1=Math.floor((vd+(LW-X0)/K)/RCW);
   hx.setTransform(hs,0,0,hs,0,0); hx.imageSmoothingEnabled=!RPX;
   var made=0; for(var i=i0;i<=i1;i++){ var ch=RC.ch[i]; if(!ch){ ch=rChunk(rg,i); made++; } hx.setTransform(hs,0,0,hs,0,0); if(RPX) hx.drawImage(ch.c,Math.round(X0+(i*RCW-vd)*K),0); else hx.drawImage(ch.c,X0+(i*RCW-vd)*K,0,ch.w,ch.h); }
   if(!made&&!RC.ch[i1+1]) rChunk(rg,i1+1);                                                     // the next one ahead, made while nothing else was
@@ -154,7 +154,7 @@ function raceScene(rg,vd,carY,dt){ RPX=hdPix&&hs===1; rReset(rg.seed); if(RSKIN=
   for(var k in RC.ch) if(+k<i0-1) delete RC.ch[k];
   function sx(wx){ return X0+(wx-vd)*K; }
   if(RSKIN==='pirate') (rg.puddles||[]).forEach(function(p){ var rr=Math.round(p.r*2)/2; rBlit(rpWhirlSprite(rr),sx(p.x),(Race.centre(rg,p.x)+p.o)*K,0); });
-  else if(RSKIN==='note') (rg.puddles||[]).forEach(function(p){ var rr=Math.round(p.r*2)/2, sp=rSprite('blot'+rr,rr*2.9*SU,rr*1.7*SU,function(){ nBlot(rr*SU); },true); rBlit(sp,sx(p.x),(Race.centre(rg,p.x)+p.o)*K,0); });
+  else if(RSKIN==='note') (rg.puddles||[]).forEach(function(p){ var rr=Math.round(p.r*2)/2, sp=rSprite('blot2'+rr,rr*3.8*SU,rr*3.4*SU,function(){ nBlot2(rr*SU); },true); rBlit(sp,sx(p.x),(Race.centre(rg,p.x)+p.o)*K,0); });   // v1.23: the blot with its splashes and drip
   else if(RSKIN==='candy') (rg.puddles||[]).forEach(function(p){ rBlit(cwPudSprite(Math.round(p.r*2)/2),sx(p.x),(Race.centre(rg,p.x)+p.o)*K,0); });   // v1.21: melted chocolate
   else if(RPX) (rg.puddles||[]).forEach(function(p){ var rr=Math.round(p.r*2)/2, sp=rSprite('pud'+rr,rr*2.6*SU,rr*1.6*SU,function(){ var r=rr*SU; rx.fillStyle=R_PUD.fill; rx.beginPath(); rx.ellipse(0,0,r*1.15,r*0.62,0.1,0,6.2832); rx.ellipse(r*0.6,r*0.25,r*0.45,r*0.3,0,0,6.2832); rx.fill();
       rx.strokeStyle=R_PUD.rim; rx.lineWidth=1.2; rx.stroke(); rx.fillStyle=R_PUD.shine; rx.beginPath(); rx.ellipse(-r*0.35,-r*0.18,r*0.35,r*0.12,0.1,0,6.2832); rx.fill(); },true);
@@ -173,7 +173,8 @@ function raceScene(rg,vd,carY,dt){ RPX=hdPix&&hs===1; rReset(rg.seed); if(RSKIN=
     var vy=rPrevY===null||!dt?0:(carY-rPrevY)/dt; rPrevY=carY; var want=Math.max(-0.5,Math.min(0.5,Math.atan2(vy,Math.max(60,rg.v||0))));   // the car turns the way it goes, 30° at most rTilt+=(want-rTilt)*Math.min(1,(dt||0)*12);
     var blink=s.inv>0&&Math.floor(clock*14)%2===0;
     if(RSKIN==='pirate'){ rpPlayer(rg,s,X,Y,blink); rOver(i0,i1,X0,vd); return; }
-    if(RSKIN==='candy'){ if(RPX) cwPlayerPx(rg,s,X,Y,blink); else cwPlayer(rg,s,X,Y,blink); rOver(i0,i1,X0,vd); return; }   // v1.21: the candy effects (48_racecandy.js)
+    if(RSKIN==='candy'){ if(RPX) cwPlayerPx(rg,s,X,Y,blink); else cwPlayer(rg,s,X,Y,blink); rOver(i0,i1,X0,vd); return; }
+    if(RSKIN==='note'){ if(RPX) nPlayerPx(rg,s,X,Y,blink); else nPlayer(rg,s,X,Y,blink); return; }   // v1.23: the notebook's effects (48_racenote.js)   // v1.21: the candy effects (48_racecandy.js)
     if(RPX){ rPlayerPx(rg,s,X,Y,blink); if(RSKIN==='candy') rOver(i0,i1,X0,vd); return; }
     if(s.magnet>0&&(s.magnet>2||Math.floor(clock*8)%2)){ for(var m=0;m<3;m++){ var ph=((clock*1.4+m/3)%1); hx.strokeStyle='rgba(232,40,74,'+(0.5*(1-ph)).toFixed(3)+')'; hx.lineWidth=0.8; hx.beginPath(); hx.arc(X,Y,(10+ph*30)*K/SU,-0.9,0.9); hx.stroke(); } }
     if(!blink){ var ks=K/SU*rCarK, sp=Math.min(1,(rg.v||40)/120); hx.save(); hx.translate(X,Y); hx.rotate(rTilt);           // candy puffs behind it, livelier the faster it goes

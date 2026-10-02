@@ -623,14 +623,16 @@ var R_BURST={tbubble:['#ffffff','#ffd23f','#ff8ac4'],tmagnet:['#ffffff','#ffd23f
 function raceReact(){ var cX=fx(Race.CAR_X), cY=g.car.y*K;
   var CB=RSKIN==='candy'?CW_BURST:null;   // v1.21: the candy race's sprinkles in the gifts' colours, cookie crumbs on a crash
   g.events.forEach(function(k){ if(k!=='over') Sfx.play(k);
+    if(k==='crash') cwDazeT=clock;   // the stars over the car (the candy land's and the notebook's)
     if(k==='crash'&&CB){ flash=0.25; shake=0.35; cwDazeT=clock; burst(cX+6,cY,18,CB.crash,60*K,'crumb'); }
     else if(CB&&(k==='pop'||k==='boing')) burst(cX,cY,k==='pop'?20:8,CB.bubble,(k==='pop'?60:40)*K,'spr');
     else if(CB&&k==='line') burst(cX+8,cY,14,CB.coin,55*K,'spr');
-    else if(k==='crash'){ flash=0.25; shake=0.35; burst(cX+6,cY,24,RSKIN==='pirate'?RP_BURST.crash:['#ffffff','#ff4f8b','#ffd23f','#6fd7ff'],70*K); }   // v1.06: the pirates' splash
+    else if(k==='crash'){ flash=0.25; shake=0.35; burst(cX+6,cY,24,RSKIN==='note'?['#23264a','#8a8aa0','#23264a','#c8c8d4']:RSKIN==='pirate'?RP_BURST.crash:['#ffffff','#ff4f8b','#ffd23f','#6fd7ff'],70*K); }   // v1.06: the pirates' splash
     else if(k==='rub'){ shake=Math.max(shake,0.1); burst(cX,cY,6,['#ffffff','#ffd23f'],40*K); }
     else if(k==='pop') burst(cX,cY,20,(RSKIN==='pirate'?RP_BURST:R_BURST).bubble,60*K);
     else if(k==='boing') burst(cX,cY,8,R_BURST.bubble,40*K);   // v0.93: the bubble took the knock and stays
-    else if(k==='line') burst(cX+8,cY,14,R_BURST.coin,55*K); });
+    else if(k==='line'&&RSKIN!=='note') burst(cX+8,cY,14,R_BURST.coin,55*K); });
+  if(RSKIN==='note'){ (g.fx||[]).forEach(function(f){ RN_FX.push({x:SAFE.l+f.x*K,y:f.y*K,k:f.pick,t:clock}); }); if(g.events.indexOf('line')>=0) RN_FX.push({x:cX+30,y:cY-14,k:'line',t:clock}); return; }   // v1.23: the notebook writes what was taken
   if(CB){ (g.fx||[]).forEach(function(f){ burst(SAFE.l+f.x*K,f.y*K,f.pick==='coin'?8:14,CB[f.pick]||CB.coin,(f.pick==='coin'?35:50)*K,'spr'); }); return; }
   var BU2=RSKIN==='pirate'?RP_BURST:R_BURST; (g.fx||[]).forEach(function(f){ burst(SAFE.l+f.x*K,f.y*K,f.pick==='coin'?6:14,BU2[f.pick]||BU2.coin,(f.pick==='coin'?35:50)*K); }); }
 /* the top: the score, the fuel under it (a soda bottle, the bar), the metres; the gifts at work beside the bar with the time they have left */
@@ -931,7 +933,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:') navigator.service
 go('hub');   // v0.70: the games' screen first (always the menu first since 0.44; a new player's first "Play" walks through the instruction)
 requestAnimationFrame(loop);
 /* test hooks: headless tests drive the screens through these (harmless in the game) */
-window.__sonaroids={raceNote:function(o){ for(var k in o) RN_LOOK[k]=o[k]; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },raceSuper:function(v){ R_SUPER=v; },racePal:function(pud,bub){ if(pud) for(var k in pud) R_PUD[k]=pud[k]; if(bub) for(var j in bub) R_BUB[j]=bub[j]; RC.sp={}; },skinProbe:skinProbe,hdProbe:hdProbe,sizeProbe:sizeProbe,hdIds:hdIds,pixIds:function(){ return SKIN_IDS.filter(function(i){ return !!SKINS[i]; }); },skinIds:function(){ return SKIN_IDS.slice(); },go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },
+window.__sonaroids={noteZones:function(){ return RC.zones?RC.zones.slice():null; },noteRivals:function(v){ RN_RIV=v; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },noteInfra:function(f){ RN_FORCE=f||null; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },raceNote:function(o){ for(var k in o) RN_LOOK[k]=o[k]; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },raceSuper:function(v){ R_SUPER=v; },racePal:function(pud,bub){ if(pud) for(var k in pud) R_PUD[k]=pud[k]; if(bub) for(var j in bub) R_BUB[j]=bub[j]; RC.sp={}; },skinProbe:skinProbe,hdProbe:hdProbe,sizeProbe:sizeProbe,hdIds:hdIds,pixIds:function(){ return SKIN_IDS.filter(function(i){ return !!SKINS[i]; }); },skinIds:function(){ return SKIN_IDS.slice(); },go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },
   setBooted:function(v){ booted=v; },
   board:function(){ return {tbl:tblBox,nick:nickEl?{shown:nickEl.style.display!=='none',rect:nickEl.getBoundingClientRect().toJSON()}:null}; },
   side:function(){ return {hand:handSide(),rel:handRel,cam:camEnd(),stored:store.get('sonaroids_rel',''),say:sayLast}; }, wave:function(){ toWave(); },

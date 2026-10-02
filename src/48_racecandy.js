@@ -381,7 +381,6 @@ function cwRival(k,px,py){ rx.save(); rx.translate(px,py); rx.scale(0.63,0.63); 
    топливо без искорок»). Drawn in gift units, 0.8 of a sprite unit. ── */
 var CW_GK=0.8, CW_GC={fuel:['255,58,90','#ff3a5a',8],coin:['255,176,32','#ffb020',7],magnet:['255,58,90','#ff3a5a',7],bubble:['42,138,216','#2a8ad8',7.6],tmagnet:['154,90,232','#9a5ae8',8],tbubble:['154,90,232','#9a5ae8',8]};
 var CW_SP=[[1.25,-1.1,1.2],[-1.35,0.6,0.9],[0.4,1.45,0.7],[-0.6,-1.4,0.6]], CW_SUPK=1.6;
-function cwStar(X,Y,r,c){ rx.beginPath(); for(var k=0;k<10;k++){ var a=-1.5708+k*0.6283, q=k%2?r*0.45:r; rx.lineTo(X+Math.cos(a)*q,Y+Math.sin(a)*q); } rx.closePath(); rx.fillStyle=c; rx.fill(); }
 function cwGSh(f){ rpSw(1.6,0.5,0.8,0.4); f(); rpNos(); }
 function cwF(c){ rx.beginPath(); rx.moveTo(-1.4,3.1); rx.lineTo(-1.4,-1.1); rx.lineTo(1.7,-1.1); rx.lineTo(1.7,-0.05); rx.lineTo(-0.25,-0.05); rx.lineTo(-0.25,0.6); rx.lineTo(1.2,0.6); rx.lineTo(1.2,1.6); rx.lineTo(-0.25,1.6); rx.lineTo(-0.25,3.1); rx.closePath(); rx.fillStyle=c; rx.fill(); }
 function cwCanister(){ var i;

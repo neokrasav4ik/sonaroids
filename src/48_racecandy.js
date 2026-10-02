@@ -393,7 +393,8 @@ function cwCanister(){ var i;
   cwRR(1.2,-9.8,3.6,3,0.9,rpLg(1,0,5,0,['#e8b010','#ffe680','#d8a010'])); rx.fillStyle='rgba(120,80,0,0.6)'; for(i=0;i<3;i++) rx.fillRect(1.4,-9.2+i*0.9,3.2,0.3);
   rpDisc(0,0.8,3.8,'#fff'); rx.strokeStyle='#e0263a'; rx.lineWidth=0.4; rx.beginPath(); rx.arc(0,0.8,3.8,0,6.2832); rx.stroke(); if(!RPX) cwF('#1aa86a');   // pixels: the F laid on pixel by pixel
   rpEll(-3.4,-4.4,0.8,2.2,0.2,'rgba(255,255,255,0.75)'); rpDisc(4,5,0.5,'rgba(255,255,255,0.8)'); }
-function cwGStar(){ var i; cwGSh(function(){ cwStar(0,0,7.4,'#000'); }); cwStar(0,0.4,7.4,'#d88a10'); cwStar(0,0,7.2,rpLg(-6,-6,6,6,['#fff3a0','#ffc030','#f0a010'])); cwStar(-0.3,-0.4,5.2,cwRg(0,0,5.6,'#fffbd8','#ffcc40'));
+function cwGStar(){ var i; cwGSh(function(){ cwStar(0,0,7.4,'#000'); }); rx.lineJoin='round'; rx.beginPath(); for(i=0;i<10;i++){ var sa=-1.5708+i*0.6283, sq=i%2?3.42:7.6; rx.lineTo(Math.cos(sa)*sq,Math.sin(sa)*sq); } rx.closePath(); rx.strokeStyle='#6b3a10'; rx.lineWidth=1.6; rx.stroke();   // v1.21: a dark edge, seen on the caramel too («на карамельной дороге плохо читаются звездочки» — «звезды Б»)
+  cwStar(0,0.4,7.4,'#d88a10'); cwStar(0,0,7.2,rpLg(-6,-6,6,6,['#fff3a0','#ffc030','#f0a010'])); cwStar(-0.3,-0.4,5.2,cwRg(0,0,5.6,'#fffbd8','#ffcc40'));
   for(i=0;i<14;i++){ var a=i*2.3, r=1+(i%5); rx.save(); rx.translate(Math.cos(a)*r,Math.sin(a)*r); rx.rotate(a); rx.fillStyle='rgba(255,255,255,0.95)'; rx.fillRect(-0.3,-0.3,0.6,0.6); rx.restore(); }   // sugar grains
   rpEll(-2,-2.8,1.6,0.7,-0.5,'rgba(255,255,255,0.9)'); rpDisc(2.4,1.6,0.5,'rgba(255,255,255,0.7)'); }
 function cwMagnetG(){ var arc=function(){ rx.beginPath(); rx.arc(0,-0.6,5,Math.PI,0); rx.lineTo(5,5.4); rx.moveTo(-5,-0.6); rx.lineTo(-5,5.4); };
@@ -452,8 +453,8 @@ function cwH(i,k){ return rHash(i,k)/4294967296; }
 function cwStar5(c,X,Y,r,col,edge,lw){ c.beginPath(); for(var k=0;k<10;k++){ var a=-1.5708+k*0.6283, q=k%2?r*0.45:r; c.lineTo(X+Math.cos(a)*q,Y+Math.sin(a)*q); } c.closePath(); c.fillStyle=col; c.fill(); if(edge){ c.strokeStyle=edge; c.lineWidth=lw; c.stroke(); } }
 function cwTw(X,Y,s,col,edge,lw){ hx.beginPath(); hx.moveTo(X,Y-s); hx.quadraticCurveTo(X,Y,X+s,Y); hx.quadraticCurveTo(X,Y,X,Y+s); hx.quadraticCurveTo(X,Y,X-s,Y); hx.quadraticCurveTo(X,Y,X,Y-s); hx.closePath(); hx.strokeStyle=edge; hx.lineWidth=lw; hx.stroke(); hx.fillStyle=col; hx.fill(); hx.fillStyle='#fff'; hx.beginPath(); hx.arc(X,Y,s*0.2,0,6.2832); hx.fill(); }
 /* the track: where the car was over the last moment (logical px), and whether it was in chocolate */
-function cwTrack(s,Y){ var n=CW_TR.length; if(n&&CW_TR[n-1].t>clock) CW_TR.length=0; CW_TR.push({t:clock,y:Y,on:s.syrup>0}); while(CW_TR.length&&clock-CW_TR[0].t>0.9) CW_TR.shift(); }
-function cwTrackOn(){ for(var i=0;i<CW_TR.length;i++) if(CW_TR[i].on) return true; return false; }
+function cwTrack(s,Y,dd){ var n=CW_TR.length; if(n&&(CW_TR[n-1].t>clock||dd<CW_TR[n-1].d)) CW_TR.length=0; CW_TR.push({t:clock,y:Y,on:s.syrup>0,d:dd}); while(CW_TR.length&&((dd-CW_TR[0].d)*K>LW||CW_TR.length>900)) CW_TR.shift(); }   // dd: how far the race has gone, so the marks keep to the road
+function cwTrackOn(){ for(var i=CW_TR.length-1;i>=0&&clock-CW_TR[i].t<0.9;i--) if(CW_TR[i].on) return true; return false; }
 /* the shapes in the car's frame (hx at the car's point, turned) */
 function cwSoda(ks,sp){ var i, j;
   for(i=0;i<8;i++){ var ph=(clock*1.6+i/8)%1, sd=cwH(i,7)-0.5, X=(-12-ph*26*(0.6+0.4*sp))*ks, Y=sd*(2+ph*9)*ks, r=(1.4-ph*0.6+cwH(i,9)*0.5)*ks; hx.globalAlpha=1-ph*0.7;
@@ -475,13 +476,27 @@ function cwSugarBall(X,Y,ks){ var R=14*ks, g=hx.createRadialGradient(X,Y,R*0.5,X
 function cwDaze(X,Y,ks){ var age=clock-cwDazeT; if(age<0||age>1.5) return; hx.globalAlpha=Math.min(1,(1.5-age)*3); var cx=X+2*ks, cy=Y-11*ks;
   hx.strokeStyle='rgba(255,255,255,0.7)'; hx.lineWidth=0.4*ks; hx.beginPath(); hx.ellipse(cx,cy,8*ks,2.6*ks,0,0,6.2832); hx.stroke();
   for(var k=0;k<3;k++){ var a=clock*5+k*2.094, s=Math.sin(a); cwStar5(hx,cx+Math.cos(a)*8*ks,cy+s*2.6*ks,(1.7+0.3*s)*ks,'#ffd447','rgba(90,40,20,0.8)',0.3*ks); } hx.globalAlpha=1; }
+/* the track the car presses into the road, two glossy ruts from the rear wheels, left on the road till it goes off the screen (v1.22: «давай след от машинки не будет исчезающим.. просто остается и уходит за экран»; first «добавить машинке эффект
+   небольшого следа, типа она проминает под собой дорогу.. исчезающий след» — «след Г»); darker in the road's own colour */
+var CW_RUT={vil:'110,80,50',for:'50,25,8',mnt:'90,40,8'};
+function cwRutCol(vd){ var i=Math.floor((vd+Race.CAR_X)/RCW), z=cwZone(i); return CW_RUT[CW_Z[(z.t0+z.t1)/2>0.5?z.b:z.a]]||CW_RUT.vil; }
+function cwRuts(X,dd,ks,col){ var x0=X-6*ks, i, w, k; hx.lineCap='butt';
+  for(i=CW_TR.length-1;i>0;i--){ var p=CW_TR[i], q=CW_TR[i-1], x1=x0-(dd-p.d)*K, x2=x0-(dd-q.d)*K; if(x1<-4) break;
+    for(k=-1;k<=1;k+=2){ w=k*5*ks; var y1=p.y+w, y2=q.y+w;
+      hx.strokeStyle='rgba('+col+',0.38)'; hx.lineWidth=2.4*ks; hx.beginPath(); hx.moveTo(x1,y1); hx.lineTo(x2,y2); hx.stroke();
+      hx.lineWidth=0.45*ks; hx.strokeStyle='rgba(255,255,255,0.5)'; hx.beginPath(); hx.moveTo(x1,y1+1.35*ks); hx.lineTo(x2,y2+1.35*ks); hx.stroke();
+      hx.lineWidth=0.4*ks; hx.strokeStyle='rgba('+col+',0.35)'; hx.beginPath(); hx.moveTo(x1,y1-1.3*ks); hx.lineTo(x2,y2-1.3*ks); hx.stroke();
+      hx.lineWidth=0.5*ks; hx.strokeStyle='rgba(255,255,255,0.75)'; hx.beginPath(); hx.moveTo(x1,y1-0.3*ks); hx.lineTo(x2,y2-0.3*ks); hx.stroke(); } } }
+function cwRutsPx(x,dd,u,col){ var x0=x-6*u, i, k, c=col.split(','), dark='rgb('+Math.round(c[0]*0.9+40)+','+Math.round(c[1]*0.9+40)+','+Math.round(c[2]*0.9+40)+')';
+  for(i=CW_TR.length-1;i>0;i--){ var p=CW_TR[i], tx=Math.round(x0-(dd-p.d)*K), tx2=Math.round(x0-(dd-CW_TR[i-1].d)*K); if(tx<-2) break; var wd=Math.max(1,tx-tx2);
+    for(k=-1;k<=1;k+=2){ var ty=Math.round(p.y+k*5*u); hx.fillStyle=dark; hx.fillRect(tx-wd+1,ty-1,wd,2); hx.fillStyle='#fff6e0'; hx.fillRect(tx-wd+1,ty+1,wd,1); } } }
 /* the chocolate track: two streaks from the rear wheels where the car went through the puddle */
-function cwTrail(X,v,ks){ if(!cwTrackOn()) return; hx.strokeStyle='#4a2410'; hx.lineCap='round';
-  for(var i=CW_TR.length-1;i>0;i--){ var p=CW_TR[i], q=CW_TR[i-1]; if(!p.on||!q.on) continue; var x1=X-9*ks-(clock-p.t)*v*K, x2=X-9*ks-(clock-q.t)*v*K, d=(clock-q.t)/0.9; hx.globalAlpha=(1-d)*0.85; hx.lineWidth=1.8*(1-d*0.5)*ks;
+function cwTrail(X,dd,ks){ if(!cwTrackOn()) return; hx.strokeStyle='#4a2410'; hx.lineCap='round';
+  for(var i=CW_TR.length-1;i>0;i--){ var p=CW_TR[i], q=CW_TR[i-1]; if(!p.on||!q.on) continue; var x1=X-9*ks-(dd-p.d)*K, x2=X-9*ks-(dd-q.d)*K, d=(clock-q.t)/0.9; if(d>=1) continue; hx.globalAlpha=(1-d)*0.85; hx.lineWidth=1.8*(1-d*0.5)*ks;
     [-5.6,5.6].forEach(function(w){ hx.beginPath(); hx.moveTo(x1,p.y+w*ks); hx.lineTo(x2,q.y+w*ks); hx.stroke(); }); } hx.globalAlpha=1; }
 /* the player's car with all of it (HD) */
-function cwPlayer(rg,s,X,Y,blink){ var ks=K/SU*rCarK, sp=Math.min(1,(rg.v||40)/120), sy=s.syrup>0?Math.min(1,s.syrup/0.3):0; cwTrack(s,Y);
-  cwTrail(X,rg.v||0,ks);
+function cwPlayer(rg,s,X,Y,blink){ var ks=K/SU*rCarK, sp=Math.min(1,(rg.v||40)/120), sy=s.syrup>0?Math.min(1,s.syrup/0.3):0; cwTrack(s,Y,rg.d);
+  cwRuts(X,rg.d,ks,cwRutCol(rg.d)); cwTrail(X,rg.d,ks);
   if(s.magnet>0&&(s.magnet>2||Math.floor(clock*8)%2)) cwMagArcs(X,Y,ks);
   if(!blink){ hx.save(); hx.translate(X,Y); hx.rotate(rTilt); if(s.turbo>0) cwRainbow(ks); cwSoda(ks,sp); hx.restore();
     var cs=rCarSprite(0,true); if(rCarK!==1){ hx.save(); hx.translate(X,Y); hx.rotate(rTilt); hx.drawImage(cs.c,-cs.w*rCarK/2,-cs.h*rCarK/2,cs.w*rCarK,cs.h*rCarK); hx.restore(); } else rBlit(cs,X,Y,rTilt);
@@ -490,8 +505,9 @@ function cwPlayer(rg,s,X,Y,blink){ var ks=K/SU*rCarK, sp=Math.min(1,(rg.v||40)/1
   cwDaze(X,Y,ks); }
 /* the same in whole pixels */
 function cwPx(x,y,c){ hx.fillStyle=c; hx.fillRect(Math.round(x),Math.round(y),1,1); }
-function cwPlayerPx(rg,s,X,Y,blink){ var u=K/SU*rCarK, sp=Math.min(1,(rg.v||40)/120), x=Math.round(X), y=Math.round(Y), i, j, m; cwTrack(s,y);
-  if(cwTrackOn()) for(i=CW_TR.length-1;i>0;i--){ var p=CW_TR[i]; if(!p.on||((clock-p.t)/0.9>0.6&&i%2)) continue; var tx=Math.round(x-9*u-(clock-p.t)*(rg.v||0)*K); hx.fillStyle='#4a2410'; hx.fillRect(tx,Math.round(p.y-5.6*u)-1,2,2); hx.fillRect(tx,Math.round(p.y+5.6*u)-1,2,2); }
+function cwPlayerPx(rg,s,X,Y,blink){ var u=K/SU*rCarK, sp=Math.min(1,(rg.v||40)/120), x=Math.round(X), y=Math.round(Y), i, j, m; cwTrack(s,y,rg.d);
+  cwRutsPx(x,rg.d,u,cwRutCol(rg.d));
+  if(cwTrackOn()) for(i=CW_TR.length-1;i>0;i--){ var p=CW_TR[i]; if(clock-p.t>0.9) break; if(!p.on||((clock-p.t)/0.9>0.6&&i%2)) continue; var tx=Math.round(x-9*u-(rg.d-p.d)*K); hx.fillStyle='#4a2410'; hx.fillRect(tx,Math.round(p.y-5.6*u)-1,2,2); hx.fillRect(tx,Math.round(p.y+5.6*u)-1,2,2); }
   if(s.magnet>0&&(s.magnet>2||Math.floor(clock*8)%2)) for(m=0;m<3;m++){ var ph=(clock*1.4+m/3)%1, R=(9+ph*20)*u; if(ph>0.8) continue; for(var a=-0.75,n=0;a<=0.75;a+=1/R,n++) cwPx(x+Math.cos(a)*R,y+Math.sin(a)*R,(Math.floor(n/2)%2)?'#ffffff':'#e8284a'); }
   if(!blink){
     if(s.turbo>0) for(i=0;i<6;i++){ var y0=(i-2.5)*1.25; hx.fillStyle=CW_RAIN[i]; for(j=11;j<56;j++){ var d=(j-11)/45; if(cwH(i*64+j,Math.floor(clock*12))<d) continue; hx.fillRect(Math.round(x-j*u*0.9),Math.round(y+(y0*(1+d*0.9)+Math.sin(-j*0.22+clock*14)*d*2.4)*u),1,Math.max(1,Math.round(u))); } }

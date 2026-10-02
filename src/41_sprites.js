@@ -79,7 +79,7 @@ function drawShip(x,y,t,blink){
   if(!shipBare){ R(P.flame[0],sx-5-fl,sy-1,3+fl,3); R(P.flame[1],sx-4-(fl>>1),sy,2+(fl>>1),1); R(P.flame[2],sx-3,sy,1,1); }
   blit(SHIP_BIG,P.ship,sx-2,sy-6); light(x-2,y,9*K,hex(P.flame[1]).join(','),0.4);
 }
-function burst(x,y,n,cols,sp){ for(var i=0;i<n;i++){ var a=Math.random()*6.28, v=rnd(0.3,1)*sp; parts.push({x:x,y:y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:rnd(0.4,0.9),max:0.9,cols:cols}); } }
+function burst(x,y,n,cols,sp,sh){ for(var i=0;i<n;i++){ var a=Math.random()*6.28, v=rnd(0.3,1)*sp, p={x:x,y:y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:rnd(0.4,0.9),max:0.9,cols:cols}; if(sh){ p.sh=sh; p.a=a; p.k=Math.random(); p.c=cols[i%cols.length]; } parts.push(p); } }   // sh: the candy race's sprinkles and crumbs (v1.21), each its own colour
 function drawParts(dt){
   parts.forEach(function(p){ p.x+=p.vx*dt; p.y+=p.vy*dt; p.vx*=0.985; p.vy*=0.985; p.life-=dt; });
   parts=parts.filter(function(p){ return p.life>0; });

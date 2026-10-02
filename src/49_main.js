@@ -621,19 +621,24 @@ function raceStart(){ var y0=raceSteer==='road'?(rCarYs===null?null:+rCarYs.toFi
   Sfx.play('start'); go('play'); }
 var R_BURST={tbubble:['#ffffff','#ffd23f','#ff8ac4'],tmagnet:['#ffffff','#ffd23f','#e8284a'],coin:['#ffffff','#ffd23f','#ff4f7a'],fuel:['#ffffff','#3fd07a','#8fdcff'],magnet:['#ffffff','#e8284a','#ffd23f'],bubble:['#ffffff','#ff8ac4','#e0409a']};
 function raceReact(){ var cX=fx(Race.CAR_X), cY=g.car.y*K;
+  var CB=RSKIN==='candy'?CW_BURST:null;   // v1.21: the candy race's sprinkles in the gifts' colours, cookie crumbs on a crash
   g.events.forEach(function(k){ if(k!=='over') Sfx.play(k);
-    if(k==='crash'){ flash=0.25; shake=0.35; burst(cX+6,cY,24,RSKIN==='pirate'?RP_BURST.crash:['#ffffff','#ff4f8b','#ffd23f','#6fd7ff'],70*K); }   // v1.06: the pirates' splash
+    if(k==='crash'&&CB){ flash=0.25; shake=0.35; cwDazeT=clock; burst(cX+6,cY,18,CB.crash,60*K,'crumb'); }
+    else if(CB&&(k==='pop'||k==='boing')) burst(cX,cY,k==='pop'?20:8,CB.bubble,(k==='pop'?60:40)*K,'spr');
+    else if(CB&&k==='line') burst(cX+8,cY,14,CB.coin,55*K,'spr');
+    else if(k==='crash'){ flash=0.25; shake=0.35; burst(cX+6,cY,24,RSKIN==='pirate'?RP_BURST.crash:['#ffffff','#ff4f8b','#ffd23f','#6fd7ff'],70*K); }   // v1.06: the pirates' splash
     else if(k==='rub'){ shake=Math.max(shake,0.1); burst(cX,cY,6,['#ffffff','#ffd23f'],40*K); }
     else if(k==='pop') burst(cX,cY,20,(RSKIN==='pirate'?RP_BURST:R_BURST).bubble,60*K);
     else if(k==='boing') burst(cX,cY,8,R_BURST.bubble,40*K);   // v0.93: the bubble took the knock and stays
     else if(k==='line') burst(cX+8,cY,14,R_BURST.coin,55*K); });
+  if(CB){ (g.fx||[]).forEach(function(f){ burst(SAFE.l+f.x*K,f.y*K,f.pick==='coin'?8:14,CB[f.pick]||CB.coin,(f.pick==='coin'?35:50)*K,'spr'); }); return; }
   var BU2=RSKIN==='pirate'?RP_BURST:R_BURST; (g.fx||[]).forEach(function(f){ burst(SAFE.l+f.x*K,f.y*K,f.pick==='coin'?6:14,BU2[f.pick]||BU2.coin,(f.pick==='coin'?35:50)*K); }); }
 /* the top: the score, the fuel under it (a soda bottle, the bar), the metres; the gifts at work beside the bar with the time they have left */
 /* v0.97: the fuel bar (the maintainer: «сделай полоску топлива и очки в игре — больше и ниже»; from the sketches: «очки — как сейчас, полоска как на А, кол-во метров убери», an F instead of the bottle) */
 function raceFuelBar(bx,by,bw,bh,f){ var low=f<0.15, col=f<0.15?'#ff3b5c':f<0.35?'#ffb52e':'#3fd07a';
   lx.fillStyle='rgba(40,12,30,0.6)'; lx.beginPath(); lx.roundRect(bx-1,by-1,bw+2,bh+2,(bh+2)/2); lx.fill();
   if(!low||Math.floor(clock*5)%2){ lx.fillStyle=col; lx.beginPath(); lx.roundRect(bx,by,Math.max(bh/2,bw*f),bh,bh/2); lx.fill(); } }
-function raceTimers(gx,cy,r){ [['turbo','#ffd23f',g.car.turbo,Race.TUNE.TURBO],['bubble','#ff8ac4',g.car.bubble,Race.TUNE.BUBBLE],['magnet','#e8284a',g.car.magnet,Race.TUNE.MAGNET]].forEach(function(q){ if(q[2]<=0) return;
+function raceTimers(gx,cy,r){ [['turbo','#ffd23f',g.car.turbo,Race.TUNE.TURBO],['bubble',RSKIN==='candy'?'#5ab0ff':'#ff8ac4',g.car.bubble,Race.TUNE.BUBBLE],['magnet','#e8284a',g.car.magnet,Race.TUNE.MAGNET]].forEach(function(q){ if(q[2]<=0) return;
     lx.fillStyle='rgba(40,12,30,0.55)'; lx.beginPath(); lx.arc(gx+r,cy,r+1,0,6.2832); lx.fill(); lx.fillStyle=q[1]; lx.beginPath(); lx.moveTo(gx+r,cy); lx.arc(gx+r,cy,r,-Math.PI/2,-Math.PI/2+6.2832*Math.min(1,q[2]/q[3])); lx.closePath(); lx.fill(); gx+=2*r+5; }); }
 function raceHud(){ var cx0=Math.round(LW/2), y=topY(), f=g.fuel/Race.TUNE.FUEL, bw=96, sc=String(g.score).padStart(6,'0'), sw=PF.width(sc), fw=PF.width('F')*1.3, tw=fw+4+bw+10+sw, x0=Math.round(cx0-tw/2), bx=x0+fw+4, by=y+1;
   /* v0.99: one line — the F, the fuel bar, then the score (the maintainer: «кол-во очков и полоску топлива сделаем в одну строку, размеры как сейчас, сначала полоска, потом очки») */

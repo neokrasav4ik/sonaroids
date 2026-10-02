@@ -40,7 +40,7 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
       if(T()>30&&!shots.play){ shots.play=1; await shot('04_play');
         drawn=await p.evaluate(()=>{ const c=document.getElementById('hd'); if(!c||c.style.display==='none') return {shown:false};
           const x=c.getContext('2d'), d=x.getImageData(0,0,c.width,c.height).data; let choc=0, pink=0, n=0;
-          for(let i=0;i<d.length;i+=4*97){ n++; const r=d[i],g=d[i+1],b=d[i+2]; if(r>80&&r<130&&g>40&&g<80&&b>20&&b<60) choc++; if(r>240&&g>190&&b>210) pink++; }
+          for(let i=0;i<d.length;i+=4*97){ n++; const r=d[i],g=d[i+1],b=d[i+2]; const cream=r>235&&g>220&&b>185&&r-b<70; if(cream||(r>100&&r>g+25&&g>b+15&&b<120)) choc++; if(cream||(r>150&&g<150&&b>80&&r>g+60)||(g>200&&b>185&&g>r+8)) pink++; }   // v1.21: any zone — the road white chocolate, waffle or caramel; the ground raspberry, mint or vanilla
           return {shown:true,choc:choc/n,pink:pink/n}; }); }
       if(T()>40&&!paused){ const bp=await p.evaluate(()=>{ const b=__sonaroids.btn().find(q=>q.id==='pause'), m=__sonaroids.S(); return b?{x:(b.x+b.w/2)*m.S/m.DPR,y:(b.y+b.h/2)*m.S/m.DPR}:null; });
         if(bp) await p.mouse.click(bp.x,bp.y); await p.waitForTimeout(300); await shot('05_paused');
@@ -64,7 +64,7 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
   // the car follows the palm: correlation of palm and car heights (the car is higher on screen for a higher palm: y falls)
   const n=follow.length, mh=follow.reduce((a,q)=>a+q[0],0)/n, mc=follow.reduce((a,q)=>a+q[1],0)/n; let sxy=0,sxx=0,syy=0; follow.forEach(q=>{ sxy+=(q[0]-mh)*(q[1]-mc); sxx+=(q[0]-mh)**2; syy+=(q[1]-mc)**2; });
   const corr=n>20?sxy/Math.sqrt(sxx*syy):0; check('the car follows the palm',corr<-0.8,`correlation ${corr.toFixed(2)} over ${n} samples`);
-  check('the candy land is drawn',drawn&&drawn.shown&&drawn.choc>0.05&&drawn.pink>0.1,drawn?`road ${(100*drawn.choc).toFixed(0)}%, glaze ${(100*drawn.pink).toFixed(0)}%`:'none');
+  check('the candy land is drawn (a candy road, a candy ground)',drawn&&drawn.shown&&drawn.choc>0.15&&drawn.pink>0.1,drawn?`road ${(100*drawn.choc).toFixed(0)}%, ground ${(100*drawn.pink).toFixed(0)}%`:'none');
   check('the pause: go on, start over, end, exit, the skin, the graphics, sounds; back to the race',!!paused&&paused.scr==='paused'&&['resume','restart','quit','exit','rskin_prev','rskin_next','gfx','sfx'].every(k=>paused.btn.includes(k))&&paused.cr==='count-resume'&&paused.back==='play',paused?paused.btn.join(',')+' → '+paused.cr+' → '+paused.back:'none');
   check('the finish: the score, the best kept',!!over&&over.scr==='over'&&over.score>0&&over.best===over.score&&over.btn.includes('again')&&over.btn.includes('menu'),over?`score ${over.score}, best ${over.best}, "${over.say}"`:'none');
   { const Race=require('../src/14_race.js'), zlib=require('zlib'), rb=sent.find(x=>x.game==='race'); let rs=null;   // v1.01: the server's replay of the race the page sent lands on the same score

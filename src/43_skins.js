@@ -92,6 +92,9 @@ var SP_SHIP_PAL={s:'#e8ecf2',k:'#0c3a34',d:'#1d7c6c',m:'#3fc4a6',l:'#8ff0d6',w:'
 var SP_UFO=['......KKKKK......','.....KqWPPPK.....','....KqPyYyPpK....','...KqPPyYyPppK...','...KPPPPyPPppK...','.KKRRRpppppRRRKK.','KRRRRRRRRRRRRRRRK','.KKrrrrrrrrrrrKK.','...KKKKKKKKKKK...'];
 var SP_UFO_S=['.....KKK.....','...KqWPPpK...','..KqPyYyPpK..','..KPPPyPppK..','.KKRRpppRRKK.','KRRRRRRRRRRRK','.KKrrrrrrrKK.'];
 var SP_UFO_PAL={K:'#7a1a78',p:'#b04ac8',P:'#e090ec',q:'#ffd8ff',W:'#ffffff',y:'#ffe9a0',Y:'#fffbe0',R:'#ffd0f0',r:'#c050c8'};
+/* v1.25, the pixel power-up «4»: a gold plate with cut corners, lit from the top left, a plain panel (the rays of HD are too fine for 13 pixels), screws on its sides, the dark sign; a glint runs across */
+var SP_PICK=['..KKKKKKKKK..','.KLLLLsLLLGK.','KLLqqqqqppGGK','KLqqqqqppppDK','KLqqqqpppppDK','KLqqqppppppDK','KsqqpppppppsK','KLqppppppppDK','KLpppppppppDK','KLpppppppppDK','KGGpppppppDDK','.KGDDDsDDDDK.','..KKKKKKKKK..'];
+var SP_PICK_PAL={K:'#6a3a00',L:'#fff2b0',G:'#ffd24a',D:'#c8840c',s:'#8a5000',q:'#ffe27a',p:'#f4b832',r:'#dc9a1c'};
 SKINS.space={id:'space', glow:true,
   sky:function(dt,s){ spaceSky(dt,s); lx.fillStyle='rgba(10,6,26,0.45)'; lx.fillRect(0,0,LW,LH); },   // v0.81: the background dimmed like in HD (the rocks stood out half as much)
   rock:function(r){ return makeRock(r); },
@@ -107,7 +110,9 @@ SKINS.space={id:'space', glow:true,
     if(!hurt){ if(Math.sin(t*6)>0.3) R('#ffffff',cx,cy-(big?4:3),1,1);
       var nL=big?7:5, rx=big?7:5; for(i=0;i<nL;i++){ var a=i/nL*6.2832+t*2.4; if(Math.sin(a)>0.1) R(['#ffe66d','#7affc8','#ffffff'][i%3],cx+Math.round(Math.cos(a)*rx),cy,1,1); } }
     light(ux,uy,(big?22:16)*K,'255,140,220',0.35); },
-  pick:function(x,y,type){ R(P.pick,x-6,y-6,13,13); R(P.bg,x-4,y-4,9,9); blit(ICON[type],[P.pick],x-3,y-3); light(x,y,14*K,P.glowP,0.4); },   // v0.81: 13 pixels (the core's zone) with a two-pixel frame (was 11 with one)
+  pick:function(x,y,type){ var sx=Math.round(x), sy=Math.round(y), t=clock, i; lx.drawImage(mapCanvas('sppick',SP_PICK,SP_PICK_PAL),sx-6,sy-6); blit(ICON[type],['#fff2b0'],sx-2,sy-2); blit(ICON[type],['#1a0700'],sx-3,sy-3);
+    var gp=Math.floor(((t*0.6)%1.6)*20)-4; if(gp>=0&&gp<=24) for(i=0;i<13;i++){ var gx=gp-i; if(gx<0||gx>12) continue; var ch=SP_PICK[i][gx]; if(ch!=='.'&&ch!=='K') { lx.globalAlpha=0.55; R('#fffbe0',sx-6+gx,sy-6+i,1,1); lx.globalAlpha=1; } }
+    light(x,y,14*K,P.glowP,0.4); },   // v0.81: 13 pixels (the core's zone) with a two-pixel frame (was 11 with one)
   bullet:function(x,y){ R(P.bullet,x-3,y,6,1); light(x,y,6*K,P.glowB,0.45); },   // v0.83: 6 long (was 4), like the other skins' shots
   ebullet:function(x,y){ R(P.ebullet,x-1,y-2,2,4); R(P.ebullet,x-2,y-1,4,2);   // v0.83: a 4-pixel round (was 2×2)
     light(x,y,7*K,hex(P.ebullet).join(','),0.5); },

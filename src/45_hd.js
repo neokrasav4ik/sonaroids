@@ -202,12 +202,26 @@ HDSK.space={id:'space', hd:true, glow:true, veil:'rgba(10,8,30,0.55)', motes:['#
     hx.strokeStyle='rgba(255,255,255,0.8)'; hx.lineWidth=0.3; hx.beginPath(); hx.ellipse(0,0.3,9.2,2,0,Math.PI*1.1,Math.PI*1.9); hx.stroke();
     if(!H) for(i=0;i<10;i++){ var b=i/10*6.2832+t*2.4; if(Math.sin(b)>-0.2){ hx.fillStyle=['#ffe66d','#7affc8','#ffffff'][i%3]; hx.beginPath(); hx.arc(Math.cos(b)*9.4,0.6+Math.sin(b)*2.2,0.55,0,6.2832); hx.fill(); } }
     hx.restore(); light(ux,uy,(big?22:16)*K,'255,140,220',0.35); },
+  /* v1.25, the power-up «4» (the maintainer chose it from mixes of a plate with cut corners and a tile with depth: «4, медленно
+     покачивающийся»): a gold plate with cut corners, a bevelled frame lit from the top left, a recessed panel engraved with fine rays,
+     four screws on its sides, the sign embossed; it rocks slowly and a glint sweeps across it. A cached sprite per sign; the glint live. */
+  octP:function(c,r,k){ c.beginPath(); c.moveTo(-r+k,-r); c.lineTo(r-k,-r); c.lineTo(r,-r+k); c.lineTo(r,r-k); c.lineTo(r-k,r); c.lineTo(-r+k,r); c.lineTo(-r,r-k); c.lineTo(-r,-r+k); c.closePath(); },
+  pickMake:function(type){ var o=hdOff(14,14), x=o.x, me=this, i; x.translate(7,7); x.lineJoin='round'; x.lineCap='round';
+    var g=x.createLinearGradient(-6,-6,6,6); g.addColorStop(0,'#fff8d0'); g.addColorStop(0.35,'#ffd24a'); g.addColorStop(0.7,'#e09a14'); g.addColorStop(1,'#a86a08');
+    me.octP(x,5.9,2.2); x.fillStyle=g; x.fill(); x.strokeStyle='#6a3a00'; x.lineWidth=0.6; x.stroke();
+    var pg=x.createRadialGradient(-2.1,-2.4,0.3,0,0,6); pg.addColorStop(0,'#ffe680'); pg.addColorStop(0.5,'#f0b030'); pg.addColorStop(1,'#c87a10');
+    me.octP(x,4.4,1.6); x.fillStyle=pg; x.fill(); x.save(); me.octP(x,4.4,1.6); x.clip(); x.strokeStyle='rgba(150,80,0,0.35)'; x.lineWidth=0.18; x.beginPath();
+    for(i=0;i<24;i++){ var a=i/24*6.2832; x.moveTo(Math.cos(a)*1.5,Math.sin(a)*1.5); x.lineTo(Math.cos(a)*8,Math.sin(a)*8); } x.stroke(); x.restore();
+    me.octP(x,4.4,1.6); x.strokeStyle='rgba(120,60,0,0.8)'; x.lineWidth=0.35; x.stroke();
+    x.strokeStyle='rgba(255,255,230,0.75)'; x.lineWidth=0.3; x.beginPath(); x.moveTo(-4.4,1.6); x.lineTo(-4.4,-2.8); x.lineTo(-2.8,-4.4); x.lineTo(2.8,-4.4); x.stroke();
+    [[0,-5.15],[0,5.15],[-5.15,0],[5.15,0]].forEach(function(q){ x.fillStyle='#8a5000'; x.beginPath(); x.arc(q[0],q[1],0.5,0,6.2832); x.fill(); x.strokeStyle='#fff4c0'; x.lineWidth=0.18; x.beginPath(); x.moveTo(q[0]-0.3,q[1]-0.3); x.lineTo(q[0]+0.3,q[1]+0.3); x.stroke(); });
+    var kh=hx, kw=hdIconW; hx=x; hdIconW=1.35; try{ hx.save(); hx.translate(0.35,0.35); hdIcon(type,'rgba(255,240,180,0.75)'); hx.restore(); hdIcon(type,'#160500'); } finally { hx=kh; hdIconW=kw; }
+    return o.c; },
   pick:function(x,y,type){ var t=performance.now()/1000, p=0.8+0.2*Math.sin(t*4);
-    hGlow(x,y,11,'255,220,100',0.45*p); hx.save(); hx.translate(x,y); hx.rotate(Math.sin(t*1.5)*0.12);
-    if(!this._pg||this._pgc!==hx){ var kg=hx.createLinearGradient(0,-6,0,6); kg.addColorStop(0,'#fff4b0'); kg.addColorStop(0.5,'#ffd24a'); kg.addColorStop(1,'#e8a41c'); this._pg=kg; this._pgc=hx; }
-    hx.fillStyle=this._pg; hx.beginPath(); hx.roundRect(-5.5,-5.5,11,11,2.5); hx.fill(); hx.strokeStyle='#8a5000'; hx.lineWidth=0.6; hx.stroke();
-    hx.fillStyle='rgba(255,255,255,0.7)'; hx.beginPath(); hx.roundRect(-4.2,-4.4,6,1,0.5); hx.fill();
-    hdIcon(type,'#3a1600'); hx.restore(); light(x,y,14*K,'255,230,109',0.35); },
+    if(!this._pk2||this._pk2Key!==hdKey){ this._pk2={}; this._pk2Key=hdKey; } if(!this._pk2[type]) this._pk2[type]=this.pickMake(type);
+    hGlow(x,y,11,'255,220,100',0.45*p); hx.save(); hx.translate(x,y); hx.rotate(Math.sin(t*1.5)*0.12); hx.drawImage(this._pk2[type],-7,-7,14,14);
+    var sw=((t*0.6)%1.6-0.3)*16-8; if(sw>-9&&sw<14){ hx.save(); this.octP(hx,5.9,2.2); hx.clip(); hx.fillStyle='rgba(255,255,240,0.32)'; hx.beginPath(); hx.moveTo(sw-0.6,-8); hx.lineTo(sw+0.8,-8); hx.lineTo(sw-4.2,8); hx.lineTo(sw-5.6,8); hx.fill(); hx.restore(); }
+    hx.restore(); light(x,y,14*K,'255,230,109',0.25); },
   bullet:function(x,y){ hGlow(x,y,4,'255,180,90',0.4); hx.fillStyle='#ffb13b'; hx.beginPath(); hx.roundRect(x-4,y-1,6.5,2,1); hx.fill(); hx.strokeStyle='#b05a10'; hx.lineWidth=0.4; hx.stroke();
     hx.fillStyle='#fff8e0'; hx.beginPath(); hx.roundRect(x-1.5,y-0.5,3.5,1,0.5); hx.fill(); light(x,y,6*K,'255,184,107',0.35); },
   ebullet:function(x,y){ hGlow(x,y,4.5,'255,70,140',0.4); hx.fillStyle='#ff5a9a'; hx.beginPath(); hx.arc(x,y,1.9,0,6.2832); hx.fill(); hx.strokeStyle='#b0306a'; hx.lineWidth=0.4; hx.stroke();

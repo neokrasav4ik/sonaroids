@@ -108,7 +108,7 @@
 | путь | что внутри |
 |---|---|
 | `src/` | исходники игр по пронумерованным частям; `build.py` собирает их в один файл `game/play/index.html` |
-| `game/` | сайт: `index.html` ведёт в игры, `play/` — сами игры (собранный файл, иконки, манифест, service worker), `font.js`, `robots.txt` |
+| `game/` | сайт: `index.html` ведёт в игры, `play/` — сами игры (собранный файл, иконки, манифест, service worker), `font.js`, `robots.txt`; `bench/` — стенд графики, не игра: четыре сцены на видеочипе (WebGL 2 и WebGPU), чтобы узнать, что тянет флагманский телефон |
 | `server/` | сервер рекордов (api.sonaroids.app): `server.js`, боты (`bots.js`, `botplay.js`), копии базы, сводка, служба systemd, настройки Caddy и nginx. Установка — `server/README.md`, по-русски `docs/ru/server.md` |
 | `android/` | приложение для Android: WebView над sonaroids.app/play/ со своим звуком, громкостью, сохранением файлов и самообновлением. Собирается на GitHub Actions в последний выпуск (`android/README.md`) |
 | `tests/` | проверки игр и сервера: `sh tests/run.sh` |

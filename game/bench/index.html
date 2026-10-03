@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex">
+<title>Sonaroids — стенд графики</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+/* A test bench, not a game (v1.34a): how far a flagship phone can go for a «heaviest skin» of SonaFly.
+   Four scenes drawn on the graphics chip — А nebula, Б black hole, В crystals (WebGL 2), Е particles (WebGPU) —
+   frames per second, the ceiling (the highest resolution that keeps the screen's rate), and 3 minutes of heating. */
+html,body{margin:0;height:100%;background:#000;color:#e8e8ee;font:13px/1.3 -apple-system,system-ui,"Segoe UI",sans-serif;overflow:hidden;
+  touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+canvas.v{position:fixed;left:0;top:0;width:100vw;height:100vh;display:none}
+#ui{position:fixed;left:calc(env(safe-area-inset-left) + 6px);right:calc(env(safe-area-inset-right) + 6px);top:calc(env(safe-area-inset-top) + 6px);
+  display:flex;flex-wrap:wrap;gap:5px;align-items:center;pointer-events:none}
+#ui button,#panel button{pointer-events:auto;font:inherit;font-weight:600;color:#e8e8ee;background:rgba(20,22,34,.72);border:1px solid rgba(255,255,255,.18);
+  border-radius:8px;padding:6px 9px;min-height:30px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+#ui button.on{background:rgba(70,190,160,.85);color:#06110e;border-color:transparent}
+#ui button:disabled{opacity:.45}
+#ui .sep{width:4px}
+#hud{position:fixed;left:calc(env(safe-area-inset-left) + 6px);bottom:calc(env(safe-area-inset-bottom) + 6px);max-width:62vw;
+  background:rgba(8,9,16,.62);border-radius:8px;padding:6px 9px;font-variant-numeric:tabular-nums;white-space:pre-wrap;pointer-events:none}
+#hud b{color:#7fe3c6}
+#graph{position:fixed;right:calc(env(safe-area-inset-right) + 6px);bottom:calc(env(safe-area-inset-bottom) + 6px);width:240px;height:84px;
+  background:rgba(8,9,16,.62);border-radius:8px;pointer-events:none}
+#panel{position:fixed;inset:0;background:rgba(4,5,10,.92);display:none;flex-direction:column;padding:calc(env(safe-area-inset-top) + 10px)
+  calc(env(safe-area-inset-right) + 12px) calc(env(safe-area-inset-bottom) + 10px) calc(env(safe-area-inset-left) + 12px);gap:8px}
+#panel pre{flex:1;margin:0;overflow:auto;white-space:pre-wrap;font:12px/1.4 ui-monospace,Menlo,monospace;-webkit-user-select:text;user-select:text;touch-action:pan-y}
+#panel .row{display:flex;gap:6px;flex-wrap:wrap}
+body.clean #ui,body.clean #hud,body.clean #graph{display:none}
+</style>
+</head>
+<body>
+<canvas id="gl" class="v"></canvas>
+<canvas id="gpu" class="v"></canvas>
+<div id="ui">
+  <button data-scene="A">А туманность</button><button data-scene="B">Б чёрная дыра</button><button data-scene="C">В кристаллы</button><button data-scene="E">Е частицы</button>
+  <span class="sep"></span>
+  <button id="bq">качество</button><button id="bs">разрешение</button>
+  <span class="sep"></span>
+  <button id="bceil">потолок 30 с</button><button id="bheat">нагрев 3 мин</button><button id="bsum">сводка</button><button id="bhide">скрыть</button>
+</div>
+<div id="hud"></div>
+<canvas id="graph"></canvas>
+<div id="panel"><pre id="sum"></pre><div class="row"><button id="pcopy">копировать</button><button id="pclear">очистить</button><button id="pclose">закрыть</button></div></div>
+<script>
+'use strict';
+var $=function(s){ return document.querySelector(s); };
+var DPR=window.devicePixelRatio||1;
+var NAMES={A:'А туманность',B:'Б чёрная дыра',C:'В кристаллы',E:'Е частицы'}, QN=['низкое','среднее','высокое'];
+var S={scene:'A',q:1,scale:Math.min(2,DPR),hz:60,calib:true,run:null,t0:performance.now()};
+var store={get:function(k,d){ try{ var v=localStorage.getItem(k); return v===null?d:v; }catch(e){ return d; } },set:function(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }};
+S.scene=store.get('bench_scene','A'); if(!NAMES[S.scene]) S.scene='A'; S.q=+store.get('bench_q','1')||0; if(!(S.q>=0&&S.q<=2)) S.q=1;
+function scales(){ var a=[1,1.5,2,2.5,3].filter(function(s){ return s<=DPR+0.01; }); if(!a.length) a=[1]; return a; }
+
+/* ── device line ── */
+var DEV={ua:navigator.userAgent,gl:'?',gpu:'проверяю…'};
+function devLine(){ var ua=DEV.ua, m=ua.match(/Version\/([\d.]+)/), os=/iPhone|iPad|Macintosh/.test(ua)&&m?'Safari '+m[1]:/Android/.test(ua)?'Android '+(DEV.av||(ua.match(/Android ([\d.]+)/)||[])[1]||''):'';
+  var model=DEV.model||(/iPhone/.test(ua)?'iPhone':/iPad/.test(ua)?'iPad':'');   /* Chrome on Android hides the model in its line — asked for separately below */
+  return [model,os].filter(Boolean).join(', ')+' · экран '+innerWidth+'×'+innerHeight+' @'+DPR+', '+S.hz+' Гц · WebGL: '+DEV.gl+' · WebGPU: '+DEV.gpu; }
+if(navigator.userAgentData&&navigator.userAgentData.getHighEntropyValues) navigator.userAgentData.getHighEntropyValues(['model','platformVersion']).then(function(v){ if(v.model) DEV.model=v.model; if(v.platformVersion&&/Android/.test(DEV.ua)) DEV.av=v.platformVersion; }).catch(function(){});
+
+/* ── WebGL 2: scenes А, Б, В — one full-screen program each ── */
+var cgl=$('#gl'), gl=cgl.getContext('webgl2',{antialias:false,alpha:false,depth:false,stencil:false,powerPreference:'high-performance',preserveDrawingBuffer:false});
+if(gl){ var ri=gl.getExtension('WEBGL_debug_renderer_info'); DEV.gl=ri?gl.getParameter(ri.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER); } else DEV.gl='нет';
+var VS='#version 300 es\nvoid main(){ vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2)); gl_Position=vec4(p*2.0-1.0,0.0,1.0); }';
+var COMMON=[
+'#version 300 es',
+'precision highp float; precision highp int;',
+'uniform vec2 uRes; uniform float uTime; uniform int uQ;',
+'out vec4 fragColor;',
+'float h13(vec3 p){ p=fract(p*0.1031); p+=dot(p,p.zyx+31.32); return fract((p.x+p.y)*p.z); }',
+'float h12(vec2 p){ vec3 q=fract(vec3(p.xyx)*0.1031); q+=dot(q,q.yzx+33.33); return fract((q.x+q.y)*q.z); }',
+'float n3(vec3 x){ vec3 i=floor(x), f=fract(x); f=f*f*(3.0-2.0*f);',
+'  return mix(mix(mix(h13(i),h13(i+vec3(1,0,0)),f.x),mix(h13(i+vec3(0,1,0)),h13(i+vec3(1,1,0)),f.x),f.y),',
+'             mix(mix(h13(i+vec3(0,0,1)),h13(i+vec3(1,0,1)),f.x),mix(h13(i+vec3(0,1,1)),h13(i+vec3(1,1,1)),f.x),f.y),f.z); }',
+'float fbm(vec3 p,int oc){ float a=0.5,s=0.0; for(int i=0;i<8;i++){ if(i>=oc) break; s+=a*n3(p); p=p*2.03+vec3(1.7,9.2,3.1); a*=0.5; } return s; }',
+'mat2 rot(float a){ float c=cos(a),s=sin(a); return mat2(c,-s,s,c); }',
+'float AR(){ return uRes.x/uRes.y; }',
+'vec2 uvOf(){ return (gl_FragCoord.xy-0.5*uRes)/uRes.y; }',
+/* the game's objects, as SonaFly has them: the ship on the left following a palm, rocks flying right to left */
+'const int NR=7;',
+'vec3 rockC(int i,out float r){ float fi=float(i), ar=AR(), sp=0.10+0.06*fract(fi*0.618), span=ar+0.6;',
+'  float x=ar*0.5+0.3-mod(uTime*sp+fi*span/float(NR)+fract(fi*0.37)*0.2,span); float y=(fract(fi*0.7548+0.13)-0.5)*0.78;',
+'  r=0.035+0.04*fract(fi*0.5698+0.3); return vec3(x,y,0.0); }',
+'float shipYt(float t){ return 0.28*sin(t*0.55)+0.08*sin(t*1.7); }',
+'vec2 shipP(){ return vec2(-AR()*0.5+0.17,shipYt(uTime)); }',
+'float sdEll(vec3 p,vec3 r){ float k0=length(p/r), k1=length(p/(r*r)); return k0*(k0-1.0)/max(k1,1e-5); }',
+'float sdBox(vec3 p,vec3 b){ vec3 q=abs(p)-b; return length(max(q,0.0))+min(max(q.x,max(q.y,q.z)),0.0); }',
+'float sdShip(vec3 q){ float d=sdEll(q,vec3(0.058,0.014,0.02)); q.x+=0.012; vec3 w=q; w.y=abs(w.y); w.xy=rot(0.55)*w.xy;',
+'  d=min(d,sdBox(w-vec3(0.0,0.012,0.0),vec3(0.012,0.022,0.003))); return d; }',
+/* which objects can this pixel touch at all (the rest of the screen is the world only) */
+'int candidates(vec2 uv,float k){ int m=0; for(int i=0;i<NR;i++){ float r; vec3 c=rockC(i,r); if(length(uv-c.xy)<r*k+0.02) m|=1<<i; }',
+'  vec2 s=shipP(); if(length((uv-s)*vec2(0.8,1.6))<0.09) m|=1<<7; return m; }',
+'float stars(vec3 d,float dens){ vec2 g=vec2(atan(d.z,d.x),asin(clamp(d.y,-1.0,1.0)))*dens; vec2 id=floor(g), f=fract(g)-0.5; float h=h12(id);',
+'  float s=h>0.985?smoothstep(0.25,0.0,length(f-(vec2(h12(id+3.1),h12(id+7.7))-0.5)*0.5))*(h-0.985)*66.0:0.0; return s; }',
+'vec3 tone(vec3 c){ c=1.0-exp(-c*1.25); return pow(c,vec3(0.4545)); }'
+].join('\n');
+
+/* А — flying inside a nebula: a volume of gas lit by a star, the gas shadowing itself; solid rocks lit and shadowed through it; the ship's trail glowing in the gas */
+var FS_A=COMMON+'\n'+[
+'int cand;',
+'float sdRock(vec3 p,vec3 c,float r,float fi){ vec3 q=p-c; float a=uTime*(0.3+0.4*fract(fi*0.3))+fi; q.xy=rot(a)*q.xy; q.xz=rot(a*0.7)*q.xz;',
+'  float b=n3(q/r*2.2+fi*7.0)*0.55+n3(q/r*5.0+fi*3.0)*0.22+(uQ>1?n3(q/r*11.0)*0.08:0.0); return (length(q)-r+r*0.38*(b-0.38))*0.75; }',
+'float mapO(vec3 p,out float id){ float d=1e5; id=-1.0; for(int i=0;i<NR;i++){ if(((cand>>i)&1)==0) continue; float r; vec3 c=rockC(i,r); float di=sdRock(p,c,r,float(i)); if(di<d){ d=di; id=float(i); } }',
+'  if(((cand>>7)&1)==1){ float ds=sdShip(p-vec3(shipP(),0.0)); if(ds<d){ d=ds; id=10.0; } } return d; }',
+'vec3 nrm(vec3 p){ const vec2 e=vec2(1.0,-1.0)*0.0008; float t; return normalize(e.xyy*mapO(p+e.xyy,t)+e.yyx*mapO(p+e.yyx,t)+e.yxy*mapO(p+e.yxy,t)+e.xxx*mapO(p+e.xxx,t)); }',
+'float dens(vec3 p,int oc){ vec3 q=p*1.4+vec3(uTime*0.16,0.0,uTime*0.02); float f=fbm(q,oc); float m=n3(q*0.33+vec3(5.2,1.3,0.0));',
+'  float d=smoothstep(0.47,0.80,f)*smoothstep(0.30,0.62,m); d*=0.15+0.85*smoothstep(0.3,-0.9,p.z); return d*2.2; }',
+'void main(){ vec2 uv=uvOf(); float ar=AR(); int N=uQ==0?40:uQ==1?64:96, OC=uQ==0?3:uQ==1?4:5, NL=uQ==0?2:uQ==1?3:5;',
+'  vec3 ro=vec3(0.0,0.0,2.0), rd=normalize(vec3(uv,-2.0)); vec3 Ls=vec3(ar*0.30,0.22,-2.2); vec3 Lc=vec3(1.0,0.74,0.48);',
+'  cand=candidates(uv,1.9); float tHit=1e5, oid=-1.0; vec3 pH;',
+'  if(cand!=0){ float t=(0.2-ro.z)/rd.z; for(int i=0;i<64;i++){ vec3 p=ro+rd*t; float id; float d=mapO(p,id); if(d<0.0006){ tHit=t; oid=id; pH=p; break; } t+=d; if(p.z<-0.25) break; } }',
+'  float t0=(0.6-ro.z)/rd.z, t1=(-3.6-ro.z)/rd.z, dt=(t1-t0)/float(N); float t=t0+dt*h12(gl_FragCoord.xy+fract(uTime)*91.0);',
+'  vec3 acc=vec3(0.0); float T=1.0; vec2 sp=shipP();',
+'  for(int i=0;i<128;i++){ if(i>=N||T<0.02||t>tHit) break; vec3 p=ro+rd*t; float d=dens(p,OC);',
+'    if(d>0.01){ vec3 Ld=Ls-p; float ld=length(Ld); vec3 l=Ld/ld; float sh=0.0; for(int j=0;j<8;j++){ if(j>=NL) break; sh+=dens(p+l*(0.22*float(j+1)),OC-1); }',
+'      float Tl=exp(-sh*0.22*2.4), ph=0.55+1.2*pow(max(dot(rd,l),0.0),5.0);',
+'      float hue=n3(p*0.7+3.0); vec3 em=mix(mix(vec3(0.02,0.16,0.30),vec3(0.10,0.05,0.40),smoothstep(0.3,0.5,hue)),vec3(0.62,0.08,0.42),smoothstep(0.5,0.75,hue))*0.30; vec3 alb=mix(vec3(1.0,0.50,0.38),vec3(0.40,0.62,1.0),smoothstep(0.35,0.65,hue)); vec3 lc=Lc*alb*Tl*ph*2.6/(1.0+ld*ld*1.1);',
+'      float a=1.0-exp(-d*dt*2.8); acc+=T*a*(em+lc); T*=1.0-a; }',
+'    if(p.x<sp.x){ float back=sp.x-p.x, ty=shipYt(uTime-back/0.7); float dd=(p.y-ty)*(p.y-ty)+p.z*p.z; acc+=T*vec3(0.25,0.75,1.0)*exp(-dd/0.0005)*exp(-back*2.2)*dt*26.0; }',
+'    t+=dt; }',
+'  vec3 col;',
+'  if(oid>=0.0){ vec3 n=nrm(pH); vec3 l=normalize(Ls-pH); float sh=0.0; for(int j=0;j<8;j++){ if(j>=NL+1) break; sh+=dens(pH+l*(0.2*float(j+1)),OC-1); } float Tl=exp(-sh*0.2*2.4);',
+'    float df=max(dot(n,l),0.0), rim=pow(1.0-max(dot(n,-rd),0.0),3.0);',
+'    if(oid>9.0){ vec3 h=normalize(l-rd); col=vec3(0.55,0.62,0.7)*(0.06+df*Tl*1.4)*Lc+pow(max(dot(n,h),0.0),60.0)*Tl*2.0+rim*vec3(0.3,0.6,1.0)*0.5;',
+'      vec3 q=pH-vec3(sp,0.0); col+=vec3(0.3,0.8,1.0)*smoothstep(-0.03,-0.058,q.x)*2.0; }',
+'    else { float g=n3(pH*60.0)*0.5+n3(pH*160.0)*0.25; vec3 alb=mix(vec3(0.30,0.25,0.22),vec3(0.52,0.46,0.40),g);',
+'      col=alb*(0.05+df*Tl*1.5)*Lc+rim*vec3(0.45,0.25,0.75)*0.45; }',
+'    col*=T; }',
+'  else { vec3 bg=vec3(stars(rd,420.0))*vec3(0.9,0.95,1.0); vec3 sd=normalize(Ls-ro); float c=max(dot(rd,sd),0.0);',
+'    bg+=Lc*(pow(c,4000.0)*40.0+pow(c,300.0)*1.5); col=bg*T; }',
+'  fragColor=vec4(tone(acc+col),1.0); }'
+].join('\n');
+
+/* Б — a black hole: light bent step by step around it, the disk swirling and brighter where it comes at us; the stars behind ring round it; rocks and ship lit by the disk */
+var FS_B=COMMON+'\n'+[
+'vec3 bg(vec3 d,int oc){ float f=fbm(d*2.4+vec3(0.0,0.0,uTime*0.01),oc); vec3 c=mix(vec3(0.004,0.006,0.016),vec3(0.06,0.05,0.12),smoothstep(0.35,0.85,f));',
+'  return c+vec3(stars(d,520.0))*vec3(0.85,0.9,1.0)+vec3(stars(d.zxy,260.0))*vec3(1.0,0.85,0.7)*0.6; }',
+'void main(){ vec2 uv=uvOf(); int N=uQ==0?150:uQ==1?240:360, OC=uQ==0?2:uQ==1?3:4; float st=uQ==0?1.0:uQ==1?0.7:0.5;',
+'  vec3 ro=vec3(0.0,1.25,13.5), ta=vec3(-3.6,0.0,0.0), fw=normalize(ta-ro), rt=normalize(cross(fw,vec3(0.0,1.0,0.0))), up=cross(rt,fw);',
+'  vec3 rd=normalize(fw*1.55+uv.x*rt+uv.y*up);',
+'  vec3 p=ro, v=rd; float h2=dot(cross(p,v),cross(p,v)); vec3 col=vec3(0.0); float al=0.0; bool fell=false;',
+'  for(int i=0;i<400;i++){ if(i>=N) break; float r=length(p); float dt=clamp(0.09*r,0.03,1.2)*st;',
+'    v+=-1.5*h2*p/pow(r,5.0)*dt; vec3 np=p+v*dt;',
+'    if(p.y*np.y<0.0){ vec3 c=mix(p,np,p.y/(p.y-np.y)); float rc=length(c);',
+'      if(rc>2.6&&rc<11.5){ vec2 q=rot(uTime*1.6/pow(rc,1.5))*c.xz; float f=fbm(vec3(q*1.25,rc*0.35),OC+1); float f2=n3(vec3(q*5.0,uTime*0.3));',
+'        vec3 tc=mix(vec3(1.0,0.32,0.07),vec3(1.0,0.92,0.78),smoothstep(9.0,3.0,rc)); vec3 vel=normalize(vec3(-c.z,0.0,c.x)); float dop=1.0+0.65*dot(vel,-normalize(v));',
+'        float I=f*f*(0.6+0.8*f2)*2.4*smoothstep(2.6,3.3,rc)*smoothstep(11.5,7.0,rc)*dop*dop*dop; float da=clamp(I*0.85,0.0,1.0);',
+'        col+=(1.0-al)*tc*I*2.2; al+=(1.0-al)*da; } }',
+'    p=np; if(r<1.02){ fell=true; break; } if(r>45.0) break; if(al>0.99) break; }',
+'  if(!fell) col+=(1.0-al)*bg(normalize(v),OC);',
+/* the hole's place on the screen, to light the objects from it */
+'  vec3 d0=normalize(-ro); vec2 hs=vec2(dot(d0,rt),dot(d0,up))/dot(d0,fw)*1.55;',
+'  int cand=candidates(uv,1.05); vec3 lc=vec3(1.0,0.62,0.32);',
+'  for(int i=0;i<NR;i++){ if(((cand>>i)&1)==0) continue; float r; vec3 c=rockC(i,r); vec2 q=(uv-c.xy)/r; float fi=float(i);',
+'    vec2 qr=rot(uTime*0.4+fi)*q; float edge=1.0+0.13*(n3(vec3(qr*2.5,fi))-0.5); float L=length(q)/edge; if(L>1.0) continue;',
+'    float z=sqrt(1.0-L*L); vec3 n=normalize(vec3(q,z)); float bump=n3(vec3(qr*7.0,fi*3.0)); n=normalize(n+vec3(n3(vec3(qr*7.0+0.13,fi*3.0))-bump,n3(vec3(qr*7.0+vec2(0.0,0.13),fi*3.0))-bump,0.0)*3.0);',
+'    vec3 l=normalize(vec3(hs-c.xy,0.35)); float df=max(dot(n,l),0.0); vec3 alb=mix(vec3(0.24,0.21,0.2),vec3(0.46,0.40,0.36),n3(vec3(qr*14.0,fi)));',
+'    vec3 rc=alb*(0.03+df*lc*1.6)+pow(1.0-z,3.0)*lc*0.35; col=mix(col,rc,smoothstep(1.0,0.93,L)); }',
+'  if(((cand>>7)&1)==1){ vec2 s=shipP(); vec2 q=(uv-s)/vec2(0.058,0.016); float L=length(q); if(L<1.0){ float z=sqrt(1.0-L*L); vec3 n=normalize(vec3(q.x*0.3,q.y,z));',
+'    vec3 l=normalize(vec3(hs-s,0.35)); vec3 h=normalize(l+vec3(0.0,0.0,1.0)); vec3 sc=vec3(0.5,0.56,0.62)*(0.05+max(dot(n,l),0.0)*lc*1.3)+pow(max(dot(n,h),0.0),50.0)*lc*1.5;',
+'    sc+=vec3(0.3,0.8,1.0)*smoothstep(-0.6,-0.95,q.x)*1.5; col=mix(col,sc,smoothstep(1.0,0.9,L)); } }',
+'  fragColor=vec4(tone(col),1.0); }'
+].join('\n');
+
+/* В — crystals: the rocks are crystals that reflect the sky and bend it through themselves, split into a rainbow (three colours bent apart); the ship is chrome */
+var FS_C=COMMON+'\n'+[
+'int cand;',
+'vec3 env(vec3 d,int oc){ float f=fbm(d*2.2+vec3(0.0,0.0,uTime*0.02),oc); vec3 c=mix(vec3(0.006,0.008,0.025),vec3(0.17,0.04,0.26),smoothstep(0.42,0.88,f));',
+'  c+=vec3(0.04,0.18,0.36)*smoothstep(0.52,0.9,fbm(d*4.1+3.0,max(oc-1,1)));',
+'  float band=1.0-abs(dot(d,normalize(vec3(0.25,0.9,0.35)))); c+=vec3(0.75,0.7,1.0)*pow(band,10.0)*(0.25+0.9*smoothstep(0.4,0.8,f)); c+=vec3(stars(d,380.0));',
+'  vec3 sd=normalize(vec3(0.55,0.45,0.7)); float s=max(dot(d,sd),0.0); c+=vec3(1.0,0.86,0.62)*(pow(s,900.0)*40.0+pow(s,14.0)*0.22); return c; }',
+'mat3 crot(float fi){ float a=uTime*(0.35+0.3*fract(fi*0.41))+fi*1.7, b=uTime*0.23+fi; mat2 r1=rot(a), r2=rot(b);',
+'  return mat3(vec3(r1[0][0],r1[0][1],0.0),vec3(r1[1][0],r1[1][1],0.0),vec3(0.0,0.0,1.0))*mat3(vec3(1.0,0.0,0.0),vec3(0.0,r2[0][0],r2[0][1]),vec3(0.0,r2[1][0],r2[1][1])); }',
+'float sdCry(vec3 p,vec3 c,float r,float fi){ vec3 q=crot(fi)*(p-c); vec3 a=abs(q); float d1=(a.x*1.25+a.y*0.72+a.z*1.25-r*0.95)*0.55;',
+'  vec3 q2=q; q2.xy=rot(0.9)*q2.xy; q2-=vec3(r*0.38,0.0,0.0); vec3 a2=abs(q2); float d2=(a2.x*1.5+a2.y*0.85+a2.z*1.5-r*0.62)*0.5; return min(d1,d2); }',
+'float mapO(vec3 p,out float id){ float d=1e5; id=-1.0; for(int i=0;i<NR;i++){ if(((cand>>i)&1)==0) continue; float r; vec3 c=rockC(i,r); float di=sdCry(p,c,r,float(i)); if(di<d){ d=di; id=float(i); } }',
+'  if(((cand>>7)&1)==1){ float ds=sdShip(p-vec3(shipP(),0.0)); if(ds<d){ d=ds; id=10.0; } } return d; }',
+'vec3 nrm(vec3 p){ const vec2 e=vec2(1.0,-1.0)*0.0005; float t; return normalize(e.xyy*mapO(p+e.xyy,t)+e.yyx*mapO(p+e.yyx,t)+e.yxy*mapO(p+e.yxy,t)+e.xxx*mapO(p+e.xxx,t)); }',
+/* through the crystal: march inside to the far face, bend out (or bounce once when the light cannot get out) */
+'vec3 through(vec3 p,vec3 rd,vec3 n,float ior,int NI,int OC,vec3 tint){ vec3 d=refract(rd,n,1.0/ior); float t=0.002, len=0.0; vec3 q=p; float id;',
+'  for(int b=0;b<2;b++){ for(int i=0;i<64;i++){ if(i>=NI) break; q=p+d*t; float s=-mapO(q,id); if(s<0.0004) break; t+=max(s,0.0015); }',
+'    len+=t; vec3 m=-nrm(q); vec3 o=refract(d,m,ior); if(dot(o,o)>0.0) return env(o,OC)*exp(-len*tint*30.0);',
+'    d=reflect(d,m); p=q; t=0.002; if(uQ<2) break; }',
+'  return env(d,OC)*exp(-len*tint*30.0)*0.6; }',
+'void main(){ vec2 uv=uvOf(); int N=uQ==0?48:uQ==1?64:96, NI=uQ==0?20:uQ==1?32:48, OC=uQ==0?2:uQ==1?3:4;',
+'  vec3 ro=vec3(0.0,0.0,2.0), rd=normalize(vec3(uv,-2.0)); vec3 col=env(rd,OC);',
+'  cand=candidates(uv,1.6);',
+'  if(cand!=0){ float t=(0.2-ro.z)/rd.z, id=-1.0; bool hit=false; for(int i=0;i<128;i++){ if(i>=N) break; vec3 p=ro+rd*t; float d=mapO(p,id); if(d<0.0004){ hit=true; break; } t+=d; if(p.z<-0.25) break; }',
+'    if(hit){ vec3 p=ro+rd*t; vec3 n=nrm(p); float fr=0.04+0.96*pow(1.0-max(dot(n,-rd),0.0),5.0);',
+'      if(id>9.0){ col=env(reflect(rd,n),OC)*vec3(0.9,0.93,1.0)*(0.35+0.65*fr)+vec3(0.3,0.8,1.0)*smoothstep(-0.03,-0.058,p.x-shipP().x)*2.0; }',
+'      else { vec3 tint=mix(vec3(0.9,0.25,0.05),vec3(0.15,0.95,0.2),fract(id*0.37)); vec3 refl=env(reflect(rd,n),OC); vec3 tr;',
+'        if(uQ==0) tr=through(p,rd,n,1.5,NI,OC,tint);',
+'        else tr=vec3(through(p,rd,n,1.46,NI,OC,tint).r,through(p,rd,n,1.5,NI,OC,tint).g,through(p,rd,n,1.55,NI,OC,tint).b);',
+'        vec3 rr=reflect(rd,n); float sp=pow(max(dot(rr,normalize(vec3(0.55,0.45,0.7))),0.0),60.0)*3.0+pow(max(dot(rr,normalize(vec3(-0.6,-0.3,0.75))),0.0),40.0)*1.2;',
+'        vec3 glow=(vec3(1.0)-tint)*0.20*(0.6+0.4*sin(uTime*2.0+id*1.7));',
+'        col=mix(tr*1.7,refl*1.3,fr)+sp*vec3(1.0,0.95,0.9)+glow+pow(1.0-max(dot(n,-rd),0.0),2.0)*(vec3(1.0)-tint)*0.35; } } }',
+'  fragColor=vec4(tone(col),1.0); }'
+].join('\n');
+
+var FS={A:FS_A,B:FS_B,C:FS_C}, PROG={}, glErr='';
+function compile(type,src){ var s=gl.createShader(type); gl.shaderSource(s,src); gl.compileShader(s); if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){ var e=gl.getShaderInfoLog(s); gl.deleteShader(s); throw new Error(e); } return s; }
+function prog(id){ if(PROG[id]) return PROG[id]; var p=gl.createProgram(); gl.attachShader(p,compile(gl.VERTEX_SHADER,VS)); gl.attachShader(p,compile(gl.FRAGMENT_SHADER,FS[id])); gl.linkProgram(p);
+  if(!gl.getProgramParameter(p,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  return PROG[id]={p:p,res:gl.getUniformLocation(p,'uRes'),time:gl.getUniformLocation(p,'uTime'),q:gl.getUniformLocation(p,'uQ')}; }
+var vao=gl&&gl.createVertexArray();
+function drawGL(t){ if(!gl) return; var P; try{ P=prog(S.scene); glErr=''; }catch(e){ glErr=String(e.message||e).slice(0,400); return; }
+  gl.viewport(0,0,cgl.width,cgl.height); gl.useProgram(P.p); gl.bindVertexArray(vao); gl.uniform2f(P.res,cgl.width,cgl.height); gl.uniform1f(P.time,t); gl.uniform1i(P.q,S.q); gl.drawArrays(gl.TRIANGLES,0,3); }
+
+/* ── WebGPU: scene Е — a galaxy of particles moved on the graphics chip; now and then a rock «bursts» and throws the stars apart ── */
+var cgp=$('#gpu'), G=null, gpuErr='';
+var WGSL=[
+'struct P { p: vec4f, v: vec4f };',
+'struct U { time: f32, dt: f32, ar: f32, n: u32, boom: vec4f, init: u32, psz: f32, gain: f32, pad: f32 };',
+'@group(0) @binding(0) var<storage, read_write> ps: array<P>;',
+'@group(0) @binding(1) var<uniform> u: U;',
+'fn hsh(x: u32) -> u32 { var v = x; v ^= v >> 16u; v *= 0x7feb352du; v ^= v >> 15u; v *= 0x846ca68bu; v ^= v >> 16u; return v; }',
+'fn rnd(x: u32) -> f32 { return f32(hsh(x) >> 8u) / 16777216.0; }',
+'@compute @workgroup_size(256) fn cs(@builtin(global_invocation_id) gid: vec3u) {',
+'  let i = gid.x; if (i >= u.n) { return; }',
+'  var q = ps[i];',
+'  if (u.init == 1u) {',
+'    let r = pow(rnd(i * 3u + 1u), 0.7) * 0.95 + 0.03; let arm = f32(hsh(i * 7u + 2u) % 3u);',
+'    let a = arm * 2.0944 + r * 5.5 + (rnd(i * 5u + 3u) - 0.5) * (0.35 + 0.5 * r);',
+'    let y = (rnd(i * 11u + 4u) - 0.5) * 0.10 * (1.05 - r);',
+'    let sp = sqrt(0.35 / max(r, 0.06)) * 0.92;',
+'    q.p = vec4f(cos(a) * r, y, sin(a) * r, rnd(i * 13u + 5u)); q.v = vec4f(-sin(a) * sp, 0.0, cos(a) * sp, 0.0); ps[i] = q; return; }',
+'  let r2 = dot(q.p.xyz, q.p.xyz) + 0.012; let g = -0.35 * q.p.xyz / (r2 * sqrt(r2));',
+'  var v = q.v.xyz + g * u.dt; v.y -= q.p.y * 2.0 * u.dt;',
+'  let bd = q.p.xyz - u.boom.xyz; let bl = length(bd); var heat = max(q.v.w - u.dt * 0.5, 0.0);',
+'  if (u.boom.w > 0.0 && bl < 0.22) { v += normalize(bd + vec3f(0.0, 0.001, 0.0)) * u.boom.w * (0.22 - bl) * 6.0; heat = 1.0; }',
+'  v *= (1.0 - 0.02 * u.dt); q.v = vec4f(v, heat); q.p = vec4f(q.p.xyz + v * u.dt, q.p.w); ps[i] = q; }',
+'struct VO { @builtin(position) pos: vec4f, @location(0) c: vec3f, @location(1) uv: vec2f };',
+'@group(0) @binding(0) var<storage, read> rp: array<P>;',
+'@group(0) @binding(1) var<uniform> ru: U;',
+'@vertex fn vs(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> VO {',
+'  let q = rp[ii]; let tilt = 1.05; let ct = cos(tilt); let st = sin(tilt); let ro = ru.time * 0.04; let cr = cos(ro); let sr = sin(ro);',
+'  let w = vec3f(q.p.x * cr - q.p.z * sr, q.p.y, q.p.x * sr + q.p.z * cr);',
+'  let cam = vec3f(w.x + 0.42, w.y * ct - w.z * st - 0.05, w.y * st + w.z * ct + 2.1);',
+'  let pr = vec2f(cam.x / cam.z * 1.7 / ru.ar, cam.y / cam.z * 1.7);',
+'  var corners = array<vec2f, 6>(vec2f(-1.0, -1.0), vec2f(1.0, -1.0), vec2f(-1.0, 1.0), vec2f(-1.0, 1.0), vec2f(1.0, -1.0), vec2f(1.0, 1.0));',
+'  let k = corners[vi]; let sz = ru.psz / max(cam.z, 0.3);',
+'  var o: VO; o.pos = vec4f(pr + k * vec2f(sz / ru.ar, sz), 0.0, 1.0);',
+'  let speed = length(q.v.xyz); let rr = length(q.p.xz);',
+'  var c = mix(vec3f(1.0, 0.82, 0.55), vec3f(0.30, 0.45, 1.0), smoothstep(0.05, 0.6, rr));',
+'  c = mix(c, vec3f(1.0, 0.35, 0.75), smoothstep(0.55, 0.9, q.p.w) * 0.6);',
+'  c = mix(c, vec3f(1.0, 0.6, 0.25), q.v.w);',
+'  o.c = c * (0.35 + 0.65 * q.p.w) * ru.gain * (1.0 + 2.0 * q.v.w); o.uv = k; return o; }',
+'@fragment fn fs(i: VO) -> @location(0) vec4f { let d = dot(i.uv, i.uv); if (d > 1.0) { discard; } let a = (1.0 - d) * (1.0 - d); return vec4f(i.c * a, 1.0); }'
+].join('\n');
+var GN=[262144,1048576,2097152];
+function gpuSetup(){ if(G||gpuErr) return; if(!navigator.gpu){ gpuErr='WebGPU нет в этом браузере'; DEV.gpu='нет'; return; }
+  G={ready:false}; navigator.gpu.requestAdapter({powerPreference:'high-performance'}).then(function(ad){ if(!ad) throw new Error('адаптер не выдан');
+    var inf=ad.info||{}; DEV.gpu=[inf.vendor,inf.architecture,inf.description].filter(Boolean).join(' / ')||'есть';
+    return ad.requestDevice().then(function(dev){ G.dev=dev; G.ctx=cgp.getContext('webgpu'); G.fmt=navigator.gpu.getPreferredCanvasFormat();
+      G.ctx.configure({device:dev,format:G.fmt,alphaMode:'opaque'});
+      var mod=dev.createShaderModule({code:WGSL}); if(mod.getCompilationInfo) mod.getCompilationInfo().then(function(ci){ var e=ci.messages.filter(function(m){ return m.type==='error'; }); if(e.length) gpuErr='WGSL: '+e.map(function(m){ return m.lineNum+': '+m.message; }).join('; '); });
+      dev.onuncapturederror=function(ev){ gpuErr='WebGPU: '+(ev.error&&ev.error.message||'ошибка'); }; G.ubuf=dev.createBuffer({size:48,usage:GPUBufferUsage.UNIFORM|GPUBufferUsage.COPY_DST});
+      G.cpipe=dev.createComputePipeline({layout:'auto',compute:{module:mod,entryPoint:'cs'}});
+      G.rpipe=dev.createRenderPipeline({layout:'auto',vertex:{module:mod,entryPoint:'vs'},fragment:{module:mod,entryPoint:'fs',targets:[{format:G.fmt,blend:{color:{srcFactor:'one',dstFactor:'one',operation:'add'},alpha:{srcFactor:'one',dstFactor:'one',operation:'add'}}}]},primitive:{topology:'triangle-list'}});
+      dev.lost.then(function(i){ gpuErr='WebGPU потерян: '+(i&&i.message||''); });
+      G.ready=true; }); }).catch(function(e){ gpuErr='WebGPU: '+(e.message||e); G=null; }); }
+function gpuBuffers(){ var n=GN[S.q]; if(G.n===n) return; if(G.pbuf) G.pbuf.destroy(); G.n=n; G.pbuf=G.dev.createBuffer({size:n*32,usage:GPUBufferUsage.STORAGE});
+  G.cbind=G.dev.createBindGroup({layout:G.cpipe.getBindGroupLayout(0),entries:[{binding:0,resource:{buffer:G.pbuf}},{binding:1,resource:{buffer:G.ubuf}}]});
+  G.rbind=G.dev.createBindGroup({layout:G.rpipe.getBindGroupLayout(0),entries:[{binding:0,resource:{buffer:G.pbuf}},{binding:1,resource:{buffer:G.ubuf}}]}); G.init=true; G.nextBoom=0; }
+var UB=new ArrayBuffer(48), UF=new Float32Array(UB), UU=new Uint32Array(UB);
+function drawGPU(t,dt){ if(!G||!G.ready) return; gpuBuffers(); var boom=0, bx=0, bz=0;
+  if(!G.init&&t>G.nextBoom){ G.nextBoom=t+2.2; var a=Math.random()*6.283, r=0.2+Math.random()*0.6; bx=Math.cos(a)*r; bz=Math.sin(a)*r; boom=1.3; }
+  UF[0]=t; UF[1]=Math.min(dt,1/30); UF[2]=cgp.width/cgp.height; UU[3]=G.n; UF[4]=bx; UF[5]=0; UF[6]=bz; UF[7]=boom; UU[8]=G.init?1:0; UF[9]=2.1*2.2/cgp.height; UF[10]=[0.11,0.05,0.032][S.q]; UF[11]=0;
+  G.dev.queue.writeBuffer(G.ubuf,0,UB); G.init=false;
+  var enc=G.dev.createCommandEncoder(), cp=enc.beginComputePass(); cp.setPipeline(G.cpipe); cp.setBindGroup(0,G.cbind); cp.dispatchWorkgroups(Math.ceil(G.n/256)); cp.end();
+  var rp=enc.beginRenderPass({colorAttachments:[{view:G.ctx.getCurrentTexture().createView(),clearValue:{r:0,g:0,b:0.008,a:1},loadOp:'clear',storeOp:'store'}]});
+  rp.setPipeline(G.rpipe); rp.setBindGroup(0,G.rbind); rp.draw(6,G.n); rp.end(); G.dev.queue.submit([enc.finish()]); }
+
+/* ── size, buttons ── */
+function cur(){ return S.scene==='E'?cgp:cgl; }
+function resize(){ var c=cur(), w=Math.max(1,Math.round(innerWidth*S.scale)), h=Math.max(1,Math.round(innerHeight*S.scale)); if(c.width!==w||c.height!==h){ c.width=w; c.height=h; } }
+function setScene(id){ S.scene=id; store.set('bench_scene',id); cgl.style.display=id==='E'?'none':'block'; cgp.style.display=id==='E'?'block':'none'; if(id==='E') gpuSetup(); resize(); paintUI(); }
+function paintUI(){ document.querySelectorAll('[data-scene]').forEach(function(b){ b.classList.toggle('on',b.getAttribute('data-scene')===S.scene); b.disabled=!!S.run; });
+  $('#bq').textContent='качество: '+QN[S.q]; $('#bs').textContent='разрешение: '+S.scale+'×'; ['#bq','#bs'].forEach(function(s){ $(s).disabled=!!S.run; });
+  $('#bceil').textContent=S.run&&S.run.kind==='ceil'?'стоп':'потолок 30 с'; $('#bheat').textContent=S.run&&S.run.kind==='heat'?'стоп':'нагрев 3 мин';
+  $('#bceil').disabled=!!S.run&&S.run.kind!=='ceil'; $('#bheat').disabled=!!S.run&&S.run.kind!=='heat'; }
+document.querySelectorAll('[data-scene]').forEach(function(b){ b.onclick=function(){ setScene(b.getAttribute('data-scene')); }; });
+$('#bq').onclick=function(){ S.q=(S.q+1)%3; store.set('bench_q',S.q); paintUI(); };
+$('#bs').onclick=function(){ var a=scales(), i=a.indexOf(S.scale); S.scale=a[(i+1)%a.length]; resize(); paintUI(); };
+$('#bceil').onclick=function(){ if(S.run) stopRun(true); else startRun('ceil'); };
+$('#bheat').onclick=function(){ if(S.run) stopRun(true); else startRun('heat'); };
+$('#bhide').onclick=function(e){ e.stopPropagation(); document.body.classList.add('clean'); };
+document.addEventListener('pointerup',function(e){ if(document.body.classList.contains('clean')&&e.target.tagName==='CANVAS'){ document.body.classList.remove('clean'); } });
+$('#bsum').onclick=function(){ $('#sum').textContent=summary(); $('#panel').style.display='flex'; };
+$('#pclose').onclick=function(){ $('#panel').style.display='none'; };
+$('#pclear').onclick=function(){ store.set('bench_results','[]'); $('#sum').textContent=summary(); };
+$('#pcopy').onclick=function(){ var t=summary(); var done=function(){ $('#pcopy').textContent='скопировано'; setTimeout(function(){ $('#pcopy').textContent='копировать'; },1500); };
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done,function(){ fallbackCopy(t); done(); }); else { fallbackCopy(t); done(); } };
+function fallbackCopy(t){ var a=document.createElement('textarea'); a.value=t; document.body.appendChild(a); a.select(); try{ document.execCommand('copy'); }catch(e){} a.remove(); }
+addEventListener('resize',function(){ resize(); });
+
+/* ── measuring: frames per second each second; the page's own code late (the sonar runs there in the game) ── */
+var sec={t:0,n:0}, live=[], lagsSec=0;
+(function probe(){ var exp=performance.now()+10; setTimeout(function(){ var late=Math.max(0,performance.now()-exp); lagsSec=Math.max(lagsSec,late); if(S.run) S.run.lags.push(late); probe(); },10); })();
+function med(a){ if(!a.length) return 0; var b=a.slice().sort(function(x,y){ return x-y; }); return b[Math.floor(b.length/2)]; }
+function pct(a,p){ if(!a.length) return 0; var b=a.slice().sort(function(x,y){ return x-y; }); return b[Math.min(b.length-1,Math.floor(b.length*p))]; }
+function resTxt(){ var c=cur(); return c.width+'×'+c.height; }
+function startRun(kind){ S.run={kind:kind,t0:performance.now(),fps:[],lags:[],scene:S.scene,q:S.q,scale:S.scale,res:resTxt(),steps:[],hidden:false};
+  if(kind==='ceil'){ S.run.keep=S.scale; S.run.list=scales(); S.run.i=0; S.scale=S.run.list[0]; S.run.stepT=performance.now(); resize(); S.run.res=''; }
+  paintUI(); }
+function stopRun(cancel){ var r=S.run; S.run=null; if(r&&r.kind==='ceil'){ S.scale=r.keep; resize(); }
+  if(r&&!cancel&&!r.hidden) save(r); paintUI(); if(r&&!cancel){ $('#sum').textContent=summary(); $('#panel').style.display='flex'; } }
+document.addEventListener('visibilitychange',function(){ if(document.hidden&&S.run) S.run.hidden=true; });
+function onSecond(fps){ live.push(fps); if(live.length>180) live.shift(); var r=S.run; if(!r) return; var el=(performance.now()-r.t0)/1000;
+  if(r.kind==='heat'){ r.fps.push(fps); if(el>=180) stopRun(false); }
+  else { var st=(performance.now()-r.stepT)/1000; if(st>=1.5) r.fps.push(fps);   /* the first second and a half at a new size is warm-up */
+    if(st>=6){ r.steps.push({scale:S.scale,res:resTxt(),fps:med(r.fps)}); r.fps=[]; r.i++; if(r.i>=r.list.length){ stopRun(false); return; } S.scale=r.list[r.i]; resize(); r.stepT=performance.now(); } } }
+function save(r){ var a; try{ a=JSON.parse(store.get('bench_results','[]')); }catch(e){ a=[]; }
+  var o={kind:r.kind,scene:r.scene,q:r.q,at:new Date().toTimeString().slice(0,5),lagP95:+pct(r.lags,0.95).toFixed(1),lagMax:+pct(r.lags,1).toFixed(1)};
+  if(r.kind==='heat'){ o.scale=r.scale; o.res=r.res; o.first=+med(r.fps.slice(0,30)).toFixed(1); o.last=+med(r.fps.slice(-30)).toFixed(1); o.min=+Math.min.apply(null,r.fps).toFixed(1); o.series=r.fps.map(function(x){ return Math.round(x); }); }
+  else { o.steps=r.steps.map(function(s){ return {scale:s.scale,res:s.res,fps:+s.fps.toFixed(1)}; }); var ok=o.steps.filter(function(s){ return s.fps>=S.hz*0.9; }); o.ceil=ok.length?ok[ok.length-1].scale:0; }
+  a.push(o); store.set('bench_results',JSON.stringify(a)); }
+function summary(){ var a; try{ a=JSON.parse(store.get('bench_results','[]')); }catch(e){ a=[]; }
+  var L=['Sonaroids · стенд графики · '+new Date().toLocaleString('ru-RU'),devLine(),''];
+  if(!a.length) L.push('Пока пусто. Выбери сцену и нажми «потолок 30 с» или «нагрев 3 мин».');
+  a.forEach(function(o){ var h=NAMES[o.scene]+', кач. '+QN[o.q]+' ['+o.at+']: ';
+    if(o.kind==='ceil') L.push(h+'потолок '+(o.ceil?o.ceil+'×':'ниже 1×')+' — '+o.steps.map(function(s){ return s.scale+'× '+s.fps; }).join(', ')+' к/с; опоздание кода p95 '+o.lagP95+' мс');
+    else L.push(h+'нагрев 3 мин на '+o.scale+'× ('+o.res+'): начало '+o.first+', конец '+o.last+', минимум '+o.min+' к/с; опоздание кода p95 '+o.lagP95+', макс '+o.lagMax+' мс'+(o.series?' · по 10 с: '+o.series.filter(function(x,i){ return i%10===0; }).join(' '):'')); });
+  return L.join('\n'); }
+
+/* ── the graph and the line at the bottom ── */
+var gc=$('#graph'), gx=gc.getContext('2d');
+function paintGraph(){ var w=gc.clientWidth*DPR, h=gc.clientHeight*DPR; if(gc.width!==w){ gc.width=w; gc.height=h; } gx.clearRect(0,0,w,h);
+  var src=S.run&&S.run.kind==='heat'?S.run.fps:live, n=S.run&&S.run.kind==='heat'?180:Math.max(60,src.length), top=S.hz*1.1, pad=4*DPR;
+  gx.strokeStyle='rgba(255,255,255,.18)'; gx.lineWidth=DPR; [S.hz,S.hz/2].forEach(function(v){ var y=h-pad-(h-2*pad)*v/top; gx.beginPath(); gx.moveTo(pad,y); gx.lineTo(w-pad,y); gx.stroke(); });
+  gx.fillStyle='rgba(255,255,255,.45)'; gx.font=(10*DPR)+'px sans-serif'; gx.fillText(S.hz+'',pad+2,h-pad-(h-2*pad)*S.hz/top-2*DPR); gx.fillText(S.hz/2+'',pad+2,h-pad-(h-2*pad)*S.hz/2/top-2*DPR);
+  gx.strokeStyle='#7fe3c6'; gx.lineWidth=1.5*DPR; gx.beginPath(); src.forEach(function(v,i){ var x=pad+(w-2*pad)*i/(n-1), y=h-pad-(h-2*pad)*Math.min(v,top)/top; if(i) gx.lineTo(x,y); else gx.moveTo(x,y); }); gx.stroke(); }
+var lastFps=0, lastLag=0;
+function paintHud(){ var r=S.run, st='';
+  if(S.calib) st='\nзамер частоты экрана…';
+  else if(r&&r.kind==='heat'){ var el=(performance.now()-r.t0)/1000; st='\nнагрев: '+Math.floor(el/60)+':'+('0'+Math.floor(el%60)).slice(-2)+' из 3:00'+(r.hidden?' (прервано: страница уходила в фон)':''); }
+  else if(r) st='\nпотолок: '+S.scale+'× ('+(r.i+1)+' из '+r.list.length+')';
+  var err=S.scene==='E'?(gpuErr||(G&&!G.ready?'запускаю WebGPU…':'')):glErr;
+  $('#hud').innerHTML='<b>'+NAMES[S.scene]+'</b> · '+QN[S.q]+(S.scene==='E'&&G&&G.n?' ('+(G.n/1048576>=1?(G.n/1048576)+' млн':(G.n/1024)+' тыс')+' частиц)':'')+' · '+S.scale+'× ('+resTxt()+')\n'+
+    '<b>'+lastFps.toFixed(1)+'</b> к/с из '+S.hz+' · код страницы опаздывает до '+lastLag.toFixed(0)+' мс'+st+(err?'\n⚠ '+err.replace(/</g,'&lt;'):''); }
+
+/* ── the loop ── */
+var last=0, calibT=[], STILL=(function(){ var u=new URLSearchParams(location.search); return u.get('still')?{scene:u.get('still'),t:+(u.get('t')||10),q:+(u.get('q')||1),s:+(u.get('s')||1)}:null; })();
+if(STILL){ S.scene=STILL.scene; S.q=STILL.q; S.scale=STILL.s; document.body.classList.add('clean'); }
+function frame(now){ if(!(STILL&&document.title==='done')) requestAnimationFrame(frame); if(STILL&&STILL.scene!=='E'&&S.calib){ S.calib=false; } var dt=last?(now-last)/1000:1/60; last=now;
+  if(S.calib){ calibT.push(now); if(now-calibT[0]>1200&&calibT.length>20){ var d=[]; for(var i=1;i<calibT.length;i++) d.push(calibT[i]-calibT[i-1]); var hz=1000/med(d);
+      S.hz=[30,60,90,120,144].reduce(function(a,b){ return Math.abs(b-hz)<Math.abs(a-hz)?b:a; }); S.calib=false; sec={t:now,n:0}; } paintHud(); return; }
+  if(STILL&&STILL.scene!=='E'){ resize(); drawGL(STILL.t); gl.finish(); document.title='done'; return; }
+  var t=(now-S.t0)/1000; if(S.scene==='E') drawGPU(t,dt); else drawGL(t);
+  sec.n++; if(now-sec.t>=1000){ lastFps=sec.n*1000/(now-sec.t); lastLag=lagsSec; lagsSec=0; sec={t:now,n:0}; onSecond(lastFps); paintGraph(); paintHud(); } }
+setScene(S.scene); if(navigator.gpu&&S.scene!=='E') navigator.gpu.requestAdapter().then(function(ad){ var inf=ad&&ad.info||{}; if(DEV.gpu==='проверяю…') DEV.gpu=ad?([inf.vendor,inf.architecture].filter(Boolean).join(' / ')||'есть'):'нет адаптера'; }).catch(function(){ DEV.gpu='ошибка'; }); else if(!navigator.gpu) DEV.gpu='нет';
+paintHud(); requestAnimationFrame(frame);
+window.__bench={S:S,drawGL:drawGL,drawGPU:drawGPU,setScene:setScene,summary:summary,errs:function(){ return {gl:glErr,gpu:gpuErr,gpuReady:!!(G&&G.ready)}; }};
+</script>
+</body>
+</html>

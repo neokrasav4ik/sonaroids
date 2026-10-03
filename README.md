@@ -108,7 +108,7 @@ A player is a random key kept on the phone; the server stores only its hash. Wit
 | path | what's inside |
 |---|---|
 | `src/` | the games' source in numbered parts; `build.py` joins them into one file, `game/play/index.html` |
-| `game/` | the site: `index.html` sends visitors into the games, `play/` is the games (built file, icons, manifest, service worker), `font.js`, `robots.txt` |
+| `game/` | the site: `index.html` sends visitors into the games, `play/` is the games (built file, icons, manifest, service worker), `font.js`, `robots.txt`; `bench/` — a graphics test bench, not a game: four scenes on the graphics chip (WebGL 2 and WebGPU) to see what a flagship phone can carry |
 | `server/` | the high-score server (api.sonaroids.app): `server.js`, the bots (`bots.js`, `botplay.js`), backups, stats, systemd unit, Caddy and nginx configs. Install: `server/README.md`, in Russian `docs/ru/server.md` |
 | `android/` | the Android app: a WebView over sonaroids.app/play/ with its own sound, volume, file saving and self-update. Built on GitHub Actions into the latest release (`android/README.md`, in Russian) |
 | `tests/` | the games' and the server's checks: `sh tests/run.sh` |

@@ -65,32 +65,32 @@ function sparkleAt(c,x,y,r,col){ c.fillStyle=col; c.beginPath(); c.moveTo(x,y-r)
 HDSK.space={id:'space', hd:true, glow:true, veil:'rgba(10,8,30,0.55)', motes:['#ffecd6','#f5dec8','#bea0aa','#ffe8c8','#ffd6aa'],   // v1.27: the stars warm (were lilac and cyan), so the blue plasma shots are not taken for them
  
   /* the wide sheet (twice the screen, wrapping): gradient, nebula clouds, swirls, dust, far galaxies, little planets */
-  bgMake:function(){ var w=LW*2, h=LH, o=hdOff(w,h,Math.min(hs,2)), x=o.x, R2=srand(21), i;
-    var gr=x.createLinearGradient(0,0,0,h); gr.addColorStop(0,'#131943'); gr.addColorStop(0.55,'#1f1a4e'); gr.addColorStop(1,'#2e174c'); x.fillStyle=gr; x.fillRect(0,0,w,h);
+  bgMake:function(){ var w=LW*2, h=LH, o=hdOff(w,h,Math.min(hs,2)), x=o.x, R2=srand(21), i, T=spaceTint;   // 1.33: every colour graphite («В2»)
+    var gr=x.createLinearGradient(0,0,0,h); gr.addColorStop(0,T('#131943')); gr.addColorStop(0.55,T('#1f1a4e')); gr.addColorStop(1,T('#2e174c')); x.fillStyle=gr; x.fillRect(0,0,w,h);
     var wrap=function(cx,r,fn){ fn(cx); if(cx-r<0) fn(cx+w); if(cx+r>w) fn(cx-w); };
     // nebulae: three clusters of soft clouds, each cloud a gradient lit from the top left, pale cores, a few swirl lines
-    [[0.18,0.34,['#7a4fd0','#2c2a78'],['#b25cc8','#4a2a88'],['#ffb0e0','#9a4ab8']],
-     [0.55,0.72,['#3f6ad8','#1e2a70'],['#5a9ae8','#2a3a88'],['#b8f0ff','#4a7ac8']],
-     [0.86,0.4,['#a04ac0','#3a1a6a'],['#e06ab0','#6a2a88'],['#ffd0a8','#c05a90']]].forEach(function(q){
+    [[0.18,0.34,[T('#7a4fd0'),T('#2c2a78')],[T('#b25cc8'),T('#4a2a88')],[T('#ffb0e0'),T('#9a4ab8')]],
+     [0.55,0.72,[T('#3f6ad8'),T('#1e2a70')],[T('#5a9ae8'),T('#2a3a88')],[T('#b8f0ff'),T('#4a7ac8')]],
+     [0.86,0.4,[T('#a04ac0'),T('#3a1a6a')],[T('#e06ab0'),T('#6a2a88')],[T('#ffd0a8'),T('#c05a90')]]].forEach(function(q){
       var cx0=q[0]*w, cy0=q[1]*h, W0=w*0.13, H0=h*0.2;
       for(var k=0;k<7;k++){ var cx=cx0+(R2()-0.5)*W0*1.6, cy=cy0+(R2()-0.5)*H0*1.2, rx=W0*(0.35+R2()*0.45), ry=H0*(0.3+R2()*0.35), pal=k<4?q[2]:q[3], pts=blobPts(0,0,rx,ry,R2,12);
         wrap(cx,rx*1.3,function(px){ x.save(); x.translate(px,cy); x.globalAlpha=0.5; var g2=x.createRadialGradient(-rx*0.3,-ry*0.4,1,0,0,Math.max(rx,ry)); g2.addColorStop(0,pal[0]); g2.addColorStop(1,pal[1]); x.fillStyle=g2; inkSmooth(x,pts); x.fill(); x.restore(); }); }
       for(k=0;k<2;k++){ var ccx=cx0+(R2()-0.5)*W0*0.6, ccy=cy0+(R2()-0.5)*H0*0.4, crx=W0*(0.2+R2()*0.15), cry=H0*(0.12+R2()*0.08), cp=blobPts(0,0,crx,cry,R2,10);
         wrap(ccx,crx*1.3,function(px){ x.save(); x.translate(px,ccy); x.globalAlpha=0.42; var g3=x.createRadialGradient(-crx*0.3,-cry*0.3,0.5,0,0,crx); g3.addColorStop(0,q[4][0]); g3.addColorStop(1,q[4][1]); x.fillStyle=g3; inkSmooth(x,cp); x.fill(); x.restore(); }); }
-      x.strokeStyle='rgba(220,190,255,0.28)'; x.lineWidth=0.7; x.lineCap='round';
+      x.strokeStyle=T('rgba(220,190,255,0.28)'); x.lineWidth=0.7; x.lineCap='round';
       for(k=0;k<3;k++){ var sx=cx0-W0*0.8+R2()*W0*0.6, sy=cy0+(R2()-0.5)*H0*0.8, L=W0*(0.8+R2()*0.8);
         wrap(sx+L/2,L,function(px){ var a0=px-L/2; x.beginPath(); x.moveTo(a0,sy); x.bezierCurveTo(a0+L*0.3,sy-10,a0+L*0.6,sy+12,a0+L,sy-2); x.stroke(); }); } });
     // dust: tiny dots in three tints
-    for(i=0;i<Math.round(w*h/110);i++){ var z=R2(); x.fillStyle=z>0.85?'rgba(255,240,200,0.7)':z>0.5?'rgba(190,180,255,0.45)':'rgba(120,110,200,0.4)'; x.beginPath(); x.arc(R2()*w,R2()*h,0.2+z*0.35,0,6.2832); x.fill(); }
+    for(i=0;i<Math.round(w*h/110);i++){ var z=R2(); x.fillStyle=z>0.85?T('rgba(255,240,200,0.7)'):z>0.5?T('rgba(190,180,255,0.45)'):T('rgba(120,110,200,0.4)'); x.beginPath(); x.arc(R2()*w,R2()*h,0.2+z*0.35,0,6.2832); x.fill(); }
     // two far spiral galaxies
     [[0.4,0.16,1],[0.95,0.8,0.7]].forEach(function(gq){ var gx=gq[0]*w, gy=gq[1]*h, sc=gq[2];
       wrap(gx,14,function(px){ x.save(); x.translate(px,gy); x.rotate(-0.4); x.scale(sc,0.45*sc); x.lineCap='round';
-        for(var a=0;a<2;a++){ x.strokeStyle=a?'rgba(255,200,240,0.5)':'rgba(160,200,255,0.5)'; x.lineWidth=1.1; x.beginPath(); for(var t=0;t<9;t+=0.2){ var rr=t*1.3; x.lineTo(Math.cos(t+a*3.14)*rr,Math.sin(t+a*3.14)*rr); } x.stroke(); }
-        var gg=x.createRadialGradient(0,0,0,0,0,4); gg.addColorStop(0,'#fff6d8'); gg.addColorStop(1,'rgba(255,230,200,0)'); x.fillStyle=gg; x.beginPath(); x.arc(0,0,4,0,6.2832); x.fill(); x.restore(); }); });
+        for(var a=0;a<2;a++){ x.strokeStyle=a?T('rgba(255,200,240,0.5)'):T('rgba(160,200,255,0.5)'); x.lineWidth=1.1; x.beginPath(); for(var t=0;t<9;t+=0.2){ var rr=t*1.3; x.lineTo(Math.cos(t+a*3.14)*rr,Math.sin(t+a*3.14)*rr); } x.stroke(); }
+        var gg=x.createRadialGradient(0,0,0,0,0,4); gg.addColorStop(0,T('#fff6d8')); gg.addColorStop(1,T('rgba(255,230,200,0)')); x.fillStyle=gg; x.beginPath(); x.arc(0,0,4,0,6.2832); x.fill(); x.restore(); }); });
     // little far planets: flat, a soft shade, a thin ink line
-    [[0.08,0.8,4,'#7fd0c8','#2f6a80'],[0.66,0.22,3,'#f0a0b8','#8a3a70'],[0.3,0.9,2.4,'#c8b8ff','#5a4aa0']].forEach(function(pq){ var qx=pq[0]*w, qy=pq[1]*h, r=pq[2];
+    [[0.08,0.8,4,T('#7fd0c8'),T('#2f6a80')],[0.66,0.22,3,T('#f0a0b8'),T('#8a3a70')],[0.3,0.9,2.4,T('#c8b8ff'),T('#5a4aa0')]].forEach(function(pq){ var qx=pq[0]*w, qy=pq[1]*h, r=pq[2];
       wrap(qx,r,function(px){ var pg=x.createRadialGradient(px-r*0.4,qy-r*0.4,r*0.2,px,qy,r); pg.addColorStop(0,pq[3]); pg.addColorStop(1,pq[4]); x.fillStyle=pg; x.beginPath(); x.arc(px,qy,r,0,6.2832); x.fill();
-        x.strokeStyle='rgba(20,16,50,0.45)'; x.lineWidth=0.4; x.stroke(); }); });
+        x.strokeStyle=T('rgba(20,16,50,0.45)'); x.lineWidth=0.4; x.stroke(); }); });
     return o.c; },
   /* the big ringed planet with a storm and a moon — its own sprite, drifting slower than the sheet */
   planetMake:function(){ var o=hdOff(120,80), x=o.x, px=58, py=42, pr=22;

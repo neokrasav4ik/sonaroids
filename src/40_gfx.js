@@ -45,9 +45,19 @@ function resize(){
 function noise2(){ var g=[],N=16,i; for(i=0;i<N*N;i++) g.push(Math.random());
   return function(x,y){ var xi=Math.floor(x),yi=Math.floor(y),fx=x-xi,fy=y-yi; function v(a,b){ return g[((a%N+N)%N)+((b%N+N)%N)*N]; }
     var sx=fx*fx*(3-2*fx), sy=fy*fy*(3-2*fy); return (v(xi,yi)*(1-sx)+v(xi+1,yi)*sx)*(1-sy)+(v(xi,yi+1)*(1-sx)+v(xi+1,yi+1)*sx)*sy; }; }
+/* 1.33, the space skin's sky «В2» (the maintainer: «мир космоса сильно фиолетовый и напоминает мир неона.. можем как-то сместить его цветовую гамму не углубляясь
+   в настройку всех объектов»): every colour the sky is painted with goes through spaceTint — graphite: hues pulled to a grey-blue (212°),
+   colour to 45%, a shade darker. The ship, rocks, saucers and shots keep theirs. Takes '#rrggbb' or 'rgba(r,g,b,a)', gives the same kind back */
+function spaceTint(c){ var m=/^#([0-9a-f]{6})$/i.exec(c), n, A=null;
+  if(m){ n=parseInt(m[1],16); n=[n>>16,(n>>8)&255,n&255]; } else { m=/rgba?\(([^)]*)\)/.exec(c); if(!m) return c; n=m[1].split(',').map(Number); A=n.length>3?n[3]:1; }
+  var r=n[0]/255, g=n[1]/255, b=n[2]/255, mx=Math.max(r,g,b), mn=Math.min(r,g,b), l=(mx+mn)/2, s0=0, h=0, dd=mx-mn;
+  if(dd>0){ s0=l>0.5?dd/(2-mx-mn):dd/(mx+mn); h=(mx===r?((g-b)/dd+(g<b?6:0)):mx===g?((b-r)/dd+2):((r-g)/dd+4))*60; }
+  var H=(((212+(((h-212+540)%360)-180)*0.2)%360+360)%360)/360, S=s0*0.45, L=l*0.85, q=L<0.5?L*(1+S):L+S-L*S, p=2*L-q;
+  var f=function(t){ t=t<0?t+1:t>1?t-1:t; return Math.round((t<1/6?p+(q-p)*6*t:t<0.5?q:t<2/3?p+(q-p)*(2/3-t)*6:p)*255); }, o=[f(H+1/3),f(H),f(H-1/3)];
+  return A===null?'#'+((1<<24)|(o[0]<<16)|(o[1]<<8)|o[2]).toString(16).slice(1):'rgba('+o[0]+','+o[1]+','+o[2]+','+A+')'; }
 function makeNebula(){
   var w=LW*2, h=LH; nebC=document.createElement('canvas'); nebC.width=w; nebC.height=h;
-  var c=nebC.getContext('2d'), im=c.createImageData(w,h), n1=noise2(), n2=noise2(), cols=P.neb.map(hex), bg=hex(P.bg);
+  var c=nebC.getContext('2d'), im=c.createImageData(w,h), n1=noise2(), n2=noise2(), cols=P.neb.map(function(c){ return hex(spaceTint(c)); }), bg=hex(spaceTint(P.bg));   // 1.33: graphite
   for(var y=0;y<h;y++) for(var x=0;x<w;x++){
     var u=x/w*6, v=y/h*3.2, a=n1(u,v)*0.65+n2(u*2.1,v*2.1)*0.35, t=(a-0.42)*2.6, d=bay(x,y), idx=-1;
     if(t>0.75+(d-0.5)*0.25) idx=2; else if(t>0.35+(d-0.5)*0.3) idx=1; else if(t>0.02+(d-0.5)*0.35) idx=0;

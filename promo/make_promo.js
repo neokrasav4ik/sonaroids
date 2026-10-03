@@ -8,13 +8,15 @@
 const {chromium}=require('playwright'), fs=require('fs'), path=require('path'), G=require('./promo_game.js');
 /* PROMO=pixel (v1.05, the maintainer: «вариант нашей промогифки с играми на телефоне в графике пикселей, для сообществ ретроигр» — the hand and
    the phone in HD, the games on the screen in pixels) → promo/frames_promo_pixel/, then PROMO=pixel python3 promo/make_promo.py */
-const PV=process.env.PROMO==='pixel'?'pixel':'hd';
-const OUT=path.join(__dirname,PV==='pixel'?'frames_promo_pixel':'frames_promo'), T=15, FPS=20, N=T*FPS, Q=N/4, X=2;   // X — rendered at twice the GIF's size
+const PV=process.env.PROMO==='pixel'?'pixel':process.env.PROMO==='mix'?'mix':'hd';
+/* PROMO=mix (v1.32, the maintainer: «демонстрацию этой фишки например сонофлая: космос-вектор-тетрадка-неон-космос») — one SonaFly flight, its skin
+   playlist changing the world every 3 s with the game's own torn-sheet change → promo/frames_promo_mix/, then PROMO=mix python3 promo/make_promo.py */
+const OUT=path.join(__dirname,PV==='pixel'?'frames_promo_pixel':PV==='mix'?'frames_promo_mix':'frames_promo'), T=15, FPS=20, N=T*FPS, Q=N/4, X=2;   // X — rendered at twice the GIF's size
 /* the palm: 0 — near the phone (the ship low), 1 — far (high); loops every T seconds (Den's pick «второй») */
 const U=t=>0.5+0.3*Math.sin(2*Math.PI*t*4/T)+0.14*Math.sin(2*Math.PI*t*11/T+1.0);
 const GAMES=[{fly:'space',k:0.84,b:0.08,warm:2},{race:'note',k:0.44,b:0.28,warm:2},{fly:'neon',k:0.84,b:0.08,warm:3},{race:'candy',k:0.44,b:0.28,warm:9}].map(g=>Object.assign(g,{gfx:PV}));
 const PW=530, PH=248, TH=24, SW=500, SH=231, CX=310, CY=240, RIG='rotateY(18deg)';
-function scene(mode,lang){
+function scene(mode,lang,hi){
   const sub=lang==='ru'?'ИГРЫ, КОТОРЫМИ УПРАВЛЯЕТ ЛАДОНЬ В ВОЗДУХЕ':'GAMES YOU PLAY WITH YOUR PALM IN MID-AIR';
   let s=7, rnd=()=>{ s=(s*16807)%2147483647; return s/2147483647; }, stars='';
   for(let i=0;i<90;i++){ const x=rnd()*800, y=rnd()*450, r=rnd()<0.1?1.4:0.7+rnd()*0.5, a=0.3+rnd()*0.6; stars+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(2)}" fill="${rnd()<0.2?'#FFE9D6':'#B89BB2'}" opacity="${a.toFixed(2)}"/>`; }
@@ -45,21 +47,38 @@ function scene(mode,lang){
   <div class="stage"><div class="rig"><div class="f back"></div><div class="f side top"></div><div class="f side bot"></div>
     <div class="f side rgt"><div class="port"></div></div><div class="f side lft"></div>
     <div class="f front"><div class="scr"><i style="left:0;top:0"></i><i style="right:0;top:0"></i><i style="right:0;bottom:0"></i><i style="left:0;bottom:0"></i></div><div class="isl"></div><div class="glare"></div></div>
-  </div></div><div class="s">${sub}</div></body></html>`; }
-(async()=>{ fs.rmSync(OUT,{recursive:true,force:true}); fs.mkdirSync(OUT,{recursive:true});
+  </div></div>${PV==='mix'?pills(lang,mode,hi):`<div class="s">${sub}</div>`}</body></html>`; }
+/* v1.32, the playlist GIF's caption «Б1» (the maintainer: «вместо "ладонь в воздухе" — "сонар-управление (ладонь в воздухе вместо кнопок)"»):
+   two plates, a title and a line under it in each */
+function pills(lang,mode,hi){ if(mode!=='sub') return '';   // hi — which world of the four is on now: its square lit (the maintainer: «квадратики подсвечиваться по очереди со сменой миров»)
+  const T=lang==='ru'?{a:'СОНАР-УПРАВЛЕНИЕ',as:'ладонь в воздухе вместо кнопок',b:'ПЛЕЙЛИСТ СКИНОВ',bs:'мир меняется прямо в полёте'}:{a:'SONAR CONTROL',as:'your palm in mid-air instead of buttons',b:'SKIN PLAYLIST',bs:'the world changes mid-flight'};
+  const HAND='<svg width="24" height="26" viewBox="0 0 22 24"><path d="M5 22 C2 18 2 14 3 11 L3 6 C3 4.6 5 4.6 5 6 L5 11 L6 3 C6 1.6 8 1.6 8 3 L8 10 L9 2 C9 0.6 11 0.6 11 2 L11 10 L12 3.5 C12 2.1 14 2.1 14 3.5 L14 12 L16 9 C17 7.6 19 8.6 18 10 L15 17 C14 20 12 22 10 22 Z" fill="none" stroke="#7FE0C8" stroke-width="1.6"/><path d="M17 3 a5 5 0 0 1 3 4 M18.5 0.8 a8 8 0 0 1 3 6" stroke="#FFB347" stroke-width="1.4" fill="none"/></svg>';
+  const SQ=[[0,1,'#3a2f6e'],[11,1,'#000'],[22,1,'#fff8e8'],[5.5,11,'#5a1f6e'],[16.5,11,'#a8c83a']];   // space, vector, notebook, neon, LCD — the playlist's order
+  const PL='<svg width="38" height="26" viewBox="-1 -1 33 21" style="overflow:visible">'+SQ.map((q,k)=>k===hi?`<rect x="${q[0]-1.2}" y="${q[1]-1.2}" width="11.4" height="9.4" rx="2.2" fill="none" stroke="#7FE0C8" stroke-width="1" opacity=".55" style="filter:drop-shadow(0 0 2.5px #7FE0C8)"/><rect x="${q[0]}" y="${q[1]}" width="9" height="7" rx="1.5" fill="${q[2]}" stroke="#fff" stroke-width="1.5"/>`:
+    `<rect x="${q[0]}" y="${q[1]}" width="9" height="7" rx="1.5" fill="${q[2]}" stroke="#7FE0C8" stroke-width=".8" opacity=".38"/>`).join('')+'</svg>';
+  const st='position:absolute;top:394px;height:48px;border-radius:14px;border:2px solid #7FE0C8;background:rgba(27,26,46,.9);color:#E9E4F0;display:flex;align-items:center;gap:11px;padding:0 15px;box-shadow:0 0 14px rgba(127,224,200,.18);box-sizing:border-box';
+  const tx=(t,u)=>`<div style="display:flex;flex-direction:column;line-height:1.15"><b style="font:800 17px system-ui,sans-serif;letter-spacing:.5px">${t}</b><small style="font:600 12.5px system-ui,sans-serif;color:#C9A9B6;letter-spacing:.3px">${u}</small></div>`;
+  return `<div id="pa" style="${st}">${HAND}${tx(T.a,T.as)}</div><div id="pb" style="${st}">${PL}${tx(T.b,T.bs)}</div>
+  <script>{ const a=document.getElementById('pa'), b=document.getElementById('pb'), gap=26, w=a.offsetWidth+gap+b.offsetWidth, x0=Math.round((690-w)/2); a.style.left=x0+'px'; b.style.left=(x0+a.offsetWidth+gap)+'px'; }</script>`; }
+(async()=>{ if(!process.env.LAYERS_ONLY) fs.rmSync(OUT,{recursive:true,force:true}); fs.mkdirSync(OUT,{recursive:true});
   const b=await chromium.launch();
   const lay=await b.newPage({viewport:{width:800,height:450},deviceScaleFactor:X}); const meta={T,FPS,N,X,U:[]};
-  for(const [mode,lang,name] of [['bg','en','bg'],['mask','en','mask'],['over','en','over'],['sub','en','sub_en'],['sub','ru','sub_ru']]){
-    fs.writeFileSync(path.join(OUT,'s.html'),scene(mode,lang)); await lay.goto('file://'+path.join(OUT,'s.html')); await lay.waitForTimeout(150);
+  const LAY=[['bg','en','bg'],['mask','en','mask'],['over','en','over'],['sub','en','sub_en'],['sub','ru','sub_ru']]; if(PV==='mix') for(const l of ['en','ru']) for(let k=0;k<5;k++) LAY.push(['sub',l,`sub_${l}_${k}`,k]);   // v1.32: the caption with each square lit
+  for(const [mode,lang,name,hi] of LAY){
+    fs.writeFileSync(path.join(OUT,'s.html'),scene(mode,lang,hi)); await lay.goto('file://'+path.join(OUT,'s.html')); await lay.waitForTimeout(150);
     if(mode==='bg') Object.assign(meta,await lay.evaluate(()=>{ const c=q=>{ const r=q.getBoundingClientRect(); return [r.x+r.width/2,r.y+r.height/2]; };
       return {quad:[...document.querySelectorAll('.scr i')].map(c),port:c(document.querySelector('.port'))}; }));
     await lay.screenshot({path:path.join(OUT,name+'.png'),omitBackground:mode!=='bg'}); }
   fs.unlinkSync(path.join(OUT,'s.html'));
   for(let i=0;i<N;i++) meta.U.push(+U(i/FPS).toFixed(4));
+  if(process.env.LAYERS_ONLY){ const old=JSON.parse(fs.readFileSync(path.join(OUT,'meta.json'),'utf8')); Object.assign(meta,{S:old.S,M:old.M,V:old.V,W:old.W}); fs.writeFileSync(path.join(OUT,'meta.json'),JSON.stringify(meta)); await b.close(); return; }   // v1.32: only the scene's layers again
   /* the games: game k plays its quarter and a little more on both sides (for the cross-fade), the palm from the same curve */
   const ctx=await b.newContext({viewport:{width:844,height:390},deviceScaleFactor:X}), file=G.patched(), M=2;
-  for(let k=0;k<4;k++){ const g=GAMES[k], i0=k*Q-M, n=Q+2*M, t0=i0/FPS;
+  if(PV==='mix'){ const W=22, g={fly:'space',mix:['space','vector','note','neon','lcd'],mixAt:[3.55,6.55,9.55,12.55],k:0.84,b:0.08,warm:2,gfx:'hd'};   // five worlds, 3 s each; the GIF starts W frames in — those first frames come back torn in at the loop (make_promo.py), so it joins without a jump   // space first, then the list in turn; the last change brings space back for the loop
+    const st=await G.play(ctx,file,g,t=>g.b+g.k*U(t),g.warm,N+W,FPS,(j,buf)=>fs.writeFileSync(path.join(OUT,`g0_${String(j).padStart(4,"0")}.png`),buf));
+    console.log('mix flight, frames 0 …',N+W-1,st.scr); meta.S=st.S; meta.W=W; }
+  else for(let k=0;k<4;k++){ const g=GAMES[k], i0=k*Q-M, n=Q+2*M, t0=i0/FPS;
     const st=await G.play(ctx,file,g,t=>g.b+g.k*U(t0+t),g.warm,n,FPS,(j,buf)=>fs.writeFileSync(path.join(OUT,`g${k}_${String(((i0+j)%N+N)%N).padStart(4,"0")}.png`),buf));
     console.log('game',k,g.fly||g.race,PV,'frames',i0,'…',i0+n-1,st.scr); meta.S=st.S; }
-  meta.M=M; meta.V=PV; fs.writeFileSync(path.join(OUT,'meta.json'),JSON.stringify(meta));
+  meta.M=PV==='mix'?meta.W:M; meta.V=PV; fs.writeFileSync(path.join(OUT,'meta.json'),JSON.stringify(meta));
   await b.close(); fs.unlinkSync(file); })();

@@ -66,7 +66,7 @@ SKINS.vector={id:'vector', glow:false, nolight:true, motes:['#2a3444','#3a4a5e',
   pick:function(x,y,type){ x=Math.round(x); y=Math.round(y); var c=pixOnce('v-pick129m',13,13,function(p){ var W=[255,255,255], M=cH('#ff9ae8');   // v1.29, «Б»: the diamond of four strokes with gaps, dots at its corners; 1.29a: magenta
       p.line(7,1,10,4,M); p.line(10,8,7,11,M); p.line(5,11,2,8,M); p.line(2,4,5,1,M); p.halo(cH('#6a1a58')); p.put(6,0,W); p.put(12,6,W); p.put(6,12,W); p.put(0,6,W); });
     lx.globalAlpha=0.8+0.2*Math.sin(clock*5); lx.drawImage(c,x-6,y-6); lx.globalAlpha=1; blit(PICONS[type],['#ffd0f4'],x-3,y-3); },
-  bullet:function(x,y){ x=Math.round(x); y=Math.round(y); R('#1d5a44',x-6,y,2,1); R('#2b8a68',x-4,y,2,1); R('#7affc8',x-2,y,2,1); R('#ffffff',x,y,1,1); R('#2b8a68',x,y-1,1,1); R('#2b8a68',x,y+1,1,1); R('#2b8a68',x+1,y,1,1); },   // v1.29, «В»: a comet
+  bullet:function(x,y){ x=Math.round(x); y=Math.round(y); R('#4a5c98',x-6,y-1,7,3); R('#b8c8ff',x-5,y-1,5,3); R('#ffffff',x-5,y,5,1); },   // 1.32: a white stroke in a white-blue glow (HD «Д», colour 2)
   ebullet:function(x,y){ x=Math.round(x); y=Math.round(y); var c=pixOnce('v-eb129',7,7,function(p){ p.ring(3,3,2,2,VAMB); p.put(3,3,cH('#fff0c8')); p.halo(VAMBD); }); lx.drawImage(c,x-3,y-3); },   // v1.29, «В»: an amber ring with a dot
   shieldRing:function(x,y,t){ var cx=Math.round(x)+8, cy=Math.round(y); for(var i=0;i<14;i++){ var a=i/14*6.2832, w=0.5+0.5*Math.sin(t*6-i*0.9), X=Math.round(cx+Math.cos(a)*12.5), Y=Math.round(cy+Math.sin(a)*10);   // v1.29, «Е»: 14 dots, a wave of light round them
     if(w>0.6){ R('#1d5a44',X-1,Y,3,1); R('#1d5a44',X,Y-1,1,3); R('#d8fff0',X,Y,1,1); } else R(w>0.3?'#7affc8':'#2b6652',X,Y,1,1); } },

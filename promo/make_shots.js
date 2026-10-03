@@ -16,4 +16,15 @@ const {chromium}=require('playwright'), path=require('path'), ROOT=path.join(__d
       g.puddles=[{id:9,x:cx+255,o:-18,r:8}]; g.cars=[[0,160,-14],[3,275,16],[5,345,-4]].map((q,k)=>({id:30+k,x:cx+q[1],o:q[2],to:q[2],v:0,kind:q[0],turnT:99}));
       g.car.y=Race.centre(g,g.d+Race.CAR_X)+6; g.car.turbo=2; S.go('play'); },[d0,d1]);
     await p.waitForTimeout(700); await p.screenshot({path:path.join(__dirname,name+'.png')}); await p.close(); }
+  /* v1.32: SonaFly's six skins in one picture (HD, a still moment of play: rocks, a saucer, a power-up, shots) → promo/sonafly_skins.png */
+  const fs=require('fs'), SK=[['space','Space'],['fairy','Fairy tale'],['vector','Vector 80s'],['neon','Neon'],['note','Notebook'],['lcd','Retro LCD']], tiles=[];
+  for(const [skin] of SK){ const p=await ctx.newPage(); p.on('pageerror',e=>console.log('ERR',e.message));
+    await p.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_lang','en'); localStorage.setItem('sonaroids_gfx','hd'); localStorage.setItem('sonaroids_skin','${skin}'); localStorage.setItem('sonaroids_skin_list','${skin}');`);
+    await p.goto('file://'+path.join(ROOT,'game','play','index.html')); await p.waitForTimeout(500);
+    await p.evaluate(()=>{ const S=__sonaroids; S.fake(); const g=S.state().g; g.state='play'; g.ship.y=g.FH*0.52; g.ufo={id:99,kind:'big',x:g.FW*0.74,y:g.FH*0.3,ty:g.FH*0.3,tyT:0,fire:99,hp:2,seen:1,dodgeT:0,hitT:0}; g.ufoT=99;
+      g.picks=[{type:'shield',x:g.FW*0.46,y:g.FH*0.26}]; g.ebullets=[{x:g.FW*0.6,y:g.FH*0.36,vx:-10,vy:0}]; S.go('play'); });
+    await p.waitForTimeout(1400); const f=path.join(__dirname,'_tile_'+skin+'.png'); await p.screenshot({path:f}); tiles.push(f); await p.close(); }
+  const g=await b.newPage({viewport:{width:3*422+4*10,height:2*(195+24)+10},deviceScaleFactor:2});
+  await g.setContent(`<body style="margin:0;background:#1B1A2E;display:grid;grid-template-columns:repeat(3,422px);gap:10px;padding:10px;font:700 13px system-ui,sans-serif;color:#C9A9B6">${SK.map((s,i)=>`<div><img src="data:image/png;base64,${fs.readFileSync(tiles[i]).toString('base64')}" style="width:422px;height:195px;display:block;border-radius:6px"><div style="text-align:center;margin-top:4px">${s[1]}</div></div>`).join('')}</body>`);
+  await g.waitForTimeout(300); await g.screenshot({path:path.join(__dirname,'sonafly_skins.png'),fullPage:true}); tiles.forEach(f=>fs.unlinkSync(f));
   await b.close(); })();

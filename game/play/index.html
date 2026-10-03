@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='1.31';
+var VERSION='1.32';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -2669,7 +2669,8 @@ HDSK.vector={id:'vector', hd:true, glow:false, nolight:true, motes:['#557a6e','#
       [[0,-7],[7,0],[0,7],[-7,0]].forEach(function(q){ vGlow(c,q[0],q[1],1.3,W,0.95); }); });
     hx.globalAlpha=a; hx.drawImage(sp,x-9,y-9,18,18); hx.globalAlpha=1; },
   /* v1.29, the shot «В»: a comet — a bright head, a long tail melting away; the saucers' shot «В»: an amber ring with a dot (sprites) */
-  bullet:function(x,y){ hx.drawImage(this.vecSpr('shot',13,6,function(c){ var g=c.createLinearGradient(1,3,10,3); g.addColorStop(0,'rgba('+PHG+',0)'); g.addColorStop(1,'rgba('+PHG+',0.85)'); c.strokeStyle=g; c.lineWidth=0.8; c.lineCap='round'; c.beginPath(); c.moveTo(1,3); c.lineTo(10,3); c.stroke(); vGlow(c,10,3,2.3,PHG,0.85); vGlow(c,10,3,1,'255,255,255',1); }),x-10,y-3,13,6); },
+  bullet:function(x,y){ hx.drawImage(this.vecSpr('shot3',14,8,function(c,sc){ c.save(); c.shadowColor='rgba(200,220,255,1)'; c.shadowBlur=3*sc; c.strokeStyle='rgba(200,220,255,0.9)'; c.lineWidth=2.4; c.lineCap='round'; c.beginPath(); c.moveTo(5.5,4); c.lineTo(11.5,4); c.stroke(); c.restore();
+    c.strokeStyle='#ffffff'; c.lineWidth=1.1; c.lineCap='round'; c.beginPath(); c.moveTo(5.8,4); c.lineTo(11.3,4); c.stroke(); }),x-11,y-4,14,8); },   // 1.32, «Д, цвет 2» (the maintainer: «выстрелы слишком тонкие почти незаметные… может что-то еще более другого цвета? но чтоб не повторять цвета подарков»): a bright white stroke in a white-blue glow
   ebullet:function(x,y){ hx.drawImage(this.vecSpr('eshot2',9,9,function(c,sc){ c.save(); c.shadowColor='rgba(255,170,60,0.9)'; c.shadowBlur=3*sc; c.strokeStyle='rgba(255,170,60,0.7)'; c.lineWidth=1.1; c.beginPath(); c.arc(4.5,4.5,2.2,0,6.2832); c.stroke(); c.restore();
     c.strokeStyle='rgb(255,196,100)'; c.lineWidth=0.5; c.beginPath(); c.arc(4.5,4.5,2.2,0,6.2832); c.stroke(); vGlow(c,4.5,4.5,1.1,'255,180,70',1); }),x-4.5,y-4.5,9,9); },
   /* v1.29, the explosions «Д» (the maintainer's pick, all four): each breaks into its own parts — a rock into glass shards with glowing
@@ -3055,7 +3056,7 @@ SKINS.vector={id:'vector', glow:false, nolight:true, motes:['#2a3444','#3a4a5e',
   pick:function(x,y,type){ x=Math.round(x); y=Math.round(y); var c=pixOnce('v-pick129m',13,13,function(p){ var W=[255,255,255], M=cH('#ff9ae8');   // v1.29, «Б»: the diamond of four strokes with gaps, dots at its corners; 1.29a: magenta
       p.line(7,1,10,4,M); p.line(10,8,7,11,M); p.line(5,11,2,8,M); p.line(2,4,5,1,M); p.halo(cH('#6a1a58')); p.put(6,0,W); p.put(12,6,W); p.put(6,12,W); p.put(0,6,W); });
     lx.globalAlpha=0.8+0.2*Math.sin(clock*5); lx.drawImage(c,x-6,y-6); lx.globalAlpha=1; blit(PICONS[type],['#ffd0f4'],x-3,y-3); },
-  bullet:function(x,y){ x=Math.round(x); y=Math.round(y); R('#1d5a44',x-6,y,2,1); R('#2b8a68',x-4,y,2,1); R('#7affc8',x-2,y,2,1); R('#ffffff',x,y,1,1); R('#2b8a68',x,y-1,1,1); R('#2b8a68',x,y+1,1,1); R('#2b8a68',x+1,y,1,1); },   // v1.29, «В»: a comet
+  bullet:function(x,y){ x=Math.round(x); y=Math.round(y); R('#4a5c98',x-6,y-1,7,3); R('#b8c8ff',x-5,y-1,5,3); R('#ffffff',x-5,y,5,1); },   // 1.32: a white stroke in a white-blue glow (HD «Д», colour 2)
   ebullet:function(x,y){ x=Math.round(x); y=Math.round(y); var c=pixOnce('v-eb129',7,7,function(p){ p.ring(3,3,2,2,VAMB); p.put(3,3,cH('#fff0c8')); p.halo(VAMBD); }); lx.drawImage(c,x-3,y-3); },   // v1.29, «В»: an amber ring with a dot
   shieldRing:function(x,y,t){ var cx=Math.round(x)+8, cy=Math.round(y); for(var i=0;i<14;i++){ var a=i/14*6.2832, w=0.5+0.5*Math.sin(t*6-i*0.9), X=Math.round(cx+Math.cos(a)*12.5), Y=Math.round(cy+Math.sin(a)*10);   // v1.29, «Е»: 14 dots, a wave of light round them
     if(w>0.6){ R('#1d5a44',X-1,Y,3,1); R('#1d5a44',X,Y-1,1,3); R('#d8fff0',X,Y,1,1); } else R(w>0.3?'#7affc8':'#2b6652',X,Y,1,1); } },

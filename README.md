@@ -2,9 +2,12 @@
 
 **English** · [Русский](README.ru.md)
 
-<p align="center"><img src="promo/sonaroids_en.gif" width="640" alt="A phone floating in the air with a palm at its charging end. The palm moves to and from the phone, ultrasound arcs run from the end to it, and the screen goes through four games — space, a race across a notebook, neon, a race through a candy land — with the ship or the car following the palm: nearer means lower"></p>
+<p align="center"><img src="promo/sonaroids_skins_en.gif" width="640" alt="A phone floating in the air with a palm at its charging end. The palm moves to and from the phone, ultrasound arcs run from the end to it, the ship on the screen follows the palm, and the world around it changes mid-flight by the playlist: space, vector 80s, notebook, neon, retro LCD. Two plates below: «Sonar control — your palm in mid-air instead of buttons» and «Skin playlist — the world changes mid-flight»"></p>
 
 **Games you play with your palm in mid-air.** You never touch the screen: the phone plays an inaudible ultrasonic tone through its own speaker, listens to the echo with its own microphone and works out how far your palm is. That distance becomes the height of your ship or your car. No camera, no extra hardware, nothing to install — it is a web page.
+
+- **Sonar control** — your palm in mid-air instead of buttons.
+- **Skin playlist** — six worlds in SonaFly and three in SonaRace: build a playlist of them and the world changes right during the game.
 
 **▶ Play: [sonaroids.app](https://sonaroids.app)**
 - **iPhone:** open it in Safari and add it to the Home Screen.
@@ -23,6 +26,8 @@ The ship fires on its own; all you choose is where it is.
 - **Power-ups** — fly into them: a shield (takes one hit), triple shot, slow motion (once the game has sped up), a heart (an extra life, after you've lost one).
 - **Saucers:** a large one from level 2, a small one that aims at you from level 4. Line up with them and they sidestep.
 - **Six skins:** space, fairy tale, vector 80s, neon, notebook, retro LCD — each in **HD** or in **pixels**, each with its own ship, saucers, power-ups, shots, shield, asteroids and explosions. In every skin things are drawn exactly the size the game counts them.
+
+<p align="center"><img src="promo/sonafly_skins.png" width="640" alt="SonaFly's six skins in play: space, fairy tale, vector 80s, neon, notebook, retro LCD — each with its own ship, saucer, power-up, shots and rocks"></p>
 
 ### SonaRace — a race along a winding road
 
@@ -152,9 +157,10 @@ The version is in `VERSION`: it shows on the games' screen and goes into the log
 All taken from the real games in headless Chromium (needs Playwright):
 
 ```sh
-NODE_PATH=$(npm root -g) node promo/make_promo.js && python3 promo/make_promo.py   # the GIFs at the top: promo/sonaroids_en.gif, sonaroids_ru.gif (+ *_full.gif, 800×450)
+PROMO=mix NODE_PATH=$(npm root -g) node promo/make_promo.js && PROMO=mix python3 promo/make_promo.py   # the GIF at the top (the skin playlist): promo/sonaroids_skins_en.gif, _ru (+ *_full.gif, 800×450)
+NODE_PATH=$(npm root -g) node promo/make_promo.js && python3 promo/make_promo.py   # the earlier GIF, four games one after another: promo/sonaroids_en.gif, sonaroids_ru.gif
 PROMO=pixel NODE_PATH=$(npm root -g) node promo/make_promo.js && PROMO=pixel python3 promo/make_promo.py   # the same with the games in pixels: promo/sonaroids_pixel_*.gif
-NODE_PATH=$(npm root -g) node promo/make_shots.js                                  # the games' pictures: promo/games.png, sonarace_*.png
+NODE_PATH=$(npm root -g) node promo/make_shots.js                                  # the games' pictures: promo/games.png, sonafly_skins.png, sonarace_*.png
 sh promo/make_all.sh                                                               # the older pixel GIFs (table and hand)
 ```
 

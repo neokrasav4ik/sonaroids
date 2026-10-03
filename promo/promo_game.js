@@ -9,14 +9,15 @@ function patched(){ let html=fs.readFileSync(path.join(ROOT,'game','play','index
   patch('function loop(now){\n  requestAnimationFrame(loop);','function loop(now){\n  requestAnimationFrame(loop); if(window.__gifMode&&!window.__gifCall) return;');
   patch('function safeInsets(){','function safeInsets(){ if(window.__safe) return window.__safe; ');   // an iPhone in landscape: the island's side and the other kept clear
   patch('function hdPace(){','function hdPace(){ if(window.__gifMode) return; ');
-  patch('window.__sonaroids={','window.__gifTick=function(now){ window.__gifCall=true; try{ loop(now); } finally { window.__gifCall=false; } };\nwindow.__sonaroids={');
+  patch('window.__sonaroids={','window.__gifTick=function(now){ window.__gifCall=true; try{ loop(now); } finally { window.__gifCall=false; } };\nwindow.__mixAt=function(s){ MX.next=MX.t+s; };\nwindow.__sonaroids={');   // v1.32: the skin playlist\'s next change, s seconds from now
   const tmp=path.join(ROOT,'game','play','__promo.html'); fs.writeFileSync(tmp,html); return tmp; }
 /* one game on the phone's screen. spec: {fly:'space'|'neon'|… , race:'candy'|'note', gfx:'hd'|'pixel'}; palm(t) → 0…1 (0 — the palm close, the ship low);
    warm — seconds played before the first frame; n frames at fps; shot(i,buf) gets each frame */
 async function play(ctx,file,spec,palm,warm,n,fps,shot){
   const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_live','0'); localStorage.setItem('sonaroids_lang','en'); localStorage.setItem('sonaroids_gfx','${spec.gfx||'hd'}');`+
-    (spec.fly?`localStorage.setItem('sonaroids_skin','${spec.fly}');`:`localStorage.setItem('sonaroids_race_skin','${spec.race}');`)+`window.__gifMode=true; window.__safe={t:0,r:47,b:21,l:47};`);
+    (spec.fly?`localStorage.setItem('sonaroids_skin','${spec.fly}');`:`localStorage.setItem('sonaroids_race_skin','${spec.race}');`)+
+    (spec.mix?`localStorage.setItem('sonaroids_skin_list','${spec.mix.join(',')}'); localStorage.setItem('sonaroids_skin_order','loop'); localStorage.setItem('sonaroids_skin_time','15');`:'')+   /* v1.32: a playlist in turn, starting after spec.fly */ `window.__gifMode=true; window.__safe={t:0,r:47,b:21,l:47};`);
   await p.goto('file://'+file); await p.waitForTimeout(300);
   let now=1000; const step=async(dt,h)=>{ now+=dt*1000; await p.evaluate(([t,h])=>{ window.__palm=h; window.__gifTick(t); },[now,h]); };
   await step(0.05,0.5);
@@ -24,7 +25,9 @@ async function play(ctx,file,spec,palm,warm,n,fps,shot){
   const sub=3, dt=1/fps/sub;                                    // the game stepped a few times per frame (its DT stays small)
   for(let t=-warm-3.2;t<0;t+=dt) await step(dt,palm(t));       // the countdown and the warm-up, not recorded
   await p.evaluate(()=>{ const g=__sonaroids.state().g; if(g&&g.lives!==undefined) g.lives=9; if(g&&g.fuel!==undefined) g.fuel=Race.TUNE.FUEL; });   // a hit or an empty tank costs nothing in the picture
-  for(let i=0;i<n;i++){ for(let k=0;k<sub;k++) await step(dt,palm(i/fps+k*dt)); await shot(i,await p.screenshot()); }
+  let mk=0; const at=spec.mixAt||[];
+  for(let i=0;i<n;i++){ const t=i/fps; if(mk<at.length&&t>=at[mk]-2.9){ await p.evaluate(s=>window.__mixAt(s),at[mk]-t); mk++; }   // v1.32: the playlist's changes at set moments
+    for(let k=0;k<sub;k++) await step(dt,palm(t+k*dt)); await shot(i,await p.screenshot()); }
   const st=await p.evaluate(()=>({scr:__sonaroids.scr(),S:__sonaroids.S().S})); await p.close(); if(errs.length) console.log('page errors:',errs.join('; ')); return st; }
 module.exports={patched,play};
 if(require.main===module)(async()=>{ const b=await chromium.launch(), ctx=await b.newContext({viewport:{width:844,height:390},deviceScaleFactor:2});

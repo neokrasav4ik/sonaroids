@@ -31,5 +31,14 @@ const path=require('path'); const ROOT=path.join(__dirname,'..');
     const changed=seen.every(m=>m&&m.tr!==null&&m.tr>0.2&&m.tr<1.1), noRep=seen.every((m,i)=>i<1||m.cur!==seen[i-1].cur)&&seen.every((m,i)=>i<2||m.cur!==seen[i-2].cur), done=end.tr===null;
     check(`${mode}, ${gfx}: the skin changes in about a second, never to one of the last two`,changed&&noRep&&done,seen.map(m=>m.cur+'@'+(m.tr||0).toFixed(2)).join(' → '));
     await p.close(); }
+  // v1.29, the playlist: the skins' screen ticks two skins, in turn, every 15 s — the menu says «SKINS: 2 OF 6», the game takes turns between them
+  p=await open(`localStorage.setItem('sonaroids_skin','space');`);
+  const pl=await p.evaluate(async()=>{ const S=__sonaroids, w=ms=>new Promise(r=>setTimeout(r,ms)); S.fake(); S.go('title'); await w(100);
+    S.act.skins_open(); await w(60); const scr=S.scr(); S.act.skins_next(); S.act.skins_next(); S.act.skins_next(); S.act.sk_in(); S.act.sk_order(); S.act.sk_time_next(); await w(60); S.act.sk_back(); await w(100);
+    const kept={list:localStorage.getItem('sonaroids_skin_list'),time:localStorage.getItem('sonaroids_skin_time'),order:localStorage.getItem('sonaroids_skin_order')};
+    const g=S.state().g; g.state='play'; S.go('play'); await w(200); const seq=[S.mixInfo().cur]; for(let i=0;i<3;i++){ S.mixNow(); let k=0; while(k++<100&&S.mixInfo().tr===null) await w(30); while(k++<300&&S.mixInfo().tr!==null) await w(30); seq.push(S.mixInfo().cur); }
+    return {scr,kept,seq,title:S.mixInfo().fly}; });
+  check('the playlist: the skins\' screen ticks a second skin, in turn, every 15 s, and the game takes turns between the two',pl.scr==='skins'&&pl.kept.list==='space,neon'&&pl.kept.time==='15'&&pl.kept.order==='loop'&&pl.seq.every((k,i)=>k===(i%2?pl.seq[1]:pl.seq[0]))&&pl.seq[0]!==pl.seq[1]&&['space','neon'].indexOf(pl.seq[0])>=0&&['space','neon'].indexOf(pl.seq[1])>=0,JSON.stringify(pl.kept)+' '+pl.seq.join(' → '));
+  await p.close();
   check('no page errors',errors.length===0,errors.slice(0,3).join(' | '));
   await b.close(); out.forEach(l=>console.log(l)); console.log('RESULT: '+(ok?'ok':'FAIL')); process.exit(ok?0:1); })();

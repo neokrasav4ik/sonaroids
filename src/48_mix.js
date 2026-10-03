@@ -6,11 +6,37 @@
    so both worlds move. The race's next chunks and the flight's next rocks are made in the seconds before, a little each frame. ── */
 var flyMix=false, raceMix=false, MX={t:0,next:30,hist:[],tr:null,pend:null,warm:null,pre:false}, MX_DUR=1.1, mxH=null, mxL=null;
 function mixOn(){ return mode==='race'?raceMix:flyMix; }
-function mixList(){ return mode==='race'?RACE_SKINS:SKIN_IDS; }
+/* ── v1.29, the skins' playlist (the maintainer: «скинплейлист… выбрать один скин на игру, шаффл всех подряд, или выбрать свой плейлист
+   скинов, а также задать время смены скина в секундах»; the screen «В» — one big card to leaf through, «в списке» under it): each game
+   keeps the skins ticked (one — always that one; several — they take turns; all — all in a row), the last list of two or more (the menu
+   row's arrows step through single skins and then that list), the change time (0 — at random 25–40 s, as before) and the order ── */
+var SKL={fly:null,race:null}, SK_TIMES=[0,15,20,30,45,60,90,120];
+function sklM(){ return mode==='race'?'race':'fly'; }
+function sklAll(m){ return m==='race'?RACE_SKINS:SKIN_IDS; }
+function sklKey(m,k){ return 'sonaroids_'+(m==='race'?'race':'skin')+'_'+k; }
+function sklLoad(m){ var all=sklAll(m), parse=function(v){ return (v||'').split(',').filter(function(k,i,a){ return all.indexOf(k)>=0&&a.indexOf(k)===i; }); };
+  var cur=m==='race'?raceSkin:skinId, list=parse(store.get(sklKey(m,'list'),'')), saved=parse(store.get(sklKey(m,'saved'),''));
+  if(!list.length) list=store.get(sklKey(m,'mix'),'0')==='1'?all.slice():[all.indexOf(cur)>=0?cur:all[0]];   // from 1.24–1.28: «ВСЁ ПОДРЯД» on — all of them
+  if(saved.length<2) saved=list.length>1?list.slice():all.slice();
+  var t=+store.get(sklKey(m,'time'),'0'); if(SK_TIMES.indexOf(t)<0) t=0;
+  return {list:list,saved:saved,time:t,order:store.get(sklKey(m,'order'),'rand')==='loop'?'loop':'rand'}; }
+function sklSave(m){ var s=SKL[m], mix=s.list.length>1; if(mix) s.saved=s.list.slice();
+  store.set(sklKey(m,'list'),s.list.join(',')); store.set(sklKey(m,'saved'),s.saved.join(',')); store.set(sklKey(m,'time'),String(s.time)); store.set(sklKey(m,'order'),s.order); store.set(sklKey(m,'mix'),mix?'1':'0');
+  if(m==='race'){ raceMix=mix; if(!mix){ raceSkin=s.list[0]; RSKIN=raceSkin; store.set('sonaroids_race_skin',raceSkin); } }
+  else { flyMix=mix; if(!mix&&skinId!==s.list[0]) setSkin(s.list[0]); }
+  MX.tr=null; MX.pend=null; }
+/* the menu row's arrows: the single skins one by one, then the list (the last one of two or more; all of them at first) */
+function sklStep(m,sd){ var s=SKL[m], all=sklAll(m), n=all.length, i=s.list.length>1?n:all.indexOf(s.list[0]); i=(i+sd+n+1)%(n+1); s.list=i===n?s.saved.slice():[all[i]]; sklSave(m); }
+/* what the menu row says: «СКИН: КОСМОС», «СКИН: ВСЁ ПОДРЯД», «СКИНЫ: 4 ИЗ 6» */
+function sklLabel(m){ var s=SKL[m], all=sklAll(m); if(s.list.length===1) return L(m==='race'?'r_skin':'skin')+': '+L((m==='race'?'r_sk_':'skin_')+s.list[0]);
+  if(s.list.length===all.length) return L(m==='race'?'r_skin':'skin')+': '+L(m==='race'?'r_sk_mix':'skin_mix'); return L('sk_n').replace('{n}',s.list.length).replace('{m}',all.length); }
+function sklDot(m){ var s=SKL[m], all=sklAll(m); return s.list.length>1?all.length:all.indexOf(s.list[0]); }
+function mixList(){ return SKL[sklM()].list; }
 function mixCur(){ return mode==='race'?RSKIN:skinId; }
-function mixPick(){ var L=mixList(), last=MX.hist.slice(-2).concat([mixCur()]), c=L.filter(function(k){ return last.indexOf(k)<0; }); if(!c.length) c=L.filter(function(k){ return k!==mixCur(); }); return c[Math.floor(Math.random()*c.length)]; }
+function mixPick(){ var L=mixList(), cur=mixCur(); if(SKL[sklM()].order==='loop') return L[(L.indexOf(cur)+1)%L.length];   // in turn: the next one in the list
+  var last=MX.hist.slice(-2).concat([cur]), c=L.filter(function(k){ return last.indexOf(k)<0; }); if(!c.length) c=L.filter(function(k){ return k!==cur; }); if(!c.length) c=L; return c[Math.floor(Math.random()*c.length)]; }
 function mixSet(id){ MX.hist.push(id); if(MX.hist.length>6) MX.hist.shift(); if(mode==='race') RSKIN=id; else { skinId=id; SK=skinView(id); } }
-function mixPlan(){ MX.t=0; MX.next=25+Math.random()*15; MX.pend=mixPick(); MX.warm=null; }
+function mixPlan(){ var tm=SKL[sklM()].time; MX.t=0; MX.next=tm||25+Math.random()*15; MX.pend=mixPick(); MX.warm=null; }
 /* v1.25 (the maintainer: «подготовка и калибровка должна проходить тоже на рандомном, который первый в игре будет»): the first skin is picked
    as the getting-ready steps begin (from go(), entering them from any other screen), and the game starts on it */
 var MX_PRE=['sound','phone','mic','probe','away','wave'];

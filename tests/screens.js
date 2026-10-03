@@ -4,10 +4,10 @@
 let chromium; try{ ({chromium}=require('playwright')); }catch(e){ console.log('playwright not installed — skipped'); process.exit(0); }
 const fs=require('fs'), path=require('path'); const ROOT=path.join(__dirname,'..'), OUT=path.join(__dirname,'out','screens'); fs.mkdirSync(OUT,{recursive:true});
 const SIZES=[[568,320],[667,375],[740,360],[844,390],[932,430],[1024,768],[1366,1024]];
-const SCREENS=['lang','hub','settings','title','sound','phone','mic','probe','wave','wave-try','count','play','pause-play','restart','over','over-here','scores','nick','link','linkshow','linkin','linkdone','lost','nomic',
-  'race-menu','race-set','race-try','race-count','race-play','race-pause','race-over'];   // v0.84: SonaRace's own screens (its menu, the try-out with the car, the race, its pause and finish)
+const SCREENS=['lang','hub','settings','title','skins','sound','phone','mic','probe','wave','wave-try','count','play','pause-play','restart','over','over-here','scores','nick','link','linkshow','linkin','linkdone','lost','nomic',
+  'race-menu','race-skins','race-set','race-try','race-count','race-play','race-pause','race-over'];   // v0.84: SonaRace's own screens (its menu, the try-out with the car, the race, its pause and finish)
 // v1.07: the buttons each screen must show (checked below) — waited for before the checks, so a slow frame is not a failure
-const WANT={'wave-try':['start','again'],'race-try':['start','again'],'race-menu':['play','howto','hub'],'race-set':['rs_*'],'race-play':['pause'],'race-pause':['resume','restart','quit','exit'],
+const WANT={'skins':['skins_prev','skins_next','sk_in','sk_time_next','sk_order','sk_all','sk_back'],'race-skins':['skins_prev','skins_next','sk_in','sk_all','sk_back'],'wave-try':['start','again'],'race-try':['start','again'],'race-menu':['play','howto','hub'],'race-set':['rs_*'],'race-play':['pause'],'race-pause':['resume','restart','quit','exit'],
   'race-over':['again','menu','ver'],'play':['pause'],'restart':['rs_go','rs_cal','rs_back'],'pause-play':['resume','restart','quit','exit'],'over':['ver'],'settings':['vol_dn','set_gfx_prev','set_band_next','set_live_next','set_expert','set_back']};   // v1.12: the settings
 (async()=>{
   const b=await chromium.launch(); const bad=[]; const errors=[]; let n=0;
@@ -38,6 +38,7 @@ const WANT={'wave-try':['start','again'],'race-try':['start','again'],'race-menu
         else if(s==='linkshow'){ __sonaroids.act.link_show(); }   // the code comes through Board.link → fetch → the faked server below (v0.33: a mocked Board.link hid a bug)
         else if(s==='linkin'){ __sonaroids.act.link_back2(); __sonaroids.act.link_in(); }
         else if(s==='race-menu'){ __sonaroids.act.hub_race(); __sonaroids.race(); }
+        else if(s==='skins'||s==='race-skins'){ __sonaroids.act.skins_open(); }   // v1.29: the skins' screen
         else if(s==='race-set'){ __sonaroids.act.rset(); }
         else if(s==='race-try'){ __sonaroids.go('wave'); }
         else if(s==='race-count'){ __sonaroids.go('count'); }

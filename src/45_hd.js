@@ -461,10 +461,7 @@ HDSK.fairy={id:'fairy', hd:true, glow:false, ink:'#2d2350', veil:'rgba(238,242,2
   parts:function(){ spFxTrack(); var c=hx, i, RB=['#d84a98','#d8a000','#10b080','#2a6ad0','#8048d0'];
     var heart=function(X,Y,r,col){ c.fillStyle=col; c.beginPath(); c.moveTo(X,Y+r*0.9); c.bezierCurveTo(X-r*1.4,Y-r*0.1,X-r*0.7,Y-r*1.2,X,Y-r*0.35); c.bezierCurveTo(X+r*0.7,Y-r*1.2,X+r*1.4,Y-r*0.1,X,Y+r*0.9); c.fill(); };
     SPFX.forEach(function(e){ var t=e.t, R2=srand(e.seed), k2;
-      if(e.k==='rock'){ if(t<0.16){ var w0=t/0.16; hGlow(e.x,e.y,14*(0.5+w0),'255,250,255',0.9*(1-w0)); fzDisc(c,e.x,e.y,5*(1-w0),'#ffffff'); }   // v1.27: the cloud goes «poof» — a flash, its own puffs flying apart, a ring, then the confetti
-        var v2=Math.min(1,t/0.4); if(v2<1){ c.strokeStyle='rgba(220,210,255,'+(0.85*(1-v2))+')'; c.lineWidth=2*(1-v2)+0.3; c.beginPath(); c.arc(e.x,e.y,4+v2*18,0,6.2832); c.stroke(); }
-        var al2=Math.max(0,1-t/0.8); if(al2>0) for(k2=0;k2<7;k2++){ var a3=k2/7*6.2832+R2()*0.6, d3=(7+R2()*10)*(1-Math.exp(-6*t)), r3=(2+R2()*2.2)*(1-t*0.8), X3=e.x+Math.cos(a3)*d3, Y3=e.y+Math.sin(a3)*d3;
-          c.globalAlpha=al2; fzDisc(c,X3,Y3,r3+0.6,'#1e1640'); fzDisc(c,X3,Y3,r3,k2%2?'#5e52a8':'#7a6ec8'); fzDisc(c,X3-r3*0.25,Y3-r3*0.3,r3*0.55,'#9a90da'); fzDisc(c,X3-r3*0.4,Y3-r3*0.45,r3*0.2,'rgba(255,255,255,0.6)'); } c.globalAlpha=1; }
+      if(e.k==='rock') hGlow(e.x,e.y,12*(0.5+t),'200,190,255',0.5*Math.max(0,1-t/0.5));   // v1.29: the «poof» (flash, ring, flying puffs) taken back — the maintainer: «зря мы второй раз увеличили эффекты взрыва тучек, достаточно было одного»
       else if(e.k==='ufo'){ for(k2=0;k2<6;k2++){ var a=R2()*6.2832, d=(2+R2()*5)*Math.min(1,t*4), r=(2+R2()*2)*(0.6+t); c.globalAlpha=Math.max(0,0.6*(1-t/0.7)); fzDisc(c,e.x+Math.cos(a)*d,e.y+Math.sin(a)*d-t*4,r,'#3a2e66'); } c.globalAlpha=1; }
       else if(e.k==='pick'){ if(t<0.15) hGlow(e.x,e.y,10,'255,220,100',0.8*(1-t/0.15));
         for(k2=0;k2<8;k2++){ var a2=R2()*6.2832, d2=(3+R2()*7)*(1-Math.exp(-5*t)), r2=(2+R2()*2.5)*(0.5+t*1.1), al=Math.max(0,1-t/0.75), X=e.x+Math.cos(a2)*d2, Y=e.y+Math.sin(a2)*d2-t*3;

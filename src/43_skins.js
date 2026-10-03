@@ -157,8 +157,6 @@ function spPxParts(){ spFxTrack(); var i;
    puffs and stars, the hit dragon — a rainbow ring and glitter) */
 function fzPxParts(){ spFxTrack(); var i, RB=['#d84a98','#d8a000','#10b080','#2a6ad0','#8048d0'], GL=['#ff9ad6','#ffe066','#7affc8','#7ab8ff','#c89aff'];
   SPFX.forEach(function(e){ var t=e.t, x0=Math.round(e.x), y0=Math.round(e.y), R2=srand(e.seed);
-    if(e.k==='rock'){ if(t<0.12) R('#ffffff',x0-2,y0-2,5,5); if(t<0.8){ lx.globalAlpha=1-t/0.8; for(i=0;i<6;i++){ var a0=i/6*6.2832+R2()*0.6, d0=(7+R2()*10)*(1-Math.exp(-6*t)), r0=Math.max(1,Math.round((2+R2()*1.6)*(1-t*0.8))), qx=Math.round(x0+Math.cos(a0)*d0), qy=Math.round(y0+Math.sin(a0)*d0);
-        R('#1e1640',qx-r0,qy-r0+1,2*r0+1,2*r0-1); R('#1e1640',qx-r0+1,qy-r0,2*r0-1,2*r0+1); R(i%2?'#5e52a8':'#7a6ec8',qx-r0+1,qy-r0+1,2*r0-1,2*r0-1); R('#9a90da',qx-r0+1,qy-r0+1,r0,r0); } lx.globalAlpha=1; } }   // the cloud's puffs flying apart
     if(e.k==='ufo'&&t<0.7){ lx.globalAlpha=0.55*(1-t/0.7); for(i=0;i<5;i++){ var a=R2()*6.2832, d=(2+R2()*5)*Math.min(1,t*4), r=Math.round((2+R2()*2)*(0.6+t)); R('#3a2e66',Math.round(x0+Math.cos(a)*d-r/2),Math.round(y0+Math.sin(a)*d-t*4-r/2),r,r); } lx.globalAlpha=1; }
     if(e.k==='pick'&&t<0.75){ lx.globalAlpha=1-t/0.75; for(i=0;i<7;i++){ var a2=R2()*6.2832, d2=(3+R2()*7)*(1-Math.exp(-5*t)), r2=Math.round((1.5+R2()*2)*(0.5+t)), cx=Math.round(x0+Math.cos(a2)*d2), cy=Math.round(y0+Math.sin(a2)*d2-t*3);
         R('#c8840c',cx-r2,cy-r2+1,2*r2+1,2*r2-1); R('#c8840c',cx-r2+1,cy-r2,2*r2-1,2*r2+1); R(i%2?'#ffc233':'#ffe066',cx-r2+1,cy-r2+1,2*r2-1,2*r2-1); R('#fffbe0',cx-r2+1,cy-r2+1,1,1); } lx.globalAlpha=1; }

@@ -27,6 +27,20 @@ var PICONS=ICON;
 /* ════════ VECTOR 80s, pixels: black, one-pixel phosphor lines with a dim green bloom, a wireframe planet and a mountain line drifting
    behind, dim stars; the enemy shots are amber crosses, own shots a bright dot with a short trail ════════ */
 var VPH=cH('#d8fff0'), VMID=cH('#7affc8'), VDIM=cH('#1d5a44'), VFAR=cH('#2b6652'), VAMB=cH('#ffc060'), VAMBD=cH('#6a3a08');
+/* v1.29, the vector explosions «Д» in pixels (as HD: glass shards, the saucer's strokes and lights, the power-up's diamond strokes, the ship's strokes and a ring) */
+function vtPxParts(){ spFxTrack(); var i;
+  var seg=function(X,Y,L,a,col){ pxLine(X-Math.cos(a)*L,Y-Math.sin(a)*L,X+Math.cos(a)*L,Y+Math.sin(a)*L,col); };
+  SPFX.forEach(function(e){ var t=e.t, X=Math.round(e.x), Y=Math.round(e.y), d, al;
+    if(t<0.1){ R('#ffffff',X-1,Y-1,3,3); }
+    if(e.k==='ufo'){ d=t*26; al=Math.max(0,1-t/0.6); if(al<=0) return; lx.globalAlpha=al; seg(X,Y-3-d,5,t*4,'#ffc060'); seg(X,Y+3+d,5,-t*4,'#ffc060'); seg(X-6-d,Y,2,1.57+t*4,'#ffc060'); seg(X+6+d,Y,2,1.57-t*4,'#ffc060'); lx.globalAlpha=1; }
+    else if(e.k==='pick'){ d=t*30; al=Math.max(0,1-t/0.5); if(al<=0) return; lx.globalAlpha=al; [[1,-1],[1,1],[-1,1],[-1,-1]].forEach(function(q,k){ seg(X+q[0]*(3+d),Y+q[1]*(3+d),2,(k%2?-1:1)*0.785,'#d8fff0'); }); lx.globalAlpha=1; }
+    else if(e.k==='ship'){ d=t*22; al=Math.max(0,1-t/0.6); var u=Math.min(1,t/0.45); if(u<1){ lx.globalAlpha=1-u; var rr=3+u*20; for(i=0;i<40;i++){ var b=i/40*6.2832; R('#7affc8',Math.round(X+Math.cos(b)*rr),Math.round(Y+Math.sin(b)*rr),1,1); } lx.globalAlpha=1; }
+      if(al>0){ lx.globalAlpha=al; [[6,-3,0.36],[6,3,-0.36],[-3,-3,0.9],[-3,3,-0.9]].forEach(function(q,k){ var a=Math.atan2(q[1],q[0]); seg(X+q[0]+Math.cos(a)*d,Y+q[1]+Math.sin(a)*d,k<2?5:2,q[2]+t*(k%2?5:-5),'#d8fff0'); }); lx.globalAlpha=1; } } });
+  parts.forEach(function(p){ var f=p.life/p.max, k=p._k, c=p.cols[Math.min(p.cols.length-1,Math.floor((1-f)*p.cols.length))], X=Math.round(p.x), Y=Math.round(p.y);
+    if(k==='rock'){ if(p._i%3===0&&f>0.2){ var o=Math.floor((p.max-p.life)*12+p._i)%4; R('#9affd8',X,Y,1,1); R('#9affd8',X+(o<2?1:-1),Y,1,1); R('#9affd8',X,Y+(o%2?1:-1),1,1); R('#ffffff',X,Y,1,1); } else if(p._i%3===1&&f>0.4) R('#2b6652',X,Y,1,1); }
+    else if(k==='ufo'){ if(p._i%4===0) R(f>0.5?'#fff0c8':'#ffc060',X,Y,1,1); }
+    else if(k==='pick'||k==='ship'){ }
+    else R(c,X,Y,1,1); }); }
 SKINS.vector={id:'vector', glow:false, nolight:true, motes:['#2a3444','#3a4a5e','#5a6a8a'], moteDiv:1100,
   ui:HDSK.vector.ui,
   paint:function(p,w,h){ var y, x; for(y=0;y<h;y++) for(x=0;x<w;x++) p.put(x,y,[2,5,4]);
@@ -35,18 +49,28 @@ SKINS.vector={id:'vector', glow:false, nolight:true, motes:['#2a3444','#3a4a5e',
       for(var k=-2;k<=2;k++){ var yy=cy+k*r/3, hw=Math.sqrt(r*r-(k*r/3)*(k*r/3)); p.line(cx-hw,yy,cx+hw,yy,[20,52,42]); } });
     var prev=null; for(x=0;x<=w;x+=6){ var yy=Math.round(hill(x,w,h*0.86,h*0.05,1.7)-Math.abs(Math.sin(x*0.07))*h*0.04); if(prev) p.line(prev[0],prev[1],x,yy,VFAR); prev=[x,yy]; } },
   sky:function(dt,s){ skinSky(this,dt,s); },
-  rock:function(r,sz,seed){ return pixRockFrames(r,seed,10,function(p,P){ p.path(P,cH('#bfffe6'),true); p.halo(VDIM); }); },
-  shipPix:function(){ return pixOnce('v-ship',24,16,function(p){ var y=8; p.path([[21,y],[3,y-7],[6,y],[3,y+7]],VPH,true); p.line(9,y-4,9,y+4,VPH); p.halo(VDIM); }); },
+  rock:function(r,sz,seed){ return pixRockFrames(r,seed,10,function(p,P,c){ p.poly(P,[8,30,22]); for(var y=0;y<p.h;y++) for(var x=0;x<p.w;x++){ var o=(y*p.w+x)*4; if(p.d[o+3]&&(x-c)+(y-c)<-r*0.25) p.put(x,y,[14,52,40]); }   // v1.29, «В»: glass lit from the top left
+      p.path(P,cH('#bfffe6'),true); p.halo(VDIM); P.forEach(function(q){ p.put(q[0],q[1],[255,255,255]); });
+      for(var j=0;j<p.d.length;j+=4){ var g=p.d[j+1]; if(p.d[j+3]&&p.d[j]<20&&(g===30||g===52)) p.d[j+3]=110; } }); },   // the glass see-through (the outline is the rock's edge)
+  /* v1.29, the ship «Д6» and the saucer «Е3» in pixels, as HD: three strokes with gaps, bright dots at their ends and the nose; the amber
+     capsule with gaps, its lights, one running */
+  shipPix:function(){ return pixOnce('v-ship129b',25,16,function(p){ var y=8, W=[255,255,255];
+      p.line(19,y-1,9,y-5,VPH); p.line(19,y+1,9,y+5,VPH); p.line(5,y-4,8,y-1,VPH); p.line(5,y+4,8,y+1,VPH); p.put(22,y,W); p.halo(VDIM);   // gaps of 2–3 pixels, so the halo doesn't close them
+      [[9,y-5],[9,y+5],[5,y-4],[8,y-1],[5,y+4],[8,y+1]].forEach(function(q){ p.put(q[0],q[1],W); }); }); },
   ship:function(x,y,t,blink){ if(blink) return; x=Math.round(x); y=Math.round(y); var fl=Math.floor(t*20)%3;
-    if(!shipBare){ R('#7affc8',x-2-fl,y,3+fl,1); R('#1d5a44',x-3-fl,y,1,1); } lx.drawImage(this.shipPix(),x-2,y-8); },
-  ufoPix:function(big){ var k=big?0.78:0.56; return pixOnce('v-ufo83'+big,26,16,function(p){ var c=13, cy=8, s=function(a,b){ return [c+a*k,cy+b*k]; };
-      p.path([s(-10,0),s(10,0),s(6,3.2),s(-6,3.2)],VPH,true); p.path([s(-10,0),s(-5,-3),s(5,-3),s(10,0)],VPH,false); p.path([s(-3,-3),s(-2,-6),s(2,-6),s(3,-3)],VPH,false); p.halo(VDIM); }); },
-  ufo:function(ux,uy,big,hurt){ var c=this.ufoPix(big); lx.drawImage(c,Math.round(ux)-13,Math.round(uy)-8); if(hurt){ lx.globalAlpha=0.6; R('#ffffff',ux-9,uy-3,18,6); lx.globalAlpha=1; } },
-  pick:function(x,y,type){ x=Math.round(x); y=Math.round(y); var c=pixOnce('v-pick13',13,13,function(p){ p.path([[3,1],[9,1],[11,3],[11,9],[9,11],[3,11],[1,9],[1,3]],VPH,true); p.halo(VDIM); });   // v0.81: 13 pixels (was 17), an octagon: a 13-pixel diamond has no room for the sign
-    lx.drawImage(c,x-6,y-6); blit(PICONS[type],['#d8fff0'],x-3,y-3); },
-  bullet:function(x,y){ x=Math.round(x); y=Math.round(y); R('#2b6652',x-5,y,3,1); R('#7affc8',x-2,y,2,1); R('#ffffff',x,y,1,1); R('#1d5a44',x,y-1,1,1); R('#1d5a44',x,y+1,1,1); },
-  ebullet:function(x,y){ x=Math.round(x); y=Math.round(y); var c=pixOnce('v-eb',7,7,function(p){ p.line(1,1,5,5,VAMB); p.line(5,1,1,5,VAMB); p.halo(VAMBD); }); lx.drawImage(c,x-3,y-3); },
-  bursts:function(){ return {rock:['#e8fff6','#9affd8','#4ab890'],ufo:['#ffffff','#9affd8'],ship:['#ffffff','#d8fff0','#7affc8'],pick:['#ffffff','#d8fff0']}; },
+    lx.drawImage(this.shipPix(),x-2,y-8); if(!shipBare){ R('#1d5a44',x+1,y-1,3,3); R(fl?'#7affc8':'#d8fff0',x+1,y,3,1); } },
+  ufoPix:function(big,hurt){ var k=big?0.78:0.56; return pixOnce('v-ufo129b'+big+hurt,26,16,function(p){ var c=13, cy=8, A=hurt?cH('#fff4e0'):VAMB, h=Math.round(3*k), e=big?3:1, r=Math.max(2,Math.round(3*k)), m=big?5:3;
+      p.line(c-e,cy-h,c+e,cy-h,A); p.line(c-e,cy+h,c+e,cy+h,A); p.ring(c-m,cy,r,r,A,Math.PI*0.65,Math.PI*1.35); p.ring(c+m,cy,r,r,A,-Math.PI*0.35,Math.PI*0.35); p.halo(VAMBD); }); },
+  ufo:function(ux,uy,big,hurt){ ux=Math.round(ux); uy=Math.round(uy); lx.drawImage(this.ufoPix(big,!!hurt),ux-13,uy-8); var n=big?5:3, st=big?2:2, on=Math.floor(clock*8)%n;
+    for(var i=0;i<n;i++) R(i===on?'#fff0c8':'#a86a20',ux-(n-1)*st/2+i*st,uy,1,1); },
+  pick:function(x,y,type){ x=Math.round(x); y=Math.round(y); var c=pixOnce('v-pick129',13,13,function(p){ var W=[255,255,255];   // v1.29, «Б»: the diamond of four strokes with gaps, dots at its corners
+      p.line(7,1,10,4,VPH); p.line(10,8,7,11,VPH); p.line(5,11,2,8,VPH); p.line(2,4,5,1,VPH); p.halo(VDIM); p.put(6,0,W); p.put(12,6,W); p.put(6,12,W); p.put(0,6,W); });
+    lx.globalAlpha=0.8+0.2*Math.sin(clock*5); lx.drawImage(c,x-6,y-6); lx.globalAlpha=1; blit(PICONS[type],['#d8fff0'],x-3,y-3); },
+  bullet:function(x,y){ x=Math.round(x); y=Math.round(y); R('#1d5a44',x-6,y,2,1); R('#2b8a68',x-4,y,2,1); R('#7affc8',x-2,y,2,1); R('#ffffff',x,y,1,1); R('#2b8a68',x,y-1,1,1); R('#2b8a68',x,y+1,1,1); R('#2b8a68',x+1,y,1,1); },   // v1.29, «В»: a comet
+  ebullet:function(x,y){ x=Math.round(x); y=Math.round(y); var c=pixOnce('v-eb129',7,7,function(p){ p.ring(3,3,2,2,VAMB); p.put(3,3,cH('#fff0c8')); p.halo(VAMBD); }); lx.drawImage(c,x-3,y-3); },   // v1.29, «В»: an amber ring with a dot
+  shieldRing:function(x,y,t){ var cx=Math.round(x)+8, cy=Math.round(y); for(var i=0;i<14;i++){ var a=i/14*6.2832, w=0.5+0.5*Math.sin(t*6-i*0.9), X=Math.round(cx+Math.cos(a)*12.5), Y=Math.round(cy+Math.sin(a)*10);   // v1.29, «Е»: 14 dots, a wave of light round them
+    if(w>0.6){ R('#1d5a44',X-1,Y,3,1); R('#1d5a44',X,Y-1,1,3); R('#d8fff0',X,Y,1,1); } else R(w>0.3?'#7affc8':'#2b6652',X,Y,1,1); } },
+  bursts:function(){ return HDSK.vector.bursts(); }, pxParts:function(){ vtPxParts(); },
   shield:function(){ return '#7affc8'; }, mini:function(){ return ['#2a8a6a','#d8fff0']; } };
 
 /* ════════ NEON, pixels: a night sky with a striped sun, a dark range edged in violet drifting by, a magenta grid floor running (8 frames),
@@ -132,11 +156,29 @@ SKINS.neon={id:'neon', glow:false, nolight:true, motes:['#c9b8ff','#ffc8e8'],
 
 /* ════════ NOTEBOOK, pixels: squared paper with a red margin, pencil doodles drifting behind, one-pixel ballpoint lines; rocks hatched on the
    shadow side, the saucer and the enemy shots in red pen, the power-up coloured with a yellow highlighter ════════ */
-var NTINTP=cH('#d0daf2'), NPEN=cH('#1d3fa0'), NPEN2=cH('#6a80c8'), NRED=cH('#a8142c'), NPAPER=cH('#fbf8ef'), NPEN_L=cH('#9aaad8');
+var NTINTP=cH('#d0daf2'), NPEN=cH('#1d3fa0'), NPEN2=cH('#6a80c8'), NRED=cH('#a8142c'), NPAPER=cH('#fdfaf0'), NPEN_L=cH('#9aaad8');
+/* v1.29, the notebook's explosions in pixels (as in HD: hatched paper scraps, a red ink blot, a comic burst with «+», an eraser smear) */
+function nbBurstPix(n){ return pixOnce('nb-burst'+n,25,25,function(p){ var c=12, sc=[0.55,0.8,1][n], S=[], Q=srand(77), i; for(i=0;i<18;i++){ var b=i/18*6.2832, q=(i%2?5:11)*(0.85+0.3*Q())*sc; S.push([c+Math.cos(b)*q,c+Math.sin(b)*q]); }
+  p.poly(S,cH('#ffe24a')); p.path(S,cH('#d09000'),true); var Y=cH('#c88a00'); if(n){ p.line(c-2,c,c+2,c,Y); p.line(c,c-2,c,c+2,Y); } else p.put(c,c,Y); }); }
+function nbPxParts(){ spFxTrack(); var i;
+  SPFX.forEach(function(e){ var t=e.t, x0=Math.round(e.x), y0=Math.round(e.y), R2=srand(e.seed), u, al;
+    if(e.k==='ufo'){ u=Math.min(1,t/0.1); al=Math.max(0,1-t/0.8); if(al<=0) return; lx.globalAlpha=al*0.85; lx.fillStyle='#a8142c'; var r0=Math.round(4.5*u);
+      for(var yy=-r0;yy<=r0;yy++) for(var xx=-r0;xx<=r0;xx++) if(xx*xx+yy*yy<=r0*r0+1) lx.fillRect(x0+xx,y0+yy,1,1);
+      for(i=0;i<10;i++){ var a=R2()*6.2832, d=(3+R2()*10)*u, rr=R2()>0.6?2:1; pxLine(x0+Math.cos(a)*2,y0+Math.sin(a)*2,x0+Math.cos(a)*d*0.8,y0+Math.sin(a)*d*0.8,'#a8142c'); lx.fillRect(Math.round(x0+Math.cos(a)*d),Math.round(y0+Math.sin(a)*d),rr,rr); } lx.globalAlpha=1; }
+    if(e.k==='pick'){ al=t<0.35?1:Math.max(0,1-(t-0.35)/0.2); if(al<=0) return; lx.globalAlpha=al; lx.drawImage(nbBurstPix(t<0.05?0:t<0.1?1:2),x0-12,y0-12); lx.globalAlpha=1; }
+    if(e.k==='ship'){ al=Math.max(0,1-t/0.6); if(al<=0) return; lx.globalAlpha=al*0.45; for(i=0;i<6;i++){ var w=Math.round(14+R2()*6); R('#9a9aa8',Math.round(x0-w/2+(R2()-0.5)*3),Math.round(y0+(i-2.5)*2.2),w,1); } lx.globalAlpha=1; } });
+  parts.forEach(function(p){ var f=p.life/p.max, k=p._k, c=p.cols[Math.min(p.cols.length-1,Math.floor((1-f)*p.cols.length))], X=Math.round(p.x), Y=Math.round(p.y);
+    if(k==='rock'){ if(p._i%3===0&&f>0.2){ R('#d0daf2',X,Y,3,2); R('#1d3fa0',X,Y,1,1); R('#1d3fa0',X+2,Y+1,1,1); R('#6a80c8',X+1,Y+1,1,1); } else if(p._i%3===1) R('#1d3fa0',X,Y,1,1); }
+    else if(k==='ufo'){ }
+    else if(k==='pick'){ if(p._i%3===0) R('#e0a000',X,Y,2,1); }
+    else if(k==='ship'){ if(p._i%2===0) R(p._i%4?'#f0a0b0':'#1d3fa0',X,Y,2,1); }
+    else R(c,X,Y,1,1); }); }
 SKINS.note={id:'note', glow:false, nolight:true, motes:['#9a9aa4'],
   ui:HDSK.note.ui,
-  paperMake:function(){ var p=new Pix(LW,LH), x, y, g=cH('#d6e2f2'), g2=cH('#e6edf6');
-    for(y=0;y<LH;y++) for(x=0;x<LW;x++) p.put(x,y,y%5===0||x%5===0?(y%5===0&&x%5===0?g:((x+y)%2?g:g2)):NPAPER);
+  paperMake:function(){ var p=new Pix(LW,LH), x, y, R2=srand(4242), W0=cH('#fdfaf0'), Wd=cH('#f1ece0'), Wl=cH('#fffef8'), BK=cH('#eceaee'), i, k;   // v1.29, as HD: ruled, warm, grain, the back's writing
+    for(y=0;y<LH;y++) for(x=0;x<LW;x++){ var a=R2(); p.put(x,y,a<0.025?Wd:a>0.975?Wl:W0); }
+    for(k=1;k*10+7<LH;k++){ if(R2()<0.35) continue; y=k*10+7; x=4+Math.floor(R2()*10); while(x<LW-20){ var wl=7+Math.floor(R2()*20); if(x+wl>LW-4) break; for(i=0;i<wl;i++) if(Math.sin(i*1.3+x)>-0.2) p.put(LW-1-(x+i),y+(Math.sin(i*1.9+x)>0.3?-1:0),BK); x+=wl+3+Math.floor(R2()*5); } }
+    for(y=12;y<LH;y+=10){ var c=R2()<0.5?cH('#c4d4ec'):cH('#d2def0'); for(x=0;x<LW;x++) p.put(x,y,c); }
     for(y=0;y<LH;y++) p.put(22,y,[232,150,150]); return p.canvas(); },
   doodleMake:function(){ var w=LW*2, h=LH, p=new Pix(w,h), R2=srand(9), i, PC=cH('#a4a4ae'), PC2=cH('#c4c4cc');
     var star=function(sx,sy,r){ var S=[]; for(var k=0;k<5;k++){ var a=-Math.PI/2+k*2*2.513; S.push([sx+Math.cos(a)*r,sy+Math.sin(a)*r]); } p.path(S,PC,true); };
@@ -148,21 +190,53 @@ SKINS.note={id:'note', glow:false, nolight:true, motes:['#9a9aa4'],
     return p.canvas(); },
   sky:function(dt,s){ if(!this._k||this._k!==LW+'x'+LH){ this._k=LW+'x'+LH; this._paper=this.paperMake(); this._dood=this.doodleMake(); this._x=this._x||0; }
     this._x=(this._x+2.5*K*dt*s)%(LW*2); lx.drawImage(this._paper,0,0); var x=Math.floor(this._x); lx.drawImage(this._dood,-x,0); lx.drawImage(this._dood,LW*2-x,0); },
-  rock:function(r,sz,seed){ var R2=srand(seed*57+3), cr=[]; for(var i=0;i<2+(r>8?1:0);i++) cr.push([R2()*6.2832,R2()*0.5,0.14+R2()*0.12]);
-    return pixRockFrames(r,seed,11,function(p,P,c,rr,f){ p.poly(P,NTINTP);
-      for(var y=0;y<p.h;y++) for(var x=0;x<p.w;x++){ var o=(y*p.w+x)*4; if(!p.d[o+3]) continue; var dx=x-c, dy=y-c; if(dx+dy>r*0.35&&(x+y)%3===0) p.put(x,y,NPEN2); }   // hatched on the shadow side
-      var a0=f/16*6.2832; cr.forEach(function(q){ var a=q[0]+a0; p.ring(c+Math.cos(a)*q[1]*r,c+Math.sin(a)*q[1]*r,Math.max(1.2,q[2]*r),Math.max(1.2,q[2]*r),NPEN,0.3,6); });
+  rock:function(r,sz,seed){ var R2=srand(seed*57+3), cr=[], dots=[], i; for(i=0;i<2+(r>8?1:0);i++) cr.push([R2()*6.2832,R2()*0.5,0.14+R2()*0.12]); for(i=0;i<Math.round(r*1.2);i++) dots.push([(R2()-0.4)*1.2,(R2()-0.4)*1.2]);   // v1.29, «В», as HD
+    return pixRockFrames(r,seed,11,function(p,P,c,rr,f){ p.poly(P,NTINTP); var a0=f/16*6.2832, PALE=cH('#e8eefa');
+      for(var y=0;y<p.h;y++) for(var x=0;x<p.w;x++){ var o=(y*p.w+x)*4; if(!p.d[o+3]) continue; var dx=x-c, dy=y-c, sd=dx+dy; if(sd>r*0.2&&(x+y)%3===0) p.put(x,y,NPEN2); if(sd>r*0.65&&(x-y+60)%3===0) p.put(x,y,NPEN2); }   // cross-hatched on the shadow side
+      cr.forEach(function(q){ var a=q[0]+a0, X=c+Math.cos(a)*q[1]*r, Y=c+Math.sin(a)*q[1]*r, R0=Math.max(1.2,q[2]*r);
+        for(var yy=Math.floor(Y-R0);yy<=Y+R0;yy++) for(var xx=Math.floor(X-R0);xx<=X+R0;xx++) if((xx-X)*(xx-X)+(yy-Y)*(yy-Y)<R0*R0&&(xx+yy)%2===0) p.put(xx,yy,NPEN2);
+        p.ring(X,Y,R0,R0,NPEN,Math.PI*0.9,Math.PI*1.9); if(R0>1.8) p.ring(X,Y,R0,R0,PALE,Math.PI*1.95,Math.PI*2.85); });
+      dots.forEach(function(d){ var a=Math.atan2(d[1],d[0])+a0, dl=Math.hypot(d[0],d[1])*r; p.put(c+Math.cos(a)*dl,c+Math.sin(a)*dl,NPEN); });
+      if(r>6){ p.put(c-r*0.45,c-r*0.45,[255,255,255]); p.put(c-r*0.45+1,c-r*0.45,[255,255,255]); p.put(c-r*0.45+2,c-r*0.45-1,[255,255,255]); }
       p.path(P,NPEN,true); if(r>7) p.path(P.map(function(q,i){ return [q[0]+(i%3===0?1:0),q[1]]; }),NPEN,true); p.path(P,NPEN,true); }); },
-  shipPix:function(){ return pixOnce('nb-ship',24,16,function(p){ var y=8, S=[[21,y],[9,y-6],[5,y-6],[7,y-2],[3,y-2],[3,y+2],[7,y+2],[5,y+6],[9,y+6]];
-      p.poly(S,NTINTP); p.path(S,NPEN,true); p.rect(13,y-1,4,2,NPEN); p.line(8,y-3,12,y-1,NPEN2); p.line(8,y+3,12,y+1,NPEN2); }); },
+  /* v1.29, the ship «Г» in pixels, as HD (21 long): the lower half hatched, a yellow stripe on the upper wing, panel lines, rivets, the
+     canopy white and hatched */
+  shipPix:function(){ return pixOnce('nb-ship129',26,18,function(p){ var y=9, S=[[23,y],[10,y-7],[5,y-7],[8,y-2],[3,y-2],[3,y+2],[8,y+2],[5,y+7],[10,y+7]], xx, yy, YL=cH('#f2d24a'), W=[255,255,255];
+      var inside=function(px,py){ var ins=false; for(var a=0,b=S.length-1;a<S.length;b=a++){ var xa=S[a][0],ya=S[a][1],xb=S[b][0],yb=S[b][1]; if(((ya>py)!==(yb>py))&&(px<(xb-xa)*(py-ya)/(yb-ya)+xa)) ins=!ins; } return ins; };
+      p.poly(S,NTINTP);
+      for(yy=y-5;yy<=y-4;yy++) for(xx=7;xx<16;xx++) if(inside(xx+0.5,yy+0.5)) p.put(xx,yy,YL);
+      for(yy=y+1;yy<=y+7;yy++) for(xx=3;xx<23;xx++) if(inside(xx+0.5,yy+0.5)&&(xx+yy)%2===0) p.put(xx,yy,NPEN2);
+      p.line(8,y-2,13,y-2,NPEN2); p.line(8,y+2,13,y+2,NPEN2); p.line(12,y-4,12,y+4,NPEN2);
+      p.rect(15,y-1,5,2,W); p.put(16,y,NPEN); p.put(18,y,NPEN); p.put(17,y-1,NPEN2); p.put(19,y-1,NPEN2); p.path([[14,y],[15,y-2],[19,y-2],[21,y-1],[19,y+1],[15,y+1]],NPEN,true);
+      [[9,y-5],[11,y+5],[9,y+5]].forEach(function(q){ p.put(q[0],q[1],NPEN); });
+      p.path(S,NPEN,true); }); },
   ship:function(x,y,t,blink){ if(blink) return; x=Math.round(x); y=Math.round(y); var fl=Math.floor(t*14)%2;
-    lx.drawImage(this.shipPix(),x-2,y-8); lx.fillStyle='#e0701a'; if(!shipBare) for(var i=0;i<5;i++) lx.fillRect(x-1-i,y+((i+fl)%2?1:-1),1,1); },
-  ufoPix:function(big,hurt){ var k=big?0.78:0.56; return pixOnce('nb-ufo83'+big+hurt,26,16,function(p){ var c=13, cy=8, col=hurt?NPEN:NRED, E=[], D=[], i;
-      for(i=0;i<24;i++){ var a=i/24*6.2832; E.push([c+Math.cos(a)*10*k,cy+1+Math.sin(a)*3*k]); } p.poly(E,NTINTP); p.path(E,col,true);
-      for(i=0;i<=10;i++){ var b=Math.PI+i/10*Math.PI; D.push([c+Math.cos(b)*4.5*k,cy-1+Math.sin(b)*4*k]); } p.poly(D,NTINTP); p.path(D,col,false);
-      for(i=0;i<5;i++) p.put(c-6*k+i*3*k,cy+1,col); }); },
+    lx.drawImage(this.shipPix(),x-2,y-9); lx.fillStyle='#e0701a'; if(!shipBare) for(var i=0;i<5;i++) lx.fillRect(x-1-i,y+((i+fl)%2?1:-1),1,1); },
+  /* v1.29, the saucer «Д» in pixels: a belt line, three white windows in the dome, three yellow lights, its shadow hatched below */
+  ufoPix:function(big,hurt){ var k=big?0.78:0.56; return pixOnce('nb-ufo129'+big+hurt,26,16,function(p){ var c=13, cy=8, col=hurt?NPEN:NRED, E=[], D=[], i, xx, yy, sh=hurt?NPEN2:cH('#d06a7a');
+      for(i=0;i<24;i++){ var a=i/24*6.2832; E.push([c+Math.cos(a)*10*k,cy+1+Math.sin(a)*3*k]); } p.poly(E,NTINTP);
+      for(yy=Math.round(cy+2);yy<=cy+1+3*k;yy++) for(xx=Math.round(c-9*k);xx<=c+9*k;xx++) if((xx+yy)%2===0&&((xx-c)*(xx-c)/(81*k*k)+(yy-cy-1)*(yy-cy-1)/(9*k*k))<0.8) p.put(xx,yy,sh);
+      for(i=0;i<=10;i++){ var b=Math.PI+i/10*Math.PI; D.push([c+Math.cos(b)*4.5*k,cy-1+Math.sin(b)*4*k]); } p.poly(D,NTINTP);
+      if(big){ [-2,0,2].forEach(function(e){ p.put(Math.round(c+e*k),cy-2,[255,255,255]); }); } else p.put(c,cy-2,[255,255,255]);
+      p.path(E,col,true); p.path(D,col,false); p.line(Math.round(c-8*k),cy,Math.round(c+8*k),cy,col);
+      (big?[-5,0,5]:[-4,4]).forEach(function(e){ p.put(Math.round(c+e*k),cy+2,cH('#f2c21a')); }); }); },
   ufo:function(ux,uy,big,hurt){ lx.drawImage(this.ufoPix(big,!!hurt),Math.round(ux)-13,Math.round(uy)-8); },
-  pick:function(x,y,type){ x=Math.round(x); y=Math.round(y); R('#ffe44a',x-6,y-6,12,12); var c=pixOnce('nb-pick',14,14,function(p){ p.path([[1,1],[12,1],[12,12],[1,12]],NPEN,true); p.line(2,0,12,0,NPEN_L); }); lx.drawImage(c,x-7,y-7); blit(PICONS[type],['#1d3fa0'],x-3,y-3); },
+  /* v1.29, «Б» in pixels: the sticky note, its glue strip at the top, the lower part lifting a pixel or two in three frames, the corner
+     curling and the shadow growing with it */
+  pick:function(x,y,type){ x=Math.round(x); y=Math.round(y); var ph={shield:0,triple:1.7,slow:3.1,life:4.4}[type]||0, s=Math.sin(clock*2.3+ph)+0.4*Math.sin(clock*7.1+ph*2), k=s>0.1?1:0;   // two frames: a pixel of lift is «немного»
+    var b=11-k, cu=2+k, D=11+b-cu, c=pixOnce('nb-pick129c-'+k,12,12,function(p){ var Y=cH('#ffe766'), G=cH('#f5c932'), F=cH('#f2cf3a'), Dk=cH('#d9b31f'), Sh=cH('#f3d655'), xx, yy;
+      for(yy=0;yy<=b;yy++) for(xx=0;xx<12;xx++){ var e=xx+yy; if(e>D) continue;
+        var fold=xx>=11-cu&&yy>=b-cu&&e>=D-cu+1, col=yy<2?G:(k&&yy>=b-1?Sh:Y);
+        if(fold) col=(xx===11-cu||yy===b-cu)?Dk:F;
+        if(yy===0||xx===0||(xx===11&&yy<=b-cu)||(yy===b&&xx<=11-cu)||e===D) col=NPEN; p.put(xx,yy,col); } });
+    lx.globalAlpha=0.16+0.08*k; R('#3c3214',x-5+k,y-6+b+1,11-cu+1,1+k); R('#3c3214',x+6,y-5+k,1,b-cu); lx.globalAlpha=1;
+    lx.drawImage(c,x-6,y-6); blit(PICONS[type],['#1d3fa0'],x-3,y-3); },
   bullet:function(x,y){ x=Math.round(x); y=Math.round(y); R('#0a1f6a',x-4,y,7,2); },   // v0.85: thicker and darker (his pick «А»)
-  ebullet:function(x,y){ x=Math.round(x); y=Math.round(y); var c=pixOnce('nb-eb',6,6,function(p){ p.line(0,0,4,4,NRED); p.line(4,0,0,4,NRED); p.line(1,0,5,4,NRED); p.line(5,0,1,4,NRED); }); lx.drawImage(c,x-3,y-2); },
-  bursts:function(){ return HDSK.note.bursts(); }, shield:function(){ return '#1d3fa0'; }, mini:function(){ return ['#1d3fa0','#6a80c8']; } };
+  ebullet:function(x,y){ x=Math.round(x); y=Math.round(y); var c=pixOnce('nb-eb129b',5,5,function(p){ ['..x..','x.x.x','.xxx.','x.x.x','..x..'].forEach(function(r,j){ for(var i=0;i<5;i++) if(r[i]==='x') p.put(i,j,NRED); }); }); lx.drawImage(c,x-2,y-2); },   // v1.29, «Б»: a red asterisk
+  /* v1.29, the shield «Д» in pixels, «Г» of its pixel round (the maintainer: «в пикселях щит некрасиво получился» → «щит в пикселях г»):
+     a pale zigzag of 10 teeth with dark tips, drawn once in 4 steps of its creeping (each frame rounded alike, so the teeth stay even) */
+  shieldRing:function(x,y,t){ var f=Math.floor(t*4)%4, c=pixOnce('nb-sh129-'+f,40,34,function(p){ var CX=20, CY=17, T=10, P=[], i;
+      for(i=0;i<=2*T;i++){ var a=(i+f/2)/(2*T)*6.2832, r=i%2?12:15.5; P.push([CX+Math.cos(a)*r,CY+Math.sin(a)*r*0.8]); }
+      for(i=0;i<2*T;i++) p.line(P[i][0],P[i][1],P[i+1][0],P[i+1][1],NPEN2); for(i=0;i<=2*T;i+=2) p.put(P[i][0],P[i][1],NPEN); });
+    lx.drawImage(c,Math.round(x)+8-20,Math.round(y)-17); },
+  bursts:function(){ return HDSK.note.bursts(); }, pxParts:function(){ nbPxParts(); }, shield:function(){ return '#1d3fa0'; }, mini:function(){ return ['#1d3fa0','#6a80c8']; } };

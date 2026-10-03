@@ -42,10 +42,10 @@ function pickScale(sk){ if(sk._pk&&sk._pkKey===hs) return sk._pk; var keepH=hx, 
     sk.pick=function(x,y,type){ var k=pickScale(this); hx.save(); hx.translate(x,y); hx.scale(k,k); hx.translate(-x,-y); try{ this._pickDraw(x,y,type); } finally { hx.restore(); } }; }); })();
 /* v0.83: saucers the size of what the game counts, the same in every skin (they were 18–24.5 wide, the small one 12–17.5): the core hits a
    big one within 7+1 of its middle across and a small one within 5+1 — 17 and 13 game pixels on a usual phone. HD pictures measured and scaled. */
-var UFO_W=[13,17];
+var UFO_W=[13,17], sizeMeasure=0;   // v1.29: sizeMeasure > 0 while a picture is measured (a skin leaves out what is not the body, e.g. the notebook saucer's whoosh)
 function ufoScale(sk,big){ var key=hs+(big?'b':'s'); sk._uk=sk._uk||{}; if(sk._uk[key]) return sk._uk[key]; var keepH=hx, keepHs=hs, SC=4, c=document.createElement('canvas'); c.width=c.height=60*SC; var k=1;
-  try{ hx=c.getContext('2d'); hx.setTransform(SC,0,0,SC,0,0); hs=SC; noLight=true; sk._ufoDraw.call(sk,30,30,big,false); var b=alphaBox(c); if(b) k=UFO_W[big?1:0]/(b.w/SC); }
-  catch(e){} finally { hx=keepH; hs=keepHs; noLight=false; lights=[]; }
+  try{ hx=c.getContext('2d'); hx.setTransform(SC,0,0,SC,0,0); hs=SC; noLight=true; sizeMeasure++; sk._ufoDraw.call(sk,30,30,big,false); var b=alphaBox(c); if(b) k=UFO_W[big?1:0]/(b.w/SC); }
+  catch(e){} finally { hx=keepH; hs=keepHs; noLight=false; lights=[]; sizeMeasure--; }
   return (sk._uk[key]=k); }
 (function(){ Object.keys(HDSK).forEach(function(id){ var sk=HDSK[id]; if(!sk||sk._ufoDraw||id==='lcd') return; sk._ufoDraw=sk.ufo;
     sk.ufo=function(ux,uy,big,hurt){ var k=ufoScale(this,big); hx.save(); hx.translate(ux,uy); hx.scale(k,k); hx.translate(-ux,-uy); try{ this._ufoDraw(ux,uy,big,hurt); } finally { hx.restore(); } }; }); })();
@@ -53,10 +53,10 @@ function ufoScale(sk,big){ var key=hs+(big?'b':'s'); sk._uk=sk._uk||{}; if(sk._u
    against the core's circle and how far its middle sits from the point the game draws it at */
 function sizeProbe(id,mode){ var sk=mode==='pixel'?SKINS[id]:HDSK[id]; if(!sk) return null; var keepL=lx, keepH=hx, keepHs=hs, SC=4, W=120, H=100, out={rocks:[],ship:null};
   if(!hdCv) hdSize();
-  function grab(fn){ var c=document.createElement('canvas'); noLight=true;
+  function grab(fn){ var c=document.createElement('canvas'); noLight=true; sizeMeasure++;
     try{ if(mode==='pixel'){ c.width=W; c.height=H; lx=c.getContext('2d'); lx.imageSmoothingEnabled=false; fn(lx); }
       else { c.width=W*SC; c.height=H*SC; hx=c.getContext('2d'); hx.setTransform(SC,0,0,SC,0,0); hs=SC; fn(hx); } }
-    finally { lx=keepL; hx=keepH; hs=keepHs; noLight=false; lights=[]; }
+    finally { lx=keepL; hx=keepH; hs=keepHs; noLight=false; lights=[]; sizeMeasure--; }
     var b=alphaBox(c), s=mode==='pixel'?1:SC; return b?{w:b.w/s,h:b.h/s,dx:b.cx/s-W/2,dy:b.cy/s-H/2}:null; }
   try{ var t=document.createElement('canvas'); t.width=LW; t.height=LH; if(mode==='pixel'){ lx=t.getContext('2d'); sk.sky(0,0); } else { hx=t.getContext('2d'); sk.sky(0,0); } }catch(e){} lx=keepL; hx=keepH;
   [0,1,2].forEach(function(sz){ var hit=2*Core.R_SIZE[sz]*K, n=0, pc=0, dx=0, dy=0;                           // six rocks, four turns each

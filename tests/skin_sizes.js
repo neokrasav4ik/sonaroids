@@ -7,7 +7,7 @@
    (skins not yet redrawn are listed in PENDING and reported, not failed); (v0.83: the hull — several frames, not the flame behind); power-ups 12–14.5 across (v0.81: the core's zone, the same in every skin); saucers 15–20.5 / 11.5–16 wide, own shots 4–8.5 long, enemy shots 3.5–7 (v0.83). Three screen sizes. Needs Playwright with Chromium. Run: node tests/skin_sizes.js */
 let chromium; try{ ({chromium}=require('playwright')); }catch(e){ console.log('no playwright — skipped'); console.log('RESULT: ok'); process.exit(0); }
 const path=require('path'), ROOT=path.join(__dirname,'..');
-const PENDING=['vector','note'];   // their objects get redrawn in turn (v1.27 on); each leaves this list then
+const PENDING=[];   // their objects get redrawn in turn (v1.27 on); each leaves this list then
 (async()=>{ const b=await chromium.launch(); let ok=true; const errors=[];
   for(const [w,h] of [[568,320],[844,390],[1024,768]]){
     const p=await b.newPage({viewport:{width:w,height:h},deviceScaleFactor:2}); p.on('pageerror',e=>errors.push(e.message));

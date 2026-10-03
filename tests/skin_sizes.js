@@ -7,7 +7,7 @@
    (skins not yet redrawn are listed in PENDING and reported, not failed); (v0.83: the hull — several frames, not the flame behind); power-ups 12–14.5 across (v0.81: the core's zone, the same in every skin); saucers 15–20.5 / 11.5–16 wide, own shots 4–8.5 long, enemy shots 3.5–7 (v0.83). Three screen sizes. Needs Playwright with Chromium. Run: node tests/skin_sizes.js */
 let chromium; try{ ({chromium}=require('playwright')); }catch(e){ console.log('no playwright — skipped'); console.log('RESULT: ok'); process.exit(0); }
 const path=require('path'), ROOT=path.join(__dirname,'..');
-const PENDING=['vector','neon','note'];   // their objects get redrawn in turn (v1.27 on); each leaves this list then
+const PENDING=['vector','note'];   // their objects get redrawn in turn (v1.27 on); each leaves this list then
 (async()=>{ const b=await chromium.launch(); let ok=true; const errors=[];
   for(const [w,h] of [[568,320],[844,390],[1024,768]]){
     const p=await b.newPage({viewport:{width:w,height:h},deviceScaleFactor:2}); p.on('pageerror',e=>errors.push(e.message));
@@ -18,7 +18,7 @@ const PENDING=['vector','neon','note'];   // their objects get redrawn in turn (
     for(const id of ids) for(const m of ['pixel','hd']){ const r=await p.evaluate(([i,m])=>__sonaroids.sizeProbe(i,m),[id,m]); if(!r) continue; got[id+'/'+m]=r;
       const bad=[]; r.rocks.forEach((q,sz)=>{ if(!q){ bad.push('rock '+sz+' not drawn'); return; } const px=m==='pixel'||id==='lcd', lo=sz===2&&px?85:90, hi=sz===2?(px?125:118):112;
         if(q.pct<lo||q.pct>hi) bad.push(`rock ${sz} ${q.pct}%`); if(Math.abs(q.dx)>2||Math.abs(q.dy)>2) bad.push(`rock ${sz} off by ${q.dx},${q.dy}`); });
-      if(r.ship<19||r.ship>23) bad.push(`ship ${r.ship}`); if(!(r.pick>=12&&r.pick<=14.5)) bad.push(`power-up ${r.pick}`);
+      if(r.ship<19||r.ship>23) bad.push(`ship ${r.ship}`); if(!(r.pick>=(m==='pixel'&&id==='neon'?11:12)&&r.pick<=14.5)) bad.push(`power-up ${r.pick}`);   // v1.28: neon pixels 11 + a half see-through glow (HD 12; a 7-pixel sign can't sit centred in a 12-pixel frame)
       if(!(r.ufo[0]>=15&&r.ufo[0]<=20.5)) bad.push(`saucer ${r.ufo[0]}`); if(!(r.ufoS[0]>=11.5&&r.ufoS[0]<=16)) bad.push(`small saucer ${r.ufoS[0]}`);
       if(!(r.bullet[0]>=4&&r.bullet[0]<=8.5)) bad.push(`shot ${r.bullet[0]}`); if(!(Math.max(...r.ebullet)>=3.5&&Math.max(...r.ebullet)<=7)) bad.push(`enemy shot ${r.ebullet}`); if(bad.length) ok=false;
       console.log(`${w}x${h} ${(id+' '+m).padEnd(13)} rocks ${r.rocks.map(q=>q?q.pct+'%':'—').join(' / ').padEnd(18)} ship ${String(r.ship).padEnd(5)} power-up ${String(r.pick).padEnd(5)} saucers ${r.ufo[0]}/${r.ufoS[0]} shots ${r.bullet[0]}/${Math.max(...r.ebullet)} ${bad.length?'FAIL: '+bad.join('; '):'ok'}`); }

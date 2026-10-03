@@ -35,7 +35,7 @@ function makeSkinRock(sk,sz,rc,seed){ return rockCentre(sk.rock(rockR(sk,sz,rc),
    usual phone. The HD pictures are measured once (the body, alpha ≥ 128) and scaled to it; the pixel ones are drawn 13 pixels. */
 var PICK_W=13;
 function pickScale(sk){ if(sk._pk&&sk._pkKey===hs) return sk._pk; var keepH=hx, keepHs=hs, SC=4, c=document.createElement('canvas'); c.width=c.height=40*SC; var k=1;
-  try{ hx=c.getContext('2d'); hx.setTransform(SC,0,0,SC,0,0); hs=SC; noLight=true; sk._pickDraw.call(sk,20,20,'shield'); var b=alphaBox(c); if(b) k=PICK_W/(Math.max(b.w,b.h)/SC); }
+  try{ hx=c.getContext('2d'); hx.setTransform(SC,0,0,SC,0,0); hs=SC; noLight=true; sk._pickDraw.call(sk,20,20,'shield'); var b=alphaBox(c); if(b) k=(sk.pickW||PICK_W)/(Math.max(b.w,b.h)/SC); }   // v1.28: a skin may ask for a smaller picture (neon 12 — a bright square looked as big as the ship)
   catch(e){} finally { hx=keepH; hs=keepHs; noLight=false; lights=[]; }
   sk._pk=k; sk._pkKey=hs; return k; }
 (function(){ Object.keys(HDSK).forEach(function(id){ var sk=HDSK[id]; if(!sk||sk._pickDraw||id==='lcd') return; sk._pickDraw=sk.pick;

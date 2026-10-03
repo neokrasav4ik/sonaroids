@@ -135,7 +135,7 @@ function spKinds(b){ for(var k in b) b[k].kind=k; return b; }
 function spFxTrack(){ var now=performance.now()/1000, dt=SPFX_T?Math.min(0.1,Math.max(0,now-SPFX_T)):0, seen={}; SPFX_T=now;
   SPFX.forEach(function(e){ e.t+=dt; }); SPFX=SPFX.filter(function(e){ return e.t<0.8; });
   parts.forEach(function(p){ if(p._k!==undefined) return; var k=(p.cols&&p.cols.kind)||''; p._k=k; p._i=SPFX_N++; if(!k) return;
-    var key=k+'|'+Math.round(p.x)+'|'+Math.round(p.y); if(seen[key]) return; seen[key]=1; SPFX.push({x:p.x,y:p.y,k:k,t:0,seed:(SPFX_N*7919)%1000}); }); }
+    var key=k+'|'+Math.round(p.x)+'|'+Math.round(p.y); if(seen[key]) return; seen[key]=1; SPFX.push({x:p.x,y:p.y,k:k,t:0,seed:(SPFX_N*7919)%1000,cols:p.cols}); }); }   // v1.28: the colours kept (neon: a power-up's own colour)
 var SP_HOT={rock:['#fff2b0','#ff8c32'],ufo:['#ffffff','#fff7c8'],pick:['#ffffff','#ffe066'],ship:['#ffffff','#7fdcff','#ff6a3c','#ffd23f']};
 /* the pixel look of the same: chunks are 2×2 blocks with a dark pixel, sparks short streaks, stars little crosses, puffs round blocks */
 function spPxParts(){ spFxTrack(); var i;

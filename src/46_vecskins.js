@@ -52,16 +52,22 @@ HDSK.vector={id:'vector', hd:true, glow:false, nolight:true, motes:['#557a6e','#
 
 /* ════════ NEON: synthwave night — a striped sun sinking behind a wireframe range, a glowing grid floor that runs by, stars; every object a
    bright neon tube over a dark glass body ════════ */
+var NEON_PICK={shield:'#3ff7ff',triple:'#ffb13b',slow:'#ff5a9a',life:'#a8ff3a'};   // «сердце — салатовым, а часы песочные — розовым»
+    // v1.27: each power-up its own colour; slow lime, not violet (the maintainer: «не будет у нас сливаться фиолетовый знак с маленькими астероидами??» — it would: ΔE 12–24 to their lines)
+var NEON_SUN=['#ffe25a','#ff9a4a','#ff3f8e','#a03ad0'], NEON_SHARD=['#6a2aa8','#3a1470','#8a4ad0'];
+/* v1.28: a crystal shard of a broken neon rock — a violet triangle in a pink tube */
+function neShard(X,Y,s,ang,fill,edge,a){ if(a<=0) return; var ca=Math.cos(ang), sa=Math.sin(ang), T=[[s,0],[-s*0.6,s*0.55],[-s*0.4,-s*0.7]].map(function(q){ return [X+q[0]*ca-q[1]*sa,Y+q[0]*sa+q[1]*ca]; });
+  hx.globalAlpha=a; polyAt(hx,T); hx.fillStyle=fill; hx.fill(); hx.globalAlpha=1; nline(function(){ polyAt(hx,T); },edge,0.25,a); }
 function nline(fn,col,w,a){ a=a===undefined?1:a; hx.lineJoin='round'; hx.lineCap='round';
   hx.globalAlpha=0.22*a; hx.strokeStyle=col; hx.lineWidth=lwMin(w)*3.6; fn(); hx.stroke();
   hx.globalAlpha=0.95*a; hx.lineWidth=lwMin(w)*1.3; fn(); hx.stroke();
   hx.globalAlpha=0.9*a; hx.strokeStyle='#ffffff'; hx.lineWidth=lwMin(w)*0.45; fn(); hx.stroke(); hx.globalAlpha=1; }
-HDSK.neon={id:'neon', hd:true, glow:false, nolight:true, veil:'rgba(8,2,22,0.64)', motes:['#c9b8ff','#9ef8ff'],
+HDSK.neon={id:'neon', hd:true, pickW:12, glow:false, nolight:true, veil:'rgba(8,2,22,0.64)', motes:['#c9b8ff','#ffc8e8'],
   ui:{veil:0.5,band:'#ff4fd8',btn:'#e04ed0',btnHi:'#ff8ae8'},
   bgMake:function(){ var w=LW, h=LH, o=hdOff(w,h), x=o.x, hz=h*0.7, R2=srand(12), i;
     var g=x.createLinearGradient(0,0,0,hz); g.addColorStop(0,'#07031a'); g.addColorStop(0.6,'#1a0838'); g.addColorStop(1,'#3a0c4a'); x.fillStyle=g; x.fillRect(0,0,w,hz);
     var g2=x.createLinearGradient(0,hz,0,h); g2.addColorStop(0,'#1a0630'); g2.addColorStop(1,'#07020e'); x.fillStyle=g2; x.fillRect(0,hz,w,h-hz);
-    for(i=0;i<Math.round(w*h/260);i++){ var z=R2(); x.fillStyle=z>0.85?'rgba(158,248,255,0.8)':'rgba(201,184,255,'+(0.25+z*0.4)+')'; x.fillRect(R2()*w,R2()*hz*0.95,0.5+z*0.3,0.5+z*0.3); }
+    for(i=0;i<Math.round(w*h/260);i++){ var z=R2(); x.fillStyle=z>0.85?'rgba(255,200,232,0.8)':'rgba(201,184,255,'+(0.25+z*0.4)+')'; x.fillRect(R2()*w,R2()*hz*0.95,0.5+z*0.3,0.5+z*0.3); }
     // the sun: a gradient disc cut by widening dark bands, a haze round it
     var sx=w*0.5, sy=hz, sr=h*0.3; var hg=x.createRadialGradient(sx,sy-sr*0.4,sr*0.5,sx,sy-sr*0.4,sr*1.8); hg.addColorStop(0,'rgba(255,80,160,0.25)'); hg.addColorStop(1,'rgba(255,80,160,0)'); x.fillStyle=hg; x.fillRect(0,0,w,hz);
     x.save(); x.beginPath(); x.arc(sx,sy,sr,Math.PI,0); x.closePath(); x.clip(); var sg=x.createLinearGradient(0,sy-sr,0,sy); sg.addColorStop(0,'#ffe25a'); sg.addColorStop(0.55,'#ff8a4a'); sg.addColorStop(1,'#ff2f8e'); x.fillStyle=sg; x.fillRect(sx-sr,sy-sr,2*sr,sr);
@@ -83,27 +89,77 @@ HDSK.neon={id:'neon', hd:true, glow:false, nolight:true, veil:'rgba(8,2,22,0.64)
     nline(function(){ hx.beginPath(); hx.moveTo(0,hz); hx.lineTo(LW,hz); },'#ff7ae0',0.4,0.7);
     hdVeil(this); },
   rock:function(r,sz,seed){ var R2=srand(seed*31+7), inner=[]; for(var i=0;i<3+(r>8?2:0);i++) inner.push(Math.floor(R2()*9)); return {r:r,pts:rockPoly(r,seed,9),inner:inner,size:r*2.4,rot:R2()*16,vr:(R2()-0.5)*6,hd:true}; },
-  drawRock:function(sp,x,y){ var cx=x+(sp.ox||0), P=turnPts(sp.pts,sp.r,sp.rot/16*6.2832,cx,y), c=[cx-sp.r*0.15,y-sp.r*0.1];
-    hx.fillStyle='rgba(16,3,28,0.96)'; polyAt(hx,P); hx.fill();
-    nline(function(){ hx.beginPath(); sp.inner.forEach(function(k){ hx.moveTo(c[0],c[1]); hx.lineTo(P[k][0],P[k][1]); }); },'#a05ad8',0.3,0.6);
-    nline(function(){ polyAt(hx,P); },'#ef9aff',0.85,1); },
-  ship:function(x,y,t,blink){ if(blink) return; var fl=0.75+0.25*Math.sin(t*35);
-    hx.fillStyle='rgba(3,22,28,0.96)'; hx.beginPath(); hx.moveTo(x+20,y); hx.lineTo(x+7,y-6); hx.lineTo(x+3,y-6); hx.lineTo(x+5,y-1.6); hx.lineTo(x+1.5,y-1.6); hx.lineTo(x+1.5,y+1.6); hx.lineTo(x+5,y+1.6); hx.lineTo(x+3,y+6); hx.lineTo(x+7,y+6); hx.closePath(); hx.fill();
-    if(!shipBare) nline(function(){ hx.beginPath(); hx.moveTo(x+1.5,y-1.2); hx.lineTo(x+1.5-8*fl,y); hx.lineTo(x+1.5,y+1.2); },'#ffb13b',0.5,0.9);
-    nline(function(){ hx.beginPath(); hx.moveTo(x+20,y); hx.lineTo(x+7,y-6); hx.lineTo(x+3,y-6); hx.lineTo(x+5,y-1.6); hx.lineTo(x+1.5,y-1.6); hx.lineTo(x+1.5,y+1.6); hx.lineTo(x+5,y+1.6); hx.lineTo(x+3,y+6); hx.lineTo(x+7,y+6); hx.closePath(); },'#6ffbe0',0.85,1);
-    nline(function(){ hx.beginPath(); hx.ellipse(x+13,y-0.4,3,1.2,0,0,6.2832); },'#3fb8ff',0.4,0.9); },
-  ufo:function(ux,uy,big,hurt){ var k=big?1:0.72, col=hurt?'#ffffff':'#ff9aea';
-    hx.save(); hx.translate(ux,uy); hx.scale(k,k); hx.fillStyle='rgba(26,3,22,0.96)'; hx.beginPath(); hx.ellipse(0,0.5,10,3,0,0,6.2832); hx.fill(); hx.beginPath(); hx.ellipse(0,-1.4,4.5,4.2,0,Math.PI,0); hx.fill();
-    nline(function(){ hx.beginPath(); hx.ellipse(0,0.5,10,3,0,0,6.2832); hx.moveTo(4.5,-1.4); hx.ellipse(0,-1.4,4.5,4.2,0,0,Math.PI,true); },col,0.6/k,1);
-    var t=performance.now()/1000; for(var i=0;i<5;i++){ hx.fillStyle=(Math.floor(t*6)+i)%2?'#fff27a':'#7affff'; hx.beginPath(); hx.arc(-6+i*3,0.8,0.55,0,6.2832); hx.fill(); } hx.restore(); },
-  pick:function(x,y,type){ var t=performance.now()/1000, a=0.8+0.2*Math.sin(t*5);
-    hx.fillStyle='rgba(58,42,4,0.96)'; hx.beginPath(); hx.roundRect(x-5.5,y-5.5,11,11,2.5); hx.fill();
-    nline(function(){ hx.beginPath(); hx.roundRect(x-5.5,y-5.5,11,11,2.5); },'#fff08a',0.85,a); hx.save(); hx.translate(x,y); hdIcon(type,'#fff6c0'); hx.restore(); },
-  bullet:function(x,y){ nline(function(){ hx.beginPath(); hx.moveTo(x-3.5,y); hx.lineTo(x+2,y); },'#ffd24a',0.8,1); },
-  ebullet:function(x,y){ nline(function(){ hx.beginPath(); hx.arc(x,y,1.8,0,6.2832); },'#ff8aa8',0.6,1); hx.fillStyle='#fff0f5'; hx.beginPath(); hx.arc(x,y,1.5,0,6.2832); hx.fill(); },
-  bursts:function(){ return {rock:['#ffffff','#f0a8ff','#e07aff','#8a3ad0'],ufo:['#ffffff','#ff9ae8','#ff5ad0'],ship:['#ffffff','#9affee','#3ff7d0','#ffb13b'],pick:['#ffffff','#ffe66d']}; },
+  /* v1.28, the rock «Б» (a crystal): facets from a point up and left of the middle, each its own shade of violet by where it faces (the
+     light stays top-left while the rock turns), thin violet facet lines, the pink tube, a white glint on the lit side of the bigger ones */
+  drawRock:function(sp,x,y){ var cx=x+(sp.ox||0), r=sp.r, P=turnPts(sp.pts,r,sp.rot/16*6.2832,cx,y), c=[cx-r*0.18,y-r*0.14], i, n, lit, best=0, bl=-9;
+    hx.fillStyle='rgb(22,6,44)'; polyAt(hx,P); hx.fill();
+    for(i=0;i<P.length;i++){ n=P[(i+1)%P.length]; lit=Math.max(0,(-(P[i][0]+n[0])/2+cx-(P[i][1]+n[1])/2+y)/(r*1.4));
+      hx.beginPath(); hx.moveTo(c[0],c[1]); hx.lineTo(P[i][0],P[i][1]); hx.lineTo(n[0],n[1]); hx.closePath();
+      hx.fillStyle='rgb('+Math.round(22+lit*80)+','+Math.round(6+lit*22)+','+Math.round(44+lit*90)+')'; hx.fill();
+      if(-P[i][0]+cx-P[i][1]+y>bl){ bl=-P[i][0]+cx-P[i][1]+y; best=i; } }
+    nline(function(){ hx.beginPath(); P.forEach(function(q){ hx.moveTo(c[0],c[1]); hx.lineTo(q[0],q[1]); }); },'#b070f0',0.22,0.55);
+    nline(function(){ polyAt(hx,P); },'#ef9aff',0.85,1);
+    if(r>6){ hx.strokeStyle='rgba(255,255,255,0.85)'; hx.lineWidth=lwMin(0.3); hx.lineCap='round'; hx.beginPath(); hx.moveTo(P[best][0]*0.7+c[0]*0.3,P[best][1]*0.7+c[1]*0.3); hx.lineTo(c[0]*0.8+P[best][0]*0.2,c[1]*0.8+P[best][1]*0.2); hx.stroke(); } },
+  /* v1.27, the ship «ДВ» (the maintainer: «бирюзовый край из дв2, пламя из дв3, закатные полосы из дв3, без стопогней»): a delta wing of
+     dark glass in a turquoise neon tube — violet hatching over its top half, sunset stripes across its lower half, a pink and a blue flame,
+     a turquoise canopy line */
+  ship:function(x,y,t,blink){ if(blink) return; var fl=0.75+0.25*Math.sin(t*35), i;
+    var D=function(){ hx.beginPath(); hx.moveTo(x+21,y); hx.lineTo(x+3,y-7); hx.lineTo(x+5,y-2); hx.lineTo(x+1.5,y-2); hx.lineTo(x+1.5,y+2); hx.lineTo(x+5,y+2); hx.lineTo(x+3,y+7); hx.closePath(); };
+    if(!shipBare) [[-1.2,'#ff5ad0'],[1.2,'#3fb8ff']].forEach(function(q){ nline(function(){ hx.beginPath(); hx.moveTo(x+1.5,y+q[0]-0.5); hx.lineTo(x+1.5-7*fl,y+q[0]); hx.lineTo(x+1.5,y+q[0]+0.5); },q[1],0.45,0.9); });
+    D(); hx.fillStyle='rgba(8,4,26,0.97)'; hx.fill();
+    hx.save(); D(); hx.clip(); hx.beginPath(); hx.rect(x,y-8,24,8); hx.clip(); hx.strokeStyle='rgba(180,74,255,0.45)'; hx.lineWidth=0.2; hx.beginPath(); for(i=-10;i<24;i+=2){ hx.moveTo(x+i,y-8); hx.lineTo(x+i+8,y+8); hx.moveTo(x+i,y+8); hx.lineTo(x+i+8,y-8); } hx.stroke(); hx.restore();
+    hx.save(); D(); hx.clip(); hx.beginPath(); hx.rect(x,y+0.2,24,8); hx.clip(); ['#ffe25a','#ffb04a','#ff7a4a','#ff3f8e','#c03ad0','#7a3ad0'].forEach(function(c,k){ hx.fillStyle=c; hx.fillRect(x,y+0.6+k*1.1,23,0.6); }); hx.restore();
+    nline(D,'#6ffbe0',0.8,1); nline(function(){ hx.beginPath(); hx.moveTo(x+9,y-0.9); hx.lineTo(x+17,y-0.3); },'#6ffbe0',0.35,0.9); },
+  /* v1.27, the saucer «верх от В, низ от А»: a mirror-ball dome — little facets catching the light, glints sliding over it — on the old
+     dark saucer with its pink neon rim and blinking lights */
+  ufo:function(ux,uy,big,hurt){ var k=big?1:0.72, t=performance.now()/1000, i, r, c2;
+    hx.save(); hx.translate(ux,uy); hx.scale(k,k); hx.fillStyle='rgba(26,3,22,0.96)'; hx.beginPath(); hx.ellipse(0,0.5,10,3,0,0,6.2832); hx.fill();
+    hx.save(); hx.beginPath(); hx.ellipse(0,-1.4,4.8,4.6,0,Math.PI,0); hx.closePath(); hx.clip(); hx.fillStyle='rgba(26,3,22,0.96)'; hx.fillRect(-5,-7,10,7);
+    if(!hurt) for(r=0;r<5;r++) for(c2=-6;c2<=6;c2++){ var X=c2*0.9+(r%2)*0.45, Y=-1.6-r*0.9, kk=(Math.sin(t*4+c2*1.3+r*2.1)+1)/2; hx.fillStyle='rgb('+(120+kk*135|0)+','+(100+kk*155|0)+','+(200+kk*55|0)+')'; hx.fillRect(X-0.4,Y-0.4,0.8,0.8); }
+    hx.restore();
+    nline(function(){ hx.beginPath(); hx.moveTo(4.8,-1.4); hx.ellipse(0,-1.4,4.8,4.6,0,0,Math.PI,true); },hurt?'#ffffff':'#c9b8ff',0.4/k,1);
+    nline(function(){ hx.beginPath(); hx.ellipse(0,0.5,10,3,0,0,6.2832); },hurt?'#ffffff':'#ff9aea',0.6/k,1);
+    for(i=0;i<5;i++){ hx.fillStyle=(Math.floor(t*6)+i)%2?'#fff27a':'#7affff'; hx.beginPath(); hx.arc(-6+i*3,0.8,0.55,0,6.2832); hx.fill(); }
+    if(!hurt) for(i=0;i<2;i++){ var a=t*1.5+i*3; hGlow(Math.cos(a)*3.4,-3.2+Math.sin(a)*1.2,1.4,'255,255,255',0.8); }
+    hx.restore(); },
+  /* v1.27, the power-up «В» (the maintainer: «в, но толщина знаков внутри, как сейчас»): a neon sign of its kind's colour — shield turquoise,
+     triple orange, slow violet, life pink — on a dark plate; the sign a plain thick line of the same colour, as thick as before */
+  pick:function(x,y,type){ var t=performance.now()/1000, a=0.9+0.1*Math.sin(t*5), c=NEON_PICK[type]||'#fff08a';
+    hx.fillStyle='rgba(12,6,26,0.97)'; hx.beginPath(); hx.roundRect(x-5.6,y-5.6,11.2,11.2,2.5); hx.fill();
+    nline(function(){ hx.beginPath(); hx.roundRect(x-5.6,y-5.6,11.2,11.2,2.5); },c,0.8,a);
+    hx.save(); hx.translate(x,y); if(type==='life') hx.scale(1.25,1); hdIcon(type,c); hx.restore(); },   // the heart wider («сердце в hd — шире»)   // the sign a plain thick line of its colour (the maintainer: «внутри элемент без обводки… просто толстой линией как сейчас»)
+  /* v1.27, the shot «Г»: a double chevron » in the ship's turquoise */
+  bullet:function(x,y){ nline(function(){ hx.beginPath(); hx.moveTo(x-1,y-1.8); hx.lineTo(x+1.6,y); hx.lineTo(x-1,y+1.8); hx.moveTo(x-3.4,y-1.8); hx.lineTo(x-0.8,y); hx.lineTo(x-3.4,y+1.8); },'#6ffbe0',0.55,1); },
+  /* v1.27, the saucer's shot «Г»: an orange-red neon triangle pointing at the ship (red: told from the pink hourglass power-up) */
+  ebullet:function(x,y){ nline(function(){ hx.beginPath(); hx.moveTo(x-2.4,y); hx.lineTo(x+1.6,y-2); hx.lineTo(x+1.6,y+2); hx.closePath(); },'#ff6a2a',0.55,1); },
+  /* v1.28, the explosions (the maintainer: «подарок д, астероид д, нло г, подбит е»): a rock shatters into crystal shards (violet facets,
+     pink edges) and pink sparks; a saucer tears like a worn tape — the flash in cyan and pink bars, square bits; a power-up's frame grows
+     and fades in its own colour with sparkles; the hit ship throws out short sunset rays, then sunset dots */
+  bursts:function(){ var b=spKinds({rock:['#ffffff','#f0a8ff','#e07aff','#8a3ad0'],ufo:['#ffffff','#ff9ae8','#ff5ad0'],ship:['#ffffff','#9affee','#3ff7d0','#ffb13b'],pick:['#ffffff','#3ff7ff']});
+    Object.keys(NEON_PICK).forEach(function(t){ var a=['#ffffff',NEON_PICK[t]]; a.kind='pick'; b['pick_'+t]=a; }); return b; },
+  parts:function(){ spFxTrack(); var i, u, SUN=NEON_SUN;
+    SPFX.forEach(function(e){ var t=e.t, R2=srand(e.seed), X=e.x, Y=e.y;
+      if(e.k==='rock'){ if(t<0.15){ u=t/0.15; hGlow(X,Y,12*(0.5+u),'239,154,255',0.85*(1-u)); fzDisc(hx,X,Y,3.5*(1-u),'#ffffff'); } }
+      else if(e.k==='ufo'){ if(t<0.15){ u=t/0.15; hGlow(X,Y,10*(0.5+u),'255,90,208',0.85*(1-u)); fzDisc(hx,X,Y,3.5*(1-u),'#ffffff'); }
+        var al=Math.max(0,1-t/0.45); for(i=0;i<7;i++){ var yy=(R2()-0.5)*16*(0.6+t*1.5), w=(4+R2()*12)*(0.6+t*1.8), dx=(R2()-0.5)*32*t, hh=0.8+R2()*0.8; if(al<=0) continue;
+          hx.globalAlpha=al*0.8; hx.fillStyle=i%2?'#3ff7ff':'#ff3f8e'; hx.fillRect(X+dx-w/2+(i%2?1:-1)*t*6,Y+yy,w,hh); } hx.globalAlpha=1; }
+      else if(e.k==='pick'){ var c=(e.cols&&e.cols[1])||'#3ff7ff', v=Math.min(1,t/0.4), sq=5.6+v*9;
+        if(v<1) nline(function(){ hx.beginPath(); hx.roundRect(X-sq,Y-sq,sq*2,sq*2,2.5+v*2); },c,0.6,1-v);
+        if(t<0.5) hGlow(X,Y,10*(0.5+t),hex(c).join(','),0.4*(1-t/0.5));
+        if(t<0.6){ hx.globalAlpha=1-t/0.6; for(i=0;i<8;i++){ var a=i/8*6.2832+0.4, d=4+t*20; sparkleAt(hx,X+Math.cos(a)*d,Y+Math.sin(a)*d-t*6,1.3,i%2?'#ffffff':c); } hx.globalAlpha=1; } }
+      else if(e.k==='ship'){ if(t<0.15){ u=t/0.15; hGlow(X,Y,12*(0.5+u),'111,251,224',0.85*(1-u)); fzDisc(hx,X,Y,3.5*(1-u),'#ffffff'); }
+        var w2=Math.min(1,t/0.35); for(i=0;i<12;i++){ var a2=i/12*6.2832+R2()*0.3, ex=R2(); if(w2>=1) continue; var r0=2+w2*14, r1=r0+(3+ex*4)*(1-w2);
+          nline(function(){ hx.beginPath(); hx.moveTo(X+Math.cos(a2)*r0,Y+Math.sin(a2)*r0); hx.lineTo(X+Math.cos(a2)*r1,Y+Math.sin(a2)*r1); },SUN[i%4],0.35,1-w2); } } });
+    parts.forEach(function(p){ var f=p.life/p.max, k=p._k, age=p.max-p.life, al=Math.min(1,f*1.8), c=p.cols[Math.min(p.cols.length-1,Math.floor((1-f)*p.cols.length))];
+      if(k==='rock'){ if(p._i%3===0) neShard(p.x,p.y,1.4+(p._i%5)*0.35,((p._i*37)%13-6)*age,NEON_SHARD[(p._i>>1)%3],'#ef9aff',al); else if(p._i%3===1){ hx.globalAlpha=al; fzDisc(hx,p.x,p.y,0.35+f*0.4,'#f0a8ff'); } }
+      else if(k==='ufo'){ if(p._i%2){ var sz=0.7+(p._i%4)*0.25; hx.globalAlpha=al; hx.fillStyle=p._i%4===1?'#ff5ad0':'#ffffff'; hx.fillRect(p.x-sz/2,p.y-sz/2,sz,sz); } }
+      else if(k==='pick'){ }   // the frame and the sparkles say it
+      else if(k==='ship'){ if(p._i%2){ hx.globalAlpha=Math.min(1,f*1.6); fzDisc(hx,p.x,p.y,0.4+f*0.5,SUN[Math.min(3,Math.floor((1-f)*4))]); } }
+      else { hx.globalAlpha=Math.min(1,f*1.6); fzDisc(hx,p.x,p.y,0.45+f*0.7,c); }
+      hx.globalAlpha=1; }); },
   shield:function(){ return '#3ff7d0'; }, mini:function(){ return ['#1a8a78','#3ff7d0']; },
-  shieldRing:function(x,y,t){ nline(function(){ hx.beginPath(); hx.ellipse(x+8,y,12.5,10,0,t*2,t*2+4.8); },'#3ff7d0',0.45,0.8); } };
+  /* v1.27, the shield «Г»: two arcs — turquoise and pink — turning opposite ways round the ship */
+  shieldRing:function(x,y,t){ nline(function(){ hx.beginPath(); hx.ellipse(x+10,y,12.5,10,0,t*2,t*2+4.2); },'#3ff7d0',0.45,0.9); nline(function(){ hx.beginPath(); hx.ellipse(x+10,y,11,8.6,0,-t*2.6,-t*2.6+3.6); },'#ff5ad0',0.35,0.9); } };
 
 /* ════════ NOTEBOOK: a squared school page with a red margin; pencil doodles (a sun, a ringed planet, stars, clouds) drift by behind;
    everything that matters is drawn in blue ballpoint (the enemies in red pen), rocks hatched on their shadow side, the power-up coloured

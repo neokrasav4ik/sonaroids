@@ -433,7 +433,7 @@ function endGame(){ if(mode==='race'&&g&&g.car){ raceEnd(); return; } g.state='o
 function react(){ g.events.forEach(function(k){
   if(k==='fire'){ if(Math.random()<0.5) Sfx.play('fire'); } else if(k!=='crash') Sfx.play(k); });
   var BU=SK.bursts(); (g.gone||[]).forEach(function(r){ burst(fx(r.x),r.y*K,8+Math.round(r.r*K),BU.rock,50*K); delete rockSpr[r.id]; shake=Math.max(shake,0.08+r.r*0.004); });
-  (g.fx||[]).forEach(function(f){ if(f.ufo){ burst(fx(f.x),f.y*K,40,BU.ufo,90*K); shake=0.35; } else if(f.pick) burst(fx(f.x),f.y*K,14,BU.pick,50*K); });
+  (g.fx||[]).forEach(function(f){ if(f.ufo){ burst(fx(f.x),f.y*K,40,BU.ufo,90*K); shake=0.35; } else if(f.pick) burst(fx(f.x),f.y*K,14,BU['pick_'+f.pick]||BU.pick,50*K); });   // v1.28: a skin may colour each power-up's burst
   if(g.events.indexOf('ufo_hit')>=0&&g.ufo){ burst(fx(g.ufo.x),g.ufo.y*K,14,[P.text].concat(BU.ufo),60*K); shake=Math.max(shake,0.12); }
   if(g.events.indexOf('shield')>=0) burst(fx(g.ship.x)+6,g.ship.y*K,20,BU.pick,60*K);
   if((g.fx||[]).some(function(f){ return f.pick==='life'; })) livesT=1.8;                  // a life taken: the lives show for a moment

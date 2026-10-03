@@ -35,7 +35,7 @@ const SCEN=`function(t){ const n=performance.now()/1000; if(n<window.__palmAt) r
     const s=await p.evaluate(()=>{ const s=__sonaroids.state(), st=Sonar.state(); return {scr:s.scr,hand:(st&&st.present&&s.T)?Tune.fracOf(s.T,st.height):null,present:!!(st&&st.present),ship:s.g&&s.g.ship?s.g.ship.y/s.g.FH:null,gstate:s.g?s.g.state:null,live:DSP2.info().live,palm:window.__scen(0)}; });
     const t=await T();
     if(s.scr!==last){ seen.push(s.scr+'@'+t.toFixed(1)); last=s.scr; }
-    if(s.scr==='wave'&&tTry===null){ tTry=t; tryInfo=await p.evaluate(()=>{ const s=__sonaroids.state(); return {copied:!!(s.T&&s.T.copied),btn:__sonaroids.btn().map(b=>b.id)}; }); await p.evaluate(()=>__sonaroids.act.start()); }   // v1.19: the try-out first
+    if(s.scr==='wave'&&tTry===null){ tTry=t; tryInfo=await p.evaluate(async()=>{ for(let i=0;i<20&&!__sonaroids.btn().some(b=>b.id==='start');i++) await new Promise(r=>setTimeout(r,50)); const s=__sonaroids.state(); return {copied:!!(s.T&&s.T.copied),btn:__sonaroids.btn().map(b=>b.id)}; }); await p.evaluate(()=>__sonaroids.act.start()); }   // v1.19: the try-out first (v1.28: its buttons waited for — they come with the screen's first frame, read in the same tick they were missing 1 run in 4)
     if(s.scr==='count'&&tCount===null){ tCount=t; midAt=await p.evaluate(()=>{ const c=DSP2.info().cal; return (100-c.o)/c.k; }); }
     if(s.scr==='play'){ if(tPlay===null){ tPlay=t; await p.evaluate(()=>{ window.__noiseAt=performance.now()/1000+8; }); } 
       const pt=t-tPlay; if(s.ship!==null&&(pt<7||pt>10)) (pt<8?follow0:follow1).push([s.present?1:0,s.ship,s.palm,s.hand]);   // around the noise's step (8 s) a second each side left out

@@ -82,6 +82,8 @@ With the app and the wide probe a **Mi 9 Lite** (from 2019) plays like an iPhone
 
 Each game has its own tables: today, this week and all time. The first time a game makes a table, it asks for a name (Latin letters, digits, `_`). A transfer code moves your name and scores to another browser or phone.
 
+**Bots play in the tables too** — about 40 players the server plays itself, from beginners to strong ones, so there is always someone to beat. Their games are real — the game's bot, by the same rules — and the strongest stay a little below the best person. The «PEOPLE ONLY» tab over the table leaves them out.
+
 What goes to the server is not a score but the game itself: the layout number and the palm height at every step, a few KB. Both games are deterministic — even steps 60 times a second, random numbers from a seed, no transcendental functions. So the server replays every game with the very same code (`src/13_core.js` for SonaFly, `src/14_race.js` for SonaRace) and keeps the score only if it repeats.
 
 A player is a random key kept on the phone; the server stores only its hash. With each game goes a short note on the phone: iOS or Android, the browser, the model (on Android), which probe, the volume, how well it heard the probe. That shows where the sonar works. The server stores no user agent string and no IP. It is plain Node + SQLite, in `server/`.
@@ -102,7 +104,7 @@ A player is a random key kept on the phone; the server stores only its hash. Wit
 |---|---|
 | `src/` | the games' source in numbered parts; `build.py` joins them into one file, `game/play/index.html` |
 | `game/` | the site: `index.html` sends visitors into the games, `play/` is the games (built file, icons, manifest, service worker), `font.js`, `robots.txt` |
-| `server/` | the high-score server (api.sonaroids.app): `server.js`, backups, stats, systemd unit, Caddy and nginx configs. Install: `server/README.md`, in Russian `docs/ru/server.md` |
+| `server/` | the high-score server (api.sonaroids.app): `server.js`, the bots (`bots.js`, `botplay.js`), backups, stats, systemd unit, Caddy and nginx configs. Install: `server/README.md`, in Russian `docs/ru/server.md` |
 | `android/` | the Android app: a WebView over sonaroids.app/play/ with its own sound, volume, file saving and self-update. Built on GitHub Actions into the latest release (`android/README.md`, in Russian) |
 | `tests/` | the games' and the server's checks: `sh tests/run.sh` |
 | `lab/` | the sonar lab: the test app `lab/app/sonar_lab3.html`, its sources, benches and recordings; notes in Russian |

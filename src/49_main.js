@@ -459,12 +459,17 @@ function boardLine(){ var b=Board.last(); if(!b) return null;
   if(h[k]===r[k]) return [L('place_'+k).replace('{n}',r[k]),b.listed?P.pick:P.soft];
   return [L('here_'+k).replace('{n}',h[k]),P.soft,L('pb_'+k).replace('{n}',r[k])]; }
 /* ── high scores (v0.25): today, this week, all time; the list on one side, the buttons on the free side ── */
-var tblBox=null, period='day', scoresFrom='title', nickFrom='title', nickAsked=false, nickMsg='', nickBusy=false, nickEl=null;
-function sScores(){ var rc=mode==='race'; if(rc){ raceDemoTick(); raceScene(rDemo,rDemo.d,rDemo.car.y,DT); lx.globalAlpha=0.72; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; } else sky(DT,0.3); var c=Board.top(period,rc?'race':'fly');   // v1.01: SonaRace's tables over its road
+var tblBox=null, scPeople=store.get('sonaroids_people','0')==='1', period='day', scoresFrom='title', nickFrom='title', nickAsked=false, nickMsg='', nickBusy=false, nickEl=null;
+function sScores(){ var rc=mode==='race'; if(rc){ raceDemoTick(); raceScene(rDemo,rDemo.d,rDemo.car.y,DT); lx.globalAlpha=0.72; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; } else sky(DT,0.3); var c=Board.top(period,rc?'race':'fly',scPeople);   // v1.01: SonaRace's tables over its road
   var nm=Board.nick(), items=[['p_day',L('p_day'),period==='day'?'primary':''],['p_week',L('p_week'),period==='week'?'primary':''],['p_all',L('p_all'),period==='all'?'primary':''],
     ['name',nm?L('name')+': '+nm:L('name_set')],['link',L('link')]], /* v0.48: «back» is the menu button in the corner (it goes back, as «back» did) */ bw=btnW(items.map(function(q){ return q[1]; })), bx=sideX(bw), m=Math.max(10,Math.round(LW*0.03));
   var x0=freeSide()==='left'?bx+bw+m:SAFE.l+m, x1=freeSide()==='left'?LW-SAFE.r-m:bx-m;          // the list takes the rest of the width
-  tblBox=[x0,x1]; var y=topY(); text(L('scores')+' — '+L('p_'+period),x0,y,P.text); y+=16; say(L('scores')+', '+L('p_'+period));
+  tblBox=[x0,x1]; var y=topY(), ttl=L('scores')+' — '+L('p_'+period); text(ttl,x0,y,P.text);
+  /* v1.31, «В» (the maintainer: bots in the tables, and a switch): «EVERYONE | PEOPLE ONLY» over the table, on the title's line when it fits */
+  var tbw=[PF.width(L('sc_all'))+12,PF.width(L('sc_people'))+12], th=13, tx=x1-tbw[0]-tbw[1]-4, ty=y-3;
+  if(tx<x0+PF.width(ttl)+8){ tx=x0; ty=y+12; y+=15; }
+  button('sc_all',L('sc_all'),tx,ty,tbw[0],th,scPeople?'':'primary'); button('sc_people',L('sc_people'),tx+tbw[0]+4,ty,tbw[1],th,scPeople?'primary':'');
+  y+=16; say(L('scores')+', '+L('p_'+period)+', '+L(scPeople?'sc_people':'sc_all'));
   if(c.state==='loading') text(L('loading'),x0,y,P.soft); else if(c.state==='offline') text(L('offline'),x0,y,P.soft);
   else if(!c.entries.length) text(L('empty'),x0,y,P.soft);
   else { var row=function(rank,nick,score,col){ var sw=PF.width(String(score)), room=x1-sw-6-(x0+20), n=nick; while(n.length>1&&PF.width(n)>room) n=n.slice(0,-2)+'…';   // a long name is cut to fit
@@ -812,6 +817,7 @@ var ACT={
   try_wave:function(){ toWave(); },   // v1.19: the auto-calibration's try-out «recalibrate»: the room is fresh, straight to the waving                 // before every game: the empty room anew, then wave (v0.16: things drift over a game); the live mode: straight on
   menu:function(){ go('title'); },
   scores:function(){ period='day'; scoresFrom=scr; go('scores'); },
+  sc_all:function(){ scPeople=false; store.set('sonaroids_people','0'); }, sc_people:function(){ scPeople=true; store.set('sonaroids_people','1'); },   // v1.31
   p_day:function(){ period='day'; }, p_week:function(){ period='week'; }, p_all:function(){ period='all'; },
   name:function(){ nickFrom='scores'; nickMsg=''; go('nick'); },
   sc_back:function(){ go(scoresFrom==='over'&&g&&g.state==='over'?'over':'title'); },

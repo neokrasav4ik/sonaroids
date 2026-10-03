@@ -95,6 +95,24 @@ function play(seed,amp,steps){ const hands=[], g=Core.create(seed,380,90); for(l
     check('SonaRace: its own table; the flight\'s table has no races', tr.j.game==='race'&&tr.j.entries.length===1&&tr.j.entries[0].nick==='Racer'&&tr.j.entries[0].score===Math.max(r1.g.score,r2.g.score)&&tr.j.me&&tr.j.me.rank===1&&!tf.j.entries.some(e=>e.nick==='Racer'),
       `race table: ${JSON.stringify(tr.j.entries.map(e=>[e.nick,e.score,e.level]))}; flight table: ${tf.j.entries.length} names`);
     const hl=await get('/v1/health'); check('health names both rules', hl.j.core===Core.TAG&&hl.j.race===Race.TAG, JSON.stringify(hl.j)); }
+  // v1.31: the bots — real games by the same rules, replayed from what is stored; shown by default, left out with bots=0, never above the best person
+  { const Bots=require('../server/bots.js'), RaceC=require('../src/14_race.js'); const humanBest=db.prepare("SELECT MAX(score) AS s FROM games WHERE game='fly'").get().s;
+    Bots.init(4,1); const bp=db.prepare('SELECT player FROM bots').all().map(r=>r.player), bn=new Set(db.prepare('SELECT nick FROM players WHERE player IN (SELECT player FROM bots)').all().map(r=>r.nick));
+    const bg=db.prepare('SELECT seed,score,game,fw,replay,steer FROM games WHERE player IN (SELECT player FROM bots)').all();
+    let same=0; for(const g of bg){ const raw=zlib.inflateRawSync(g.replay), hs=[]; for(let i=0;i<raw.length/2;i++) hs.push(raw.readUInt16LE(i*2)/4000);
+      const r=g.game==='race'?RaceC.replay(g.seed,g.fw,hs,null,g.steer,null):Core.replay(g.seed,g.fw,hs,null); if(r.score===g.score) same++; }
+    check('bots: their games replay to the stored scores', bp.length>=4&&bg.length>0&&same===bg.length, `${bp.length} bots, ${bg.length} games, ${same} replay the same`);
+    check('bots: never above the best person', bg.filter(g=>g.game==='fly').every(g=>g.score<humanBest), `best person ${humanBest}, best bot ${Math.max(0,...bg.filter(g=>g.game==='fly').map(g=>g.score))}`);
+    const tAll=await get('/v1/top?period=week&limit=100',{'X-Player':A}), tPeople=await get('/v1/top?period=week&limit=100&bots=0',{'X-Player':A});
+    check('bots: in the table by default, not with bots=0 («people only»); my rank among people', tAll.j.entries.some(e=>bn.has(e.nick))&&!tPeople.j.entries.some(e=>bn.has(e.nick))&&tPeople.j.people===true&&tPeople.j.me&&tPeople.j.me.rank<=tAll.j.me.rank,
+      `${tAll.j.entries.length} names with bots, ${tPeople.j.entries.length} people only; my rank ${tAll.j.me&&tAll.j.me.rank} / ${tPeople.j.me&&tPeople.j.me.rank}`);
+    const st=require('child_process').spawnSync(process.execPath,['--no-warnings',path.join(__dirname,'..','server','stats.js'),'30'],{env:Object.assign({},process.env,{DB:tmp})});
+    const ng=+(String(st.stdout).match(/games, last 30 days: (\d+)/)||[])[1], people=db.prepare("SELECT COUNT(*) AS c FROM games WHERE game='fly' AND created>=? AND player NOT IN (SELECT player FROM bots)").get(Date.now()-30*86400000).c;
+    check('bots: server/stats.js counts people only', ng===people, `${ng} games counted, people played ${people}`);
+    const rm=require('child_process').spawnSync(process.execPath,['--no-warnings',path.join(__dirname,'..','server','bots.js'),'remove','--yes'],{env:Object.assign({},process.env,{DB:tmp})});
+    const cp2=(String(rm.stdout).match(/a copy first: (\S+)/)||[])[1], left=db.prepare('SELECT COUNT(*) AS c FROM games WHERE player IN ('+bp.map(()=>'?').join(',')+')').get(...bp).c;
+    check('bots: remove --yes takes them and their games out, a copy first', rm.status===0&&left===0&&db.prepare('SELECT COUNT(*) AS c FROM bots').get().c===0&&cp2&&fs.existsSync(cp2), String(rm.stdout).trim());
+    try{ fs.unlinkSync(cp2); }catch(e){} }
   server.close(); try{ fs.unlinkSync(tmp); fs.unlinkSync(tmp+'-wal'); fs.unlinkSync(tmp+'-shm'); }catch(e){}
   const ok=res.every(Boolean); console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1; setTimeout(()=>process.exit(process.exitCode),100);
 })();

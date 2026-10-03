@@ -52,9 +52,9 @@ var Board=(function(){
       var l=[]; try{ l=JSON.parse(ls('sonaroids_unsent')||'[]'); }catch(e){} l.forEach(function(b){ b.pid=j.pid; }); if(l.length) ls('sonaroids_unsent',JSON.stringify(l));
       ls('sonaroids_pid',j.pid); ls('sonaroids_nick',j.nick||null); cache={}; } return j; }); }
   /* a table: cached for 30 s; state loading | ok | offline */
-  function top(period,game){ var key=period+(game==='race'?'|race':''), c=cache[key]; if(c&&(c.state==='loading'||Date.now()-c.at<30000)) return c;   // v1.01: game 'race' — SonaRace's tables
+  function top(period,game,people){ var key=period+(game==='race'?'|race':'')+(people?'|people':''), c=cache[key];   /* v1.31: people — without the server's bots */ if(c&&(c.state==='loading'||Date.now()-c.at<30000)) return c;   // v1.01: game 'race' — SonaRace's tables
     c=cache[key]={state:'loading',at:Date.now()}; if(!on()){ c.state='offline'; return c; }
-    fetch(API+'/v1/top?period='+period+'&limit=10'+(game==='race'?'&game=race':''),{headers:{'X-Player':pid()}}).then(function(r){ return r.json(); })
+    fetch(API+'/v1/top?period='+period+'&limit=10'+(game==='race'?'&game=race':'')+(people?'&bots=0':''),{headers:{'X-Player':pid()}}).then(function(r){ return r.json(); })
       .then(function(j){ c.state='ok'; c.entries=j.entries||[]; c.me=j.me||null; c.at=Date.now(); },function(){ c.state='offline'; c.at=Date.now(); });
     return c; }
   return {setup:setup,link:link,claim:claim,devInfo:function(f){ devFn=f; },q:q,start:start,step:step,finish:finish,flush:flush,setNick:setNick,top:top,nick:nick,on:on,

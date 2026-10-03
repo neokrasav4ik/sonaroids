@@ -10,6 +10,7 @@ replayed with `src/14_race.js` by the race's own rules (a race played with the t
 |---|---|
 | `server.js` | the server: `POST /v1/game`, `POST /v1/nick`, `GET /v1/top?period=day\|week\|all`, `GET /v1/health` |
 | `backup.js` | a daily copy of the database (`VACUUM INTO`), keeps 14 |
+| `bots.js`, `botplay.js` | (1.31) the bots: ~40 players the server plays itself — real games by the same rules, stored with their palm heights; `init [n] [days]`, `tick` (cron, every 10 minutes), `list`, `remove [--yes]` |
 | `sonaroids-api.service` | systemd unit: runs as user `sonaroids`, data in `/var/lib/sonaroids` |
 | `Caddyfile` | HTTPS for api.sonaroids.app in front of the Node server |
 | `nginx-api.sonaroids.app.conf` | the same for a server that already runs nginx (HTTPS then by certbot) |
@@ -70,3 +71,10 @@ sudo apt install -y certbot python3-certbot-nginx && sudo certbot --nginx -d api
 
 **Tests** (no server needed): `node --no-warnings tests/test_server.js` — a temporary database, a real replayed game,
 a forged score, a duplicate, bad names, tables and ranks.
+
+**The bots** (1.31): so that the tables are never empty, the server plays ~40 bots of its own — each with a name, a skill (beginner to strong) and habits
+(daily or now and then, more in the afternoon and evening by Moscow time). Their games are real: the game's bot (`botplay.js`) plays by the same rules and
+the palm heights are kept, so a bot's game replays like anyone's. The strongest stay a little below the best person. The page shows «EVERYONE | PEOPLE ONLY»
+over the table (`/v1/top?…&bots=0` leaves them out); `stats.js` never counts them. Turn on after an update and a restart:
+`sudo -u sonaroids DB=/var/lib/sonaroids/sonaroids.db node --no-warnings server/bots.js init 40 7`, then a cron line every 10 minutes with `bots.js tick`
+(`docs/ru/server.md` has the exact commands). `bots.js remove --yes` takes them all out again (a copy of the database first).

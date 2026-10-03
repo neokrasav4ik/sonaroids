@@ -9,7 +9,8 @@
      POST /v1/nick   {pid, nick}                                    → {ok, nick}
      POST /v1/link   {pid}                                          → {ok, code, ttl}   a transfer code, 10 minutes (v0.32)
      POST /v1/claim  {pid, code}                                    → {ok, pid, nick}   take over the code's player, joining this one into it
-     GET  /v1/top?period=day|week|all&limit=N[&game=race]   (header X-Player: pid, optional) → {period, game, entries:[{rank,nick,score,level,t,me}], me}
+     GET  /v1/top?period=day|week|all&limit=N[&game=race][&bots=0]   (header X-Player: pid, optional) → {period, game, people, entries:[{rank,nick,score,level,t,me}], me}
+                     v1.31: bots=0 — people only (without the server's bots, server/bots.js)
      GET  /v1/health                                                → {ok, core, race}
    pid — a random secret the game keeps on the device; the database stores only its hash.
    Periods are UTC: "day" since midnight, "week" since Monday midnight.
@@ -30,7 +31,7 @@ const Q=4000, NONE=65535;             // palm heights travel as integers 0…400
 
 /* ── database ── */
 const db=new DatabaseSync(DB_PATH);
-db.exec(`PRAGMA journal_mode=WAL;
+db.exec(`PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;
 CREATE TABLE IF NOT EXISTS games(id INTEGER PRIMARY KEY, player TEXT NOT NULL, seed INTEGER NOT NULL, core TEXT NOT NULL,
   score INTEGER NOT NULL, level INTEGER NOT NULL, t REAL NOT NULL, created INTEGER NOT NULL, fw REAL, y0 REAL, replay BLOB,
   UNIQUE(player,seed));
@@ -38,7 +39,10 @@ CREATE INDEX IF NOT EXISTS games_created ON games(created);
 CREATE INDEX IF NOT EXISTS games_score ON games(score);
 CREATE TABLE IF NOT EXISTS players(player TEXT PRIMARY KEY, nick TEXT, created INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS setups(id INTEGER PRIMARY KEY, player TEXT NOT NULL, created INTEGER NOT NULL, result TEXT NOT NULL, t REAL, flips INTEGER, dev TEXT);
-CREATE INDEX IF NOT EXISTS setups_created ON setups(created);`);
+CREATE INDEX IF NOT EXISTS setups_created ON setups(created);
+CREATE TABLE IF NOT EXISTS bots(player TEXT PRIMARY KEY, born INTEGER NOT NULL, until INTEGER NOT NULL, prof TEXT NOT NULL);`);
+/* v1.31: the bots (server/bots.js) — players the server plays itself, real games by the same rules; the tables show them by default,
+   «people only» (/v1/top?…&bots=0) leaves them out; stats.js never counts them */
 /* v0.29: what kind of phone played and how well it heard the probe (dev, JSON), and the share of steps the palm was seen (seen, 0…1).
    Added to an existing database in place; older games keep NULL there. */
 { const cols=db.prepare('PRAGMA table_info(games)').all().map(c=>c.name);
@@ -66,6 +70,13 @@ const q={
   above: db.prepare(`SELECT COUNT(*) AS n FROM (SELECT g.player, MAX(g.score) AS s FROM games g JOIN players p ON p.player=g.player
     WHERE g.game=? AND g.created>=? AND p.nick IS NOT NULL AND g.player<>? GROUP BY g.player) WHERE s>?`),
 };
+/* v1.31: the same two without the bots — «people only» */
+q.topH=db.prepare(`SELECT p.player AS player, p.nick AS nick, g.score AS score, g.level AS level, g.t AS t, g.created AS created
+    FROM games g JOIN players p ON p.player=g.player
+    WHERE g.game=? AND g.created>=? AND p.nick IS NOT NULL AND p.player NOT IN (SELECT player FROM bots) AND g.id=(SELECT g2.id FROM games g2 WHERE g2.player=g.player AND g2.game=g.game AND g2.created>=? ORDER BY g2.score DESC, g2.created ASC LIMIT 1)
+    ORDER BY g.score DESC, g.created ASC LIMIT ?`);
+q.aboveH=db.prepare(`SELECT COUNT(*) AS n FROM (SELECT g.player, MAX(g.score) AS s FROM games g JOIN players p ON p.player=g.player
+    WHERE g.game=? AND g.created>=? AND p.nick IS NOT NULL AND p.player NOT IN (SELECT player FROM bots) AND g.player<>? GROUP BY g.player) WHERE s>?`);
 
 /* ── helpers ── */
 const hash=pid=>crypto.createHash('sha256').update('sonaroids:'+pid).digest('hex').slice(0,32);
@@ -75,7 +86,7 @@ function since(period,now){ const d=new Date(now);
   if(period==='day') return day;
   const dow=(d.getUTCDay()+6)%7; return day-dow*86400000; }                 // week: since Monday
 const PERIODS=['day','week','all'];
-function rankOf(game,player,score,period,now){ const n=q.above.get(game,since(period,now),player,score).n; return n+1; }
+function rankOf(game,player,score,period,now,people){ const n=(people?q.aboveH:q.above).get(game,since(period,now),player,score).n; return n+1; }
 
 /* nicknames: 1–16 Latin letters, digits and _ only (the maintainer's call, 25 Sep: nothing odd gets in); a short word filter.
    Queries are prepared statements anyway, and names are drawn by the game's own pixel font, never as HTML */
@@ -185,11 +196,11 @@ function getTop(url,req,now){
   const period=PERIODS.includes(url.searchParams.get('period'))?url.searchParams.get('period'):'all';
   const game=GAMES.includes(url.searchParams.get('game'))?url.searchParams.get('game'):'fly';
   const limit=Math.max(1,Math.min(LISTED,+url.searchParams.get('limit')||20)), t0=since(period,now);
-  const pid=String(req.headers['x-player']||''), me=/^[0-9a-f]{32}$/.test(pid)?hash(pid):null;
-  const rows=q.top.all(game,t0,t0,limit);
+  const pid=String(req.headers['x-player']||''), me=/^[0-9a-f]{32}$/.test(pid)?hash(pid):null, people=url.searchParams.get('bots')==='0';
+  const rows=(people?q.topH:q.top).all(game,t0,t0,limit);
   const entries=rows.map((r,i)=>({rank:i+1,nick:r.nick,score:r.score,level:r.level,t:r.t,me:r.player===me}));
-  let mine=null; if(me){ const best=q.best.get(game,me,t0).s; if(best!==null&&best!==undefined){ const p=q.getPlayer.get(me); mine={rank:rankOf(game,me,best,period,now),score:best,nick:p?p.nick:null}; } }
-  return [200,{period,game,entries,me:mine}];
+  let mine=null; if(me){ const best=q.best.get(game,me,t0).s; if(best!==null&&best!==undefined){ const p=q.getPlayer.get(me); mine={rank:rankOf(game,me,best,period,now,people),score:best,nick:p?p.nick:null}; } }
+  return [200,{period,game,people,entries,me:mine}];
 }
 
 const server=http.createServer(async(req,res)=>{
@@ -208,4 +219,4 @@ const server=http.createServer(async(req,res)=>{
   }catch(e){ send(res,e.message==='big'||e.message==='json'?400:500,{ok:false,error:e.message==='big'||e.message==='json'?e.message:'server'},origin); if(!/big|json/.test(e.message)) console.error(new Date().toISOString(),e); }
 });
 if(require.main===module) server.listen(PORT,'127.0.0.1',()=>console.log(`sonaroids leaderboard on 127.0.0.1:${PORT}, rules ${Core.TAG} and ${Race.TAG}, db ${DB_PATH}`));
-module.exports={server,cleanNick,cleanDev,since,decodeHands,db};
+module.exports={server,cleanNick,cleanDev,since,decodeHands,db,hash,q,GAMES};

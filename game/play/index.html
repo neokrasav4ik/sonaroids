@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='1.30';
+var VERSION='1.31';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -1249,9 +1249,9 @@ var Board=(function(){
       var l=[]; try{ l=JSON.parse(ls('sonaroids_unsent')||'[]'); }catch(e){} l.forEach(function(b){ b.pid=j.pid; }); if(l.length) ls('sonaroids_unsent',JSON.stringify(l));
       ls('sonaroids_pid',j.pid); ls('sonaroids_nick',j.nick||null); cache={}; } return j; }); }
   /* a table: cached for 30 s; state loading | ok | offline */
-  function top(period,game){ var key=period+(game==='race'?'|race':''), c=cache[key]; if(c&&(c.state==='loading'||Date.now()-c.at<30000)) return c;   // v1.01: game 'race' — SonaRace's tables
+  function top(period,game,people){ var key=period+(game==='race'?'|race':'')+(people?'|people':''), c=cache[key];   /* v1.31: people — without the server's bots */ if(c&&(c.state==='loading'||Date.now()-c.at<30000)) return c;   // v1.01: game 'race' — SonaRace's tables
     c=cache[key]={state:'loading',at:Date.now()}; if(!on()){ c.state='offline'; return c; }
-    fetch(API+'/v1/top?period='+period+'&limit=10'+(game==='race'?'&game=race':''),{headers:{'X-Player':pid()}}).then(function(r){ return r.json(); })
+    fetch(API+'/v1/top?period='+period+'&limit=10'+(game==='race'?'&game=race':'')+(people?'&bots=0':''),{headers:{'X-Player':pid()}}).then(function(r){ return r.json(); })
       .then(function(j){ c.state='ok'; c.entries=j.entries||[]; c.me=j.me||null; c.at=Date.now(); },function(){ c.state='offline'; c.at=Date.now(); });
     return c; }
   return {setup:setup,link:link,claim:claim,devInfo:function(f){ devFn=f; },q:q,start:start,step:step,finish:finish,flush:flush,setNick:setNick,top:top,nick:nick,on:on,
@@ -1260,7 +1260,7 @@ var Board=(function(){
 /* ── UI strings, English. All caps: the game's pixel font is drawn in capitals on screen. ── */
 var STR={};
 STR.en={
-  r_test:'TEST VERSION', r_set:'TEST SETTINGS', r_yes:'YES', r_no:'NO', r_knock:'A KNOCK SLOWS', r_kfuel:'A KNOCK COSTS FUEL', r_mag:'MAGNET', r_bub:'BUBBLE', r_tbub:'TURBO+BUBBLE', r_tmag:'TURBO+MAGNET+BUBBLE', r_pa:'GAME RULES', r_pd:'SET D: FAST', r_pe:'SET E: STRICT', r_super:'SUPER GIFT', r_1of:'1 IN', r_skin:'SKIN', r_sk_candy:'CANDY', r_sk_note:'NOTEBOOK', r_sk_pirate:'RIVER', r_sk_mix:'SHUFFLE', skins:'SKINS', sk_n:'SKINS: {n} OF {m}', skins_t:'SKINS', sk_in:'IN THE PLAYLIST', sk_add:'+ ADD TO PLAYLIST', sk_out:'- REMOVE', sk_pl:'PLAYLIST: ', sk_pall:'ALL {m}', sk_pn:'{n} OF {m}', sk_time:'CHANGE', sk_rnd:'25–40 S', sk_s:' S', sk_order:'ORDER', sk_orand:'RANDOM', sk_oloop:'IN TURN', sk_all:'ALL IN A ROW', skin_mix:'SHUFFLE', r_bpop:'A KNOCK POPS THE BUBBLE', r_puds:'PUDDLES', r_none:'NONE', r_vfew:'VERY FEW', r_vmany:'VERY MANY',
+  r_test:'TEST VERSION', r_set:'TEST SETTINGS', r_yes:'YES', r_no:'NO', r_knock:'A KNOCK SLOWS', r_kfuel:'A KNOCK COSTS FUEL', r_mag:'MAGNET', r_bub:'BUBBLE', r_tbub:'TURBO+BUBBLE', r_tmag:'TURBO+MAGNET+BUBBLE', r_pa:'GAME RULES', r_pd:'SET D: FAST', r_pe:'SET E: STRICT', r_super:'SUPER GIFT', r_1of:'1 IN', r_skin:'SKIN', r_sk_candy:'CANDY', r_sk_note:'NOTEBOOK', r_sk_pirate:'RIVER', r_sk_mix:'SHUFFLE', skins:'SKINS', sk_n:'SKINS: {n} OF {m}', skins_t:'SKINS', sc_all:'EVERYONE', sc_people:'PEOPLE ONLY', sk_in:'IN THE PLAYLIST', sk_add:'+ ADD TO PLAYLIST', sk_out:'- REMOVE', sk_pl:'PLAYLIST: ', sk_pall:'ALL {m}', sk_pn:'{n} OF {m}', sk_time:'CHANGE', sk_rnd:'25–40 S', sk_s:' S', sk_order:'ORDER', sk_orand:'RANDOM', sk_oloop:'IN TURN', sk_all:'ALL IN A ROW', skin_mix:'SHUFFLE', r_bpop:'A KNOCK POPS THE BUBBLE', r_puds:'PUDDLES', r_none:'NONE', r_vfew:'VERY FEW', r_vmany:'VERY MANY',
   r_cars:'CARS', r_few:'FEW', r_mid:'SOME', r_many:'MANY', r_speed:'SPEED', r_slow:'LOWER', r_norm:'USUAL', r_fast:'HIGHER', r_burn:'FUEL', r_burn_y:'IS USED', r_burn_n:'NOT USED', r_verge:'THE VERGE SLOWS',
   r_steer:'STEERING', r_steer_h:'BY HEIGHT', r_steer_r:'ALONG THE ROAD',
   volume_ios:'SET THE VOLUME TO 40–60%', volume_direct_ios:'THE VOLUME IS TOO LOW — TURN IT UP TO 40–60%', volume_loud_ios:'THE VOLUME IS TOO HIGH — TURN IT DOWN TO 40–60%',
@@ -1295,7 +1295,7 @@ STR.en={
 };
 /* ── UI strings, Russian ── */
 STR.ru={
-  r_test:'ТЕСТОВАЯ ВЕРСИЯ', r_set:'НАСТРОЙКИ ТЕСТА', r_yes:'ДА', r_no:'НЕТ', r_knock:'УДАР ТОРМОЗИТ', r_kfuel:'ТОПЛИВО ЗА УДАР', r_mag:'МАГНИТ', r_bub:'ПУЗЫРЬ', r_tbub:'ТУРБО+ПУЗЫРЬ', r_tmag:'ТУРБО+МАГНИТ+ПУЗЫРЬ', r_pa:'ПРАВИЛА ИГРЫ', r_pd:'НАБОР Д: БЫСТРЫЙ', r_pe:'НАБОР Е: ЖЁСТКИЙ', r_super:'СУПЕР-ПРИЗ', r_1of:'1 ИЗ', r_skin:'СКИН', r_sk_candy:'КОНФЕТЫ', r_sk_note:'ТЕТРАДКА', r_sk_pirate:'РЕКА', r_sk_mix:'ВСЁ ПОДРЯД', skins:'СКИНЫ', sk_n:'СКИНЫ: {n} ИЗ {m}', skins_t:'СКИНЫ', sk_in:'В ПЛЕЙЛИСТЕ', sk_add:'+ В ПЛЕЙЛИСТ', sk_out:'- ИЗ ПЛЕЙЛИСТА', sk_pl:'ПЛЕЙЛИСТ: ', sk_pall:'ВСЕ {m}', sk_pn:'{n} ИЗ {m}', sk_time:'СМЕНА', sk_rnd:'25–40 С', sk_s:' С', sk_order:'ПОРЯДОК', sk_orand:'СЛУЧАЙНО', sk_oloop:'ПО КРУГУ', sk_all:'ВСЕ ПОДРЯД', skin_mix:'ВСЁ ПОДРЯД', r_bpop:'УДАР ЛОПАЕТ ПУЗЫРЬ', r_puds:'ЛУЖ', r_none:'НЕТ', r_vfew:'ОЧЕНЬ МАЛО', r_vmany:'ОЧЕНЬ МНОГО',
+  r_test:'ТЕСТОВАЯ ВЕРСИЯ', r_set:'НАСТРОЙКИ ТЕСТА', r_yes:'ДА', r_no:'НЕТ', r_knock:'УДАР ТОРМОЗИТ', r_kfuel:'ТОПЛИВО ЗА УДАР', r_mag:'МАГНИТ', r_bub:'ПУЗЫРЬ', r_tbub:'ТУРБО+ПУЗЫРЬ', r_tmag:'ТУРБО+МАГНИТ+ПУЗЫРЬ', r_pa:'ПРАВИЛА ИГРЫ', r_pd:'НАБОР Д: БЫСТРЫЙ', r_pe:'НАБОР Е: ЖЁСТКИЙ', r_super:'СУПЕР-ПРИЗ', r_1of:'1 ИЗ', r_skin:'СКИН', r_sk_candy:'КОНФЕТЫ', r_sk_note:'ТЕТРАДКА', r_sk_pirate:'РЕКА', r_sk_mix:'ВСЁ ПОДРЯД', skins:'СКИНЫ', sk_n:'СКИНЫ: {n} ИЗ {m}', skins_t:'СКИНЫ', sc_all:'ВСЕ ИГРОКИ', sc_people:'ТОЛЬКО ЛЮДИ', sk_in:'В ПЛЕЙЛИСТЕ', sk_add:'+ В ПЛЕЙЛИСТ', sk_out:'- ИЗ ПЛЕЙЛИСТА', sk_pl:'ПЛЕЙЛИСТ: ', sk_pall:'ВСЕ {m}', sk_pn:'{n} ИЗ {m}', sk_time:'СМЕНА', sk_rnd:'25–40 С', sk_s:' С', sk_order:'ПОРЯДОК', sk_orand:'СЛУЧАЙНО', sk_oloop:'ПО КРУГУ', sk_all:'ВСЕ ПОДРЯД', skin_mix:'ВСЁ ПОДРЯД', r_bpop:'УДАР ЛОПАЕТ ПУЗЫРЬ', r_puds:'ЛУЖ', r_none:'НЕТ', r_vfew:'ОЧЕНЬ МАЛО', r_vmany:'ОЧЕНЬ МНОГО',
   r_cars:'МАШИН', r_few:'МАЛО', r_mid:'СРЕДНЕ', r_many:'МНОГО', r_speed:'СКОРОСТЬ', r_slow:'НИЖЕ', r_norm:'ОБЫЧНАЯ', r_fast:'ВЫШЕ', r_burn:'ТОПЛИВО', r_burn_y:'ТРАТИТСЯ', r_burn_n:'НЕ ТРАТИТСЯ', r_verge:'ОБОЧИНА ТОРМОЗИТ',
   r_steer:'РУЛЬ', r_steer_h:'ПО ВЫСОТЕ', r_steer_r:'ПО ДОРОГЕ',
   volume_ios:'УСТАНОВИ ГРОМКОСТЬ НА 40–60%', volume_direct_ios:'ГРОМКОСТЬ СЛИШКОМ ТИХАЯ — ПРИБАВЬ ДО 40–60%', volume_loud_ios:'ГРОМКОСТЬ СЛИШКОМ БОЛЬШАЯ — УБАВЬ ДО 40–60%',
@@ -5328,12 +5328,17 @@ function boardLine(){ var b=Board.last(); if(!b) return null;
   if(h[k]===r[k]) return [L('place_'+k).replace('{n}',r[k]),b.listed?P.pick:P.soft];
   return [L('here_'+k).replace('{n}',h[k]),P.soft,L('pb_'+k).replace('{n}',r[k])]; }
 /* ── high scores (v0.25): today, this week, all time; the list on one side, the buttons on the free side ── */
-var tblBox=null, period='day', scoresFrom='title', nickFrom='title', nickAsked=false, nickMsg='', nickBusy=false, nickEl=null;
-function sScores(){ var rc=mode==='race'; if(rc){ raceDemoTick(); raceScene(rDemo,rDemo.d,rDemo.car.y,DT); lx.globalAlpha=0.72; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; } else sky(DT,0.3); var c=Board.top(period,rc?'race':'fly');   // v1.01: SonaRace's tables over its road
+var tblBox=null, scPeople=store.get('sonaroids_people','0')==='1', period='day', scoresFrom='title', nickFrom='title', nickAsked=false, nickMsg='', nickBusy=false, nickEl=null;
+function sScores(){ var rc=mode==='race'; if(rc){ raceDemoTick(); raceScene(rDemo,rDemo.d,rDemo.car.y,DT); lx.globalAlpha=0.72; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; } else sky(DT,0.3); var c=Board.top(period,rc?'race':'fly',scPeople);   // v1.01: SonaRace's tables over its road
   var nm=Board.nick(), items=[['p_day',L('p_day'),period==='day'?'primary':''],['p_week',L('p_week'),period==='week'?'primary':''],['p_all',L('p_all'),period==='all'?'primary':''],
     ['name',nm?L('name')+': '+nm:L('name_set')],['link',L('link')]], /* v0.48: «back» is the menu button in the corner (it goes back, as «back» did) */ bw=btnW(items.map(function(q){ return q[1]; })), bx=sideX(bw), m=Math.max(10,Math.round(LW*0.03));
   var x0=freeSide()==='left'?bx+bw+m:SAFE.l+m, x1=freeSide()==='left'?LW-SAFE.r-m:bx-m;          // the list takes the rest of the width
-  tblBox=[x0,x1]; var y=topY(); text(L('scores')+' — '+L('p_'+period),x0,y,P.text); y+=16; say(L('scores')+', '+L('p_'+period));
+  tblBox=[x0,x1]; var y=topY(), ttl=L('scores')+' — '+L('p_'+period); text(ttl,x0,y,P.text);
+  /* v1.31, «В» (the maintainer: bots in the tables, and a switch): «EVERYONE | PEOPLE ONLY» over the table, on the title's line when it fits */
+  var tbw=[PF.width(L('sc_all'))+12,PF.width(L('sc_people'))+12], th=13, tx=x1-tbw[0]-tbw[1]-4, ty=y-3;
+  if(tx<x0+PF.width(ttl)+8){ tx=x0; ty=y+12; y+=15; }
+  button('sc_all',L('sc_all'),tx,ty,tbw[0],th,scPeople?'':'primary'); button('sc_people',L('sc_people'),tx+tbw[0]+4,ty,tbw[1],th,scPeople?'primary':'');
+  y+=16; say(L('scores')+', '+L('p_'+period)+', '+L(scPeople?'sc_people':'sc_all'));
   if(c.state==='loading') text(L('loading'),x0,y,P.soft); else if(c.state==='offline') text(L('offline'),x0,y,P.soft);
   else if(!c.entries.length) text(L('empty'),x0,y,P.soft);
   else { var row=function(rank,nick,score,col){ var sw=PF.width(String(score)), room=x1-sw-6-(x0+20), n=nick; while(n.length>1&&PF.width(n)>room) n=n.slice(0,-2)+'…';   // a long name is cut to fit
@@ -5681,6 +5686,7 @@ var ACT={
   try_wave:function(){ toWave(); },   // v1.19: the auto-calibration's try-out «recalibrate»: the room is fresh, straight to the waving                 // before every game: the empty room anew, then wave (v0.16: things drift over a game); the live mode: straight on
   menu:function(){ go('title'); },
   scores:function(){ period='day'; scoresFrom=scr; go('scores'); },
+  sc_all:function(){ scPeople=false; store.set('sonaroids_people','0'); }, sc_people:function(){ scPeople=true; store.set('sonaroids_people','1'); },   // v1.31
   p_day:function(){ period='day'; }, p_week:function(){ period='week'; }, p_all:function(){ period='all'; },
   name:function(){ nickFrom='scores'; nickMsg=''; go('nick'); },
   sc_back:function(){ go(scoresFrom==='over'&&g&&g.state==='over'?'over':'title'); },

@@ -11,7 +11,8 @@ let DatabaseSync; try{ ({DatabaseSync}=require('node:sqlite')); }catch(e){ conso
 const DB=process.env.DB||path.join(__dirname,'sonaroids.db'), days=+(process.argv[2]||30), GAME=process.argv[3]==='race'?'race':'fly';   // v1.01: SonaFly (default) or SonaRace: … stats.js 30 race
 let db; try{ db=new DatabaseSync(DB,{readOnly:true}); }catch(e){ db=new DatabaseSync(DB); }
 const cols=db.prepare('PRAGMA table_info(games)').all().map(c=>c.name);
-const rows=db.prepare(`SELECT player, score, ${cols.includes('dev')?'dev':'NULL AS dev'}, ${cols.includes('seen')?'seen':'NULL AS seen'} FROM games WHERE created>=?${cols.includes('game')?' AND game=?':''}`)
+const hasBots=!!db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='bots'").get();   // v1.31: the server's bots are never counted
+const rows=db.prepare(`SELECT player, score, ${cols.includes('dev')?'dev':'NULL AS dev'}, ${cols.includes('seen')?'seen':'NULL AS seen'} FROM games WHERE created>=?${cols.includes('game')?' AND game=?':''}${hasBots?' AND player NOT IN (SELECT player FROM bots)':''}`)
   .all(...[Date.now()-days*86400000].concat(cols.includes('game')?[GAME]:[]));
 console.log(GAME==='race'?'SonaRace':'SonaFly');
 

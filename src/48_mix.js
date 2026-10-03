@@ -19,7 +19,7 @@ function sklLoad(m){ var all=sklAll(m), parse=function(v){ return (v||'').split(
   if(!list.length) list=store.get(sklKey(m,'mix'),'0')==='1'?all.slice():[all.indexOf(cur)>=0?cur:all[0]];   // from 1.24–1.28: «ВСЁ ПОДРЯД» on — all of them
   if(saved.length<2) saved=list.length>1?list.slice():all.slice();
   var t=+store.get(sklKey(m,'time'),'0'); if(SK_TIMES.indexOf(t)<0) t=0;
-  return {list:list,saved:saved,time:t,order:store.get(sklKey(m,'order'),'rand')==='loop'?'loop':'rand'}; }
+  return {list:list,saved:saved,prev:parse(store.get(sklKey(m,'prev'),'')),time:t,order:store.get(sklKey(m,'order'),'rand')==='loop'?'loop':'rand'}; }   // prev — the list before «all in a row» (1.29a)
 function sklSave(m){ var s=SKL[m], mix=s.list.length>1; if(mix) s.saved=s.list.slice();
   store.set(sklKey(m,'list'),s.list.join(',')); store.set(sklKey(m,'saved'),s.saved.join(',')); store.set(sklKey(m,'time'),String(s.time)); store.set(sklKey(m,'order'),s.order); store.set(sklKey(m,'mix'),mix?'1':'0');
   if(m==='race'){ raceMix=mix; if(!mix){ raceSkin=s.list[0]; RSKIN=raceSkin; store.set('sonaroids_race_skin',raceSkin); } }

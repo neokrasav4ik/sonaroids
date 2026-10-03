@@ -9,11 +9,11 @@ function turnPts(pts,r,a0,x,y){ return pts.map(function(p){ return [x+Math.cos(p
 
 /* ════════ VECTOR 80s: an arcade vector monitor — black, thin phosphor lines with a soft bloom, the picture fades rather than vanishes
    (afterglow trails — v1.29: no longer, they went to the LCD), a far wireframe planet and a mountain horizon, scanlines; the enemy shots are amber crosses ════════ */
-var PHOS='216,255,240', PHG='120,255,200';
+var PHOS='216,255,240', PHG='120,255,200', VMAG='255,90,220', VMAGW='255,189,241';   // 1.29a: the power-ups' magenta and its white-hot core
 function vline(fn,w,a,rgb){ var g=rgb||PHG; a=a===undefined?1:a; hx.lineJoin='round'; hx.lineCap='round';
   hx.strokeStyle='rgba('+g+','+(0.16*a)+')'; hx.lineWidth=lwMin(w)*4.5; fn(); hx.stroke();
   hx.strokeStyle='rgba('+g+','+(0.35*a)+')'; hx.lineWidth=lwMin(w)*2.2; fn(); hx.stroke();
-  hx.strokeStyle='rgba('+(rgb?'255,214,150':PHOS)+','+a+')'; hx.lineWidth=lwMin(w); fn(); hx.stroke(); }
+  hx.strokeStyle='rgba('+(rgb?(rgb===VMAG?VMAGW:'255,214,150'):PHOS)+','+a+')'; hx.lineWidth=lwMin(w); fn(); hx.stroke(); }
 /* v1.29: a soft round glow (the modern vector look's lights) */
 function vGlow(c,X,Y,r,rgb,a){ var g=c.createRadialGradient(X,Y,0,X,Y,r); g.addColorStop(0,'rgba('+rgb+','+a+')'); g.addColorStop(1,'rgba('+rgb+',0)'); c.fillStyle=g; c.beginPath(); c.arc(X,Y,r,0,6.2832); c.fill(); }
 HDSK.vector={id:'vector', hd:true, glow:false, nolight:true, motes:['#557a6e','#4a6a60'],
@@ -61,12 +61,13 @@ HDSK.vector={id:'vector', hd:true, glow:false, nolight:true, motes:['#557a6e','#
     for(i=0;i<5;i++){ var on=Math.floor(t*8)%5===i; vGlow(hx,-6+i*3,0,on?1.6:0.8,on?'255,226,170':'255,170,60',on?1:0.5); } hx.restore(); },
   /* v1.29, the power-up «Б» (the maintainer: «Б, но можно линии пожирнее»): a diamond of four strokes with gaps at its corners, like the
      ship, a glowing dot at each corner, the sign a glowing line; it breathes */
-  pick:function(x,y,type){ var a=0.8+0.2*Math.sin(performance.now()/1000*5);
-    var sp=this.vecSpr('pick2'+type,18,18,function(c,sc){ c.translate(9,9); c.lineJoin='round'; c.lineCap='round';
+  /* 1.29a, «В» (the maintainer: «в векторах80 подарки слишком незаметны»): the power-ups glow magenta — everything else is green, the saucers amber */
+  pick:function(x,y,type){ var a=0.8+0.2*Math.sin(performance.now()/1000*5), G=VMAG, W=VMAGW;
+    var sp=this.vecSpr('pick3'+type,18,18,function(c,sc){ c.translate(9,9); c.lineJoin='round'; c.lineCap='round';
       var D=function(){ c.beginPath(); [[0,-7,7,0],[7,0,0,7],[0,7,-7,0],[-7,0,0,-7]].forEach(function(q){ c.moveTo(q[0]+(q[2]-q[0])*0.2,q[1]+(q[3]-q[1])*0.2); c.lineTo(q[0]+(q[2]-q[0])*0.8,q[1]+(q[3]-q[1])*0.8); }); };
-      var keep=hx; hx=c; c.save(); c.shadowColor='rgba('+PHG+',0.9)'; c.shadowBlur=5*sc; c.strokeStyle='rgba('+PHG+',0.65)'; c.lineWidth=1.7; D(); c.stroke(); hdIconW=2; hdIconIn(type,'rgba('+PHG+',0.65)'); c.restore();
-      c.strokeStyle='rgb('+PHOS+')'; c.lineWidth=0.85; D(); c.stroke(); hdIconW=1; hdIconIn(type,'rgb('+PHOS+')'); hdIconW=1.2; hx=keep;
-      [[0,-7],[7,0],[0,7],[-7,0]].forEach(function(q){ vGlow(c,q[0],q[1],1.3,PHOS,0.95); }); });
+      var keep=hx; hx=c; c.save(); c.shadowColor='rgba('+G+',0.9)'; c.shadowBlur=5*sc; c.strokeStyle='rgba('+G+',0.65)'; c.lineWidth=1.7; D(); c.stroke(); hdIconW=2; hdIconIn(type,'rgba('+G+',0.65)'); c.restore();
+      c.strokeStyle='rgb('+W+')'; c.lineWidth=0.85; D(); c.stroke(); hdIconW=1; hdIconIn(type,'rgb('+W+')'); hdIconW=1.2; hx=keep;
+      [[0,-7],[7,0],[0,7],[-7,0]].forEach(function(q){ vGlow(c,q[0],q[1],1.3,W,0.95); }); });
     hx.globalAlpha=a; hx.drawImage(sp,x-9,y-9,18,18); hx.globalAlpha=1; },
   /* v1.29, the shot «В»: a comet — a bright head, a long tail melting away; the saucers' shot «В»: an amber ring with a dot (sprites) */
   bullet:function(x,y){ hx.drawImage(this.vecSpr('shot',13,6,function(c){ var g=c.createLinearGradient(1,3,10,3); g.addColorStop(0,'rgba('+PHG+',0)'); g.addColorStop(1,'rgba('+PHG+',0.85)'); c.strokeStyle=g; c.lineWidth=0.8; c.lineCap='round'; c.beginPath(); c.moveTo(1,3); c.lineTo(10,3); c.stroke(); vGlow(c,10,3,2.3,PHG,0.85); vGlow(c,10,3,1,'255,255,255',1); }),x-10,y-3,13,6); },
@@ -75,7 +76,7 @@ HDSK.vector={id:'vector', hd:true, glow:false, nolight:true, motes:['#557a6e','#
   /* v1.29, the explosions «Д» (the maintainer's pick, all four): each breaks into its own parts — a rock into glass shards with glowing
      corners; the saucer's four strokes fly apart and its lights scatter; a power-up's diamond strokes fly outward as its sign flashes; the
      hit ship's strokes fly apart and a ring opens */
-  bursts:function(){ var b=spKinds({rock:['#e8fff6','#9affd8','#4ab890'],ufo:['#ffe2aa','#ffaa3c'],ship:['#ffffff','#d8fff0','#7affc8'],pick:['#ffffff','#d8fff0']});
+  bursts:function(){ var b=spKinds({rock:['#e8fff6','#9affd8','#4ab890'],ufo:['#ffe2aa','#ffaa3c'],ship:['#ffffff','#d8fff0','#7affc8'],pick:['#ffffff','#ffbdf1']});
     ['shield','triple','slow','life'].forEach(function(t){ var a=['#ffffff','#d8fff0']; a.kind='pick'; a.type=t; b['pick_'+t]=a; }); return b; },   // the flash shows the sign taken
   parts:function(){ spFxTrack(); var me=this, AM='255,170,60', i, dot=this.vecSpr('dot',4,4,function(c){ vGlow(c,2,2,2,PHOS,0.85); });
     var seg=function(X,Y,L,a,al,rgb){ if(al<=0) return; vline(function(){ hx.beginPath(); hx.moveTo(X-Math.cos(a)*L,Y-Math.sin(a)*L); hx.lineTo(X+Math.cos(a)*L,Y+Math.sin(a)*L); },0.45,al,rgb); };
@@ -83,8 +84,8 @@ HDSK.vector={id:'vector', hd:true, glow:false, nolight:true, motes:['#557a6e','#
     SPFX.forEach(function(e){ var t=e.t, X=e.x, Y=e.y, d, al, u;
       if(e.k==='rock') flash(X,Y,t,PHG,8);
       else if(e.k==='ufo'){ flash(X,Y,t,AM,10); d=t*26; al=Math.max(0,1-t/0.6); seg(X,Y-3-d,6.5,t*4,al,AM); seg(X,Y+3+d,6.5,-t*4,al,AM); seg(X-7-d*1.2,Y,2.5,1.57+t*4,al,AM); seg(X+7+d*1.2,Y,2.5,1.57-t*4,al,AM); }
-      else if(e.k==='pick'){ if(t<0.15) vGlow(hx,X,Y,8,PHG,0.6*(1-t/0.15)); d=t*30; al=Math.max(0,1-t/0.5); [[1,-1],[1,1],[-1,1],[-1,-1]].forEach(function(q,k){ seg(X+q[0]*(3.5+d),Y+q[1]*(3.5+d),2.4,(k%2?-1:1)*0.785,al); });
-        if(t<0.2){ hx.save(); hx.translate(X,Y); hx.globalAlpha=1-t/0.2; hdIcon((e.cols&&e.cols.type)||'shield','rgb('+PHOS+')'); hx.restore(); hx.globalAlpha=1; } }
+      else if(e.k==='pick'){ if(t<0.15) vGlow(hx,X,Y,8,VMAG,0.6*(1-t/0.15)); d=t*30; al=Math.max(0,1-t/0.5); [[1,-1],[1,1],[-1,1],[-1,-1]].forEach(function(q,k){ seg(X+q[0]*(3.5+d),Y+q[1]*(3.5+d),2.4,(k%2?-1:1)*0.785,al,VMAG); });
+        if(t<0.2){ hx.save(); hx.translate(X,Y); hx.globalAlpha=1-t/0.2; hdIcon((e.cols&&e.cols.type)||'shield','rgb('+VMAGW+')'); hx.restore(); hx.globalAlpha=1; } }
       else if(e.k==='ship'){ flash(X,Y,t,PHG,12); d=t*22; al=Math.max(0,1-t/0.6); u=Math.min(1,t/0.45); if(u<1) vline(function(){ hx.beginPath(); hx.arc(X,Y,3+u*20,0,6.2832); },0.35,1-u);
         [[6,-3,0.36],[6,3,-0.36],[-3,-3,0.9],[-3,3,-0.9]].forEach(function(q,k){ var a=Math.atan2(q[1],q[0]); seg(X+q[0]+Math.cos(a)*d,Y+q[1]+Math.sin(a)*d,k<2?6:2,q[2]+t*(k%2?5:-5),al); }); } });
     parts.forEach(function(p){ var f=p.life/p.max, k=p._k, age=p.max-p.life, al=Math.min(1,f*1.8), c=p.cols[Math.min(p.cols.length-1,Math.floor((1-f)*p.cols.length))];
@@ -374,13 +375,11 @@ HDSK.lcd={id:'lcd', hd:true, glow:false, nolight:true, motes:['#8bac0f'], shotsB
   bullet:function(x,y){ lcdPut(this.sp('b2',['1...','0000','1...']),x-4,y-3); },   // 1.29, «Б»: an arrow with its fletching
   ebullet:function(x,y){ var f=Math.floor(performance.now()/120)%2; lcdPut(f?this.sp('eb',['0.0','.0.','0.0']):this.sp('eb+',['.0.','000','.0.']),x-3,y-3); },   // 1.29, «Б»: a pinwheel, «+» and «×» in turn
   bursts:function(){ return spKinds({rock:['#0f380f','#306230','#306230'],ufo:['#0f380f','#306230'],ship:['#0f380f','#306230'],pick:['#0f380f','#306230']}); },
-  /* 1.29 (the maintainer: «д, е, а, а»): a rock falls apart into four chunks that tumble away, blink and go out; a saucer turns into a dust cloud
+  /* 1.29 (the maintainer: «д, е, а, а»; the rock's chunks replaced by a ring in 1.29a); a saucer turns into a dust cloud
      that thins out in a checker to nothing; the ship and a power-up — the dots as before */
-  parts:function(){ spFxTrack(); var me=this, c0=this.sp('p0',['0']), c1=this.sp('p1',['1']), c2=this.sp('p2',['2']);
+  parts:function(){ spFxTrack(); var me=this, c0=this.sp('p0',['0']), c1=this.sp('p1',['1']), c2=this.sp('p2',['2']), c3=this.sp('p3',['3']);
     SPFX.forEach(function(e){ var t=e.t, X=e.x, Y=e.y, d=t*24;
-      if(e.k==='rock'){ if(t>0.55||(t>0.32&&Math.floor(t*16)%2)) return;
-        [[1,1],[-1,1],[1,-1],[-1,-1]].forEach(function(q,n){ var sh=Math.floor(t*10+n)%2, sp=sh?me.sp('rc0',['.00','000','00.']):me.sp('rc1',['00.','030','.00']);
-          lcdPut(sp,X+q[0]*(2+d*0.7)*LP-sp.w/2,Y+q[1]*(2+d*0.55)*LP-sp.h/2); }); }
+      if(e.k==='rock'){ if(t>0.35) return; var rr=2+t*26, cr=t<0.18?c2:c3; for(var k8=0;k8<20;k8++){ var an=k8/20*6.2832; lcdPut(cr,X+Math.cos(an)*rr*LP,Y+Math.sin(an)*rr*LP*0.85); } }   // 1.29a, «В, но чуть светлее»: a ring of dots runs out and is gone in a third of a second (the chunks were taken for rocks: «остается много и надолго осколки которые принимаются за невзорванные астероиды»)
       else if(e.k==='ufo'){ if(t>0.5) return; var r=(2+t*14)*1.15, lv=Math.min(15,Math.floor(t/0.5*17)), cs=t<0.15?c0:t<0.3?c1:c2, R=Math.ceil(r), i, j;
         for(j=-R;j<=R;j++) for(i=-R;i<=R;i++){ var a=Math.atan2(j,i), w=0.82+0.1*Math.sin(a*3+1+e.seed)+0.08*Math.sin(a*5+2); if(Math.hypot(i,j)>r*w||LCD_BAYER[(j+40)%4][(i+40)%4]<lv) continue; lcdPut(cs,X+i*LP,Y+j*LP); } } });
     parts.forEach(function(p){ var f=p.life/p.max; if(f<0.15||p._k==='rock'||(p._k==='ufo'&&p._i%3)) return; lcdPut(f>0.5?c0:c1,p.x,p.y); }); },

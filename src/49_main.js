@@ -555,8 +555,8 @@ function skStep(idp,idn,label,x,y,w,h){ var s=Math.round(h*0.9); R(P.bg,x,y,w,h)
   polyFill([[x+s/2+2,y+h/2-4],[x+s/2+2,y+h/2+4],[x+s/2-3,y+h/2]],P.band); polyFill([[x+w-s/2-2,y+h/2-4],[x+w-s/2-2,y+h/2+4],[x+w-s/2+3,y+h/2]],P.band);
   text(label,x+w/2,y+Math.round((h-7)/2),P.text,'center',1,true); BTN.push({id:idp,x:x,y:y,w:Math.round(w/2),h:h}); BTN.push({id:idn,x:x+Math.round(w/2),y:y,w:w-Math.round(w/2),h:h}); }
 function sSkins(){ var m=sklM(), all=sklAll(m), s=SKL[m], id=all[skB], on=s.list.indexOf(id)>=0;
-  var mg=Math.max(8,Math.round(LW*0.04)), h=BH, gp=6, bw=Math.min(Math.round((LW-SAFE.l-SAFE.r-2*mg-gp)/2),btnW([L('sk_in')+'   ',L('sk_order')+': '+L('sk_oloop'),L('sk_time')+': '+L('sk_rnd')+'  ',L('sk_all')])+10);
-  var rowsY=LH-SAFE.b-8-2*h-gp, top=SAFE.t+24, ch=rowsY-12-top, aw=Math.max(18,Math.round(h*1.1)), cw=Math.min(LW-SAFE.l-SAFE.r-2*(mg+aw+8),Math.round(ch*1.9)), cx=Math.round((SAFE.l+LW-SAFE.r-cw)/2), cy=top;
+  var mg=Math.max(8,Math.round(LW*0.04)), h=BH, gp=6, bw=Math.min(Math.round((LW-SAFE.l-SAFE.r-2*mg-gp)/2),btnW([L('sk_add'),L('sk_out'),L('sk_order')+': '+L('sk_oloop'),L('sk_time')+': '+L('sk_rnd')+'  ','   '+L('sk_all')])+10);
+  var rowsY=LH-SAFE.b-8-2*h-gp, top=SAFE.t+24, ch=rowsY-19-top, aw=Math.max(18,Math.round(h*1.1)), cw=Math.min(LW-SAFE.l-SAFE.r-2*(mg+aw+8),Math.round(ch*1.9)), cx=Math.round((SAFE.l+LW-SAFE.r-cw)/2), cy=top;
   // the world, its ship or car inside the card
   if(m==='race'){ raceDemoTick(); rX0=cx+Math.round(cw*0.12)-Race.CAR_X*K; try{ raceScene(rDemo,rDemo.d,rDemo.car.y,DT); } finally { rX0=null; } } else { noLight=true; drawDemo(SK,DT,cx+Math.round(cw*0.12),undefined,Math.round(cy+ch*0.45+ch*0.22*Math.sin(clock*0.9))); noLight=false; }
   // the world seen through the card: a veil round it
@@ -567,12 +567,15 @@ function sSkins(){ var m=sklM(), all=sklAll(m), s=SKL[m], id=all[skB], on=s.list
   text(L('skins_t'),Math.round((SAFE.l+LW-SAFE.r)/2),SAFE.t+9,P.band,'center',1,true);
   var ay=Math.round(cy+ch/2-aw/2); button('skins_prev','',cx-8-aw,ay,aw,aw,''); polyFill([[cx-8-aw/2+2,ay+aw/2-5],[cx-8-aw/2+2,ay+aw/2+5],[cx-8-aw/2-4,ay+aw/2]],P.band);
   button('skins_next','',cx+cw+8,ay,aw,aw,''); polyFill([[cx+cw+8+aw/2-2,ay+aw/2-5],[cx+cw+8+aw/2-2,ay+aw/2+5],[cx+cw+8+aw/2+4,ay+aw/2]],P.band);
-  var n=all.length, dx=Math.round(cx+cw/2-(n*7-3)/2), dy=cy+ch+4; for(var i=0;i<n;i++){ var inL=s.list.indexOf(all[i])>=0; R(inL?P.band:P.line,dx+i*7,dy,4,4); if(i===skB){ frame(dx+i*7-1,dy-1,6,6,P.text); } }
+  /* 1.29a, «А» (the maintainer: «внизу надо показывать списком какие выбраны сейчас»): a line of the playlist under the card instead of the dots */
+  var n=all.length, allOn=s.list.length===n, pl=L('sk_pl')+(allOn?L('sk_pall').replace('{m}',n):s.list.map(function(k){ return L((m==='race'?'r_sk_':'skin_')+k); }).join(' · '));
+  if(PF.width(pl)>LW-SAFE.l-SAFE.r-2*mg) pl=L('sk_pl')+L('sk_pn').replace('{n}',s.list.length).replace('{m}',n);
+  text(pl,Math.round((SAFE.l+LW-SAFE.r)/2),cy+ch+6,allOn?P.band:P.text,'center');
   var bx=Math.round((SAFE.l+LW-SAFE.r)/2-bw-gp/2), bx2=bx+bw+gp, tl=s.time?s.time+L('sk_s'):L('sk_rnd');
-  button('sk_in','   '+L('sk_in'),bx,rowsY,bw,h,''); skBox(bx+8,rowsY+Math.round((h-9)/2),on);
+  button('sk_in',L(on?'sk_out':'sk_add'),bx,rowsY,bw,h,'');   // 1.30 (the maintainer: «кнопка должна либо добавлять либо убирать»): it names what it does; the card's tick and the playlist line show the state
   skStep('sk_time_prev','sk_time_next',L('sk_time')+': '+tl,bx2,rowsY,bw,h);
   button('sk_order',L('sk_order')+': '+L(s.order==='loop'?'sk_oloop':'sk_orand'),bx,rowsY+h+gp,bw,h,'');
-  button('sk_all',L('sk_all'),bx2,rowsY+h+gp,bw,h,s.list.length===n?'':'');
+  button('sk_all','   '+L('sk_all'),bx2,rowsY+h+gp,bw,h,''); skBox(bx2+8,rowsY+h+gp+Math.round((h-9)/2),allOn);   // 1.29a: a tick — off again brings your own list back
   say(L('skins_t')+'. '+L((m==='race'?'r_sk_':'skin_')+id)+(on?'. '+L('sk_in'):'')+'. '+sklLabel(m)); }
 /* v1.00: the race's skins (the candy land, the notebook), kept on the phone; the switch is in the race's menu */
 var RACE_SKINS=['candy','note','pirate'],   // v1.06: the pirate world
@@ -796,7 +799,10 @@ var ACT={
   skins_prev:function(){ skB=(skB-1+sklAll(sklM()).length)%sklAll(sklM()).length; skinsShow(); }, skins_next:function(){ skB=(skB+1)%sklAll(sklM()).length; skinsShow(); },
   sk_in:function(){ var m=sklM(), s=SKL[m], id=sklAll(m)[skB], i=s.list.indexOf(id); if(i>=0){ if(s.list.length>1) s.list.splice(i,1); } else { s.list.push(id); s.list.sort(function(a,b){ return sklAll(m).indexOf(a)-sklAll(m).indexOf(b); }); } store.set(sklKey(m,'list'),s.list.join(',')); },
   sk_time_prev:function(){ var s=SKL[sklM()], i=SK_TIMES.indexOf(s.time); s.time=SK_TIMES[(i-1+SK_TIMES.length)%SK_TIMES.length]; }, sk_time_next:function(){ var s=SKL[sklM()], i=SK_TIMES.indexOf(s.time); s.time=SK_TIMES[(i+1)%SK_TIMES.length]; },
-  sk_order:function(){ var s=SKL[sklM()]; s.order=s.order==='loop'?'rand':'loop'; }, sk_all:function(){ var m=sklM(); SKL[m].list=sklAll(m).slice(); },
+  sk_order:function(){ var s=SKL[sklM()]; s.order=s.order==='loop'?'rand':'loop'; }, sk_all:function(){ var m=sklM(), s=SKL[m], all=sklAll(m);   // 1.29a (the maintainer: «кнопка "все подряд" должна отжиматься на предыдущее состояние»)
+    if(s.list.length===all.length){ var pv=(s.prev||[]).filter(function(k){ return all.indexOf(k)>=0; }); s.list=pv.length&&pv.length<all.length?pv:[all[skB]]; }
+    else { s.prev=s.list.slice(); s.list=all.slice(); }
+    store.set(sklKey(m,'list'),s.list.join(',')); store.set(sklKey(m,'prev'),(s.prev||[]).join(',')); },
   skin_next:function(){ flySkinStep(1); },
   lang:function(){ lang=lang==='en'?'ru':'en'; store.set('sonaroids_lang',lang); },
   sfx:function(){ Sfx.toggle(); }, vol_dn:function(){ Sfx.down(); }, vol_up:function(){ Sfx.up(); },

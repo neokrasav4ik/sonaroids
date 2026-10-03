@@ -22,7 +22,7 @@ The ship fires on its own; all you choose is where it is.
 - **Points** depend on height: the middle of the screen ×3, then ×2, the edges ×1. Hits in a row add a **streak** multiplier, up to ×4.
 - **Power-ups** — fly into them: a shield (takes one hit), triple shot, slow motion (once the game has sped up), a heart (an extra life, after you've lost one).
 - **Saucers:** a large one from level 2, a small one that aims at you from level 4. Line up with them and they sidestep.
-- **Six skins:** space, fairy tale, vector 80s, neon, notebook, retro LCD — each in **HD** or in **pixels**. In every skin things are drawn exactly the size the game counts them.
+- **Six skins:** space, fairy tale, vector 80s, neon, notebook, retro LCD — each in **HD** or in **pixels**, each with its own ship, saucers, power-ups, shots, shield, asteroids and explosions. In every skin things are drawn exactly the size the game counts them.
 
 ### SonaRace — a race along a winding road
 
@@ -51,6 +51,8 @@ There are two ways:
 4. Wave your palm. Nearer the phone — the ship goes lower; farther — higher. Don't cover the speaker or the microphone. The game fits the screen to your range, then shows the real ship (or car) following your palm. Check the top and the bottom, and play.
 
 A game lasts a few minutes: the pace keeps growing, and a hand held in the air gets tired too — that's part of it.
+
+**Skins** in both games: the menu's «◀ ▶» arrows step through the skins, a tap in the middle opens the «Skins» screen. There you leaf through the skins and build a playlist with «+ ADD TO PLAYLIST» / «- REMOVE»; it is shown as a line under the card. One skin in it — you always play in it; several — they change during the game, in turn or at random, after the time you set (15–120 s, or 25–40 s at random). The «All in a row» tick turns them all on; untick it and your playlist comes back.
 
 **The pause** in both games: go on, start over (straight away or with a new fit), end the game, exit to the menu. Beside them are the skin, the graphics (HD or pixels) and the sounds "- SOUNDS ▮▮▮▮▮▮▯▯ +": eight levels, a tap in the middle switches them off and on. The skin and the graphics can be changed in the middle of a game. If the game's own sounds get too loud for the microphone, it turns them down by itself.
 
@@ -126,7 +128,8 @@ A player is a random key kept on the phone; the server stores only its hash. Wit
 | `40_gfx.js`, `41_sprites.js`, `42_guide.js` | drawing, pixel sprites, the drawn phones of getting ready and the instructions |
 | `42_hands.js` | the hands of those pictures in HD, as pictures — made by `hands/make_hands.py` |
 | `43_skins.js`, `45_hd.js`, `46_vecskins.js`, `47_pixskins.js`, `48_sizes.js` | SonaFly's skins: pixels, HD, shape skins; things drawn the size the game counts them |
-| `48_racehd.js`, `48_racenote.js`, `48_racepirate.js` | SonaRace's candy land, notebook and pirate world, in HD and in pixels |
+| `48_racehd.js`, `48_racecandy.js`, `48_racenote.js`, `48_racepirate.js` | SonaRace's candy land, notebook and pirate world, in HD and in pixels |
+| `48_mix.js` | the skins' list: which are on, how often and in what order they change in a game |
 | `49_main.js` | the screens, the menus and the game loop |
 
 ### Building and checks

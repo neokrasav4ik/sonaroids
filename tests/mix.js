@@ -26,7 +26,7 @@ const path=require('path'); const ROOT=path.join(__dirname,'..');
     else { await p.evaluate(()=>{ __sonaroids.fake(); __sonaroids.act.hub_race(); __sonaroids.race(); __sonaroids.go('count'); }); await p.waitForTimeout(300); await p.evaluate(()=>{ const S=__sonaroids, g=S.state().g; g.state='play'; g.opt.burn=false; g.fuel=80; g.d=1500; g.t=150; g.v=120; S.go('play'); }); }
     await p.waitForTimeout(600); const seen=[];
     const until=async(f,ms)=>{ const t0=Date.now(); let m; while(Date.now()-t0<ms){ m=await p.evaluate(()=>__sonaroids.mixInfo()); if(f(m)) return m; await p.waitForTimeout(40); } return m; };   // frames come slower on a busy machine: wait on the game, not the clock
-    for(let r=0;r<3;r++){ await p.evaluate(()=>__sonaroids.mixNow()); const m=await until(m=>m.tr!==null&&m.tr>0.2,4000); seen.push(m); await until(m=>m.tr===null,8000); }
+    for(let r=0;r<3;r++){ await p.evaluate(()=>__sonaroids.mixNow()); const m=await until(m=>m.tr!==null&&m.tr>0.2,10000);   /* was 4 s: under the other lane's load a pixel skin's pictures took longer (03.10) */ seen.push(m); await until(m=>m.tr===null,8000); }
     const end=await p.evaluate(()=>__sonaroids.mixInfo());
     const changed=seen.every(m=>m&&m.tr!==null&&m.tr>0.2&&m.tr<1.1), noRep=seen.every((m,i)=>i<1||m.cur!==seen[i-1].cur)&&seen.every((m,i)=>i<2||m.cur!==seen[i-2].cur), done=end.tr===null;
     check(`${mode}, ${gfx}: the skin changes in about a second, never to one of the last two`,changed&&noRep&&done,seen.map(m=>m.cur+'@'+(m.tr||0).toFixed(2)).join(' → '));

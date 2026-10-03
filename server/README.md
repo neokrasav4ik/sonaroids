@@ -74,7 +74,7 @@ a forged score, a duplicate, bad names, tables and ranks.
 
 **The bots** (1.31): so that the tables are never empty, the server plays ~40 bots of its own — each with a name, a skill (beginner to strong) and habits
 (daily or now and then, more in the afternoon and evening by Moscow time). Their games are real: the game's bot (`botplay.js`) plays by the same rules and
-the palm heights are kept, so a bot's game replays like anyone's. The strongest stay a little below the best person. The page shows «EVERYONE | PEOPLE ONLY»
-over the table (`/v1/top?…&bots=0` leaves them out); `stats.js` never counts them. Turn on after an update and a restart:
+the palm heights are kept, so a bot's game replays like anyone's. The strongest stay a little below the best person. A long press on the version on the game's
+scores screen shows the table without them (`/v1/top?…&bots=0`); `stats.js` never counts them. Turn on after an update and a restart:
 `sudo -u sonaroids DB=/var/lib/sonaroids/sonaroids.db node --no-warnings server/bots.js init 40 7`, then a cron line every 10 minutes with `bots.js tick`
 (`docs/ru/server.md` has the exact commands). `bots.js remove --yes` takes them all out again (a copy of the database first).

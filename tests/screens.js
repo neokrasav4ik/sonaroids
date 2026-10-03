@@ -7,7 +7,7 @@ const SIZES=[[568,320],[667,375],[740,360],[844,390],[932,430],[1024,768],[1366,
 const SCREENS=['lang','hub','settings','title','skins','sound','phone','mic','probe','wave','wave-try','count','play','pause-play','restart','over','over-here','scores','nick','link','linkshow','linkin','linkdone','lost','nomic',
   'race-menu','race-skins','race-set','race-try','race-count','race-play','race-pause','race-over'];   // v0.84: SonaRace's own screens (its menu, the try-out with the car, the race, its pause and finish)
 // v1.07: the buttons each screen must show (checked below) — waited for before the checks, so a slow frame is not a failure
-const WANT={'scores':['sc_all','sc_people','p_day'],'skins':['skins_prev','skins_next','sk_in','sk_time_next','sk_order','sk_all','sk_back'],'race-skins':['skins_prev','skins_next','sk_in','sk_all','sk_back'],'wave-try':['start','again'],'race-try':['start','again'],'race-menu':['play','howto','hub'],'race-set':['rs_*'],'race-play':['pause'],'race-pause':['resume','restart','quit','exit'],
+const WANT={'scores':['ver','p_day'],'skins':['skins_prev','skins_next','sk_in','sk_time_next','sk_order','sk_all','sk_back'],'race-skins':['skins_prev','skins_next','sk_in','sk_all','sk_back'],'wave-try':['start','again'],'race-try':['start','again'],'race-menu':['play','howto','hub'],'race-set':['rs_*'],'race-play':['pause'],'race-pause':['resume','restart','quit','exit'],
   'race-over':['again','menu','ver'],'play':['pause'],'restart':['rs_go','rs_cal','rs_back'],'pause-play':['resume','restart','quit','exit'],'over':['ver'],'settings':['vol_dn','set_gfx_prev','set_band_next','set_live_next','set_expert','set_back']};   // v1.12: the settings
 (async()=>{
   const b=await chromium.launch(); const bad=[]; const errors=[]; let n=0;

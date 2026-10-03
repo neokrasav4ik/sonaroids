@@ -104,8 +104,10 @@ function play(seed,amp,steps){ const hands=[], g=Core.create(seed,380,90); for(l
     check('bots: their games replay to the stored scores', bp.length>=4&&bg.length>0&&same===bg.length, `${bp.length} bots, ${bg.length} games, ${same} replay the same`);
     check('bots: never above the best person', bg.filter(g=>g.game==='fly').every(g=>g.score<humanBest), `best person ${humanBest}, best bot ${Math.max(0,...bg.filter(g=>g.game==='fly').map(g=>g.score))}`);
     const tAll=await get('/v1/top?period=week&limit=100',{'X-Player':A}), tPeople=await get('/v1/top?period=week&limit=100&bots=0',{'X-Player':A});
-    check('bots: in the table by default, not with bots=0 («people only»); my rank among people', tAll.j.entries.some(e=>bn.has(e.nick))&&!tPeople.j.entries.some(e=>bn.has(e.nick))&&tPeople.j.people===true&&tPeople.j.me&&tPeople.j.me.rank<=tAll.j.me.rank,
-      `${tAll.j.entries.length} names with bots, ${tPeople.j.entries.length} people only; my rank ${tAll.j.me&&tAll.j.me.rank} / ${tPeople.j.me&&tPeople.j.me.rank}`);
+    // the bots' games are random: now and then they all are races (seen 03.10) — so the race's tables count too
+    const rAll=await get('/v1/top?period=week&limit=100&game=race'), rPeople=await get('/v1/top?period=week&limit=100&game=race&bots=0');
+    check('bots: in the table by default, not with bots=0 («people only»); my rank among people', (tAll.j.entries.some(e=>bn.has(e.nick))||rAll.j.entries.some(e=>bn.has(e.nick)))&&!tPeople.j.entries.some(e=>bn.has(e.nick))&&!rPeople.j.entries.some(e=>bn.has(e.nick))&&tPeople.j.people===true&&tPeople.j.me&&tPeople.j.me.rank<=tAll.j.me.rank,
+      `${tAll.j.entries.length}+${rAll.j.entries.length} names with bots (fly+race), ${tPeople.j.entries.length}+${rPeople.j.entries.length} people only; my rank ${tAll.j.me&&tAll.j.me.rank} / ${tPeople.j.me&&tPeople.j.me.rank}`);
     const st=require('child_process').spawnSync(process.execPath,['--no-warnings',path.join(__dirname,'..','server','stats.js'),'30'],{env:Object.assign({},process.env,{DB:tmp})});
     const ng=+(String(st.stdout).match(/games, last 30 days: (\d+)/)||[])[1], people=db.prepare("SELECT COUNT(*) AS c FROM games WHERE game='fly' AND created>=? AND player NOT IN (SELECT player FROM bots)").get(Date.now()-30*86400000).c;
     check('bots: server/stats.js counts people only', ng===people, `${ng} games counted, people played ${people}`);

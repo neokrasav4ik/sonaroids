@@ -87,7 +87,7 @@ With the app and the wide probe a **Mi 9 Lite** (from 2019) plays like an iPhone
 
 Each game has its own tables: today, this week and all time. The first time a game makes a table, it asks for a name (Latin letters, digits, `_`). A transfer code moves your name and scores to another browser or phone.
 
-**Bots play in the tables too** — about 40 players the server plays itself, from beginners to strong ones, so there is always someone to beat. Their games are real — the game's bot, by the same rules — and the strongest stay a little below the best person. The «PEOPLE ONLY» tab over the table leaves them out.
+**Bots play in the tables too** — about 40 players the server plays itself, from beginners to strong ones, so there is always someone to beat. Their games are real — the game's bot, by the same rules — and the strongest stay a little below the best person. A long press on the version number on the scores screen leaves them out — «PEOPLE ONLY» shows over the table; another long press brings everyone back.
 
 What goes to the server is not a score but the game itself: the layout number and the palm height at every step, a few KB. Both games are deterministic — even steps 60 times a second, random numbers from a seed, no transcendental functions. So the server replays every game with the very same code (`src/13_core.js` for SonaFly, `src/14_race.js` for SonaRace) and keeps the score only if it repeats.
 

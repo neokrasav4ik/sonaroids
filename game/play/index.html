@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='1.39';
+var VERSION='1.40';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -388,7 +388,7 @@ var Core=(function(){
   var STREAK_MAX=4;                        // the streak adds up to ×4 (after 15 hits in a row)
   /* tuning, set with a bot player (tests/bot.js): a rock every SPAWN s at pace 1, and pace^1.125 times as often later (more rocks, not just faster ones); pieces fly off at SPLIT_VX × the parent's speed
      and SPLIT_VY up or down; a new level every LEVEL base points (points before the height and streak multipliers) */
-  var TUNE={SPAWN:[1.0,1.7],SPLIT_VX:[0.85,1.15],SPLIT_VY:[8,18],HIT_R:0.8,LEVEL:5000,SLOW_FROM:1.4,SHOT_TILT:0};
+  var TUNE={SPAWN:[1.0,1.7],SPLIT_VX:[0.85,1.15],SPLIT_VY:[8,18],HIT_R:0.8,LEVEL:5000,SLOW_FROM:1.4,SHOT_TILT:0,SHOT_BOUNCE:0};   // v1.40: SHOT_BOUNCE 1 — the shots glance off the top and bottom edges as the rocks do (a test)
   /* v1.35 (experiment, off): the ship tilts with its own vertical speed — smoothed 0.12 s, a dead zone of 6% of the field a second
      (a still palm's shake leaves it level), then 0.08 s more; the slope (rise per unit ahead) up to ±0.33 (~18°). The picture always
      shows it; the shots follow SHOT_TILT × it (0 — straight ahead, as before). Literals: 1 − exp(−(1/60)/0.12), 1 − exp(−(1/60)/0.08) */
@@ -449,7 +449,8 @@ var Core=(function(){
     if(g.ufoT>0&&!u){ g.ufoT-=wdt; if(g.ufoT<=0){ var kind=(g.level>=UFO_SMALL_LV&&g.rand()<0.5)?'small':'big';
       u=g.ufo={id:g.nextId++,kind:kind,x:g.FW+10,y:rnd(g,FH*0.2,FH*0.8),ty:FH/2,tyT:0,fire:1.2,hp:UFO[kind].hp,seen:0,dodgeT:0,hitT:0}; g.events.push('ufo'); } }
     // movement
-    for(i=0;i<g.bullets.length;i++){ b=g.bullets[i]; b.x+=b.vx*DT; b.y+=b.vy*DT; }
+    for(i=0;i<g.bullets.length;i++){ b=g.bullets[i]; b.x+=b.vx*DT; b.y+=b.vy*DT;
+      if(TUNE.SHOT_BOUNCE){ if(b.y<0){ b.y=-b.y; b.vy=-b.vy; } else if(b.y>FH){ b.y=FH+FH-b.y; b.vy=-b.vy; } } }
     for(i=0;i<g.rocks.length;i++){ r=g.rocks[i]; r.x+=r.vx*wdt; r.y+=r.vy*wdt; if((r.y<r.r&&r.vy<0)||(r.y>FH-r.r&&r.vy>0)) r.vy=-r.vy; }
     for(i=0;i<g.picks.length;i++) g.picks[i].x-=24*wdt;
     for(i=0;i<g.ebullets.length;i++){ b=g.ebullets[i]; b.x+=b.vx*wdt; b.y+=b.vy*wdt; }
@@ -1291,7 +1292,7 @@ STR.en={
   aud_fx:'PHONE PROCESSING:', aud_src:'SOURCE', aud_usage:'PROBE AS', aud_end:'PROBE FROM', turn_t:'TURN THE PHONE ROUND', hub_s:'GAMES YOU PLAY WITH YOUR PALM IN MID-AIR', soon:'SOON', all_games:'← ALL GAMES', skin:'SKIN', gfx:'GRAPHICS', gfx_pixel:'PIXELS', skin_space:'SPACE', skin_vector:'VECTOR 80S', skin_neon:'NEON', skin_note:'NOTEBOOK', skin_lcd:'RETRO LCD', skin_fairy:'FAIRY TALE', turn_s:'BY 180° IF YOU PLAY', turn_s2:'WITH YOUR RIGHT HAND', turn_h:'ROUND LIKE A WHEEL — DON\'T FLIP IT FACE DOWN', lefty:'I PLAY LEFT-HANDED', aud_vol:'VOLUME', aud_keep:'LEAVE AS IS', aud_cam:'CAMERA END', aud_port:'PORT END', aud_media:'MEDIA', aud_game:'GAME', aud_autotest:'AUTO PICK', aud_notyet:'NOT DONE YET', aud_retest:'TEST AGAIN', aud_lab:'LAB', aud_nextgame:'WITH THE NEXT GAME', aud_on:'ON', aud_off:'OFF', aud_t2:'SOUND', aud_s2:'TRIALS OF THE ECHO PROCESSING', settings:'SETTINGS', settings_t:'SETTINGS', set_gfx:'GRAPHICS', set_gfx_menu:'CHOSEN IN THE GAME', set_gfx_hd:'ALWAYS HD', set_gfx_px:'ALWAYS PIXELS', set_band:'PROBE BAND', set_band_ask:'CHOSEN BEFORE A GAME', set_band_w:'ALWAYS WIDE', set_band_n:'ALWAYS NORMAL', set_live:'AUTO-CALIBRATION', set_on:'ON', set_off:'OFF', set_live_on_s:'NO WAVING: THE GAME TAKES YOUR LAST MANUAL CALIBRATION AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', set_live_on_d:'NO WAVING: THE GAME TAKES YOUR MANUAL CALIBRATION OF {d} AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', auto_ok:'CALIBRATION FROM YOUR LAST GAME', set_room:'ROOM FOLLOWING', set_live_new_s:'NO MANUAL CALIBRATION YET: SWITCH THIS OFF, PLAY ONE GAME WAVING YOUR PALM, SWITCH IT ON AGAIN — AUTO-CALIBRATION WILL TAKE IT', set_live_off_s:'BEFORE EVERY GAME: TAKE YOUR HAND AWAY, WAVE YOUR PALM, TAP «START». A GOOD SETUP CAN THEN BE KEPT WITH AUTO-CALIBRATION', set_expert:'ADVANCED PROBE SETTINGS', aud_link:'SOUND', aud_t:'APP SOUND', aud_s:'WHERE THE GAME TAKES THE MICROPHONE FROM AND WHERE THE PROBE PLAYS', aud_mode:'SOUND', aud_browser:'BROWSER', aud_app:'APP', aud_mic:'MICROPHONE', aud_out:'SPEAKER', aud_auto:'AUTO', aud_speaker:'SPEAKER', aud_earpiece:'EARPIECE', aud_bottom:'BOTTOM', aud_top:'TOP', aud_back:'BACK', aud_now:'NOW:', aud_active:'RECORDING:', aud_idle:'THE MICROPHONE OPENS WITH THE GAME', aud_browser_now:'NOW THE SOUND GOES THROUGH THE BROWSER: ANDROID PICKS THE MICROPHONE', aud_nopos:'THE PHONE DOES NOT TELL WHERE ITS MICROPHONES ARE',
   wave_t:'WAVE YOUR PALM', wave_s:'5–10 CM ABOVE THE TABLE OR 5–15 CM FROM THE PHONE\'S END', wave_ok:'GOT YOUR RANGE', other_t:'WAVE ON THE OTHER SIDE', other_s:'THE PHONE DOES NOT HEAR THE PALM ON THIS SIDE', try_s:'THE SHIP FOLLOWS YOUR PALM — TRY THE TOP AND THE BOTTOM', cm:'CM',
   ring_wait:'GET READY', ring_listen:'LISTENING', ring_catch:'CATCHING THE RANGE', ring_ok:'DONE',
-  start:'START', over:'GAME OVER', best:'BEST', again:'AGAIN', menu:'MENU', logs:'LOGS', tilt_off:'SHOTS: STRAIGHT', tilt_full:'SHOTS: WITH THE TILT', tilt_test:'TEST RULES: NOT FOR THE TABLES', ftilt:'TILT IN THE PICTURE: {n}%', tilt_pct:'SHOTS: {n}% OF THE TILT',
+  start:'START', over:'GAME OVER', best:'BEST', again:'AGAIN', menu:'MENU', logs:'LOGS', tilt_off:'SHOTS: STRAIGHT', tilt_full:'SHOTS: WITH THE TILT', tilt_test:'TEST RULES: NOT FOR THE TABLES', ftilt:'TILT IN THE PICTURE: {n}%', bounce_off:'SHOTS OFF THE EDGES: NO', bounce_on:'SHOTS OFF THE EDGES: YES', tilt_pct:'SHOTS: {n}% OF THE TILT',
   lost_t:'NO PROBE SOUND', lost_s:'SOUND WENT TO ANOTHER DEVICE. UNPLUG HEADPHONES OR BLUETOOTH', retry:'TRY AGAIN',
   nomic_t:'NO MICROPHONE', nomic_s:'ALLOW IT IN THE BROWSER SETTINGS AND TRY AGAIN', noaudio_s:'THIS BROWSER CANNOT PLAY THE GAME. TRY SAFARI OR CHROME',
   rotate:'TURN THE PHONE SIDEWAYS', rotate_s:'THE SCREEN WON\'T TURN? SWITCH OFF THE ROTATION LOCK: ON IPHONE IN CONTROL CENTRE, ON ANDROID IN QUICK SETTINGS (AUTO-ROTATE)', paused:'PAUSE', resume:'GO ON', quit:'END THE GAME', scores:'HIGH SCORES', p_day:'TODAY', p_week:'THIS WEEK', p_all:'ALL TIME', loading:'LOADING…', offline:'NO CONNECTION TO THE TABLE', empty:'EMPTY SO FAR', you:'YOU',
@@ -1326,7 +1327,7 @@ STR.ru={
   aud_fx:'ОБРАБОТКА ТЕЛЕФОНА:', aud_src:'ИСТОЧНИК', aud_usage:'ЗОНД КАК', aud_end:'ЗОНД ИЗ', turn_t:'РАЗВЕРНИ ТЕЛЕФОН', hub_s:'ИГРЫ, КОТОРЫМИ УПРАВЛЯЕТ ЛАДОНЬ В ВОЗДУХЕ', soon:'СКОРО', all_games:'← ВСЕ ИГРЫ', skin:'СКИН', gfx:'ГРАФИКА', gfx_pixel:'ПИКСЕЛИ', skin_space:'КОСМОС', skin_vector:'ВЕКТОР 80-Х', skin_neon:'НЕОН', skin_note:'ТЕТРАДКА', skin_lcd:'РЕТРО LCD', skin_fairy:'СКАЗКА', turn_s:'НА 180°, ЕСЛИ ИГРАЕШЬ', turn_s2:'ПРАВОЙ РУКОЙ', turn_h:'ПО КРУГУ, КАК РУЛЬ — НЕ ПЕРЕВОРАЧИВАЙ ЭКРАНОМ ВНИЗ', lefty:'ИГРАЮ ЛЕВОЙ РУКОЙ', aud_vol:'ГРОМКОСТЬ', aud_keep:'НЕ ТРОГАТЬ', aud_cam:'У КАМЕРЫ', aud_port:'У РАЗЪЁМА', aud_media:'МЕДИА', aud_game:'ИГРА', aud_autotest:'АВТОВЫБОР', aud_notyet:'ЕЩЁ НЕ ДЕЛАЛСЯ', aud_retest:'ПЕРЕПРОВЕРИТЬ', aud_lab:'ЛАБА', aud_nextgame:'БУДЕТ ПРИ СЛЕДУЮЩЕЙ ИГРЕ', aud_on:'ВКЛ', aud_off:'ВЫКЛ', aud_t2:'ЗВУК', aud_s2:'ОПЫТЫ С ОБРАБОТКОЙ ЭХА', settings:'НАСТРОЙКИ', settings_t:'НАСТРОЙКИ', set_gfx:'ГРАФИКА', set_gfx_menu:'ВЫБОР В ИГРЕ', set_gfx_hd:'ВСЕГДА HD', set_gfx_px:'ВСЕГДА ПИКСЕЛИ', set_band:'ПОЛОСА ЗОНДА', set_band_ask:'ВЫБОР ПЕРЕД ИГРОЙ', set_band_w:'ВСЕГДА ШИРОКАЯ', set_band_n:'ВСЕГДА ОБЫЧНАЯ', set_live:'АВТОКАЛИБРОВКА', set_on:'ВКЛ', set_off:'ВЫКЛ', set_live_on_s:'БЕЗ ВЗМАХОВ: ИГРА БЕРЁТ ТВОЮ ПОСЛЕДНЮЮ РУЧНУЮ КАЛИБРОВКУ И САМА ПОДСТРАИВАЕТСЯ ПОД ЗВУКИ КОМНАТЫ. УПРАВЛЯЕТСЯ ХУЖЕ? ВЫКЛЮЧИ, СЫГРАЙ С РУЧНОЙ И ВКЛЮЧИ СНОВА', set_live_on_d:'БЕЗ ВЗМАХОВ: ИГРА БЕРЁТ ТВОЮ РУЧНУЮ КАЛИБРОВКУ ОТ {d} И САМА ПОДСТРАИВАЕТСЯ ПОД ЗВУКИ КОМНАТЫ. УПРАВЛЯЕТСЯ ХУЖЕ? ВЫКЛЮЧИ, СЫГРАЙ С РУЧНОЙ И ВКЛЮЧИ СНОВА', auto_ok:'КАЛИБРОВКА ИЗ ПРОШЛОЙ ИГРЫ', set_room:'ПОДСТРОЙКА ПОД КОМНАТУ', set_live_new_s:'РУЧНОЙ КАЛИБРОВКИ ЕЩЁ НЕ БЫЛО: ВЫКЛЮЧИ, СЫГРАЙ ОДНУ ИГРУ С ВЗМАХАМИ И ВКЛЮЧИ СНОВА — АВТОКАЛИБРОВКА ВОЗЬМЁТ ЕЁ', set_live_off_s:'ПЕРЕД КАЖДОЙ ИГРОЙ: УБРАТЬ РУКУ, ПОМАХАТЬ ЛАДОНЬЮ, НАЖАТЬ «СТАРТ». УДАЧНУЮ НАСТРОЙКУ ПОТОМ МОЖНО ОСТАВИТЬ АВТОКАЛИБРОВКОЙ', set_expert:'РАСШИРЕННЫЕ НАСТРОЙКИ ЗОНДА', aud_link:'ЗВУК', aud_t:'ЗВУК ПРИЛОЖЕНИЯ', aud_s:'ОТКУДА ИГРА БЕРЁТ МИКРОФОН И КУДА ИГРАЕТ ЗОНД', aud_mode:'ЗВУК', aud_browser:'БРАУЗЕР', aud_app:'ПРИЛОЖЕНИЕ', aud_mic:'МИКРОФОН', aud_out:'ДИНАМИК', aud_auto:'АВТО', aud_speaker:'ДИНАМИК', aud_earpiece:'РАЗГОВОРНЫЙ', aud_bottom:'НИЗ', aud_top:'ВЕРХ', aud_back:'СЗАДИ', aud_now:'СЕЙЧАС:', aud_active:'ПИШУТ:', aud_idle:'МИКРОФОН ОТКРОЕТСЯ ПРИ ИГРЕ', aud_browser_now:'СЕЙЧАС ЗВУК ЧЕРЕЗ БРАУЗЕР: МИКРОФОН ВЫБИРАЕТ ANDROID', aud_nopos:'ТЕЛЕФОН НЕ СООБЩАЕТ, ГДЕ МИКРОФОНЫ',
   wave_t:'ПОМАШИ ЛАДОНЬЮ', wave_s:'5–10 СМ НАД СТОЛОМ ИЛИ 5–15 СМ ОТ ТОРЦА ТЕЛЕФОНА', wave_ok:'РАЗМАХ ПОЙМАН', other_t:'ПОМАШИ С ДРУГОЙ СТОРОНЫ', other_s:'С ЭТОЙ СТОРОНЫ ТЕЛЕФОН НЕ СЛЫШИТ ЛАДОНЬ', try_s:'КОРАБЛЬ ИДЁТ ЗА ЛАДОНЬЮ — ПРОВЕРЬ ВЕРХ И НИЗ', cm:'СМ',
   ring_wait:'ПРИГОТОВЬСЯ', ring_listen:'СЛУШАЮ', ring_catch:'ЛОВЛЮ РАЗМАХ', ring_ok:'ГОТОВО',
-  start:'СТАРТ', over:'ИГРА ОКОНЧЕНА', best:'РЕКОРД', again:'ЕЩЁ РАЗ', menu:'МЕНЮ', logs:'ЖУРНАЛЫ', tilt_off:'ВЫСТРЕЛЫ: ПРЯМО', tilt_full:'ВЫСТРЕЛЫ: ПО НАКЛОНУ', tilt_test:'ТЕСТОВЫЕ ПРАВИЛА: НЕ В ТАБЛИЦАХ', ftilt:'НАКЛОН КАРТИНКИ: {n}%', tilt_pct:'ВЫСТРЕЛЫ: {n}% НАКЛОНА',
+  start:'СТАРТ', over:'ИГРА ОКОНЧЕНА', best:'РЕКОРД', again:'ЕЩЁ РАЗ', menu:'МЕНЮ', logs:'ЖУРНАЛЫ', tilt_off:'ВЫСТРЕЛЫ: ПРЯМО', tilt_full:'ВЫСТРЕЛЫ: ПО НАКЛОНУ', tilt_test:'ТЕСТОВЫЕ ПРАВИЛА: НЕ В ТАБЛИЦАХ', ftilt:'НАКЛОН КАРТИНКИ: {n}%', bounce_off:'ВЫСТРЕЛЫ ОТ КРАЁВ: НЕТ', bounce_on:'ВЫСТРЕЛЫ ОТ КРАЁВ: ДА', tilt_pct:'ВЫСТРЕЛЫ: {n}% НАКЛОНА',
   lost_t:'ЗОНДА НЕ СЛЫШНО', lost_s:'ЗВУК УШЁЛ В ДРУГОЕ УСТРОЙСТВО. ОТКЛЮЧИ НАУШНИКИ ИЛИ BLUETOOTH', retry:'ЕЩЁ РАЗ',
   nomic_t:'НЕТ МИКРОФОНА', nomic_s:'РАЗРЕШИ ЕГО В НАСТРОЙКАХ БРАУЗЕРА И ПОПРОБУЙ ЕЩЁ РАЗ', noaudio_s:'В ЭТОМ БРАУЗЕРЕ ИГРА НЕ ЗАПУСТИТСЯ. ПОПРОБУЙ SAFARI ИЛИ CHROME',
   rotate:'ПОВЕРНИ ТЕЛЕФОН ГОРИЗОНТАЛЬНО', rotate_s:'НЕ ПОВОРАЧИВАЕТСЯ? ВЫКЛЮЧИ БЛОКИРОВКУ ПОВОРОТА ЭКРАНА: НА IPHONE — В ПУНКТЕ УПРАВЛЕНИЯ, НА ANDROID — В ШТОРКЕ (АВТОПОВОРОТ)', paused:'ПАУЗА', resume:'ДАЛЬШЕ', quit:'ЗАКОНЧИТЬ ИГРУ', scores:'РЕКОРДЫ', p_day:'СЕГОДНЯ', p_week:'НЕДЕЛЯ', p_all:'ВСЁ ВРЕМЯ', loading:'ЗАГРУЖАЮ…', offline:'НЕТ СВЯЗИ С ТАБЛИЦЕЙ', empty:'ПОКА ПУСТО', you:'ТЫ',
@@ -2082,12 +2083,12 @@ function drawDemo(sk,dt,shipX,st,shipY,skyS,shipK){ var d;                   // 
   d.rocks.forEach(function(r){ r.x-=r.v*K*dt; if(r.x<-20){ r.x=LW+20; r.y=LH*(0.12+Math.random()*0.76); }
     var sp=demoRock(sk,r.sz,r.id); if(sk.drawRock){ sp.rot=(sp.rot+(sp.vr||0)*dt+16)%16; sk.drawRock(sp,r.x,r.y); return; }
     var fr=sp.frames[Math.floor((d.t*2+r.id)%16)]; lx.drawImage(fr,Math.round(r.x-sp.size/2+(sp.ox||0)),Math.round(r.y-sp.size/2+(sp.oy||0))); });
-  var sy=Math.round(shipY!==undefined?shipY:LH*(0.5+0.18*Math.sin(d.t*0.9))), sx=Math.round(shipX===undefined?fx(Core.SHIP_X):shipX);
+  if(!d.path) d.path=pathMake(); if(!d.fly) d.fly={};   // v1.40: a palm's path and the ship's flight (tilt, roll, trails), each skin its own
+  var sy=Math.round(shipY!==undefined?shipY:LH*(0.5+0.3*pathStep(d.path,dt))), sx=Math.round(shipX===undefined?fx(Core.SHIP_X):shipX);
   if(Math.floor(d.t*6)!==Math.floor((d.t-dt)*6)) d.shots.push({x:sx+8+8*(shipK||1),y:sy});
   d.shots=d.shots.filter(function(b){ b.x+=190*K*dt; return b.x<LW+10; }); d.shots.forEach(function(b){ sk.bullet(b.x,b.y); });
   var u=d.ufo; u.x-=6*K*dt; if(u.x<-30) u.x=LW+60; sk.ufo(Math.round(u.x),Math.round(u.y+Math.sin(d.t*1.7)*6),true,false);
-  if(shipK&&shipK!==1){ var c=sk.hd?hx:lx; c.save(); c.translate(sx+8,sy); c.scale(shipK,shipK); c.translate(-sx-8,-sy); sk.ship(sx,sy,d.t,false); c.restore(); }
-  else sk.ship(sx,sy,d.t,false); }
+  var fs=d.fly[sk.id+(sk.hd?'h':'')]||(d.fly[sk.id+(sk.hd?'h':'')]=flyNew()); flyDemo(sk,fs,sx,sy,d.t,dt,shipK); }
 /* a demo frame of skin sk into an off-screen canvas at the screen's size (for the games' cards and the games' screen background) */
 var demoC=null;
 function demoInto(sk,dt){ if(!demoC||demoC.width!==LW||demoC.height!==LH){ demoC=document.createElement('canvas'); demoC.width=LW; demoC.height=LH; }
@@ -3402,7 +3403,8 @@ SKINS.note={id:'note', glow:false, nolight:true, motes:['#9a9aa4'],
    leaves two swirling trails from its wing tips and its flame grows with a fast move. Nothing here changes the game: in flight the tilt
    is the core's own (g.ship.tl, the slope the shots may follow, src/13_core.js), elsewhere (the try-out, the demo) the same formula on
    the ship's screen position. Every skin has its own look of the trail and flame (FLY_LOOK); LCD keeps its cells (no turning). ── */
-var FLY={wph:0,tl:0,sv:0,k:0,y:null,roll:-1,cool:0,fastS:0,fastT:-9,tr:[],emit:0,last:-1,id:''};
+function flyNew(){ return {wph:0,tl:0,sv:0,k:0,y:null,roll:-1,cool:1,fastS:0,fastT:-9,tr:[],emit:0,last:-1,id:''}; }
+var FLY=flyNew(), flyNoTrail=false;   /* v1.40: FLY is the ship being drawn now — the game's, or a demo's own (flyDemo) */
 var FLY_LOOK={
   space:{piv:11,tip:[-2,6.5],trail:'vapor',c:'150,215,255',life:0.9,w:1.0,fl:['220,245,255','90,180,255'],flx:-1},
   fairy:{piv:5,tip:[-2,4.5],trail:'dust',c:'255,226,150',life:1.0,w:0.9},   /* the dragon has no engine: its wings beat faster on a fast move (FLY.wph) */
@@ -3471,7 +3473,7 @@ function flyShip(sx,sy,t,blink,dt,tl){ var L=FLY_LOOK[skinId]||FLY_LOOK.space;
   if(!FLY_ON||shipBare){ SK.ship(sx,sy,t,blink); return; }
   flyStep(sy,dt,tl); var f=FLY, tk=flyTiltK(), ang=Math.atan(f.tl*tk), ra=flyRollA(), bank=1-0.22*Math.abs(f.tl*tk)/Core.TILT.max, sy2=bank*Math.cos(ra), cx=sx+L.piv;
   if(L.still){ ang=0; sy2=1; }
-  flyTrail(L,cx,sy,ang,sy2,dt);
+  if(!flyNoTrail) flyTrail(L,cx,sy,ang,sy2,dt);
   if(L.shadow&&SK.hd&&!shipBare){ var rcs=f.roll>=0?Math.abs(Math.cos(ra)):1; hx.save(); hx.fillStyle='rgba(90,90,110,0.16)'; hx.beginPath(); hx.ellipse(cx+1,sy+10,11,0.6+1.5*rcs,0,0,6.2832); hx.fill(); hx.restore(); }   /* the notebook: the ship's pencil shadow on the paper, narrow edge-on */
   if(blink) return;
   if(SK.hd&&SK.rollFrame&&f.roll>=0){ SK.rollFrame(sx,sy,t,ra); return; }   /* v1.39: the LCD rolls by whole sprite frames, untilted, unscaled */
@@ -3492,6 +3494,24 @@ function flyShip(sx,sy,t,blink,dt,tl){ var L=FLY_LOOK[skinId]||FLY_LOOK.space;
     var px=flyPx.getContext('2d'), keep=lx; px.setTransform(1,0,0,1,0,0); px.clearRect(0,0,64,48); lx=px; try{ SK.ship(32-L.piv,24,t,false); } finally { lx=keep; }
     var q=Math.round(ang/0.0873)*0.0873;   /* turned in 5° steps, nearest pixel: the pixel look stays */
     lx.save(); lx.imageSmoothingEnabled=false; lx.translate(Math.round(cx),Math.round(sy)); lx.rotate(q); lx.scale(1,Math.abs(sy2)<0.12?(sy2<0?-0.12:0.12):Math.round(sy2*8)/8); lx.drawImage(flyPx,-32,-24); lx.restore(); } }
+/* v1.40 (the maintainer: «на остальных экранах… чтоб там самолетики по новым траекториям двигались.. а не как раньше прямолинейно»):
+   a demo's ship flies the same way — its own flight state st (tilt, roll, trails) and skin sk swapped in for the moment;
+   k — the ship drawn larger (the drawn phone), then without the trails (their wake would scale and ride with the ship) */
+function flyDemo(sk,st,sx,sy,t,dt,k){ var kF=FLY, kS=SK, kI=skinId; FLY=st; SK=sk; skinId=sk.id;
+  try{ if(k&&k!==1){ var c=sk.hd?hx:lx; flyNoTrail=true; c.save(); c.translate(sx+8,sy); c.scale(k,k); c.translate(-sx-8,-sy); try{ flyShip(sx,sy,t,false,dt,null); } finally { c.restore(); } }
+    else flyShip(sx,sy,t,false,dt,null); }
+  finally { FLY=kF; SK=kS; skinId=kI; flyNoTrail=false; } }
+/* the demo's path, like a palm over the phone: glides to a new height and pauses; every 4–7 s a fast dive and a sharp turn back
+   (which rolls the ship over). Returns −1…1 */
+function pathMake(){ return {y:0,y0:0,y1:0,u:1,D:1,hold:0,T:2,dive:0,t:0}; }
+function pathStep(p,dt){ p.t+=dt; p.T+=dt;
+  if(p.u>=1){ if(p.hold>0) p.hold-=dt;
+    else { var r=Math.random, s=p.y>0?-1:1; p.y0=p.y; p.u=0;
+      if(p.dive){ p.y1=Math.max(-0.9,Math.min(0.9,p.y-s*(0.45+0.35*r()))); p.D=0.55+0.2*r(); p.dive=0; p.hold=0.3+0.6*r(); }   // the turn back
+      else if(p.T>4+3*r()){ p.y1=s*(0.6+0.3*r()); p.D=0.42+0.08*r(); p.dive=1; p.T=0; }   // the dive across
+      else { var y1; do{ y1=-0.85+1.7*r(); }while(Math.abs(y1-p.y)<0.25); p.y1=y1; p.D=0.6+0.9*r(); p.hold=r()<0.5?0.2+0.6*r():0; } } }
+  if(p.u<1){ p.u=Math.min(1,p.u+dt/p.D); var e=p.u*p.u*(3-2*p.u); p.y=p.y0+(p.y1-p.y0)*e; }
+  return p.y+0.03*Math.sin(p.t*2.3); }
 /* ── v1.24, «ВСЁ ПОДРЯД / SHUFFLE» (the maintainer: «добавим в опцию выбора скинов для игр (и флай и рейс) такую типа "рандом микс"… чтобы
    скин менялся в игре каждые 25–40 секунд на рандомный, не повторяющийся с предыдущими»; the name «ВСЁ ПОДРЯД / SHUFFLE»; the change «Г3»,
    a torn sheet: the new world comes in from the right behind a torn paper edge with a white rim). The last place in each game's skin row.
@@ -5193,7 +5213,7 @@ function diagCorner(label,top,ty,flip,ax){ var vr=ty?(freeSide()!=='left')!==!!f
     text(ls,lx0,ly,P.band,'left'); R(P.band,lx0,ly+PF.CAP+2,lw,1); BTN.push({id:'logs',x:lx0-8,y:ly-6,w:lw+16,h:PF.CAP+12}); }
   if(top&&diag&&scr==='title'&&mode!=='race'){ var ts=shotTiltLabel(), tw=PF.width(ts), ty2=vy+(Logs.has()?2:1)*(PF.CAP+12), tx0=vr?vx-tw:vx;   /* v1.35: the test of the shots' tilt */
     text(ts,tx0,ty2,P.band,'left'); R(P.band,tx0,ty2+PF.CAP+2,tw,1); BTN.push({id:'shot_tilt',x:tx0-8,y:ty2-6,w:tw+16,h:PF.CAP+12});
-    [['fly_tilt',L('ftilt').replace('{n}',Math.round(flyTiltK()*100))]].forEach(function(q,i){ var s3=q[1], w3=PF.width(s3), y3=ty2+(i+1)*(PF.CAP+12), x3=vr?vx-w3:vx;   /* v1.35a */
+    [['shot_bounce',L(shotBounce()?'bounce_on':'bounce_off')],['fly_tilt',L('ftilt').replace('{n}',Math.round(flyTiltK()*100))]].forEach(function(q,i){ var s3=q[1], w3=PF.width(s3), y3=ty2+(i+1)*(PF.CAP+12), x3=vr?vx-w3:vx;   /* v1.35a */
       text(s3,x3,y3,P.band,'left'); R(P.band,x3,y3+PF.CAP+2,w3,1); BTN.push({id:q[0],x:x3-8,y:y3-6,w:w3+16,h:PF.CAP+12}); }); }
   // v0.58: at the bottom (the title screen) — a row of service links on the line above the version, the same on every phone:
   // «logs» (when there are any), «sound» (the Android app), «lab» (always — the lab opens in the same tab / app)
@@ -5343,6 +5363,7 @@ function gfxLockApply(){ var v=setGfx3(); if((v==='hd'||v==='pixel')&&gfxMode!==
    a hidden switch under the version on SonaFly's menu; a game by the test rules is not sent to the tables */
 var SHOT_TILTS=['0','0.1','0.15','0.2','0.25','0.5','1'];   /* v1.39: finer angles for training — 10/15/20/25% of the tilt */
 function shotTilt(){ var s=store.get('sonaroids_shot_tilt','0'); return SHOT_TILTS.indexOf(s)>=0?+s:0; }
+function shotBounce(){ return store.get('sonaroids_shot_bounce','0')==='1'?1:0; }   /* v1.40: the shots glance off the edges (the maintainer: «как астероиды — это бы уравняло сложность»), a test */
 function shotTiltLabel(){ var v=shotTilt(); return v===0?L('tilt_off'):v===1?L('tilt_full'):L('tilt_pct').replace('{n}',Math.round(v*100)); }
 var SET_ROWS=[
   ['set_gfx',function(){ var v=setGfx3(); return v==='hd'?'set_gfx_hd':v==='pixel'?'set_gfx_px':'set_gfx_menu'; },function(dir){ var o=['','hd','pixel'], i=(o.indexOf(setGfx3())+dir+3)%3; store.set('sonaroids_gfx_lock',o[i]); gfxLockApply(); }],
@@ -5535,7 +5556,7 @@ function field(dt,speed){ if(mode==='race'&&g&&g.car){ raceScene(g,g.d,g.car.y,d
   drawParts(dt);
 }
 function sCount(){ if(mode==='race'){ raceCount(); return; } countT-=DT; poolFill(2); followShip();
-  SK.sky(DT,0.6); SK.ship(fx(Core.SHIP_X),shipY,clock,false);
+  SK.sky(DT,0.6); flyShip(fx(Core.SHIP_X),shipY,clock,false,DT,null);   // v1.40: the countdown's ship flies too
   var n=Math.max(1,Math.ceil(countT)), cx0=Math.round(LW/2), cy0=Math.round(LH/2);
   ring(cx0,cy0,13,1-(countT-Math.floor(countT)),P.band); text(String(n),cx0,cy0-3,P.text,'center'); say(String(n));
   if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.play('tick');
@@ -5702,11 +5723,12 @@ function skBox(x,y,on){ frame(x,y,9,9,on?P.band:P.text); if(on){ R(P.band,x+2,y+
 function skStep(idp,idn,label,x,y,w,h){ var s=Math.round(h*0.9); R(P.bg,x,y,w,h); frame(x,y,w,h,P.line);
   polyFill([[x+s/2+2,y+h/2-4],[x+s/2+2,y+h/2+4],[x+s/2-3,y+h/2]],P.band); polyFill([[x+w-s/2-2,y+h/2-4],[x+w-s/2-2,y+h/2+4],[x+w-s/2+3,y+h/2]],P.band);
   text(label,x+w/2,y+Math.round((h-7)/2),P.text,'center',1,true); BTN.push({id:idp,x:x,y:y,w:Math.round(w/2),h:h}); BTN.push({id:idn,x:x+Math.round(w/2),y:y,w:w-Math.round(w/2),h:h}); }
+var skPath=null;   // v1.40: the skins card's ship flies a palm's path
 function sSkins(){ var m=sklM(), all=sklAll(m), s=SKL[m], id=all[skB], on=s.list.indexOf(id)>=0;
   var mg=Math.max(8,Math.round(LW*0.04)), h=BH, gp=6, bw=Math.min(Math.round((LW-SAFE.l-SAFE.r-2*mg-gp)/2),btnW([L('sk_add'),L('sk_out'),L('sk_order')+': '+L('sk_oloop'),L('sk_time')+': '+L('sk_rnd')+'  ','   '+L('sk_all')])+10);
   var rowsY=LH-SAFE.b-8-2*h-gp, top=SAFE.t+24, ch=rowsY-19-top, aw=Math.max(18,Math.round(h*1.1)), cw=Math.min(LW-SAFE.l-SAFE.r-2*(mg+aw+8),Math.round(ch*1.9)), cx=Math.round((SAFE.l+LW-SAFE.r-cw)/2), cy=top;
   // the world, its ship or car inside the card
-  if(m==='race'){ raceDemoTick(); rX0=cx+Math.round(cw*0.12)-Race.CAR_X*K; try{ raceScene(rDemo,rDemo.d,rDemo.car.y,DT); } finally { rX0=null; } } else { noLight=true; drawDemo(SK,DT,cx+Math.round(cw*0.12),undefined,Math.round(cy+ch*0.45+ch*0.22*Math.sin(clock*0.9))); noLight=false; }
+  if(m==='race'){ raceDemoTick(); rX0=cx+Math.round(cw*0.12)-Race.CAR_X*K; try{ raceScene(rDemo,rDemo.d,rDemo.car.y,DT); } finally { rX0=null; } } else { noLight=true; drawDemo(SK,DT,cx+Math.round(cw*0.12),undefined,Math.round(cy+ch*0.45+ch*0.26*pathStep(skPath||(skPath=pathMake()),DT))); noLight=false; }
   // the world seen through the card: a veil round it
   lx.globalAlpha=0.62; R(P.bg,0,0,LW,cy); R(P.bg,0,cy+ch,LW,LH-cy-ch); R(P.bg,0,cy,cx,ch); R(P.bg,cx+cw,cy,LW-cx-cw,ch); lx.globalAlpha=1;
   frame(cx-1,cy-1,cw+2,ch+2,on?P.band:P.line); if(on) frame(cx-2,cy-2,cw+4,ch+4,P.band);
@@ -5917,9 +5939,9 @@ function startCount(){ flyReset(); if(resumeAfterPrep&&g&&g.state!=='over'){ res
 function startGame(){ if(mode==='race'){ raceStart(); return; }
   var seed=0; try{ var a=new Uint32Array(1); crypto.getRandomValues(a); seed=a[0]; }catch(e){ seed=Math.floor(Math.random()*4294967296); }
   var y0=shipY===null?null:+(shipY/K).toFixed(3);
-  Core.TUNE.SHOT_TILT=shotTilt(); g=Core.create(seed,Core.FH*(LW-SAFE.l)/LH,y0); Board.start(seed,g.FW,y0,Core.TUNE.SHOT_TILT?{test:true}:null); nickAsked=false; acc=0; rockSpr={}; parts=[]; livesT=0; var I=Sonar.info();
+  Core.TUNE.SHOT_TILT=shotTilt(); Core.TUNE.SHOT_BOUNCE=shotBounce(); g=Core.create(seed,Core.FH*(LW-SAFE.l)/LH,y0); Board.start(seed,g.FW,y0,Core.TUNE.SHOT_TILT||Core.TUNE.SHOT_BOUNCE?{test:true}:null); nickAsked=false; acc=0; rockSpr={}; parts=[]; livesT=0; var I=Sonar.info();
   Logs.gameStart({core:Core.TAG,seed:seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:liveOn()?'live':'frozen',live:liveOn(),room:Sonar.room(),asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
-    chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids',shot_tilt:Core.TUNE.SHOT_TILT,fly_tilt:flyTiltK()});
+    chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids',shot_tilt:Core.TUNE.SHOT_TILT,shot_bounce:Core.TUNE.SHOT_BOUNCE,fly_tilt:flyTiltK()});
   Sfx.play('start'); go('play');
 }
 var ACT={
@@ -5973,6 +5995,7 @@ var ACT={
   link_done:function(){ period='all'; go('scores'); },
   nick_later:function(){ nickField(false); nickMsg=''; go(nickFrom==='over'?'over':'scores'); },
   logs:function(){ Logs.share(); },
+  shot_bounce:function(){ store.set('sonaroids_shot_bounce',shotBounce()?'0':'1'); },
   fly_tilt:function(){ var o=['1','0.6','0.4','0.3','0.15','0.05'], i=(o.indexOf(String(flyTiltK()))+1)%6; store.set('sonaroids_fly_tilt',o[i]); },
   shot_tilt:function(){ var o=SHOT_TILTS, i=(o.indexOf(store.get('sonaroids_shot_tilt','0'))+1)%o.length; store.set('sonaroids_shot_tilt',o[i]); },
   audio:function(){ audDev=null; audFrom=null; go('audio'); },

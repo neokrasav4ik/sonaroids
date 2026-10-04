@@ -59,7 +59,7 @@ function diagCorner(label,top,ty,flip,ax){ var vr=ty?(freeSide()!=='left')!==!!f
     text(ls,lx0,ly,P.band,'left'); R(P.band,lx0,ly+PF.CAP+2,lw,1); BTN.push({id:'logs',x:lx0-8,y:ly-6,w:lw+16,h:PF.CAP+12}); }
   if(top&&diag&&scr==='title'&&mode!=='race'){ var ts=shotTiltLabel(), tw=PF.width(ts), ty2=vy+(Logs.has()?2:1)*(PF.CAP+12), tx0=vr?vx-tw:vx;   /* v1.35: the test of the shots' tilt */
     text(ts,tx0,ty2,P.band,'left'); R(P.band,tx0,ty2+PF.CAP+2,tw,1); BTN.push({id:'shot_tilt',x:tx0-8,y:ty2-6,w:tw+16,h:PF.CAP+12});
-    [['fly_tilt',L('ftilt').replace('{n}',Math.round(flyTiltK()*100))]].forEach(function(q,i){ var s3=q[1], w3=PF.width(s3), y3=ty2+(i+1)*(PF.CAP+12), x3=vr?vx-w3:vx;   /* v1.35a */
+    [['shot_bounce',L(shotBounce()?'bounce_on':'bounce_off')],['fly_tilt',L('ftilt').replace('{n}',Math.round(flyTiltK()*100))]].forEach(function(q,i){ var s3=q[1], w3=PF.width(s3), y3=ty2+(i+1)*(PF.CAP+12), x3=vr?vx-w3:vx;   /* v1.35a */
       text(s3,x3,y3,P.band,'left'); R(P.band,x3,y3+PF.CAP+2,w3,1); BTN.push({id:q[0],x:x3-8,y:y3-6,w:w3+16,h:PF.CAP+12}); }); }
   // v0.58: at the bottom (the title screen) — a row of service links on the line above the version, the same on every phone:
   // «logs» (when there are any), «sound» (the Android app), «lab» (always — the lab opens in the same tab / app)
@@ -209,6 +209,7 @@ function gfxLockApply(){ var v=setGfx3(); if((v==='hd'||v==='pixel')&&gfxMode!==
    a hidden switch under the version on SonaFly's menu; a game by the test rules is not sent to the tables */
 var SHOT_TILTS=['0','0.1','0.15','0.2','0.25','0.5','1'];   /* v1.39: finer angles for training — 10/15/20/25% of the tilt */
 function shotTilt(){ var s=store.get('sonaroids_shot_tilt','0'); return SHOT_TILTS.indexOf(s)>=0?+s:0; }
+function shotBounce(){ return store.get('sonaroids_shot_bounce','0')==='1'?1:0; }   /* v1.40: the shots glance off the edges (the maintainer: «как астероиды — это бы уравняло сложность»), a test */
 function shotTiltLabel(){ var v=shotTilt(); return v===0?L('tilt_off'):v===1?L('tilt_full'):L('tilt_pct').replace('{n}',Math.round(v*100)); }
 var SET_ROWS=[
   ['set_gfx',function(){ var v=setGfx3(); return v==='hd'?'set_gfx_hd':v==='pixel'?'set_gfx_px':'set_gfx_menu'; },function(dir){ var o=['','hd','pixel'], i=(o.indexOf(setGfx3())+dir+3)%3; store.set('sonaroids_gfx_lock',o[i]); gfxLockApply(); }],
@@ -401,7 +402,7 @@ function field(dt,speed){ if(mode==='race'&&g&&g.car){ raceScene(g,g.d,g.car.y,d
   drawParts(dt);
 }
 function sCount(){ if(mode==='race'){ raceCount(); return; } countT-=DT; poolFill(2); followShip();
-  SK.sky(DT,0.6); SK.ship(fx(Core.SHIP_X),shipY,clock,false);
+  SK.sky(DT,0.6); flyShip(fx(Core.SHIP_X),shipY,clock,false,DT,null);   // v1.40: the countdown's ship flies too
   var n=Math.max(1,Math.ceil(countT)), cx0=Math.round(LW/2), cy0=Math.round(LH/2);
   ring(cx0,cy0,13,1-(countT-Math.floor(countT)),P.band); text(String(n),cx0,cy0-3,P.text,'center'); say(String(n));
   if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.play('tick');
@@ -568,11 +569,12 @@ function skBox(x,y,on){ frame(x,y,9,9,on?P.band:P.text); if(on){ R(P.band,x+2,y+
 function skStep(idp,idn,label,x,y,w,h){ var s=Math.round(h*0.9); R(P.bg,x,y,w,h); frame(x,y,w,h,P.line);
   polyFill([[x+s/2+2,y+h/2-4],[x+s/2+2,y+h/2+4],[x+s/2-3,y+h/2]],P.band); polyFill([[x+w-s/2-2,y+h/2-4],[x+w-s/2-2,y+h/2+4],[x+w-s/2+3,y+h/2]],P.band);
   text(label,x+w/2,y+Math.round((h-7)/2),P.text,'center',1,true); BTN.push({id:idp,x:x,y:y,w:Math.round(w/2),h:h}); BTN.push({id:idn,x:x+Math.round(w/2),y:y,w:w-Math.round(w/2),h:h}); }
+var skPath=null;   // v1.40: the skins card's ship flies a palm's path
 function sSkins(){ var m=sklM(), all=sklAll(m), s=SKL[m], id=all[skB], on=s.list.indexOf(id)>=0;
   var mg=Math.max(8,Math.round(LW*0.04)), h=BH, gp=6, bw=Math.min(Math.round((LW-SAFE.l-SAFE.r-2*mg-gp)/2),btnW([L('sk_add'),L('sk_out'),L('sk_order')+': '+L('sk_oloop'),L('sk_time')+': '+L('sk_rnd')+'  ','   '+L('sk_all')])+10);
   var rowsY=LH-SAFE.b-8-2*h-gp, top=SAFE.t+24, ch=rowsY-19-top, aw=Math.max(18,Math.round(h*1.1)), cw=Math.min(LW-SAFE.l-SAFE.r-2*(mg+aw+8),Math.round(ch*1.9)), cx=Math.round((SAFE.l+LW-SAFE.r-cw)/2), cy=top;
   // the world, its ship or car inside the card
-  if(m==='race'){ raceDemoTick(); rX0=cx+Math.round(cw*0.12)-Race.CAR_X*K; try{ raceScene(rDemo,rDemo.d,rDemo.car.y,DT); } finally { rX0=null; } } else { noLight=true; drawDemo(SK,DT,cx+Math.round(cw*0.12),undefined,Math.round(cy+ch*0.45+ch*0.22*Math.sin(clock*0.9))); noLight=false; }
+  if(m==='race'){ raceDemoTick(); rX0=cx+Math.round(cw*0.12)-Race.CAR_X*K; try{ raceScene(rDemo,rDemo.d,rDemo.car.y,DT); } finally { rX0=null; } } else { noLight=true; drawDemo(SK,DT,cx+Math.round(cw*0.12),undefined,Math.round(cy+ch*0.45+ch*0.26*pathStep(skPath||(skPath=pathMake()),DT))); noLight=false; }
   // the world seen through the card: a veil round it
   lx.globalAlpha=0.62; R(P.bg,0,0,LW,cy); R(P.bg,0,cy+ch,LW,LH-cy-ch); R(P.bg,0,cy,cx,ch); R(P.bg,cx+cw,cy,LW-cx-cw,ch); lx.globalAlpha=1;
   frame(cx-1,cy-1,cw+2,ch+2,on?P.band:P.line); if(on) frame(cx-2,cy-2,cw+4,ch+4,P.band);
@@ -783,9 +785,9 @@ function startCount(){ flyReset(); if(resumeAfterPrep&&g&&g.state!=='over'){ res
 function startGame(){ if(mode==='race'){ raceStart(); return; }
   var seed=0; try{ var a=new Uint32Array(1); crypto.getRandomValues(a); seed=a[0]; }catch(e){ seed=Math.floor(Math.random()*4294967296); }
   var y0=shipY===null?null:+(shipY/K).toFixed(3);
-  Core.TUNE.SHOT_TILT=shotTilt(); g=Core.create(seed,Core.FH*(LW-SAFE.l)/LH,y0); Board.start(seed,g.FW,y0,Core.TUNE.SHOT_TILT?{test:true}:null); nickAsked=false; acc=0; rockSpr={}; parts=[]; livesT=0; var I=Sonar.info();
+  Core.TUNE.SHOT_TILT=shotTilt(); Core.TUNE.SHOT_BOUNCE=shotBounce(); g=Core.create(seed,Core.FH*(LW-SAFE.l)/LH,y0); Board.start(seed,g.FW,y0,Core.TUNE.SHOT_TILT||Core.TUNE.SHOT_BOUNCE?{test:true}:null); nickAsked=false; acc=0; rockSpr={}; parts=[]; livesT=0; var I=Sonar.info();
   Logs.gameStart({core:Core.TAG,seed:seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:liveOn()?'live':'frozen',live:liveOn(),room:Sonar.room(),asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
-    chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids',shot_tilt:Core.TUNE.SHOT_TILT,fly_tilt:flyTiltK()});
+    chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids',shot_tilt:Core.TUNE.SHOT_TILT,shot_bounce:Core.TUNE.SHOT_BOUNCE,fly_tilt:flyTiltK()});
   Sfx.play('start'); go('play');
 }
 var ACT={
@@ -839,6 +841,7 @@ var ACT={
   link_done:function(){ period='all'; go('scores'); },
   nick_later:function(){ nickField(false); nickMsg=''; go(nickFrom==='over'?'over':'scores'); },
   logs:function(){ Logs.share(); },
+  shot_bounce:function(){ store.set('sonaroids_shot_bounce',shotBounce()?'0':'1'); },
   fly_tilt:function(){ var o=['1','0.6','0.4','0.3','0.15','0.05'], i=(o.indexOf(String(flyTiltK()))+1)%6; store.set('sonaroids_fly_tilt',o[i]); },
   shot_tilt:function(){ var o=SHOT_TILTS, i=(o.indexOf(store.get('sonaroids_shot_tilt','0'))+1)%o.length; store.set('sonaroids_shot_tilt',o[i]); },
   audio:function(){ audDev=null; audFrom=null; go('audio'); },

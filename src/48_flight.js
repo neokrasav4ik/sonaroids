@@ -2,7 +2,8 @@
    leaves two swirling trails from its wing tips and its flame grows with a fast move. Nothing here changes the game: in flight the tilt
    is the core's own (g.ship.tl, the slope the shots may follow, src/13_core.js), elsewhere (the try-out, the demo) the same formula on
    the ship's screen position. Every skin has its own look of the trail and flame (FLY_LOOK); LCD keeps its cells (no turning). ── */
-var FLY={wph:0,tl:0,sv:0,k:0,y:null,roll:-1,cool:0,fastS:0,fastT:-9,tr:[],emit:0,last:-1,id:''};
+function flyNew(){ return {wph:0,tl:0,sv:0,k:0,y:null,roll:-1,cool:1,fastS:0,fastT:-9,tr:[],emit:0,last:-1,id:''}; }
+var FLY=flyNew(), flyNoTrail=false;   /* v1.40: FLY is the ship being drawn now — the game's, or a demo's own (flyDemo) */
 var FLY_LOOK={
   space:{piv:11,tip:[-2,6.5],trail:'vapor',c:'150,215,255',life:0.9,w:1.0,fl:['220,245,255','90,180,255'],flx:-1},
   fairy:{piv:5,tip:[-2,4.5],trail:'dust',c:'255,226,150',life:1.0,w:0.9},   /* the dragon has no engine: its wings beat faster on a fast move (FLY.wph) */
@@ -71,7 +72,7 @@ function flyShip(sx,sy,t,blink,dt,tl){ var L=FLY_LOOK[skinId]||FLY_LOOK.space;
   if(!FLY_ON||shipBare){ SK.ship(sx,sy,t,blink); return; }
   flyStep(sy,dt,tl); var f=FLY, tk=flyTiltK(), ang=Math.atan(f.tl*tk), ra=flyRollA(), bank=1-0.22*Math.abs(f.tl*tk)/Core.TILT.max, sy2=bank*Math.cos(ra), cx=sx+L.piv;
   if(L.still){ ang=0; sy2=1; }
-  flyTrail(L,cx,sy,ang,sy2,dt);
+  if(!flyNoTrail) flyTrail(L,cx,sy,ang,sy2,dt);
   if(L.shadow&&SK.hd&&!shipBare){ var rcs=f.roll>=0?Math.abs(Math.cos(ra)):1; hx.save(); hx.fillStyle='rgba(90,90,110,0.16)'; hx.beginPath(); hx.ellipse(cx+1,sy+10,11,0.6+1.5*rcs,0,0,6.2832); hx.fill(); hx.restore(); }   /* the notebook: the ship's pencil shadow on the paper, narrow edge-on */
   if(blink) return;
   if(SK.hd&&SK.rollFrame&&f.roll>=0){ SK.rollFrame(sx,sy,t,ra); return; }   /* v1.39: the LCD rolls by whole sprite frames, untilted, unscaled */
@@ -92,3 +93,21 @@ function flyShip(sx,sy,t,blink,dt,tl){ var L=FLY_LOOK[skinId]||FLY_LOOK.space;
     var px=flyPx.getContext('2d'), keep=lx; px.setTransform(1,0,0,1,0,0); px.clearRect(0,0,64,48); lx=px; try{ SK.ship(32-L.piv,24,t,false); } finally { lx=keep; }
     var q=Math.round(ang/0.0873)*0.0873;   /* turned in 5° steps, nearest pixel: the pixel look stays */
     lx.save(); lx.imageSmoothingEnabled=false; lx.translate(Math.round(cx),Math.round(sy)); lx.rotate(q); lx.scale(1,Math.abs(sy2)<0.12?(sy2<0?-0.12:0.12):Math.round(sy2*8)/8); lx.drawImage(flyPx,-32,-24); lx.restore(); } }
+/* v1.40 (the maintainer: «на остальных экранах… чтоб там самолетики по новым траекториям двигались.. а не как раньше прямолинейно»):
+   a demo's ship flies the same way — its own flight state st (tilt, roll, trails) and skin sk swapped in for the moment;
+   k — the ship drawn larger (the drawn phone), then without the trails (their wake would scale and ride with the ship) */
+function flyDemo(sk,st,sx,sy,t,dt,k){ var kF=FLY, kS=SK, kI=skinId; FLY=st; SK=sk; skinId=sk.id;
+  try{ if(k&&k!==1){ var c=sk.hd?hx:lx; flyNoTrail=true; c.save(); c.translate(sx+8,sy); c.scale(k,k); c.translate(-sx-8,-sy); try{ flyShip(sx,sy,t,false,dt,null); } finally { c.restore(); } }
+    else flyShip(sx,sy,t,false,dt,null); }
+  finally { FLY=kF; SK=kS; skinId=kI; flyNoTrail=false; } }
+/* the demo's path, like a palm over the phone: glides to a new height and pauses; every 4–7 s a fast dive and a sharp turn back
+   (which rolls the ship over). Returns −1…1 */
+function pathMake(){ return {y:0,y0:0,y1:0,u:1,D:1,hold:0,T:2,dive:0,t:0}; }
+function pathStep(p,dt){ p.t+=dt; p.T+=dt;
+  if(p.u>=1){ if(p.hold>0) p.hold-=dt;
+    else { var r=Math.random, s=p.y>0?-1:1; p.y0=p.y; p.u=0;
+      if(p.dive){ p.y1=Math.max(-0.9,Math.min(0.9,p.y-s*(0.45+0.35*r()))); p.D=0.55+0.2*r(); p.dive=0; p.hold=0.3+0.6*r(); }   // the turn back
+      else if(p.T>4+3*r()){ p.y1=s*(0.6+0.3*r()); p.D=0.42+0.08*r(); p.dive=1; p.T=0; }   // the dive across
+      else { var y1; do{ y1=-0.85+1.7*r(); }while(Math.abs(y1-p.y)<0.25); p.y1=y1; p.D=0.6+0.9*r(); p.hold=r()<0.5?0.2+0.6*r():0; } } }
+  if(p.u<1){ p.u=Math.min(1,p.u+dt/p.D); var e=p.u*p.u*(3-2*p.u); p.y=p.y0+(p.y1-p.y0)*e; }
+  return p.y+0.03*Math.sin(p.t*2.3); }

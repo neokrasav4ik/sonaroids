@@ -22,7 +22,7 @@ var Core=(function(){
   var STREAK_MAX=4;                        // the streak adds up to ×4 (after 15 hits in a row)
   /* tuning, set with a bot player (tests/bot.js): a rock every SPAWN s at pace 1, and pace^1.125 times as often later (more rocks, not just faster ones); pieces fly off at SPLIT_VX × the parent's speed
      and SPLIT_VY up or down; a new level every LEVEL base points (points before the height and streak multipliers) */
-  var TUNE={SPAWN:[1.0,1.7],SPLIT_VX:[0.85,1.15],SPLIT_VY:[8,18],HIT_R:0.8,LEVEL:5000,SLOW_FROM:1.4,SHOT_TILT:0};
+  var TUNE={SPAWN:[1.0,1.7],SPLIT_VX:[0.85,1.15],SPLIT_VY:[8,18],HIT_R:0.8,LEVEL:5000,SLOW_FROM:1.4,SHOT_TILT:0,SHOT_BOUNCE:0};   // v1.40: SHOT_BOUNCE 1 — the shots glance off the top and bottom edges as the rocks do (a test)
   /* v1.35 (experiment, off): the ship tilts with its own vertical speed — smoothed 0.12 s, a dead zone of 6% of the field a second
      (a still palm's shake leaves it level), then 0.08 s more; the slope (rise per unit ahead) up to ±0.33 (~18°). The picture always
      shows it; the shots follow SHOT_TILT × it (0 — straight ahead, as before). Literals: 1 − exp(−(1/60)/0.12), 1 − exp(−(1/60)/0.08) */
@@ -83,7 +83,8 @@ var Core=(function(){
     if(g.ufoT>0&&!u){ g.ufoT-=wdt; if(g.ufoT<=0){ var kind=(g.level>=UFO_SMALL_LV&&g.rand()<0.5)?'small':'big';
       u=g.ufo={id:g.nextId++,kind:kind,x:g.FW+10,y:rnd(g,FH*0.2,FH*0.8),ty:FH/2,tyT:0,fire:1.2,hp:UFO[kind].hp,seen:0,dodgeT:0,hitT:0}; g.events.push('ufo'); } }
     // movement
-    for(i=0;i<g.bullets.length;i++){ b=g.bullets[i]; b.x+=b.vx*DT; b.y+=b.vy*DT; }
+    for(i=0;i<g.bullets.length;i++){ b=g.bullets[i]; b.x+=b.vx*DT; b.y+=b.vy*DT;
+      if(TUNE.SHOT_BOUNCE){ if(b.y<0){ b.y=-b.y; b.vy=-b.vy; } else if(b.y>FH){ b.y=FH+FH-b.y; b.vy=-b.vy; } } }
     for(i=0;i<g.rocks.length;i++){ r=g.rocks[i]; r.x+=r.vx*wdt; r.y+=r.vy*wdt; if((r.y<r.r&&r.vy<0)||(r.y>FH-r.r&&r.vy>0)) r.vy=-r.vy; }
     for(i=0;i<g.picks.length;i++) g.picks[i].x-=24*wdt;
     for(i=0;i<g.ebullets.length;i++){ b=g.ebullets[i]; b.x+=b.vx*wdt; b.y+=b.vy*wdt; }

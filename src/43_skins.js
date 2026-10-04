@@ -300,12 +300,12 @@ function drawDemo(sk,dt,shipX,st,shipY,skyS,shipK){ var d;                   // 
   d.rocks.forEach(function(r){ r.x-=r.v*K*dt; if(r.x<-20){ r.x=LW+20; r.y=LH*(0.12+Math.random()*0.76); }
     var sp=demoRock(sk,r.sz,r.id); if(sk.drawRock){ sp.rot=(sp.rot+(sp.vr||0)*dt+16)%16; sk.drawRock(sp,r.x,r.y); return; }
     var fr=sp.frames[Math.floor((d.t*2+r.id)%16)]; lx.drawImage(fr,Math.round(r.x-sp.size/2+(sp.ox||0)),Math.round(r.y-sp.size/2+(sp.oy||0))); });
-  var sy=Math.round(shipY!==undefined?shipY:LH*(0.5+0.18*Math.sin(d.t*0.9))), sx=Math.round(shipX===undefined?fx(Core.SHIP_X):shipX);
+  if(!d.path) d.path=pathMake(); if(!d.fly) d.fly={};   // v1.40: a palm's path and the ship's flight (tilt, roll, trails), each skin its own
+  var sy=Math.round(shipY!==undefined?shipY:LH*(0.5+0.3*pathStep(d.path,dt))), sx=Math.round(shipX===undefined?fx(Core.SHIP_X):shipX);
   if(Math.floor(d.t*6)!==Math.floor((d.t-dt)*6)) d.shots.push({x:sx+8+8*(shipK||1),y:sy});
   d.shots=d.shots.filter(function(b){ b.x+=190*K*dt; return b.x<LW+10; }); d.shots.forEach(function(b){ sk.bullet(b.x,b.y); });
   var u=d.ufo; u.x-=6*K*dt; if(u.x<-30) u.x=LW+60; sk.ufo(Math.round(u.x),Math.round(u.y+Math.sin(d.t*1.7)*6),true,false);
-  if(shipK&&shipK!==1){ var c=sk.hd?hx:lx; c.save(); c.translate(sx+8,sy); c.scale(shipK,shipK); c.translate(-sx-8,-sy); sk.ship(sx,sy,d.t,false); c.restore(); }
-  else sk.ship(sx,sy,d.t,false); }
+  var fs=d.fly[sk.id+(sk.hd?'h':'')]||(d.fly[sk.id+(sk.hd?'h':'')]=flyNew()); flyDemo(sk,fs,sx,sy,d.t,dt,shipK); }
 /* a demo frame of skin sk into an off-screen canvas at the screen's size (for the games' cards and the games' screen background) */
 var demoC=null;
 function demoInto(sk,dt){ if(!demoC||demoC.width!==LW||demoC.height!==LH){ demoC=document.createElement('canvas'); demoC.width=LW; demoC.height=LH; }

@@ -49,6 +49,21 @@ HDSK.vector={id:'vector', hd:true, glow:false, nolight:true, motes:['#557a6e','#
     c.translate(3,9); c.lineJoin='round'; c.lineCap='round'; c.save(); c.shadowColor='rgba('+PHG+',0.9)'; c.shadowBlur=5*sc; c.strokeStyle='rgba('+PHG+',0.6)'; c.lineWidth=1.25; G(); c.stroke(); c.restore();   // v1.29: bolder («линии пожирнее.. и у корабля тоже»)
     c.strokeStyle='rgb('+PHOS+')'; c.lineWidth=0.6; G(); c.stroke();
     [[3.6,-5.9],[3.6,5.9],[2.6,-4.8],[5.6,-0.9],[2.6,4.8],[5.6,0.9]].forEach(function(q){ vGlow(c,q[0],q[1],1.1,PHOS,0.9); }); vGlow(c,18.6,0,1.6,PHOS,1); },
+  /* v1.35, the barrel roll (the maintainer: «вектор В»): the ship is a true 3D wireframe, the «viper» — a thin wing, a tall fin, a canopy
+     ridge, a box of nozzles — turned round its long axis at any angle (as the ships of Elite did). Seen from above it is the ship as drawn;
+     the edges only the turn shows fade in with it, the far ones dimmer. */
+  VIPER:{v:{N:[18.6,0,0],L:[3.6,-5.9,0],R:[3.6,5.9,0],a:[2.6,-4.8,0],b:[5.6,-0.9,0],c:[2.6,4.8,0],d:[5.6,0.9,0],
+      F1:[2.4,0,-4.2],F2:[4.6,0,-4.2],F3:[8.5,0,-0.6],F0:[3.2,0,-0.6],C:[12,0,-1.4],E1:[3,-1.2,-0.7],E2:[3,1.2,-0.7],E3:[3,1.2,0.7],E4:[3,-1.2,0.7]},
+    e:[['N','L',0],['N','R',0],['a','b',0],['c','d',0],['F0','F1',1],['F1','F2',1],['F2','F3',1],['N','C',1],['C','F3',1],['E1','E2',1],['E2','E3',1],['E3','E4',1],['E4','E1',1],['N','E1',1],['N','E2',1],['N','E3',1],['N','E4',1]]},
+  shipRoll:function(x,y,t,a){ var M=this.VIPER, P={}, ca=Math.cos(a), sa=Math.sin(a), s=Math.abs(sa), c=hx;
+    Object.keys(M.v).forEach(function(k){ var p=M.v[k]; P[k]=[x+p[0],y+p[1]*ca+p[2]*sa,-p[1]*sa+p[2]*ca]; });
+    c.save(); c.lineCap='round'; c.lineJoin='round';
+    for(var pass=0;pass<2;pass++) M.e.forEach(function(e){ var A=P[e[0]], B=P[e[1]], al=(e[2]?Math.min(1,s*1.6):1)*((A[2]+B[2])/2>0.4?0.5:1); if(al<0.02) return;
+      c.beginPath(); c.moveTo(A[0],A[1]); c.lineTo(B[0],B[1]);
+      if(pass===0){ c.save(); c.shadowColor='rgba('+PHG+','+(0.9*al)+')'; c.shadowBlur=5*hs; c.strokeStyle='rgba('+PHG+','+(0.6*al)+')'; c.lineWidth=1.25; c.stroke(); c.restore(); }
+      else { c.strokeStyle='rgba('+PHOS+','+al+')'; c.lineWidth=0.6; c.stroke(); } });
+    ['L','R','a','b','c','d'].forEach(function(k){ vGlow(c,P[k][0],P[k][1],1.1,PHOS,0.9); }); vGlow(c,P.N[0]+1.2,P.N[1],1.6,PHOS,1);
+    if(!shipBare){ vGlow(c,x+4,y,2.4+0.4*Math.sin(t*20),PHG,0.9); } c.restore(); },
   ship:function(x,y,t,blink){ if(blink) return; var me=this; hx.drawImage(this.vecSpr('ship',26,18,function(c,sc){ me.shipMake(c,sc); }),x-3,y-9,26,18);
     if(!shipBare){ vGlow(hx,x+4,y,2.4+0.4*Math.sin(t*20),PHG,0.9); vline(function(){ hx.beginPath(); hx.moveTo(x+3,y); hx.lineTo(x+5,y); },0.3,1); } },
   /* v1.29, the saucer «Е3»: an amber capsule drawn with gaps (like the ship), a soft amber glow under it, five lights inside, one running
@@ -152,6 +167,28 @@ HDSK.neon={id:'neon', hd:true, pickW:12, glow:false, nolight:true, veil:'rgba(8,
   /* v1.27, the ship «ДВ» (the maintainer: «бирюзовый край из дв2, пламя из дв3, закатные полосы из дв3, без стопогней»): a delta wing of
      dark glass in a turquoise neon tube — violet hatching over its top half, sunset stripes across its lower half, a pink and a blue flame,
      a turquoise canopy line */
+  /* v1.35, the barrel roll (the maintainer: «неон 3д самый красивый, но почему-то сопла одно а не два, и нижняя радужная штриховка должна
+     быть и на брюхе тоже»): a true 3D ship of dark glass — the outline with its notched tail, a ridge on top and a keel below, a fin — its
+     edges neon (the far ones dimmer, blue), turned round its long axis at any angle. The faces keep the drawn look: the top's left half
+     violet hatching, its right half the sunset stripes; the belly the sunset stripes too. Both nozzles turn with the ship. */
+  N3:{v:{N:[21,0,0],L:[3,-7,0],R:[3,7,0],l:[5,-2,0],m:[1.5,-2,0],n:[1.5,2,0],r:[5,2,0],T:[10,0,-2.2],U:[10,0,1.6],K:[2,0,-1.2],Q:[2,0,1],F:[2.6,0,-4.4],G:[5,0,-4.4]},
+    f:[[['N','L','T'],'hatch'],[['N','R','T'],'sun'],[['N','L','U'],'sun'],[['N','R','U'],'sun']],
+    e:[['N','L'],['N','R'],['L','l'],['l','m'],['m','n'],['n','r'],['r','R'],['N','T'],['N','U'],['T','K'],['U','Q'],['L','T'],['R','T'],['L','U'],['R','U'],['K','F'],['F','G'],['G','T']]},
+  shipRoll:function(x,y,t,a){ var M=this.N3, P={}, ca=Math.cos(a), sa=Math.sin(a), pr=function(p){ return [x+p[0],y+p[1]*ca+p[2]*sa,-p[1]*sa+p[2]*ca]; }, fl=0.75+0.25*Math.sin(t*35);
+    Object.keys(M.v).forEach(function(k){ P[k]=pr(M.v[k]); });
+    if(!shipBare) [[-1.2,'#ff5ad0'],[1.2,'#3fb8ff']].forEach(function(q){ var p=pr([1.5,q[0],0]); nline(function(){ hx.beginPath(); hx.moveTo(p[0],p[1]-0.5); hx.lineTo(p[0]-7*fl,p[1]); hx.lineTo(p[0],p[1]+0.5); },q[1],0.45,0.9); });
+    hx.beginPath(); ['N','L','l','m','n','r','R'].forEach(function(k,i){ if(i) hx.lineTo(P[k][0],P[k][1]); else hx.moveTo(P[k][0],P[k][1]); }); hx.closePath(); hx.fillStyle='rgba(8,4,26,0.97)'; hx.fill();
+    var SUN=['#ffe25a','#ffb04a','#ff7a4a','#ff3f8e','#c03ad0','#7a3ad0'];
+    M.f.map(function(F){ var z=0; F[0].forEach(function(k){ z+=P[k][2]; }); return [F,z]; }).sort(function(A,B){ return B[1]-A[1]; }).forEach(function(Z){ var F=Z[0], p=F[0].map(function(k){ return M.v[k]; });
+      /* the face's plane z = A·x + B·y + C, so the pattern's lines lie on it and turn with it */
+      var d1=[p[1][0]-p[0][0],p[1][1]-p[0][1],p[1][2]-p[0][2]], d2=[p[2][0]-p[0][0],p[2][1]-p[0][1],p[2][2]-p[0][2]], nx=d1[1]*d2[2]-d1[2]*d2[1], ny=d1[2]*d2[0]-d1[0]*d2[2], nz=d1[0]*d2[1]-d1[1]*d2[0];
+      var zOf=function(X,Y){ return Math.abs(nz)<1e-6?0:p[0][2]-(nx*(X-p[0][0])+ny*(Y-p[0][1]))/nz; };
+      hx.save(); hx.beginPath(); F[0].forEach(function(k,i){ if(i) hx.lineTo(P[k][0],P[k][1]); else hx.moveTo(P[k][0],P[k][1]); }); hx.closePath(); hx.fillStyle='rgba(8,4,26,0.95)'; hx.fill(); hx.clip();
+      var side=p[1][1]<0?-1:1;
+      if(F[1]==='sun') SUN.forEach(function(c,k){ var Y=side*(0.6+k*1.1), A=pr([0,Y,zOf(0,Y)]), B=pr([23,Y,zOf(23,Y)]); hx.strokeStyle=c; hx.lineWidth=0.6; hx.beginPath(); hx.moveTo(A[0],A[1]); hx.lineTo(B[0],B[1]); hx.stroke(); });
+      else { hx.strokeStyle='rgba(180,74,255,0.45)'; hx.lineWidth=0.2; hx.beginPath(); for(var i=-10;i<24;i+=2){ var A2=pr([i,-8,zOf(i,-8)]), B2=pr([i+8,0,zOf(i+8,0)]), A3=pr([i,0,zOf(i,0)]), B3=pr([i+8,-8,zOf(i+8,-8)]); hx.moveTo(A2[0],A2[1]); hx.lineTo(B2[0],B2[1]); hx.moveTo(A3[0],A3[1]); hx.lineTo(B3[0],B3[1]); } hx.stroke(); }
+      hx.restore(); });
+    M.e.forEach(function(e){ var A=P[e[0]], B=P[e[1]], far=(A[2]+B[2])/2>0.6; nline(function(){ hx.beginPath(); hx.moveTo(A[0],A[1]); hx.lineTo(B[0],B[1]); },far?'#3fb8ff':'#6ffbe0',far?0.5:0.75,far?0.45:1); }); },
   ship:function(x,y,t,blink){ if(blink) return; var fl=0.75+0.25*Math.sin(t*35), i;
     var D=function(){ hx.beginPath(); hx.moveTo(x+21,y); hx.lineTo(x+3,y-7); hx.lineTo(x+5,y-2); hx.lineTo(x+1.5,y-2); hx.lineTo(x+1.5,y+2); hx.lineTo(x+5,y+2); hx.lineTo(x+3,y+7); hx.closePath(); };
     if(!shipBare) [[-1.2,'#ff5ad0'],[1.2,'#3fb8ff']].forEach(function(q){ nline(function(){ hx.beginPath(); hx.moveTo(x+1.5,y+q[0]-0.5); hx.lineTo(x+1.5-7*fl,y+q[0]); hx.lineTo(x+1.5,y+q[0]+0.5); },q[1],0.45,0.9); });
@@ -261,6 +298,31 @@ HDSK.note={id:'note', hd:true, glow:false, nolight:true, motes:['#8a8a90','#9a9a
     penLine(function(j){ var Q=j?P.map(function(p,i){ return [p[0]+sp.jit[i][0],p[1]+sp.jit[i][1]]; }):P; polyAt(hx,Q); },PEN,Math.max(0.7,r*0.09)); },
   /* v1.29, the ship «Г» (the maintainer's pick): the same fighter drawn carefully — its lower half hatched in pen (the shadow), a yellow
      highlighter stripe along the upper wing, panel lines, rivet dots, the canopy left white and hatched, the orange marker flame */
+  /* v1.35, the barrel roll's other sides (the maintainer: «тетрадка — г. и сопло на всех проекциях не забудь»): drawn in pen with volume — the
+     profile shaded round (hatched below, a white gel-pen highlight on top, «wrap» lines across the body), the fin, the canopy hatched, the
+     highlighter stripe, the wing edge-on; the belly cross-hatched with panel lines, a red star and a highlight; the pen's flame in every view */
+  penFlame:function(x,y,t,dy){ var fl=Math.sin(t*30); if(shipBare) return; penLine(function(){ hx.beginPath(); hx.moveTo(x+1,y+dy-1.2); for(var i=0;i<6;i++) hx.lineTo(x-1-i*1.2,y+dy+(i%2?1.4:-1.4)*(1-i/7)*(0.8+0.2*fl)); hx.lineTo(x+1,y+dy+1.2); },'#e0701a',0.5,1); },
+  rollPersp:true,
+  rollWing:function(x,y,dir,k){ var W=[[5,0],[3,dir*6*k],[7,dir*6*k],[11,0]].map(function(p){ return [x+p[0],y+p[1]]; }); hx.fillStyle=dir<0?NTINT:'rgba(176,190,226,0.96)'; polyAt(hx,W); hx.fill(); hx.save(); polyAt(hx,W); hx.clip(); if(dir>0) noteHatch(x,y,0.7,'rgba(29,63,160,0.5)',1); hx.restore(); penLine(function(){ polyAt(hx,W); },PEN,0.6); },
+  shipView:function(v,x,y,t,rc){ var i, wk=rc===undefined?0:Math.abs(rc);   /* «Е+Д»: in the in-between turns the wings in perspective — the far one a sliver above, the near one below */
+    if(v==='side'&&wk>0.12) this.rollWing(x,y,-1,wk*0.9);
+    if(v==='side'){ this.penFlame(x+0.6,y,t,0); var B=[[19,0.4],[14,-1.3],[8,-1.8],[2.2,-1.5],[1.6,1.6],[8,1.9],[14,1.4]].map(function(p){ return [x+p[0],y+p[1]]; });
+      hx.fillStyle=NTINT; polyAt(hx,B); hx.fill(); hx.save(); polyAt(hx,B); hx.clip(); hx.beginPath(); hx.rect(x,y+0.4,22,4); hx.clip(); noteHatch(x,y,0.8,'rgba(29,63,160,0.55)',-1); noteHatch(x,y,0.55,'rgba(29,63,160,0.5)',1); hx.restore();
+      hx.fillStyle='rgba(255,226,40,0.6)'; hx.fillRect(x+5,y-0.5,9,0.9);
+      var FIN=[[3,-1.5],[2.2,-4.8],[4,-4.8],[6.4,-1.7]].map(function(p){ return [x+p[0],y+p[1]]; }); hx.fillStyle=NTINT; polyAt(hx,FIN); hx.fill(); penLine(function(){ polyAt(hx,FIN); },PEN,0.6);
+      penLine(function(j){ polyAt(hx,B.map(function(p,k){ return [p[0]+(j?((k*37)%5-2)*0.12:0),p[1]+(j?((k*53)%5-2)*0.12:0)]; })); },PEN,1.0);
+      var CAN=function(){ hx.beginPath(); hx.ellipse(x+13.2,y-1.4,2.6,1.3,0,Math.PI,0); hx.closePath(); }; hx.fillStyle='#ffffff'; CAN(); hx.fill(); hx.save(); CAN(); hx.clip(); noteHatch(x+13,y-1.5,0.55,PEN,1); hx.restore(); penLine(CAN,PEN,0.45);
+      penLine(function(){ hx.beginPath(); hx.moveTo(x+4.6,y+0.9); hx.lineTo(x+10.4,y+0.9); },PEN,0.6);
+      penLine(function(){ hx.beginPath(); [4,7,10,13,16].forEach(function(X){ hx.moveTo(x+X,y-1.6+Math.abs(X-10)*0.03); hx.quadraticCurveTo(x+X+0.7,y,x+X,y+1.8-Math.abs(X-10)*0.03); }); },PEN,0.25,0.55);
+      hx.strokeStyle='rgba(255,255,255,0.95)'; hx.lineWidth=0.45; hx.lineCap='round'; hx.beginPath(); hx.moveTo(x+4,y-1.1); hx.quadraticCurveTo(x+10,y-1.6,x+16.5,y-0.7); hx.stroke();
+      hx.fillStyle=PEN; [[6,-0.6],[16,0.2]].forEach(function(q){ hx.beginPath(); hx.arc(x+q[0],y+q[1],0.3,0,6.2832); hx.fill(); });
+      if(wk>0.12) this.rollWing(x,y,1,wk); return; }
+    this.penFlame(x,y,t,0); var S=[[19,0],[7,-6],[3,-6],[5,-1.5],[1.5,-1.5],[1.5,1.5],[5,1.5],[3,6],[7,6]].map(function(p){ return [x+p[0],y+p[1]]; });
+    hx.fillStyle='rgba(176,190,226,0.96)'; polyAt(hx,S); hx.fill(); hx.save(); polyAt(hx,S); hx.clip(); noteHatch(x,y,0.9,'rgba(29,63,160,0.4)',1); noteHatch(x,y,0.9,'rgba(29,63,160,0.3)',-1); hx.restore();
+    penLine(function(j){ polyAt(hx,S.map(function(p,k){ return [p[0]+(j?((k*41)%5-2)*0.12:0),p[1]+(j?((k*29)%5-2)*0.12:0)]; })); },PEN,1.0);
+    penLine(function(){ hx.beginPath(); hx.moveTo(x+6,y-3.4); hx.lineTo(x+12,y-1); hx.moveTo(x+6,y+3.4); hx.lineTo(x+12,y+1); hx.moveTo(x+9,y-2.4); hx.lineTo(x+9,y+2.4); },PEN,0.3,0.75);
+    var sx=x+13, sy=y; hx.beginPath(); for(i=0;i<10;i++){ var r=i%2?0.7:1.6, a=-Math.PI/2+i*Math.PI/5; hx.lineTo(sx+Math.cos(a)*r,sy+Math.sin(a)*r); } hx.closePath(); hx.fillStyle='rgba(168,20,44,0.85)'; hx.fill();
+    hx.strokeStyle='rgba(255,255,255,0.9)'; hx.lineWidth=0.4; hx.lineCap='round'; hx.beginPath(); hx.moveTo(x+8,y-4.6); hx.lineTo(x+16,y-1.2); hx.stroke(); },
   ship:function(x,y,t,blink){ if(blink) return; var fl=Math.sin(t*30), S=[[19,0],[7,-6],[3,-6],[5,-1.5],[1.5,-1.5],[1.5,1.5],[5,1.5],[3,6],[7,6]].map(function(p){ return [x+p[0],y+p[1]]; });
     hx.fillStyle=NTINT; polyAt(hx,S); hx.fill();
     hx.save(); polyAt(hx,S); hx.clip(); hx.fillStyle='rgba(255,226,40,0.6)'; hx.fillRect(x+4,y-4.6,10,1.4); hx.beginPath(); hx.rect(x,y+0.8,22,8); hx.clip(); noteHatch(x,y,0.8,'rgba(29,63,160,0.55)',-1); hx.restore();
@@ -336,6 +398,10 @@ function lcdSprite(rows,pal){ pal=pal||LCDG; var h=rows.length, w=Math.max.apply
   return {c:o.c,w:w*LP,h:h*LP}; }
 function lcdPut(sp,x,y){ hx.drawImage(sp.c,Math.round(x/LP)*LP,Math.round(y/LP)*LP,sp.w,sp.h); }
 var LCD_SHIP=['0000.......','.0330......','..0310.....','00011111000','01231231330','00011111000','..0110.....','.0110......','0000.......'];   // v1.29, «В»: a long-nosed interceptor — forward-swept wing tips, a striped body (11 cells, as before)
+var LCD_ROLL={q1:['.000.......','..0331.....','00011111000','01231231330','00011112200','..01100....','.000.......'],
+  side:['00.........','030...000..','00011111100','01231231330','..0000000..'],
+  q3:['.000.......','..0220.....','00022222000','01222222330','00011111000','..0330.....','.0000......'],
+  belly:['0000.......','.0220......','..0220.....','00022222000','02222232330','00022222000','..0220.....','.0220......','0000.......']};   // v1.39: the ship's other sides, cell frames for the roll
 var LCD_UFO=['...000...','..02230..','000000000','031313130','.0000000.'];   // v0.83: 9 cells (was 12): the core's zone
 var LCD_ICON={shield:['01110','02320','02220','00200','..0..'],triple:['...00','..0..','00000','..0..','...00'],slow:['00000','.020.','..0..','.020.','00000'],life:['0.0.0','00000','00000','.000.','..0..']};
 HDSK.lcd={id:'lcd', hd:true, glow:false, nolight:true, motes:['#8bac0f'], shotsByShape:'an arrow vs a pinwheel',
@@ -368,6 +434,12 @@ HDSK.lcd={id:'lcd', hd:true, glow:false, nolight:true, motes:['#8bac0f'], shotsB
   rock:function(r,sz,seed){ return {r:r,fr:this.rockFrames(r,seed),size:r*2.4,rot:srand(seed)()*16,vr:(srand(seed+2)()-0.5)*6,hd:true}; },
   drawRock:function(sp,x,y){ var f=sp.fr[Math.floor(sp.rot/2)%8]; lcdPut(f,x+(sp.ox||0)-f.w/2,y-f.h/2); },
   sp:function(k,rows){ var s=this._spr||(this._spr={}); return s[k]||(s[k]=lcdSprite(rows,LCDO)); },
+  /* v1.39: the barrel roll as a handheld's sprite frames — top, ¼, edge-on, ¾, belly, by cells, no smooth turn (Den's «А») */
+  rollFrame:function(x,y,t,a){ var rc=Math.cos(a), rs=Math.sin(a), q=Math.abs(rs)>Math.abs(rc), k=q?Math.abs(rs):Math.abs(rc), f, up=rs<0;
+    if(!q&&k>0.92){ if(rc>0){ this.ship(x,y,t,false); return; } f='belly'; up=false; } else f=q&&k>0.92?'side':(rc>0?'q1':'q3');
+    var rows=LCD_ROLL[f]; if(up) rows=rows.slice().reverse(); var h=rows.length;
+    lcdPut(this.sp('r_'+f+(up?'u':''),rows),x-2,y-1-(h>>1)*LP);
+    if(!shipBare) lcdPut(this.sp(Math.floor(t*12)%2?'fl2':'fl3',Math.floor(t*12)%2?['21','1.']:['12','.1']),x-6,y-2); },
   ship:function(x,y,t,blink){ if(blink) return; lcdPut(this.sp('ship',LCD_SHIP),x-2,y-9); if(!shipBare) lcdPut(this.sp(Math.floor(t*12)%2?'fl2':'fl3',Math.floor(t*12)%2?['21','1.']:['12','.1']),x-6,y-2); },   // its flame flickers between two shapes
   ufo:function(ux,uy,big,hurt){ var sp=this.sp(big?'ufo':'ufoS',big?LCD_UFO:['..000...','.02230..','0000000.','0313130.','.00000..']); if(hurt&&Math.floor(performance.now()/60)%2) return; lcdPut(sp,ux-sp.w/2,uy-sp.h/2); },
   pick:function(x,y,type){ var ic=LCD_ICON[type]||LCD_ICON.life, b=Math.floor(performance.now()/500)%2, k=(b?'pkb_':'pk_')+type, s=this._spr||(this._spr={}), sp=s[k];   // 1.29: it blinks — every half second the inside and the sign swap their greens (the maintainer chose «Б»)

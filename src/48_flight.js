@@ -8,13 +8,13 @@ var FLY_LOOK={
   fairy:{piv:5,tip:[-2,4.5],trail:'dust',c:'255,226,150',life:1.0,w:0.9},   /* the dragon has no engine: its wings beat faster on a fast move (FLY.wph) */
   vector:{piv:10,tip:[-2,6],trail:'line',c:'150,255,170',life:0.35,w:0.8,fl:['230,255,235','90,255,140'],flx:-1,flLine:true},
   neon:{piv:10,tip:[-2,6],trail:'neon',c:'255,90,210',c2:'90,220,255',life:0.7,w:1.0,fl:['255,230,250','255,70,200'],flx:0},
-  note:{piv:10,tip:[-2,6],trail:'pencil',c:'60,66,110',life:0.9,w:0.8,fl:['255,210,80','240,110,40'],flx:-3,flPen:true},
+  note:{piv:10,tip:[-2,6],shadow:true,trail:'pencil',c:'60,66,110',life:0.9,w:0.8,fl:['255,210,80','240,110,40'],flx:-3,flPen:true},
   lcd:{piv:10,tip:[-3,6],trail:'dots',c:'30,50,20',life:0.6,w:1.0,still:true}
 };
 var FLY_ON=true;
 /* v1.35a: the maintainer's test switches (a long press on the version in SonaFly's menu): how strong the tilt looks, how often the roll comes.
    His games of 4 Oct: his palm keeps the ship moving — tilted over 5° 80% of the time (median 12°; the bots 4–7°), a roll every ~3 s */
-function flyTiltK(){ var v=+store.get('sonaroids_fly_tilt','1'); return v===0.05||v===0.15||v===0.3||v===0.6?v:1; }
+function flyTiltK(){ var v=+store.get('sonaroids_fly_tilt','0.4'); return v===0.05||v===0.15||v===0.3||v===0.4||v===0.6||v===1?v:0.4; }   /* the maintainer: «по умолчанию ставим 40» */
 function flyRollCool(){ return 2.5; }   /* the maintainer: «бочка норм, не часто она» */   // the switch for tests that measure the ship (tests/skin_sizes.js keeps it as is: shipBare draws no trail)
 /* the tilt and the roll's trigger; tl — the core's slope when there is one (flight), else estimated the core's way from the screen */
 function flyStep(sy,dt,tl){ var f=FLY, T=Core.TILT, yf=sy/K;
@@ -72,11 +72,15 @@ function flyShip(sx,sy,t,blink,dt,tl){ var L=FLY_LOOK[skinId]||FLY_LOOK.space;
   flyStep(sy,dt,tl); var f=FLY, tk=flyTiltK(), ang=Math.atan(f.tl*tk), ra=flyRollA(), bank=1-0.22*Math.abs(f.tl*tk)/Core.TILT.max, sy2=bank*Math.cos(ra), cx=sx+L.piv;
   if(L.still){ ang=0; sy2=1; }
   flyTrail(L,cx,sy,ang,sy2,dt);
+  if(L.shadow&&SK.hd&&!shipBare){ var rcs=f.roll>=0?Math.abs(Math.cos(ra)):1; hx.save(); hx.fillStyle='rgba(90,90,110,0.16)'; hx.beginPath(); hx.ellipse(cx+1,sy+10,11,0.6+1.5*rcs,0,0,6.2832); hx.fill(); hx.restore(); }   /* the notebook: the ship's pencil shadow on the paper, narrow edge-on */
   if(blink) return;
+  if(SK.hd&&SK.rollFrame&&f.roll>=0){ SK.rollFrame(sx,sy,t,ra); return; }   /* v1.39: the LCD rolls by whole sprite frames, untilted, unscaled */
+  if(SK.hd&&SK.shipRoll&&f.roll>=0){ var C2=hx; C2.save(); C2.translate(cx,sy); C2.rotate(ang); C2.scale(1,bank); C2.translate(-cx,-sy); flyFlame(C2,L,sx,sy,t); SK.shipRoll(sx,sy,t,ra); C2.restore(); return; }   /* a true 3D ship (the vector's wireframe) turns at any angle by itself */
   if(SK.hd&&SK.shipView&&f.roll>=0){ var C=hx, rc=Math.cos(ra), rs=Math.sin(ra), q=Math.abs(rs)>Math.abs(rc), k=q?Math.abs(rs):Math.abs(rc), sb=SK.rollBase==='side';
     /* v1.35: the roll through the skin's own views. A ship drawn from above (space, vector, neon): top → side → belly → side upside down;
        one drawn from the side (the dragon): side → back → side upside down → belly */
-    C.save(); C.translate(cx,sy); C.rotate(ang); C.scale(1,bank*k*(sb?(!q&&rc<0?-1:1):(q&&rs<0?-1:1))); C.translate(-cx,-sy); flyFlame(C,L,sx,sy,t);
+    var pers=SK.rollPersp&&q&&!sb; C.save(); C.translate(cx,sy); C.rotate(ang); C.scale(1,pers?bank*(rs<0?-1:1):bank*k*(sb?(!q&&rc<0?-1:1):(q&&rs<0?-1:1))); C.translate(-cx,-sy); flyFlame(C,L,sx,sy,t);
+    if(pers){ SK.shipView('side',sx,sy,t,rc); C.restore(); return; }   /* the skin draws the in-between turns itself (the notebook's wings in perspective) */
     if(sb){ if(!q) SK.ship(sx,sy,t,false); else SK.shipView(rs>0?'back':'belly',sx,sy,t); }
     else { if(q) SK.shipView('side',sx,sy,t); else if(rc<0) SK.shipView('belly',sx,sy,t); else SK.ship(sx,sy,t,false); }
     C.restore(); return; }

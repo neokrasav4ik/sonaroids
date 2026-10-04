@@ -57,7 +57,7 @@ function diagCorner(label,top,ty,flip,ax){ var vr=ty?(freeSide()!=='left')!==!!f
   var by0=top?Math.max(0,vy-8):vy-4; BTN.push({id:'ver',x:bx0,y:by0,w:bx1-bx0,h:Math.min(top?PF.CAP+16:PF.CAP+10,LH-by0)});
   if(top&&diag&&Logs.has()&&scr!=='scores'){ var ls=L('logs'), lw=PF.width(ls), ly=vy+PF.CAP+12, lx0=vr?vx-lw:vx;
     text(ls,lx0,ly,P.band,'left'); R(P.band,lx0,ly+PF.CAP+2,lw,1); BTN.push({id:'logs',x:lx0-8,y:ly-6,w:lw+16,h:PF.CAP+12}); }
-  if(top&&diag&&scr==='title'&&mode!=='race'){ var ts=L('tilt_'+shotTiltKey()), tw=PF.width(ts), ty2=vy+(Logs.has()?2:1)*(PF.CAP+12), tx0=vr?vx-tw:vx;   /* v1.35: the test of the shots' tilt */
+  if(top&&diag&&scr==='title'&&mode!=='race'){ var ts=shotTiltLabel(), tw=PF.width(ts), ty2=vy+(Logs.has()?2:1)*(PF.CAP+12), tx0=vr?vx-tw:vx;   /* v1.35: the test of the shots' tilt */
     text(ts,tx0,ty2,P.band,'left'); R(P.band,tx0,ty2+PF.CAP+2,tw,1); BTN.push({id:'shot_tilt',x:tx0-8,y:ty2-6,w:tw+16,h:PF.CAP+12});
     [['fly_tilt',L('ftilt').replace('{n}',Math.round(flyTiltK()*100))]].forEach(function(q,i){ var s3=q[1], w3=PF.width(s3), y3=ty2+(i+1)*(PF.CAP+12), x3=vr?vx-w3:vx;   /* v1.35a */
       text(s3,x3,y3,P.band,'left'); R(P.band,x3,y3+PF.CAP+2,w3,1); BTN.push({id:q[0],x:x3-8,y:y3-6,w:w3+16,h:PF.CAP+12}); }); }
@@ -207,8 +207,9 @@ function gfxFree(){ return !setGfx3(); }
 function gfxLockApply(){ var v=setGfx3(); if((v==='hd'||v==='pixel')&&gfxMode!==v){ setGfx(v); pool={K:0,list:[[],[],[]]}; } }
 /* v1.35: the test of the shots following the ship's tilt (src/13_core.js, SHOT_TILT): straight (the game's rules) / half the tilt / the tilt —
    a hidden switch under the version on SonaFly's menu; a game by the test rules is not sent to the tables */
-function shotTilt(){ var v=+store.get('sonaroids_shot_tilt','0'); return v===0.25||v===0.5||v===1?v:0; }
-function shotTiltKey(){ var v=shotTilt(); return v===1?'full':v===0.5?'half':v===0.25?'quarter':'off'; }
+var SHOT_TILTS=['0','0.1','0.15','0.2','0.25','0.5','1'];   /* v1.39: finer angles for training — 10/15/20/25% of the tilt */
+function shotTilt(){ var s=store.get('sonaroids_shot_tilt','0'); return SHOT_TILTS.indexOf(s)>=0?+s:0; }
+function shotTiltLabel(){ var v=shotTilt(); return v===0?L('tilt_off'):v===1?L('tilt_full'):L('tilt_pct').replace('{n}',Math.round(v*100)); }
 var SET_ROWS=[
   ['set_gfx',function(){ var v=setGfx3(); return v==='hd'?'set_gfx_hd':v==='pixel'?'set_gfx_px':'set_gfx_menu'; },function(dir){ var o=['','hd','pixel'], i=(o.indexOf(setGfx3())+dir+3)%3; store.set('sonaroids_gfx_lock',o[i]); gfxLockApply(); }],
   ['set_band',function(){ var v=setBand3(); return v==='wide'?'set_band_w':v==='normal'?'set_band_n':'set_band_ask'; },function(dir){ var o=['','wide','normal'], i=(o.indexOf(setBand3())+dir+3)%3; store.set('sonaroids_band_lock',o[i]); }],
@@ -784,7 +785,7 @@ function startGame(){ if(mode==='race'){ raceStart(); return; }
   var y0=shipY===null?null:+(shipY/K).toFixed(3);
   Core.TUNE.SHOT_TILT=shotTilt(); g=Core.create(seed,Core.FH*(LW-SAFE.l)/LH,y0); Board.start(seed,g.FW,y0,Core.TUNE.SHOT_TILT?{test:true}:null); nickAsked=false; acc=0; rockSpr={}; parts=[]; livesT=0; var I=Sonar.info();
   Logs.gameStart({core:Core.TAG,seed:seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:liveOn()?'live':'frozen',live:liveOn(),room:Sonar.room(),asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
-    chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids',shot_tilt:Core.TUNE.SHOT_TILT});
+    chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids',shot_tilt:Core.TUNE.SHOT_TILT,fly_tilt:flyTiltK()});
   Sfx.play('start'); go('play');
 }
 var ACT={
@@ -838,8 +839,8 @@ var ACT={
   link_done:function(){ period='all'; go('scores'); },
   nick_later:function(){ nickField(false); nickMsg=''; go(nickFrom==='over'?'over':'scores'); },
   logs:function(){ Logs.share(); },
-  fly_tilt:function(){ var o=['1','0.6','0.3','0.15','0.05'], i=(o.indexOf(String(flyTiltK()))+1)%5; store.set('sonaroids_fly_tilt',o[i]); },
-  shot_tilt:function(){ var o=['0','0.25','0.5','1'], i=(o.indexOf(store.get('sonaroids_shot_tilt','0'))+1)%4; store.set('sonaroids_shot_tilt',o[i]); },
+  fly_tilt:function(){ var o=['1','0.6','0.4','0.3','0.15','0.05'], i=(o.indexOf(String(flyTiltK()))+1)%6; store.set('sonaroids_fly_tilt',o[i]); },
+  shot_tilt:function(){ var o=SHOT_TILTS, i=(o.indexOf(store.get('sonaroids_shot_tilt','0'))+1)%o.length; store.set('sonaroids_shot_tilt',o[i]); },
   audio:function(){ audDev=null; audFrom=null; go('audio'); },
   lab:function(){ location.href='../lab/sonar_lab3.html'; },
   ver:function(){ if(scr==='scores'){ scPeople=!scPeople; return; } diag=!diag; },   /* v1.34: on the scores screen the version's long press is «people only» */

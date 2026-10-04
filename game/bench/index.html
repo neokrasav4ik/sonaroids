@@ -568,7 +568,7 @@ function inkFogBody(pal){ return [
 '  r=vec2(fbmT(vec3(p+4.0*q+vec2(1.7,9.2),uTime*0.05),o2),fbmT(vec3(p+4.0*q+vec2(8.3,2.8),uTime*0.05),o2)); return fbmT(vec3(p+4.0*r,uTime*0.025),oc); }',
 'float inkCheap(vec2 p){ int o=uQ==2?3:2; vec2 q=vec2(fbmT(vec3(p,uTime*0.035),o),fbmT(vec3(p+vec2(5.2,1.3),uTime*0.035),o)); return fbmT(vec3(p+4.0*q,uTime*0.03),o); }',
 'float inkCoarse(vec2 p){ return fbmT(vec3(p*0.9,uTime*0.03),2)*1.15; }',
-'void main(){ vec2 uv=uvOf(); float ar=AR(); int OC=uQ==0?3:uQ==1?4:5, NS=uQ==0?4:uQ==1?5:8; vec2 sun=PAL==0?vec2(-ar*0.46,0.72):vec2(ar*0.46,0.70);',
+'void main(){ vec2 uv=uvOf(); float ar=AR(); int OC=uQ==0?3:uQ==1?4:5, NS=uQ==0?4:uQ==1?6:12; vec2 sun=PAL==0?vec2(-ar*0.46,0.72):vec2(ar*0.46,0.70);',
 '  vec2 sv=stir(uv); vec2 p=uv*1.5+vec2(uTime*0.028,0.0)+sv; vec2 q,r; float f=inkD(p,OC,q,r);',
 '  vec2 pf=uv*0.8+vec2(uTime*0.012,7.0)+sv*0.4; vec2 q2,r2; float f2=inkD(pf,max(OC-1,2),q2,r2);',   /* the far ink, slower, bluer, dimmer */
 '  vec3 far=inkCol(q2,r2,f2)*(PAL==0?vec3(0.45,0.6,1.0):vec3(0.8,0.55,0.5))*(0.04+0.45*f2*f2*f2);',
@@ -576,9 +576,9 @@ function inkFogBody(pal){ return [
 '  vec3 col=mix(far,near,dens); col*=PAL==0?0.75:0.6; float lu=dot(col,vec3(0.3,0.59,0.11)); col=max(mix(vec3(lu),col,1.45),0.0);',
 '  vec2 ld=normalize(sun-uv); float fl=inkCheap(p+ld*0.06*1.5); float rim=clamp((f-fl)*5.0,0.0,1.0);',   /* the ink\'s edges lit where they face the light */
 '  vec3 lc=PAL==0?vec3(1.0,0.78,0.48):vec3(0.55,0.80,1.0); vec3 nk=near/(max(near.r,max(near.g,near.b))+1e-3); col+=mix(lc,nk,0.65)*rim*dens*0.13*(0.4+0.6*smoothstep(2.2,0.3,length(uv-sun)));',
-'  vec2 ds=uv-sun; float th=atan(ds.y,ds.x), dl=length(ds); float bm=0.0; for(int i=0;i<3;i++){ float fi=float(i); bm+=pow(n3(vec3(th*(8.0+fi*7.0),fi*3.0,uTime*(0.04+fi*0.03))),3.0)*(0.9-fi*0.2); }',
-'  float T=0.0; vec2 st=(sun-uv)/float(NS); vec2 pp=p; for(int i=0;i<16;i++){ if(i>=NS) break; pp+=st*1.5; T+=smoothstep(0.35,0.8,uQ==2?inkCheap(pp):inkCoarse(pp)); } T=exp(-T/float(NS)*2.4);',   /* the shafts stopped where the ink between us and the light is thick */
-'  vec3 tint=mix(lc,normalize(near+1e-3)*1.2,0.45); col+=tint*bm*T*0.075*exp(-dl*0.7)*(0.5+0.6*(1.0-dens))+lc*0.03/(dl*dl+0.04)*0.06;',
+'  vec2 ds=uv-sun; float th=atan(ds.y,ds.x), dl=length(ds); float bm=0.0; for(int i=0;i<3;i++){ float fi=float(i); bm+=pow(n3t(vec3(th*(13.0+fi*11.0),fi*3.0,uTime*(0.04+fi*0.03))),3.0)*(0.9-fi*0.2); }',
+'  float T=0.0; vec2 st=(sun-uv)/float(NS); vec2 pp=p; for(int i=0;i<16;i++){ if(i>=NS) break; pp+=st*1.5; T+=smoothstep(0.35,0.8,uQ==2?inkCheap(pp):inkCoarse(pp)); } T=exp(-T/float(NS)*1.6);',   /* the shafts stopped where the ink between us and the light is thick */
+'  vec3 tint=mix(lc,normalize(near+1e-3)*1.2,0.45); col+=tint*bm*T*0.12*exp(-dl*0.6)*(0.55+0.5*(1.0-dens))+lc*0.03/(dl*dl+0.04)*0.06;',
 '  col+=boom(uv,1.6)*(0.18+1.1*dens); col*=1.0-0.25*smoothstep(0.35,0.75,abs(uv.y));',
 '  fragColor=vec4(fin(col),1.0); }'].join('\n'); }
 WB.W10=inkFogBody(0); WB.W11=inkFogBody(1);

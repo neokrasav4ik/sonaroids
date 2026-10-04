@@ -57,10 +57,7 @@ function diagCorner(label,top,ty,flip,ax){ var vr=ty?(freeSide()!=='left')!==!!f
   var by0=top?Math.max(0,vy-8):vy-4; BTN.push({id:'ver',x:bx0,y:by0,w:bx1-bx0,h:Math.min(top?PF.CAP+16:PF.CAP+10,LH-by0)});
   if(top&&diag&&Logs.has()&&scr!=='scores'){ var ls=L('logs'), lw=PF.width(ls), ly=vy+PF.CAP+12, lx0=vr?vx-lw:vx;
     text(ls,lx0,ly,P.band,'left'); R(P.band,lx0,ly+PF.CAP+2,lw,1); BTN.push({id:'logs',x:lx0-8,y:ly-6,w:lw+16,h:PF.CAP+12}); }
-  if(top&&diag&&scr==='title'&&mode!=='race'){ var ts=shotTiltLabel(), tw=PF.width(ts), ty2=vy+(Logs.has()?2:1)*(PF.CAP+12), tx0=vr?vx-tw:vx;   /* v1.35: the test of the shots' tilt */
-    text(ts,tx0,ty2,P.band,'left'); R(P.band,tx0,ty2+PF.CAP+2,tw,1); BTN.push({id:'shot_tilt',x:tx0-8,y:ty2-6,w:tw+16,h:PF.CAP+12});
-    [['shot_bounce',L(shotBounce()?'bounce_on':'bounce_off')],['fly_tilt',L('ftilt').replace('{n}',Math.round(flyTiltK()*100))]].forEach(function(q,i){ var s3=q[1], w3=PF.width(s3), y3=ty2+(i+1)*(PF.CAP+12), x3=vr?vx-w3:vx;   /* v1.35a */
-      text(s3,x3,y3,P.band,'left'); R(P.band,x3,y3+PF.CAP+2,w3,1); BTN.push({id:q[0],x:x3-8,y:y3-6,w:w3+16,h:PF.CAP+12}); }); }
+  if(top&&diag&&scr==='title'&&mode!=='race') tiltPanel(vr,vy+(Logs.has()?2:1)*(PF.CAP+12)-4);   /* v1.41: the maintainer's test switches as sliders, in a panel of their own */
   // v0.58: at the bottom (the title screen) — a row of service links on the line above the version, the same on every phone:
   // «logs» (when there are any), «sound» (the Android app), «lab» (always — the lab opens in the same tab / app)
   if(!top&&diag){ var its=[]; if(Logs.has()) its.push(['logs',L('logs')]); its.push(['lab',L('aud_lab')]);   // v1.18: no «sound» here — it is the settings' «advanced probe settings» now (the maintainer: «оно теперь в настройках есть же»)
@@ -207,10 +204,34 @@ function gfxFree(){ return !setGfx3(); }
 function gfxLockApply(){ var v=setGfx3(); if((v==='hd'||v==='pixel')&&gfxMode!==v){ setGfx(v); pool={K:0,list:[[],[],[]]}; } }
 /* v1.35: the test of the shots following the ship's tilt (src/13_core.js, SHOT_TILT): straight (the game's rules) / half the tilt / the tilt —
    a hidden switch under the version on SonaFly's menu; a game by the test rules is not sent to the tables */
-var SHOT_TILTS=['0','0.1','0.15','0.2','0.25','0.5','1'];   /* v1.39: finer angles for training — 10/15/20/25% of the tilt */
-function shotTilt(){ var s=store.get('sonaroids_shot_tilt','0'); return SHOT_TILTS.indexOf(s)>=0?+s:0; }
+function shotTilt(){ var v=+store.get('sonaroids_shot_tilt','0'); return v>0&&v<=1?Math.round(v*100)/100:0; }   /* v1.41: any share 0–1 (a slider); v1.39 had 10/15/20/25/50/100% */
 function shotBounce(){ return store.get('sonaroids_shot_bounce','0')==='1'?1:0; }   /* v1.40: the shots glance off the edges (the maintainer: «как астероиды — это бы уравняло сложность»), a test */
-function shotTiltLabel(){ var v=shotTilt(); return v===0?L('tilt_off'):v===1?L('tilt_full'):L('tilt_pct').replace('{n}',Math.round(v*100)); }
+/* v1.41 (the maintainer: «сделай обе опции ползунком процентов (для более тонкой подстройки) и пусть там на другие элементы не наезжают»):
+   the hidden switches as a panel in the free side's area (the SonaFly title hidden while it is open): two sliders 0–100% by 1% —
+   the picture's tilt and the shots' tilt (both a share of the same full slope; a tick on the shots' track marks the picture's value:
+   there the shots fly where the nose points) — and the shots off the edges */
+var SLD=[], sliding=null, titleFree=null;
+function slider(id,x,y,w,v,mark){ var hh=10; R(P.line,x,y+hh/2-1,w,2); R(P.band,x,y+hh/2-1,Math.round(w*v),2);
+  if(mark!==undefined) R(P.soft,x+Math.round(w*mark),y+1,1,hh-2);
+  R(P.bg,x+Math.round(w*v)-3,y,6,hh); frame(x+Math.round(w*v)-3,y,6,hh,P.band); SLD.push({id:id,x:x,y:y-7,w:w,h:hh+14}); }
+function sliderSet(id,f){ var v=Math.round(Math.max(0,Math.min(1,f))*100)/100;
+  if(id==='fly_tilt') store.set('sonaroids_fly_tilt',String(v)); else if(id==='shot_tilt') store.set('sonaroids_shot_tilt',String(v)); }
+function sliderAt(e){ var x=e.clientX*DPR/S, y=e.clientY*DPR/S; for(var i=SLD.length-1;i>=0;i--){ var b=SLD[i]; if(x>=b.x-6&&x<b.x+b.w+6&&y>=b.y&&y<b.y+b.h) return b; } return null; }
+function tiltPanel(vr,y0){ var fr=titleFree||[SAFE.l,LW-SAFE.r], pad=8, gap=5, rh=PF.CAP+gap+10+8, fv=flyTiltK(), sv=shotTilt(),
+    bs=L(shotBounce()?'bounce_on':'bounce_off'), vw=Math.max(PF.width('100%'),PF.width(L('straight'))),   /* the value stands right of its track */
+    need=Math.max(PF.width(L('ftilt')),PF.width(L('stilt'))+PF.width(' · '+L('as_nose')),PF.width(bs),90+vw)+2*pad, bl=[bs],
+    mg=8, free=fr[1]-fr[0]-2*mg, pw, iw, px, ph;
+  if(need>free){ need-=2*pad-10; pad=5; mg=4; free=fr[1]-fr[0]-2*mg; }   /* a narrow free area (a tablet): the panel's margins thinner */
+  pw=Math.min(free,Math.max(need,Math.round(free*0.7))); iw=pw-2*pad; px=vr?fr[1]-mg-pw:fr[0]+mg;
+  if(PF.width(bs)>iw&&bs.indexOf(': ')>0) bl=[bs.slice(0,bs.indexOf(': ')+1),bs.slice(bs.indexOf(': ')+2)];   /* a narrow free area (a tablet): «…EDGES:» / «NO» */
+  ph=pad*2+2*rh+bl.length*(PF.CAP+6)-2; var ix=px+pad, tw=iw-vw-8, y=y0+pad;
+  lx.globalAlpha=0.92; R(P.bg,px,y0,pw,ph); lx.globalAlpha=1; frame(px,y0,pw,ph,P.line);
+  var row=function(id,lab,v,val,mark,note){ text(lab,ix,y,P.soft,'left'); if(note&&PF.width(lab+' · '+note)<=iw) text(' · '+note,ix+PF.width(lab),y,P.band,'left');
+    slider(id,ix,y+PF.CAP+gap,tw,v,mark); text(val,ix+iw,y+PF.CAP+gap+5-Math.round(PF.CAP/2),P.text,'right'); y+=rh; };
+  row('fly_tilt',L('ftilt'),fv,Math.round(fv*100)+'%');
+  row('shot_tilt',L('stilt'),sv,sv===0?L('straight'):Math.round(sv*100)+'%',fv,sv>0&&Math.round(sv*100)===Math.round(fv*100)?L('as_nose'):'');
+  var bw=0; bl.forEach(function(t,k){ var w2=PF.width(t); bw=Math.max(bw,w2); text(t,ix,y+k*(PF.CAP+6),P.band,'left'); R(P.band,ix,y+k*(PF.CAP+6)+PF.CAP+2,w2,1); });
+  BTN.push({id:'shot_bounce',x:ix-6,y:y-6,w:bw+12,h:bl.length*(PF.CAP+6)+6}); }
 var SET_ROWS=[
   ['set_gfx',function(){ var v=setGfx3(); return v==='hd'?'set_gfx_hd':v==='pixel'?'set_gfx_px':'set_gfx_menu'; },function(dir){ var o=['','hd','pixel'], i=(o.indexOf(setGfx3())+dir+3)%3; store.set('sonaroids_gfx_lock',o[i]); gfxLockApply(); }],
   ['set_band',function(){ var v=setBand3(); return v==='wide'?'set_band_w':v==='normal'?'set_band_n':'set_band_ask'; },function(dir){ var o=['','wide','normal'], i=(o.indexOf(setBand3())+dir+3)%3; store.set('sonaroids_band_lock',o[i]); }],
@@ -261,7 +282,7 @@ function sTitle(){
   lx.globalAlpha=0.55; R(P.bg,band0,0,band1-band0,LH); lx.globalAlpha=1;
   var h=BH, gap=items.length>6?6:items.length>5?7:10, y=Math.round(LH*0.52-(items.length*(h+gap)-gap)/2);
   items.forEach(function(b){ if(b[2]==='skin') skinRow(bx0,y,w,h,gap); else if(b[2]==='sound') soundRow(bx0,y,w,h); else button(b[0],b[1],bx0,y,w,h,b[2]||'',Math.floor(clock*2)%2===0); y+=h+gap; });
-  var a0=freeSide()==='left'?band1:SAFE.l, a1=freeSide()==='left'?LW-SAFE.r:band0, lsc=PF.width('SonaFly',2)<=a1-a0-12?2:1; text('SonaFly',Math.round((a0+a1)/2),Math.round(LH*0.16),P.band,'center',lsc);
+  var a0=freeSide()==='left'?band1:SAFE.l, a1=freeSide()==='left'?LW-SAFE.r:band0, lsc=PF.width('SonaFly',2)<=a1-a0-12?2:1; titleFree=[a0,a1]; if(!diag) text('SonaFly',Math.round((a0+a1)/2),Math.round(LH*0.16),P.band,'center',lsc);
   say('SonaFly. '+L('play')+'. '+sklLabel('fly')); }
 /* v0.86: an iPhone asks for 40–60% (the maintainer's iPhone, 29 Sep: at 30–40% its probe came 3 dB over the bar — once it steered, once
    not; the iPhone gives the game its call volume while the microphone is on, lower than the media one); the phone that does not hear its
@@ -842,8 +863,6 @@ var ACT={
   nick_later:function(){ nickField(false); nickMsg=''; go(nickFrom==='over'?'over':'scores'); },
   logs:function(){ Logs.share(); },
   shot_bounce:function(){ store.set('sonaroids_shot_bounce',shotBounce()?'0':'1'); },
-  fly_tilt:function(){ var o=['1','0.6','0.4','0.3','0.15','0.05'], i=(o.indexOf(String(flyTiltK()))+1)%6; store.set('sonaroids_fly_tilt',o[i]); },
-  shot_tilt:function(){ var o=SHOT_TILTS, i=(o.indexOf(store.get('sonaroids_shot_tilt','0'))+1)%o.length; store.set('sonaroids_shot_tilt',o[i]); },
   audio:function(){ audDev=null; audFrom=null; go('audio'); },
   lab:function(){ location.href='../lab/sonar_lab3.html'; },
   ver:function(){ if(scr==='scores'){ scPeople=!scPeople; return; } diag=!diag; },   /* v1.34: on the scores screen the version's long press is «people only» */
@@ -878,14 +897,15 @@ function btnAt(e){ var x=e.clientX*DPR/S, y=e.clientY*DPR/S;
   for(var i=BTN.length-1;i>=0;i--){ var b=BTN[i]; if(x>=b.x-4&&x<b.x+b.w+4&&y>=b.y-4&&y<b.y+b.h+4) return b.id; } return null; }
 /* v0.56 (the maintainer): the service links show after a long press on the version (0.7 s), not a tap — a player won't open them by chance */
 var verHold=null, verDown=false;   // verDown: the finger is still on the version (a pointercancel from iOS does not end the hold, only lifting the finger does)
-cv.addEventListener('pointerdown',function(e){ downOn=btnAt(e); if(downOn){ press.id=downOn; press.x=e.clientX*DPR/S; press.y=e.clientY*DPR/S; press.until=clock+0.15; } if(verHold){ clearTimeout(verHold); verHold=null; }
+cv.addEventListener('pointerdown',function(e){ var sl=sliderAt(e); if(sl){ sliding=sl; sliderSet(sl.id,(e.clientX*DPR/S-sl.x)/sl.w); downOn=null; e.preventDefault(); return; } downOn=btnAt(e); if(downOn){ press.id=downOn; press.x=e.clientX*DPR/S; press.y=e.clientY*DPR/S; press.until=clock+0.15; } if(verHold){ clearTimeout(verHold); verHold=null; }
   if(downOn==='ver'){ verDown=true; verHold=setTimeout(function(){ verHold=null; if(verDown){ verDown=false; ACT.ver(); Sfx.play('tap'); downOn=null; } },700); }
   e.preventDefault(); },{passive:false});
 /* v0.87 (the maintainer): a short tap on the version on the games' screen reloads the page (a new version at once);
    the long press still shows the service links */
-cv.addEventListener('pointerup',function(e){ verDown=false; press.until=clock+0.15; var quick=!!verHold; if(verHold){ clearTimeout(verHold); verHold=null; } var id=btnAt(e);
+cv.addEventListener('pointermove',function(e){ if(sliding){ sliderSet(sliding.id,(e.clientX*DPR/S-sliding.x)/sliding.w); e.preventDefault(); } },{passive:false});
+cv.addEventListener('pointerup',function(e){ if(sliding){ sliding=null; e.preventDefault(); return; } verDown=false; press.until=clock+0.15; var quick=!!verHold; if(verHold){ clearTimeout(verHold); verHold=null; } var id=btnAt(e);
   if(id==='ver'){ if(quick&&downOn==='ver'&&scr==='hub'){ Logs.ev('обновление страницы по версии'); location.reload(); } downOn=null; e.preventDefault(); return; } if(id&&id===downOn&&!ACT[id]&&id.indexOf('aud:')===0){ Sfx.play('tap'); audAct(id); } else if(id&&id===downOn&&ACT[id]){ if(id!=='allow'&&id!=='play'&&id!=='retry'&&id!=='sfx'&&id!=='vol_dn'&&id!=='vol_up') Sfx.play('tap'); ACT[id](); } downOn=null; e.preventDefault(); },{passive:false});
-cv.addEventListener('pointercancel',function(){ downOn=null; press.id=null; });
+cv.addEventListener('pointercancel',function(){ sliding=null; downOn=null; press.id=null; });
 cv.addEventListener('touchend',function(){ verDown=false; });   // the hold ends when the finger lifts, even after a pointercancel
 ['gesturestart','gesturechange','gestureend','dblclick'].forEach(function(n){ document.addEventListener(n,function(e){ e.preventDefault(); },{passive:false}); });
 document.addEventListener('touchmove',function(e){ e.preventDefault(); },{passive:false});
@@ -908,7 +928,7 @@ var DT=1/60, lastNow=performance.now(), floorHeld=false;
 function loop(now){
   requestAnimationFrame(loop);
   var fast=scr==='play'||scr==='count'||scr==='count-resume'; if(now-lastNow<(fast?15:31)) return;
-  DT=Math.min(0.05,Math.max(0,(now-lastNow)/1000)); lastNow=now; clock+=DT; scrT+=DT; BTN=[];
+  DT=Math.min(0.05,Math.max(0,(now-lastNow)/1000)); lastNow=now; clock+=DT; scrT+=DT; BTN=[]; SLD=[];
   if(LH>LW){ pauseGame(); sRotate(); present(0); return; }
   if(booted&&Sonar.lost()&&(scr==='wave'||scr==='count'||scr==='play'||scr==='over')){ if(g&&g.state==='play') Logs.gameStop(); Board.setup('lost'); go('lost'); }
   var RS=mode==='race'&&(scr==='rtitle'||scr==='skins'||scr==='rset'||scr==='scores'||scr==='count'||scr==='count-resume'||scr==='play'||scr==='over'||scr==='paused'||scr==='restart'||(scr==='wave'&&caught&&scrT-caughtT>=CAUGHT_SHOW));

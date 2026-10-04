@@ -15,7 +15,7 @@ var FLY_LOOK={
 var FLY_ON=true;
 /* v1.35a: the maintainer's test switches (a long press on the version in SonaFly's menu): how strong the tilt looks, how often the roll comes.
    His games of 4 Oct: his palm keeps the ship moving — tilted over 5° 80% of the time (median 12°; the bots 4–7°), a roll every ~3 s */
-function flyTiltK(){ var v=+store.get('sonaroids_fly_tilt','0.4'); return v===0.05||v===0.15||v===0.3||v===0.4||v===0.6||v===1?v:0.4; }   /* the maintainer: «по умолчанию ставим 40» */
+function flyTiltK(){ var s=store.get('sonaroids_fly_tilt','0.4'), v=+s; return s!==''&&v>=0&&v<=1?Math.round(v*100)/100:0.4; }   /* the maintainer: «по умолчанию ставим 40»; v1.41: any 0–100% (a slider) */
 function flyRollCool(){ return 2.5; }   /* the maintainer: «бочка норм, не часто она» */   // the switch for tests that measure the ship (tests/skin_sizes.js keeps it as is: shipBare draws no trail)
 /* the tilt and the roll's trigger; tl — the core's slope when there is one (flight), else estimated the core's way from the screen */
 function flyStep(sy,dt,tl){ var f=FLY, T=Core.TILT, yf=sy/K;

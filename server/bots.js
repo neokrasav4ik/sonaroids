@@ -67,6 +67,7 @@ function oneGame(bot,game,created,caps){
   if(r.score<=0||r.q.length<30) return null;
   const hands=r.q.map(v=>v/play.Q), g=race?Race.replay(seed,p.FW,hands,null,'road',null):Core.replay(seed,p.FW,hands,null);
   if(g.score!==r.score) return null;                                                   // never: the same rules, the same numbers
+  if(g.score>caps[game]/CAP) return null;   // v1.41: one big hit can jump past the stop line (a test once saw 216550 over the best person's 216040) — such a game is dropped
   const buf=Buffer.alloc(r.q.length*2); r.q.forEach((v,i)=>buf.writeUInt16LE(v,i*2));
   const level=race?Math.floor(g.d/10):g.level;
   insGame.run(bot.player,seed,race?Race.TAG:Core.TAG,g.score,level,+g.t.toFixed(2),created,p.FW,null,zlib.deflateRawSync(buf),null,1,game,race?'road':null);

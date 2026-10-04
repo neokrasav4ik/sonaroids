@@ -415,6 +415,43 @@ HDSK.fairy={id:'fairy', hd:true, glow:false, ink:'#2d2350', veil:'rgba(238,242,2
   /* v1.27, the dragon «Б1» (the maintainer: «б1»): the little dragon in detail with golden sunset wings — wing bones, a claw at each
      tip, a shine on the membrane; scales on its body, a striped belly, a spine of gold plates, little claws; ringed horns, a pink ear
      frill, an eye with a lid and lashes, a puff of smoke from its nostril, a tooth, a blush; a trail of warm glows and twinkling stars */
+  /* v1.35, the barrel roll's other sides (the maintainer: «спина В, брюхо В»; «почему со спины и с брюха так сильно увеличивается длина дракона?» —
+     the tail sways aside and the body is a little shorter, so all three views are the same length). The dragon is drawn from the side, so it
+     rolls side → back → side upside down → belly. The back: both wings spread (they beat as in flight) with glowing veins and sparks, scales
+     and the spine's spikes from above, the horns swept back, the eyes on both sides; the belly: cream plates, four little feet, pink cheeks,
+     the wings' dark undersides with glowing veins. */
+  rollBase:'side',
+  rollWing:function(dir,col,fl){ var c=hx; c.save(); c.translate(5.6,dir*1.5); c.scale(1,dir*(0.55+0.45*Math.abs(fl)));
+    var path=function(){ c.beginPath(); c.moveTo(1,0); c.quadraticCurveTo(-1,-7,-4.5,-11); c.quadraticCurveTo(-4.4,-8.6,-5.6,-7.8); c.quadraticCurveTo(-4.8,-6.6,-6.4,-5.6); c.quadraticCurveTo(-4.4,-4.8,-4.8,-2.8); c.quadraticCurveTo(-2.4,-2.2,-1.4,0.4); c.closePath(); };
+    path(); c.fillStyle=fzLg(c,0,0,-4,-11,col); c.fill(); c.save(); path(); c.clip(); c.fillStyle='rgba(255,255,255,0.22)'; c.beginPath(); c.ellipse(-2.5,-6,1.3,2.8,0.3,0,6.2832); c.fill(); c.restore();
+    c.strokeStyle='#6a3a08'; c.lineWidth=0.6; c.lineJoin='round'; path(); c.stroke();
+    c.strokeStyle='rgba(255,240,170,0.95)'; c.lineWidth=0.5; c.lineCap='round'; c.beginPath(); c.moveTo(1,0); c.quadraticCurveTo(-1,-7,-4.5,-11); c.moveTo(0,-0.6); c.quadraticCurveTo(-3.2,-5,-5.6,-7.8); c.moveTo(-0.2,-0.2); c.quadraticCurveTo(-3.6,-3.4,-6.4,-5.6); c.moveTo(-0.4,0.1); c.lineTo(-4.8,-2.8); c.stroke();
+    if(!shipBare){ c.globalCompositeOperation='lighter'; c.globalAlpha=0.7; [[-4.5,-11],[-5.6,-7.8],[-6.4,-5.6]].forEach(function(q){ fzStar(c,q[0],q[1],1.2,'rgba(255,240,180,1)'); }); c.globalAlpha=1; c.globalCompositeOperation='source-over'; }
+    c.fillStyle='#fff3e0'; c.beginPath(); c.moveTo(-4.5,-11); c.lineTo(-5,-12.2); c.lineTo(-3.8,-11.2); c.fill(); c.restore(); },
+  rollTail:function(t,fill){ var c=hx, sw=Math.sin(t*4)*0.9, ty=2.6+sw;   /* the tail swaying aside: its tip at the side, so the dragon keeps its length */
+    c.fillStyle=fill; c.beginPath(); c.moveTo(1.2,-1.1); c.bezierCurveTo(-2.5,-1.0,-4,0.4,-6.4,ty-0.4); c.lineTo(-6.0,ty+0.6); c.bezierCurveTo(-3.5,1.6,-2,1.2,1.2,1.1); c.closePath(); c.fill(); c.strokeStyle='#0a3a24'; c.lineWidth=0.6; c.stroke();
+    c.fillStyle='#ff8a5a'; c.beginPath(); c.moveTo(-6.3,ty); c.lineTo(-8.6,ty-0.4); c.lineTo(-7.8,ty+0.8); c.lineTo(-8.0,ty+2.0); c.closePath(); c.fill(); c.strokeStyle='#8a2a10'; c.lineWidth=0.3; c.stroke(); },
+  shipView:function(v,x,y,t){ var c=hx, me=this, fl=Math.sin(FLY.wph||t*14), INK='#0a3a24'; c.save(); c.translate(x,y); c.lineJoin='round';
+    var back=v==='back', wc=back?['#b8600a','#ffb030','#fff0b0']:['#5a2a08','#8a5018','#b08040'];
+    me.rollWing(-1,wc,fl); me.rollWing(1,wc,fl);
+    var bg=back?fzLg(c,0,-3,0,3,['#4cc488','#b4ffd4','#4cc488','#188050']):fzLg(c,0,-3,0,3,['#188050','#4cc488','#188050']);
+    me.rollTail(t,back?bg:'#fff3b0');
+    if(back) [[3.8,-2.7],[8,-2.7],[3.8,2.7],[8,2.7]].forEach(function(l){ fzEll(c,l[0],l[1],0.9,0.7,'#1c7a50'); c.strokeStyle=INK; c.lineWidth=0.3; c.stroke(); });
+    else [[3.8,-3.1,-1],[8,-3.1,-1],[3.8,3.1,1],[8,3.1,1]].forEach(function(l){ c.fillStyle='#1c7a50'; c.beginPath(); c.roundRect(l[0]-0.7,l[1]-(l[2]<0?1.4:0),1.4,1.4,0.5); c.fill(); c.strokeStyle=INK; c.lineWidth=0.3; c.stroke();
+      c.fillStyle='#ffffff'; [0,0.5,1].forEach(function(d){ c.beginPath(); c.arc(l[0]-0.5+d,l[1]+(l[2]<0?-1.2:1.2),0.18,0,6.2832); c.fill(); }); });
+    c.beginPath(); c.ellipse(6.2,0,6.0,back?2.8:3.0,0,0,6.2832); c.fillStyle=bg; c.fill(); c.save(); c.clip();
+    if(back){ c.strokeStyle='rgba(10,70,40,0.35)'; c.lineWidth=0.3; c.beginPath(); for(var r=0;r<4;r++) for(var k=0;k<7;k++){ var sx=1.2+k*1.55+(r%2)*0.8, sy=-2.1+r*1.4; c.moveTo(sx+0.75,sy); c.arc(sx,sy,0.75,0,Math.PI); } c.stroke();
+      c.fillStyle='rgba(255,255,255,0.3)'; c.beginPath(); c.ellipse(5.2,-1.2,3.6,0.7,0,0,6.2832); c.fill(); }
+    else { c.fillStyle='#fff3b0'; c.beginPath(); c.ellipse(6.2,0,5.4,1.8,0,0,6.2832); c.fill(); c.strokeStyle='rgba(200,150,60,0.7)'; c.lineWidth=0.3; c.beginPath(); for(var b=1.6;b<11;b+=1.1){ c.moveTo(b,-1.7); c.quadraticCurveTo(b+0.4,0,b,1.7); } c.stroke(); }
+    c.restore(); c.beginPath(); c.ellipse(6.2,0,6.0,back?2.8:3.0,0,0,6.2832); c.strokeStyle=INK; c.lineWidth=0.7; c.stroke();
+    if(back) for(var s2=0.8;s2<11;s2+=1.5){ c.fillStyle=fzLg(c,s2,-0.8,s2+1.2,0.8,['#fff0a0','#ff9a2a']); c.beginPath(); c.moveTo(s2,0); c.lineTo(s2+0.65,-0.65); c.lineTo(s2+1.3,0); c.lineTo(s2+0.65,0.65); c.closePath(); c.fill(); c.strokeStyle='#a0500a'; c.lineWidth=0.2; c.stroke(); }
+    fzEll(c,11.6,0,2.0,1.9,bg); fzEll(c,14.4,0,3.4,back?2.6:2.5,bg); c.strokeStyle=INK; c.lineWidth=0.7; c.beginPath(); c.ellipse(14.4,0,3.4,back?2.6:2.5,0,0,6.2832); c.stroke();
+    if(back) [-1,1].forEach(function(s){ c.fillStyle=fzLg(c,11,s*2,9.5,s*4,['#fff0a0','#ff9a2a']); c.beginPath(); c.moveTo(12.9,s*1.5); c.quadraticCurveTo(10.6,s*2.5,9.5,s*4.0); c.quadraticCurveTo(11.6,s*2.9,13.7,s*2.1); c.closePath(); c.fill(); c.strokeStyle='#a0500a'; c.lineWidth=0.25; c.stroke();
+      fzEll(c,15.2,s*2.1,1.05,0.75,'#ffffff'); c.strokeStyle=INK; c.lineWidth=0.25; c.stroke(); fzDisc(c,15.5,s*2.2,0.48,'#1a1a2a'); fzDisc(c,15.7,s*2.0,0.2,'#ffffff'); });
+    else { fzEll(c,14.6,0,2.2,1.4,'#fff3b0'); c.strokeStyle='rgba(200,150,60,0.7)'; c.lineWidth=0.25; c.stroke(); fzEll(c,15.6,-1.9,0.95,0.48,'rgba(255,120,160,0.6)'); fzEll(c,15.6,1.9,0.95,0.48,'rgba(255,120,160,0.6)'); }
+    fzEll(c,17.6,0,1.5,back?1.3:1.25,fzLg(c,16,-1,19,1,['#ffc0a0','#ff8a5a'])); c.strokeStyle='#a03a1a'; c.lineWidth=0.3; c.stroke();
+    if(back){ fzDisc(c,18.4,-0.55,0.24,'#7a2a10'); fzDisc(c,18.4,0.55,0.24,'#7a2a10'); } else { c.fillStyle='#ffffff'; c.beginPath(); c.moveTo(18.4,-0.5); c.lineTo(19.1,0); c.lineTo(18.4,0.5); c.fill(); }
+    c.restore(); },
   wingB1:function(side,fl){ var c=hx; c.save(); c.translate(6,-1.5); c.scale(1,side*(0.35+0.65*Math.abs(fl)));
     var path=function(){ c.beginPath(); c.moveTo(0,0); c.quadraticCurveTo(-3,-6,-8,-8.5); c.quadraticCurveTo(-7.2,-6.6,-7.6,-5.6); c.quadraticCurveTo(-6.4,-5,-7,-3.5); c.quadraticCurveTo(-5.4,-3.4,-4.5,-1.2); c.quadraticCurveTo(-2.6,-1.4,-1.5,0.4); c.closePath(); };
     path(); c.fillStyle=fzLg(c,0,0,-6,-9,side>0?['#b8600a','#ffb030','#fff0b0']:['#7a4008','#c88a28','#e0c890']); c.fill();
@@ -422,7 +459,7 @@ HDSK.fairy={id:'fairy', hd:true, glow:false, ink:'#2d2350', veil:'rgba(238,242,2
     c.strokeStyle='#6a3a08'; c.lineWidth=0.65; c.lineJoin='round'; path(); c.stroke();
     c.strokeStyle='#a0600a'; c.lineWidth=0.45; c.lineCap='round'; c.beginPath(); c.moveTo(0,0); c.quadraticCurveTo(-3,-6,-8,-8.5); c.moveTo(-1.5,-1.2); c.quadraticCurveTo(-5,-3.5,-7.6,-5.6); c.moveTo(-1,-0.3); c.quadraticCurveTo(-4.5,-2,-7,-3.5); c.moveTo(-0.6,0.1); c.lineTo(-4.5,-1.2); c.stroke();
     c.fillStyle='#fff3e0'; c.beginPath(); c.moveTo(-8,-8.5); c.lineTo(-9.2,-9.1); c.lineTo(-8.4,-7.8); c.fill(); fzDisc(c,-1.8,-2.2,0.45,'#6a3a08'); c.restore(); },
-  ship:function(x,y,t,blink){ if(blink) return; var c=hx, fl=Math.sin(t*14), i, k, s2, me=this;
+  ship:function(x,y,t,blink){ if(blink) return; var c=hx, fl=Math.sin(FLY.wph||t*14), i, k, s2, me=this;
     if(!shipBare) for(i=0;i<8;i++){ var a=1-i/8, ty=y+3+Math.sin(t*10+i)*1.2; hGlow(x-3-i*2.2,ty,1.3*a+0.5,'255,'+(215-i*8)+',140',0.6*a); if(i%2===0) fzStar(c,x-3-i*2.2,ty-1,(1.3*a+0.3)*(0.6+0.4*Math.sin(t*20+i)),'rgba(255,250,210,0.95)'); }
     c.save(); c.translate(x,y); c.lineJoin='round'; me.wingB1(-1,fl);
     var bg=fzLg(c,0,-5,0,5,['#b4ffd4','#4cc488','#188050','#073a24']), INKD='#0a3a24';

@@ -29,7 +29,8 @@ function makeSkinRock(sk,sz,rc,seed){ return rockCentre(sk.rock(rockR(sk,sz,rc),
 (function(){ var SHIPK={fairy:0.72,vector:1.15,note:1.14};   // v1.27: the detailed fairy dragon a little smaller (its tail and tips reach further)
     // v0.83: by the hull, without the flame: vector 17 → 20, notebook 15 → 20 (0.79 measured the flame with them)
   Object.keys(SHIPK).forEach(function(id){ var sk=HDSK[id]; if(!sk||sk._shipK) return; var k=SHIPK[id], draw=sk.ship; sk._shipK=k;
-    sk.ship=function(x,y,t,blink){ if(blink) return; hx.save(); hx.translate(x,y); hx.scale(k,k); hx.translate(-x,-y); try{ draw.call(this,x,y,t,blink); } finally { hx.restore(); } }; }); })();
+    sk.ship=function(x,y,t,blink){ if(blink) return; hx.save(); hx.translate(x,y); hx.scale(k,k); hx.translate(-x,-y); try{ draw.call(this,x,y,t,blink); } finally { hx.restore(); } };
+    if(sk.shipView){ var dv=sk.shipView; sk.shipView=function(v,x,y,t){ hx.save(); hx.translate(x,y); hx.scale(k,k); hx.translate(-x,-y); try{ dv.call(this,v,x,y,t); } finally { hx.restore(); } }; } }); })();   // v1.35: the roll's views at the same size
 /* v0.81: power-ups the size of what the game counts (the maintainer: «в рамках их зон и одинаковыми размерами в скинах/графиках»): the core
    takes one when the ship's point is within 9 of it on each axis — less the ship's own 3 that is 12 core units, PICK_W = 13 game pixels on a
    usual phone. The HD pictures are measured once (the body, alpha ≥ 128) and scaled to it; the pixel ones are drawn 13 pixels. */

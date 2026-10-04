@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='1.35';
+var VERSION='1.37';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -1291,7 +1291,7 @@ STR.en={
   aud_fx:'PHONE PROCESSING:', aud_src:'SOURCE', aud_usage:'PROBE AS', aud_end:'PROBE FROM', turn_t:'TURN THE PHONE ROUND', hub_s:'GAMES YOU PLAY WITH YOUR PALM IN MID-AIR', soon:'SOON', all_games:'← ALL GAMES', skin:'SKIN', gfx:'GRAPHICS', gfx_pixel:'PIXELS', skin_space:'SPACE', skin_vector:'VECTOR 80S', skin_neon:'NEON', skin_note:'NOTEBOOK', skin_lcd:'RETRO LCD', skin_fairy:'FAIRY TALE', turn_s:'BY 180° IF YOU PLAY', turn_s2:'WITH YOUR RIGHT HAND', turn_h:'ROUND LIKE A WHEEL — DON\'T FLIP IT FACE DOWN', lefty:'I PLAY LEFT-HANDED', aud_vol:'VOLUME', aud_keep:'LEAVE AS IS', aud_cam:'CAMERA END', aud_port:'PORT END', aud_media:'MEDIA', aud_game:'GAME', aud_autotest:'AUTO PICK', aud_notyet:'NOT DONE YET', aud_retest:'TEST AGAIN', aud_lab:'LAB', aud_nextgame:'WITH THE NEXT GAME', aud_on:'ON', aud_off:'OFF', aud_t2:'SOUND', aud_s2:'TRIALS OF THE ECHO PROCESSING', settings:'SETTINGS', settings_t:'SETTINGS', set_gfx:'GRAPHICS', set_gfx_menu:'CHOSEN IN THE GAME', set_gfx_hd:'ALWAYS HD', set_gfx_px:'ALWAYS PIXELS', set_band:'PROBE BAND', set_band_ask:'CHOSEN BEFORE A GAME', set_band_w:'ALWAYS WIDE', set_band_n:'ALWAYS NORMAL', set_live:'AUTO-CALIBRATION', set_on:'ON', set_off:'OFF', set_live_on_s:'NO WAVING: THE GAME TAKES YOUR LAST MANUAL CALIBRATION AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', set_live_on_d:'NO WAVING: THE GAME TAKES YOUR MANUAL CALIBRATION OF {d} AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', auto_ok:'CALIBRATION FROM YOUR LAST GAME', set_room:'ROOM FOLLOWING', set_live_new_s:'NO MANUAL CALIBRATION YET: SWITCH THIS OFF, PLAY ONE GAME WAVING YOUR PALM, SWITCH IT ON AGAIN — AUTO-CALIBRATION WILL TAKE IT', set_live_off_s:'BEFORE EVERY GAME: TAKE YOUR HAND AWAY, WAVE YOUR PALM, TAP «START». A GOOD SETUP CAN THEN BE KEPT WITH AUTO-CALIBRATION', set_expert:'ADVANCED PROBE SETTINGS', aud_link:'SOUND', aud_t:'APP SOUND', aud_s:'WHERE THE GAME TAKES THE MICROPHONE FROM AND WHERE THE PROBE PLAYS', aud_mode:'SOUND', aud_browser:'BROWSER', aud_app:'APP', aud_mic:'MICROPHONE', aud_out:'SPEAKER', aud_auto:'AUTO', aud_speaker:'SPEAKER', aud_earpiece:'EARPIECE', aud_bottom:'BOTTOM', aud_top:'TOP', aud_back:'BACK', aud_now:'NOW:', aud_active:'RECORDING:', aud_idle:'THE MICROPHONE OPENS WITH THE GAME', aud_browser_now:'NOW THE SOUND GOES THROUGH THE BROWSER: ANDROID PICKS THE MICROPHONE', aud_nopos:'THE PHONE DOES NOT TELL WHERE ITS MICROPHONES ARE',
   wave_t:'WAVE YOUR PALM', wave_s:'5–10 CM ABOVE THE TABLE OR 5–15 CM FROM THE PHONE\'S END', wave_ok:'GOT YOUR RANGE', other_t:'WAVE ON THE OTHER SIDE', other_s:'THE PHONE DOES NOT HEAR THE PALM ON THIS SIDE', try_s:'THE SHIP FOLLOWS YOUR PALM — TRY THE TOP AND THE BOTTOM', cm:'CM',
   ring_wait:'GET READY', ring_listen:'LISTENING', ring_catch:'CATCHING THE RANGE', ring_ok:'DONE',
-  start:'START', over:'GAME OVER', best:'BEST', again:'AGAIN', menu:'MENU', logs:'LOGS', tilt_off:'SHOTS: STRAIGHT', tilt_half:'SHOTS: HALF THE TILT', tilt_full:'SHOTS: WITH THE TILT', tilt_test:'TEST RULES: NOT FOR THE TABLES',
+  start:'START', over:'GAME OVER', best:'BEST', again:'AGAIN', menu:'MENU', logs:'LOGS', tilt_off:'SHOTS: STRAIGHT', tilt_half:'SHOTS: HALF THE TILT', tilt_full:'SHOTS: WITH THE TILT', tilt_test:'TEST RULES: NOT FOR THE TABLES', ftilt:'TILT IN THE PICTURE: {n}%', tilt_quarter:'SHOTS: A QUARTER OF THE TILT',
   lost_t:'NO PROBE SOUND', lost_s:'SOUND WENT TO ANOTHER DEVICE. UNPLUG HEADPHONES OR BLUETOOTH', retry:'TRY AGAIN',
   nomic_t:'NO MICROPHONE', nomic_s:'ALLOW IT IN THE BROWSER SETTINGS AND TRY AGAIN', noaudio_s:'THIS BROWSER CANNOT PLAY THE GAME. TRY SAFARI OR CHROME',
   rotate:'TURN THE PHONE SIDEWAYS', rotate_s:'THE SCREEN WON\'T TURN? SWITCH OFF THE ROTATION LOCK: ON IPHONE IN CONTROL CENTRE, ON ANDROID IN QUICK SETTINGS (AUTO-ROTATE)', paused:'PAUSE', resume:'GO ON', quit:'END THE GAME', scores:'HIGH SCORES', p_day:'TODAY', p_week:'THIS WEEK', p_all:'ALL TIME', loading:'LOADING…', offline:'NO CONNECTION TO THE TABLE', empty:'EMPTY SO FAR', you:'YOU',
@@ -1326,7 +1326,7 @@ STR.ru={
   aud_fx:'ОБРАБОТКА ТЕЛЕФОНА:', aud_src:'ИСТОЧНИК', aud_usage:'ЗОНД КАК', aud_end:'ЗОНД ИЗ', turn_t:'РАЗВЕРНИ ТЕЛЕФОН', hub_s:'ИГРЫ, КОТОРЫМИ УПРАВЛЯЕТ ЛАДОНЬ В ВОЗДУХЕ', soon:'СКОРО', all_games:'← ВСЕ ИГРЫ', skin:'СКИН', gfx:'ГРАФИКА', gfx_pixel:'ПИКСЕЛИ', skin_space:'КОСМОС', skin_vector:'ВЕКТОР 80-Х', skin_neon:'НЕОН', skin_note:'ТЕТРАДКА', skin_lcd:'РЕТРО LCD', skin_fairy:'СКАЗКА', turn_s:'НА 180°, ЕСЛИ ИГРАЕШЬ', turn_s2:'ПРАВОЙ РУКОЙ', turn_h:'ПО КРУГУ, КАК РУЛЬ — НЕ ПЕРЕВОРАЧИВАЙ ЭКРАНОМ ВНИЗ', lefty:'ИГРАЮ ЛЕВОЙ РУКОЙ', aud_vol:'ГРОМКОСТЬ', aud_keep:'НЕ ТРОГАТЬ', aud_cam:'У КАМЕРЫ', aud_port:'У РАЗЪЁМА', aud_media:'МЕДИА', aud_game:'ИГРА', aud_autotest:'АВТОВЫБОР', aud_notyet:'ЕЩЁ НЕ ДЕЛАЛСЯ', aud_retest:'ПЕРЕПРОВЕРИТЬ', aud_lab:'ЛАБА', aud_nextgame:'БУДЕТ ПРИ СЛЕДУЮЩЕЙ ИГРЕ', aud_on:'ВКЛ', aud_off:'ВЫКЛ', aud_t2:'ЗВУК', aud_s2:'ОПЫТЫ С ОБРАБОТКОЙ ЭХА', settings:'НАСТРОЙКИ', settings_t:'НАСТРОЙКИ', set_gfx:'ГРАФИКА', set_gfx_menu:'ВЫБОР В ИГРЕ', set_gfx_hd:'ВСЕГДА HD', set_gfx_px:'ВСЕГДА ПИКСЕЛИ', set_band:'ПОЛОСА ЗОНДА', set_band_ask:'ВЫБОР ПЕРЕД ИГРОЙ', set_band_w:'ВСЕГДА ШИРОКАЯ', set_band_n:'ВСЕГДА ОБЫЧНАЯ', set_live:'АВТОКАЛИБРОВКА', set_on:'ВКЛ', set_off:'ВЫКЛ', set_live_on_s:'БЕЗ ВЗМАХОВ: ИГРА БЕРЁТ ТВОЮ ПОСЛЕДНЮЮ РУЧНУЮ КАЛИБРОВКУ И САМА ПОДСТРАИВАЕТСЯ ПОД ЗВУКИ КОМНАТЫ. УПРАВЛЯЕТСЯ ХУЖЕ? ВЫКЛЮЧИ, СЫГРАЙ С РУЧНОЙ И ВКЛЮЧИ СНОВА', set_live_on_d:'БЕЗ ВЗМАХОВ: ИГРА БЕРЁТ ТВОЮ РУЧНУЮ КАЛИБРОВКУ ОТ {d} И САМА ПОДСТРАИВАЕТСЯ ПОД ЗВУКИ КОМНАТЫ. УПРАВЛЯЕТСЯ ХУЖЕ? ВЫКЛЮЧИ, СЫГРАЙ С РУЧНОЙ И ВКЛЮЧИ СНОВА', auto_ok:'КАЛИБРОВКА ИЗ ПРОШЛОЙ ИГРЫ', set_room:'ПОДСТРОЙКА ПОД КОМНАТУ', set_live_new_s:'РУЧНОЙ КАЛИБРОВКИ ЕЩЁ НЕ БЫЛО: ВЫКЛЮЧИ, СЫГРАЙ ОДНУ ИГРУ С ВЗМАХАМИ И ВКЛЮЧИ СНОВА — АВТОКАЛИБРОВКА ВОЗЬМЁТ ЕЁ', set_live_off_s:'ПЕРЕД КАЖДОЙ ИГРОЙ: УБРАТЬ РУКУ, ПОМАХАТЬ ЛАДОНЬЮ, НАЖАТЬ «СТАРТ». УДАЧНУЮ НАСТРОЙКУ ПОТОМ МОЖНО ОСТАВИТЬ АВТОКАЛИБРОВКОЙ', set_expert:'РАСШИРЕННЫЕ НАСТРОЙКИ ЗОНДА', aud_link:'ЗВУК', aud_t:'ЗВУК ПРИЛОЖЕНИЯ', aud_s:'ОТКУДА ИГРА БЕРЁТ МИКРОФОН И КУДА ИГРАЕТ ЗОНД', aud_mode:'ЗВУК', aud_browser:'БРАУЗЕР', aud_app:'ПРИЛОЖЕНИЕ', aud_mic:'МИКРОФОН', aud_out:'ДИНАМИК', aud_auto:'АВТО', aud_speaker:'ДИНАМИК', aud_earpiece:'РАЗГОВОРНЫЙ', aud_bottom:'НИЗ', aud_top:'ВЕРХ', aud_back:'СЗАДИ', aud_now:'СЕЙЧАС:', aud_active:'ПИШУТ:', aud_idle:'МИКРОФОН ОТКРОЕТСЯ ПРИ ИГРЕ', aud_browser_now:'СЕЙЧАС ЗВУК ЧЕРЕЗ БРАУЗЕР: МИКРОФОН ВЫБИРАЕТ ANDROID', aud_nopos:'ТЕЛЕФОН НЕ СООБЩАЕТ, ГДЕ МИКРОФОНЫ',
   wave_t:'ПОМАШИ ЛАДОНЬЮ', wave_s:'5–10 СМ НАД СТОЛОМ ИЛИ 5–15 СМ ОТ ТОРЦА ТЕЛЕФОНА', wave_ok:'РАЗМАХ ПОЙМАН', other_t:'ПОМАШИ С ДРУГОЙ СТОРОНЫ', other_s:'С ЭТОЙ СТОРОНЫ ТЕЛЕФОН НЕ СЛЫШИТ ЛАДОНЬ', try_s:'КОРАБЛЬ ИДЁТ ЗА ЛАДОНЬЮ — ПРОВЕРЬ ВЕРХ И НИЗ', cm:'СМ',
   ring_wait:'ПРИГОТОВЬСЯ', ring_listen:'СЛУШАЮ', ring_catch:'ЛОВЛЮ РАЗМАХ', ring_ok:'ГОТОВО',
-  start:'СТАРТ', over:'ИГРА ОКОНЧЕНА', best:'РЕКОРД', again:'ЕЩЁ РАЗ', menu:'МЕНЮ', logs:'ЖУРНАЛЫ', tilt_off:'ВЫСТРЕЛЫ: ПРЯМО', tilt_half:'ВЫСТРЕЛЫ: ПОЛНАКЛОНА', tilt_full:'ВЫСТРЕЛЫ: ПО НАКЛОНУ', tilt_test:'ТЕСТОВЫЕ ПРАВИЛА: НЕ В ТАБЛИЦАХ',
+  start:'СТАРТ', over:'ИГРА ОКОНЧЕНА', best:'РЕКОРД', again:'ЕЩЁ РАЗ', menu:'МЕНЮ', logs:'ЖУРНАЛЫ', tilt_off:'ВЫСТРЕЛЫ: ПРЯМО', tilt_half:'ВЫСТРЕЛЫ: ПОЛНАКЛОНА', tilt_full:'ВЫСТРЕЛЫ: ПО НАКЛОНУ', tilt_test:'ТЕСТОВЫЕ ПРАВИЛА: НЕ В ТАБЛИЦАХ', ftilt:'НАКЛОН КАРТИНКИ: {n}%', tilt_quarter:'ВЫСТРЕЛЫ: ЧЕТВЕРТЬ НАКЛОНА',
   lost_t:'ЗОНДА НЕ СЛЫШНО', lost_s:'ЗВУК УШЁЛ В ДРУГОЕ УСТРОЙСТВО. ОТКЛЮЧИ НАУШНИКИ ИЛИ BLUETOOTH', retry:'ЕЩЁ РАЗ',
   nomic_t:'НЕТ МИКРОФОНА', nomic_s:'РАЗРЕШИ ЕГО В НАСТРОЙКАХ БРАУЗЕРА И ПОПРОБУЙ ЕЩЁ РАЗ', noaudio_s:'В ЭТОМ БРАУЗЕРЕ ИГРА НЕ ЗАПУСТИТСЯ. ПОПРОБУЙ SAFARI ИЛИ CHROME',
   rotate:'ПОВЕРНИ ТЕЛЕФОН ГОРИЗОНТАЛЬНО', rotate_s:'НЕ ПОВОРАЧИВАЕТСЯ? ВЫКЛЮЧИ БЛОКИРОВКУ ПОВОРОТА ЭКРАНА: НА IPHONE — В ПУНКТЕ УПРАВЛЕНИЯ, НА ANDROID — В ШТОРКЕ (АВТОПОВОРОТ)', paused:'ПАУЗА', resume:'ДАЛЬШЕ', quit:'ЗАКОНЧИТЬ ИГРУ', scores:'РЕКОРДЫ', p_day:'СЕГОДНЯ', p_week:'НЕДЕЛЯ', p_all:'ВСЁ ВРЕМЯ', loading:'ЗАГРУЖАЮ…', offline:'НЕТ СВЯЗИ С ТАБЛИЦЕЙ', empty:'ПОКА ПУСТО', you:'ТЫ',
@@ -2529,6 +2529,43 @@ HDSK.fairy={id:'fairy', hd:true, glow:false, ink:'#2d2350', veil:'rgba(238,242,2
   /* v1.27, the dragon «Б1» (the maintainer: «б1»): the little dragon in detail with golden sunset wings — wing bones, a claw at each
      tip, a shine on the membrane; scales on its body, a striped belly, a spine of gold plates, little claws; ringed horns, a pink ear
      frill, an eye with a lid and lashes, a puff of smoke from its nostril, a tooth, a blush; a trail of warm glows and twinkling stars */
+  /* v1.35, the barrel roll's other sides (the maintainer: «спина В, брюхо В»; «почему со спины и с брюха так сильно увеличивается длина дракона?» —
+     the tail sways aside and the body is a little shorter, so all three views are the same length). The dragon is drawn from the side, so it
+     rolls side → back → side upside down → belly. The back: both wings spread (they beat as in flight) with glowing veins and sparks, scales
+     and the spine's spikes from above, the horns swept back, the eyes on both sides; the belly: cream plates, four little feet, pink cheeks,
+     the wings' dark undersides with glowing veins. */
+  rollBase:'side',
+  rollWing:function(dir,col,fl){ var c=hx; c.save(); c.translate(5.6,dir*1.5); c.scale(1,dir*(0.55+0.45*Math.abs(fl)));
+    var path=function(){ c.beginPath(); c.moveTo(1,0); c.quadraticCurveTo(-1,-7,-4.5,-11); c.quadraticCurveTo(-4.4,-8.6,-5.6,-7.8); c.quadraticCurveTo(-4.8,-6.6,-6.4,-5.6); c.quadraticCurveTo(-4.4,-4.8,-4.8,-2.8); c.quadraticCurveTo(-2.4,-2.2,-1.4,0.4); c.closePath(); };
+    path(); c.fillStyle=fzLg(c,0,0,-4,-11,col); c.fill(); c.save(); path(); c.clip(); c.fillStyle='rgba(255,255,255,0.22)'; c.beginPath(); c.ellipse(-2.5,-6,1.3,2.8,0.3,0,6.2832); c.fill(); c.restore();
+    c.strokeStyle='#6a3a08'; c.lineWidth=0.6; c.lineJoin='round'; path(); c.stroke();
+    c.strokeStyle='rgba(255,240,170,0.95)'; c.lineWidth=0.5; c.lineCap='round'; c.beginPath(); c.moveTo(1,0); c.quadraticCurveTo(-1,-7,-4.5,-11); c.moveTo(0,-0.6); c.quadraticCurveTo(-3.2,-5,-5.6,-7.8); c.moveTo(-0.2,-0.2); c.quadraticCurveTo(-3.6,-3.4,-6.4,-5.6); c.moveTo(-0.4,0.1); c.lineTo(-4.8,-2.8); c.stroke();
+    if(!shipBare){ c.globalCompositeOperation='lighter'; c.globalAlpha=0.7; [[-4.5,-11],[-5.6,-7.8],[-6.4,-5.6]].forEach(function(q){ fzStar(c,q[0],q[1],1.2,'rgba(255,240,180,1)'); }); c.globalAlpha=1; c.globalCompositeOperation='source-over'; }
+    c.fillStyle='#fff3e0'; c.beginPath(); c.moveTo(-4.5,-11); c.lineTo(-5,-12.2); c.lineTo(-3.8,-11.2); c.fill(); c.restore(); },
+  rollTail:function(t,fill){ var c=hx, sw=Math.sin(t*4)*0.9, ty=2.6+sw;   /* the tail swaying aside: its tip at the side, so the dragon keeps its length */
+    c.fillStyle=fill; c.beginPath(); c.moveTo(1.2,-1.1); c.bezierCurveTo(-2.5,-1.0,-4,0.4,-6.4,ty-0.4); c.lineTo(-6.0,ty+0.6); c.bezierCurveTo(-3.5,1.6,-2,1.2,1.2,1.1); c.closePath(); c.fill(); c.strokeStyle='#0a3a24'; c.lineWidth=0.6; c.stroke();
+    c.fillStyle='#ff8a5a'; c.beginPath(); c.moveTo(-6.3,ty); c.lineTo(-8.6,ty-0.4); c.lineTo(-7.8,ty+0.8); c.lineTo(-8.0,ty+2.0); c.closePath(); c.fill(); c.strokeStyle='#8a2a10'; c.lineWidth=0.3; c.stroke(); },
+  shipView:function(v,x,y,t){ var c=hx, me=this, fl=Math.sin(FLY.wph||t*14), INK='#0a3a24'; c.save(); c.translate(x,y); c.lineJoin='round';
+    var back=v==='back', wc=back?['#b8600a','#ffb030','#fff0b0']:['#5a2a08','#8a5018','#b08040'];
+    me.rollWing(-1,wc,fl); me.rollWing(1,wc,fl);
+    var bg=back?fzLg(c,0,-3,0,3,['#4cc488','#b4ffd4','#4cc488','#188050']):fzLg(c,0,-3,0,3,['#188050','#4cc488','#188050']);
+    me.rollTail(t,back?bg:'#fff3b0');
+    if(back) [[3.8,-2.7],[8,-2.7],[3.8,2.7],[8,2.7]].forEach(function(l){ fzEll(c,l[0],l[1],0.9,0.7,'#1c7a50'); c.strokeStyle=INK; c.lineWidth=0.3; c.stroke(); });
+    else [[3.8,-3.1,-1],[8,-3.1,-1],[3.8,3.1,1],[8,3.1,1]].forEach(function(l){ c.fillStyle='#1c7a50'; c.beginPath(); c.roundRect(l[0]-0.7,l[1]-(l[2]<0?1.4:0),1.4,1.4,0.5); c.fill(); c.strokeStyle=INK; c.lineWidth=0.3; c.stroke();
+      c.fillStyle='#ffffff'; [0,0.5,1].forEach(function(d){ c.beginPath(); c.arc(l[0]-0.5+d,l[1]+(l[2]<0?-1.2:1.2),0.18,0,6.2832); c.fill(); }); });
+    c.beginPath(); c.ellipse(6.2,0,6.0,back?2.8:3.0,0,0,6.2832); c.fillStyle=bg; c.fill(); c.save(); c.clip();
+    if(back){ c.strokeStyle='rgba(10,70,40,0.35)'; c.lineWidth=0.3; c.beginPath(); for(var r=0;r<4;r++) for(var k=0;k<7;k++){ var sx=1.2+k*1.55+(r%2)*0.8, sy=-2.1+r*1.4; c.moveTo(sx+0.75,sy); c.arc(sx,sy,0.75,0,Math.PI); } c.stroke();
+      c.fillStyle='rgba(255,255,255,0.3)'; c.beginPath(); c.ellipse(5.2,-1.2,3.6,0.7,0,0,6.2832); c.fill(); }
+    else { c.fillStyle='#fff3b0'; c.beginPath(); c.ellipse(6.2,0,5.4,1.8,0,0,6.2832); c.fill(); c.strokeStyle='rgba(200,150,60,0.7)'; c.lineWidth=0.3; c.beginPath(); for(var b=1.6;b<11;b+=1.1){ c.moveTo(b,-1.7); c.quadraticCurveTo(b+0.4,0,b,1.7); } c.stroke(); }
+    c.restore(); c.beginPath(); c.ellipse(6.2,0,6.0,back?2.8:3.0,0,0,6.2832); c.strokeStyle=INK; c.lineWidth=0.7; c.stroke();
+    if(back) for(var s2=0.8;s2<11;s2+=1.5){ c.fillStyle=fzLg(c,s2,-0.8,s2+1.2,0.8,['#fff0a0','#ff9a2a']); c.beginPath(); c.moveTo(s2,0); c.lineTo(s2+0.65,-0.65); c.lineTo(s2+1.3,0); c.lineTo(s2+0.65,0.65); c.closePath(); c.fill(); c.strokeStyle='#a0500a'; c.lineWidth=0.2; c.stroke(); }
+    fzEll(c,11.6,0,2.0,1.9,bg); fzEll(c,14.4,0,3.4,back?2.6:2.5,bg); c.strokeStyle=INK; c.lineWidth=0.7; c.beginPath(); c.ellipse(14.4,0,3.4,back?2.6:2.5,0,0,6.2832); c.stroke();
+    if(back) [-1,1].forEach(function(s){ c.fillStyle=fzLg(c,11,s*2,9.5,s*4,['#fff0a0','#ff9a2a']); c.beginPath(); c.moveTo(12.9,s*1.5); c.quadraticCurveTo(10.6,s*2.5,9.5,s*4.0); c.quadraticCurveTo(11.6,s*2.9,13.7,s*2.1); c.closePath(); c.fill(); c.strokeStyle='#a0500a'; c.lineWidth=0.25; c.stroke();
+      fzEll(c,15.2,s*2.1,1.05,0.75,'#ffffff'); c.strokeStyle=INK; c.lineWidth=0.25; c.stroke(); fzDisc(c,15.5,s*2.2,0.48,'#1a1a2a'); fzDisc(c,15.7,s*2.0,0.2,'#ffffff'); });
+    else { fzEll(c,14.6,0,2.2,1.4,'#fff3b0'); c.strokeStyle='rgba(200,150,60,0.7)'; c.lineWidth=0.25; c.stroke(); fzEll(c,15.6,-1.9,0.95,0.48,'rgba(255,120,160,0.6)'); fzEll(c,15.6,1.9,0.95,0.48,'rgba(255,120,160,0.6)'); }
+    fzEll(c,17.6,0,1.5,back?1.3:1.25,fzLg(c,16,-1,19,1,['#ffc0a0','#ff8a5a'])); c.strokeStyle='#a03a1a'; c.lineWidth=0.3; c.stroke();
+    if(back){ fzDisc(c,18.4,-0.55,0.24,'#7a2a10'); fzDisc(c,18.4,0.55,0.24,'#7a2a10'); } else { c.fillStyle='#ffffff'; c.beginPath(); c.moveTo(18.4,-0.5); c.lineTo(19.1,0); c.lineTo(18.4,0.5); c.fill(); }
+    c.restore(); },
   wingB1:function(side,fl){ var c=hx; c.save(); c.translate(6,-1.5); c.scale(1,side*(0.35+0.65*Math.abs(fl)));
     var path=function(){ c.beginPath(); c.moveTo(0,0); c.quadraticCurveTo(-3,-6,-8,-8.5); c.quadraticCurveTo(-7.2,-6.6,-7.6,-5.6); c.quadraticCurveTo(-6.4,-5,-7,-3.5); c.quadraticCurveTo(-5.4,-3.4,-4.5,-1.2); c.quadraticCurveTo(-2.6,-1.4,-1.5,0.4); c.closePath(); };
     path(); c.fillStyle=fzLg(c,0,0,-6,-9,side>0?['#b8600a','#ffb030','#fff0b0']:['#7a4008','#c88a28','#e0c890']); c.fill();
@@ -2536,7 +2573,7 @@ HDSK.fairy={id:'fairy', hd:true, glow:false, ink:'#2d2350', veil:'rgba(238,242,2
     c.strokeStyle='#6a3a08'; c.lineWidth=0.65; c.lineJoin='round'; path(); c.stroke();
     c.strokeStyle='#a0600a'; c.lineWidth=0.45; c.lineCap='round'; c.beginPath(); c.moveTo(0,0); c.quadraticCurveTo(-3,-6,-8,-8.5); c.moveTo(-1.5,-1.2); c.quadraticCurveTo(-5,-3.5,-7.6,-5.6); c.moveTo(-1,-0.3); c.quadraticCurveTo(-4.5,-2,-7,-3.5); c.moveTo(-0.6,0.1); c.lineTo(-4.5,-1.2); c.stroke();
     c.fillStyle='#fff3e0'; c.beginPath(); c.moveTo(-8,-8.5); c.lineTo(-9.2,-9.1); c.lineTo(-8.4,-7.8); c.fill(); fzDisc(c,-1.8,-2.2,0.45,'#6a3a08'); c.restore(); },
-  ship:function(x,y,t,blink){ if(blink) return; var c=hx, fl=Math.sin(t*14), i, k, s2, me=this;
+  ship:function(x,y,t,blink){ if(blink) return; var c=hx, fl=Math.sin(FLY.wph||t*14), i, k, s2, me=this;
     if(!shipBare) for(i=0;i<8;i++){ var a=1-i/8, ty=y+3+Math.sin(t*10+i)*1.2; hGlow(x-3-i*2.2,ty,1.3*a+0.5,'255,'+(215-i*8)+',140',0.6*a); if(i%2===0) fzStar(c,x-3-i*2.2,ty-1,(1.3*a+0.3)*(0.6+0.4*Math.sin(t*20+i)),'rgba(255,250,210,0.95)'); }
     c.save(); c.translate(x,y); c.lineJoin='round'; me.wingB1(-1,fl);
     var bg=fzLg(c,0,-5,0,5,['#b4ffd4','#4cc488','#188050','#073a24']), INKD='#0a3a24';
@@ -3293,26 +3330,30 @@ SKINS.note={id:'note', glow:false, nolight:true, motes:['#9a9aa4'],
    leaves two swirling trails from its wing tips and its flame grows with a fast move. Nothing here changes the game: in flight the tilt
    is the core's own (g.ship.tl, the slope the shots may follow, src/13_core.js), elsewhere (the try-out, the demo) the same formula on
    the ship's screen position. Every skin has its own look of the trail and flame (FLY_LOOK); LCD keeps its cells (no turning). ── */
-var FLY={tl:0,sv:0,k:0,y:null,roll:-1,cool:0,fastS:0,fastT:-9,tr:[],emit:0,last:-1,id:''};
+var FLY={wph:0,tl:0,sv:0,k:0,y:null,roll:-1,cool:0,fastS:0,fastT:-9,tr:[],emit:0,last:-1,id:''};
 var FLY_LOOK={
   space:{piv:11,tip:[-2,6.5],trail:'vapor',c:'150,215,255',life:0.9,w:1.0,fl:['220,245,255','90,180,255'],flx:-1},
-  fairy:{piv:11,tip:[-1,7],trail:'dust',c:'255,226,150',life:1.0,w:0.9,fl:['255,240,190','255,150,60'],flx:-3},
+  fairy:{piv:5,tip:[-2,4.5],trail:'dust',c:'255,226,150',life:1.0,w:0.9},   /* the dragon has no engine: its wings beat faster on a fast move (FLY.wph) */
   vector:{piv:10,tip:[-2,6],trail:'line',c:'150,255,170',life:0.35,w:0.8,fl:['230,255,235','90,255,140'],flx:-1,flLine:true},
   neon:{piv:10,tip:[-2,6],trail:'neon',c:'255,90,210',c2:'90,220,255',life:0.7,w:1.0,fl:['255,230,250','255,70,200'],flx:0},
   note:{piv:10,tip:[-2,6],trail:'pencil',c:'60,66,110',life:0.9,w:0.8,fl:['255,210,80','240,110,40'],flx:-3,flPen:true},
   lcd:{piv:10,tip:[-3,6],trail:'dots',c:'30,50,20',life:0.6,w:1.0,still:true}
 };
-var FLY_ON=true;   // the switch for tests that measure the ship (tests/skin_sizes.js keeps it as is: shipBare draws no trail)
+var FLY_ON=true;
+/* v1.35a: the maintainer's test switches (a long press on the version in SonaFly's menu): how strong the tilt looks, how often the roll comes.
+   His games of 4 Oct: his palm keeps the ship moving — tilted over 5° 80% of the time (median 12°; the bots 4–7°), a roll every ~3 s */
+function flyTiltK(){ var v=+store.get('sonaroids_fly_tilt','1'); return v===0.05||v===0.15||v===0.3||v===0.6?v:1; }
+function flyRollCool(){ return 2.5; }   /* the maintainer: «бочка норм, не часто она» */   // the switch for tests that measure the ship (tests/skin_sizes.js keeps it as is: shipBare draws no trail)
 /* the tilt and the roll's trigger; tl — the core's slope when there is one (flight), else estimated the core's way from the screen */
 function flyStep(sy,dt,tl){ var f=FLY, T=Core.TILT, yf=sy/K;
   if(f.y===null||dt<=0||dt>0.2){ f.y=yf; f.sv=0; }
   var sv=(yf-f.y)/Math.max(dt,1e-3); f.y=yf; f.sv+=(sv-f.sv)*(1-Math.exp(-dt/0.12));
   if(tl===undefined||tl===null){ var vv=f.sv>T.dead?f.sv-T.dead:f.sv<-T.dead?f.sv+T.dead:0, tt=Math.max(-T.max,Math.min(T.max,vv*T.gain)); f.tl+=(tt-f.tl)*(1-Math.exp(-dt/0.08)); }
   else f.tl=tl;
-  f.k=Math.min(1,Math.abs(f.sv)/(Core.FH*0.9));                                   // how hard the ship moves, 0…1 — the flame and the trail
+  f.k=Math.min(1,Math.abs(f.sv)/(Core.FH*0.9)); f.wph+=dt*14*(1+1.3*f.k);   // the wings' phase: a beat that quickens with the move                                   // how hard the ship moves, 0…1 — the flame and the trail
   /* the roll: on a turn after a fast move (down then up, or up then down), not more often than every 2.5 s, over a second */
   var sg=f.sv>0?1:-1; if(Math.abs(f.sv)>Core.FH*0.55){ f.fastS=sg; f.fastT=clock; }
-  f.cool-=dt; if(f.roll<0&&f.cool<=0&&clock-f.fastT<0.45&&sg!==f.fastS&&Math.abs(f.sv)>Core.FH*0.2){ f.roll=0; f.cool=2.5; f.fastT=-9; }
+  f.cool-=dt; if(f.roll<0&&f.cool<=0&&clock-f.fastT<0.45&&sg!==f.fastS&&Math.abs(f.sv)>Core.FH*0.2){ f.roll=0; f.cool=flyRollCool(); f.fastT=-9; }
   if(f.roll>=0){ f.roll+=dt/1.0; if(f.roll>=1) f.roll=-1; } }
 function flyReset(){ FLY.y=null; FLY.tl=0; FLY.sv=0; FLY.roll=-1; FLY.tr=[]; FLY.cool=1; }
 /* the roll's phase eased: 0…1 → the angle round the ship's own axis, 0…2π */
@@ -3356,13 +3397,17 @@ function flyFlame(C,L,sx,sy,t){ var k=FLY.k; if(!L.fl||k<0.04) return; var x0=sx
   C.fillStyle=g; C.beginPath(); C.moveTo(x0+1,sy-w); C.quadraticCurveTo(x0-len,sy,x0+1,sy+w); C.fill(); C.restore(); }
 function flyShip(sx,sy,t,blink,dt,tl){ var L=FLY_LOOK[skinId]||FLY_LOOK.space;
   if(!FLY_ON||shipBare){ SK.ship(sx,sy,t,blink); return; }
-  flyStep(sy,dt,tl); var f=FLY, ang=Math.atan(f.tl), ra=flyRollA(), bank=1-0.22*Math.abs(f.tl)/Core.TILT.max, sy2=bank*Math.cos(ra), cx=sx+L.piv;
+  flyStep(sy,dt,tl); var f=FLY, tk=flyTiltK(), ang=Math.atan(f.tl*tk), ra=flyRollA(), bank=1-0.22*Math.abs(f.tl*tk)/Core.TILT.max, sy2=bank*Math.cos(ra), cx=sx+L.piv;
   if(L.still){ ang=0; sy2=1; }
   flyTrail(L,cx,sy,ang,sy2,dt);
   if(blink) return;
-  if(SK.hd&&SK.shipView&&f.roll>=0){ var C=hx, rc=Math.cos(ra), rs=Math.sin(ra), side=Math.abs(rs)>Math.abs(rc), k=side?Math.abs(rs):Math.abs(rc);   /* v1.35: the roll through the skin's own views — top → side → belly → side upside down */
-    C.save(); C.translate(cx,sy); C.rotate(ang); C.scale(1,bank*k*(side&&rs<0?-1:1)); C.translate(-cx,-sy); flyFlame(C,L,sx,sy,t);
-    if(side) SK.shipView('side',sx,sy,t); else if(rc<0) SK.shipView('belly',sx,sy,t); else SK.ship(sx,sy,t,false); C.restore(); return; }
+  if(SK.hd&&SK.shipView&&f.roll>=0){ var C=hx, rc=Math.cos(ra), rs=Math.sin(ra), q=Math.abs(rs)>Math.abs(rc), k=q?Math.abs(rs):Math.abs(rc), sb=SK.rollBase==='side';
+    /* v1.35: the roll through the skin's own views. A ship drawn from above (space, vector, neon): top → side → belly → side upside down;
+       one drawn from the side (the dragon): side → back → side upside down → belly */
+    C.save(); C.translate(cx,sy); C.rotate(ang); C.scale(1,bank*k*(sb?(!q&&rc<0?-1:1):(q&&rs<0?-1:1))); C.translate(-cx,-sy); flyFlame(C,L,sx,sy,t);
+    if(sb){ if(!q) SK.ship(sx,sy,t,false); else SK.shipView(rs>0?'back':'belly',sx,sy,t); }
+    else { if(q) SK.shipView('side',sx,sy,t); else if(rc<0) SK.shipView('belly',sx,sy,t); else SK.ship(sx,sy,t,false); }
+    C.restore(); return; }
   if(SK.hd){ var C=hx; C.save(); C.translate(cx,sy); C.rotate(ang); C.scale(1,Math.abs(sy2)<0.06?(sy2<0?-0.06:0.06):sy2); C.translate(-cx,-sy); flyFlame(C,L,sx,sy,t); SK.ship(sx,sy,t,false); C.restore();
     if(f.roll>=0){ var e=Math.abs(Math.cos(ra)); if(e<0.35){ var g=1-e/0.35; C.save(); C.globalCompositeOperation='lighter'; C.translate(cx,sy); C.rotate(ang);   // edge-on: a glint runs along the hull
         var gr=C.createLinearGradient(-14,0,14,0); gr.addColorStop(0,'rgba('+L.c+',0)'); gr.addColorStop(0.5,'rgba(255,255,255,'+(0.9*g).toFixed(3)+')'); gr.addColorStop(1,'rgba('+L.c+',0)');
@@ -4965,7 +5010,8 @@ function makeSkinRock(sk,sz,rc,seed){ return rockCentre(sk.rock(rockR(sk,sz,rc),
 (function(){ var SHIPK={fairy:0.72,vector:1.15,note:1.14};   // v1.27: the detailed fairy dragon a little smaller (its tail and tips reach further)
     // v0.83: by the hull, without the flame: vector 17 → 20, notebook 15 → 20 (0.79 measured the flame with them)
   Object.keys(SHIPK).forEach(function(id){ var sk=HDSK[id]; if(!sk||sk._shipK) return; var k=SHIPK[id], draw=sk.ship; sk._shipK=k;
-    sk.ship=function(x,y,t,blink){ if(blink) return; hx.save(); hx.translate(x,y); hx.scale(k,k); hx.translate(-x,-y); try{ draw.call(this,x,y,t,blink); } finally { hx.restore(); } }; }); })();
+    sk.ship=function(x,y,t,blink){ if(blink) return; hx.save(); hx.translate(x,y); hx.scale(k,k); hx.translate(-x,-y); try{ draw.call(this,x,y,t,blink); } finally { hx.restore(); } };
+    if(sk.shipView){ var dv=sk.shipView; sk.shipView=function(v,x,y,t){ hx.save(); hx.translate(x,y); hx.scale(k,k); hx.translate(-x,-y); try{ dv.call(this,v,x,y,t); } finally { hx.restore(); } }; } }); })();   // v1.35: the roll's views at the same size
 /* v0.81: power-ups the size of what the game counts (the maintainer: «в рамках их зон и одинаковыми размерами в скинах/графиках»): the core
    takes one when the ship's point is within 9 of it on each axis — less the ship's own 3 that is 12 core units, PICK_W = 13 game pixels on a
    usual phone. The HD pictures are measured once (the body, alpha ≥ 128) and scaled to it; the pixel ones are drawn 13 pixels. */
@@ -5069,7 +5115,9 @@ function diagCorner(label,top,ty,flip,ax){ var vr=ty?(freeSide()!=='left')!==!!f
   if(top&&diag&&Logs.has()&&scr!=='scores'){ var ls=L('logs'), lw=PF.width(ls), ly=vy+PF.CAP+12, lx0=vr?vx-lw:vx;
     text(ls,lx0,ly,P.band,'left'); R(P.band,lx0,ly+PF.CAP+2,lw,1); BTN.push({id:'logs',x:lx0-8,y:ly-6,w:lw+16,h:PF.CAP+12}); }
   if(top&&diag&&scr==='title'&&mode!=='race'){ var ts=L('tilt_'+shotTiltKey()), tw=PF.width(ts), ty2=vy+(Logs.has()?2:1)*(PF.CAP+12), tx0=vr?vx-tw:vx;   /* v1.35: the test of the shots' tilt */
-    text(ts,tx0,ty2,P.band,'left'); R(P.band,tx0,ty2+PF.CAP+2,tw,1); BTN.push({id:'shot_tilt',x:tx0-8,y:ty2-6,w:tw+16,h:PF.CAP+12}); }
+    text(ts,tx0,ty2,P.band,'left'); R(P.band,tx0,ty2+PF.CAP+2,tw,1); BTN.push({id:'shot_tilt',x:tx0-8,y:ty2-6,w:tw+16,h:PF.CAP+12});
+    [['fly_tilt',L('ftilt').replace('{n}',Math.round(flyTiltK()*100))]].forEach(function(q,i){ var s3=q[1], w3=PF.width(s3), y3=ty2+(i+1)*(PF.CAP+12), x3=vr?vx-w3:vx;   /* v1.35a */
+      text(s3,x3,y3,P.band,'left'); R(P.band,x3,y3+PF.CAP+2,w3,1); BTN.push({id:q[0],x:x3-8,y:y3-6,w:w3+16,h:PF.CAP+12}); }); }
   // v0.58: at the bottom (the title screen) — a row of service links on the line above the version, the same on every phone:
   // «logs» (when there are any), «sound» (the Android app), «lab» (always — the lab opens in the same tab / app)
   if(!top&&diag){ var its=[]; if(Logs.has()) its.push(['logs',L('logs')]); its.push(['lab',L('aud_lab')]);   // v1.18: no «sound» here — it is the settings' «advanced probe settings» now (the maintainer: «оно теперь в настройках есть же»)
@@ -5216,8 +5264,8 @@ function gfxFree(){ return !setGfx3(); }
 function gfxLockApply(){ var v=setGfx3(); if((v==='hd'||v==='pixel')&&gfxMode!==v){ setGfx(v); pool={K:0,list:[[],[],[]]}; } }
 /* v1.35: the test of the shots following the ship's tilt (src/13_core.js, SHOT_TILT): straight (the game's rules) / half the tilt / the tilt —
    a hidden switch under the version on SonaFly's menu; a game by the test rules is not sent to the tables */
-function shotTilt(){ var v=+store.get('sonaroids_shot_tilt','0'); return v===0.5||v===1?v:0; }
-function shotTiltKey(){ var v=shotTilt(); return v===1?'full':v===0.5?'half':'off'; }
+function shotTilt(){ var v=+store.get('sonaroids_shot_tilt','0'); return v===0.25||v===0.5||v===1?v:0; }
+function shotTiltKey(){ var v=shotTilt(); return v===1?'full':v===0.5?'half':v===0.25?'quarter':'off'; }
 var SET_ROWS=[
   ['set_gfx',function(){ var v=setGfx3(); return v==='hd'?'set_gfx_hd':v==='pixel'?'set_gfx_px':'set_gfx_menu'; },function(dir){ var o=['','hd','pixel'], i=(o.indexOf(setGfx3())+dir+3)%3; store.set('sonaroids_gfx_lock',o[i]); gfxLockApply(); }],
   ['set_band',function(){ var v=setBand3(); return v==='wide'?'set_band_w':v==='normal'?'set_band_n':'set_band_ask'; },function(dir){ var o=['','wide','normal'], i=(o.indexOf(setBand3())+dir+3)%3; store.set('sonaroids_band_lock',o[i]); }],
@@ -5847,7 +5895,8 @@ var ACT={
   link_done:function(){ period='all'; go('scores'); },
   nick_later:function(){ nickField(false); nickMsg=''; go(nickFrom==='over'?'over':'scores'); },
   logs:function(){ Logs.share(); },
-  shot_tilt:function(){ var o=['0','0.5','1'], i=(o.indexOf(store.get('sonaroids_shot_tilt','0'))+1)%3; store.set('sonaroids_shot_tilt',o[i]); },
+  fly_tilt:function(){ var o=['1','0.6','0.3','0.15','0.05'], i=(o.indexOf(String(flyTiltK()))+1)%5; store.set('sonaroids_fly_tilt',o[i]); },
+  shot_tilt:function(){ var o=['0','0.25','0.5','1'], i=(o.indexOf(store.get('sonaroids_shot_tilt','0'))+1)%4; store.set('sonaroids_shot_tilt',o[i]); },
   audio:function(){ audDev=null; audFrom=null; go('audio'); },
   lab:function(){ location.href='../lab/sonar_lab3.html'; },
   ver:function(){ if(scr==='scores'){ scPeople=!scPeople; return; } diag=!diag; },   /* v1.34: on the scores screen the version's long press is «people only» */

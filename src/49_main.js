@@ -58,7 +58,9 @@ function diagCorner(label,top,ty,flip,ax){ var vr=ty?(freeSide()!=='left')!==!!f
   if(top&&diag&&Logs.has()&&scr!=='scores'){ var ls=L('logs'), lw=PF.width(ls), ly=vy+PF.CAP+12, lx0=vr?vx-lw:vx;
     text(ls,lx0,ly,P.band,'left'); R(P.band,lx0,ly+PF.CAP+2,lw,1); BTN.push({id:'logs',x:lx0-8,y:ly-6,w:lw+16,h:PF.CAP+12}); }
   if(top&&diag&&scr==='title'&&mode!=='race'){ var ts=L('tilt_'+shotTiltKey()), tw=PF.width(ts), ty2=vy+(Logs.has()?2:1)*(PF.CAP+12), tx0=vr?vx-tw:vx;   /* v1.35: the test of the shots' tilt */
-    text(ts,tx0,ty2,P.band,'left'); R(P.band,tx0,ty2+PF.CAP+2,tw,1); BTN.push({id:'shot_tilt',x:tx0-8,y:ty2-6,w:tw+16,h:PF.CAP+12}); }
+    text(ts,tx0,ty2,P.band,'left'); R(P.band,tx0,ty2+PF.CAP+2,tw,1); BTN.push({id:'shot_tilt',x:tx0-8,y:ty2-6,w:tw+16,h:PF.CAP+12});
+    [['fly_tilt',L('ftilt').replace('{n}',Math.round(flyTiltK()*100))]].forEach(function(q,i){ var s3=q[1], w3=PF.width(s3), y3=ty2+(i+1)*(PF.CAP+12), x3=vr?vx-w3:vx;   /* v1.35a */
+      text(s3,x3,y3,P.band,'left'); R(P.band,x3,y3+PF.CAP+2,w3,1); BTN.push({id:q[0],x:x3-8,y:y3-6,w:w3+16,h:PF.CAP+12}); }); }
   // v0.58: at the bottom (the title screen) — a row of service links on the line above the version, the same on every phone:
   // «logs» (when there are any), «sound» (the Android app), «lab» (always — the lab opens in the same tab / app)
   if(!top&&diag){ var its=[]; if(Logs.has()) its.push(['logs',L('logs')]); its.push(['lab',L('aud_lab')]);   // v1.18: no «sound» here — it is the settings' «advanced probe settings» now (the maintainer: «оно теперь в настройках есть же»)
@@ -205,8 +207,8 @@ function gfxFree(){ return !setGfx3(); }
 function gfxLockApply(){ var v=setGfx3(); if((v==='hd'||v==='pixel')&&gfxMode!==v){ setGfx(v); pool={K:0,list:[[],[],[]]}; } }
 /* v1.35: the test of the shots following the ship's tilt (src/13_core.js, SHOT_TILT): straight (the game's rules) / half the tilt / the tilt —
    a hidden switch under the version on SonaFly's menu; a game by the test rules is not sent to the tables */
-function shotTilt(){ var v=+store.get('sonaroids_shot_tilt','0'); return v===0.5||v===1?v:0; }
-function shotTiltKey(){ var v=shotTilt(); return v===1?'full':v===0.5?'half':'off'; }
+function shotTilt(){ var v=+store.get('sonaroids_shot_tilt','0'); return v===0.25||v===0.5||v===1?v:0; }
+function shotTiltKey(){ var v=shotTilt(); return v===1?'full':v===0.5?'half':v===0.25?'quarter':'off'; }
 var SET_ROWS=[
   ['set_gfx',function(){ var v=setGfx3(); return v==='hd'?'set_gfx_hd':v==='pixel'?'set_gfx_px':'set_gfx_menu'; },function(dir){ var o=['','hd','pixel'], i=(o.indexOf(setGfx3())+dir+3)%3; store.set('sonaroids_gfx_lock',o[i]); gfxLockApply(); }],
   ['set_band',function(){ var v=setBand3(); return v==='wide'?'set_band_w':v==='normal'?'set_band_n':'set_band_ask'; },function(dir){ var o=['','wide','normal'], i=(o.indexOf(setBand3())+dir+3)%3; store.set('sonaroids_band_lock',o[i]); }],
@@ -836,7 +838,8 @@ var ACT={
   link_done:function(){ period='all'; go('scores'); },
   nick_later:function(){ nickField(false); nickMsg=''; go(nickFrom==='over'?'over':'scores'); },
   logs:function(){ Logs.share(); },
-  shot_tilt:function(){ var o=['0','0.5','1'], i=(o.indexOf(store.get('sonaroids_shot_tilt','0'))+1)%3; store.set('sonaroids_shot_tilt',o[i]); },
+  fly_tilt:function(){ var o=['1','0.6','0.3','0.15','0.05'], i=(o.indexOf(String(flyTiltK()))+1)%5; store.set('sonaroids_fly_tilt',o[i]); },
+  shot_tilt:function(){ var o=['0','0.25','0.5','1'], i=(o.indexOf(store.get('sonaroids_shot_tilt','0'))+1)%4; store.set('sonaroids_shot_tilt',o[i]); },
   audio:function(){ audDev=null; audFrom=null; go('audio'); },
   lab:function(){ location.href='../lab/sonar_lab3.html'; },
   ver:function(){ if(scr==='scores'){ scPeople=!scPeople; return; } diag=!diag; },   /* v1.34: on the scores screen the version's long press is «people only» */

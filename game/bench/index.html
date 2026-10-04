@@ -20,7 +20,7 @@ canvas.v{position:fixed;left:0;top:0;width:100vw;height:100vh;display:none}
 #ui button.on{background:rgba(70,190,160,.85);color:#06110e;border-color:transparent}
 #ui button:disabled{opacity:.45}
 #ui .sep{width:4px}
-#ui button[data-scene]:not([data-scene="W10"]):not([data-scene="W11"]):not([data-scene="W12"]):not([data-scene="W13"]):not([data-scene="W14"]):not([data-scene="W15"]):not([data-scene="W16"]):not([data-scene="W17"]),#ui .sep.sc{display:none}   /* v1.41g: only the two «К2» on the panel for the comparison; the other scenes are there, hidden */
+#ui button[data-scene]:not([data-scene="W10"]):not([data-scene="W11"]):not([data-scene="W12"]):not([data-scene="W13"]):not([data-scene="W14"]):not([data-scene="W15"]):not([data-scene="W16"]):not([data-scene="W17"]):not([data-scene="W18"]):not([data-scene="W19"]):not([data-scene="W20"]),#ui .sep.sc{display:none}   /* v1.41g: only the two «К2» on the panel for the comparison; the other scenes are there, hidden */
 #hud{position:fixed;left:calc(env(safe-area-inset-left) + 6px);bottom:calc(env(safe-area-inset-bottom) + 6px);max-width:62vw;
   background:rgba(8,9,16,.62);border-radius:8px;padding:6px 9px;font-variant-numeric:tabular-nums;white-space:pre-wrap;pointer-events:none}
 #hud b{color:#7fe3c6}
@@ -38,7 +38,7 @@ body.clean #ui,body.clean #hud,body.clean #graph{display:none}
 <canvas id="gpu" class="v"></canvas>
 <div id="ui">
   <button data-scene="A">А туманность</button><button data-scene="B">Б чёрная дыра</button><button data-scene="C">В кристаллы</button><button data-scene="E">Е частицы</button><button data-scene="G">игра: дыра</button><button data-scene="H">игра: дыра выше</button>
-  <span class="sep sc"></span><button data-scene="W1">А облака</button><button data-scene="W2">Б туман</button><button data-scene="W3">В сияние</button><button data-scene="W4">Г вода</button><button data-scene="W5">Д дождь</button><button data-scene="W6">Е планктон</button><button data-scene="W7">Ж чернила</button><button data-scene="W8">З гигант</button><button data-scene="W9">И закат</button><button data-scene="W10">холодный · лёгкий</button><button data-scene="W13">холодный · первый, тяжёлый</button><button data-scene="W14">холодный · первый, 2 прохода</button><button data-scene="W16">холодный · первый, быстрый</button><button data-scene="W11">тёплый · лёгкий</button><button data-scene="W12">тёплый · первый, тяжёлый</button><button data-scene="W15">тёплый · первый, 2 прохода</button><button data-scene="W17">тёплый · первый, быстрый</button>
+  <span class="sep sc"></span><button data-scene="W1">А облака</button><button data-scene="W2">Б туман</button><button data-scene="W3">В сияние</button><button data-scene="W4">Г вода</button><button data-scene="W5">Д дождь</button><button data-scene="W6">Е планктон</button><button data-scene="W7">Ж чернила</button><button data-scene="W8">З гигант</button><button data-scene="W9">И закат</button><button data-scene="W10">холодный · лёгкий</button><button data-scene="W13">холодный · первый, тяжёлый</button><button data-scene="W14">холодный · первый, 2 прохода</button><button data-scene="W16">холодный · первый, быстрый</button><button data-scene="W18">холодный · первый, ровный</button><button data-scene="W11">тёплый · лёгкий</button><button data-scene="W12">тёплый · первый, тяжёлый</button><button data-scene="W15">тёплый · первый, 2 прохода</button><button data-scene="W17">тёплый · первый, быстрый</button><button data-scene="W19">тёплый · первый, ровный</button><button data-scene="W20">холодный ↔ тёплый</button>
   <span class="sep"></span>
   <label id="inkl" style="pointer-events:auto;display:flex;align-items:center;gap:6px;font-weight:600;background:rgba(20,22,34,.72);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:4px 9px;min-height:30px;box-sizing:border-box"><span id="inkv">чернила</span><input id="ink" type="range" min="0" max="100" step="1" style="width:120px"></label><button id="bq">качество</button><button id="bhalf">дыра</button><button id="bsty">вид</button><button id="bs">разрешение</button>
   <span class="sep"></span>
@@ -51,11 +51,11 @@ body.clean #ui,body.clean #hud,body.clean #graph{display:none}
 'use strict';
 var $=function(s){ return document.querySelector(s); };
 var DPR=window.devicePixelRatio||1;
-var NAMES={A:'А туманность',B:'Б чёрная дыра',C:'В кристаллы',E:'Е частицы',G:'игра: дыра',H:'игра: дыра выше',W1:'фон А облака ночью',W2:'фон Б туман и лучи',W3:'фон В сияние',W4:'фон Г под водой',W5:'фон Д дождь, город',W6:'фон Е планктон',W7:'фон Ж чернила',W8:'фон З газовый гигант',W9:'фон И закат',W10:'холодный · лёгкий (сейчас)',W11:'тёплый · лёгкий (сейчас)',W12:'тёплый · первый, тяжёлый',W13:'холодный · первый, тяжёлый',W14:'холодный · первый в 2 прохода',W15:'тёплый · первый в 2 прохода',W16:'холодный · первый, быстрый (через кадр)',W17:'тёплый · первый, быстрый (через кадр)'}, QN=['низкое','среднее','высокое'];
+var NAMES={A:'А туманность',B:'Б чёрная дыра',C:'В кристаллы',E:'Е частицы',G:'игра: дыра',H:'игра: дыра выше',W1:'фон А облака ночью',W2:'фон Б туман и лучи',W3:'фон В сияние',W4:'фон Г под водой',W5:'фон Д дождь, город',W6:'фон Е планктон',W7:'фон Ж чернила',W8:'фон З газовый гигант',W9:'фон И закат',W10:'холодный · лёгкий (сейчас)',W11:'тёплый · лёгкий (сейчас)',W12:'тёплый · первый, тяжёлый',W13:'холодный · первый, тяжёлый',W14:'холодный · первый в 2 прохода',W15:'тёплый · первый в 2 прохода',W16:'холодный · первый, быстрый (через кадр)',W17:'тёплый · первый, быстрый (через кадр)',W18:'холодный · первый, ровный',W19:'тёплый · первый, ровный',W20:'холодный ↔ тёплый, переход (ровный)'}, QN=['низкое','среднее','высокое'];
 function isGame(id){ return id==='G'||id==='H'||String(id).charAt(0)==='W'; }
 var S={scene:'A',q:1,scale:Math.min(2,DPR),hz:60,calib:true,run:null,t0:performance.now()};
 var store={get:function(k,d){ try{ var v=localStorage.getItem(k); return v===null?d:v; }catch(e){ return d; } },set:function(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }};
-S.scene=store.get('bench_scene','W11'); if(['W10','W11','W12','W13','W14','W15','W16','W17'].indexOf(S.scene)<0) S.scene='W17'; S.q=+store.get('bench_q','1')||0; if(!(S.q>=0&&S.q<=2)) S.q=1;
+S.scene=store.get('bench_scene','W11'); if(['W10','W11','W12','W13','W14','W15','W16','W17','W18','W19','W20'].indexOf(S.scene)<0) S.scene='W19'; S.q=+store.get('bench_q','1')||0; if(!(S.q>=0&&S.q<=2)) S.q=1;
 function scales(){ var a=[1,1.5,2,2.5,3].filter(function(s){ return s<=DPR+0.01; }); if(!a.length) a=[1]; return a; }
 
 /* ── device line ── */
@@ -416,7 +416,7 @@ var GSTY=[{n:'как было',dim:1,sat:1,rim:0,halo:0,blur:0,deb:0,amt:0.75,sp
 GS.style=+store.get('bench_style','2')||0; if(!(GS.style>=0&&GS.style<5)) GS.style=2; GS.calm=0.5;
 /* ── v1.41b: nine backgrounds for SonaFly's heavy skin, each a game scene (the same fight as «игра: дыра»): beautiful but quiet —
    a narrow band of brightness, big soft forms where the fight is, no centre, slow even motion, and every one answers the explosions ── */
-var WN={W1:'А облака ночью',W2:'Б туман и лучи',W3:'В сияние',W4:'Г под водой',W5:'Д дождь, город',W6:'Е планктон',W7:'Ж чернила',W8:'З газовый гигант',W9:'И закат',W10:'К чернила в тумане, холодный',W11:'К2 чернила в тумане, тёплый',W12:'К2 самый первый (тяжёлый)',W13:'К самый первый (тяжёлый)',W14:'К первый в 2 прохода',W15:'К2 первый в 2 прохода',W16:'К первый, быстрый',W17:'К2 первый, быстрый'};
+var WN={W1:'А облака ночью',W2:'Б туман и лучи',W3:'В сияние',W4:'Г под водой',W5:'Д дождь, город',W6:'Е планктон',W7:'Ж чернила',W8:'З газовый гигант',W9:'И закат',W10:'К чернила в тумане, холодный',W11:'К2 чернила в тумане, тёплый',W12:'К2 самый первый (тяжёлый)',W13:'К самый первый (тяжёлый)',W14:'К первый в 2 прохода',W15:'К2 первый в 2 прохода',W16:'К первый, быстрый',W17:'К2 первый, быстрый',W18:'К первый, ровный',W19:'К2 первый, ровный',W20:'К переход'};
 /* where each scene's light comes from (for the objects' shading) and its colour */
 var WL={W1:{l:[0.9,0.9],c:[0.62,0.72,1.0]},W2:{l:[-0.7,0.9],c:[1.0,0.85,0.6]},W3:{l:[0.0,0.6],c:[0.45,1.0,0.7]},W4:{l:[0.1,1.2],c:[0.5,0.9,1.0]},W5:{l:[0.3,-0.6],c:[1.0,0.55,0.75]},
   W6:{l:[-0.6,-0.2],c:[0.3,0.9,1.0]},W7:{l:[0.5,0.5],c:[0.9,0.6,1.0]},W8:{l:[-0.9,0.8],c:[1.0,0.85,0.65]},W9:{l:[0.6,0.2],c:[1.0,0.6,0.35]},W10:{l:[-0.9,0.7],c:[1.0,0.78,0.5]},W11:{l:[0.9,0.7],c:[0.6,0.8,1.0]},W12:{l:[0.9,0.7],c:[0.6,0.8,1.0]},W13:{l:[-0.9,0.7],c:[1.0,0.78,0.5]},W14:{l:[-0.9,0.7],c:[1.0,0.78,0.5]},W15:{l:[0.9,0.7],c:[0.6,0.8,1.0]},W16:{l:[-0.9,0.7],c:[1.0,0.78,0.5]},W17:{l:[0.9,0.7],c:[0.6,0.8,1.0]}};
@@ -615,7 +615,7 @@ WB.W10=inkFogBody(0); WB.W11=inkFogBody(1); WB.W12=inkFogBodyFirst(1); WB.W13=in
    them, else 8 bits with a square-root curve (the darks keep their steps) */
 var TWO={W14:0,W15:1}, TWO_EXT=1.24;
 /* v1.41k (the maintainer: «и чернил можно побольше.. может ползунок для кол-ва»): how much ink — its density shifted, 0…100% (50 — as drawn before) */
-var INK_AMT=(function(){ var u=new URLSearchParams(location.search).get('ink'); if(u!==null) return +u; var v=+store.get('bench_ink','0.6'); return v>=0&&v<=1?v:0.6; })();
+var INK_AMT=(function(){ var u=new URLSearchParams(location.search).get('ink'); if(u!==null) return +u; var v=+store.get('bench_ink','1'); return v>=0&&v<=1?v:1; })();
 function twoA(pal){ var b=inkFogBodyFirst(pal); var head=b.slice(0,b.indexOf('void main(){'));   /* its own ink functions, its main replaced */
   return COMMON.replace('out vec4 fragColor;','layout(location=0) out vec4 fragColor; layout(location=1) out vec4 frag1;')+'\n'+WCOM+'\n'+head+'\n'+[
 'uniform float uEnc;',
@@ -701,6 +701,65 @@ function fastPass(id,bw,bh,t){ var p=gProg('w'+id+'n',VS,FS_FAST_N[id]), w=bw, h
     gl.uniform4fv(gl.getUniformLocation(p,'uFx'),fw); gl.uniform1i(gl.getUniformLocation(p,'uNf'),fl2.length); gl.uniform2f(gl.getUniformLocation(p,'uShip'),GS.ship.x,GS.ship.y);
     gl.drawArrays(gl.TRIANGLES,0,3); gl.drawBuffers([gl.COLOR_ATTACHMENT0]); };
   if(F.n===0||STILL){ run(0); run(1); } else if(F.n%2) run(1); else run(0); F.n++; }
+
+/* v1.41m: the first «К», even — the same ink as «первый», but each frame computes the near ink for half the screen (top and bottom
+   in turn) and the far ink (half size) for all of it, so every frame does the same work: no frame heavier than the next, no drops
+   «every other frame». And one palette that flows: uMix 0 cold … 1 warm, the light off screen moving across with it
+   (the maintainer: «по холодный/тёплый — наверное будет плавно перетекать из одного в другой — оба красивые») */
+var EVEN={W18:0,W19:1,W20:-1}, EVEN_T=60;   /* W20: the flowing palette, a full turn in EVEN_T seconds */
+function evenMix(id,t){ var m=EVEN[id]; return m>=0?m:0.5-0.5*Math.cos(t/EVEN_T*6.2832); }
+var EV_FUN=[
+'uniform float uMix;',
+'vec3 inkColM(vec2 q,vec2 r,float f){ vec3 a0=vec3(0.012,0.008,0.035), b0=vec3(0.16,0.05,0.30), c0=vec3(0.02,0.20,0.26), d0=vec3(0.50,0.30,0.10);',
+'  vec3 a1=vec3(0.012,0.004,0.004), b1=vec3(0.36,0.04,0.05), c1=vec3(0.45,0.22,0.04), d1=vec3(0.06,0.22,0.30);',
+'  vec3 a=mix(a0,a1,uMix), b=mix(b0,b1,uMix), c=mix(c0,c1,uMix), d=mix(d0,d1,uMix);',
+'  vec3 k=mix(a,b,clamp(f*f*2.2,0.0,1.0)); k=mix(k,c,clamp(length(q)*0.65-0.25,0.0,1.0)); k=mix(k,d,clamp(r.x*r.x*1.3-0.35,0.0,1.0)*0.55); return k; }',
+'vec2 stir(vec2 uv){ vec2 p=vec2(0.0); for(int i=0;i<8;i++){ if(i>=uNf) break; vec4 f=uFx[i]; vec2 d=uv-f.xy; float r2=dot(d,d); float k=0.09*(1.0-exp(-f.z*3.0))*exp(-f.z*0.3)*exp(-r2/0.035); p+=normalize(d+1e-4)*k*7.0+vec2(-d.y,d.x)*k*16.0; }',
+'  float back=uShip.x-uv.x; if(back>0.0&&back<1.2){ float ty=shipYt(uTime-back/0.35); float dy=uv.y-ty; float fade=smoothstep(0.0,0.12,back)*smoothstep(1.2,0.9,back); p+=(vec2(0.0,dy/(abs(dy)+0.02))*exp(-dy*dy/0.004)*exp(-back*2.0)*0.25+vec2(-dy,0.0)*exp(-dy*dy/0.01)*exp(-back*1.5)*1.2)*fade; } return p; }',
+'float inkD(vec2 p,int oc,out vec2 q,out vec2 r){ q=vec2(fbm(vec3(p,uTime*0.035),oc),fbm(vec3(p+vec2(5.2,1.3),uTime*0.035),oc));',
+'  r=vec2(fbm(vec3(p+4.0*q+vec2(1.7,9.2),uTime*0.05),oc),fbm(vec3(p+4.0*q+vec2(8.3,2.8),uTime*0.05),oc)); return fbm(vec3(p+4.0*r,uTime*0.025),oc); }',
+'float inkCheap(vec2 p){ vec2 q=vec2(fbm(vec3(p,uTime*0.035),3),fbm(vec3(p+vec2(5.2,1.3),uTime*0.035),3)); return fbm(vec3(p+4.0*q,uTime*0.03),3); }'].join('\n');
+var FS_EV_N=COMMON.replace('out vec4 fragColor;','layout(location=0) out vec4 fragColor; layout(location=1) out vec4 frag1;')+'\n'+WCOM+'\n'+EV_FUN+'\n'+[
+'uniform float uEnc; uniform float uMode;',
+'vec4 enc(vec4 v){ return uEnc>0.0?sqrt(clamp(v*0.5,0.0,1.0)):v; }',
+'void main(){ vec2 uv=vec2((gl_FragCoord.x-0.5*uRes.x)/uRes.y,gl_FragCoord.y/uRes.y-0.5); int OC=uQ==0?3:uQ==1?4:5; vec2 sv=stir(uv);',
+'  if(uMode>0.5){ vec2 pf=uv*0.8+vec2(uTime*0.012,7.0)+sv*0.4; vec2 q2,r2; float f2=inkD(pf,max(OC-1,2),q2,r2);',
+'    vec3 far=inkColM(q2,r2,f2)*mix(vec3(0.45,0.6,1.0),vec3(0.8,0.55,0.5),uMix)*(0.04+0.45*f2*f2*f2); fragColor=enc(vec4(far,1.0)); frag1=vec4(0.0); return; }',
+'  vec2 p=uv*1.5+vec2(uTime*0.028,0.0)+sv; vec2 q,r; float f=inkD(p,OC,q,r); float fa=inkA(f); vec3 near=inkColM(q,r,fa)*(0.10+1.3*fa*fa*fa);',
+'  fragColor=enc(vec4(near,f)); frag1=enc(vec4(inkCheap(p),0.0,0.0,1.0)); }'].join('\n');
+var EV_B=[
+'uniform sampler2D uA; uniform sampler2D uB; uniform sampler2D uF; uniform float uEnc; uniform float uExt; uniform float uMix;',
+'vec4 dec(vec4 v){ return uEnc>0.0?v*v*2.0:v; }',
+'vec2 tcOf(vec2 u){ return vec2((u.x*uRes.y+0.5*uRes.x)/uRes.x,(u.y+0.5)/uExt); }',
+'void main(){ vec2 uv=uvOf(); float ar=AR(); int NS=uQ==0?6:uQ==1?9:12; vec2 sun=mix(vec2(-ar*0.46,0.72),vec2(ar*0.46,0.70),uMix);',
+'  vec4 A=dec(texture(uA,tcOf(uv))); vec3 near=A.rgb, far=dec(texture(uF,tcOf(uv))).rgb; float f=A.a, dens=smoothstep(0.42,0.80,inkA(f));',
+'  vec3 col=mix(far,near,dens); col*=mix(0.75,0.6,uMix); float lu=dot(col,vec3(0.3,0.59,0.11)); col=max(mix(vec3(lu),col,1.45),0.0);',
+'  vec2 ld=normalize(sun-uv); float fl=dec(texture(uB,tcOf(uv+ld*0.06))).r; float rim=clamp((f-fl)*5.0,0.0,1.0);',
+'  vec3 lc=mix(vec3(1.0,0.78,0.48),vec3(0.55,0.80,1.0),uMix); vec3 nk=near/(max(near.r,max(near.g,near.b))+1e-3); col+=mix(lc,nk,0.65)*rim*dens*0.13*(0.4+0.6*smoothstep(2.2,0.3,length(uv-sun)));',
+'  vec2 ds=uv-sun; float th=atan(ds.y,ds.x), dl=length(ds); float bm=0.0; for(int i=0;i<3;i++){ float fi=float(i); bm+=pow(n3(vec3(th*(8.0+fi*7.0),fi*3.0,uTime*(0.04+fi*0.03))),3.0)*(0.9-fi*0.2); }',
+'  float T=0.0; for(int i=1;i<=16;i++){ if(i>NS) break; vec2 u=uv+(sun-uv)*float(i)/float(NS); T+=smoothstep(0.35,0.8,dec(texture(uB,tcOf(u))).r); } T=exp(-T/float(NS)*2.4);',
+'  vec3 tint=mix(lc,normalize(near+1e-3)*1.2,0.45); col+=tint*bm*T*0.075*exp(-dl*0.7)*(0.5+0.6*(1.0-dens))+lc*0.03/(dl*dl+0.04)*0.06;',
+'  col+=boom(uv,1.6)*(0.18+1.1*dens); col*=1.0-0.25*smoothstep(0.35,0.75,abs(uv.y));',
+'  fragColor=vec4(fin(col),1.0); }'].join('\n');
+WB.W18=EV_B; WB.W19=EV_B; WB.W20=EV_B;
+function evenPass(id,bw,bh,t){ var p=gProg('evn',VS,FS_EV_N), w=bw, h=Math.round(bh*TWO_EXT), F=GS.even, mix=evenMix(id,t);
+  if(!F||F.w!==w||F.h!==h||F.id!==id){ if(F){ [F.a,F.b,F.c].forEach(function(x){ gl.deleteTexture(x); }); }
+    var enc=gl.getExtension('EXT_color_buffer_float')?0:1; F=GS.even={w:w,h:h,id:id,enc:enc,fb:(F&&F.fb)||gl.createFramebuffer(),fb2:(F&&F.fb2)||gl.createFramebuffer(),n:0};
+    F.a=fastTex(w,h,enc); F.b=fastTex(w,h,enc); F.c=fastTex(Math.max(1,w>>1),Math.max(1,h>>1),enc);
+    gl.bindFramebuffer(gl.FRAMEBUFFER,F.fb); gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,F.a,0); gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT1,gl.TEXTURE_2D,F.b,0);
+    if(gl.checkFramebufferStatus(gl.FRAMEBUFFER)!==gl.FRAMEBUFFER_COMPLETE&&enc===0){ [F.a,F.b,F.c].forEach(function(x){ gl.deleteTexture(x); }); F.enc=1; F.a=fastTex(w,h,1); F.b=fastTex(w,h,1); F.c=fastTex(Math.max(1,w>>1),Math.max(1,h>>1),1);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,F.a,0); gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT1,gl.TEXTURE_2D,F.b,0); }
+    gl.bindFramebuffer(gl.FRAMEBUFFER,F.fb2); gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,F.c,0); }
+  var fw=new Float32Array(32), fl2=GS.fx.filter(function(f){ return t-f.t0<3.5&&t>=f.t0; }).slice(-8); fl2.forEach(function(f,i){ fw[i*4]=f.x; fw[i*4+1]=f.y; fw[i*4+2]=t-f.t0; fw[i*4+3]=f.kind; });
+  var run=function(mode,part){ var far=mode===1; gl.bindFramebuffer(gl.FRAMEBUFFER,far?F.fb2:F.fb); gl.drawBuffers(far?[gl.COLOR_ATTACHMENT0]:[gl.COLOR_ATTACHMENT0,gl.COLOR_ATTACHMENT1]); gl.disable(gl.BLEND);
+    var ww=far?Math.max(1,w>>1):w, hh=far?Math.max(1,h>>1):h; gl.viewport(0,0,ww,hh);
+    if(part>=0){ var hh2=Math.ceil(hh/2); gl.enable(gl.SCISSOR_TEST); gl.scissor(0,part?hh-hh2:0,ww,hh2); }   /* the near ink: one half of the rows this frame */
+    gl.useProgram(p); gl.bindVertexArray(vao);
+    gl.uniform2f(gl.getUniformLocation(p,'uRes'),far?ww:bw,far?ww*bh/bw:bh); gl.uniform1f(gl.getUniformLocation(p,'uTime'),t); gl.uniform1i(gl.getUniformLocation(p,'uQ'),S.q); gl.uniform1f(gl.getUniformLocation(p,'uEnc'),F.enc); gl.uniform1f(gl.getUniformLocation(p,'uMode'),mode);
+    gl.uniform1f(gl.getUniformLocation(p,'uAmt'),INK_AMT); gl.uniform1f(gl.getUniformLocation(p,'uMix'),mix);
+    gl.uniform4fv(gl.getUniformLocation(p,'uFx'),fw); gl.uniform1i(gl.getUniformLocation(p,'uNf'),fl2.length); gl.uniform2f(gl.getUniformLocation(p,'uShip'),GS.ship.x,GS.ship.y);
+    gl.drawArrays(gl.TRIANGLES,0,3); gl.disable(gl.SCISSOR_TEST); gl.drawBuffers([gl.COLOR_ATTACHMENT0]); };
+  if(F.n===0||STILL) run(0,-1); else run(0,F.n%2); run(1,-1); F.n++; }
 var FS_W={}; Object.keys(WB).forEach(function(k){ FS_W[k]=COMMON+'\n'+WCOM+'\n'+WB[k]; });
 
 function drawGame(t,dt){ if(!gl) return; var pb,pbl,po,pf, WS=String(S.scene).charAt(0)==='W';
@@ -713,13 +772,15 @@ function drawGame(t,dt){ if(!gl) return; var pb,pbl,po,pf, WS=String(S.scene).ch
       if(!GS.bgFb) GS.bgFb=gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER,GS.bgFb); gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,GS.bgTex,0); GS.bgW=bw; GS.bgH=bh; }
     gl.bindFramebuffer(gl.FRAMEBUFFER,GS.bgFb); }
   if(TWO[S.scene]!==undefined){ twoPass1(S.scene,bw,bh,t); gl.bindFramebuffer(gl.FRAMEBUFFER,half?GS.bgFb:null); }
-  if(FAST[S.scene]!==undefined){ fastPass(S.scene,bw,bh,t); gl.bindFramebuffer(gl.FRAMEBUFFER,half?GS.bgFb:null); }   /* v1.41k */   /* v1.41j: the ink first, into its textures */
+  if(FAST[S.scene]!==undefined){ fastPass(S.scene,bw,bh,t); gl.bindFramebuffer(gl.FRAMEBUFFER,half?GS.bgFb:null); }   /* v1.41k */
+  if(EVEN[S.scene]!==undefined){ evenPass(S.scene,bw,bh,t); gl.bindFramebuffer(gl.FRAMEBUFFER,half?GS.bgFb:null); }   /* v1.41m */   /* v1.41j: the ink first, into its textures */
   gl.disable(gl.BLEND); gl.viewport(0,0,bw,bh); gl.useProgram(pb); gl.bindVertexArray(vao); gl.uniform2f(gl.getUniformLocation(pb,'uRes'),bw,bh); gl.uniform1f(gl.getUniformLocation(pb,'uTime'),t); gl.uniform1i(gl.getUniformLocation(pb,'uQ'),S.q); gl.uniform1f(gl.getUniformLocation(pb,'uTaY'),GS.ta[1]); var ST=GSTY[GS.style]; var dimNow=WS?1:ST.dim; if(ST.live){ var busy=GS.fx.filter(function(f){ return t-f.t0<1.6; }).length+GS.eshots.length*0.5; GS.calm+=(Math.max(0,1-busy/8)-GS.calm)*Math.min(1,dt*0.8); dimNow=ST.dim+0.35*GS.calm; }
   gl.uniform1f(gl.getUniformLocation(pb,'uDim'),dimNow);
   if(WS){ var fw=new Float32Array(32), fl=GS.fx.filter(function(f){ return t-f.t0<3.5&&t>=f.t0; }).slice(-8); fl.forEach(function(f,i){ fw[i*4]=f.x; fw[i*4+1]=f.y; fw[i*4+2]=t-f.t0; fw[i*4+3]=f.kind; });
     gl.uniform4fv(gl.getUniformLocation(pb,'uFx'),fw); gl.uniform1i(gl.getUniformLocation(pb,'uNf'),fl.length); gl.uniform2f(gl.getUniformLocation(pb,'uShip'),GS.ship.x,GS.ship.y); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D,noiseTex()); gl.uniform1i(gl.getUniformLocation(pb,'uNoise'),1); gl.uniform1f(gl.getUniformLocation(pb,'uAmt'),INK_AMT);
     if(TWO[S.scene]!==undefined){ gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D,GS.two.a); gl.uniform1i(gl.getUniformLocation(pb,'uA'),2); gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D,GS.two.b); gl.uniform1i(gl.getUniformLocation(pb,'uB'),3); gl.uniform1f(gl.getUniformLocation(pb,'uEnc'),GS.two.enc); gl.uniform1f(gl.getUniformLocation(pb,'uExt'),GS.two.h/bh); }
     if(FAST[S.scene]!==undefined){ var F=GS.fast; gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D,F.a); gl.uniform1i(gl.getUniformLocation(pb,'uA'),2); gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D,F.b); gl.uniform1i(gl.getUniformLocation(pb,'uB'),3); gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D,F.c); gl.uniform1i(gl.getUniformLocation(pb,'uF'),4); gl.uniform1f(gl.getUniformLocation(pb,'uEnc'),F.enc); gl.uniform1f(gl.getUniformLocation(pb,'uExt'),F.h/bh); }
+    if(EVEN[S.scene]!==undefined){ var E2=GS.even; gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D,E2.a); gl.uniform1i(gl.getUniformLocation(pb,'uA'),2); gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D,E2.b); gl.uniform1i(gl.getUniformLocation(pb,'uB'),3); gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D,E2.c); gl.uniform1i(gl.getUniformLocation(pb,'uF'),4); gl.uniform1f(gl.getUniformLocation(pb,'uEnc'),E2.enc); gl.uniform1f(gl.getUniformLocation(pb,'uExt'),E2.h/bh); gl.uniform1f(gl.getUniformLocation(pb,'uMix'),evenMix(S.scene,t)); }
     gl.activeTexture(gl.TEXTURE0); } gl.uniform3f(gl.getUniformLocation(pb,'uHole'),hole.x*(bw/bh)/(W/H),hole.y,hole.rs); gl.uniform1f(gl.getUniformLocation(pb,'uSw'),ST.sw?1:0); gl.uniform1f(gl.getUniformLocation(pb,'uSat'),ST.sat); gl.drawArrays(gl.TRIANGLES,0,3);
   if(half){ gl.bindFramebuffer(gl.FRAMEBUFFER,null); gl.viewport(0,0,W,H); gl.useProgram(pbl); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,GS.bgTex); gl.uniform1i(gl.getUniformLocation(pbl,'uTex'),0); gl.uniform2f(gl.getUniformLocation(pbl,'uRes'),W,H); gl.uniform1f(gl.getUniformLocation(pbl,'uBlur'),ST.blur); gl.drawArrays(gl.TRIANGLES,0,3); }
   gl.viewport(0,0,W,H);
@@ -738,7 +799,7 @@ function drawGame(t,dt){ if(!gl) return; var pb,pbl,po,pf, WS=String(S.scene).ch
   gl.uniform1i(gl.getUniformLocation(pf,'uDebM'),WS?2:ST.deb); gl.uniform1f(gl.getUniformLocation(pf,'uDebAmt'),ST.amt); gl.uniform1f(gl.getUniformLocation(pf,'uSpk'),ST.spk); gl.uniform1f(gl.getUniformLocation(pf,'uInk'),ST.ink?0.85:0.0);
   gl.drawArrays(gl.POINTS,0,nf*1200); };
   gl.enable(gl.BLEND); if(ST.halo>0) sparks();
-  gl.bindVertexArray(GVAO); gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA); gl.useProgram(po); gl.uniform2f(gl.getUniformLocation(po,'uRes'),W,H); gl.uniform1f(gl.getUniformLocation(po,'uTime'),t); var wl=WS?WL[S.scene]:null; gl.uniform2f(gl.getUniformLocation(po,'uLight'),wl?wl.l[0]:hole.x,wl?wl.l[1]:hole.y); gl.uniform3f(gl.getUniformLocation(po,'uLc'),wl?wl.c[0]:1.0,wl?wl.c[1]:0.62,wl?wl.c[2]:0.32); gl.uniform1f(gl.getUniformLocation(po,'uRimK'),ST.rim); gl.uniform1f(gl.getUniformLocation(po,'uInk'),ST.ink?1:0);
+  gl.bindVertexArray(GVAO); gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA); gl.useProgram(po); gl.uniform2f(gl.getUniformLocation(po,'uRes'),W,H); gl.uniform1f(gl.getUniformLocation(po,'uTime'),t); var wl=WS?WL[S.scene]:null; if(EVEN[S.scene]!==undefined){ var m3=evenMix(S.scene,t), ar3=W/H; wl={l:[-0.9+1.8*m3,0.7],c:[1.0-0.4*m3,0.78+0.02*m3,0.5+0.5*m3]}; } gl.uniform2f(gl.getUniformLocation(po,'uLight'),wl?wl.l[0]:hole.x,wl?wl.l[1]:hole.y); gl.uniform3f(gl.getUniformLocation(po,'uLc'),wl?wl.c[0]:1.0,wl?wl.c[1]:0.62,wl?wl.c[2]:0.32); gl.uniform1f(gl.getUniformLocation(po,'uRimK'),ST.rim); gl.uniform1f(gl.getUniformLocation(po,'uInk'),ST.ink?1:0);
   if(ST.halo>0){ gl.uniform1f(gl.getUniformLocation(po,'uHalo'),ST.halo); gl.drawArraysInstanced(gl.TRIANGLES,0,6,n); } gl.uniform1f(gl.getUniformLocation(po,'uHalo'),0); gl.drawArraysInstanced(gl.TRIANGLES,0,6,n);
   if(!(ST.halo>0)) sparks(); gl.disable(gl.BLEND);
   GS.count={obj:n,fx:GS.fx.filter(function(f){ return t-f.t0<1.6; }).length,streams:Math.min(32,GS.fx.length)}; }

@@ -51,7 +51,7 @@ body.clean #ui,body.clean #hud,body.clean #graph{display:none}
 'use strict';
 var $=function(s){ return document.querySelector(s); };
 var DPR=window.devicePixelRatio||1;
-var NAMES={A:'А туманность',B:'Б чёрная дыра',C:'В кристаллы',E:'Е частицы',G:'игра: дыра',H:'игра: дыра выше',W1:'фон А облака ночью',W2:'фон Б туман и лучи',W3:'фон В сияние',W4:'фон Г под водой',W5:'фон Д дождь, город',W6:'фон Е планктон',W7:'фон Ж чернила',W8:'фон З газовый гигант',W9:'фон И закат',W10:'холодный · лёгкий (сейчас)',W11:'тёплый · лёгкий (сейчас)',W12:'тёплый · первый, тяжёлый',W13:'холодный · первый, тяжёлый',W14:'холодный · первый в 2 прохода',W15:'тёплый · первый в 2 прохода',W16:'холодный · первый, быстрый (через кадр)',W17:'тёплый · первый, быстрый (через кадр)',W18:'холодный · первый, ровный',W19:'тёплый · первый, ровный',W20:'холодный ↔ тёплый, переход (ровный)'}, QN=['низкое','среднее','высокое'];
+var NAMES={A:'А туманность',B:'Б чёрная дыра',C:'В кристаллы',E:'Е частицы',G:'игра: дыра',H:'игра: дыра выше',W1:'фон А облака ночью',W2:'фон Б туман и лучи',W3:'фон В сияние',W4:'фон Г под водой',W5:'фон Д дождь, город',W6:'фон Е планктон',W7:'фон Ж чернила',W8:'фон З газовый гигант',W9:'фон И закат',W10:'холодный · лёгкий (сейчас)',W11:'тёплый · лёгкий (сейчас)',W12:'тёплый · первый, тяжёлый',W13:'холодный · первый, тяжёлый',W14:'холодный · первый в 2 прохода',W15:'тёплый · первый в 2 прохода',W16:'холодный · первый, быстрый (через кадр)',W17:'тёплый · первый, быстрый (через кадр)',W18:'холодный · первый, ровный',W19:'тёплый · первый, ровный',W20:'холодный ↔ тёплый, свет по кругу (ровный)'}, QN=['низкое','среднее','высокое'];
 function isGame(id){ return id==='G'||id==='H'||String(id).charAt(0)==='W'; }
 var S={scene:'A',q:1,scale:Math.min(2,DPR),hz:60,calib:true,run:null,t0:performance.now()};
 var store={get:function(k,d){ try{ var v=localStorage.getItem(k); return v===null?d:v; }catch(e){ return d; } },set:function(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }};
@@ -706,7 +706,10 @@ function fastPass(id,bw,bh,t){ var p=gProg('w'+id+'n',VS,FS_FAST_N[id]), w=bw, h
    in turn) and the far ink (half size) for all of it, so every frame does the same work: no frame heavier than the next, no drops
    «every other frame». And one palette that flows: uMix 0 cold … 1 warm, the light off screen moving across with it
    (the maintainer: «по холодный/тёплый — наверное будет плавно перетекать из одного в другой — оба красивые») */
-var EVEN={W18:0,W19:1,W20:-1}, EVEN_T=60;   /* W20: the flowing palette, a full turn in EVEN_T seconds */
+var EVEN={W18:0,W19:1,W20:-1}, EVEN_T=60, SUN_T=60;
+/* v1.41n (the maintainer: «лучи света должны ходить не вверху слева направо, а по кругу. За минуту полный оборот»): the light off screen
+   goes round the screen on an oval just beyond its edges, a full turn in SUN_T seconds; its shafts sweep round with it */
+function sunAt(t,ar){ var a=2.2+t/SUN_T*6.2832; return [Math.cos(a)*ar*0.62,Math.sin(a)*0.74]; }   /* W20: the flowing palette, a full turn in EVEN_T seconds */
 function evenMix(id,t){ var m=EVEN[id]; return m>=0?m:0.5-0.5*Math.cos(t/EVEN_T*6.2832); }
 var EV_FUN=[
 'uniform float uMix;',
@@ -728,10 +731,10 @@ var FS_EV_N=COMMON.replace('out vec4 fragColor;','layout(location=0) out vec4 fr
 '  vec2 p=uv*1.5+vec2(uTime*0.028,0.0)+sv; vec2 q,r; float f=inkD(p,OC,q,r); float fa=inkA(f); vec3 near=inkColM(q,r,fa)*(0.10+1.3*fa*fa*fa);',
 '  fragColor=enc(vec4(near,f)); frag1=enc(vec4(inkCheap(p),0.0,0.0,1.0)); }'].join('\n');
 var EV_B=[
-'uniform sampler2D uA; uniform sampler2D uB; uniform sampler2D uF; uniform float uEnc; uniform float uExt; uniform float uMix;',
+'uniform sampler2D uA; uniform sampler2D uB; uniform sampler2D uF; uniform float uEnc; uniform float uExt; uniform float uMix; uniform vec3 uSun;',
 'vec4 dec(vec4 v){ return uEnc>0.0?v*v*2.0:v; }',
 'vec2 tcOf(vec2 u){ return vec2((u.x*uRes.y+0.5*uRes.x)/uRes.x,(u.y+0.5)/uExt); }',
-'void main(){ vec2 uv=uvOf(); float ar=AR(); int NS=uQ==0?6:uQ==1?9:12; vec2 sun=mix(vec2(-ar*0.46,0.72),vec2(ar*0.46,0.70),uMix);',
+'void main(){ vec2 uv=uvOf(); float ar=AR(); int NS=uQ==0?6:uQ==1?9:12; vec2 sun=uSun.z>0.5?uSun.xy:mix(vec2(-ar*0.46,0.72),vec2(ar*0.46,0.70),uMix);',
 '  vec4 A=dec(texture(uA,tcOf(uv))); vec3 near=A.rgb, far=dec(texture(uF,tcOf(uv))).rgb; float f=A.a, dens=smoothstep(0.42,0.80,inkA(f));',
 '  vec3 col=mix(far,near,dens); col*=mix(0.75,0.6,uMix); float lu=dot(col,vec3(0.3,0.59,0.11)); col=max(mix(vec3(lu),col,1.45),0.0);',
 '  vec2 ld=normalize(sun-uv); float fl=dec(texture(uB,tcOf(uv+ld*0.06))).r; float rim=clamp((f-fl)*5.0,0.0,1.0);',
@@ -780,7 +783,7 @@ function drawGame(t,dt){ if(!gl) return; var pb,pbl,po,pf, WS=String(S.scene).ch
     gl.uniform4fv(gl.getUniformLocation(pb,'uFx'),fw); gl.uniform1i(gl.getUniformLocation(pb,'uNf'),fl.length); gl.uniform2f(gl.getUniformLocation(pb,'uShip'),GS.ship.x,GS.ship.y); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D,noiseTex()); gl.uniform1i(gl.getUniformLocation(pb,'uNoise'),1); gl.uniform1f(gl.getUniformLocation(pb,'uAmt'),INK_AMT);
     if(TWO[S.scene]!==undefined){ gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D,GS.two.a); gl.uniform1i(gl.getUniformLocation(pb,'uA'),2); gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D,GS.two.b); gl.uniform1i(gl.getUniformLocation(pb,'uB'),3); gl.uniform1f(gl.getUniformLocation(pb,'uEnc'),GS.two.enc); gl.uniform1f(gl.getUniformLocation(pb,'uExt'),GS.two.h/bh); }
     if(FAST[S.scene]!==undefined){ var F=GS.fast; gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D,F.a); gl.uniform1i(gl.getUniformLocation(pb,'uA'),2); gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D,F.b); gl.uniform1i(gl.getUniformLocation(pb,'uB'),3); gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D,F.c); gl.uniform1i(gl.getUniformLocation(pb,'uF'),4); gl.uniform1f(gl.getUniformLocation(pb,'uEnc'),F.enc); gl.uniform1f(gl.getUniformLocation(pb,'uExt'),F.h/bh); }
-    if(EVEN[S.scene]!==undefined){ var E2=GS.even; gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D,E2.a); gl.uniform1i(gl.getUniformLocation(pb,'uA'),2); gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D,E2.b); gl.uniform1i(gl.getUniformLocation(pb,'uB'),3); gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D,E2.c); gl.uniform1i(gl.getUniformLocation(pb,'uF'),4); gl.uniform1f(gl.getUniformLocation(pb,'uEnc'),E2.enc); gl.uniform1f(gl.getUniformLocation(pb,'uExt'),E2.h/bh); gl.uniform1f(gl.getUniformLocation(pb,'uMix'),evenMix(S.scene,t)); }
+    if(EVEN[S.scene]!==undefined){ var E2=GS.even; gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D,E2.a); gl.uniform1i(gl.getUniformLocation(pb,'uA'),2); gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D,E2.b); gl.uniform1i(gl.getUniformLocation(pb,'uB'),3); gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D,E2.c); gl.uniform1i(gl.getUniformLocation(pb,'uF'),4); gl.uniform1f(gl.getUniformLocation(pb,'uEnc'),E2.enc); gl.uniform1f(gl.getUniformLocation(pb,'uExt'),E2.h/bh); gl.uniform1f(gl.getUniformLocation(pb,'uMix'),evenMix(S.scene,t)); var sn=sunAt(t,bw/bh); gl.uniform3f(gl.getUniformLocation(pb,'uSun'),sn[0],sn[1],S.scene==='W20'?1:0); }
     gl.activeTexture(gl.TEXTURE0); } gl.uniform3f(gl.getUniformLocation(pb,'uHole'),hole.x*(bw/bh)/(W/H),hole.y,hole.rs); gl.uniform1f(gl.getUniformLocation(pb,'uSw'),ST.sw?1:0); gl.uniform1f(gl.getUniformLocation(pb,'uSat'),ST.sat); gl.drawArrays(gl.TRIANGLES,0,3);
   if(half){ gl.bindFramebuffer(gl.FRAMEBUFFER,null); gl.viewport(0,0,W,H); gl.useProgram(pbl); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,GS.bgTex); gl.uniform1i(gl.getUniformLocation(pbl,'uTex'),0); gl.uniform2f(gl.getUniformLocation(pbl,'uRes'),W,H); gl.uniform1f(gl.getUniformLocation(pbl,'uBlur'),ST.blur); gl.drawArrays(gl.TRIANGLES,0,3); }
   gl.viewport(0,0,W,H);
@@ -799,7 +802,7 @@ function drawGame(t,dt){ if(!gl) return; var pb,pbl,po,pf, WS=String(S.scene).ch
   gl.uniform1i(gl.getUniformLocation(pf,'uDebM'),WS?2:ST.deb); gl.uniform1f(gl.getUniformLocation(pf,'uDebAmt'),ST.amt); gl.uniform1f(gl.getUniformLocation(pf,'uSpk'),ST.spk); gl.uniform1f(gl.getUniformLocation(pf,'uInk'),ST.ink?0.85:0.0);
   gl.drawArrays(gl.POINTS,0,nf*1200); };
   gl.enable(gl.BLEND); if(ST.halo>0) sparks();
-  gl.bindVertexArray(GVAO); gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA); gl.useProgram(po); gl.uniform2f(gl.getUniformLocation(po,'uRes'),W,H); gl.uniform1f(gl.getUniformLocation(po,'uTime'),t); var wl=WS?WL[S.scene]:null; if(EVEN[S.scene]!==undefined){ var m3=evenMix(S.scene,t), ar3=W/H; wl={l:[-0.9+1.8*m3,0.7],c:[1.0-0.4*m3,0.78+0.02*m3,0.5+0.5*m3]}; } gl.uniform2f(gl.getUniformLocation(po,'uLight'),wl?wl.l[0]:hole.x,wl?wl.l[1]:hole.y); gl.uniform3f(gl.getUniformLocation(po,'uLc'),wl?wl.c[0]:1.0,wl?wl.c[1]:0.62,wl?wl.c[2]:0.32); gl.uniform1f(gl.getUniformLocation(po,'uRimK'),ST.rim); gl.uniform1f(gl.getUniformLocation(po,'uInk'),ST.ink?1:0);
+  gl.bindVertexArray(GVAO); gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA); gl.useProgram(po); gl.uniform2f(gl.getUniformLocation(po,'uRes'),W,H); gl.uniform1f(gl.getUniformLocation(po,'uTime'),t); var wl=WS?WL[S.scene]:null; if(EVEN[S.scene]!==undefined){ var m3=evenMix(S.scene,t), ar3=W/H, sn3=sunAt(t,ar3); wl={l:S.scene==='W20'?[sn3[0]*1.4,sn3[1]*1.4]:[-0.9+1.8*m3,0.7],c:[1.0-0.4*m3,0.78+0.02*m3,0.5+0.5*m3]}; } gl.uniform2f(gl.getUniformLocation(po,'uLight'),wl?wl.l[0]:hole.x,wl?wl.l[1]:hole.y); gl.uniform3f(gl.getUniformLocation(po,'uLc'),wl?wl.c[0]:1.0,wl?wl.c[1]:0.62,wl?wl.c[2]:0.32); gl.uniform1f(gl.getUniformLocation(po,'uRimK'),ST.rim); gl.uniform1f(gl.getUniformLocation(po,'uInk'),ST.ink?1:0);
   if(ST.halo>0){ gl.uniform1f(gl.getUniformLocation(po,'uHalo'),ST.halo); gl.drawArraysInstanced(gl.TRIANGLES,0,6,n); } gl.uniform1f(gl.getUniformLocation(po,'uHalo'),0); gl.drawArraysInstanced(gl.TRIANGLES,0,6,n);
   if(!(ST.halo>0)) sparks(); gl.disable(gl.BLEND);
   GS.count={obj:n,fx:GS.fx.filter(function(f){ return t-f.t0<1.6; }).length,streams:Math.min(32,GS.fx.length)}; }

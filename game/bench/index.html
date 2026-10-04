@@ -283,7 +283,14 @@ var GS={half:store.get('bench_half','1')==='1',bgTex:null,bgFb:null,bgW:0,bgH:0,
 var FS_GBG=COMMON+'\n'+[
 'vec3 bg(vec3 d,int oc){ float f=fbm(d*2.4+vec3(0.0,0.0,uTime*0.01),oc); vec3 c=mix(vec3(0.004,0.006,0.016),vec3(0.06,0.05,0.12),smoothstep(0.35,0.85,f));',
 '  return c+vec3(stars(d,520.0))*vec3(0.85,0.9,1.0)+vec3(stars(d.zxy,260.0))*vec3(1.0,0.85,0.7)*0.6; }',
-'uniform float uTaY; uniform float uDim; uniform float uSat;',
+'uniform float uTaY; uniform float uDim; uniform float uSat; uniform vec3 uHole; uniform float uSw;',
+'vec3 swarm(vec2 q,float R){ vec3 c=vec3(0.0); float r=length(q)/R; if(r>1.2) return c;',
+'  for(int L=0;L<4;L++){ float fl=float(L); float lr=log(max(r,0.02))*7.0+fl*0.37, ry=floor(lr*1.7), rc=exp((ry+0.5)/1.7/7.0);',   /* one ring of cells turns as one: no smearing into streaks */
+'    float w=0.9/(0.15+pow(rc,1.5))*(0.6+0.25*fl); vec2 p=rot(uTime*w*0.35+fl*2.1+ry*1.7)*q/R; float an=atan(p.y,p.x)*(70.0+fl*22.0)/6.2832;',
+'    vec2 g=vec2(an,lr*1.7); vec2 id=floor(g), f=fract(g)-0.5; float h=h12(id+fl*17.0); vec2 off=(vec2(h12(id+3.1+fl),h12(id+7.7+fl))-0.5)*0.6; float d=length(f-off);',
+'    float arm=0.5+0.5*sin(atan(p.y,p.x)*2.0-lr*0.9+fl); float b=(smoothstep(0.2,0.0,d)*1.7+smoothstep(0.45,0.0,d)*0.12)*(0.35+0.65*h)*(0.25+1.0*arm)*step(0.42,h);',
+'    c+=mix(vec3(1.0,0.45,0.15),vec3(1.0,0.93,0.8),h)*b*(1.3-0.22*fl); }',
+'  c+=vec3(1.0,0.9,0.75)*exp(-r*r*18.0)*1.6+vec3(1.0,0.55,0.25)*exp(-r*r*5.0)*0.12; return c*smoothstep(1.05,0.8,r); }',
 'void main(){ vec2 uv=uvOf(); int N=uQ==0?150:uQ==1?240:360, OC=uQ==0?2:uQ==1?3:4; float st=uQ==0?1.0:uQ==1?0.7:0.5;',
 '  vec3 ro=vec3(0.0,1.25,13.5), ta=vec3(-3.6,uTaY,0.0), fw=normalize(ta-ro), rt=normalize(cross(fw,vec3(0.0,1.0,0.0))), up=cross(rt,fw);',
 '  vec3 rd=normalize(fw*1.55+uv.x*rt+uv.y*up);',
@@ -296,7 +303,7 @@ var FS_GBG=COMMON+'\n'+[
 '        float I=f*f*(0.6+0.8*f2)*2.4*smoothstep(2.6,3.3,rc)*smoothstep(11.5,7.0,rc)*dop*dop*dop; float da=clamp(I*0.85,0.0,1.0);',
 '        col+=(1.0-al)*tc*I*2.2; al+=(1.0-al)*da; } }',
 '    p=np; if(r<1.02){ fell=true; break; } if(r>45.0) break; if(al>0.99) break; }',
-'  if(!fell) col+=(1.0-al)*bg(normalize(v),OC);',
+'  if(!fell) col+=(1.0-al)*bg(normalize(v),OC); else if(uSw>0.0) col+=(1.0-al)*swarm(uv-uHole.xy,uHole.z*1.05);',
 '  vec3 tc=tone(col); float lu=dot(tc,vec3(0.3,0.59,0.11)); tc=mix(vec3(lu)*vec3(1.0,0.93,0.86),tc,uSat)*uDim; fragColor=vec4(tc,1.0); }'
 ].join('\n');
 var FS_BLIT='#version 300 es\nprecision highp float; uniform sampler2D uTex; uniform vec2 uRes; uniform float uBlur; out vec4 o; void main(){ vec2 uv=gl_FragCoord.xy/uRes; if(uBlur<=0.0){ o=texture(uTex,uv); return; } vec2 d=uBlur/uRes; vec4 c=texture(uTex,uv)*0.2;'+
@@ -319,7 +326,8 @@ var FS_OBJ=[
 '             mix(mix(h13(i+vec3(0,0,1)),h13(i+vec3(1,0,1)),f.x),mix(h13(i+vec3(0,1,1)),h13(i+vec3(1,1,1)),f.x),f.y),f.z); }',
 'mat2 rot(float a){ float c=cos(a),s=sin(a); return mat2(c,-s,s,c); }',
 'vec3 tone(vec3 c){ c=1.0-exp(-c*1.25); return pow(c,vec3(0.4545)); }',
-'void main(){ float kind=vP.w; vec2 q=vUV; vec3 lc=vec3(1.0,0.62,0.32)*(1.0-0.35*step(0.01,uRimK)); vec3 l=normalize(vec3(uLight-vP.xy,0.35)); vec3 RC=vec3(0.35,0.85,1.0);',
+'uniform float uInk;',
+'void main0(){ float kind=vP.w; vec2 q=vUV; vec3 lc=vec3(1.0,0.62,0.32)*(1.0-0.35*step(0.01,uRimK)); vec3 l=normalize(vec3(uLight-vP.xy,0.35)); vec3 RC=vec3(0.35,0.85,1.0);',
 '  if(uHalo>0.0){ float m=0.0; if(kind==0.0) m=smoothstep(1.25,0.75,length(q)); else if(kind==1.0) m=smoothstep(1.2,0.5,length(q/vec2(1.25,0.75))); else if(kind==2.0) m=smoothstep(1.2,0.5,length(q/vec2(1.3,0.6))); else if(kind==3.0) m=smoothstep(1.25,0.6,length(q)); else if(kind==4.0) m=0.0; else m=smoothstep(1.2,0.5,length(q))*0.8;',
 '    o=vec4(0.0,0.0,0.0,m*uHalo); return; }',
 '  if(kind==0.0){ float fi=vQ.x; vec2 qr=rot(vQ.y)*q; float edge=1.0+0.14*(n3(vec3(qr*2.5,fi))-0.5); float L=length(q)/edge; if(L>1.0) discard;',
@@ -337,7 +345,10 @@ var FS_OBJ=[
 '    if(a<=0.0){ o=vec4(tone(c)*smoothstep(1.25,0.9,max(abs(q.x)/1.4,abs(q.y)/0.9)),0.0); return; } o=vec4(tone(c),1.0); return; }',
 '  if(kind==3.0){ float d=length(q); float ring=abs(d-0.6); vec3 c=vec3(1.0,0.82,0.35)*(exp(-ring*ring/0.004)*1.6+exp(-d*d/0.25)*0.5); if(abs(q.x)+abs(q.y)<0.3) c=vec3(1.0,0.95,0.7)*1.2; o=vec4(tone(c)*smoothstep(1.2,0.75,d),0.0); return; }',
 '  if(kind==4.0){ float d=length(q*vec2(1.0,1.0)); float core=exp(-(q.y*q.y)/0.02-max(abs(q.x)-0.6,0.0)*6.0); vec3 c=vec3(0.6,0.95,1.0)*core*2.2+vec3(0.2,0.5,1.0)*exp(-d*d*1.4)*0.6; o=vec4(tone(c)*smoothstep(0.6,0.35,abs(q.y))*smoothstep(3.2,2.4,abs(q.x)),0.0); return; }',
-'  float d=length(q); vec3 c=vec3(1.0,0.35,0.7)*(exp(-d*d*6.0)*2.0+exp(-d*d*1.5)*0.5)+vec3(1.0)*exp(-d*d*30.0); o=vec4(tone(c)*smoothstep(1.2,0.7,d),0.0); }'
+'  float d=length(q); vec3 c=vec3(1.0,0.35,0.7)*(exp(-d*d*6.0)*2.0+exp(-d*d*1.5)*0.5)+vec3(1.0)*exp(-d*d*30.0); o=vec4(tone(c)*smoothstep(1.2,0.7,d),0.0); }',
+'void main(){ main0(); if(uInk<=0.0||uHalo>0.0) return; float m=clamp(max(o.r,max(o.g,o.b)),0.0,1.0);',
+'  if(o.a<0.01){ o=vec4(vec3(0.015)*m,m*0.92); return; }',
+'  vec3 c=o.rgb/o.a; float lu=dot(c,vec3(0.3,0.59,0.11)); o.rgb=vec3(0.02+0.24*lu*lu+0.06*lu)*o.a; }'
 ].join('\n');
 /* sparks of every explosion, straight from its place, kind and age; most get pulled round the hole into its blackness */
 var VS_GFX=[
@@ -367,7 +378,7 @@ var VS_GFX=[
 '  if(k==0&&age<0.35){ gl_Position=at(F.xy); gl_PointSize=uRes.y*0.075*(0.5+age*2.5); vC=vec3(1.0,0.8,0.55)*pow(1.0-age/0.35,2.0)*0.55; }',
 '  if(k>=1&&k<=120&&age<0.9){ float a2=float(k)/120.0*6.2832; float rr=0.2*sqrt(age); gl_Position=at(F.xy+vec2(cos(a2),sin(a2))*rr); gl_PointSize=uRes.y*0.003; vC=(kind>0.5?vec3(1.0,0.5,1.0):vec3(1.0,0.75,0.45))*pow(1.0-age/0.9,2.0)*0.5; } }'
 ].join('\n');
-var FS_GPT='#version 300 es\nprecision highp float; in vec3 vC; out vec4 o; void main(){ float d=length(gl_PointCoord-0.5)*2.0; if(d>1.0) discard; o=vec4(vC*(1.0-d*d),1.0); }';
+var FS_GPT='#version 300 es\nprecision highp float; in vec3 vC; uniform float uInk; out vec4 o; void main(){ float d=length(gl_PointCoord-0.5)*2.0; if(d>1.0) discard; vec3 c=vC*(1.0-d*d); if(uInk>0.0) c=vec3(min(1.0,max(c.r,max(c.g,c.b))*uInk)); o=vec4(c,1.0); }';
 var GP={};
 function gProg(name,vs,fs){ if(GP[name]) return GP[name]; var p=gl.createProgram(); gl.attachShader(p,compile(gl.VERTEX_SHADER,vs)); gl.attachShader(p,compile(gl.FRAGMENT_SHADER,fs)); gl.linkProgram(p);
   if(!gl.getProgramParameter(p,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p)); return GP[name]=p; }
@@ -395,10 +406,10 @@ function gStep(dt,now){ var ar=cgl.width/cgl.height; if(!GS.inited) gInit(ar); d
   GS.gifts.forEach(function(g){ g.ph+=dt; g.x-=0.09*dt; if(g.x<-ar/2-0.05) g.x=ar/2+0.05; g.y+=Math.sin(g.ph*2)*0.02*dt; });
   GS.fx=GS.fx.filter(function(f){ return now-f.t0<4.8; }); }
 var GBUF=null, GVAO=null, GDATA=new Float32Array(160*8);
-/* readability (v1.34c): 0 as it was; 1 the world dimmed + cool objects; 2 + depth (blur, dark halo); 3 all: + quieter debris, the world brightens when calm */
+/* readability (v1.34c): 0 as it was; 1 the world dimmed + cool objects; 2 + depth (blur, dark halo); 3 all: + quieter debris, the world brightens when calm; 4 (1.41a, the maintainer: «блэкхол с е-частицами внутри… а корабль, камни, выстрелы и обломки — оттенки черного и темно-серого») the hole as it was, its shadow full of swirling particles, every object in shades of black, the sparks and debris dark */
 var GSTY=[{n:'как было',dim:1,sat:1,rim:0,halo:0,blur:0,deb:0,amt:0.75,spk:1},{n:'1+2 приглушить, холодные',dim:0.5,sat:0.7,rim:1,halo:0,blur:0,deb:1,amt:0.75,spk:1},
-  {n:'1+2+3 и глубина',dim:0.5,sat:0.7,rim:1,halo:0.55,blur:1.6,deb:1,amt:0.75,spk:1},{n:'всё вместе',dim:0.5,sat:0.7,rim:1,halo:0.55,blur:1.6,deb:1,amt:0.4,spk:0.8,live:1}];
-GS.style=+store.get('bench_style','2')||0; if(!(GS.style>=0&&GS.style<4)) GS.style=2; GS.calm=0.5;
+  {n:'1+2+3 и глубина',dim:0.5,sat:0.7,rim:1,halo:0.55,blur:1.6,deb:1,amt:0.75,spk:1},{n:'всё вместе',dim:0.5,sat:0.7,rim:1,halo:0.55,blur:1.6,deb:1,amt:0.4,spk:0.8,live:1},{n:'чёрные',dim:1,sat:1,rim:0,halo:0,blur:0,deb:1,amt:0.8,spk:0.75,ink:1,sw:1}];
+GS.style=+store.get('bench_style','2')||0; if(!(GS.style>=0&&GS.style<5)) GS.style=2; GS.calm=0.5;
 function drawGame(t,dt){ if(!gl) return; var pb,pbl,po,pf;
   try{ pb=gProg('gbg',VS,FS_GBG); pbl=gProg('gblit',VS,FS_BLIT); po=gProg('gobj',VS_OBJ,FS_OBJ); pf=gProg('gfx',VS_GFX,FS_GPT); glErr=''; }catch(e){ glErr=String(e.message||e).slice(0,400); return; }
   gStep(dt,t); var W=cgl.width, H=cgl.height, hole=gHole();
@@ -409,7 +420,7 @@ function drawGame(t,dt){ if(!gl) return; var pb,pbl,po,pf;
       if(!GS.bgFb) GS.bgFb=gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER,GS.bgFb); gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,GS.bgTex,0); GS.bgW=bw; GS.bgH=bh; }
     gl.bindFramebuffer(gl.FRAMEBUFFER,GS.bgFb); }
   gl.disable(gl.BLEND); gl.viewport(0,0,bw,bh); gl.useProgram(pb); gl.bindVertexArray(vao); gl.uniform2f(gl.getUniformLocation(pb,'uRes'),bw,bh); gl.uniform1f(gl.getUniformLocation(pb,'uTime'),t); gl.uniform1i(gl.getUniformLocation(pb,'uQ'),S.q); gl.uniform1f(gl.getUniformLocation(pb,'uTaY'),GS.ta[1]); var ST=GSTY[GS.style]; var dimNow=ST.dim; if(ST.live){ var busy=GS.fx.filter(function(f){ return t-f.t0<1.6; }).length+GS.eshots.length*0.5; GS.calm+=(Math.max(0,1-busy/8)-GS.calm)*Math.min(1,dt*0.8); dimNow=ST.dim+0.35*GS.calm; }
-  gl.uniform1f(gl.getUniformLocation(pb,'uDim'),dimNow); gl.uniform1f(gl.getUniformLocation(pb,'uSat'),ST.sat); gl.drawArrays(gl.TRIANGLES,0,3);
+  gl.uniform1f(gl.getUniformLocation(pb,'uDim'),dimNow); gl.uniform3f(gl.getUniformLocation(pb,'uHole'),hole.x*(bw/bh)/(W/H),hole.y,hole.rs); gl.uniform1f(gl.getUniformLocation(pb,'uSw'),ST.sw?1:0); gl.uniform1f(gl.getUniformLocation(pb,'uSat'),ST.sat); gl.drawArrays(gl.TRIANGLES,0,3);
   if(half){ gl.bindFramebuffer(gl.FRAMEBUFFER,null); gl.viewport(0,0,W,H); gl.useProgram(pbl); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,GS.bgTex); gl.uniform1i(gl.getUniformLocation(pbl,'uTex'),0); gl.uniform2f(gl.getUniformLocation(pbl,'uRes'),W,H); gl.uniform1f(gl.getUniformLocation(pbl,'uBlur'),ST.blur); gl.drawArrays(gl.TRIANGLES,0,3); }
   gl.viewport(0,0,W,H);
   /* the objects, one quad each */
@@ -422,12 +433,12 @@ function drawGame(t,dt){ if(!gl) return; var pb,pbl,po,pf;
   gl.bindVertexArray(GVAO); gl.bindBuffer(gl.ARRAY_BUFFER,GBUF); gl.bufferSubData(gl.ARRAY_BUFFER,0,GDATA,0,n*8);
   var sparks=function(){
   var fa=new Float32Array(128), nf=Math.min(32,GS.fx.length); for(var i=0;i<nf;i++){ var f=GS.fx[GS.fx.length-nf+i]; fa[i*4]=f.x; fa[i*4+1]=f.y; fa[i*4+2]=f.t0; fa[i*4+3]=f.kind; }
-  gl.bindVertexArray(vao); gl.blendFunc(gl.ONE,gl.ONE); gl.useProgram(pf); gl.uniform2f(gl.getUniformLocation(pf,'uRes'),W,H); gl.uniform4fv(gl.getUniformLocation(pf,'uFx'),fa); gl.uniform1i(gl.getUniformLocation(pf,'uN'),nf);
+  gl.bindVertexArray(vao); if(ST.ink) gl.blendFunc(gl.ZERO,gl.ONE_MINUS_SRC_COLOR); else gl.blendFunc(gl.ONE,gl.ONE); gl.useProgram(pf); gl.uniform2f(gl.getUniformLocation(pf,'uRes'),W,H); gl.uniform4fv(gl.getUniformLocation(pf,'uFx'),fa); gl.uniform1i(gl.getUniformLocation(pf,'uN'),nf);
   gl.uniform1f(gl.getUniformLocation(pf,'uNow'),t); gl.uniform2f(gl.getUniformLocation(pf,'uSink'),hole.x,hole.y); gl.uniform1f(gl.getUniformLocation(pf,'uRs'),hole.rs);
-  gl.uniform1i(gl.getUniformLocation(pf,'uDebM'),ST.deb); gl.uniform1f(gl.getUniformLocation(pf,'uDebAmt'),ST.amt); gl.uniform1f(gl.getUniformLocation(pf,'uSpk'),ST.spk);
+  gl.uniform1i(gl.getUniformLocation(pf,'uDebM'),ST.deb); gl.uniform1f(gl.getUniformLocation(pf,'uDebAmt'),ST.amt); gl.uniform1f(gl.getUniformLocation(pf,'uSpk'),ST.spk); gl.uniform1f(gl.getUniformLocation(pf,'uInk'),ST.ink?0.85:0.0);
   gl.drawArrays(gl.POINTS,0,nf*1200); };
   gl.enable(gl.BLEND); if(ST.halo>0) sparks();
-  gl.bindVertexArray(GVAO); gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA); gl.useProgram(po); gl.uniform2f(gl.getUniformLocation(po,'uRes'),W,H); gl.uniform1f(gl.getUniformLocation(po,'uTime'),t); gl.uniform2f(gl.getUniformLocation(po,'uLight'),hole.x,hole.y); gl.uniform1f(gl.getUniformLocation(po,'uRimK'),ST.rim);
+  gl.bindVertexArray(GVAO); gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA); gl.useProgram(po); gl.uniform2f(gl.getUniformLocation(po,'uRes'),W,H); gl.uniform1f(gl.getUniformLocation(po,'uTime'),t); gl.uniform2f(gl.getUniformLocation(po,'uLight'),hole.x,hole.y); gl.uniform1f(gl.getUniformLocation(po,'uRimK'),ST.rim); gl.uniform1f(gl.getUniformLocation(po,'uInk'),ST.ink?1:0);
   if(ST.halo>0){ gl.uniform1f(gl.getUniformLocation(po,'uHalo'),ST.halo); gl.drawArraysInstanced(gl.TRIANGLES,0,6,n); } gl.uniform1f(gl.getUniformLocation(po,'uHalo'),0); gl.drawArraysInstanced(gl.TRIANGLES,0,6,n);
   if(!(ST.halo>0)) sparks(); gl.disable(gl.BLEND);
   GS.count={obj:n,fx:GS.fx.filter(function(f){ return t-f.t0<1.6; }).length,streams:Math.min(32,GS.fx.length)}; }

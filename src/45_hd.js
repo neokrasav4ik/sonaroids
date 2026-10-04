@@ -188,6 +188,43 @@ HDSK.space={id:'space', hd:true, glow:true, veil:'rgba(10,8,30,0.55)', motes:['#
     x.save(); x.beginPath(); x.ellipse(X,Y,3.4,1.5,0,0,6.2832); x.clip(); dot(X-0.8,Y+0.1,0.95,'#e8303a'); x.fillStyle='rgba(40,40,60,0.85)'; x.beginPath(); x.ellipse(X-0.3,Y+0.1,0.45,0.75,0,0,6.2832); x.fill(); x.restore();
     x.strokeStyle='#08362f'; x.lineWidth=0.4; x.beginPath(); x.ellipse(X,Y,3.4,1.5,0,0,6.2832); x.stroke(); x.fillStyle='rgba(255,255,255,0.85)'; x.beginPath(); x.ellipse(X+1.2,Y-0.7,1.1,0.32,-0.2,0,6.2832); x.fill();
     return o.c; },
+  /* v1.35, the barrel roll's other sides (the maintainer: «профиль — Б, брюхо Б + вентиляторы светящиеся»): the profile — the ship on its
+     side, the canopy with the pilot up, the fin with lights, an orange stripe, a vent row, the wing edge-on with its missile; the belly — light
+     grey with a yellow hazard chevron, a belly light and two glowing blue vents. Cached sprites in the same 24×14 box as the top view. */
+  shipSide:function(){ var o=hdOff(24,14), x=o.x; x.translate(1,7); x.lineJoin='round'; x.lineCap='round';
+    var lg=function(x0,y0,x1,y1,st){ var g=x.createLinearGradient(x0,y0,x1,y1); st.forEach(function(c,i){ g.addColorStop(i/(st.length-1),c); }); return g; };
+    var dot=function(X,Y,r,c){ x.fillStyle=c; x.beginPath(); x.arc(X,Y,r,0,6.2832); x.fill(); };
+    x.fillStyle=lg(0,-1,0,1,['#7a8a98','#3a4a58','#222c36']); x.beginPath(); x.roundRect(0.1,-1.0,2.8,2.0,0.6); x.fill(); x.strokeStyle='#0c2a30'; x.lineWidth=0.35; x.stroke();
+    var body=function(){ x.beginPath(); x.moveTo(20,0.3); x.bezierCurveTo(17,-1.1,12,-1.9,6,-2.0); x.lineTo(2.2,-1.6); x.lineTo(2.2,1.7); x.lineTo(7,2.0); x.bezierCurveTo(12,1.9,17,1.3,20,0.3); x.closePath(); };
+    body(); x.fillStyle=lg(0,-2,0,2,['#e8fff8','#8ff0d6','#3fc4a6','#14544c']); x.fill();
+    x.fillStyle='#3fc4a6'; x.beginPath(); x.moveTo(3.2,-1.7); x.lineTo(2.2,-4.6); x.lineTo(3.6,-4.6); x.lineTo(6.6,-1.9); x.fill(); x.strokeStyle='#08362f'; x.lineWidth=0.4; x.stroke();
+    x.fillStyle='#ff6a3c'; x.fillRect(2.6,-4.0,1.3,0.5); x.fillStyle='#ffd23f'; x.fillRect(3.0,-3.4,1.3,0.4);
+    body(); x.strokeStyle='#08362f'; x.lineWidth=0.5; x.stroke();
+    x.fillStyle='rgba(255,106,60,0.9)'; x.beginPath(); x.moveTo(6.5,-0.6); x.lineTo(17.5,0.0); x.lineTo(17.5,0.5); x.lineTo(6.5,0.1); x.fill();
+    x.fillStyle='#143a40'; for(var i=0;i<4;i++) x.fillRect(3.0+i*0.75,-1.2,0.35,1.0);
+    x.fillStyle=lg(0,-0.25,0,0.25,['#ffffff','#9aa0ac']); x.fillRect(4,0.15,6.5,0.4);
+    x.fillStyle=lg(0,1.2,0,2.4,['#ffffff','#c8ced8','#7a8090']); x.beginPath(); x.moveTo(4.8,1.1); x.lineTo(9.2,1.1); x.quadraticCurveTo(10.6,1.6,9.2,2.1); x.lineTo(4.8,2.1); x.closePath(); x.fill(); x.fillStyle='#e8303a'; x.fillRect(8.6,1.1,0.6,1);
+    var X=13.6; x.fillStyle=lg(X-2,-3,X+2,-1,['#ffffff','#9ff0ff','#2a78a8']); x.beginPath(); x.ellipse(X,-1.7,3.0,1.4,0,3.1416,6.2832); x.fill(); dot(X-0.6,-2.0,0.75,'#e8303a');
+    x.strokeStyle='#08362f'; x.lineWidth=0.4; x.beginPath(); x.ellipse(X,-1.7,3.0,1.4,0,3.1416,6.2832); x.stroke(); x.fillStyle='rgba(255,255,255,0.85)'; x.beginPath(); x.ellipse(X+1.1,-2.5,0.9,0.25,-0.2,0,6.2832); x.fill();
+    x.strokeStyle='rgba(255,255,255,0.75)'; x.lineWidth=0.35; x.beginPath(); x.moveTo(7,-1.6); x.quadraticCurveTo(13,-1.2,18.8,-0.2); x.stroke();
+    return o.c; },
+  shipBelly:function(){ var o=hdOff(24,14), x=o.x; x.translate(1,7); x.lineJoin='round';
+    var lg=function(x0,y0,x1,y1,st){ var g=x.createLinearGradient(x0,y0,x1,y1); st.forEach(function(c,i){ g.addColorStop(i/(st.length-1),c); }); return g; };
+    var hull=function(){ x.beginPath(); x.moveTo(20,0); x.bezierCurveTo(15,-2.2,10,-3,7,-6); x.lineTo(3,-6); x.lineTo(5,-2); x.lineTo(1.5,-1.6); x.lineTo(1.5,1.6); x.lineTo(5,2); x.lineTo(3,6); x.lineTo(7,6); x.bezierCurveTo(10,3,15,2.2,20,0); x.closePath(); };
+    [-1.15,1.15].forEach(function(dy){ x.fillStyle='#3a4a58'; x.beginPath(); x.roundRect(0.1,dy-0.95,2.6,1.9,0.6); x.fill(); });
+    hull(); x.fillStyle=lg(0,-6,0,6,['#9ab0ac','#5e7c78','#3e5c58','#5e7c78','#9ab0ac']); x.fill(); x.save(); hull(); x.clip();
+    x.fillStyle='#ffd23f'; for(var i=0;i<7;i++){ x.beginPath(); x.moveTo(6+i*1.2,-0.8); x.lineTo(6.6+i*1.2,-0.8); x.lineTo(6+i*1.2,0.8); x.lineTo(5.4+i*1.2,0.8); x.fill(); }
+    x.strokeStyle='rgba(0,0,0,0.45)'; x.lineWidth=0.25; x.beginPath(); x.moveTo(7,-1.5); x.lineTo(15,-0.9); x.moveTo(7,1.5); x.lineTo(15,0.9); x.moveTo(11,-1.4); x.lineTo(11,1.4); x.moveTo(6,-4); x.lineTo(9,-2.3); x.moveTo(6,4); x.lineTo(9,2.3); x.stroke(); x.restore();
+    x.strokeStyle='#08362f'; x.lineWidth=0.55; hull(); x.stroke();
+    [-4.4,4.4].forEach(function(Y){ x.fillStyle=lg(0,Y-0.6,0,Y+0.6,['#ffffff','#c8ced8','#7a8090']); x.beginPath(); x.moveTo(4.4,Y-0.6); x.lineTo(9.2,Y-0.6); x.quadraticCurveTo(10.8,Y,9.2,Y+0.6); x.lineTo(4.4,Y+0.6); x.closePath(); x.fill(); x.strokeStyle='#3a4050'; x.lineWidth=0.22; x.stroke(); x.fillStyle='#e8303a'; x.fillRect(8.6,Y-0.6,0.6,1.2); });
+    x.fillStyle='#9fe8ff'; x.fillRect(8,-2.75,2,0.3); x.fillRect(8,2.45,2,0.3);
+    return o.c; },
+  /* a view of the roll: 'side' (canopy up; drawn flipped for upside down) or 'belly'; the plasma and the lights live */
+  shipView:function(v,x,y,t){ var me=this; if(!this._side||this._sideKey!==hdKey){ this._side=this.shipSide(); this._belly=this.shipBelly(); this._sideKey=hdKey; }
+    if(v==='side'){ if(!shipBare) this.plasma(x,y,t,0); hx.drawImage(this._side,x-1,y-7,24,14); var bl=Math.floor(t*3)%2; hGlow(x+3.4,y-4.5,1.6,'255,210,63',bl?0.9:0.35); hGlow(x+20.2,y+0.4,1.2,'255,255,255',0.7); return; }
+    if(!shipBare){ this.plasma(x,y,t,-1.15); this.plasma(x,y,t,1.15); } hx.drawImage(this._belly,x-1,y-7,24,14);
+    var pu=0.65+0.35*Math.sin(t*6); [-2.6,2.6].forEach(function(Y){ hGlow(x+10,y+Y,2.4,'120,200,255',0.55*pu); });
+    hGlow(x+16.5,y,1.2,'255,64,64',Math.floor(t*4)%2?0.9:0.3); var bl=Math.floor(t*3)%2; hGlow(x+3.3,y-6,1.9,'110,255,170',bl?0.4:0.95); hGlow(x+3.3,y+6,1.9,'255,80,80',bl?0.95:0.4); },
   /* the twin blue plasma: a white-hot core, a fading blue tongue, two shock rings */
   plasma:function(x,y,t,dy){ var fl=0.85+0.15*Math.sin(t*41+dy), Y=y+dy; hGlow(x-1,Y,5,'110,200,255',0.55);
     var g=hx.createLinearGradient(x+1,0,x-9,0); g.addColorStop(0,'#ffffff'); g.addColorStop(0.45,'#7fdcff'); g.addColorStop(1,'rgba(60,120,255,0)'); hx.fillStyle=g;

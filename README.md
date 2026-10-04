@@ -25,6 +25,7 @@ The ship fires on its own; all you choose is where it is.
 - **Points** depend on height: the middle of the screen ×3, then ×2, the edges ×1. Hits in a row add a **streak** multiplier, up to ×4.
 - **Power-ups** — fly into them: a shield (takes one hit), triple shot, slow motion (once the game has sped up), a heart (an extra life, after you've lost one).
 - **Saucers:** a large one from level 2, a small one that aims at you from level 4. Line up with them and they sidestep.
+- **The ship flies like a plane:** its nose goes up and down as it climbs and dives, it does a barrel roll on a sharp turn, swirling trails follow it and its flame flares on a fast move — each skin in its own way. The picture only: the steering and the score are the same.
 - **Six skins:** space, fairy tale, vector 80s, neon, notebook, retro LCD — each in **HD** or in **pixels**, each with its own ship, saucers, power-ups, shots, shield, asteroids and explosions. In every skin things are drawn exactly the size the game counts them.
 
 <p align="center"><img src="promo/sonafly_skins.png" width="640" alt="SonaFly's six skins in play: space, fairy tale, vector 80s, neon, notebook, retro LCD — each with its own ship, saucer, power-up, shots and rocks"></p>
@@ -134,7 +135,7 @@ A player is a random key kept on the phone; the server stores only its hash. Wit
 | `30_lang_en.js`, `31_lang_ru.js` | interface texts |
 | `40_gfx.js`, `41_sprites.js`, `42_guide.js` | drawing, pixel sprites, the drawn phones of getting ready and the instructions |
 | `42_hands.js` | the hands of those pictures in HD, as pictures — made by `hands/make_hands.py` |
-| `43_skins.js`, `45_hd.js`, `46_vecskins.js`, `47_pixskins.js`, `48_sizes.js` | SonaFly's skins: pixels, HD, shape skins; things drawn the size the game counts them |
+| `43_skins.js`, `45_hd.js`, `46_vecskins.js`, `47_pixskins.js`, `48_sizes.js`, `48_flight.js` | SonaFly's skins: pixels, HD, shape skins; things drawn the size the game counts them |
 | `48_racehd.js`, `48_racecandy.js`, `48_racenote.js`, `48_racepirate.js` | SonaRace's candy land, notebook and pirate world, in HD and in pixels |
 | `48_mix.js` | the skins' list: which are on, how often and in what order they change in a game |
 | `49_main.js` | the screens, the menus and the game loop |

@@ -22,7 +22,11 @@ var Core=(function(){
   var STREAK_MAX=4;                        // the streak adds up to ×4 (after 15 hits in a row)
   /* tuning, set with a bot player (tests/bot.js): a rock every SPAWN s at pace 1, and pace^1.125 times as often later (more rocks, not just faster ones); pieces fly off at SPLIT_VX × the parent's speed
      and SPLIT_VY up or down; a new level every LEVEL base points (points before the height and streak multipliers) */
-  var TUNE={SPAWN:[1.0,1.7],SPLIT_VX:[0.85,1.15],SPLIT_VY:[8,18],HIT_R:0.8,LEVEL:5000,SLOW_FROM:1.4};
+  var TUNE={SPAWN:[1.0,1.7],SPLIT_VX:[0.85,1.15],SPLIT_VY:[8,18],HIT_R:0.8,LEVEL:5000,SLOW_FROM:1.4,SHOT_TILT:0};
+  /* v1.35 (experiment, off): the ship tilts with its own vertical speed — smoothed 0.12 s, a dead zone of 6% of the field a second
+     (a still palm's shake leaves it level), then 0.08 s more; the slope (rise per unit ahead) up to ±0.33 (~18°). The picture always
+     shows it; the shots follow SHOT_TILT × it (0 — straight ahead, as before). Literals: 1 − exp(−(1/60)/0.12), 1 − exp(−(1/60)/0.08) */
+  var TILT={k1:0.1296752741666095,k2:0.18806365384936496,dead:FH*0.06,gain:0.55/FH,max:0.33};
   var UFO={big:{hw:7,hh:3,pts:200,fire:1.4,v:70,hp:2},small:{hw:5,hh:2,pts:1000,fire:1.1,v:85,hp:1}};
   // v0.17 "a mini-boss, not one more rock": the saucer sidesteps when the ship has been level with it for a moment
   // (not always, and not again right away), moves up and down faster, the large one takes two hits, and it cannot be hit before it is on screen
@@ -31,7 +35,7 @@ var Core=(function(){
   /* y0 — where the ship starts (field units): at the palm, so the first frames of flight do not jerk it from the middle (v0.16) */
   function create(seed,FW,y0){
     return {seed:seed>>>0,FW:FW||380,FH:FH,rand:rng(seed),n:0,t:0,state:'play',score:0,lives:LIVES,level:1,combo:0,
-      base:0,ship:{x:SHIP_X,y:(y0===undefined||y0===null)?FH/2:y0,inv:0,shield:0,triple:0},rocks:[],bullets:[],picks:[],ebullets:[],ufo:null,slow:0,
+      base:0,ship:{x:SHIP_X,y:(y0===undefined||y0===null)?FH/2:y0,inv:0,shield:0,triple:0,sv:0,tl:0},rocks:[],bullets:[],picks:[],ebullets:[],ufo:null,slow:0,
       fireT:0.3,spawnT:0.6,pickT:9,ufoT:-1,nextId:1,events:[],gone:[],fx:[]};
   }
   function rnd(g,a,b){ return a+g.rand()*(b-a); }
@@ -57,11 +61,18 @@ var Core=(function(){
     g.events=[]; g.gone=[]; g.fx=[]; if(g.state!=='play') return g;
     g.n++; g.t=g.n*DT;
     var s=g.ship, m=pace(g.t), w=g.slow>0?0.5:1, wdt=DT*w, i, j, b, r, u=g.ufo;
-    if(hand!==null&&hand!==undefined){ var ty=FH-MARGIN-hand*(FH-2*MARGIN); s.y+=(ty-s.y)*FOLLOW; }
+    var y0=s.y; if(hand!==null&&hand!==undefined){ var ty=FH-MARGIN-hand*(FH-2*MARGIN); s.y+=(ty-s.y)*FOLLOW; }
+    s.sv+=((s.y-y0)/DT-s.sv)*TILT.k1; var vv=s.sv>TILT.dead?s.sv-TILT.dead:s.sv<-TILT.dead?s.sv+TILT.dead:0, tt=vv*TILT.gain;
+    if(tt>TILT.max) tt=TILT.max; else if(tt<-TILT.max) tt=-TILT.max; s.tl+=(tt-s.tl)*TILT.k2;   // the slope: + nose down (y grows down)
     if(s.inv>0) s.inv-=DT; if(s.shield>0) s.shield-=DT; if(s.triple>0) s.triple-=DT; if(g.slow>0) g.slow-=DT;
     // shooting
-    g.fireT-=DT; if(g.fireT<=0){ g.fireT+=FIRE; var bx=s.x+14; g.bullets.push({x:bx,y:s.y,vx:BULLET_V,vy:0});
-      if(s.triple>0){ g.bullets.push({x:bx,y:s.y,vx:185,vy:-38}); g.bullets.push({x:bx,y:s.y,vx:185,vy:38}); } g.events.push('fire'); }
+    g.fireT-=DT; if(g.fireT<=0){ g.fireT+=FIRE; var sl=TUNE.SHOT_TILT*s.tl;
+      if(sl===0){ var bx=s.x+14; g.bullets.push({x:bx,y:s.y,vx:BULLET_V,vy:0});
+        if(s.triple>0){ g.bullets.push({x:bx,y:s.y,vx:185,vy:-38}); g.bullets.push({x:bx,y:s.y,vx:185,vy:38}); } }
+      else { var ic=1/Math.sqrt(1+sl*sl), ss=sl*ic, mx=s.x+3+11*ic, my=s.y+11*ss;   // the muzzle and the shots turned with the nose (cos ic, sin ss)
+        g.bullets.push({x:mx,y:my,vx:BULLET_V*ic,vy:BULLET_V*ss});
+        if(s.triple>0){ g.bullets.push({x:mx,y:my,vx:185*ic+38*ss,vy:185*ss-38*ic}); g.bullets.push({x:mx,y:my,vx:185*ic-38*ss,vy:185*ss+38*ic}); } }
+      g.events.push('fire'); }
     // what comes in
     g.spawnT-=wdt; if(g.spawnT<=0){ spawn(g,m); g.spawnT=rnd(g,TUNE.SPAWN[0],TUNE.SPAWN[1])/(m*Math.sqrt(Math.sqrt(Math.sqrt(m)))); }   // m^1.125 via sqrt: exact on every engine, unlike pow
     g.pickT-=DT; if(g.pickT<=0){ g.pickT=rnd(g,12,18); var k=g.rand(), slowOk=m>=TUNE.SLOW_FROM;                                  // slow motion only once things have sped up
@@ -110,6 +121,6 @@ var Core=(function(){
   function replay(seed,FW,hands,y0){ var g=create(seed,FW,y0); for(var i=0;i<hands.length&&g.state==='play';i++) step(g,hands[i]<0?null:hands[i]); return g; }
   /* the rules' tag: the leaderboard server replays a game only with the same rules. Change it whenever a change here alters play */
   var TAG='rules-3';
-  return {TAG:TAG,TUNE:TUNE,SHIP_X:SHIP_X,UFO_BIG_LV:UFO_BIG_LV,UFO_SMALL_LV:UFO_SMALL_LV,create:create,step:step,replay:replay,pace:pace,heightMult:heightMult,DT:DT,FH:FH,MARGIN:MARGIN,UFO:UFO,DODGE:DODGE,R_SIZE:R_SIZE};
+  return {TAG:TAG,TUNE:TUNE,TILT:TILT,SHIP_X:SHIP_X,UFO_BIG_LV:UFO_BIG_LV,UFO_SMALL_LV:UFO_SMALL_LV,create:create,step:step,replay:replay,pace:pace,heightMult:heightMult,DT:DT,FH:FH,MARGIN:MARGIN,UFO:UFO,DODGE:DODGE,R_SIZE:R_SIZE};
 })();
 if(typeof module!=='undefined') module.exports=Core;

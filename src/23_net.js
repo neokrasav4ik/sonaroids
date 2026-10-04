@@ -18,7 +18,8 @@ var Board=(function(){
   function nick(){ return ls('sonaroids_nick'); }
   /* the palm height the game steps with: rounded so that the server can repeat it exactly */
   function q(h){ return h===null||h===undefined?null:Math.round(h*Q)/Q; }
-  function start(seed,FW,y0,x){ cur={core:x&&x.core||Core.TAG,seed:seed,FW:FW,y0:y0,q:[],game:x&&x.game||null,steer:x&&x.steer||null}; last=null; }   // v1.01: x — SonaRace: {game:'race', core, steer}
+  function start(seed,FW,y0,x){ if(x&&x.test){ cur=null; last={state:'test'}; return; }   /* v1.35: a game by test rules (the shots' tilt) is not for the tables */
+    cur={core:x&&x.core||Core.TAG,seed:seed,FW:FW,y0:y0,q:[],game:x&&x.game||null,steer:x&&x.steer||null}; last=null; }   // v1.01: x — SonaRace: {game:'race', core, steer}
   function step(h){ if(cur) cur.q.push(h===null?NONE:Math.round(h*Q)); }
   function b64(u8){ var s='', CH=0x8000; for(var i=0;i<u8.length;i+=CH) s+=String.fromCharCode.apply(null,u8.subarray(i,i+CH)); return btoa(s); }
   function pack(qs){ var u8=new Uint8Array(qs.length*2); for(var i=0;i<qs.length;i++){ u8[2*i]=qs[i]&255; u8[2*i+1]=qs[i]>>8; }

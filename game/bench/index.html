@@ -20,7 +20,7 @@ canvas.v{position:fixed;left:0;top:0;width:100vw;height:100vh;display:none}
 #ui button.on{background:rgba(70,190,160,.85);color:#06110e;border-color:transparent}
 #ui button:disabled{opacity:.45}
 #ui .sep{width:4px}
-#ui button[data-scene]:not([data-scene="W10"]):not([data-scene="W11"]):not([data-scene="W12"]):not([data-scene="W13"]),#ui .sep.sc{display:none}   /* v1.41g: only the two «К2» on the panel for the comparison; the other scenes are there, hidden */
+#ui button[data-scene]:not([data-scene="W10"]):not([data-scene="W11"]):not([data-scene="W12"]):not([data-scene="W13"]):not([data-scene="W14"]):not([data-scene="W15"]),#ui .sep.sc{display:none}   /* v1.41g: only the two «К2» on the panel for the comparison; the other scenes are there, hidden */
 #hud{position:fixed;left:calc(env(safe-area-inset-left) + 6px);bottom:calc(env(safe-area-inset-bottom) + 6px);max-width:62vw;
   background:rgba(8,9,16,.62);border-radius:8px;padding:6px 9px;font-variant-numeric:tabular-nums;white-space:pre-wrap;pointer-events:none}
 #hud b{color:#7fe3c6}
@@ -38,7 +38,7 @@ body.clean #ui,body.clean #hud,body.clean #graph{display:none}
 <canvas id="gpu" class="v"></canvas>
 <div id="ui">
   <button data-scene="A">А туманность</button><button data-scene="B">Б чёрная дыра</button><button data-scene="C">В кристаллы</button><button data-scene="E">Е частицы</button><button data-scene="G">игра: дыра</button><button data-scene="H">игра: дыра выше</button>
-  <span class="sep sc"></span><button data-scene="W1">А облака</button><button data-scene="W2">Б туман</button><button data-scene="W3">В сияние</button><button data-scene="W4">Г вода</button><button data-scene="W5">Д дождь</button><button data-scene="W6">Е планктон</button><button data-scene="W7">Ж чернила</button><button data-scene="W8">З гигант</button><button data-scene="W9">И закат</button><button data-scene="W10">К холодный</button><button data-scene="W13">К холодный, самый первый</button><button data-scene="W11">К2 тёплый</button><button data-scene="W12">К2 тёплый, самый первый</button>
+  <span class="sep sc"></span><button data-scene="W1">А облака</button><button data-scene="W2">Б туман</button><button data-scene="W3">В сияние</button><button data-scene="W4">Г вода</button><button data-scene="W5">Д дождь</button><button data-scene="W6">Е планктон</button><button data-scene="W7">Ж чернила</button><button data-scene="W8">З гигант</button><button data-scene="W9">И закат</button><button data-scene="W10">холодный · лёгкий</button><button data-scene="W13">холодный · первый, тяжёлый</button><button data-scene="W14">холодный · первый, 2 прохода</button><button data-scene="W11">тёплый · лёгкий</button><button data-scene="W12">тёплый · первый, тяжёлый</button><button data-scene="W15">тёплый · первый, 2 прохода</button>
   <span class="sep"></span>
   <button id="bq">качество</button><button id="bhalf">дыра</button><button id="bsty">вид</button><button id="bs">разрешение</button>
   <span class="sep"></span>
@@ -51,11 +51,11 @@ body.clean #ui,body.clean #hud,body.clean #graph{display:none}
 'use strict';
 var $=function(s){ return document.querySelector(s); };
 var DPR=window.devicePixelRatio||1;
-var NAMES={A:'А туманность',B:'Б чёрная дыра',C:'В кристаллы',E:'Е частицы',G:'игра: дыра',H:'игра: дыра выше',W1:'фон А облака ночью',W2:'фон Б туман и лучи',W3:'фон В сияние',W4:'фон Г под водой',W5:'фон Д дождь, город',W6:'фон Е планктон',W7:'фон Ж чернила',W8:'фон З газовый гигант',W9:'фон И закат',W10:'фон К чернила в тумане (холодный)',W11:'фон К2 чернила в тумане (тёплый)',W12:'фон К2 самый первый (тяжёлый, 1.41c)',W13:'фон К самый первый (тяжёлый, 1.41c)'}, QN=['низкое','среднее','высокое'];
+var NAMES={A:'А туманность',B:'Б чёрная дыра',C:'В кристаллы',E:'Е частицы',G:'игра: дыра',H:'игра: дыра выше',W1:'фон А облака ночью',W2:'фон Б туман и лучи',W3:'фон В сияние',W4:'фон Г под водой',W5:'фон Д дождь, город',W6:'фон Е планктон',W7:'фон Ж чернила',W8:'фон З газовый гигант',W9:'фон И закат',W10:'холодный · лёгкий (сейчас)',W11:'тёплый · лёгкий (сейчас)',W12:'тёплый · первый, тяжёлый',W13:'холодный · первый, тяжёлый',W14:'холодный · первый в 2 прохода',W15:'тёплый · первый в 2 прохода'}, QN=['низкое','среднее','высокое'];
 function isGame(id){ return id==='G'||id==='H'||String(id).charAt(0)==='W'; }
 var S={scene:'A',q:1,scale:Math.min(2,DPR),hz:60,calib:true,run:null,t0:performance.now()};
 var store={get:function(k,d){ try{ var v=localStorage.getItem(k); return v===null?d:v; }catch(e){ return d; } },set:function(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }};
-S.scene=store.get('bench_scene','W11'); if(['W10','W11','W12','W13'].indexOf(S.scene)<0) S.scene='W11'; S.q=+store.get('bench_q','1')||0; if(!(S.q>=0&&S.q<=2)) S.q=1;
+S.scene=store.get('bench_scene','W11'); if(['W10','W11','W12','W13','W14','W15'].indexOf(S.scene)<0) S.scene='W15'; S.q=+store.get('bench_q','1')||0; if(!(S.q>=0&&S.q<=2)) S.q=1;
 function scales(){ var a=[1,1.5,2,2.5,3].filter(function(s){ return s<=DPR+0.01; }); if(!a.length) a=[1]; return a; }
 
 /* ── device line ── */
@@ -416,10 +416,10 @@ var GSTY=[{n:'как было',dim:1,sat:1,rim:0,halo:0,blur:0,deb:0,amt:0.75,sp
 GS.style=+store.get('bench_style','2')||0; if(!(GS.style>=0&&GS.style<5)) GS.style=2; GS.calm=0.5;
 /* ── v1.41b: nine backgrounds for SonaFly's heavy skin, each a game scene (the same fight as «игра: дыра»): beautiful but quiet —
    a narrow band of brightness, big soft forms where the fight is, no centre, slow even motion, and every one answers the explosions ── */
-var WN={W1:'А облака ночью',W2:'Б туман и лучи',W3:'В сияние',W4:'Г под водой',W5:'Д дождь, город',W6:'Е планктон',W7:'Ж чернила',W8:'З газовый гигант',W9:'И закат',W10:'К чернила в тумане, холодный',W11:'К2 чернила в тумане, тёплый',W12:'К2 самый первый (тяжёлый)',W13:'К самый первый (тяжёлый)'};
+var WN={W1:'А облака ночью',W2:'Б туман и лучи',W3:'В сияние',W4:'Г под водой',W5:'Д дождь, город',W6:'Е планктон',W7:'Ж чернила',W8:'З газовый гигант',W9:'И закат',W10:'К чернила в тумане, холодный',W11:'К2 чернила в тумане, тёплый',W12:'К2 самый первый (тяжёлый)',W13:'К самый первый (тяжёлый)',W14:'К первый в 2 прохода',W15:'К2 первый в 2 прохода'};
 /* where each scene's light comes from (for the objects' shading) and its colour */
 var WL={W1:{l:[0.9,0.9],c:[0.62,0.72,1.0]},W2:{l:[-0.7,0.9],c:[1.0,0.85,0.6]},W3:{l:[0.0,0.6],c:[0.45,1.0,0.7]},W4:{l:[0.1,1.2],c:[0.5,0.9,1.0]},W5:{l:[0.3,-0.6],c:[1.0,0.55,0.75]},
-  W6:{l:[-0.6,-0.2],c:[0.3,0.9,1.0]},W7:{l:[0.5,0.5],c:[0.9,0.6,1.0]},W8:{l:[-0.9,0.8],c:[1.0,0.85,0.65]},W9:{l:[0.6,0.2],c:[1.0,0.6,0.35]},W10:{l:[-0.9,0.7],c:[1.0,0.78,0.5]},W11:{l:[0.9,0.7],c:[0.6,0.8,1.0]},W12:{l:[0.9,0.7],c:[0.6,0.8,1.0]},W13:{l:[-0.9,0.7],c:[1.0,0.78,0.5]}};
+  W6:{l:[-0.6,-0.2],c:[0.3,0.9,1.0]},W7:{l:[0.5,0.5],c:[0.9,0.6,1.0]},W8:{l:[-0.9,0.8],c:[1.0,0.85,0.65]},W9:{l:[0.6,0.2],c:[1.0,0.6,0.35]},W10:{l:[-0.9,0.7],c:[1.0,0.78,0.5]},W11:{l:[0.9,0.7],c:[0.6,0.8,1.0]},W12:{l:[0.9,0.7],c:[0.6,0.8,1.0]},W13:{l:[-0.9,0.7],c:[1.0,0.78,0.5]},W14:{l:[-0.9,0.7],c:[1.0,0.78,0.5]},W15:{l:[0.9,0.7],c:[0.6,0.8,1.0]}};
 var WCOM=[
 'uniform vec4 uFx[8]; uniform int uNf; uniform vec2 uShip; uniform float uDim;',
 /* the explosions' light on the world: a warm puff growing and fading */
@@ -606,6 +606,51 @@ function inkFogBodyFirst(pal){   /* v1.41g: the very first «К» (1.41c) kept a
 '  col+=boom(uv,1.6)*(0.18+1.1*dens); col*=1.0-0.25*smoothstep(0.35,0.75,abs(uv.y));',
 '  fragColor=vec4(fin(col),1.0); }'].join('\n'); }
 WB.W10=inkFogBody(0); WB.W11=inkFogBody(1); WB.W12=inkFogBodyFirst(1); WB.W13=inkFogBodyFirst(0);
+
+/* v1.41j: the very first «К» in two passes, its look kept (the maintainer: «да, сделай»). It was heavy because each of its 12 steps
+   toward the light computed the ink anew. Pass 1 computes the ink once a pixel — the same formulas, the same detail — into two
+   textures (a strip above the screen too: the light is off screen); pass 2 reads them: the lit edges and the 12 shaft steps are
+   texture reads. A (colour so far, the cheap ink), B (the near ink's colour, its density). Half floats where the phone can render
+   them, else 8 bits with a square-root curve (the darks keep their steps) */
+var TWO={W14:0,W15:1}, TWO_EXT=1.24;
+function twoA(pal){ var b=inkFogBodyFirst(pal); var head=b.slice(0,b.indexOf('void main(){'));   /* its own ink functions, its main replaced */
+  return COMMON.replace('out vec4 fragColor;','layout(location=0) out vec4 fragColor; layout(location=1) out vec4 frag1;')+'\n'+WCOM+'\n'+head+'\n'+[
+'uniform float uEnc;',
+'vec4 enc(vec4 v){ return uEnc>0.0?sqrt(clamp(v*0.5,0.0,1.0)):v; }',
+'void main(){ vec2 uv=vec2((gl_FragCoord.x-0.5*uRes.x)/uRes.y,gl_FragCoord.y/uRes.y-0.5); float ar=AR(); int OC=uQ==0?3:uQ==1?4:5;',
+'  vec2 sv=stir(uv); vec2 p=uv*1.5+vec2(uTime*0.028,0.0)+sv; vec2 q,r; float f=inkD(p,OC,q,r);',
+'  vec2 pf=uv*0.8+vec2(uTime*0.012,7.0)+sv*0.4; vec2 q2,r2; float f2=inkD(pf,max(OC-1,2),q2,r2);',
+'  vec3 far=inkCol(q2,r2,f2)*(PAL==0?vec3(0.45,0.6,1.0):vec3(0.8,0.55,0.5))*(0.04+0.45*f2*f2*f2);',
+'  float dens=smoothstep(0.42,0.80,f); vec3 near=inkCol(q,r,f)*(0.10+1.3*f*f*f);',
+'  vec3 col=mix(far,near,dens); col*=PAL==0?0.75:0.6; float lu=dot(col,vec3(0.3,0.59,0.11)); col=max(mix(vec3(lu),col,1.45),0.0);',
+'  fragColor=enc(vec4(col,inkCheap(p))); frag1=enc(vec4(near,f)); }'].join('\n'); }
+function twoB(pal){ return [
+'const int PAL='+pal+';',
+'uniform sampler2D uA; uniform sampler2D uB; uniform float uEnc; uniform float uExt;',
+'vec4 dec(vec4 v){ return uEnc>0.0?v*v*2.0:v; }',
+'vec2 tcOf(vec2 u){ return vec2((u.x*uRes.y+0.5*uRes.x)/uRes.x,(u.y+0.5)/uExt); }',
+'void main(){ vec2 uv=uvOf(); float ar=AR(); int NS=uQ==0?6:uQ==1?9:12; vec2 sun=PAL==0?vec2(-ar*0.46,0.72):vec2(ar*0.46,0.70);',
+'  vec4 A=dec(texture(uA,tcOf(uv))), B=dec(texture(uB,tcOf(uv))); vec3 col=A.rgb, near=B.rgb; float f=B.a, dens=smoothstep(0.42,0.80,f);',
+'  vec2 ld=normalize(sun-uv); float fl=dec(texture(uA,tcOf(uv+ld*0.06))).a; float rim=clamp((f-fl)*5.0,0.0,1.0);',
+'  vec3 lc=PAL==0?vec3(1.0,0.78,0.48):vec3(0.55,0.80,1.0); vec3 nk=near/(max(near.r,max(near.g,near.b))+1e-3); col+=mix(lc,nk,0.65)*rim*dens*0.13*(0.4+0.6*smoothstep(2.2,0.3,length(uv-sun)));',
+'  vec2 ds=uv-sun; float th=atan(ds.y,ds.x), dl=length(ds); float bm=0.0; for(int i=0;i<3;i++){ float fi=float(i); bm+=pow(n3(vec3(th*(8.0+fi*7.0),fi*3.0,uTime*(0.04+fi*0.03))),3.0)*(0.9-fi*0.2); }',
+'  float T=0.0; for(int i=1;i<=16;i++){ if(i>NS) break; vec2 u=uv+(sun-uv)*float(i)/float(NS); T+=smoothstep(0.35,0.8,dec(texture(uA,tcOf(u))).a); } T=exp(-T/float(NS)*2.4);',
+'  vec3 tint=mix(lc,normalize(near+1e-3)*1.2,0.45); col+=tint*bm*T*0.075*exp(-dl*0.7)*(0.5+0.6*(1.0-dens))+lc*0.03/(dl*dl+0.04)*0.06;',
+'  col+=boom(uv,1.6)*(0.18+1.1*dens); col*=1.0-0.25*smoothstep(0.35,0.75,abs(uv.y));',
+'  fragColor=vec4(fin(col),1.0); }'].join('\n'); }
+WB.W14=twoB(0); WB.W15=twoB(1); var FS_TWO_A={W14:twoA(0),W15:twoA(1)};
+function twoPass1(id,bw,bh,t){ var p=gProg('w'+id+'a',VS,FS_TWO_A[id]), w=bw, h=Math.round(bh*TWO_EXT), T2=GS.two;
+  if(!T2||T2.w!==w||T2.h!==h){ if(T2){ gl.deleteTexture(T2.a); gl.deleteTexture(T2.b); }
+    var fl=!!gl.getExtension('EXT_color_buffer_float'); T2=GS.two={w:w,h:h,fb:(T2&&T2.fb)||gl.createFramebuffer()};
+    var mk=function(){ var x=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,x); if(T2.enc===0) gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA16F,w,h,0,gl.RGBA,gl.HALF_FLOAT,null); else gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE); return x; };
+    T2.enc=fl?0:1; T2.a=mk(); T2.b=mk(); gl.bindFramebuffer(gl.FRAMEBUFFER,T2.fb); gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,T2.a,0); gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT1,gl.TEXTURE_2D,T2.b,0);
+    if(gl.checkFramebufferStatus(gl.FRAMEBUFFER)!==gl.FRAMEBUFFER_COMPLETE&&T2.enc===0){ gl.deleteTexture(T2.a); gl.deleteTexture(T2.b); T2.enc=1; T2.a=mk(); T2.b=mk(); gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,T2.a,0); gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT1,gl.TEXTURE_2D,T2.b,0); } }
+  gl.bindFramebuffer(gl.FRAMEBUFFER,T2.fb); gl.drawBuffers([gl.COLOR_ATTACHMENT0,gl.COLOR_ATTACHMENT1]); gl.disable(gl.BLEND); gl.viewport(0,0,w,h); gl.useProgram(p); gl.bindVertexArray(vao);
+  gl.uniform2f(gl.getUniformLocation(p,'uRes'),bw,bh); gl.uniform1f(gl.getUniformLocation(p,'uTime'),t); gl.uniform1i(gl.getUniformLocation(p,'uQ'),S.q); gl.uniform1f(gl.getUniformLocation(p,'uEnc'),T2.enc);
+  var fw=new Float32Array(32), fl2=GS.fx.filter(function(f){ return t-f.t0<3.5&&t>=f.t0; }).slice(-8); fl2.forEach(function(f,i){ fw[i*4]=f.x; fw[i*4+1]=f.y; fw[i*4+2]=t-f.t0; fw[i*4+3]=f.kind; });
+  gl.uniform4fv(gl.getUniformLocation(p,'uFx'),fw); gl.uniform1i(gl.getUniformLocation(p,'uNf'),fl2.length); gl.uniform2f(gl.getUniformLocation(p,'uShip'),GS.ship.x,GS.ship.y);
+  gl.drawArrays(gl.TRIANGLES,0,3); gl.drawBuffers([gl.COLOR_ATTACHMENT0]); }
 var FS_W={}; Object.keys(WB).forEach(function(k){ FS_W[k]=COMMON+'\n'+WCOM+'\n'+WB[k]; });
 
 function drawGame(t,dt){ if(!gl) return; var pb,pbl,po,pf, WS=String(S.scene).charAt(0)==='W';
@@ -617,10 +662,13 @@ function drawGame(t,dt){ if(!gl) return; var pb,pbl,po,pf, WS=String(S.scene).ch
       gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
       if(!GS.bgFb) GS.bgFb=gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER,GS.bgFb); gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,GS.bgTex,0); GS.bgW=bw; GS.bgH=bh; }
     gl.bindFramebuffer(gl.FRAMEBUFFER,GS.bgFb); }
+  if(TWO[S.scene]!==undefined){ twoPass1(S.scene,bw,bh,t); gl.bindFramebuffer(gl.FRAMEBUFFER,half?GS.bgFb:null); }   /* v1.41j: the ink first, into its textures */
   gl.disable(gl.BLEND); gl.viewport(0,0,bw,bh); gl.useProgram(pb); gl.bindVertexArray(vao); gl.uniform2f(gl.getUniformLocation(pb,'uRes'),bw,bh); gl.uniform1f(gl.getUniformLocation(pb,'uTime'),t); gl.uniform1i(gl.getUniformLocation(pb,'uQ'),S.q); gl.uniform1f(gl.getUniformLocation(pb,'uTaY'),GS.ta[1]); var ST=GSTY[GS.style]; var dimNow=WS?1:ST.dim; if(ST.live){ var busy=GS.fx.filter(function(f){ return t-f.t0<1.6; }).length+GS.eshots.length*0.5; GS.calm+=(Math.max(0,1-busy/8)-GS.calm)*Math.min(1,dt*0.8); dimNow=ST.dim+0.35*GS.calm; }
   gl.uniform1f(gl.getUniformLocation(pb,'uDim'),dimNow);
   if(WS){ var fw=new Float32Array(32), fl=GS.fx.filter(function(f){ return t-f.t0<3.5&&t>=f.t0; }).slice(-8); fl.forEach(function(f,i){ fw[i*4]=f.x; fw[i*4+1]=f.y; fw[i*4+2]=t-f.t0; fw[i*4+3]=f.kind; });
-    gl.uniform4fv(gl.getUniformLocation(pb,'uFx'),fw); gl.uniform1i(gl.getUniformLocation(pb,'uNf'),fl.length); gl.uniform2f(gl.getUniformLocation(pb,'uShip'),GS.ship.x,GS.ship.y); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D,noiseTex()); gl.uniform1i(gl.getUniformLocation(pb,'uNoise'),1); gl.activeTexture(gl.TEXTURE0); } gl.uniform3f(gl.getUniformLocation(pb,'uHole'),hole.x*(bw/bh)/(W/H),hole.y,hole.rs); gl.uniform1f(gl.getUniformLocation(pb,'uSw'),ST.sw?1:0); gl.uniform1f(gl.getUniformLocation(pb,'uSat'),ST.sat); gl.drawArrays(gl.TRIANGLES,0,3);
+    gl.uniform4fv(gl.getUniformLocation(pb,'uFx'),fw); gl.uniform1i(gl.getUniformLocation(pb,'uNf'),fl.length); gl.uniform2f(gl.getUniformLocation(pb,'uShip'),GS.ship.x,GS.ship.y); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D,noiseTex()); gl.uniform1i(gl.getUniformLocation(pb,'uNoise'),1);
+    if(TWO[S.scene]!==undefined){ gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D,GS.two.a); gl.uniform1i(gl.getUniformLocation(pb,'uA'),2); gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D,GS.two.b); gl.uniform1i(gl.getUniformLocation(pb,'uB'),3); gl.uniform1f(gl.getUniformLocation(pb,'uEnc'),GS.two.enc); gl.uniform1f(gl.getUniformLocation(pb,'uExt'),GS.two.h/bh); }
+    gl.activeTexture(gl.TEXTURE0); } gl.uniform3f(gl.getUniformLocation(pb,'uHole'),hole.x*(bw/bh)/(W/H),hole.y,hole.rs); gl.uniform1f(gl.getUniformLocation(pb,'uSw'),ST.sw?1:0); gl.uniform1f(gl.getUniformLocation(pb,'uSat'),ST.sat); gl.drawArrays(gl.TRIANGLES,0,3);
   if(half){ gl.bindFramebuffer(gl.FRAMEBUFFER,null); gl.viewport(0,0,W,H); gl.useProgram(pbl); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,GS.bgTex); gl.uniform1i(gl.getUniformLocation(pbl,'uTex'),0); gl.uniform2f(gl.getUniformLocation(pbl,'uRes'),W,H); gl.uniform1f(gl.getUniformLocation(pbl,'uBlur'),ST.blur); gl.drawArrays(gl.TRIANGLES,0,3); }
   gl.viewport(0,0,W,H);
   /* the objects, one quad each */

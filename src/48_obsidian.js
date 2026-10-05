@@ -241,7 +241,7 @@ var OBS_FS_O=OBS_SC+'\n'+[
 'vec3 invOf(vec3 lc){ vec3 s=pow(clamp(lc,0.0,1.0),vec3(0.4545)); vec3 v=vec3(1.0)-s; float m=max(v.r,max(v.g,v.b)), n=min(v.r,min(v.g,v.b)); v=(v-n)/max(m-n,1e-3); return mix(vec3(1.0),v,0.8); }',
 'vec3 shot(vec2 q,vec2 c){ vec3 G=vec3(1.0,0.75,0.3), W=vec3(1.0,0.95,0.85); vec3 a=vec3(0.0);',
 '  if(uShot==1){ float h=length(q/vec2(0.006,0.0035)); a+=W*exp(-h*h*2.0)*2.2; float b=-q.x; if(b>0.0&&b<0.07){ float w=0.0018+b*0.02; a+=G*exp(-q.y*q.y/(w*w))*pow(1.0-b/0.07,1.5)*1.3; } a+=G*exp(-dot(q,q)/0.0006)*0.10; }',
-'  else if(uShot==4){ for(int j=0;j<4;j++){ float r=length(q+vec2(float(j)*0.016,0.0)), s=0.0042*(1.0-float(j)*0.2); a+=(j==0?W*1.6:G*(1.2-float(j)*0.25))*exp(-r*r/(s*s)); } a+=G*exp(-dot(q,q)/0.0007)*0.10; }',
+'  else if(uShot==4){ for(int j=0;j<4;j++){ float r=length(q+vec2(float(j)*0.015,0.0)), s=0.0056*(1.0-float(j)*0.17); a+=(j==0?W*2.4:G*(1.6-float(j)*0.3))*exp(-r*r/(s*s)); a+=G*exp(-r*r/(s*s*5.0))*0.16; } a+=G*exp(-dot(q,q)/0.0009)*0.22; }',   /* v1.49: rounder, brighter beads with a halo each — 1.48\'s read as a dotted line on a phone */
 '  else if(uShot==9){ for(int s2=-1;s2<=1;s2+=2){ vec2 p=(q-vec2(float(s2)*0.004,float(s2)*0.0045))/vec2(0.020,0.0028); float d=length(vec2(max(abs(p.x)-0.5,0.0),p.y)); a+=G*(exp(-d*d*3.0)*1.4+exp(-d*d*0.3)*0.12); } }',
 '  else if(uShot==10){ vec2 p=q/vec2(0.030,0.006); float d=length(vec2(max(abs(p.x)-0.5,0.0),p.y)); float band=0.55+0.45*sin(q.x*900.0-uT*90.0); a+=G*(exp(-d*d*3.0)*(1.0+0.9*band)+exp(-d*d*0.25)*0.22); }',
 '  else if(uShot==5){ vec2 b=abs(q); float d=b.x/0.026+b.y/0.0055-1.0; float body=smoothstep(0.08,-0.08,d); a+=G*body*1.5+W*body*smoothstep(0.0012,0.0,abs(q.y))*1.2+G*exp(-max(d,0.0)*3.0)*0.35*(1.0-body); }',
@@ -252,11 +252,21 @@ var OBS_FS_O=OBS_SC+'\n'+[
    colour (the ink right under it, so it shifts as the ink flows by) — or none */
 'uniform int uGRim;',
 'float sdRBox(vec2 p,vec2 b,float r){ vec2 q=abs(p)-b+r; return length(max(q,0.0))+min(max(q.x,q.y),0.0)-r; }',
-'vec4 tile(vec2 uv,vec2 c,float S){ vec2 p=(uv-c)/S; float d=sdRBox(p,vec2(0.86),0.26); float px=1.5/(uRes.y*S); float pulse=0.85+0.15*sin(uT*4.0); vec3 gold=vec3(1.0,0.64,0.20);',
-'  vec3 em=gold*exp(-max(d,0.0)*7.0)*0.26*pulse; if(uGRim==1){ vec3 rc=invOf(bgAt(c+(uv-c)*2.5)); float rim=smoothstep(0.075,0.045,abs(d-0.13)); em+=rc*(rim*1.5+exp(-max(d,0.0)*6.0)*0.18)*pulse; }',
+'float tileH(float e){ return max(smoothstep(0.0,0.06,e)*(1.0-smoothstep(0.12,0.16,e)),smoothstep(0.24,0.29,e)*0.45); }',   /* the frame up, the inlay a groove, the face a step lower */
+'float tileD(vec2 p){ vec2 q=abs(p); return max(sdRBox(p,vec2(0.88),0.08),(q.x+q.y-1.40)*0.7071); }',   /* a square, its corners cut — like the space skin\'s coin */
+'vec4 tile(vec2 uv,vec2 c,float S){ vec2 p=(uv-c)/S; float d=tileD(p); float px=1.5/(uRes.y*S); float pulse=0.85+0.15*sin(uT*4.0); vec3 gold=vec3(1.0,0.64,0.20);',
+'  vec3 em=gold*exp(-max(d,0.0)*5.5)*0.34*pulse; if(uGRim==1){ vec3 rc=invOf(bgAt(c+(uv-c)*2.5)); float rim=smoothstep(0.075,0.045,abs(d-0.13)); em+=rc*(rim*1.5+exp(-max(d,0.0)*6.0)*0.18)*pulse; }',
 '  if(d>px) return vec4(em,0.0); float cov=smoothstep(px,-px,d);',
-'  vec2 g=vec2(sdRBox(p+vec2(0.01,0.0),vec2(0.86),0.26)-d,sdRBox(p+vec2(0.0,0.01),vec2(0.86),0.26)-d)/0.01; float bev=smoothstep(0.0,-0.14,d); vec3 n=normalize(vec3(-g*(1.0-bev)*1.2,0.6+bev));',
-'  vec3 Ld=normalize(vec3((uL-c)/0.4,0.6)), hh=normalize(Ld+vec3(0,0,1)); vec3 col=gold*(1.0+0.35*max(dot(n,Ld),0.0))*(0.9+0.1*pulse)+mix(gold,vec3(1.0),0.55)*pow(max(dot(n,hh),0.0),60.0)*1.8;',   /* v1.48: brighter, glowing */
+/* v1.49 (the maintainer: «подаркам обсидиана нужен нормальный вид.. может по краям табличку облагородить.. вон у космоса какой красивый
+   значок»): a gold plate with its corners cut, a raised bright frame, a groove of black obsidian round the sign, the face a step lower and
+   warm in the middle; a glint runs across now and then, like the space skin's coin. Bold enough to read at 14 game pixels */
+'  vec2 g=vec2(tileD(p+vec2(0.01,0.0))-d,tileD(p+vec2(0.0,0.01))-d)/0.01; float e=-d;',
+'  float dh=(tileH(e+0.012)-tileH(e-0.012))/0.024; vec3 n=normalize(vec3(g*dh*0.20,1.0));',
+'  vec3 Ld=normalize(vec3((uL-c)/0.4,0.6)), hh=normalize(Ld+vec3(0,0,1)); float face=smoothstep(0.24,0.29,e), fr=1.0-smoothstep(0.12,0.16,e);',
+'  vec3 col=gold*(0.70+0.55*max(dot(n,Ld),0.0))*(0.92+0.08*pulse)*(1.0+0.30*fr+0.20*face*(1.0-length(p)*0.8))+mix(gold,vec3(1.0),0.55)*pow(max(dot(n,hh),0.0),50.0)*2.2;',
+'  float inl=smoothstep(0.155,0.175,e)*(1.0-smoothstep(0.235,0.255,e));',
+'  float w=p.x*0.75-p.y, sw=mod(uT*0.85,3.4)-1.7; col+=mix(gold,vec3(1.0),0.65)*exp(-pow((w-sw)/0.13,2.0))*0.8*(1.0-inl);',
+'  vec3 blk=vec3(0.010,0.007,0.008)+vec3(1.0,0.9,0.75)*pow(max(dot(vec3(0,0,1),hh),0.0),40.0)*0.3; col=mix(col,blk,inl);',
 '  return vec4(col*cov+em*(1.0-cov),cov); }',
 /* v1.46 the saucer «Г6» (the maintainer: «НЛО пока г6»): an almond of obsidian split in two, red light between the halves, a red pupil looking
    at us, a red edge; hurt — it flashes white */
@@ -278,8 +288,8 @@ var OBS_FS_O=OBS_SC+'\n'+[
 'void main(){ vec2 uv=vP; vec2 c=vA.xy; int K=int(vA.w+0.5); vec4 r=vec4(0.0);',
 '  if(K==0) r=rock(uv,c,vB.x,vB.y,vB.z,0.0);',
 '  else if(K==1) r=ship3(uv,c,vB.x,vB.y);',
-'  else if(K==2) r=vec4(shot(rot(-vB.x)*(uv-c)*uGp*1.6,c),0.0);',   /* v1.48: in game pixels — 4–8.5 long like every skin\'s */
-'  else if(K==3){ float d=length(uv-c)*uGp*1.15/0.012; r=vec4(vec3(1.0,0.12,0.2)*(exp(-d*d*2.0)*1.5+exp(-d*d*0.3)*0.3)+vec3(1.0)*exp(-d*d*12.0),0.0); }',
+'  else if(K==2) r=vec4(shot(rot(-vB.x)*(uv-c)*uGp*1.1,c),0.0);',   /* v1.48: in game pixels — 4–8.5 long like every skin\'s */
+'  else if(K==3){ float d=length(uv-c)*uGp/0.012; r=vec4(vec3(1.0,0.12,0.2)*(exp(-d*d*2.0)*1.5+exp(-d*d*0.3)*0.3)+vec3(1.0)*exp(-d*d*12.0),0.0); }',
 '  else if(K==4) r=saucer(uv,c,vB.x,vB.y);',
 '  else if(K==5) r=tile(uv,c,vB.x);',
 '  else if(K==6) r=ann(uv,c,vB.x,vB.z>0.5,vB.w,vC.x,vC.y);',
@@ -315,6 +325,12 @@ function obsPace(){ var P=OBS.perf, now=performance.now(), dt=P.t?(now-P.t)/1000
 var OBS_SUN_T=60, OBS_MIX_T=60;
 function obsSun(t){ var a=2.2+t/OBS_SUN_T*6.2832, ar=LW/LH; return [Math.cos(a)*ar*0.62,Math.sin(a)*0.74]; }
 function obsMix(t){ return 0.5-0.5*Math.cos(t/OBS_MIX_T*6.2832); }
+/* v1.49: sizes in game pixels, a little over the other skins' (the maintainer, 5 Oct: «всё какое-то маленькое… и корабль»; «давай обсидиан хоть
+   немного увеличим корабль с выстрелами»): the black glass with a thin gold edge reads smaller than the bright filled pictures of the other skins
+   at the same box — the ship's half length 12 (10.4 in 1.48), the saucer 1.22× the core's half width, the shots back at their 1.47 size; the power-up
+   (the maintainer: «у подарков размер нормальный, но подхватить их сложно») stands still on the point the core counts — the field bobs every
+   power-up ±2 px, here that is taken back; its half side 8.0 (7.2) since it got a frame round the sign, the sign itself a little smaller */
+var OBS_SZ={ship:12,ufo:1.22,pick:8.0};
 function obsUV(x,y){ return [(x-LW/2)/LH,(LH/2-y)/LH]; }
 function obsShipUni(p){ var g=OBS.g, sh=new Float32Array(24), H=OBS.shipH, now=OBS.t, s=OBS.ship;
   for(var k=0;k<24;k++){ var ta=now-k*0.15, v=s?s.y:0; for(var i=H.length-1;i>=0;i--){ if(H[i][0]<=ta){ v=H[i][1]; break; } v=H[i][1]; } sh[k]=v; }
@@ -363,18 +379,20 @@ function obsRender(){ var g=OBS.g; if(!g||OBS.lost) return; OBS.calm=Math.max(0.
   OBS.an=OBS.an.filter(function(e){ return t-e.t0<4.0; }); }
 
 /* ═════ the frame: begun where the flight field is drawn, rendered at its end; hidden on a frame that drew no field ═════ */
-function obsBegin(show){ if(!obsInit()) return; OBS.act=true; OBS.list=[]; OBS.rk=[]; if(OBS.clk!==clock){ OBS.clk=clock; OBS.t+=DT; }
+var OBS_NEST=[];   /* v1.49: a demo drawn inside a screen whose sky is already on the chip: the outer frame waits, the demo renders on its own */
+function obsBegin(show){ if(!obsInit()) return; if(OBS.act) OBS_NEST.push({list:OBS.list,rk:OBS.rk,main:OBS.main,dst:OBS.dst,base:OBS.base,bs:OBS.bs,ship:OBS.ship,pose:OBS.pose}); OBS.act=true; OBS.list=[]; OBS.rk=[]; if(OBS.clk!==clock){ OBS.clk=clock; OBS.t+=DT; }
   OBS.main=!!show&&typeof hdCv!=='undefined'&&hdCv&&hx===hdCv.getContext('2d'); OBS.dst=hx; var m=hx.getTransform?hx.getTransform():null; OBS.base=m; OBS.bs=m?Math.hypot(m.a,m.b):1; }
 function obsEnd(){ if(!OBS.act) return; OBS.act=false; try{
     if(OBS.main){ if(!OBS.vis){ OBS.cv.style.display='block'; OBS.vis=true; OBS.perf.t=0; OBS.perf.skip=3; }
       var tf=hdCv&&hdCv.style.transform||''; if(OBS.cv.style.transform!==tf) OBS.cv.style.transform=tf; obsPace(); obsRender(); }
     else { obsRender(); var d=OBS.dst; d.save(); if(OBS.base) d.setTransform(OBS.base); d.globalCompositeOperation='destination-over'; d.globalAlpha=1; d.drawImage(OBS.cv,0,0,LW,LH); d.restore(); }   /* a demo: the world copied under the pictures */
     OBS.err=''; }catch(e){ OBS.err=String(e&&e.message||e); if(!OBS.logged){ OBS.logged=true; try{ Logs.ev('obsidian: '+OBS.err.slice(0,200)); }catch(e2){} } }
-  if(OBS.main) OBS.drew=true; }
+  if(OBS.main) OBS.drew=true;
+  var o=OBS_NEST.pop(); if(o){ OBS.act=true; OBS.list=o.list; OBS.rk=o.rk; OBS.main=o.main; OBS.dst=o.dst; OBS.base=o.base; OBS.bs=o.bs; OBS.ship=o.ship; OBS.pose=o.pose; } }
 function obsTick(){ if(!OBS.cv) return; if(OBS.vis&&!OBS.drew){ OBS.cv.style.display='none'; OBS.vis=false; } OBS.drew=false; }
 /* the ship's pose: the needle now; each splinter a beat behind (a turn, a roll), drifting out from the axis in a roll and back */
 function obsShip(sx,sy,ra){ var L=FLY_LOOK.obsidian, u=obsUV(sx+L.piv,sy), t=OBS.t, yaw=-Math.atan(FLY.tl*flyTiltK()), D=flyRollDur();
-  var Su=10.4/LH, nx=u[0]+Math.cos(yaw)*1.1*Su, ny=u[1]+Math.sin(yaw)*1.1*Su;   /* the wake starts at the nose */
+  var Su=OBS_SZ.ship/LH, nx=u[0]+Math.cos(yaw)*1.1*Su, ny=u[1]+Math.sin(yaw)*1.1*Su;   /* the wake starts at the nose */
   OBS.ship={x:nx,y:ny}; OBS.shipH.push([t,ny]); while(OBS.shipH.length&&t-OBS.shipH[0][0]>3.8) OBS.shipH.shift();
   OBS.hist.push([t,yaw,ra]); while(OBS.hist.length&&t-OBS.hist[0][0]>1.0) OBS.hist.shift();
   var at=function(lag){ var ta=t-lag, H=OBS.hist, h=H[0]; for(var i=H.length-1;i>=0;i--){ if(H[i][0]<=ta){ h=H[i]; break; } } return h; };
@@ -389,15 +407,15 @@ function obsGone(x,y,R,sd,rot,split){ var u=obsUV(x,y); OBS.an.push({x:u[0],y:u[
 /* ═════ the skin: its pictures go to the graphics chip while the field is drawn; anywhere else (the menus' demo) the space skin's ═════ */
 function obsBase(n,a){ var s=HDSK.space; return s[n]?s[n].apply(s,a):undefined; }
 var OBSK={id:'obsidian', hd:true, glow:false, nolight:true, flyLook:'obsidian', motes:['#f0d9a8','#d8b878'],
-  glBegin:function(show){ obsBegin(show); }, glEnd:function(){ obsEnd(); },
+  glBegin:function(show){ obsBegin(show); }, glEnd:function(){ obsEnd(); }, glOn:function(){ return !!OBS.act; },
   sky:function(dt,s){ if(!OBS.act) return obsBase('sky',arguments); hx.clearRect(-4,-4,LW+8,LH+8); },
   rock:function(r,sz,seed){ var b=HDSK.space.rock(r,sz,seed); b.obsR=r; b.obsSd=(seed%97)*0.731+1.3; return b; },
   drawRock:function(sp,x,y){ if(!OBS.act||sp.obsR===undefined) return obsBase('drawRock',arguments); var u=obsUV(x,y), R=sp.obsR/LH; if(sp._ox!==undefined){ var dx=u[0]-sp._ox, dy=u[1]-sp._oy; if(dx*dx+dy*dy>1e-9) sp._ang=Math.atan2(dy,dx); } sp._ox=u[0]; sp._oy=u[1]; OBS.rk.push([u[0],u[1],R,sp._ang===undefined?Math.PI:sp._ang]); OBS.list.push([u[0],u[1],R*1.25,0,R,sp.obsSd+(sp.vr||0)*0.37,-sp.rot/16*6.2832]); },
   ship:function(x,y,t,blink){ if(!OBS.act) return obsBase('ship',arguments); if(blink) return; obsShip(x,y,0); },
   shipRoll:function(x,y,t,ra){ if(!OBS.act) return obsBase('ship',[x,y,t,false]); obsShip(x,y,ra); },
-  ufo:function(ux,uy,big,hurt){ if(!OBS.act) return obsBase('ufo',arguments); var u=obsUV(ux,uy), Su=(big?7:5)*K*1.1/LH;   /* the core's half width, a little more */ OBS.list.push([u[0],u[1],Su*1.7,4,Su,hurt?1:0]); },
-  pick:function(x,y,type){ if(!OBS.act) return obsBase('pick',arguments); var u=obsUV(x,y), r=7.2/LH; OBS.list.push([u[0],u[1],r*2.4,5,r]);
-    var w=hdIconW; hdIconW=1.2; hx.save(); hx.translate(x,y); hx.scale(1.42,1.42); hdIcon(type,'#140e12'); hx.restore(); hdIconW=w; },   /* the sign: black on the gold, big and bold */
+  ufo:function(ux,uy,big,hurt){ if(!OBS.act) return obsBase('ufo',arguments); var u=obsUV(ux,uy), Su=(big?7:5)*K*OBS_SZ.ufo/LH;   /* the core's half width, a little more */ OBS.list.push([u[0],u[1],Su*1.7,4,Su,hurt?1:0]); },
+  pick:function(x,y,type){ if(!OBS.act) return obsBase('pick',arguments); y-=Math.sin(clock*3)*2; var u=obsUV(x,y), r=OBS_SZ.pick/LH; OBS.list.push([u[0],u[1],r*2.4,5,r]);
+    var w=hdIconW; hdIconW=1.2; hx.save(); hx.translate(x,y); hx.scale(1.2*OBS_SZ.pick/7.2,1.2*OBS_SZ.pick/7.2); hdIcon(type,'#140e12'); hx.restore(); hdIconW=w; },   /* the sign: black on the gold, big and bold */
   bullet:function(x,y){ if(!OBS.act) return obsBase('bullet',arguments); var m=hx.getTransform?hx.getTransform():{a:1,b:0}, a=-Math.atan2(m.b,m.a), u=obsUV(x,y); OBS.list.push([u[0],u[1],0.09,2,a]); },
   ebullet:function(x,y){ if(!OBS.act) return obsBase('ebullet',arguments); var u=obsUV(x,y); OBS.list.push([u[0],u[1],0.04,3]); },
   shieldRing:function(x,y,t){ if(!OBS.act) return obsBase('shieldRing',arguments); var u=obsUV(x+11,y), Su=14/LH; OBS.list.push([u[0],u[1],Su*1.4,7,Su]); },
@@ -416,9 +434,9 @@ if(obsCan()){ SKIN_IDS.push('obsidian'); HDSK.obsidian=OBSK; try{ if(localStorag
 function obsProbe(kind,a,b){ if(!obsInit()) return null; obsSize(); var g=OBS.g, T=OBS.tx, cx=LW/2, cy=LH/2, u=obsUV(cx,cy), L=[], byLight=false;
   if(!OBS.pfb||OBS.pkey!==T.W+'x'+T.H){ OBS.ptx=obsTex(T.W,T.H,'b'); OBS.pfb=obsFb([OBS.ptx]); OBS.pkey=T.W+'x'+T.H; }
   if(kind==='rock'){ var sp=makeSkinRock(OBSK,a,Core.R_SIZE[a],b), R=sp.obsR/LH; L.push([u[0],u[1],R*1.25,0,R,sp.obsSd,(b%4)*1.5708]); }
-  else if(kind==='ship'){ var Su=10.4/LH; OBS.pose=new Float32Array(12); L.push([u[0],u[1],Su*1.9,1,Su,0.8]); }
-  else if(kind==='pick'){ var r=7.2/LH; L.push([u[0],u[1],r*2.4,5,r]); }
-  else if(kind==='ufo'){ var S2=(a?7:5)*K*1.1/LH; L.push([u[0],u[1],S2*1.7,4,S2,0]); }
+  else if(kind==='ship'){ var Su=OBS_SZ.ship/LH; OBS.pose=new Float32Array(12); L.push([u[0],u[1],Su*1.9,1,Su,0.8]); }
+  else if(kind==='pick'){ var r=OBS_SZ.pick/LH; L.push([u[0],u[1],r*2.4,5,r]); }
+  else if(kind==='ufo'){ var S2=(a?7:5)*K*OBS_SZ.ufo/LH; L.push([u[0],u[1],S2*1.7,4,S2,0]); }
   else if(kind==='bullet'){ L.push([u[0],u[1],0.09,2,0]); byLight=true; }
   else if(kind==='ebullet'){ L.push([u[0],u[1],0.04,3]); byLight=true; }
   OBS.list=L; OBS.probe=true; var an=OBS.an; OBS.an=[]; try{ obsRender(); } finally { OBS.probe=false; OBS.an=an; OBS.list=[]; }

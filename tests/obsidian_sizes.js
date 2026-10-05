@@ -1,7 +1,10 @@
 /* v1.48: the obsidian skin (drawn on the graphics chip, src/48_obsidian.js) draws its objects the size of what the game counts — the same
    bounds as tests/skin_sizes.js keeps for every other skin: rocks 90–112% of the core's circle on average (the small ones up to 118%),
    their middle within 2 game pixels; the ship's hull 19–23 game pixels long; the power-up 12–14.5 across; saucers 15–20.5 / 11.5–16 wide;
-   own shots 4–8.5 long, enemy shots 3.5–7. Each object is drawn alone onto nothing and read back (obsProbe). The chip here is a software
+   own shots 4–8.5 long, enemy shots 3.5–7. v1.49: the ship, the shots and the saucers a little over those on purpose — black glass
+   with a thin gold edge reads smaller than the other skins' bright filled pictures of the same box (the maintainer, 5 Oct: «всё какое-то
+   маленькое… и корабль», «увеличим корабль с выстрелами»): the hull 23–27, the power-up as every skin’s, saucers 17–22 / 12.5–16, own shots 8.5–12.
+   Each object is drawn alone onto nothing and read back (obsProbe). The chip here is a software
    one (SwiftShader): the skin is forced on with ?obs=force (a phone lists it only on a real chip).
    Needs Playwright with Chromium. Run: node tests/obsidian_sizes.js */
 let chromium; try{ ({chromium}=require('playwright')); }catch(e){ console.log('no playwright — skipped'); console.log('RESULT: ok'); process.exit(0); }
@@ -17,9 +20,9 @@ const path=require('path'), ROOT=path.join(__dirname,'..');
       const sh=P('ship'), pk=P('pick'), ub=P('ufo',1), us=P('ufo',0), bu=P('bullet'), eb=P('ebullet');
       out.ship=sh&&sh.w; out.pick=pk&&Math.max(pk.w,pk.h); out.ufo=ub&&ub.w; out.ufoS=us&&us.w; out.bullet=bu&&bu.w; out.ebullet=eb&&Math.max(eb.w,eb.h); return out; });
     const bad=[]; r.rocks.forEach((q,sz)=>{ if(!q){ bad.push('rock '+sz+' not drawn'); return; } const hi=sz===2?118:112; if(q.pct<90||q.pct>hi) bad.push(`rock ${sz} ${q.pct}%`); if(Math.abs(q.dx)>2||Math.abs(q.dy)>2) bad.push(`rock ${sz} off by ${q.dx},${q.dy}`); });
-    if(!(r.ship>=19&&r.ship<=23)) bad.push(`ship ${r.ship}`); if(!(r.pick>=12&&r.pick<=14.5)) bad.push(`power-up ${r.pick}`);
-    if(!(r.ufo>=15&&r.ufo<=20.5)) bad.push(`saucer ${r.ufo}`); if(!(r.ufoS>=11.5&&r.ufoS<=16)) bad.push(`small saucer ${r.ufoS}`);
-    if(!(r.bullet>=4&&r.bullet<=8.5)) bad.push(`shot ${r.bullet}`); if(!(r.ebullet>=3.5&&r.ebullet<=7)) bad.push(`enemy shot ${r.ebullet}`);
+    if(!(r.ship>=23&&r.ship<=27)) bad.push(`ship ${r.ship}`); if(!(r.pick>=12&&r.pick<=14.5)) bad.push(`power-up ${r.pick}`);
+    if(!(r.ufo>=17&&r.ufo<=22)) bad.push(`saucer ${r.ufo}`); if(!(r.ufoS>=12.5&&r.ufoS<=16)) bad.push(`small saucer ${r.ufoS}`);
+    if(!(r.bullet>=8.5&&r.bullet<=12)) bad.push(`shot ${r.bullet}`); if(!(r.ebullet>=3.5&&r.ebullet<=7)) bad.push(`enemy shot ${r.ebullet}`);
     if(bad.length) ok=false;
     console.log(`${w}x${h} obsidian  rocks ${r.rocks.map(q=>q?q.pct+'%':'—').join(' / ')}  ship ${r.ship}  power-up ${r.pick}  saucers ${r.ufo}/${r.ufoS}  shots ${r.bullet}/${r.ebullet} ${bad.length?'FAIL: '+bad.join('; '):'ok'}`);
     await p.close(); }

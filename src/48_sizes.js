@@ -40,7 +40,9 @@ function pickScale(sk){ if(sk._pk&&sk._pkKey===hs) return sk._pk; var keepH=hx, 
   try{ hx=c.getContext('2d'); hx.setTransform(SC,0,0,SC,0,0); hs=SC; noLight=true; sk._pickDraw.call(sk,20,20,'shield'); var b=alphaBox(c); if(b) k=(sk.pickW||PICK_W)/(Math.max(b.w,b.h)/SC); }   // v1.28: a skin may ask for a smaller picture (neon 12 — a bright square looked as big as the ship)
   catch(e){} finally { hx=keepH; hs=keepHs; noLight=false; lights=[]; }
   sk._pk=k; sk._pkKey=hs; return k; }
-(function(){ Object.keys(HDSK).forEach(function(id){ var sk=HDSK[id]; if(!sk||sk._pickDraw||id==='lcd') return; sk._pickDraw=sk.pick;
+/* v1.49: not obsidian — it draws on the chip at its own sizes (OBS_SZ, tests/obsidian_sizes.js); measured here its 2D sign alone was
+   blown up to a whole power-up's width, and a measuring pass mid-frame left a stray picture on the chip */
+(function(){ Object.keys(HDSK).forEach(function(id){ var sk=HDSK[id]; if(!sk||sk._pickDraw||id==='lcd'||id==='obsidian') return; sk._pickDraw=sk.pick;
     sk.pick=function(x,y,type){ var k=pickScale(this); hx.save(); hx.translate(x,y); hx.scale(k,k); hx.translate(-x,-y); try{ this._pickDraw(x,y,type); } finally { hx.restore(); } }; }); })();
 /* v0.83: saucers the size of what the game counts, the same in every skin (they were 18–24.5 wide, the small one 12–17.5): the core hits a
    big one within 7+1 of its middle across and a small one within 5+1 — 17 and 13 game pixels on a usual phone. HD pictures measured and scaled. */
@@ -49,7 +51,7 @@ function ufoScale(sk,big){ var key=hs+(big?'b':'s'); sk._uk=sk._uk||{}; if(sk._u
   try{ hx=c.getContext('2d'); hx.setTransform(SC,0,0,SC,0,0); hs=SC; noLight=true; sizeMeasure++; sk._ufoDraw.call(sk,30,30,big,false); var b=alphaBox(c); if(b) k=UFO_W[big?1:0]/(b.w/SC); }
   catch(e){} finally { hx=keepH; hs=keepHs; noLight=false; lights=[]; sizeMeasure--; }
   return (sk._uk[key]=k); }
-(function(){ Object.keys(HDSK).forEach(function(id){ var sk=HDSK[id]; if(!sk||sk._ufoDraw||id==='lcd') return; sk._ufoDraw=sk.ufo;
+(function(){ Object.keys(HDSK).forEach(function(id){ var sk=HDSK[id]; if(!sk||sk._ufoDraw||id==='lcd'||id==='obsidian') return; sk._ufoDraw=sk.ufo;
     sk.ufo=function(ux,uy,big,hurt){ var k=ufoScale(this,big); hx.save(); hx.translate(ux,uy); hx.scale(k,k); hx.translate(-ux,-uy); try{ this._ufoDraw(ux,uy,big,hurt); } finally { hx.restore(); } }; }); })();
 /* for tests/skin_sizes.js: a skin's rocks and ship as the game draws them, measured in game pixels — the body (alpha ≥ 128), its size
    against the core's circle and how far its middle sits from the point the game draws it at */

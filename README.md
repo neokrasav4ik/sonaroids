@@ -27,9 +27,12 @@ The ship fires on its own; all you choose is where it is.
 - **Saucers:** a large one from level 2, a small one that aims at you from level 4. Line up with them and they sidestep.
 - **The ship flies like a plane:** its nose goes up and down as it climbs and dives, it does a barrel roll on a sharp turn, swirling trails follow it and its flame flares on a fast move — each skin in its own way. The picture only: the steering and the score are the same.
 - **Six skins:** space, fairy tale, vector 80s, neon, notebook, retro LCD — each in **HD** or in **pixels**, each with its own ship, saucers, power-ups, shots, shield, asteroids and explosions. In every skin things are drawn exactly the size the game counts them.
-- **Obsidian, a heavy skin for flagship phones:** drawn on the graphics chip (WebGL2). Black glass with golden veins drifts on live violet ink: the ink is drawn in to every explosion, an uneven ring spreads from it, the ship and the rocks leave wakes in it. The more action on the screen, the calmer the ink, so the picture does not shimmer. The skin is listed only where it runs well: not on a weak or software graphics chip, and if a phone twice fails to hold ~40 frames a second, the skin is hidden from the next start. For tuning: in the pause, a long tap on the version opens test sliders for the effects' strength (0–200%), the shot choice and a «DEFAULTS» button.
 
 <p align="center"><img src="promo/sonafly_skins.png" width="640" alt="SonaFly's six skins in play: space, fairy tale, vector 80s, neon, notebook, retro LCD — each with its own ship, saucer, power-up, shots and rocks"></p>
+
+**Obsidian, a heavy skin for flagship phones:** drawn on the graphics chip (WebGL2). Black glass with golden veins drifts on live violet ink: the ink is drawn in to every explosion, an uneven ring spreads from it, the ship and the rocks leave wakes in it. The more action on the screen, the calmer the ink, so the picture does not shimmer. The skin is listed only where it runs well: not on a weak or software graphics chip, and if a phone twice fails to hold ~40 frames a second, the skin is hidden from the next start. For tuning: in the pause, a long tap on the version opens test sliders for the effects' strength (0–200%), the shot choice and a «DEFAULTS» button.
+
+<p align="center"><img src="promo/sonafly_obsidian.png" width="640" alt="The obsidian skin in play: black rocks with golden veins on violet ink, the golden ship, a red eye saucer, a golden power-up"></p>
 
 ### SonaRace — a race along a winding road
 

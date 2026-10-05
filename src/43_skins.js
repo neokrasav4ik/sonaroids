@@ -281,7 +281,9 @@ function prepGround(){ if(PREP_BG==='off'||!PREP_SCR[scr]||(scr==='wave'&&caught
   lx.fillStyle='#15141c'; lx.fillRect(0,0,LW,LH);
   if(PREP_BG==='vig'){ var g=lx.createRadialGradient(LW/2,LH*0.45,LH*0.1,LW/2,LH*0.5,LW*0.62); g.addColorStop(0,'#24222e'); g.addColorStop(1,'#0e0d13'); lx.fillStyle=g; lx.fillRect(0,0,LW,LH); }
   return true; }
-function sky(dt,s){ if(prepGround()) return; if(!SK) return spaceSky(dt,s); SK.sky(dt,s); if(SK.ui){ lx.globalAlpha=SK.ui.veil; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; } }
+var skyGL=null;   /* v1.49: a screen with only the sky behind it (getting ready, settings, the name…) — a heavy skin draws it on the chip too, the frame closed once the screen is drawn (skyGLEnd) */
+function skyGLEnd(){ var k=skyGL; skyGL=null; if(k) k.glEnd(); }
+function sky(dt,s){ if(prepGround()) return; if(!SK) return spaceSky(dt,s); if(SK.glBegin&&!skyGL&&!SK.glOn()){ SK.glBegin(true); skyGL=SK; } SK.sky(dt,s); if(SK.ui){ lx.globalAlpha=SK.ui.veil; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; } }
 var skinId=(function(){ var s=null; try{ s=localStorage.getItem('sonaroids_skin'); }catch(e){} return SKIN_IDS.indexOf(s)>=0?s:'space'; })(), SK=SKINS[skinId]||SKINS.space;
 function setSkin(id){ if(!SKINS[id]&&!(typeof HDSK!=='undefined'&&HDSK[id])) return; skinId=id; SK=obsWrap(skinView(id)); try{ localStorage.setItem('sonaroids_skin',id); }catch(e){} }
 /* v0.72: the pictures a skin is drawn with — its HD ones when HD is chosen and it has them (they share the pixel skin's menu colours) */

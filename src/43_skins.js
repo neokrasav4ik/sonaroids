@@ -283,7 +283,7 @@ function prepGround(){ if(PREP_BG==='off'||!PREP_SCR[scr]||(scr==='wave'&&caught
   return true; }
 function sky(dt,s){ if(prepGround()) return; if(!SK) return spaceSky(dt,s); SK.sky(dt,s); if(SK.ui){ lx.globalAlpha=SK.ui.veil; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; } }
 var skinId=(function(){ var s=null; try{ s=localStorage.getItem('sonaroids_skin'); }catch(e){} return SKIN_IDS.indexOf(s)>=0?s:'space'; })(), SK=SKINS[skinId]||SKINS.space;
-function setSkin(id){ if(!SKINS[id]&&!(typeof HDSK!=='undefined'&&HDSK[id])) return; skinId=id; SK=skinView(id); try{ localStorage.setItem('sonaroids_skin',id); }catch(e){} }
+function setSkin(id){ if(!SKINS[id]&&!(typeof HDSK!=='undefined'&&HDSK[id])) return; skinId=id; SK=obsWrap(skinView(id)); try{ localStorage.setItem('sonaroids_skin',id); }catch(e){} }
 /* v0.72: the pictures a skin is drawn with — its HD ones when HD is chosen and it has them (they share the pixel skin's menu colours) */
 function skinView(id){ if(typeof hdWanted==='function'&&hdWanted(id)){ var h=HDSK[id]; if(!h.ui&&SKINS[id]&&SKINS[id].ui) h.ui=SKINS[id].ui; return h; } return SKINS[id]||SKINS.space; }
 

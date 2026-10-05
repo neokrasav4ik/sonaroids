@@ -27,7 +27,7 @@ function flyStep(sy,dt,tl){ var f=FLY, T=Core.TILT, yf=sy/K;
   /* the roll: on a turn after a fast move (down then up, or up then down), not more often than every 2.5 s, over a second */
   var sg=f.sv>0?1:-1; if(Math.abs(f.sv)>Core.FH*0.55){ f.fastS=sg; f.fastT=clock; }
   f.cool-=dt; if(f.roll<0&&f.cool<=0&&clock-f.fastT<0.45&&sg!==f.fastS&&Math.abs(f.sv)>Core.FH*0.2){ f.roll=0; f.cool=flyRollCool(); f.fastT=-9; }
-  if(f.roll>=0){ f.roll+=dt/1.0; if(f.roll>=1) f.roll=-1; } }
+  if(f.roll>=0){ f.roll+=dt/((SK&&SK.rollDur)||1.0); if(f.roll>=1) f.roll=-1; } }   /* v1.42: a skin may roll slower (obsidian 1.6 s) */
 function flyReset(){ FLY.y=null; FLY.tl=0; FLY.sv=0; FLY.roll=-1; FLY.tr=[]; FLY.cool=1; }
 /* the roll's phase eased: 0…1 → the angle round the ship's own axis, 0…2π */
 function flyRollA(){ var r=FLY.roll; if(r<0) return 0; var e=r<0.5?2*r*r:1-2*(1-r)*(1-r); return e*6.2832; }
@@ -68,7 +68,7 @@ function flyFlame(C,L,sx,sy,t){ var k=FLY.k; if(!L.fl||k<0.04) return; var x0=sx
   C.globalCompositeOperation='lighter'; var g=C.createLinearGradient(x0,0,x0-len,0); g.addColorStop(0,'rgba('+L.fl[0]+','+(0.25+0.6*k).toFixed(3)+')'); g.addColorStop(0.35,'rgba('+L.fl[1]+','+(0.25+0.45*k).toFixed(3)+')'); g.addColorStop(1,'rgba('+L.fl[1]+',0)');
   if(L.flLine){ C.strokeStyle=g; C.lineWidth=0.7; C.beginPath(); C.moveTo(x0,sy-w); C.lineTo(x0-len,sy); C.lineTo(x0,sy+w); C.stroke(); C.restore(); return; }   /* the vector: a flickering outline */
   C.fillStyle=g; C.beginPath(); C.moveTo(x0+1,sy-w); C.quadraticCurveTo(x0-len,sy,x0+1,sy+w); C.fill(); C.restore(); }
-function flyShip(sx,sy,t,blink,dt,tl){ var L=FLY_LOOK[skinId]||FLY_LOOK.space;
+function flyShip(sx,sy,t,blink,dt,tl){ var L=FLY_LOOK[(SK&&SK.flyLook)||skinId]||FLY_LOOK.space;
   if(!FLY_ON||shipBare){ SK.ship(sx,sy,t,blink); return; }
   flyStep(sy,dt,tl); var f=FLY, tk=flyTiltK(), ang=Math.atan(f.tl*tk), ra=flyRollA(), bank=1-0.22*Math.abs(f.tl*tk)/Core.TILT.max, sy2=bank*Math.cos(ra), cx=sx+L.piv;
   if(L.still){ ang=0; sy2=1; }

@@ -5,7 +5,7 @@
    the old world is drawn again each frame into its own canvases (the game's drawing pointed at them) and laid over the left of the edge,
    so both worlds move. The race's next chunks and the flight's next rocks are made in the seconds before, a little each frame. ── */
 var flyMix=false, raceMix=false, MX={t:0,next:30,hist:[],tr:null,pend:null,warm:null,pre:false}, MX_DUR=1.1, mxH=null, mxL=null;
-function mixOn(){ return mode==='race'?raceMix:flyMix; }
+function mixOn(){ return mode==='race'?raceMix:(flyMix&&!obsOn()); }   // v1.42: the heavy skin is one skin, no mixing
 /* ── v1.29, the skins' playlist (the maintainer: «скинплейлист… выбрать один скин на игру, шаффл всех подряд, или выбрать свой плейлист
    скинов, а также задать время смены скина в секундах»; the screen «В» — one big card to leaf through, «в списке» under it): each game
    keeps the skins ticked (one — always that one; several — they take turns; all — all in a row), the last list of two or more (the menu
@@ -35,7 +35,7 @@ function mixList(){ return SKL[sklM()].list; }
 function mixCur(){ return mode==='race'?RSKIN:skinId; }
 function mixPick(){ var L=mixList(), cur=mixCur(); if(SKL[sklM()].order==='loop') return L[(L.indexOf(cur)+1)%L.length];   // in turn: the next one in the list
   var last=MX.hist.slice(-2).concat([cur]), c=L.filter(function(k){ return last.indexOf(k)<0; }); if(!c.length) c=L.filter(function(k){ return k!==cur; }); if(!c.length) c=L; return c[Math.floor(Math.random()*c.length)]; }
-function mixSet(id){ MX.hist.push(id); if(MX.hist.length>6) MX.hist.shift(); if(mode==='race') RSKIN=id; else { skinId=id; SK=skinView(id); } }
+function mixSet(id){ MX.hist.push(id); if(MX.hist.length>6) MX.hist.shift(); if(mode==='race') RSKIN=id; else { skinId=id; SK=obsWrap(skinView(id)); } }
 function mixPlan(){ var tm=SKL[sklM()].time; MX.t=0; MX.next=tm||25+Math.random()*15; MX.pend=mixPick(); MX.warm=null; }
 /* v1.25 (the maintainer: «подготовка и калибровка должна проходить тоже на рандомном, который первый в игре будет»): the first skin is picked
    as the getting-ready steps begin (from go(), entering them from any other screen), and the game starts on it */

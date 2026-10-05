@@ -219,19 +219,20 @@ function sliderSet(id,f){ var v=Math.round(Math.max(0,Math.min(1,f))*100)/100;
 function sliderAt(e){ var x=e.clientX*DPR/S, y=e.clientY*DPR/S; for(var i=SLD.length-1;i>=0;i--){ var b=SLD[i]; if(x>=b.x-6&&x<b.x+b.w+6&&y>=b.y&&y<b.y+b.h) return b; } return null; }
 function tiltPanel(vr,y0){ var fr=titleFree||[SAFE.l,LW-SAFE.r], pad=8, gap=5, rh=PF.CAP+gap+10+8, fv=flyTiltK(), sv=shotTilt(),
     bs=L(shotBounce()?'bounce_on':'bounce_off'), vw=Math.max(PF.width('100%'),PF.width(L('straight'))),   /* the value stands right of its track */
-    need=Math.max(PF.width(L('ftilt')),PF.width(L('stilt'))+PF.width(' · '+L('as_nose')),PF.width(bs),90+vw)+2*pad, bl=[bs],
+    TG=[['shot_bounce',bs],['obs',L(store.get('sonaroids_obs','0')!=='1'?'obs_off':obsInit()?'obs_on':'obs_na')]].concat(obsOn()?[['obs_ann',L('obs_ann'+obsAnn())]]:[]),   /* v1.42: the heavy skin and its annihilation */
+    need=Math.max(PF.width(L('ftilt')),PF.width(L('stilt'))+PF.width(' · '+L('as_nose')),90+vw,Math.max.apply(null,TG.map(function(x){ return PF.width(x[1]); })))+2*pad,
     mg=8, free=fr[1]-fr[0]-2*mg, pw, iw, px, ph;
   if(need>free){ need-=2*pad-10; pad=5; mg=4; free=fr[1]-fr[0]-2*mg; }   /* a narrow free area (a tablet): the panel's margins thinner */
   pw=Math.min(free,Math.max(need,Math.round(free*0.7))); iw=pw-2*pad; px=vr?fr[1]-mg-pw:fr[0]+mg;
-  if(PF.width(bs)>iw&&bs.indexOf(': ')>0) bl=[bs.slice(0,bs.indexOf(': ')+1),bs.slice(bs.indexOf(': ')+2)];   /* a narrow free area (a tablet): «…EDGES:» / «NO» */
-  ph=pad*2+2*rh+bl.length*(PF.CAP+6)-2; var ix=px+pad, tw=iw-vw-8, y=y0+pad;
+  TG.forEach(function(x){ var s=x[1]; x[2]=PF.width(s)>iw&&s.indexOf(': ')>0?[s.slice(0,s.indexOf(': ')+1),s.slice(s.indexOf(': ')+2)]:[s]; });   /* a narrow free area (a tablet): «…EDGES:» / «NO» */
+  ph=pad*2+2*rh+TG.reduce(function(a,x){ return a+x[2].length*(PF.CAP+6)+4; },0)-6; var ix=px+pad, tw=iw-vw-8, y=y0+pad;
   lx.globalAlpha=0.92; R(P.bg,px,y0,pw,ph); lx.globalAlpha=1; frame(px,y0,pw,ph,P.line);
   var row=function(id,lab,v,val,mark,note){ text(lab,ix,y,P.soft,'left'); if(note&&PF.width(lab+' · '+note)<=iw) text(' · '+note,ix+PF.width(lab),y,P.band,'left');
     slider(id,ix,y+PF.CAP+gap,tw,v,mark); text(val,ix+iw,y+PF.CAP+gap+5-Math.round(PF.CAP/2),P.text,'right'); y+=rh; };
   row('fly_tilt',L('ftilt'),fv,Math.round(fv*100)+'%');
   row('shot_tilt',L('stilt'),sv,sv===0?L('straight'):Math.round(sv*100)+'%',fv,sv>0&&Math.round(sv*100)===Math.round(fv*100)?L('as_nose'):'');
-  var bw=0; bl.forEach(function(t,k){ var w2=PF.width(t); bw=Math.max(bw,w2); text(t,ix,y+k*(PF.CAP+6),P.band,'left'); R(P.band,ix,y+k*(PF.CAP+6)+PF.CAP+2,w2,1); });
-  BTN.push({id:'shot_bounce',x:ix-6,y:y-6,w:bw+12,h:bl.length*(PF.CAP+6)+6}); }
+  TG.forEach(function(x){ var bl=x[2], bw=0; bl.forEach(function(t,k){ var sc=Math.min(1,iw/Math.max(1,PF.width(t))), w2=PF.width(t,sc); bw=Math.max(bw,w2); text(t,ix,y+k*(PF.CAP+6),P.band,'left',sc); R(P.band,ix,y+k*(PF.CAP+6)+PF.CAP+2,w2,1); });   /* a line still wider than the panel: drawn a little smaller */
+    BTN.push({id:x[0],x:ix-6,y:y-4,w:bw+12,h:bl.length*(PF.CAP+6)+4}); y+=bl.length*(PF.CAP+6)+4; }); }
 var SET_ROWS=[
   ['set_gfx',function(){ var v=setGfx3(); return v==='hd'?'set_gfx_hd':v==='pixel'?'set_gfx_px':'set_gfx_menu'; },function(dir){ var o=['','hd','pixel'], i=(o.indexOf(setGfx3())+dir+3)%3; store.set('sonaroids_gfx_lock',o[i]); gfxLockApply(); }],
   ['set_band',function(){ var v=setBand3(); return v==='wide'?'set_band_w':v==='normal'?'set_band_n':'set_band_ask'; },function(dir){ var o=['','wide','normal'], i=(o.indexOf(setBand3())+dir+3)%3; store.set('sonaroids_band_lock',o[i]); }],
@@ -402,6 +403,8 @@ function poolFill(budget){ if(pool.K!==K||pool.skin!==SK||(SK.hd&&pool.hs!==hs))
 function rockFromPool(r){ poolFill(0); var l=pool.list[r.sz]; if(!l||!l.length) return makeSkinRock(SK,r.sz,r.r,r.id);
   var b=l[r.id%l.length], o={}; for(var k in b) o[k]=b[k]; o.ox=b.ox||0; o.rot=(r.id*5)%16; o.vr=b.vr===0?0:((r.id*7)%11-5); return o; }
 function field(dt,speed){ if(mode==='race'&&g&&g.car){ raceScene(g,g.d,g.car.y,dt); raceParts(dt); return; }
+  var GK=SK.glBegin?SK:null; if(GK) GK.glBegin(); try{ fieldIn(dt,speed); } finally { if(GK) GK.glEnd(); } }   /* v1.42: the heavy skin draws the field on the graphics chip */
+function fieldIn(dt,speed){
   poolFill(0); SK.sky(dt,speed);
   if(!g) return;
   if(g.state!=='play'){ g.bullets=[]; g.ebullets=[]; g.rocks.forEach(function(r){ r.x+=r.vx*dt; r.y+=r.vy*dt; }); if(g.ufo) g.ufo.x-=6*dt; }   // after the game: things drift on, for the look only
@@ -423,7 +426,7 @@ function field(dt,speed){ if(mode==='race'&&g&&g.car){ raceScene(g,g.d,g.car.y,d
   drawParts(dt);
 }
 function sCount(){ if(mode==='race'){ raceCount(); return; } countT-=DT; poolFill(2); followShip();
-  SK.sky(DT,0.6); flyShip(fx(Core.SHIP_X),shipY,clock,false,DT,null);   // v1.40: the countdown's ship flies too
+  var GK=SK.glBegin?SK:null; if(GK) GK.glBegin(); try{ SK.sky(DT,0.6); flyShip(fx(Core.SHIP_X),shipY,clock,false,DT,null); } finally { if(GK) GK.glEnd(); }   // v1.40: the countdown's ship flies too
   var n=Math.max(1,Math.ceil(countT)), cx0=Math.round(LW/2), cy0=Math.round(LH/2);
   ring(cx0,cy0,13,1-(countT-Math.floor(countT)),P.band); text(String(n),cx0,cy0-3,P.text,'center'); say(String(n));
   if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.play('tick');
@@ -463,8 +466,8 @@ Board.devInfo(devInfo);
 function endGame(){ if(mode==='race'&&g&&g.car){ raceEnd(); return; } g.state='over'; overT=0; Logs.gameStop(); Board.finish(g.score); Board.flush(); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } go('over'); }
 function react(){ g.events.forEach(function(k){
   if(k==='fire'){ if(Math.random()<0.5) Sfx.play('fire'); } else if(k!=='crash') Sfx.play(k); });
-  var BU=SK.bursts(); (g.gone||[]).forEach(function(r){ burst(fx(r.x),r.y*K,8+Math.round(r.r*K),BU.rock,50*K); delete rockSpr[r.id]; shake=Math.max(shake,0.08+r.r*0.004); });
-  (g.fx||[]).forEach(function(f){ if(f.ufo){ burst(fx(f.x),f.y*K,40,BU.ufo,90*K); shake=0.35; } else if(f.pick) burst(fx(f.x),f.y*K,14,BU['pick_'+f.pick]||BU.pick,50*K); });   // v1.28: a skin may colour each power-up's burst
+  var BU=SK.bursts(); (g.gone||[]).forEach(function(r){ if(SK.gone) SK.gone(r,rockSpr[r.id]); else burst(fx(r.x),r.y*K,8+Math.round(r.r*K),BU.rock,50*K); delete rockSpr[r.id]; shake=Math.max(shake,0.08+r.r*0.004); });
+  (g.fx||[]).forEach(function(f){ if(f.ufo){ if(SK.goneUfo) SK.goneUfo(f); else burst(fx(f.x),f.y*K,40,BU.ufo,90*K); shake=0.35; } else if(f.pick) burst(fx(f.x),f.y*K,14,BU['pick_'+f.pick]||BU.pick,50*K); });   // v1.28: a skin may colour each power-up's burst
   if(g.events.indexOf('ufo_hit')>=0&&g.ufo){ burst(fx(g.ufo.x),g.ufo.y*K,14,[P.text].concat(BU.ufo),60*K); shake=Math.max(shake,0.12); }
   if(g.events.indexOf('shield')>=0) burst(fx(g.ship.x)+6,g.ship.y*K,20,BU.pick,60*K);
   if((g.fx||[]).some(function(f){ return f.pick==='life'; })) livesT=1.8;                  // a life taken: the lives show for a moment
@@ -584,7 +587,7 @@ var raceOpt=(function(){ var o=null; try{ o=JSON.parse(store.get('sonaroids_race
    button. Leaving it: one skin ticked — that one; several — they take turns ── */
 var skB=0;
 function skinsOpen(){ var m=sklM(), all=sklAll(m), s=SKL[m]; skB=Math.max(0,all.indexOf(m==='race'?(raceMix?RSKIN:raceSkin):skinId)); skinsShow(); go('skins'); }
-function skinsShow(){ var m=sklM(), id=sklAll(m)[skB]; if(m==='race') RSKIN=id; else if(skinId!==id){ skinId=id; SK=skinView(id); } }
+function skinsShow(){ var m=sklM(), id=sklAll(m)[skB]; if(m==='race') RSKIN=id; else if(skinId!==id){ skinId=id; SK=obsWrap(skinView(id)); } }
 function skinsBack(){ var m=sklM(), s=SKL[m]; sklSave(m); if(m==='race'){ RSKIN=raceMix?RSKIN:raceSkin; } go('title'); }
 function skBox(x,y,on){ frame(x,y,9,9,on?P.band:P.text); if(on){ R(P.band,x+2,y+4,1,2); R(P.band,x+3,y+5,1,2); R(P.band,x+4,y+4,1,2); R(P.band,x+5,y+3,1,2); R(P.band,x+6,y+2,1,2); } }
 function skStep(idp,idn,label,x,y,w,h){ var s=Math.round(h*0.9); R(P.bg,x,y,w,h); frame(x,y,w,h,P.line);
@@ -808,7 +811,7 @@ function startGame(){ if(mode==='race'){ raceStart(); return; }
   var y0=shipY===null?null:+(shipY/K).toFixed(3);
   Core.TUNE.SHOT_TILT=shotTilt(); Core.TUNE.SHOT_BOUNCE=shotBounce(); g=Core.create(seed,Core.FH*(LW-SAFE.l)/LH,y0); Board.start(seed,g.FW,y0,Core.TUNE.SHOT_TILT||Core.TUNE.SHOT_BOUNCE?{test:true}:null); nickAsked=false; acc=0; rockSpr={}; parts=[]; livesT=0; var I=Sonar.info();
   Logs.gameStart({core:Core.TAG,seed:seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:liveOn()?'live':'frozen',live:liveOn(),room:Sonar.room(),asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
-    chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids',shot_tilt:Core.TUNE.SHOT_TILT,shot_bounce:Core.TUNE.SHOT_BOUNCE,fly_tilt:flyTiltK()});
+    chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids',shot_tilt:Core.TUNE.SHOT_TILT,shot_bounce:Core.TUNE.SHOT_BOUNCE,skin_heavy:obsOn()?'obsidian/'+'ABC'.charAt(obsAnn()):undefined,fly_tilt:flyTiltK()});
   Sfx.play('start'); go('play');
 }
 var ACT={
@@ -863,6 +866,8 @@ var ACT={
   nick_later:function(){ nickField(false); nickMsg=''; go(nickFrom==='over'?'over':'scores'); },
   logs:function(){ Logs.share(); },
   shot_bounce:function(){ store.set('sonaroids_shot_bounce',shotBounce()?'0':'1'); },
+  obs:function(){ store.set('sonaroids_obs',store.get('sonaroids_obs','0')==='1'?'0':'1'); setSkin(skinId); },   /* v1.42: the heavy skin on / off (a test) */
+  obs_ann:function(){ store.set('sonaroids_obs_ann',String((obsAnn()+1)%3)); },
   audio:function(){ audDev=null; audFrom=null; go('audio'); },
   lab:function(){ location.href='../lab/sonar_lab3.html'; },
   ver:function(){ if(scr==='scores'){ scPeople=!scPeople; return; } diag=!diag; },   /* v1.34: on the scores screen the version's long press is «people only» */
@@ -936,7 +941,7 @@ function loop(now){
   // v0.91: while a game runs (and in its pause) the sonar keeps the empty room's level as the getting ready left it (see src/11_dsp.js)
   var gameOn=!!(g&&g.state!=='over'&&(scr==='play'||scr==='count-resume'||scr==='paused'||scr==='restart')); if(gameOn!==floorHeld){ floorHeld=gameOn; try{ DSP2.set('holdfloor',gameOn); }catch(e){} }
   // v0.74: a shapes-only skin with «pixels» — the same canvas at 1 px per game pixel   // v0.72: the HD world canvas under the pixel one
-  uiColours(scr!=='hub');
+  uiColours(scr!=='hub'); obsTick();   // v1.42: the heavy skin's canvas hidden on a frame that drew no field
   switch(scr){
     case 'lang': sLang(); break; case 'title': sTitle(); break; case 'rtitle': sRTitle(); break; case 'skins': sSkins(); break; case 'rset': sRSet(); break; case 'hub': sHub(); break;
     case 'sound': sSound(); break;
@@ -1018,12 +1023,12 @@ function chrome(){ if(LH>LW) return;
   if((scr==='wave'&&!vr)||scr==='title'||scr==='rtitle') diagCorner('V'+VERSION,true,SAFE.t+8,scr==='title'||scr==='rtitle'?vr===(freeSide()!=='left'):true);   // the game's screen: the corner away from its buttons
   else if(scr==='scores') diagCorner('V'+VERSION,true,y+Math.round((s-PF.CAP)/2),false,vr?x-16:x+s+16);
   else diagCorner('V'+VERSION,true,y+s+14); }
-gfxLockApply(); SK=skinView(skinId); resize(); Board.flush();
+gfxLockApply(); SK=obsWrap(skinView(skinId)); resize(); Board.flush();
 if('serviceWorker' in navigator&&location.protocol==='https:') navigator.serviceWorker.register('sw.js').then(function(r){ r.update(); }).catch(function(){});   // works offline; checks for a new version on every launch
 go('hub');   // v0.70: the games' screen first (always the menu first since 0.44; a new player's first "Play" walks through the instruction)
 requestAnimationFrame(loop);
 /* test hooks: headless tests drive the screens through these (harmless in the game) */
-window.__sonaroids={mixStart:function(){ mixStart(); },fxBurst:function(x,y,n,kind){ var BU=SK.bursts(); burst(fx(x),y*K,n,BU[kind]||BU.rock,50*K); },mixNow:function(){ MX.next=MX.t; if(!MX.pend) MX.pend=mixPick(); },mixInfo:function(){ return {on:mixOn(),cur:mixCur(),pend:MX.pend,tr:MX.tr?MX.tr.t:null,hist:MX.hist.slice(),fly:flyMix,race:raceMix}; },noteZones:function(){ return RC.zones?RC.zones.slice():null; },noteRivals:function(v){ RN_RIV=v; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },noteInfra:function(f){ RN_FORCE=f||null; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },raceNote:function(o){ for(var k in o) RN_LOOK[k]=o[k]; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },raceSuper:function(v){ R_SUPER=v; },racePal:function(pud,bub){ if(pud) for(var k in pud) R_PUD[k]=pud[k]; if(bub) for(var j in bub) R_BUB[j]=bub[j]; RC.sp={}; },skinProbe:skinProbe,hdProbe:hdProbe,sizeProbe:sizeProbe,hdIds:hdIds,pixIds:function(){ return SKIN_IDS.filter(function(i){ return !!SKINS[i]; }); },skinIds:function(){ return SKIN_IDS.slice(); },go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },
+window.__sonaroids={mixStart:function(){ mixStart(); },obs:function(c){ if(c==='roll') FLY.roll=0; return {ok:OBS.ok,err:OBS.err,vis:OBS.vis,bd:OBS.bd,od:OBS.od,n:OBS.list.length,an:OBS.an.length,f16:OBS.f16,sk:SK.id}; },fxBurst:function(x,y,n,kind){ var BU=SK.bursts(); burst(fx(x),y*K,n,BU[kind]||BU.rock,50*K); },mixNow:function(){ MX.next=MX.t; if(!MX.pend) MX.pend=mixPick(); },mixInfo:function(){ return {on:mixOn(),cur:mixCur(),pend:MX.pend,tr:MX.tr?MX.tr.t:null,hist:MX.hist.slice(),fly:flyMix,race:raceMix}; },noteZones:function(){ return RC.zones?RC.zones.slice():null; },noteRivals:function(v){ RN_RIV=v; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },noteInfra:function(f){ RN_FORCE=f||null; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },raceNote:function(o){ for(var k in o) RN_LOOK[k]=o[k]; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },raceSuper:function(v){ R_SUPER=v; },racePal:function(pud,bub){ if(pud) for(var k in pud) R_PUD[k]=pud[k]; if(bub) for(var j in bub) R_BUB[j]=bub[j]; RC.sp={}; },skinProbe:skinProbe,hdProbe:hdProbe,sizeProbe:sizeProbe,hdIds:hdIds,pixIds:function(){ return SKIN_IDS.filter(function(i){ return !!SKINS[i]; }); },skinIds:function(){ return SKIN_IDS.slice(); },go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },
   setBooted:function(v){ booted=v; },
   board:function(){ return {tbl:tblBox,nick:nickEl?{shown:nickEl.style.display!=='none',rect:nickEl.getBoundingClientRect().toJSON()}:null}; },
   side:function(){ return {hand:handSide(),rel:handRel,cam:camEnd(),stored:store.get('sonaroids_rel',''),say:sayLast}; }, wave:function(){ toWave(); },

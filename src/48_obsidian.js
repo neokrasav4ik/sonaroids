@@ -21,8 +21,10 @@ var OBS={ok:null,err:'',cv:null,g:null,act:false,rk:[],drew:false,vis:false,t:34
 function obsOn(){ return typeof store!=='undefined'&&store.get('sonaroids_obs','0')==='1'&&obsInit(); }
 /* v1.43–1.44: the maintainer's sliders for the skin (in the pause, 0…1, 0.5 by default; the shaders take twice the value):
    ink — how strongly a hit draws the ink in; ring — how far the ring is from a circle; wake — the ship's wake; rwake — the rocks' wakes */
-var OBS_SL=[['obs_ink','sonaroids_obs_ink'],['obs_ring','sonaroids_obs_ring'],['obs_wake','sonaroids_obs_wake'],['obs_rwake','sonaroids_obs_rwake']];
-function obsSl(id){ for(var i=0;i<OBS_SL.length;i++) if(OBS_SL[i][0]===id){ var v=typeof store!=='undefined'?+store.get(OBS_SL[i][1],'0.5'):0.5; return v>=0&&v<=1?v:0.5; } return 0.5; }
+/* v1.45: 0–200% (the maintainer: «самое зрелищное это 100/100/50/100.. можно было бы и по зрелищнее (200?)»), those four his picks to start;
+   and the ink's fine detail (the maintainer: «иногда слишком широкие мазки без детализации, без нитей… может им тоже ползунок?») */
+var OBS_SL=[['obs_ink','sonaroids_obs_ink',1],['obs_ring','sonaroids_obs_ring',1],['obs_wake','sonaroids_obs_wake',0.5],['obs_rwake','sonaroids_obs_rwake',1],['obs_det','sonaroids_obs_det',0.5]];
+function obsSl(id){ for(var i=0;i<OBS_SL.length;i++) if(OBS_SL[i][0]===id){ var d=OBS_SL[i][2], v=typeof store!=='undefined'?+store.get(OBS_SL[i][1],String(d)):d; return v>=0&&v<=2?v:d; } return 0.5; }
 function obsSlSet(id,v){ for(var i=0;i<OBS_SL.length;i++) if(OBS_SL[i][0]===id){ store.set(OBS_SL[i][1],String(v)); return true; } return false; }
 function obsInk(){ return obsSl('obs_ink'); }
 /* the skin for a SonaFly view: this one while the switch is on */
@@ -85,13 +87,17 @@ var OBS_EVF=[
 'float inkCheap(vec2 p){ vec2 q=vec2(fbm(vec3(p,uTime*0.035),3),fbm(vec3(p+vec2(5.2,1.3),uTime*0.035),3)); return fbm(vec3(p+4.0*q,uTime*0.03),3); }'].join('\n');
 /* the ink: near (colour + density, and the cheap density for the light) or far (half size) */
 var OBS_FS_N=OBS_COMMON.replace('out vec4 fragColor;','layout(location=0) out vec4 fragColor; layout(location=1) out vec4 frag1;')+'\n'+OBS_EVF+'\n'+[
-'uniform float uEnc; uniform float uMode;',
+'uniform float uEnc; uniform float uMode; uniform float uDet;',
 'vec4 enc(vec4 v){ return uEnc>0.0?sqrt(clamp(v*0.5,0.0,1.0)):v; }',
 'void main(){ vec2 uv=vec2((gl_FragCoord.x-0.5*uRes.x)/uRes.y,gl_FragCoord.y/uRes.y-0.5); int OC=uQ==0?3:uQ==1?4:5; vec2 sv=stir(uv);',
 '  if(uMode>0.5){ vec2 pf=uv*0.8+vec2(uTime*0.012,7.0)+sv*0.4; vec2 q2,r2; float f2=inkD(pf,max(OC-1,2),q2,r2);',
 '    vec3 far=inkColM(q2,r2,f2)*mix(vec3(0.45,0.6,1.0),vec3(0.8,0.55,0.5),uMix)*(0.04+0.45*f2*f2*f2); fragColor=enc(vec4(far,1.0)); frag1=vec4(0.0); return; }',
-'  vec2 p=uv*1.5+vec2(uTime*0.028,0.0)+sv; vec2 q,r; float f=inkD(p,OC,q,r); float fa=inkA(f); vec3 near=inkColM(q,r,fa)*(0.10+1.3*fa*fa*fa);',
-'  fragColor=enc(vec4(near,f)); frag1=enc(vec4(inkCheap(p),0.0,0.0,1.0)); }'].join('\n');
+/* v1.45 the detail (uDet 0 — as before): a fine wobble before the warps (they blow it up into ragged edges), and thin veins along the
+   warped ink's ridges at two sizes — kept apart (frag1.g) and laid over the wallpaper whatever the ink's density there, so the broad dim
+   strokes get threads too */
+'  vec2 p=uv*1.5+vec2(uTime*0.028,0.0)+sv; if(uDet>0.0) p+=uDet*0.018*(vec2(n3(vec3(p*9.0,uTime*0.08)),n3(vec3(p*9.0+5.3,uTime*0.08)))-0.5); vec2 q,r; float f=inkD(p,OC,q,r);',
+'  float vn=0.0; if(uDet>0.0){ float r1=1.0-abs(2.0*fbm(vec3(p*2.4+3.0*r,uTime*0.03),3)-1.0), r2=1.0-abs(2.0*fbm(vec3(p*5.5+2.0*q,uTime*0.04+3.0),2)-1.0); vn=uDet*(0.6*pow(r1,7.0)+0.4*pow(r2,9.0)); } float fa=inkA(f); vec3 near=inkColM(q,r,fa)*(0.10+1.3*fa*fa*fa);',
+'  fragColor=enc(vec4(near,f)); frag1=enc(vec4(inkCheap(p),min(vn,1.9),0.0,1.0)); }'].join('\n');
 /* the wallpaper from the ink: far under near, the light's rims on the ink, the shafts through its gaps */
 var OBS_FS_B=OBS_COMMON+'\n'+[
 'uniform sampler2D uA; uniform sampler2D uB; uniform sampler2D uF; uniform float uEnc; uniform float uExt; uniform float uMix; uniform vec2 uSun;',
@@ -100,11 +106,12 @@ var OBS_FS_B=OBS_COMMON+'\n'+[
 'void main(){ vec2 uv=uvOf(); int NS=uQ==0?6:uQ==1?9:12; vec2 sun=uSun;',
 '  vec4 A=dec(texture(uA,tcOf(uv))); vec3 near=A.rgb, far=dec(texture(uF,tcOf(uv))).rgb; float f=A.a, dens=smoothstep(0.42,0.80,inkA(f));',
 '  vec3 col=mix(far,near,dens); col*=mix(0.75,0.6,uMix); float lu=dot(col,vec3(0.3,0.59,0.11)); col=max(mix(vec3(lu),col,1.45),0.0);',
-'  vec2 ld=normalize(sun-uv); float fl=dec(texture(uB,tcOf(uv+ld*0.06))).r; float rim=clamp((f-fl)*5.0,0.0,1.0);',
+'  vec2 ld=normalize(sun-uv); float fl=dec(texture(uB,tcOf(uv+ld*0.06))).r; float rim=clamp((f-fl)*5.0,0.0,1.0); float vn=dec(texture(uB,tcOf(uv))).g;',
 '  vec3 lc=mix(vec3(1.0,0.78,0.48),vec3(0.55,0.80,1.0),uMix); vec3 nk=near/(max(near.r,max(near.g,near.b))+1e-3); col+=mix(lc,nk,0.65)*rim*dens*0.13*(0.4+0.6*smoothstep(2.2,0.3,length(uv-sun)));',
 '  vec2 ds=uv-sun; float dl=length(ds); float bm=0.0; for(int i=0;i<3;i++){ float fi=float(i); bm+=pow(n3(vec3(normalize(ds)*(8.0+fi*7.0),fi*3.0+uTime*(0.04+fi*0.03))),3.0)*(0.9-fi*0.2); }',
 '  float T=0.0; for(int i=1;i<=16;i++){ if(i>NS) break; vec2 u=uv+(sun-uv)*float(i)/float(NS); T+=smoothstep(0.35,0.8,dec(texture(uB,tcOf(u))).r); } T=exp(-T/float(NS)*2.4);',
 '  vec3 tint=mix(lc,normalize(near+1e-3)*1.2,0.45); col+=tint*bm*T*0.075*exp(-dl*0.7)*(0.5+0.6*(1.0-dens))+lc*0.03/(dl*dl+0.04)*0.06;',
+'  col+=(col*1.1+mix(lc,nk,0.5)*0.02)*vn;',
 '  col*=1.0-0.25*smoothstep(0.35,0.75,abs(uv.y));',
 '  fragColor=vec4(tone(col),1.0); }'].join('\n');
 /* shared by the screen passes: the wallpaper in linear light, the annihilations' list */
@@ -123,7 +130,7 @@ var OBS_SC=['#version 300 es','precision highp float; precision highp int;','uni
    the ring's radius along its round — a noise of its own (seamless round the circle) and the ink under it (it runs ahead in dense ink,
    lags in thin); irr 0 — a true circle */
 'uniform float uIrr;',
-'float ringK(vec2 n,float sd,float lu){ float an=n2(n*2.2+sd*7.3)*0.65+n2(n*5.0+sd*3.1)*0.35; return 1.0+uIrr*((an-0.5)*1.1+(lu-0.3)*0.7); }',
+'float ringK(vec2 n,float sd,float lu){ float an=n2(n*2.2+sd*7.3)*0.65+n2(n*5.0+sd*3.1)*0.35; return max(0.3,1.0+uIrr*((an-0.5)*1.1+(lu-0.3)*0.7)); }',
 'float ringA(float lu){ return mix(1.0,0.25+1.6*smoothstep(0.08,0.45,lu),min(uIrr,1.0)); }'].join('\n');
 /* the wallpaper on the screen, pushed about where the annihilations happen (in linear light into the scene, or straight to the screen) */
 var OBS_FS_C=OBS_SC+'\n'+[
@@ -271,7 +278,7 @@ function obsRender(){ var g=OBS.g; if(!g||OBS.lost) return; obsSize(); var T=OBS
   var run=function(far,part){ var ww=far?Math.max(1,T.bw>>1):T.bw, hh=far?Math.max(1,T.eh>>1):T.eh; g.bindFramebuffer(g.FRAMEBUFFER,far?T.fc:T.fa); g.drawBuffers(far?[g.COLOR_ATTACHMENT0]:[g.COLOR_ATTACHMENT0,g.COLOR_ATTACHMENT1]);
     g.viewport(0,0,ww,hh); if(part>=0){ var h2=Math.ceil(hh/2); g.enable(g.SCISSOR_TEST); g.scissor(0,part?hh-h2:0,ww,h2); }
     g.useProgram(pn); g.uniform2f(obsU(pn,'uRes'),far?ww:T.bw,far?ww*T.bh/T.bw:T.bh); g.uniform1f(obsU(pn,'uTime'),t); g.uniform1i(obsU(pn,'uQ'),OBS.q); g.uniform1f(obsU(pn,'uEnc'),T.enc); g.uniform1f(obsU(pn,'uMode'),far?1:0);
-    g.uniform1f(obsU(pn,'uAmt'),1.0); g.uniform1f(obsU(pn,'uMix'),mix); obsShipUni(pn); g.uniform4fv(obsU(pn,'uFx'),fx); g.uniform1i(obsU(pn,'uNf'),nf); g.uniform1f(obsU(pn,'uStir'),stir); g.uniform1f(obsU(pn,'uWake'),obsSl('obs_wake')*2); g.uniform4fv(obsU(pn,'uRk'),rk); g.uniform1i(obsU(pn,'uNr'),nr); g.uniform1f(obsU(pn,'uRWake'),obsSl('obs_rwake')*2); g.drawArrays(g.TRIANGLES,0,3); g.disable(g.SCISSOR_TEST); };
+    g.uniform1f(obsU(pn,'uAmt'),1.0); g.uniform1f(obsU(pn,'uMix'),mix); obsShipUni(pn); g.uniform4fv(obsU(pn,'uFx'),fx); g.uniform1i(obsU(pn,'uNf'),nf); g.uniform1f(obsU(pn,'uStir'),stir); g.uniform1f(obsU(pn,'uWake'),obsSl('obs_wake')*2); g.uniform4fv(obsU(pn,'uRk'),rk); g.uniform1i(obsU(pn,'uNr'),nr); g.uniform1f(obsU(pn,'uRWake'),obsSl('obs_rwake')*2); g.uniform1f(obsU(pn,'uDet'),obsSl('obs_det')*2); g.drawArrays(g.TRIANGLES,0,3); g.disable(g.SCISSOR_TEST); };
   if(T.n===0) run(false,-1); else run(false,T.n%2); run(true,-1); T.n++;
   g.bindFramebuffer(g.FRAMEBUFFER,T.fbg); g.drawBuffers([g.COLOR_ATTACHMENT0]);
   /* 2. the wallpaper (at its own size) */

@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='1.44';
+var VERSION='1.45';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -1292,7 +1292,7 @@ STR.en={
   aud_fx:'PHONE PROCESSING:', aud_src:'SOURCE', aud_usage:'PROBE AS', aud_end:'PROBE FROM', turn_t:'TURN THE PHONE ROUND', hub_s:'GAMES YOU PLAY WITH YOUR PALM IN MID-AIR', soon:'SOON', all_games:'← ALL GAMES', skin:'SKIN', gfx:'GRAPHICS', gfx_pixel:'PIXELS', skin_space:'SPACE', skin_vector:'VECTOR 80S', skin_neon:'NEON', skin_note:'NOTEBOOK', skin_lcd:'RETRO LCD', skin_fairy:'FAIRY TALE', turn_s:'BY 180° IF YOU PLAY', turn_s2:'WITH YOUR RIGHT HAND', turn_h:'ROUND LIKE A WHEEL — DON\'T FLIP IT FACE DOWN', lefty:'I PLAY LEFT-HANDED', aud_vol:'VOLUME', aud_keep:'LEAVE AS IS', aud_cam:'CAMERA END', aud_port:'PORT END', aud_media:'MEDIA', aud_game:'GAME', aud_autotest:'AUTO PICK', aud_notyet:'NOT DONE YET', aud_retest:'TEST AGAIN', aud_lab:'LAB', aud_nextgame:'WITH THE NEXT GAME', aud_on:'ON', aud_off:'OFF', aud_t2:'SOUND', aud_s2:'TRIALS OF THE ECHO PROCESSING', settings:'SETTINGS', settings_t:'SETTINGS', set_gfx:'GRAPHICS', set_gfx_menu:'CHOSEN IN THE GAME', set_gfx_hd:'ALWAYS HD', set_gfx_px:'ALWAYS PIXELS', set_band:'PROBE BAND', set_band_ask:'CHOSEN BEFORE A GAME', set_band_w:'ALWAYS WIDE', set_band_n:'ALWAYS NORMAL', set_live:'AUTO-CALIBRATION', set_on:'ON', set_off:'OFF', set_live_on_s:'NO WAVING: THE GAME TAKES YOUR LAST MANUAL CALIBRATION AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', set_live_on_d:'NO WAVING: THE GAME TAKES YOUR MANUAL CALIBRATION OF {d} AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', auto_ok:'CALIBRATION FROM YOUR LAST GAME', set_room:'ROOM FOLLOWING', set_live_new_s:'NO MANUAL CALIBRATION YET: SWITCH THIS OFF, PLAY ONE GAME WAVING YOUR PALM, SWITCH IT ON AGAIN — AUTO-CALIBRATION WILL TAKE IT', set_live_off_s:'BEFORE EVERY GAME: TAKE YOUR HAND AWAY, WAVE YOUR PALM, TAP «START». A GOOD SETUP CAN THEN BE KEPT WITH AUTO-CALIBRATION', set_expert:'ADVANCED PROBE SETTINGS', aud_link:'SOUND', aud_t:'APP SOUND', aud_s:'WHERE THE GAME TAKES THE MICROPHONE FROM AND WHERE THE PROBE PLAYS', aud_mode:'SOUND', aud_browser:'BROWSER', aud_app:'APP', aud_mic:'MICROPHONE', aud_out:'SPEAKER', aud_auto:'AUTO', aud_speaker:'SPEAKER', aud_earpiece:'EARPIECE', aud_bottom:'BOTTOM', aud_top:'TOP', aud_back:'BACK', aud_now:'NOW:', aud_active:'RECORDING:', aud_idle:'THE MICROPHONE OPENS WITH THE GAME', aud_browser_now:'NOW THE SOUND GOES THROUGH THE BROWSER: ANDROID PICKS THE MICROPHONE', aud_nopos:'THE PHONE DOES NOT TELL WHERE ITS MICROPHONES ARE',
   wave_t:'WAVE YOUR PALM', wave_s:'5–10 CM ABOVE THE TABLE OR 5–15 CM FROM THE PHONE\'S END', wave_ok:'GOT YOUR RANGE', other_t:'WAVE ON THE OTHER SIDE', other_s:'THE PHONE DOES NOT HEAR THE PALM ON THIS SIDE', try_s:'THE SHIP FOLLOWS YOUR PALM — TRY THE TOP AND THE BOTTOM', cm:'CM',
   ring_wait:'GET READY', ring_listen:'LISTENING', ring_catch:'CATCHING THE RANGE', ring_ok:'DONE',
-  start:'START', over:'GAME OVER', best:'BEST', again:'AGAIN', menu:'MENU', logs:'LOGS', tilt_test:'TEST RULES: NOT FOR THE TABLES', ftilt:'PICTURE TILT', stilt:'SHOT TILT', straight:'STRAIGHT', as_nose:'AS THE NOSE', bounce_off:'SHOTS OFF THE EDGES: NO', obs_off:'HEAVY SKIN: OFF', obs_on:'HEAVY SKIN: OBSIDIAN', obs_na:'HEAVY SKIN: NO WEBGL 2', mouse_off:'MOUSE INSTEAD OF SONAR: NO', mouse_on:'MOUSE INSTEAD OF SONAR: YES', obs_ink:'INK ON HITS', obs_ring:'RING: UNEVEN', obs_wake:'SHIP WAKE', obs_rwake:'ROCK WAKES', bounce_on:'SHOTS OFF THE EDGES: YES', 
+  start:'START', over:'GAME OVER', best:'BEST', again:'AGAIN', menu:'MENU', logs:'LOGS', tilt_test:'TEST RULES: NOT FOR THE TABLES', ftilt:'PICTURE TILT', stilt:'SHOT TILT', straight:'STRAIGHT', as_nose:'AS THE NOSE', bounce_off:'SHOTS OFF THE EDGES: NO', obs_off:'HEAVY SKIN: OFF', obs_on:'HEAVY SKIN: OBSIDIAN', obs_na:'HEAVY SKIN: NO WEBGL 2', mouse_off:'MOUSE INSTEAD OF SONAR: NO', mouse_on:'MOUSE INSTEAD OF SONAR: YES', obs_ink:'INK ON HITS', obs_ring:'RING: UNEVEN', obs_wake:'SHIP WAKE', obs_rwake:'ROCK WAKES', obs_det:'INK DETAIL', bounce_on:'SHOTS OFF THE EDGES: YES', 
   lost_t:'NO PROBE SOUND', lost_s:'SOUND WENT TO ANOTHER DEVICE. UNPLUG HEADPHONES OR BLUETOOTH', retry:'TRY AGAIN',
   nomic_t:'NO MICROPHONE', nomic_s:'ALLOW IT IN THE BROWSER SETTINGS AND TRY AGAIN', noaudio_s:'THIS BROWSER CANNOT PLAY THE GAME. TRY SAFARI OR CHROME',
   rotate:'TURN THE PHONE SIDEWAYS', rotate_s:'THE SCREEN WON\'T TURN? SWITCH OFF THE ROTATION LOCK: ON IPHONE IN CONTROL CENTRE, ON ANDROID IN QUICK SETTINGS (AUTO-ROTATE)', paused:'PAUSE', resume:'GO ON', quit:'END THE GAME', scores:'HIGH SCORES', p_day:'TODAY', p_week:'THIS WEEK', p_all:'ALL TIME', loading:'LOADING…', offline:'NO CONNECTION TO THE TABLE', empty:'EMPTY SO FAR', you:'YOU',
@@ -1327,7 +1327,7 @@ STR.ru={
   aud_fx:'ОБРАБОТКА ТЕЛЕФОНА:', aud_src:'ИСТОЧНИК', aud_usage:'ЗОНД КАК', aud_end:'ЗОНД ИЗ', turn_t:'РАЗВЕРНИ ТЕЛЕФОН', hub_s:'ИГРЫ, КОТОРЫМИ УПРАВЛЯЕТ ЛАДОНЬ В ВОЗДУХЕ', soon:'СКОРО', all_games:'← ВСЕ ИГРЫ', skin:'СКИН', gfx:'ГРАФИКА', gfx_pixel:'ПИКСЕЛИ', skin_space:'КОСМОС', skin_vector:'ВЕКТОР 80-Х', skin_neon:'НЕОН', skin_note:'ТЕТРАДКА', skin_lcd:'РЕТРО LCD', skin_fairy:'СКАЗКА', turn_s:'НА 180°, ЕСЛИ ИГРАЕШЬ', turn_s2:'ПРАВОЙ РУКОЙ', turn_h:'ПО КРУГУ, КАК РУЛЬ — НЕ ПЕРЕВОРАЧИВАЙ ЭКРАНОМ ВНИЗ', lefty:'ИГРАЮ ЛЕВОЙ РУКОЙ', aud_vol:'ГРОМКОСТЬ', aud_keep:'НЕ ТРОГАТЬ', aud_cam:'У КАМЕРЫ', aud_port:'У РАЗЪЁМА', aud_media:'МЕДИА', aud_game:'ИГРА', aud_autotest:'АВТОВЫБОР', aud_notyet:'ЕЩЁ НЕ ДЕЛАЛСЯ', aud_retest:'ПЕРЕПРОВЕРИТЬ', aud_lab:'ЛАБА', aud_nextgame:'БУДЕТ ПРИ СЛЕДУЮЩЕЙ ИГРЕ', aud_on:'ВКЛ', aud_off:'ВЫКЛ', aud_t2:'ЗВУК', aud_s2:'ОПЫТЫ С ОБРАБОТКОЙ ЭХА', settings:'НАСТРОЙКИ', settings_t:'НАСТРОЙКИ', set_gfx:'ГРАФИКА', set_gfx_menu:'ВЫБОР В ИГРЕ', set_gfx_hd:'ВСЕГДА HD', set_gfx_px:'ВСЕГДА ПИКСЕЛИ', set_band:'ПОЛОСА ЗОНДА', set_band_ask:'ВЫБОР ПЕРЕД ИГРОЙ', set_band_w:'ВСЕГДА ШИРОКАЯ', set_band_n:'ВСЕГДА ОБЫЧНАЯ', set_live:'АВТОКАЛИБРОВКА', set_on:'ВКЛ', set_off:'ВЫКЛ', set_live_on_s:'БЕЗ ВЗМАХОВ: ИГРА БЕРЁТ ТВОЮ ПОСЛЕДНЮЮ РУЧНУЮ КАЛИБРОВКУ И САМА ПОДСТРАИВАЕТСЯ ПОД ЗВУКИ КОМНАТЫ. УПРАВЛЯЕТСЯ ХУЖЕ? ВЫКЛЮЧИ, СЫГРАЙ С РУЧНОЙ И ВКЛЮЧИ СНОВА', set_live_on_d:'БЕЗ ВЗМАХОВ: ИГРА БЕРЁТ ТВОЮ РУЧНУЮ КАЛИБРОВКУ ОТ {d} И САМА ПОДСТРАИВАЕТСЯ ПОД ЗВУКИ КОМНАТЫ. УПРАВЛЯЕТСЯ ХУЖЕ? ВЫКЛЮЧИ, СЫГРАЙ С РУЧНОЙ И ВКЛЮЧИ СНОВА', auto_ok:'КАЛИБРОВКА ИЗ ПРОШЛОЙ ИГРЫ', set_room:'ПОДСТРОЙКА ПОД КОМНАТУ', set_live_new_s:'РУЧНОЙ КАЛИБРОВКИ ЕЩЁ НЕ БЫЛО: ВЫКЛЮЧИ, СЫГРАЙ ОДНУ ИГРУ С ВЗМАХАМИ И ВКЛЮЧИ СНОВА — АВТОКАЛИБРОВКА ВОЗЬМЁТ ЕЁ', set_live_off_s:'ПЕРЕД КАЖДОЙ ИГРОЙ: УБРАТЬ РУКУ, ПОМАХАТЬ ЛАДОНЬЮ, НАЖАТЬ «СТАРТ». УДАЧНУЮ НАСТРОЙКУ ПОТОМ МОЖНО ОСТАВИТЬ АВТОКАЛИБРОВКОЙ', set_expert:'РАСШИРЕННЫЕ НАСТРОЙКИ ЗОНДА', aud_link:'ЗВУК', aud_t:'ЗВУК ПРИЛОЖЕНИЯ', aud_s:'ОТКУДА ИГРА БЕРЁТ МИКРОФОН И КУДА ИГРАЕТ ЗОНД', aud_mode:'ЗВУК', aud_browser:'БРАУЗЕР', aud_app:'ПРИЛОЖЕНИЕ', aud_mic:'МИКРОФОН', aud_out:'ДИНАМИК', aud_auto:'АВТО', aud_speaker:'ДИНАМИК', aud_earpiece:'РАЗГОВОРНЫЙ', aud_bottom:'НИЗ', aud_top:'ВЕРХ', aud_back:'СЗАДИ', aud_now:'СЕЙЧАС:', aud_active:'ПИШУТ:', aud_idle:'МИКРОФОН ОТКРОЕТСЯ ПРИ ИГРЕ', aud_browser_now:'СЕЙЧАС ЗВУК ЧЕРЕЗ БРАУЗЕР: МИКРОФОН ВЫБИРАЕТ ANDROID', aud_nopos:'ТЕЛЕФОН НЕ СООБЩАЕТ, ГДЕ МИКРОФОНЫ',
   wave_t:'ПОМАШИ ЛАДОНЬЮ', wave_s:'5–10 СМ НАД СТОЛОМ ИЛИ 5–15 СМ ОТ ТОРЦА ТЕЛЕФОНА', wave_ok:'РАЗМАХ ПОЙМАН', other_t:'ПОМАШИ С ДРУГОЙ СТОРОНЫ', other_s:'С ЭТОЙ СТОРОНЫ ТЕЛЕФОН НЕ СЛЫШИТ ЛАДОНЬ', try_s:'КОРАБЛЬ ИДЁТ ЗА ЛАДОНЬЮ — ПРОВЕРЬ ВЕРХ И НИЗ', cm:'СМ',
   ring_wait:'ПРИГОТОВЬСЯ', ring_listen:'СЛУШАЮ', ring_catch:'ЛОВЛЮ РАЗМАХ', ring_ok:'ГОТОВО',
-  start:'СТАРТ', over:'ИГРА ОКОНЧЕНА', best:'РЕКОРД', again:'ЕЩЁ РАЗ', menu:'МЕНЮ', logs:'ЖУРНАЛЫ', tilt_test:'ТЕСТОВЫЕ ПРАВИЛА: НЕ В ТАБЛИЦАХ', ftilt:'НАКЛОН КАРТИНКИ', stilt:'НАКЛОН ВЫСТРЕЛОВ', straight:'ПРЯМО', as_nose:'КАК НОС', bounce_off:'ВЫСТРЕЛЫ ОТ КРАЁВ: НЕТ', obs_off:'ТЯЖЁЛЫЙ СКИН: НЕТ', obs_on:'ТЯЖЁЛЫЙ СКИН: ОБСИДИАН', obs_na:'ТЯЖЁЛЫЙ СКИН: НЕТ WEBGL 2', mouse_off:'МЫШЬ ВМЕСТО СОНАРА: НЕТ', mouse_on:'МЫШЬ ВМЕСТО СОНАРА: ДА', obs_ink:'ЧЕРНИЛА НА ВЗРЫВЫ', obs_ring:'КОЛЬЦО: НЕРОВНОСТЬ', obs_wake:'СЛЕД КОРАБЛЯ', obs_rwake:'СЛЕД КАМНЕЙ', bounce_on:'ВЫСТРЕЛЫ ОТ КРАЁВ: ДА', 
+  start:'СТАРТ', over:'ИГРА ОКОНЧЕНА', best:'РЕКОРД', again:'ЕЩЁ РАЗ', menu:'МЕНЮ', logs:'ЖУРНАЛЫ', tilt_test:'ТЕСТОВЫЕ ПРАВИЛА: НЕ В ТАБЛИЦАХ', ftilt:'НАКЛОН КАРТИНКИ', stilt:'НАКЛОН ВЫСТРЕЛОВ', straight:'ПРЯМО', as_nose:'КАК НОС', bounce_off:'ВЫСТРЕЛЫ ОТ КРАЁВ: НЕТ', obs_off:'ТЯЖЁЛЫЙ СКИН: НЕТ', obs_on:'ТЯЖЁЛЫЙ СКИН: ОБСИДИАН', obs_na:'ТЯЖЁЛЫЙ СКИН: НЕТ WEBGL 2', mouse_off:'МЫШЬ ВМЕСТО СОНАРА: НЕТ', mouse_on:'МЫШЬ ВМЕСТО СОНАРА: ДА', obs_ink:'ЧЕРНИЛА НА ВЗРЫВЫ', obs_ring:'КОЛЬЦО: НЕРОВНОСТЬ', obs_wake:'СЛЕД КОРАБЛЯ', obs_rwake:'СЛЕД КАМНЕЙ', obs_det:'ЧЕРНИЛА: ДЕТАЛИ', bounce_on:'ВЫСТРЕЛЫ ОТ КРАЁВ: ДА', 
   lost_t:'ЗОНДА НЕ СЛЫШНО', lost_s:'ЗВУК УШЁЛ В ДРУГОЕ УСТРОЙСТВО. ОТКЛЮЧИ НАУШНИКИ ИЛИ BLUETOOTH', retry:'ЕЩЁ РАЗ',
   nomic_t:'НЕТ МИКРОФОНА', nomic_s:'РАЗРЕШИ ЕГО В НАСТРОЙКАХ БРАУЗЕРА И ПОПРОБУЙ ЕЩЁ РАЗ', noaudio_s:'В ЭТОМ БРАУЗЕРЕ ИГРА НЕ ЗАПУСТИТСЯ. ПОПРОБУЙ SAFARI ИЛИ CHROME',
   rotate:'ПОВЕРНИ ТЕЛЕФОН ГОРИЗОНТАЛЬНО', rotate_s:'НЕ ПОВОРАЧИВАЕТСЯ? ВЫКЛЮЧИ БЛОКИРОВКУ ПОВОРОТА ЭКРАНА: НА IPHONE — В ПУНКТЕ УПРАВЛЕНИЯ, НА ANDROID — В ШТОРКЕ (АВТОПОВОРОТ)', paused:'ПАУЗА', resume:'ДАЛЬШЕ', quit:'ЗАКОНЧИТЬ ИГРУ', scores:'РЕКОРДЫ', p_day:'СЕГОДНЯ', p_week:'НЕДЕЛЯ', p_all:'ВСЁ ВРЕМЯ', loading:'ЗАГРУЖАЮ…', offline:'НЕТ СВЯЗИ С ТАБЛИЦЕЙ', empty:'ПОКА ПУСТО', you:'ТЫ',
@@ -3615,8 +3615,10 @@ var OBS={ok:null,err:'',cv:null,g:null,act:false,rk:[],drew:false,vis:false,t:34
 function obsOn(){ return typeof store!=='undefined'&&store.get('sonaroids_obs','0')==='1'&&obsInit(); }
 /* v1.43–1.44: the maintainer's sliders for the skin (in the pause, 0…1, 0.5 by default; the shaders take twice the value):
    ink — how strongly a hit draws the ink in; ring — how far the ring is from a circle; wake — the ship's wake; rwake — the rocks' wakes */
-var OBS_SL=[['obs_ink','sonaroids_obs_ink'],['obs_ring','sonaroids_obs_ring'],['obs_wake','sonaroids_obs_wake'],['obs_rwake','sonaroids_obs_rwake']];
-function obsSl(id){ for(var i=0;i<OBS_SL.length;i++) if(OBS_SL[i][0]===id){ var v=typeof store!=='undefined'?+store.get(OBS_SL[i][1],'0.5'):0.5; return v>=0&&v<=1?v:0.5; } return 0.5; }
+/* v1.45: 0–200% (the maintainer: «самое зрелищное это 100/100/50/100.. можно было бы и по зрелищнее (200?)»), those four his picks to start;
+   and the ink's fine detail (the maintainer: «иногда слишком широкие мазки без детализации, без нитей… может им тоже ползунок?») */
+var OBS_SL=[['obs_ink','sonaroids_obs_ink',1],['obs_ring','sonaroids_obs_ring',1],['obs_wake','sonaroids_obs_wake',0.5],['obs_rwake','sonaroids_obs_rwake',1],['obs_det','sonaroids_obs_det',0.5]];
+function obsSl(id){ for(var i=0;i<OBS_SL.length;i++) if(OBS_SL[i][0]===id){ var d=OBS_SL[i][2], v=typeof store!=='undefined'?+store.get(OBS_SL[i][1],String(d)):d; return v>=0&&v<=2?v:d; } return 0.5; }
 function obsSlSet(id,v){ for(var i=0;i<OBS_SL.length;i++) if(OBS_SL[i][0]===id){ store.set(OBS_SL[i][1],String(v)); return true; } return false; }
 function obsInk(){ return obsSl('obs_ink'); }
 /* the skin for a SonaFly view: this one while the switch is on */
@@ -3679,13 +3681,17 @@ var OBS_EVF=[
 'float inkCheap(vec2 p){ vec2 q=vec2(fbm(vec3(p,uTime*0.035),3),fbm(vec3(p+vec2(5.2,1.3),uTime*0.035),3)); return fbm(vec3(p+4.0*q,uTime*0.03),3); }'].join('\n');
 /* the ink: near (colour + density, and the cheap density for the light) or far (half size) */
 var OBS_FS_N=OBS_COMMON.replace('out vec4 fragColor;','layout(location=0) out vec4 fragColor; layout(location=1) out vec4 frag1;')+'\n'+OBS_EVF+'\n'+[
-'uniform float uEnc; uniform float uMode;',
+'uniform float uEnc; uniform float uMode; uniform float uDet;',
 'vec4 enc(vec4 v){ return uEnc>0.0?sqrt(clamp(v*0.5,0.0,1.0)):v; }',
 'void main(){ vec2 uv=vec2((gl_FragCoord.x-0.5*uRes.x)/uRes.y,gl_FragCoord.y/uRes.y-0.5); int OC=uQ==0?3:uQ==1?4:5; vec2 sv=stir(uv);',
 '  if(uMode>0.5){ vec2 pf=uv*0.8+vec2(uTime*0.012,7.0)+sv*0.4; vec2 q2,r2; float f2=inkD(pf,max(OC-1,2),q2,r2);',
 '    vec3 far=inkColM(q2,r2,f2)*mix(vec3(0.45,0.6,1.0),vec3(0.8,0.55,0.5),uMix)*(0.04+0.45*f2*f2*f2); fragColor=enc(vec4(far,1.0)); frag1=vec4(0.0); return; }',
-'  vec2 p=uv*1.5+vec2(uTime*0.028,0.0)+sv; vec2 q,r; float f=inkD(p,OC,q,r); float fa=inkA(f); vec3 near=inkColM(q,r,fa)*(0.10+1.3*fa*fa*fa);',
-'  fragColor=enc(vec4(near,f)); frag1=enc(vec4(inkCheap(p),0.0,0.0,1.0)); }'].join('\n');
+/* v1.45 the detail (uDet 0 — as before): a fine wobble before the warps (they blow it up into ragged edges), and thin veins along the
+   warped ink's ridges at two sizes — kept apart (frag1.g) and laid over the wallpaper whatever the ink's density there, so the broad dim
+   strokes get threads too */
+'  vec2 p=uv*1.5+vec2(uTime*0.028,0.0)+sv; if(uDet>0.0) p+=uDet*0.018*(vec2(n3(vec3(p*9.0,uTime*0.08)),n3(vec3(p*9.0+5.3,uTime*0.08)))-0.5); vec2 q,r; float f=inkD(p,OC,q,r);',
+'  float vn=0.0; if(uDet>0.0){ float r1=1.0-abs(2.0*fbm(vec3(p*2.4+3.0*r,uTime*0.03),3)-1.0), r2=1.0-abs(2.0*fbm(vec3(p*5.5+2.0*q,uTime*0.04+3.0),2)-1.0); vn=uDet*(0.6*pow(r1,7.0)+0.4*pow(r2,9.0)); } float fa=inkA(f); vec3 near=inkColM(q,r,fa)*(0.10+1.3*fa*fa*fa);',
+'  fragColor=enc(vec4(near,f)); frag1=enc(vec4(inkCheap(p),min(vn,1.9),0.0,1.0)); }'].join('\n');
 /* the wallpaper from the ink: far under near, the light's rims on the ink, the shafts through its gaps */
 var OBS_FS_B=OBS_COMMON+'\n'+[
 'uniform sampler2D uA; uniform sampler2D uB; uniform sampler2D uF; uniform float uEnc; uniform float uExt; uniform float uMix; uniform vec2 uSun;',
@@ -3694,11 +3700,12 @@ var OBS_FS_B=OBS_COMMON+'\n'+[
 'void main(){ vec2 uv=uvOf(); int NS=uQ==0?6:uQ==1?9:12; vec2 sun=uSun;',
 '  vec4 A=dec(texture(uA,tcOf(uv))); vec3 near=A.rgb, far=dec(texture(uF,tcOf(uv))).rgb; float f=A.a, dens=smoothstep(0.42,0.80,inkA(f));',
 '  vec3 col=mix(far,near,dens); col*=mix(0.75,0.6,uMix); float lu=dot(col,vec3(0.3,0.59,0.11)); col=max(mix(vec3(lu),col,1.45),0.0);',
-'  vec2 ld=normalize(sun-uv); float fl=dec(texture(uB,tcOf(uv+ld*0.06))).r; float rim=clamp((f-fl)*5.0,0.0,1.0);',
+'  vec2 ld=normalize(sun-uv); float fl=dec(texture(uB,tcOf(uv+ld*0.06))).r; float rim=clamp((f-fl)*5.0,0.0,1.0); float vn=dec(texture(uB,tcOf(uv))).g;',
 '  vec3 lc=mix(vec3(1.0,0.78,0.48),vec3(0.55,0.80,1.0),uMix); vec3 nk=near/(max(near.r,max(near.g,near.b))+1e-3); col+=mix(lc,nk,0.65)*rim*dens*0.13*(0.4+0.6*smoothstep(2.2,0.3,length(uv-sun)));',
 '  vec2 ds=uv-sun; float dl=length(ds); float bm=0.0; for(int i=0;i<3;i++){ float fi=float(i); bm+=pow(n3(vec3(normalize(ds)*(8.0+fi*7.0),fi*3.0+uTime*(0.04+fi*0.03))),3.0)*(0.9-fi*0.2); }',
 '  float T=0.0; for(int i=1;i<=16;i++){ if(i>NS) break; vec2 u=uv+(sun-uv)*float(i)/float(NS); T+=smoothstep(0.35,0.8,dec(texture(uB,tcOf(u))).r); } T=exp(-T/float(NS)*2.4);',
 '  vec3 tint=mix(lc,normalize(near+1e-3)*1.2,0.45); col+=tint*bm*T*0.075*exp(-dl*0.7)*(0.5+0.6*(1.0-dens))+lc*0.03/(dl*dl+0.04)*0.06;',
+'  col+=(col*1.1+mix(lc,nk,0.5)*0.02)*vn;',
 '  col*=1.0-0.25*smoothstep(0.35,0.75,abs(uv.y));',
 '  fragColor=vec4(tone(col),1.0); }'].join('\n');
 /* shared by the screen passes: the wallpaper in linear light, the annihilations' list */
@@ -3717,7 +3724,7 @@ var OBS_SC=['#version 300 es','precision highp float; precision highp int;','uni
    the ring's radius along its round — a noise of its own (seamless round the circle) and the ink under it (it runs ahead in dense ink,
    lags in thin); irr 0 — a true circle */
 'uniform float uIrr;',
-'float ringK(vec2 n,float sd,float lu){ float an=n2(n*2.2+sd*7.3)*0.65+n2(n*5.0+sd*3.1)*0.35; return 1.0+uIrr*((an-0.5)*1.1+(lu-0.3)*0.7); }',
+'float ringK(vec2 n,float sd,float lu){ float an=n2(n*2.2+sd*7.3)*0.65+n2(n*5.0+sd*3.1)*0.35; return max(0.3,1.0+uIrr*((an-0.5)*1.1+(lu-0.3)*0.7)); }',
 'float ringA(float lu){ return mix(1.0,0.25+1.6*smoothstep(0.08,0.45,lu),min(uIrr,1.0)); }'].join('\n');
 /* the wallpaper on the screen, pushed about where the annihilations happen (in linear light into the scene, or straight to the screen) */
 var OBS_FS_C=OBS_SC+'\n'+[
@@ -3865,7 +3872,7 @@ function obsRender(){ var g=OBS.g; if(!g||OBS.lost) return; obsSize(); var T=OBS
   var run=function(far,part){ var ww=far?Math.max(1,T.bw>>1):T.bw, hh=far?Math.max(1,T.eh>>1):T.eh; g.bindFramebuffer(g.FRAMEBUFFER,far?T.fc:T.fa); g.drawBuffers(far?[g.COLOR_ATTACHMENT0]:[g.COLOR_ATTACHMENT0,g.COLOR_ATTACHMENT1]);
     g.viewport(0,0,ww,hh); if(part>=0){ var h2=Math.ceil(hh/2); g.enable(g.SCISSOR_TEST); g.scissor(0,part?hh-h2:0,ww,h2); }
     g.useProgram(pn); g.uniform2f(obsU(pn,'uRes'),far?ww:T.bw,far?ww*T.bh/T.bw:T.bh); g.uniform1f(obsU(pn,'uTime'),t); g.uniform1i(obsU(pn,'uQ'),OBS.q); g.uniform1f(obsU(pn,'uEnc'),T.enc); g.uniform1f(obsU(pn,'uMode'),far?1:0);
-    g.uniform1f(obsU(pn,'uAmt'),1.0); g.uniform1f(obsU(pn,'uMix'),mix); obsShipUni(pn); g.uniform4fv(obsU(pn,'uFx'),fx); g.uniform1i(obsU(pn,'uNf'),nf); g.uniform1f(obsU(pn,'uStir'),stir); g.uniform1f(obsU(pn,'uWake'),obsSl('obs_wake')*2); g.uniform4fv(obsU(pn,'uRk'),rk); g.uniform1i(obsU(pn,'uNr'),nr); g.uniform1f(obsU(pn,'uRWake'),obsSl('obs_rwake')*2); g.drawArrays(g.TRIANGLES,0,3); g.disable(g.SCISSOR_TEST); };
+    g.uniform1f(obsU(pn,'uAmt'),1.0); g.uniform1f(obsU(pn,'uMix'),mix); obsShipUni(pn); g.uniform4fv(obsU(pn,'uFx'),fx); g.uniform1i(obsU(pn,'uNf'),nf); g.uniform1f(obsU(pn,'uStir'),stir); g.uniform1f(obsU(pn,'uWake'),obsSl('obs_wake')*2); g.uniform4fv(obsU(pn,'uRk'),rk); g.uniform1i(obsU(pn,'uNr'),nr); g.uniform1f(obsU(pn,'uRWake'),obsSl('obs_rwake')*2); g.uniform1f(obsU(pn,'uDet'),obsSl('obs_det')*2); g.drawArrays(g.TRIANGLES,0,3); g.disable(g.SCISSOR_TEST); };
   if(T.n===0) run(false,-1); else run(false,T.n%2); run(true,-1); T.n++;
   g.bindFramebuffer(g.FRAMEBUFFER,T.fbg); g.drawBuffers([g.COLOR_ATTACHMENT0]);
   /* 2. the wallpaper (at its own size) */
@@ -5726,7 +5733,7 @@ function slider(id,x,y,w,v,mark){ var hh=10; R(P.line,x,y+hh/2-1,w,2); R(P.band,
   if(mark!==undefined) R(P.soft,x+Math.round(w*mark),y+1,1,hh-2);
   R(P.bg,x+Math.round(w*v)-3,y,6,hh); frame(x+Math.round(w*v)-3,y,6,hh,P.band); SLD.push({id:id,x:x,y:y-7,w:w,h:hh+14}); }
 function sliderSet(id,f){ var v=Math.round(Math.max(0,Math.min(1,f))*100)/100;
-  if(id==='fly_tilt') store.set('sonaroids_fly_tilt',String(v)); else if(id==='shot_tilt') store.set('sonaroids_shot_tilt',String(v)); else obsSlSet(id,v); }
+  if(id==='fly_tilt') store.set('sonaroids_fly_tilt',String(v)); else if(id==='shot_tilt') store.set('sonaroids_shot_tilt',String(v)); else obsSlSet(id,v*2); }   /* the heavy skin's sliders: 0–200% */
 function sliderAt(e){ var x=e.clientX*DPR/S, y=e.clientY*DPR/S; for(var i=SLD.length-1;i>=0;i--){ var b=SLD[i]; if(x>=b.x-6&&x<b.x+b.w+6&&y>=b.y&&y<b.y+b.h) return b; } return null; }
 function tiltPanel(vr,y0){ var fr=titleFree||[SAFE.l,LW-SAFE.r], pad=8, gap=5, rh=PF.CAP+gap+10+8, fv=flyTiltK(), sv=shotTilt(),
     bs=L(shotBounce()?'bounce_on':'bounce_off'), vw=Math.max(PF.width('100%'),PF.width(L('straight'))),   /* the value stands right of its track */
@@ -6067,13 +6074,14 @@ function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globa
     var it=act.concat(look), gap=Math.max(2,Math.min(8,Math.floor((bot-top+2-it.length*BH)/(it.length-1))));
     column(it,Math.round((top+bot)/2),undefined,gap); return; }
   column(act,cy,x1,8); if(mode!=='race'&&pausedFrom==='play'&&obsOn()) obsPanel(left?x2:x2+w2-Math.max(w2,Math.min(150,left?LW-SAFE.r-8-x2:x2+w2-SAFE.l-8)),Math.max(w2,Math.min(150,left?LW-SAFE.r-8-x2:x2+w2-SAFE.l-8)),cy); else column(look,cy,x2,8); }
-/* v1.44: the heavy skin's sliders in the pause (the maintainer, of each: «ползунок? :)»), in place of the look column (the skin is fixed while it is on) —
-   pause, move them, play on and see. 50% is where they start; 100% is twice that, 0 — none */
-function obsPanel(px,pw,cy){ var pad=6, gap=4, rh=PF.CAP+gap+10+7, vw=PF.width('100%'), ids=OBS_SL.map(function(x){ return x[0]; }), ph=pad*2+ids.length*rh-6,
+/* v1.44: the heavy skin's sliders in the pause (the maintainer, of each: «ползунок? :)»), in place of the look column (the skin is fixed while it is on);
+   v1.45: 0–200%, the mark at 100% —
+   pause, move them, play on and see. 0 — none; the strengths are 1.44's (its 50% then is 50% now) */
+function obsPanel(px,pw,cy){ var pad=5, gap=3, rh=PF.CAP+gap+10+5, vw=PF.width('200%'), ids=OBS_SL.map(function(x){ return x[0]; }), ph=pad*2+ids.length*rh-6,
       y0=Math.max(topY()+12,Math.min(LH-SAFE.b-4-ph,Math.round(cy-ph/2))), ix=px+pad, iw=pw-2*pad, tw=iw-vw-6, y=y0+pad;
   px=Math.round(px);
   lx.globalAlpha=0.9; R(P.bg,px,y0,pw,ph); lx.globalAlpha=1; frame(px,y0,pw,ph,P.line);
-  ids.forEach(function(id){ var v=obsSl(id), lab=L(id), sc=Math.min(1,iw/Math.max(1,PF.width(lab))); text(lab,ix,y,P.soft,'left',sc); slider(id,ix,y+PF.CAP+gap,tw,v,0.5); text(Math.round(v*100)+'%',ix+iw,y+PF.CAP+gap+5-Math.round(PF.CAP/2),P.text,'right'); y+=rh; }); }
+  ids.forEach(function(id){ var v=obsSl(id), lab=L(id), sc=Math.min(1,iw/Math.max(1,PF.width(lab))); text(lab,ix,y,P.soft,'left',sc); slider(id,ix,y+PF.CAP+gap,tw,v/2,0.5); text(Math.round(v*100)+'%',ix+iw,y+PF.CAP+gap+5-Math.round(PF.CAP/2),P.text,'right'); y+=rh; }); }
 /* v0.24 "start over" from the pause menu: straight into a countdown with the same calibration, or through calibration again */
 function sRestart(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('restart'),L('restart_s'));
   column([['rs_go',L('rs_go'),'primary'],['rs_cal',L('recal')],['rs_back',L('back')]],Math.round(LH*0.58)); }

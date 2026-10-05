@@ -225,7 +225,7 @@ function slider(id,x,y,w,v,mark){ var hh=10; R(P.line,x,y+hh/2-1,w,2); R(P.band,
   if(mark!==undefined) R(P.soft,x+Math.round(w*mark),y+1,1,hh-2);
   R(P.bg,x+Math.round(w*v)-3,y,6,hh); frame(x+Math.round(w*v)-3,y,6,hh,P.band); SLD.push({id:id,x:x,y:y-7,w:w,h:hh+14}); }
 function sliderSet(id,f){ var v=Math.round(Math.max(0,Math.min(1,f))*100)/100;
-  if(id==='fly_tilt') store.set('sonaroids_fly_tilt',String(v)); else if(id==='shot_tilt') store.set('sonaroids_shot_tilt',String(v)); else obsSlSet(id,v); }
+  if(id==='fly_tilt') store.set('sonaroids_fly_tilt',String(v)); else if(id==='shot_tilt') store.set('sonaroids_shot_tilt',String(v)); else obsSlSet(id,v*2); }   /* the heavy skin's sliders: 0–200% */
 function sliderAt(e){ var x=e.clientX*DPR/S, y=e.clientY*DPR/S; for(var i=SLD.length-1;i>=0;i--){ var b=SLD[i]; if(x>=b.x-6&&x<b.x+b.w+6&&y>=b.y&&y<b.y+b.h) return b; } return null; }
 function tiltPanel(vr,y0){ var fr=titleFree||[SAFE.l,LW-SAFE.r], pad=8, gap=5, rh=PF.CAP+gap+10+8, fv=flyTiltK(), sv=shotTilt(),
     bs=L(shotBounce()?'bounce_on':'bounce_off'), vw=Math.max(PF.width('100%'),PF.width(L('straight'))),   /* the value stands right of its track */
@@ -566,13 +566,14 @@ function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globa
     var it=act.concat(look), gap=Math.max(2,Math.min(8,Math.floor((bot-top+2-it.length*BH)/(it.length-1))));
     column(it,Math.round((top+bot)/2),undefined,gap); return; }
   column(act,cy,x1,8); if(mode!=='race'&&pausedFrom==='play'&&obsOn()) obsPanel(left?x2:x2+w2-Math.max(w2,Math.min(150,left?LW-SAFE.r-8-x2:x2+w2-SAFE.l-8)),Math.max(w2,Math.min(150,left?LW-SAFE.r-8-x2:x2+w2-SAFE.l-8)),cy); else column(look,cy,x2,8); }
-/* v1.44: the heavy skin's sliders in the pause (the maintainer, of each: «ползунок? :)»), in place of the look column (the skin is fixed while it is on) —
-   pause, move them, play on and see. 50% is where they start; 100% is twice that, 0 — none */
-function obsPanel(px,pw,cy){ var pad=6, gap=4, rh=PF.CAP+gap+10+7, vw=PF.width('100%'), ids=OBS_SL.map(function(x){ return x[0]; }), ph=pad*2+ids.length*rh-6,
+/* v1.44: the heavy skin's sliders in the pause (the maintainer, of each: «ползунок? :)»), in place of the look column (the skin is fixed while it is on);
+   v1.45: 0–200%, the mark at 100% —
+   pause, move them, play on and see. 0 — none; the strengths are 1.44's (its 50% then is 50% now) */
+function obsPanel(px,pw,cy){ var pad=5, gap=3, rh=PF.CAP+gap+10+5, vw=PF.width('200%'), ids=OBS_SL.map(function(x){ return x[0]; }), ph=pad*2+ids.length*rh-6,
       y0=Math.max(topY()+12,Math.min(LH-SAFE.b-4-ph,Math.round(cy-ph/2))), ix=px+pad, iw=pw-2*pad, tw=iw-vw-6, y=y0+pad;
   px=Math.round(px);
   lx.globalAlpha=0.9; R(P.bg,px,y0,pw,ph); lx.globalAlpha=1; frame(px,y0,pw,ph,P.line);
-  ids.forEach(function(id){ var v=obsSl(id), lab=L(id), sc=Math.min(1,iw/Math.max(1,PF.width(lab))); text(lab,ix,y,P.soft,'left',sc); slider(id,ix,y+PF.CAP+gap,tw,v,0.5); text(Math.round(v*100)+'%',ix+iw,y+PF.CAP+gap+5-Math.round(PF.CAP/2),P.text,'right'); y+=rh; }); }
+  ids.forEach(function(id){ var v=obsSl(id), lab=L(id), sc=Math.min(1,iw/Math.max(1,PF.width(lab))); text(lab,ix,y,P.soft,'left',sc); slider(id,ix,y+PF.CAP+gap,tw,v/2,0.5); text(Math.round(v*100)+'%',ix+iw,y+PF.CAP+gap+5-Math.round(PF.CAP/2),P.text,'right'); y+=rh; }); }
 /* v0.24 "start over" from the pause menu: straight into a countdown with the same calibration, or through calibration again */
 function sRestart(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('restart'),L('restart_s'));
   column([['rs_go',L('rs_go'),'primary'],['rs_cal',L('recal')],['rs_back',L('back')]],Math.round(LH*0.58)); }

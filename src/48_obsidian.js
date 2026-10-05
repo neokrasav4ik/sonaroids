@@ -23,10 +23,15 @@ function obsOn(){ return typeof store!=='undefined'&&store.get('sonaroids_obs','
    ink — how strongly a hit draws the ink in; ring — how far the ring is from a circle; wake — the ship's wake; rwake — the rocks' wakes */
 /* v1.45: 0–200% (the maintainer: «самое зрелищное это 100/100/50/100.. можно было бы и по зрелищнее (200?)»), those four his picks to start;
    and the ink's fine detail (the maintainer: «иногда слишком широкие мазки без детализации, без нитей… может им тоже ползунок?») */
-var OBS_SL=[['obs_ink','sonaroids_obs_ink',1],['obs_ring','sonaroids_obs_ring',1],['obs_wake','sonaroids_obs_wake',0.5],['obs_rwake','sonaroids_obs_rwake',1],['obs_det','sonaroids_obs_det',0.5]];
+var OBS_SL=[['obs_ink','sonaroids_obs_ink',1],['obs_ring','sonaroids_obs_ring',1],['obs_wake','sonaroids_obs_wake',0.5],['obs_rwake','sonaroids_obs_rwake',1],['obs_det','sonaroids_obs_det',0.5],['obs_vsp','sonaroids_obs_vsp',0.5]];
 function obsSl(id){ for(var i=0;i<OBS_SL.length;i++) if(OBS_SL[i][0]===id){ var d=OBS_SL[i][2], v=typeof store!=='undefined'?+store.get(OBS_SL[i][1],String(d)):d; return v>=0&&v<=2?v:d; } return 0.5; }
 function obsSlSet(id,v){ for(var i=0;i<OBS_SL.length;i++) if(OBS_SL[i][0]===id){ store.set(OBS_SL[i][1],String(v)); return true; } return false; }
 function obsInk(){ return obsSl('obs_ink'); }
+/* v1.46: the shot to try (Л1 comet, Л4 beads, Л5 crystal, Л6 a fringe of the ink's opposite colour) and the power-up's rim (on / off) */
+var OBS_SHOTS=[1,4,5,6];
+function obsShot(){ var v=typeof store!=='undefined'?+store.get('sonaroids_obs_shot','1'):1; return OBS_SHOTS.indexOf(v)>=0?v:1; }
+function obsRingOn(){ return typeof store==='undefined'||store.get('sonaroids_obs_ringon','1')==='1'; }
+function obsGRim(){ return typeof store==='undefined'||store.get('sonaroids_obs_grim','1')==='1'; }
 /* the skin for a SonaFly view: this one while the switch is on */
 function obsWrap(sk){ return obsOn()?OBSK:sk; }
 function obsInit(){ if(OBS.ok!==null) return OBS.ok; OBS.ok=false;
@@ -87,7 +92,7 @@ var OBS_EVF=[
 'float inkCheap(vec2 p){ vec2 q=vec2(fbm(vec3(p,uTime*0.035),3),fbm(vec3(p+vec2(5.2,1.3),uTime*0.035),3)); return fbm(vec3(p+4.0*q,uTime*0.03),3); }'].join('\n');
 /* the ink: near (colour + density, and the cheap density for the light) or far (half size) */
 var OBS_FS_N=OBS_COMMON.replace('out vec4 fragColor;','layout(location=0) out vec4 fragColor; layout(location=1) out vec4 frag1;')+'\n'+OBS_EVF+'\n'+[
-'uniform float uEnc; uniform float uMode; uniform float uDet;',
+'uniform float uEnc; uniform float uMode; uniform float uDet; uniform float uVsp;',
 'vec4 enc(vec4 v){ return uEnc>0.0?sqrt(clamp(v*0.5,0.0,1.0)):v; }',
 'void main(){ vec2 uv=vec2((gl_FragCoord.x-0.5*uRes.x)/uRes.y,gl_FragCoord.y/uRes.y-0.5); int OC=uQ==0?3:uQ==1?4:5; vec2 sv=stir(uv);',
 '  if(uMode>0.5){ vec2 pf=uv*0.8+vec2(uTime*0.012,7.0)+sv*0.4; vec2 q2,r2; float f2=inkD(pf,max(OC-1,2),q2,r2);',
@@ -96,7 +101,7 @@ var OBS_FS_N=OBS_COMMON.replace('out vec4 fragColor;','layout(location=0) out ve
    warped ink's ridges at two sizes — kept apart (frag1.g) and laid over the wallpaper whatever the ink's density there, so the broad dim
    strokes get threads too */
 '  vec2 p=uv*1.5+vec2(uTime*0.028,0.0)+sv; if(uDet>0.0) p+=uDet*0.018*(vec2(n3(vec3(p*9.0,uTime*0.08)),n3(vec3(p*9.0+5.3,uTime*0.08)))-0.5); vec2 q,r; float f=inkD(p,OC,q,r);',
-'  float vn=0.0; if(uDet>0.0){ float r1=1.0-abs(2.0*fbm(vec3(p*2.4+3.0*r,uTime*0.03),3)-1.0), r2=1.0-abs(2.0*fbm(vec3(p*5.5+2.0*q,uTime*0.04+3.0),2)-1.0); vn=uDet*(0.6*pow(r1,7.0)+0.4*pow(r2,9.0)); } float fa=inkA(f); vec3 near=inkColM(q,r,fa)*(0.10+1.3*fa*fa*fa);',
+'  float vn=0.0; if(uDet>0.0){ float tv=uTime*uVsp; float r1=1.0-abs(2.0*fbm(vec3(p*2.4+3.0*r+vec2(tv*0.02,0.0),tv*0.03),3)-1.0), r2=1.0-abs(2.0*fbm(vec3(p*5.5+2.0*q-vec2(0.0,tv*0.015),tv*0.04+3.0),2)-1.0); vn=uDet*(0.6*pow(r1,7.0)+0.4*pow(r2,9.0)); } float fa=inkA(f); vec3 near=inkColM(q,r,fa)*(0.10+1.3*fa*fa*fa);',
 '  fragColor=enc(vec4(near,f)); frag1=enc(vec4(inkCheap(p),min(vn,1.9),0.0,1.0)); }'].join('\n');
 /* the wallpaper from the ink: far under near, the light's rims on the ink, the shafts through its gaps */
 var OBS_FS_B=OBS_COMMON+'\n'+[
@@ -129,14 +134,14 @@ var OBS_SC=['#version 300 es','precision highp float; precision highp int;','uni
 /* v1.44 (the maintainer: «не ровной окружностью, а индивидуальной кривой, которая расходится/тает по индивидуальному рисунку чернил»):
    the ring's radius along its round — a noise of its own (seamless round the circle) and the ink under it (it runs ahead in dense ink,
    lags in thin); irr 0 — a true circle */
-'uniform float uIrr;',
+'uniform float uIrr; uniform int uRingOn;',   /* v1.46: the hit\'s ring on / off (the maintainer: «сделай выключатель кольца от взрыва.. хочу посмотреть как будет без него») */
 'float ringK(vec2 n,float sd,float lu){ float an=n2(n*2.2+sd*7.3)*0.65+n2(n*5.0+sd*3.1)*0.35; return max(0.3,1.0+uIrr*((an-0.5)*1.1+(lu-0.3)*0.7)); }',
 'float ringA(float lu){ return mix(1.0,0.25+1.6*smoothstep(0.08,0.45,lu),min(uIrr,1.0)); }'].join('\n');
 /* the wallpaper on the screen, pushed about where the annihilations happen (in linear light into the scene, or straight to the screen) */
 var OBS_FS_C=OBS_SC+'\n'+[
 'uniform vec4 uAn[12]; uniform vec4 uAk[12]; uniform int uNa;',
 'void main(){ vec2 uv=(gl_FragCoord.xy-0.5*uRes)/uRes.y; vec2 su=uv; float lens=0.0;',
-'  for(int i=0;i<12;i++){ if(i>=uNa) break; vec4 A=uAn[i], B=uAk[i]; float a=A.z, R=A.w; vec2 d=uv-A.xy; float L=length(d); if(L>1.2) continue; vec2 n=d/max(L,1e-4); float sz=R/0.075; bool sp=B.y>0.5;',
+'  for(int i=0;i<12;i++){ if(i>=uNa||uRingOn==0) break; vec4 A=uAn[i], B=uAk[i]; float a=A.z, R=A.w; vec2 d=uv-A.xy; float L=length(d); if(L>1.2) continue; vec2 n=d/max(L,1e-4); float sz=R/0.075; bool sp=B.y>0.5;',
 '    float ac=a-(sp?0.08:0.30); if(ac>0.0&&ac<2.0){ float k=sp?0.5:1.0, lu=luAt(uv), rk=ringK(n,B.z,lu), rr=(R*0.4+ac*0.36)*rk, w=(0.018+ac*0.03)*(0.7+0.3*rk), amp=0.055*sz*k*exp(-ac*1.1)*ringA(lu); float x=(L-rr)/w; su-=n*amp*x*exp(-x*x)*1.6; lens+=exp(-x*x)*exp(-ac*1.4)*sz*k*ringA(lu); }',
 '  }',
 '  vec3 col=bgAt(su); col*=1.0+0.35*lens;',
@@ -196,22 +201,6 @@ var OBS_FS_O=OBS_SC+'\n'+[
 '  if(belly&&id==0){ float vein=abs(pb.y-0.025*sin(pb.x*6.0+1.0)); float sm=smoothstep(0.022,0.008,vein)*step(-0.62,pb.x)*step(pb.x,0.85); vec3 vb=vor(pb.xy*vec2(2.2,3.0)+11.0); sm=max(sm,smoothstep(0.05,0.018,vb.x)*smoothstep(0.0,-0.06,d2)*0.9); trim=max(trim,sm); }',
 '  vec3 g=GOLD*(1.15+0.8*df)+vec3(1.0,0.9,0.7)*pow(max(dot(n,hh),0.0),30.0)*1.5; col=mix(col,g,trim); if(!hit) col=mix(col,g,0.6);',
 '  return vec4(col*cov+eng*(1.0-cov),cov); }',
-/* the enemy\'s saucer: black glass, a red dome and red lights (red is the enemy in every skin) */
-'vec4 saucer(vec2 uv,vec2 c,float S,float hurt){ vec2 p=(uv-c)/S; float rim=length(p/vec2(1.0,0.24)), dome=length((p-vec2(0.0,0.14))/vec2(0.45,0.38)); float px=1.5/(uRes.y*S);',
-'  float cov=max(smoothstep(1.0+px*4.0,1.0-px*4.0,rim),smoothstep(1.0+px*2.5,1.0-px*2.5,dome)*step(0.06,p.y));',
-'  vec3 lights=vec3(0.0); for(int j=0;j<5;j++){ vec2 lp=vec2((float(j)-2.0)*0.36,-0.03); lights+=vec3(1.0,0.12,0.18)*exp(-dot(p-lp,p-lp)/0.004)*(0.7+0.3*sin(uT*8.0+float(j))); }',
-'  lights+=vec3(1.0,0.15,0.22)*exp(-dot(p,p)*1.5)*0.06;',
-'  if(cov<=0.0) return vec4(lights,0.0); vec3 Ld=normalize(vec3(uL-c,0.4)); float df; vec3 col;',
-'  if(rim<1.0&&!(dome<1.0&&p.y>0.06)){ vec3 n=normalize(vec3(p.x*0.2,p.y*3.0,0.6)); df=max(dot(n,Ld),0.0); float fr=0.04+0.96*pow(1.0-n.z,4.0);',
-'    col=vec3(0.002)+bgAt(c+(uv-c)*0.5+n.xy*0.1)*fr*1.2+uLc*pow(max(dot(n,normalize(Ld+vec3(0,0,1))),0.0),80.0)*3.0+vec3(1.0,0.2,0.25)*smoothstep(0.9,0.99,rim)*0.5; }',
-'  else { vec2 dq=(p-vec2(0.0,0.14))/vec2(0.45,0.38); vec3 n=normalize(vec3(dq,sqrt(max(0.0,1.0-dot(dq,dq))))); df=max(dot(n,Ld),0.0); col=vec3(0.6,0.1,0.15)*(0.3+df)+vec3(1.0)*pow(max(dot(n,normalize(Ld+vec3(0,0,1))),0.0),40.0); }',
-'  col=mix(col,vec3(1.0),hurt*0.8); return vec4(col*cov+lights,cov); }',
-/* a power-up: a bead of obsidian in a gold ring (its sign is drawn over it on the HD canvas) */
-'vec4 gift(vec2 uv,vec2 c,float r){ vec2 p=(uv-c)/r; float L=length(p); float px=1.5/(uRes.y*r); float pulse=0.8+0.2*sin(uT*4.0);',
-'  vec3 glow=GOLD*exp(-L*L*1.6)*0.10*pulse; if(L>1.0+px) return vec4(glow,0.0); float cov=smoothstep(1.0+px,1.0-px,L);',
-'  float z=sqrt(max(0.0,1.0-L*L)); vec3 n=normalize(vec3(p,z)); vec3 Ld=normalize(vec3(uL-c,0.5)); float fr=0.04+0.96*pow(1.0-n.z,4.0);',
-'  vec3 col=vec3(0.002)+bgAt(c+(uv-c)*0.4+n.xy*0.1)*fr*1.4+uLc*pow(max(dot(n,normalize(Ld+vec3(0,0,1))),0.0),120.0)*4.0;',
-'  float ring=smoothstep(0.13,0.04,abs(L-0.86)); col=mix(col,GOLD*1.3*pulse,ring); return vec4(col*cov+glow*(1.0-cov),cov); }',
 /* the shield: a thin gold ring round the ship, shimmering */
 'vec4 shield(vec2 uv,vec2 c,float S){ vec2 p=(uv-c)/S; float L=length(p/vec2(1.0,0.8)); float a=atan(p.y,p.x); float w=0.035+0.02*sin(a*3.0+uT*5.0);',
 '  float r=exp(-pow((L-1.0)/w,2.0))*(0.55+0.45*sin(a*2.0-uT*3.0)); return vec4(GOLD*r*1.2+GOLD*exp(-pow((L-1.0)/0.15,2.0))*0.06,0.0); }',
@@ -220,17 +209,56 @@ var OBS_FS_O=OBS_SC+'\n'+[
 '  if(!sp){',
 '      if(a<0.30){ float s=1.0-ez(a/0.30); vec4 r=rock(uv,c,R*max(s,0.02),sd,rotA+a*4.0,smoothstep(0.0,0.08,a)); col=r.rgb; cov=r.a; col+=GOLD*cov*smoothstep(0.0,0.08,a)*0.9; col+=GOLD*smoothstep(0.0,0.08,a)*0.5*exp(-pow(length(uv-c)/(R*s*1.3+0.004),2.0)); }',
 '      float ap=a-0.30; if(ap>0.0&&ap<0.25){ float pt=exp(-ap*14.0); col+=vec3(1.0,0.92,0.75)*pt*(exp(-pow(length(uv-c)/0.006,2.0))*3.0+exp(-pow(length(uv-c)/0.03,2.0))*0.3); }',
-'      if(ap>0.0&&ap<1.6){ vec2 nn=normalize(uv-c+1e-5); float lu=luAt(uv); col+=GOLD*0.10*exp(-ap*3.0)*exp(-pow((length(uv-c)-(R*0.4+ap*0.36)*ringK(nn,sd,lu))/0.003,2.0))*sz*ringA(lu); } }',
+'      if(uRingOn==1&&ap>0.0&&ap<1.6){ vec2 nn=normalize(uv-c+1e-5); float lu=luAt(uv); col+=GOLD*0.10*exp(-ap*3.0)*exp(-pow((length(uv-c)-(R*0.4+ap*0.36)*ringK(nn,sd,lu))/0.003,2.0))*sz*ringA(lu); } }',
 '    else { vec2 q=rot(rotA)*(uv-c); float k=exp(-a*9.0); float seam=exp(-pow(q.y/0.0035,2.0))*smoothstep(R*1.05,R*0.6,abs(q.x)); col+=GOLD*seam*k*2.2+GOLD*exp(-dot(q,q)/(R*R*0.5))*k*0.25;',
-'      float ap=a-0.08; if(ap>0.0&&ap<1.0){ vec2 nn=normalize(uv-c+1e-5); float lu=luAt(uv); col+=GOLD*0.06*exp(-ap*3.0)*exp(-pow((length(uv-c)-(R*0.4+ap*0.36)*ringK(nn,sd,lu))/0.003,2.0))*sz*ringA(lu); } }',
+'      float ap=a-0.08; if(uRingOn==1&&ap>0.0&&ap<1.0){ vec2 nn=normalize(uv-c+1e-5); float lu=luAt(uv); col+=GOLD*0.06*exp(-ap*3.0)*exp(-pow((length(uv-c)-(R*0.4+ap*0.36)*ringK(nn,sd,lu))/0.003,2.0))*sz*ringA(lu); } }',
 '  return vec4(col,cov); }',
+/* v1.46 the shots — the gold laser's variations to choose in the game (the maintainer: «в игре сделай выбор л1, л4, л5, л6»):
+   1 a comet (a white-hot head, a thin gold tail), 4 beads (a head and three fading behind), 5 a gold crystal with a white facet,
+   6 the laser with a fringe of the ink's opposite colour; q — along the shot */
+'uniform int uShot;',
+'vec3 invOf(vec3 lc){ vec3 s=pow(clamp(lc,0.0,1.0),vec3(0.4545)); vec3 v=vec3(1.0)-s; float m=max(v.r,max(v.g,v.b)), n=min(v.r,min(v.g,v.b)); v=(v-n)/max(m-n,1e-3); return mix(vec3(1.0),v,0.8); }',
+'vec3 shot(vec2 q,vec2 c){ vec3 G=vec3(1.0,0.75,0.3), W=vec3(1.0,0.95,0.85); vec3 a=vec3(0.0);',
+'  if(uShot==1){ float h=length(q/vec2(0.006,0.0035)); a+=W*exp(-h*h*2.0)*2.2; float b=-q.x; if(b>0.0&&b<0.07){ float w=0.0018+b*0.02; a+=G*exp(-q.y*q.y/(w*w))*pow(1.0-b/0.07,1.5)*1.3; } a+=G*exp(-dot(q,q)/0.0006)*0.10; }',
+'  else if(uShot==4){ for(int j=0;j<4;j++){ float r=length(q+vec2(float(j)*0.016,0.0)), s=0.0042*(1.0-float(j)*0.2); a+=(j==0?W*1.6:G*(1.2-float(j)*0.25))*exp(-r*r/(s*s)); } a+=G*exp(-dot(q,q)/0.0007)*0.10; }',
+'  else if(uShot==5){ vec2 b=abs(q); float d=b.x/0.026+b.y/0.0055-1.0; float body=smoothstep(0.08,-0.08,d); a+=G*body*1.5+W*body*smoothstep(0.0012,0.0,abs(q.y))*1.2+G*exp(-max(d,0.0)*3.0)*0.35*(1.0-body); }',
+'  else { vec2 p=q/vec2(0.028,0.006); float d=length(vec2(max(abs(p.x)-0.5,0.0),p.y)); a+=G*exp(-d*d*3.0)*1.6; if(uShot==6) a+=invOf(bgAt(c))*exp(-pow((d-1.15)/0.35,2.0))*0.55*0.30; else a+=G*exp(-d*d*0.25)*0.25; }',
+'  return a; }',
+/* v1.46 the power-up «Т2» (the maintainer: «подарки т2, но… рисунок крупнее и жирнее; и вариант без переливающейся кромки — выберу в игре»):
+   a tile of glowing gold, beveled; its sign is drawn over it in black on the HD canvas, big and bold; a thick rim of the ink's opposite
+   colour (the ink right under it, so it shifts as the ink flows by) — or none */
+'uniform int uGRim;',
+'float sdRBox(vec2 p,vec2 b,float r){ vec2 q=abs(p)-b+r; return length(max(q,0.0))+min(max(q.x,q.y),0.0)-r; }',
+'vec4 tile(vec2 uv,vec2 c,float S){ vec2 p=(uv-c)/S; float d=sdRBox(p,vec2(0.86),0.26); float px=1.5/(uRes.y*S); float pulse=0.85+0.15*sin(uT*4.0); vec3 gold=vec3(1.0,0.64,0.20);',
+'  vec3 em=gold*exp(-max(d,0.0)*10.0)*0.12*pulse; if(uGRim==1){ vec3 rc=invOf(bgAt(c+(uv-c)*2.5)); float rim=smoothstep(0.075,0.045,abs(d-0.13)); em+=rc*(rim*1.5+exp(-max(d,0.0)*6.0)*0.18)*pulse; }',
+'  if(d>px) return vec4(em,0.0); float cov=smoothstep(px,-px,d);',
+'  vec2 g=vec2(sdRBox(p+vec2(0.01,0.0),vec2(0.86),0.26)-d,sdRBox(p+vec2(0.0,0.01),vec2(0.86),0.26)-d)/0.01; float bev=smoothstep(0.0,-0.14,d); vec3 n=normalize(vec3(-g*(1.0-bev)*1.2,0.6+bev));',
+'  vec3 Ld=normalize(vec3((uL-c)/0.4,0.6)), hh=normalize(Ld+vec3(0,0,1)); vec3 col=gold*(0.70+0.30*max(dot(n,Ld),0.0))*(0.9+0.1*pulse)+mix(gold,vec3(1.0),0.5)*pow(max(dot(n,hh),0.0),60.0)*1.6;',
+'  return vec4(col*cov+em*(1.0-cov),cov); }',
+/* v1.46 the saucer «Г6» (the maintainer: «НЛО пока г6»): an almond of obsidian split in two, red light between the halves, a red pupil looking
+   at us, a red edge; hurt — it flashes white */
+'float sdPolyE(vec2 p,vec2 v[8]){ float d=dot(p-v[0],p-v[0]); float sg=1.0; int j=7; for(int i=0;i<8;i++){ vec2 e=v[j]-v[i], w=p-v[i]; vec2 b=w-e*clamp(dot(w,e)/dot(e,e),0.0,1.0); d=min(d,dot(b,b));',
+'    bvec3 cc=bvec3(p.y>=v[i].y,p.y<v[j].y,e.x*w.y>e.y*w.x); if(all(cc)||all(not(cc))) sg*=-1.0; j=i; } return sg*sqrt(d); }',
+'float almond(vec2 p){ vec2 v[8]; v[0]=vec2(-1.0,0.02); v[1]=vec2(-0.55,0.30); v[2]=vec2(0.0,0.40); v[3]=vec2(0.55,0.27); v[4]=vec2(1.0,0.0); v[5]=vec2(0.60,-0.26); v[6]=vec2(0.05,-0.38); v[7]=vec2(-0.50,-0.27); return sdPolyE(p,v); }',
+'float eyeD(vec2 p){ float up=almond(p-vec2(0.0,0.09)), lo=almond(p+vec2(0.0,0.09)); return min(max(up,-p.y+0.06),max(lo,p.y+0.06)); }',
+'vec4 saucer(vec2 uv,vec2 c,float S,float hurt){ vec2 p=(uv-c)/S; if(length(p)>1.6) return vec4(0.0); float t=uT; float d=eyeD(p); float px=1.5/(uRes.y*S); vec3 red=vec3(1.0,0.12,0.16);',
+'  vec2 pc=vec2(-0.25+0.06*sin(t*1.3),0.03*sin(t*0.9)); float pu=length(p-pc); float gap=exp(-pow(p.y/0.04,2.0))*step(almond(p),0.02);',
+'  vec3 em=red*(exp(-max(d,0.0)*9.0)*0.28+gap*1.2)*(0.85+0.15*sin(t*6.0))+red*exp(-pu*pu*14.0)*0.25*step(0.0,d);',
+'  if(d>px) return vec4(em,0.0); float cov=smoothstep(px,-px,d);',
+'  vec2 g=vec2(eyeD(p+vec2(0.01,0.0))-d,eyeD(p+vec2(0.0,0.01))-d)/0.01; float inner=clamp(-d*6.0,0.0,1.0); vec3 n=normalize(vec3(-g*(1.0-inner)*0.9,0.55+inner));',
+'  vec3 v=vor(p*2.4+15.0); n=normalize(n+vec3(h12(v.yz)-0.5,h12(v.yz+3.1)-0.5,0.0)*0.7);',
+'  vec3 Ld=normalize(vec3((uL-c)/0.5,0.6)), hh=normalize(Ld+vec3(0,0,1)); float df=max(dot(n,Ld),0.0); float fr=0.04+0.96*pow(1.0-n.z,4.0);',
+'  vec3 col=vec3(0.0012)+bgAt(c+(uv-c)*0.5+n.xy*0.15)*1.8*fr*0.8+uLc*(pow(max(dot(n,hh),0.0),200.0)*6.0+pow(max(dot(n,hh),0.0),28.0)*0.12);',
+'  float trim=smoothstep(0.035,0.010,-d)*(0.85+0.15*sin(t*7.0)); float pupil=smoothstep(0.17,0.10,pu), iris=exp(-pow((pu-0.19)/0.025,2.0));',
+'  col=mix(col,red*(1.3+0.6*df),trim); col+=red*(pupil*1.8+iris*0.9)+vec3(1.0,0.6,0.5)*pupil*0.5+red*gap*1.5; col=mix(col,vec3(1.0),hurt*0.8);',
+'  return vec4(col*cov+em*(1.0-cov),cov); }',
 'void main(){ vec2 uv=vP; vec2 c=vA.xy; int K=int(vA.w+0.5); vec4 r=vec4(0.0);',
 '  if(K==0) r=rock(uv,c,vB.x,vB.y,vB.z,0.0);',
 '  else if(K==1) r=ship3(uv,c,vB.x,vB.y);',
-'  else if(K==2){ vec2 p=rot(-vB.x)*(uv-c)/vec2(0.028,0.006)*vec2(1.0,1.0); float d=length(vec2(max(abs(p.x)-0.5,0.0),p.y)); r=vec4(vec3(1.0,0.75,0.3)*(exp(-d*d*3.0)*1.6+exp(-d*d*0.25)*0.25),0.0); }',
+'  else if(K==2) r=vec4(shot(rot(-vB.x)*(uv-c),c),0.0);',
 '  else if(K==3){ float d=length(uv-c)/0.012; r=vec4(vec3(1.0,0.12,0.2)*(exp(-d*d*2.0)*1.5+exp(-d*d*0.3)*0.3)+vec3(1.0)*exp(-d*d*12.0),0.0); }',
 '  else if(K==4) r=saucer(uv,c,vB.x,vB.y);',
-'  else if(K==5) r=gift(uv,c,vB.x);',
+'  else if(K==5) r=tile(uv,c,vB.x);',
 '  else if(K==6) r=ann(uv,c,vB.x,vB.z>0.5,vB.w,vC.x,vC.y);',
 '  else if(K==7) r=shield(uv,c,vB.x);',
 '  fragColor=outC(r); }'].join('\n');
@@ -278,7 +306,7 @@ function obsRender(){ var g=OBS.g; if(!g||OBS.lost) return; obsSize(); var T=OBS
   var run=function(far,part){ var ww=far?Math.max(1,T.bw>>1):T.bw, hh=far?Math.max(1,T.eh>>1):T.eh; g.bindFramebuffer(g.FRAMEBUFFER,far?T.fc:T.fa); g.drawBuffers(far?[g.COLOR_ATTACHMENT0]:[g.COLOR_ATTACHMENT0,g.COLOR_ATTACHMENT1]);
     g.viewport(0,0,ww,hh); if(part>=0){ var h2=Math.ceil(hh/2); g.enable(g.SCISSOR_TEST); g.scissor(0,part?hh-h2:0,ww,h2); }
     g.useProgram(pn); g.uniform2f(obsU(pn,'uRes'),far?ww:T.bw,far?ww*T.bh/T.bw:T.bh); g.uniform1f(obsU(pn,'uTime'),t); g.uniform1i(obsU(pn,'uQ'),OBS.q); g.uniform1f(obsU(pn,'uEnc'),T.enc); g.uniform1f(obsU(pn,'uMode'),far?1:0);
-    g.uniform1f(obsU(pn,'uAmt'),1.0); g.uniform1f(obsU(pn,'uMix'),mix); obsShipUni(pn); g.uniform4fv(obsU(pn,'uFx'),fx); g.uniform1i(obsU(pn,'uNf'),nf); g.uniform1f(obsU(pn,'uStir'),stir); g.uniform1f(obsU(pn,'uWake'),obsSl('obs_wake')*2); g.uniform4fv(obsU(pn,'uRk'),rk); g.uniform1i(obsU(pn,'uNr'),nr); g.uniform1f(obsU(pn,'uRWake'),obsSl('obs_rwake')*2); g.uniform1f(obsU(pn,'uDet'),obsSl('obs_det')*2); g.drawArrays(g.TRIANGLES,0,3); g.disable(g.SCISSOR_TEST); };
+    g.uniform1f(obsU(pn,'uAmt'),1.0); g.uniform1f(obsU(pn,'uMix'),mix); obsShipUni(pn); g.uniform4fv(obsU(pn,'uFx'),fx); g.uniform1i(obsU(pn,'uNf'),nf); g.uniform1f(obsU(pn,'uStir'),stir); g.uniform1f(obsU(pn,'uWake'),obsSl('obs_wake')*2); g.uniform4fv(obsU(pn,'uRk'),rk); g.uniform1i(obsU(pn,'uNr'),nr); g.uniform1f(obsU(pn,'uRWake'),obsSl('obs_rwake')*2); g.uniform1f(obsU(pn,'uDet'),obsSl('obs_det')*2); g.uniform1f(obsU(pn,'uVsp'),obsSl('obs_vsp')*4);   /* the veins' speed: 25% — as in 1.45, 100% four times that */ g.drawArrays(g.TRIANGLES,0,3); g.disable(g.SCISSOR_TEST); };
   if(T.n===0) run(false,-1); else run(false,T.n%2); run(true,-1); T.n++;
   g.bindFramebuffer(g.FRAMEBUFFER,T.fbg); g.drawBuffers([g.COLOR_ATTACHMENT0]);
   /* 2. the wallpaper (at its own size) */
@@ -290,7 +318,7 @@ function obsRender(){ var g=OBS.g; if(!g||OBS.lost) return; obsSize(); var T=OBS
   var AN=OBS.an.filter(function(e){ return t-e.t0<3.2; }).slice(-12), an=new Float32Array(48), ak=new Float32Array(48);
   AN.forEach(function(e,i){ an[i*4]=e.x; an[i*4+1]=e.y; an[i*4+2]=t-e.t0; an[i*4+3]=e.R; ak[i*4+1]=e.sp?1:0; ak[i*4+2]=e.sd; });
   g.activeTexture(g.TEXTURE0); g.bindTexture(g.TEXTURE_2D,T.bg);
-  g.useProgram(pc); g.uniform1f(obsU(pc,'uIrr'),obsSl('obs_ring')*2); g.uniform2f(obsU(pc,'uRes'),T.W,T.H); g.uniform1f(obsU(pc,'uT'),t); g.uniform1i(obsU(pc,'uBg'),0); g.uniform1i(obsU(pc,'uDisp'),disp);
+  g.useProgram(pc); g.uniform1f(obsU(pc,'uIrr'),obsSl('obs_ring')*2); g.uniform1i(obsU(pc,'uRingOn'),obsRingOn()?1:0); g.uniform2f(obsU(pc,'uRes'),T.W,T.H); g.uniform1f(obsU(pc,'uT'),t); g.uniform1i(obsU(pc,'uBg'),0); g.uniform1i(obsU(pc,'uDisp'),disp);
   g.uniform4fv(obsU(pc,'uAn'),an); g.uniform4fv(obsU(pc,'uAk'),ak); g.uniform1i(obsU(pc,'uNa'),AN.length); g.drawArrays(g.TRIANGLES,0,3);
   /* 4. the objects (premultiplied, light added where they have no body) */
   var L=OBS.list; AN.forEach(function(e){ var a=t-e.t0, ext=e.R*1.5;
@@ -302,7 +330,7 @@ function obsRender(){ var g=OBS.g; if(!g||OBS.lost) return; obsSize(); var T=OBS
       for(var a2=0;a2<3;a2++){ g.enableVertexAttribArray(a2); g.vertexAttribPointer(a2,4,g.FLOAT,false,48,a2*16); g.vertexAttribDivisor(a2,1); } }
     g.bindVertexArray(OBS.buf.vao); g.bindBuffer(g.ARRAY_BUFFER,OBS.buf.b); g.bufferSubData(g.ARRAY_BUFFER,0,D,0,n*12);
     g.enable(g.BLEND); g.blendFunc(g.ONE,g.ONE_MINUS_SRC_ALPHA); g.useProgram(po);
-    g.uniform2f(obsU(po,'uRes'),T.W,T.H); g.uniform1f(obsU(po,'uIrr'),obsSl('obs_ring')*2); g.uniform1f(obsU(po,'uT'),t); g.uniform1i(obsU(po,'uBg'),0); g.uniform1i(obsU(po,'uDisp'),disp);
+    g.uniform2f(obsU(po,'uRes'),T.W,T.H); g.uniform1f(obsU(po,'uIrr'),obsSl('obs_ring')*2); g.uniform1i(obsU(po,'uShot'),obsShot()); g.uniform1i(obsU(po,'uGRim'),obsGRim()?1:0); g.uniform1i(obsU(po,'uRingOn'),obsRingOn()?1:0); g.uniform1f(obsU(po,'uT'),t); g.uniform1i(obsU(po,'uBg'),0); g.uniform1i(obsU(po,'uDisp'),disp);
     var lc=[1-0.45*mix,0.78+0.02*mix,0.48+0.52*mix]; g.uniform2f(obsU(po,'uL'),sun[0]*1.4,sun[1]*1.4); g.uniform3f(obsU(po,'uLc'),lc[0],lc[1],lc[2]);
     g.uniform4fv(obsU(po,'uPose'),OBS.pose||new Float32Array(12)); g.drawArraysInstanced(g.TRIANGLE_STRIP,0,4,n); g.disable(g.BLEND); g.bindVertexArray(OBS.vao); }
   /* 5. the scene to the screen */
@@ -337,10 +365,10 @@ var OBSK={id:'obsidian', hd:true, glow:false, nolight:true, flyLook:'obsidian', 
   drawRock:function(sp,x,y){ if(!OBS.act||sp.obsR===undefined) return obsBase('drawRock',arguments); var u=obsUV(x,y), R=sp.obsR/LH; if(sp._ox!==undefined){ var dx=u[0]-sp._ox, dy=u[1]-sp._oy; if(dx*dx+dy*dy>1e-9) sp._ang=Math.atan2(dy,dx); } sp._ox=u[0]; sp._oy=u[1]; OBS.rk.push([u[0],u[1],R,sp._ang===undefined?Math.PI:sp._ang]); OBS.list.push([u[0],u[1],R*1.25,0,R,sp.obsSd+(sp.vr||0)*0.37,-sp.rot/16*6.2832]); },
   ship:function(x,y,t,blink){ if(!OBS.act) return obsBase('ship',arguments); if(blink) return; obsShip(x,y,0); },
   shipRoll:function(x,y,t,ra){ if(!OBS.act) return obsBase('ship',[x,y,t,false]); obsShip(x,y,ra); },
-  ufo:function(ux,uy,big,hurt){ if(!OBS.act) return obsBase('ufo',arguments); var u=obsUV(ux,uy), Su=(big?7:5)*K*1.4/LH;   /* the core's half width, a little more (the rim is thin) */ OBS.list.push([u[0],u[1],Su*1.6,4,Su,hurt?1:0]); },
-  pick:function(x,y,type){ if(!OBS.act) return obsBase('pick',arguments); var u=obsUV(x,y), r=6.5/LH; OBS.list.push([u[0],u[1],r*2.2,5,r]);
-    hx.save(); hx.translate(x,y); hdIcon(type,'rgba(255,222,150,0.95)'); hx.restore(); },
-  bullet:function(x,y){ if(!OBS.act) return obsBase('bullet',arguments); var m=hx.getTransform?hx.getTransform():{a:1,b:0}, a=-Math.atan2(m.b,m.a), u=obsUV(x,y); OBS.list.push([u[0],u[1],0.05,2,a]); },
+  ufo:function(ux,uy,big,hurt){ if(!OBS.act) return obsBase('ufo',arguments); var u=obsUV(ux,uy), Su=(big?7:5)*K*1.25/LH;   /* the core's half width, a little more */ OBS.list.push([u[0],u[1],Su*1.7,4,Su,hurt?1:0]); },
+  pick:function(x,y,type){ if(!OBS.act) return obsBase('pick',arguments); var u=obsUV(x,y), r=7.2/LH; OBS.list.push([u[0],u[1],r*2.4,5,r]);
+    var w=hdIconW; hdIconW=1.55; hx.save(); hx.translate(x,y); hx.scale(1.42,1.42); hdIcon(type,'#140e12'); hx.restore(); hdIconW=w; },   /* the sign: black on the gold, big and bold */
+  bullet:function(x,y){ if(!OBS.act) return obsBase('bullet',arguments); var m=hx.getTransform?hx.getTransform():{a:1,b:0}, a=-Math.atan2(m.b,m.a), u=obsUV(x,y); OBS.list.push([u[0],u[1],0.09,2,a]); },
   ebullet:function(x,y){ if(!OBS.act) return obsBase('ebullet',arguments); var u=obsUV(x,y); OBS.list.push([u[0],u[1],0.04,3]); },
   shieldRing:function(x,y,t){ if(!OBS.act) return obsBase('shieldRing',arguments); var u=obsUV(x+11,y), Su=14/LH; OBS.list.push([u[0],u[1],Su*1.4,7,Su]); },
   shield:function(){ return P.pick; }, mini:function(){ return obsBase('mini',[]); },

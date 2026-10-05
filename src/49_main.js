@@ -569,11 +569,15 @@ function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globa
 /* v1.44: the heavy skin's sliders in the pause (the maintainer, of each: «ползунок? :)»), in place of the look column (the skin is fixed while it is on);
    v1.45: 0–200%, the mark at 100% —
    pause, move them, play on and see. 0 — none; the strengths are 1.44's (its 50% then is 50% now) */
-function obsPanel(px,pw,cy){ var pad=5, gap=3, rh=PF.CAP+gap+10+5, vw=PF.width('200%'), ids=OBS_SL.map(function(x){ return x[0]; }), ph=pad*2+ids.length*rh-6,
-      y0=Math.max(topY()+12,Math.min(LH-SAFE.b-4-ph,Math.round(cy-ph/2))), ix=px+pad, iw=pw-2*pad, tw=iw-vw-6, y=y0+pad;
+function obsPanel(px,pw,cy){ var pad=5, rh=Math.max(PF.CAP,10)+5, vw=PF.width('200%'), ids=OBS_SL.map(function(x){ return x[0]; }),
+      tg=[['obs_shot',L('obs_shot')+': '+L('obs_shot'+obsShot())],['obs_grim',L(obsGRim()?'obs_grim_on':'obs_grim_off')],['obs_ringon',L(obsRingOn()?'obs_ringon_on':'obs_ringon_off')]], th=PF.CAP+7,   /* v1.46: one line a slider; the shot and the rim to tap */
+      ph=pad*2+ids.length*rh+tg.length*th+2, y0=Math.max(topY()+12,Math.min(LH-SAFE.b-4-ph,Math.round(cy-ph/2))), ix=px+pad, iw=pw-2*pad, lw=Math.round(iw*0.46), y=y0+pad;
   px=Math.round(px);
   lx.globalAlpha=0.9; R(P.bg,px,y0,pw,ph); lx.globalAlpha=1; frame(px,y0,pw,ph,P.line);
-  ids.forEach(function(id){ var v=obsSl(id), lab=L(id), sc=Math.min(1,iw/Math.max(1,PF.width(lab))); text(lab,ix,y,P.soft,'left',sc); slider(id,ix,y+PF.CAP+gap,tw,v/2,0.5); text(Math.round(v*100)+'%',ix+iw,y+PF.CAP+gap+5-Math.round(PF.CAP/2),P.text,'right'); y+=rh; }); }
+  var scA=Math.min.apply(null,ids.map(function(id){ return Math.min(1,lw/Math.max(1,PF.width(L(id)))); }));   /* the labels all one size */
+  ids.forEach(function(id){ var v=obsSl(id), lab=L(id), sc=scA, cy2=y+Math.round(rh/2)-1; text(lab,ix,cy2-Math.round(PF.CAP*sc/2),P.soft,'left',sc);
+    slider(id,ix+lw+4,cy2-5,iw-lw-vw-10,v/2,0.5); text(Math.round(v*100)+'%',ix+iw,cy2-Math.round(PF.CAP/2),P.text,'right'); y+=rh; });
+  y+=2; tg.forEach(function(x){ var sc=Math.min(1,iw/Math.max(1,PF.width(x[1]))), w2=PF.width(x[1],sc); text(x[1],ix,y,P.band,'left',sc); R(P.band,ix,y+PF.CAP+2,w2,1); BTN.push({id:x[0],x:ix-4,y:y-3,w:w2+8,h:th}); y+=th; }); }
 /* v0.24 "start over" from the pause menu: straight into a countdown with the same calibration, or through calibration again */
 function sRestart(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('restart'),L('restart_s'));
   column([['rs_go',L('rs_go'),'primary'],['rs_cal',L('recal')],['rs_back',L('back')]],Math.round(LH*0.58)); }
@@ -830,7 +834,7 @@ function startGame(){ if(mode==='race'){ raceStart(); return; }
   var y0=shipY===null?null:+(shipY/K).toFixed(3);
   Core.TUNE.SHOT_TILT=shotTilt(); Core.TUNE.SHOT_BOUNCE=shotBounce(); g=Core.create(seed,Core.FH*(LW-SAFE.l)/LH,y0); Board.start(seed,g.FW,y0,Core.TUNE.SHOT_TILT||Core.TUNE.SHOT_BOUNCE||mouseOn()?{test:true}:null); nickAsked=false; acc=0; rockSpr={}; parts=[]; livesT=0; var I=Sonar.info();
   Logs.gameStart({core:Core.TAG,seed:seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:liveOn()?'live':'frozen',live:liveOn(),room:Sonar.room(),asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
-    chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids',shot_tilt:Core.TUNE.SHOT_TILT,shot_bounce:Core.TUNE.SHOT_BOUNCE,skin_heavy:obsOn()?'obsidian '+OBS_SL.map(function(x){ return x[0].slice(4)+' '+Math.round(obsSl(x[0])*100)+'%'; }).join(', '):undefined,mouse:mouseOn()||undefined,fly_tilt:flyTiltK()});
+    chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids',shot_tilt:Core.TUNE.SHOT_TILT,shot_bounce:Core.TUNE.SHOT_BOUNCE,skin_heavy:obsOn()?'obsidian '+OBS_SL.map(function(x){ return x[0].slice(4)+' '+Math.round(obsSl(x[0])*100)+'%'; }).join(', ')+', shot L'+obsShot()+', gift rim '+(obsGRim()?'on':'off')+', ring '+(obsRingOn()?'on':'off'):undefined,mouse:mouseOn()||undefined,fly_tilt:flyTiltK()});
   Sfx.play('start'); go('play');
 }
 var ACT={
@@ -885,6 +889,9 @@ var ACT={
   nick_later:function(){ nickField(false); nickMsg=''; go(nickFrom==='over'?'over':'scores'); },
   logs:function(){ Logs.share(); },
   shot_bounce:function(){ store.set('sonaroids_shot_bounce',shotBounce()?'0':'1'); },
+  obs_shot:function(){ var i=OBS_SHOTS.indexOf(obsShot()); store.set('sonaroids_obs_shot',String(OBS_SHOTS[(i+1)%OBS_SHOTS.length])); },   /* v1.46 */
+  obs_grim:function(){ store.set('sonaroids_obs_grim',obsGRim()?'0':'1'); },
+  obs_ringon:function(){ store.set('sonaroids_obs_ringon',obsRingOn()?'0':'1'); },
   mouse:function(){ store.set('sonaroids_mouse',store.get('sonaroids_mouse','0')==='1'?'0':'1'); },   /* v1.44 */
   obs:function(){ store.set('sonaroids_obs',store.get('sonaroids_obs','0')==='1'?'0':'1'); setSkin(skinId); },   /* v1.42: the heavy skin on / off (a test) */
   audio:function(){ audDev=null; audFrom=null; go('audio'); },

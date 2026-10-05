@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='1.46';
+var VERSION='1.47';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -1292,7 +1292,7 @@ STR.en={
   aud_fx:'PHONE PROCESSING:', aud_src:'SOURCE', aud_usage:'PROBE AS', aud_end:'PROBE FROM', turn_t:'TURN THE PHONE ROUND', hub_s:'GAMES YOU PLAY WITH YOUR PALM IN MID-AIR', soon:'SOON', all_games:'← ALL GAMES', skin:'SKIN', gfx:'GRAPHICS', gfx_pixel:'PIXELS', skin_space:'SPACE', skin_vector:'VECTOR 80S', skin_neon:'NEON', skin_note:'NOTEBOOK', skin_lcd:'RETRO LCD', skin_fairy:'FAIRY TALE', turn_s:'BY 180° IF YOU PLAY', turn_s2:'WITH YOUR RIGHT HAND', turn_h:'ROUND LIKE A WHEEL — DON\'T FLIP IT FACE DOWN', lefty:'I PLAY LEFT-HANDED', aud_vol:'VOLUME', aud_keep:'LEAVE AS IS', aud_cam:'CAMERA END', aud_port:'PORT END', aud_media:'MEDIA', aud_game:'GAME', aud_autotest:'AUTO PICK', aud_notyet:'NOT DONE YET', aud_retest:'TEST AGAIN', aud_lab:'LAB', aud_nextgame:'WITH THE NEXT GAME', aud_on:'ON', aud_off:'OFF', aud_t2:'SOUND', aud_s2:'TRIALS OF THE ECHO PROCESSING', settings:'SETTINGS', settings_t:'SETTINGS', set_gfx:'GRAPHICS', set_gfx_menu:'CHOSEN IN THE GAME', set_gfx_hd:'ALWAYS HD', set_gfx_px:'ALWAYS PIXELS', set_band:'PROBE BAND', set_band_ask:'CHOSEN BEFORE A GAME', set_band_w:'ALWAYS WIDE', set_band_n:'ALWAYS NORMAL', set_live:'AUTO-CALIBRATION', set_on:'ON', set_off:'OFF', set_live_on_s:'NO WAVING: THE GAME TAKES YOUR LAST MANUAL CALIBRATION AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', set_live_on_d:'NO WAVING: THE GAME TAKES YOUR MANUAL CALIBRATION OF {d} AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', auto_ok:'CALIBRATION FROM YOUR LAST GAME', set_room:'ROOM FOLLOWING', set_live_new_s:'NO MANUAL CALIBRATION YET: SWITCH THIS OFF, PLAY ONE GAME WAVING YOUR PALM, SWITCH IT ON AGAIN — AUTO-CALIBRATION WILL TAKE IT', set_live_off_s:'BEFORE EVERY GAME: TAKE YOUR HAND AWAY, WAVE YOUR PALM, TAP «START». A GOOD SETUP CAN THEN BE KEPT WITH AUTO-CALIBRATION', set_expert:'ADVANCED PROBE SETTINGS', aud_link:'SOUND', aud_t:'APP SOUND', aud_s:'WHERE THE GAME TAKES THE MICROPHONE FROM AND WHERE THE PROBE PLAYS', aud_mode:'SOUND', aud_browser:'BROWSER', aud_app:'APP', aud_mic:'MICROPHONE', aud_out:'SPEAKER', aud_auto:'AUTO', aud_speaker:'SPEAKER', aud_earpiece:'EARPIECE', aud_bottom:'BOTTOM', aud_top:'TOP', aud_back:'BACK', aud_now:'NOW:', aud_active:'RECORDING:', aud_idle:'THE MICROPHONE OPENS WITH THE GAME', aud_browser_now:'NOW THE SOUND GOES THROUGH THE BROWSER: ANDROID PICKS THE MICROPHONE', aud_nopos:'THE PHONE DOES NOT TELL WHERE ITS MICROPHONES ARE',
   wave_t:'WAVE YOUR PALM', wave_s:'5–10 CM ABOVE THE TABLE OR 5–15 CM FROM THE PHONE\'S END', wave_ok:'GOT YOUR RANGE', other_t:'WAVE ON THE OTHER SIDE', other_s:'THE PHONE DOES NOT HEAR THE PALM ON THIS SIDE', try_s:'THE SHIP FOLLOWS YOUR PALM — TRY THE TOP AND THE BOTTOM', cm:'CM',
   ring_wait:'GET READY', ring_listen:'LISTENING', ring_catch:'CATCHING THE RANGE', ring_ok:'DONE',
-  start:'START', over:'GAME OVER', best:'BEST', again:'AGAIN', menu:'MENU', logs:'LOGS', tilt_test:'TEST RULES: NOT FOR THE TABLES', ftilt:'PICTURE TILT', stilt:'SHOT TILT', straight:'STRAIGHT', as_nose:'AS THE NOSE', bounce_off:'SHOTS OFF THE EDGES: NO', obs_off:'HEAVY SKIN: OFF', obs_on:'HEAVY SKIN: OBSIDIAN', obs_na:'HEAVY SKIN: NO WEBGL 2', mouse_off:'MOUSE INSTEAD OF SONAR: NO', mouse_on:'MOUSE INSTEAD OF SONAR: YES', obs_ink:'INK ON HITS', obs_ring:'RING: UNEVEN', obs_wake:'SHIP WAKE', obs_rwake:'ROCK WAKES', obs_det:'INK DETAIL', obs_vsp:'VEINS SPEED', obs_shot:'SHOT', obs_shot1:'L1 COMET', obs_shot4:'L4 BEADS', obs_shot5:'L5 CRYSTAL', obs_shot6:'L6 FRINGE', obs_ringon_on:'HIT RING: YES', obs_ringon_off:'HIT RING: NO', obs_grim_on:'POWER-UP RIM: YES', obs_grim_off:'POWER-UP RIM: NO', bounce_on:'SHOTS OFF THE EDGES: YES', 
+  start:'START', over:'GAME OVER', best:'BEST', again:'AGAIN', menu:'MENU', logs:'LOGS', tilt_test:'TEST RULES: NOT FOR THE TABLES', ftilt:'PICTURE TILT', stilt:'SHOT TILT', straight:'STRAIGHT', as_nose:'AS THE NOSE', bounce_off:'SHOTS OFF THE EDGES: NO', obs_off:'HEAVY SKIN: OFF', obs_on:'HEAVY SKIN: OBSIDIAN', obs_na:'HEAVY SKIN: NO WEBGL 2', mouse_off:'MOUSE INSTEAD OF SONAR: NO', mouse_on:'MOUSE INSTEAD OF SONAR: YES', obs_ink:'INK ON HITS', obs_ring:'RING: UNEVEN', obs_wake:'SHIP WAKE', obs_rwake:'ROCK WAKES', obs_det:'INK DETAIL', obs_vsp:'VEINS SPEED', obs_shot:'SHOT', obs_shot1:'L1 COMET', obs_shot4:'L4 BEADS', obs_shot5:'L5 CRYSTAL', obs_shot6:'L6 FRINGE', obs_shot9:'L9 TWIN NEEDLES', obs_shot10:'L10 BANDS', obs_rstr:'RING: STRENGTH', obs_damp:'CALMER IN ACTION', obs_reco:'RECOMMENDED', obs_ringon_on:'HIT RING: YES', obs_ringon_off:'HIT RING: NO', obs_grim_on:'POWER-UP RIM: YES', obs_grim_off:'POWER-UP RIM: NO', bounce_on:'SHOTS OFF THE EDGES: YES', 
   lost_t:'NO PROBE SOUND', lost_s:'SOUND WENT TO ANOTHER DEVICE. UNPLUG HEADPHONES OR BLUETOOTH', retry:'TRY AGAIN',
   nomic_t:'NO MICROPHONE', nomic_s:'ALLOW IT IN THE BROWSER SETTINGS AND TRY AGAIN', noaudio_s:'THIS BROWSER CANNOT PLAY THE GAME. TRY SAFARI OR CHROME',
   rotate:'TURN THE PHONE SIDEWAYS', rotate_s:'THE SCREEN WON\'T TURN? SWITCH OFF THE ROTATION LOCK: ON IPHONE IN CONTROL CENTRE, ON ANDROID IN QUICK SETTINGS (AUTO-ROTATE)', paused:'PAUSE', resume:'GO ON', quit:'END THE GAME', scores:'HIGH SCORES', p_day:'TODAY', p_week:'THIS WEEK', p_all:'ALL TIME', loading:'LOADING…', offline:'NO CONNECTION TO THE TABLE', empty:'EMPTY SO FAR', you:'YOU',
@@ -1327,7 +1327,7 @@ STR.ru={
   aud_fx:'ОБРАБОТКА ТЕЛЕФОНА:', aud_src:'ИСТОЧНИК', aud_usage:'ЗОНД КАК', aud_end:'ЗОНД ИЗ', turn_t:'РАЗВЕРНИ ТЕЛЕФОН', hub_s:'ИГРЫ, КОТОРЫМИ УПРАВЛЯЕТ ЛАДОНЬ В ВОЗДУХЕ', soon:'СКОРО', all_games:'← ВСЕ ИГРЫ', skin:'СКИН', gfx:'ГРАФИКА', gfx_pixel:'ПИКСЕЛИ', skin_space:'КОСМОС', skin_vector:'ВЕКТОР 80-Х', skin_neon:'НЕОН', skin_note:'ТЕТРАДКА', skin_lcd:'РЕТРО LCD', skin_fairy:'СКАЗКА', turn_s:'НА 180°, ЕСЛИ ИГРАЕШЬ', turn_s2:'ПРАВОЙ РУКОЙ', turn_h:'ПО КРУГУ, КАК РУЛЬ — НЕ ПЕРЕВОРАЧИВАЙ ЭКРАНОМ ВНИЗ', lefty:'ИГРАЮ ЛЕВОЙ РУКОЙ', aud_vol:'ГРОМКОСТЬ', aud_keep:'НЕ ТРОГАТЬ', aud_cam:'У КАМЕРЫ', aud_port:'У РАЗЪЁМА', aud_media:'МЕДИА', aud_game:'ИГРА', aud_autotest:'АВТОВЫБОР', aud_notyet:'ЕЩЁ НЕ ДЕЛАЛСЯ', aud_retest:'ПЕРЕПРОВЕРИТЬ', aud_lab:'ЛАБА', aud_nextgame:'БУДЕТ ПРИ СЛЕДУЮЩЕЙ ИГРЕ', aud_on:'ВКЛ', aud_off:'ВЫКЛ', aud_t2:'ЗВУК', aud_s2:'ОПЫТЫ С ОБРАБОТКОЙ ЭХА', settings:'НАСТРОЙКИ', settings_t:'НАСТРОЙКИ', set_gfx:'ГРАФИКА', set_gfx_menu:'ВЫБОР В ИГРЕ', set_gfx_hd:'ВСЕГДА HD', set_gfx_px:'ВСЕГДА ПИКСЕЛИ', set_band:'ПОЛОСА ЗОНДА', set_band_ask:'ВЫБОР ПЕРЕД ИГРОЙ', set_band_w:'ВСЕГДА ШИРОКАЯ', set_band_n:'ВСЕГДА ОБЫЧНАЯ', set_live:'АВТОКАЛИБРОВКА', set_on:'ВКЛ', set_off:'ВЫКЛ', set_live_on_s:'БЕЗ ВЗМАХОВ: ИГРА БЕРЁТ ТВОЮ ПОСЛЕДНЮЮ РУЧНУЮ КАЛИБРОВКУ И САМА ПОДСТРАИВАЕТСЯ ПОД ЗВУКИ КОМНАТЫ. УПРАВЛЯЕТСЯ ХУЖЕ? ВЫКЛЮЧИ, СЫГРАЙ С РУЧНОЙ И ВКЛЮЧИ СНОВА', set_live_on_d:'БЕЗ ВЗМАХОВ: ИГРА БЕРЁТ ТВОЮ РУЧНУЮ КАЛИБРОВКУ ОТ {d} И САМА ПОДСТРАИВАЕТСЯ ПОД ЗВУКИ КОМНАТЫ. УПРАВЛЯЕТСЯ ХУЖЕ? ВЫКЛЮЧИ, СЫГРАЙ С РУЧНОЙ И ВКЛЮЧИ СНОВА', auto_ok:'КАЛИБРОВКА ИЗ ПРОШЛОЙ ИГРЫ', set_room:'ПОДСТРОЙКА ПОД КОМНАТУ', set_live_new_s:'РУЧНОЙ КАЛИБРОВКИ ЕЩЁ НЕ БЫЛО: ВЫКЛЮЧИ, СЫГРАЙ ОДНУ ИГРУ С ВЗМАХАМИ И ВКЛЮЧИ СНОВА — АВТОКАЛИБРОВКА ВОЗЬМЁТ ЕЁ', set_live_off_s:'ПЕРЕД КАЖДОЙ ИГРОЙ: УБРАТЬ РУКУ, ПОМАХАТЬ ЛАДОНЬЮ, НАЖАТЬ «СТАРТ». УДАЧНУЮ НАСТРОЙКУ ПОТОМ МОЖНО ОСТАВИТЬ АВТОКАЛИБРОВКОЙ', set_expert:'РАСШИРЕННЫЕ НАСТРОЙКИ ЗОНДА', aud_link:'ЗВУК', aud_t:'ЗВУК ПРИЛОЖЕНИЯ', aud_s:'ОТКУДА ИГРА БЕРЁТ МИКРОФОН И КУДА ИГРАЕТ ЗОНД', aud_mode:'ЗВУК', aud_browser:'БРАУЗЕР', aud_app:'ПРИЛОЖЕНИЕ', aud_mic:'МИКРОФОН', aud_out:'ДИНАМИК', aud_auto:'АВТО', aud_speaker:'ДИНАМИК', aud_earpiece:'РАЗГОВОРНЫЙ', aud_bottom:'НИЗ', aud_top:'ВЕРХ', aud_back:'СЗАДИ', aud_now:'СЕЙЧАС:', aud_active:'ПИШУТ:', aud_idle:'МИКРОФОН ОТКРОЕТСЯ ПРИ ИГРЕ', aud_browser_now:'СЕЙЧАС ЗВУК ЧЕРЕЗ БРАУЗЕР: МИКРОФОН ВЫБИРАЕТ ANDROID', aud_nopos:'ТЕЛЕФОН НЕ СООБЩАЕТ, ГДЕ МИКРОФОНЫ',
   wave_t:'ПОМАШИ ЛАДОНЬЮ', wave_s:'5–10 СМ НАД СТОЛОМ ИЛИ 5–15 СМ ОТ ТОРЦА ТЕЛЕФОНА', wave_ok:'РАЗМАХ ПОЙМАН', other_t:'ПОМАШИ С ДРУГОЙ СТОРОНЫ', other_s:'С ЭТОЙ СТОРОНЫ ТЕЛЕФОН НЕ СЛЫШИТ ЛАДОНЬ', try_s:'КОРАБЛЬ ИДЁТ ЗА ЛАДОНЬЮ — ПРОВЕРЬ ВЕРХ И НИЗ', cm:'СМ',
   ring_wait:'ПРИГОТОВЬСЯ', ring_listen:'СЛУШАЮ', ring_catch:'ЛОВЛЮ РАЗМАХ', ring_ok:'ГОТОВО',
-  start:'СТАРТ', over:'ИГРА ОКОНЧЕНА', best:'РЕКОРД', again:'ЕЩЁ РАЗ', menu:'МЕНЮ', logs:'ЖУРНАЛЫ', tilt_test:'ТЕСТОВЫЕ ПРАВИЛА: НЕ В ТАБЛИЦАХ', ftilt:'НАКЛОН КАРТИНКИ', stilt:'НАКЛОН ВЫСТРЕЛОВ', straight:'ПРЯМО', as_nose:'КАК НОС', bounce_off:'ВЫСТРЕЛЫ ОТ КРАЁВ: НЕТ', obs_off:'ТЯЖЁЛЫЙ СКИН: НЕТ', obs_on:'ТЯЖЁЛЫЙ СКИН: ОБСИДИАН', obs_na:'ТЯЖЁЛЫЙ СКИН: НЕТ WEBGL 2', mouse_off:'МЫШЬ ВМЕСТО СОНАРА: НЕТ', mouse_on:'МЫШЬ ВМЕСТО СОНАРА: ДА', obs_ink:'ЧЕРНИЛА НА ВЗРЫВЫ', obs_ring:'КОЛЬЦО: НЕРОВНОСТЬ', obs_wake:'СЛЕД КОРАБЛЯ', obs_rwake:'СЛЕД КАМНЕЙ', obs_det:'ЧЕРНИЛА: ДЕТАЛИ', obs_vsp:'ПРОЖИЛКИ: СКОРОСТЬ', obs_shot:'ВЫСТРЕЛ', obs_shot1:'Л1 КОМЕТА', obs_shot4:'Л4 БУСИНЫ', obs_shot5:'Л5 КРИСТАЛЛ', obs_shot6:'Л6 КАЙМА', obs_ringon_on:'КОЛЬЦО ОТ ВЗРЫВА: ДА', obs_ringon_off:'КОЛЬЦО ОТ ВЗРЫВА: НЕТ', obs_grim_on:'КРОМКА ПОДАРКА: ДА', obs_grim_off:'КРОМКА ПОДАРКА: НЕТ', bounce_on:'ВЫСТРЕЛЫ ОТ КРАЁВ: ДА', 
+  start:'СТАРТ', over:'ИГРА ОКОНЧЕНА', best:'РЕКОРД', again:'ЕЩЁ РАЗ', menu:'МЕНЮ', logs:'ЖУРНАЛЫ', tilt_test:'ТЕСТОВЫЕ ПРАВИЛА: НЕ В ТАБЛИЦАХ', ftilt:'НАКЛОН КАРТИНКИ', stilt:'НАКЛОН ВЫСТРЕЛОВ', straight:'ПРЯМО', as_nose:'КАК НОС', bounce_off:'ВЫСТРЕЛЫ ОТ КРАЁВ: НЕТ', obs_off:'ТЯЖЁЛЫЙ СКИН: НЕТ', obs_on:'ТЯЖЁЛЫЙ СКИН: ОБСИДИАН', obs_na:'ТЯЖЁЛЫЙ СКИН: НЕТ WEBGL 2', mouse_off:'МЫШЬ ВМЕСТО СОНАРА: НЕТ', mouse_on:'МЫШЬ ВМЕСТО СОНАРА: ДА', obs_ink:'ЧЕРНИЛА НА ВЗРЫВЫ', obs_ring:'КОЛЬЦО: НЕРОВНОСТЬ', obs_wake:'СЛЕД КОРАБЛЯ', obs_rwake:'СЛЕД КАМНЕЙ', obs_det:'ЧЕРНИЛА: ДЕТАЛИ', obs_vsp:'ПРОЖИЛКИ: СКОРОСТЬ', obs_shot:'ВЫСТРЕЛ', obs_shot1:'Л1 КОМЕТА', obs_shot4:'Л4 БУСИНЫ', obs_shot5:'Л5 КРИСТАЛЛ', obs_shot6:'Л6 КАЙМА', obs_shot9:'Л9 ДВЕ ИГЛЫ', obs_shot10:'Л10 ПОЛОСЫ', obs_rstr:'КОЛЬЦО: СИЛА', obs_damp:'ГАШЕНИЕ В ЭКШНЕ', obs_reco:'РЕКОМЕНДОВАННЫЕ', obs_ringon_on:'КОЛЬЦО ОТ ВЗРЫВА: ДА', obs_ringon_off:'КОЛЬЦО ОТ ВЗРЫВА: НЕТ', obs_grim_on:'КРОМКА ПОДАРКА: ДА', obs_grim_off:'КРОМКА ПОДАРКА: НЕТ', bounce_on:'ВЫСТРЕЛЫ ОТ КРАЁВ: ДА', 
   lost_t:'ЗОНДА НЕ СЛЫШНО', lost_s:'ЗВУК УШЁЛ В ДРУГОЕ УСТРОЙСТВО. ОТКЛЮЧИ НАУШНИКИ ИЛИ BLUETOOTH', retry:'ЕЩЁ РАЗ',
   nomic_t:'НЕТ МИКРОФОНА', nomic_s:'РАЗРЕШИ ЕГО В НАСТРОЙКАХ БРАУЗЕРА И ПОПРОБУЙ ЕЩЁ РАЗ', noaudio_s:'В ЭТОМ БРАУЗЕРЕ ИГРА НЕ ЗАПУСТИТСЯ. ПОПРОБУЙ SAFARI ИЛИ CHROME',
   rotate:'ПОВЕРНИ ТЕЛЕФОН ГОРИЗОНТАЛЬНО', rotate_s:'НЕ ПОВОРАЧИВАЕТСЯ? ВЫКЛЮЧИ БЛОКИРОВКУ ПОВОРОТА ЭКРАНА: НА IPHONE — В ПУНКТЕ УПРАВЛЕНИЯ, НА ANDROID — В ШТОРКЕ (АВТОПОВОРОТ)', paused:'ПАУЗА', resume:'ДАЛЬШЕ', quit:'ЗАКОНЧИТЬ ИГРУ', scores:'РЕКОРДЫ', p_day:'СЕГОДНЯ', p_week:'НЕДЕЛЯ', p_all:'ВСЁ ВРЕМЯ', loading:'ЗАГРУЖАЮ…', offline:'НЕТ СВЯЗИ С ТАБЛИЦЕЙ', empty:'ПОКА ПУСТО', you:'ТЫ',
@@ -3617,12 +3617,22 @@ function obsOn(){ return typeof store!=='undefined'&&store.get('sonaroids_obs','
    ink — how strongly a hit draws the ink in; ring — how far the ring is from a circle; wake — the ship's wake; rwake — the rocks' wakes */
 /* v1.45: 0–200% (the maintainer: «самое зрелищное это 100/100/50/100.. можно было бы и по зрелищнее (200?)»), those four his picks to start;
    and the ink's fine detail (the maintainer: «иногда слишком широкие мазки без детализации, без нитей… может им тоже ползунок?») */
-var OBS_SL=[['obs_ink','sonaroids_obs_ink',1],['obs_ring','sonaroids_obs_ring',1],['obs_wake','sonaroids_obs_wake',0.5],['obs_rwake','sonaroids_obs_rwake',1],['obs_det','sonaroids_obs_det',0.5],['obs_vsp','sonaroids_obs_vsp',0.5]];
+var OBS_SL=[['obs_ink','sonaroids_obs_ink',1],['obs_rstr','sonaroids_obs_rstr',1],['obs_ring','sonaroids_obs_ring',1],['obs_wake','sonaroids_obs_wake',0.5],['obs_rwake','sonaroids_obs_rwake',1],['obs_det','sonaroids_obs_det',0.5],['obs_vsp','sonaroids_obs_vsp',0.5],['obs_damp','sonaroids_obs_damp',1]];
 function obsSl(id){ for(var i=0;i<OBS_SL.length;i++) if(OBS_SL[i][0]===id){ var d=OBS_SL[i][2], v=typeof store!=='undefined'?+store.get(OBS_SL[i][1],String(d)):d; return v>=0&&v<=2?v:d; } return 0.5; }
 function obsSlSet(id,v){ for(var i=0;i<OBS_SL.length;i++) if(OBS_SL[i][0]===id){ store.set(OBS_SL[i][1],String(v)); return true; } return false; }
 function obsInk(){ return obsSl('obs_ink'); }
+/* v1.47 the strengths follow the action (the maintainer: «может сделать ползунки динамическими… когда много объектов — слабое возмущение от
+   каждого, когда объектов мало — сильное»): how busy the field is — hits in the last 1.5 s and a quarter for each rock on the screen,
+   smoothed over ~0.5 s; the ink's pull, the ring and the rocks' wakes are divided down as it grows (a lone rock — the sliders' full
+   strength; a crowd — down to a quarter); how hard — the slider «ГАШЕНИЕ В ЭКШНЕ» (0 — never) */
+function obsBusy(){ var t=OBS.t, h=0; for(var i=0;i<OBS.an.length;i++) if(t-OBS.an[i].t0<1.5) h+=OBS.an[i].sp?0.6:1; var tg=h+OBS.rk.length*0.25;
+  OBS.busy=(OBS.busy||0)+(tg-(OBS.busy||0))*Math.min(1,DT*2); return OBS.busy; }
+function obsCalm(){ return OBS.calm===undefined?1:OBS.calm; }
+/* the recommended settings (a button in the pause) */
+var OBS_RECO={obs_ink:1,obs_rstr:0.7,obs_ring:1,obs_wake:0.5,obs_rwake:0.6,obs_det:0.5,obs_vsp:0.5,obs_damp:1};
+function obsReco(){ for(var k in OBS_RECO) obsSlSet(k,OBS_RECO[k]); }
 /* v1.46: the shot to try (Л1 comet, Л4 beads, Л5 crystal, Л6 a fringe of the ink's opposite colour) and the power-up's rim (on / off) */
-var OBS_SHOTS=[1,4,5,6];
+var OBS_SHOTS=[1,4,5,6,9,10];   /* v1.47: and Л9 twin needles, Л10 running bands */
 function obsShot(){ var v=typeof store!=='undefined'?+store.get('sonaroids_obs_shot','1'):1; return OBS_SHOTS.indexOf(v)>=0?v:1; }
 function obsRingOn(){ return typeof store==='undefined'||store.get('sonaroids_obs_ringon','1')==='1'; }
 function obsGRim(){ return typeof store==='undefined'||store.get('sonaroids_obs_grim','1')==='1'; }
@@ -3728,7 +3738,7 @@ var OBS_SC=['#version 300 es','precision highp float; precision highp int;','uni
 /* v1.44 (the maintainer: «не ровной окружностью, а индивидуальной кривой, которая расходится/тает по индивидуальному рисунку чернил»):
    the ring's radius along its round — a noise of its own (seamless round the circle) and the ink under it (it runs ahead in dense ink,
    lags in thin); irr 0 — a true circle */
-'uniform float uIrr; uniform int uRingOn;',   /* v1.46: the hit\'s ring on / off (the maintainer: «сделай выключатель кольца от взрыва.. хочу посмотреть как будет без него») */
+'uniform float uIrr; uniform int uRingOn; uniform float uRStr;',   /* v1.47: how strongly the ring bends the ink (the maintainer: «ползунок силы развода кольца — сейчас если включаешь, все сильно рябит в больших сценах») */   /* v1.46: the hit\'s ring on / off (the maintainer: «сделай выключатель кольца от взрыва.. хочу посмотреть как будет без него») */
 'float ringK(vec2 n,float sd,float lu){ float an=n2(n*2.2+sd*7.3)*0.65+n2(n*5.0+sd*3.1)*0.35; return max(0.3,1.0+uIrr*((an-0.5)*1.1+(lu-0.3)*0.7)); }',
 'float ringA(float lu){ return mix(1.0,0.25+1.6*smoothstep(0.08,0.45,lu),min(uIrr,1.0)); }'].join('\n');
 /* the wallpaper on the screen, pushed about where the annihilations happen (in linear light into the scene, or straight to the screen) */
@@ -3736,7 +3746,7 @@ var OBS_FS_C=OBS_SC+'\n'+[
 'uniform vec4 uAn[12]; uniform vec4 uAk[12]; uniform int uNa;',
 'void main(){ vec2 uv=(gl_FragCoord.xy-0.5*uRes)/uRes.y; vec2 su=uv; float lens=0.0;',
 '  for(int i=0;i<12;i++){ if(i>=uNa||uRingOn==0) break; vec4 A=uAn[i], B=uAk[i]; float a=A.z, R=A.w; vec2 d=uv-A.xy; float L=length(d); if(L>1.2) continue; vec2 n=d/max(L,1e-4); float sz=R/0.075; bool sp=B.y>0.5;',
-'    float ac=a-(sp?0.08:0.30); if(ac>0.0&&ac<2.0){ float k=sp?0.5:1.0, lu=luAt(uv), rk=ringK(n,B.z,lu), rr=(R*0.4+ac*0.36)*rk, w=(0.018+ac*0.03)*(0.7+0.3*rk), amp=0.055*sz*k*exp(-ac*1.1)*ringA(lu); float x=(L-rr)/w; su-=n*amp*x*exp(-x*x)*1.6; lens+=exp(-x*x)*exp(-ac*1.4)*sz*k*ringA(lu); }',
+'    float ac=a-(sp?0.08:0.30); if(ac>0.0&&ac<2.0){ float k=sp?0.5:1.0, lu=luAt(uv), rk=ringK(n,B.z,lu), rr=(R*0.4+ac*0.36)*rk, w=(0.018+ac*0.03)*(0.7+0.3*rk), amp=0.055*sz*k*exp(-ac*1.1)*ringA(lu)*uRStr; float x=(L-rr)/w; su-=n*amp*x*exp(-x*x)*1.6; lens+=exp(-x*x)*exp(-ac*1.4)*sz*k*ringA(lu)*uRStr; }',
 '  }',
 '  vec3 col=bgAt(su); col*=1.0+0.35*lens;',
 '  fragColor=outC(vec4(col,1.0)); }'].join('\n');
@@ -3803,9 +3813,9 @@ var OBS_FS_O=OBS_SC+'\n'+[
 '  if(!sp){',
 '      if(a<0.30){ float s=1.0-ez(a/0.30); vec4 r=rock(uv,c,R*max(s,0.02),sd,rotA+a*4.0,smoothstep(0.0,0.08,a)); col=r.rgb; cov=r.a; col+=GOLD*cov*smoothstep(0.0,0.08,a)*0.9; col+=GOLD*smoothstep(0.0,0.08,a)*0.5*exp(-pow(length(uv-c)/(R*s*1.3+0.004),2.0)); }',
 '      float ap=a-0.30; if(ap>0.0&&ap<0.25){ float pt=exp(-ap*14.0); col+=vec3(1.0,0.92,0.75)*pt*(exp(-pow(length(uv-c)/0.006,2.0))*3.0+exp(-pow(length(uv-c)/0.03,2.0))*0.3); }',
-'      if(uRingOn==1&&ap>0.0&&ap<1.6){ vec2 nn=normalize(uv-c+1e-5); float lu=luAt(uv); col+=GOLD*0.10*exp(-ap*3.0)*exp(-pow((length(uv-c)-(R*0.4+ap*0.36)*ringK(nn,sd,lu))/0.003,2.0))*sz*ringA(lu); } }',
+'      if(uRingOn==1&&ap>0.0&&ap<1.6){ vec2 nn=normalize(uv-c+1e-5); float lu=luAt(uv); col+=GOLD*0.10*exp(-ap*3.0)*exp(-pow((length(uv-c)-(R*0.4+ap*0.36)*ringK(nn,sd,lu))/0.003,2.0))*sz*ringA(lu)*min(uRStr,1.5); } }',
 '    else { vec2 q=rot(rotA)*(uv-c); float k=exp(-a*9.0); float seam=exp(-pow(q.y/0.0035,2.0))*smoothstep(R*1.05,R*0.6,abs(q.x)); col+=GOLD*seam*k*2.2+GOLD*exp(-dot(q,q)/(R*R*0.5))*k*0.25;',
-'      float ap=a-0.08; if(uRingOn==1&&ap>0.0&&ap<1.0){ vec2 nn=normalize(uv-c+1e-5); float lu=luAt(uv); col+=GOLD*0.06*exp(-ap*3.0)*exp(-pow((length(uv-c)-(R*0.4+ap*0.36)*ringK(nn,sd,lu))/0.003,2.0))*sz*ringA(lu); } }',
+'      float ap=a-0.08; if(uRingOn==1&&ap>0.0&&ap<1.0){ vec2 nn=normalize(uv-c+1e-5); float lu=luAt(uv); col+=GOLD*0.06*exp(-ap*3.0)*exp(-pow((length(uv-c)-(R*0.4+ap*0.36)*ringK(nn,sd,lu))/0.003,2.0))*sz*ringA(lu)*min(uRStr,1.5); } }',
 '  return vec4(col,cov); }',
 /* v1.46 the shots — the gold laser's variations to choose in the game (the maintainer: «в игре сделай выбор л1, л4, л5, л6»):
    1 a comet (a white-hot head, a thin gold tail), 4 beads (a head and three fading behind), 5 a gold crystal with a white facet,
@@ -3815,6 +3825,8 @@ var OBS_FS_O=OBS_SC+'\n'+[
 'vec3 shot(vec2 q,vec2 c){ vec3 G=vec3(1.0,0.75,0.3), W=vec3(1.0,0.95,0.85); vec3 a=vec3(0.0);',
 '  if(uShot==1){ float h=length(q/vec2(0.006,0.0035)); a+=W*exp(-h*h*2.0)*2.2; float b=-q.x; if(b>0.0&&b<0.07){ float w=0.0018+b*0.02; a+=G*exp(-q.y*q.y/(w*w))*pow(1.0-b/0.07,1.5)*1.3; } a+=G*exp(-dot(q,q)/0.0006)*0.10; }',
 '  else if(uShot==4){ for(int j=0;j<4;j++){ float r=length(q+vec2(float(j)*0.016,0.0)), s=0.0042*(1.0-float(j)*0.2); a+=(j==0?W*1.6:G*(1.2-float(j)*0.25))*exp(-r*r/(s*s)); } a+=G*exp(-dot(q,q)/0.0007)*0.10; }',
+'  else if(uShot==9){ for(int s2=-1;s2<=1;s2+=2){ vec2 p=(q-vec2(float(s2)*0.004,float(s2)*0.0045))/vec2(0.020,0.0028); float d=length(vec2(max(abs(p.x)-0.5,0.0),p.y)); a+=G*(exp(-d*d*3.0)*1.4+exp(-d*d*0.3)*0.12); } }',
+'  else if(uShot==10){ vec2 p=q/vec2(0.030,0.006); float d=length(vec2(max(abs(p.x)-0.5,0.0),p.y)); float band=0.55+0.45*sin(q.x*900.0-uT*90.0); a+=G*(exp(-d*d*3.0)*(1.0+0.9*band)+exp(-d*d*0.25)*0.22); }',
 '  else if(uShot==5){ vec2 b=abs(q); float d=b.x/0.026+b.y/0.0055-1.0; float body=smoothstep(0.08,-0.08,d); a+=G*body*1.5+W*body*smoothstep(0.0012,0.0,abs(q.y))*1.2+G*exp(-max(d,0.0)*3.0)*0.35*(1.0-body); }',
 '  else { vec2 p=q/vec2(0.028,0.006); float d=length(vec2(max(abs(p.x)-0.5,0.0),p.y)); a+=G*exp(-d*d*3.0)*1.6; if(uShot==6) a+=invOf(bgAt(c))*exp(-pow((d-1.15)/0.35,2.0))*0.55*0.30; else a+=G*exp(-d*d*0.25)*0.25; }',
 '  return a; }',
@@ -3890,17 +3902,17 @@ function obsUV(x,y){ return [(x-LW/2)/LH,(LH/2-y)/LH]; }
 function obsShipUni(p){ var g=OBS.g, sh=new Float32Array(24), H=OBS.shipH, now=OBS.t, s=OBS.ship;
   for(var k=0;k<24;k++){ var ta=now-k*0.15, v=s?s.y:0; for(var i=H.length-1;i>=0;i--){ if(H[i][0]<=ta){ v=H[i][1]; break; } v=H[i][1]; } sh[k]=v; }
   g.uniform1fv(obsU(p,'uSH'),sh); g.uniform2f(obsU(p,'uShip'),s?s.x:-9,s?s.y:0); }
-function obsRender(){ var g=OBS.g; if(!g||OBS.lost) return; obsSize(); var T=OBS.tx, t=OBS.t, mix=obsMix(t), sun=obsSun(t);
+function obsRender(){ var g=OBS.g; if(!g||OBS.lost) return; OBS.calm=Math.max(0.25,1/(1+obsSl('obs_damp')*Math.max(0,obsBusy()-1.5)*0.3)); obsSize(); var T=OBS.tx, t=OBS.t, mix=obsMix(t), sun=obsSun(t);
   var pn=obsProg('n',OBS_VS,OBS_FS_N), pb=obsProg('b',OBS_VS,OBS_FS_B), pc=obsProg('c',OBS_VS,OBS_FS_C), po=obsProg('o',OBS_VS_O,OBS_FS_O), pf=obsProg('f',OBS_VS,OBS_FS_F);
   g.bindVertexArray(OBS.vao); g.disable(g.BLEND);
-  var FX=OBS.an.filter(function(e){ return t-e.t0<4.0; }).slice(-8), fx=new Float32Array(32), nf=FX.length, stir=obsInk()*2;
+  var FX=OBS.an.filter(function(e){ return t-e.t0<4.0; }).slice(-8), fx=new Float32Array(32), nf=FX.length, stir=obsInk()*2*obsCalm();
   FX.forEach(function(e,i){ fx[i*4]=e.x; fx[i*4+1]=e.y; fx[i*4+2]=t-e.t0; fx[i*4+3]=e.R*(e.sp?0.7:1); });
   var RK=OBS.rk.slice(0,12), rk=new Float32Array(48), nr=RK.length; RK.forEach(function(k,i){ for(var j=0;j<4;j++) rk[i*4+j]=k[j]; });
   /* 1. the ink: near — half its rows this frame (top and bottom in turn), far — all of it at half size */
   var run=function(far,part){ var ww=far?Math.max(1,T.bw>>1):T.bw, hh=far?Math.max(1,T.eh>>1):T.eh; g.bindFramebuffer(g.FRAMEBUFFER,far?T.fc:T.fa); g.drawBuffers(far?[g.COLOR_ATTACHMENT0]:[g.COLOR_ATTACHMENT0,g.COLOR_ATTACHMENT1]);
     g.viewport(0,0,ww,hh); if(part>=0){ var h2=Math.ceil(hh/2); g.enable(g.SCISSOR_TEST); g.scissor(0,part?hh-h2:0,ww,h2); }
     g.useProgram(pn); g.uniform2f(obsU(pn,'uRes'),far?ww:T.bw,far?ww*T.bh/T.bw:T.bh); g.uniform1f(obsU(pn,'uTime'),t); g.uniform1i(obsU(pn,'uQ'),OBS.q); g.uniform1f(obsU(pn,'uEnc'),T.enc); g.uniform1f(obsU(pn,'uMode'),far?1:0);
-    g.uniform1f(obsU(pn,'uAmt'),1.0); g.uniform1f(obsU(pn,'uMix'),mix); obsShipUni(pn); g.uniform4fv(obsU(pn,'uFx'),fx); g.uniform1i(obsU(pn,'uNf'),nf); g.uniform1f(obsU(pn,'uStir'),stir); g.uniform1f(obsU(pn,'uWake'),obsSl('obs_wake')*2); g.uniform4fv(obsU(pn,'uRk'),rk); g.uniform1i(obsU(pn,'uNr'),nr); g.uniform1f(obsU(pn,'uRWake'),obsSl('obs_rwake')*2); g.uniform1f(obsU(pn,'uDet'),obsSl('obs_det')*2); g.uniform1f(obsU(pn,'uVsp'),obsSl('obs_vsp')*4);   /* the veins' speed: 25% — as in 1.45, 100% four times that */ g.drawArrays(g.TRIANGLES,0,3); g.disable(g.SCISSOR_TEST); };
+    g.uniform1f(obsU(pn,'uAmt'),1.0); g.uniform1f(obsU(pn,'uMix'),mix); obsShipUni(pn); g.uniform4fv(obsU(pn,'uFx'),fx); g.uniform1i(obsU(pn,'uNf'),nf); g.uniform1f(obsU(pn,'uStir'),stir); g.uniform1f(obsU(pn,'uWake'),obsSl('obs_wake')*2); g.uniform4fv(obsU(pn,'uRk'),rk); g.uniform1i(obsU(pn,'uNr'),nr); g.uniform1f(obsU(pn,'uRWake'),obsSl('obs_rwake')*2*obsCalm()); g.uniform1f(obsU(pn,'uDet'),obsSl('obs_det')*2); g.uniform1f(obsU(pn,'uVsp'),obsSl('obs_vsp')*4);   /* the veins' speed: 25% — as in 1.45, 100% four times that */ g.drawArrays(g.TRIANGLES,0,3); g.disable(g.SCISSOR_TEST); };
   if(T.n===0) run(false,-1); else run(false,T.n%2); run(true,-1); T.n++;
   g.bindFramebuffer(g.FRAMEBUFFER,T.fbg); g.drawBuffers([g.COLOR_ATTACHMENT0]);
   /* 2. the wallpaper (at its own size) */
@@ -3912,7 +3924,7 @@ function obsRender(){ var g=OBS.g; if(!g||OBS.lost) return; obsSize(); var T=OBS
   var AN=OBS.an.filter(function(e){ return t-e.t0<3.2; }).slice(-12), an=new Float32Array(48), ak=new Float32Array(48);
   AN.forEach(function(e,i){ an[i*4]=e.x; an[i*4+1]=e.y; an[i*4+2]=t-e.t0; an[i*4+3]=e.R; ak[i*4+1]=e.sp?1:0; ak[i*4+2]=e.sd; });
   g.activeTexture(g.TEXTURE0); g.bindTexture(g.TEXTURE_2D,T.bg);
-  g.useProgram(pc); g.uniform1f(obsU(pc,'uIrr'),obsSl('obs_ring')*2); g.uniform1i(obsU(pc,'uRingOn'),obsRingOn()?1:0); g.uniform2f(obsU(pc,'uRes'),T.W,T.H); g.uniform1f(obsU(pc,'uT'),t); g.uniform1i(obsU(pc,'uBg'),0); g.uniform1i(obsU(pc,'uDisp'),disp);
+  g.useProgram(pc); g.uniform1f(obsU(pc,'uIrr'),obsSl('obs_ring')*2); g.uniform1i(obsU(pc,'uRingOn'),obsRingOn()?1:0); g.uniform1f(obsU(pc,'uRStr'),obsSl('obs_rstr')*obsCalm()); g.uniform2f(obsU(pc,'uRes'),T.W,T.H); g.uniform1f(obsU(pc,'uT'),t); g.uniform1i(obsU(pc,'uBg'),0); g.uniform1i(obsU(pc,'uDisp'),disp);
   g.uniform4fv(obsU(pc,'uAn'),an); g.uniform4fv(obsU(pc,'uAk'),ak); g.uniform1i(obsU(pc,'uNa'),AN.length); g.drawArrays(g.TRIANGLES,0,3);
   /* 4. the objects (premultiplied, light added where they have no body) */
   var L=OBS.list; AN.forEach(function(e){ var a=t-e.t0, ext=e.R*1.5;
@@ -3924,7 +3936,7 @@ function obsRender(){ var g=OBS.g; if(!g||OBS.lost) return; obsSize(); var T=OBS
       for(var a2=0;a2<3;a2++){ g.enableVertexAttribArray(a2); g.vertexAttribPointer(a2,4,g.FLOAT,false,48,a2*16); g.vertexAttribDivisor(a2,1); } }
     g.bindVertexArray(OBS.buf.vao); g.bindBuffer(g.ARRAY_BUFFER,OBS.buf.b); g.bufferSubData(g.ARRAY_BUFFER,0,D,0,n*12);
     g.enable(g.BLEND); g.blendFunc(g.ONE,g.ONE_MINUS_SRC_ALPHA); g.useProgram(po);
-    g.uniform2f(obsU(po,'uRes'),T.W,T.H); g.uniform1f(obsU(po,'uIrr'),obsSl('obs_ring')*2); g.uniform1i(obsU(po,'uShot'),obsShot()); g.uniform1i(obsU(po,'uGRim'),obsGRim()?1:0); g.uniform1i(obsU(po,'uRingOn'),obsRingOn()?1:0); g.uniform1f(obsU(po,'uT'),t); g.uniform1i(obsU(po,'uBg'),0); g.uniform1i(obsU(po,'uDisp'),disp);
+    g.uniform2f(obsU(po,'uRes'),T.W,T.H); g.uniform1f(obsU(po,'uIrr'),obsSl('obs_ring')*2); g.uniform1i(obsU(po,'uShot'),obsShot()); g.uniform1i(obsU(po,'uGRim'),obsGRim()?1:0); g.uniform1i(obsU(po,'uRingOn'),obsRingOn()?1:0); g.uniform1f(obsU(po,'uRStr'),obsSl('obs_rstr')*obsCalm()); g.uniform1f(obsU(po,'uT'),t); g.uniform1i(obsU(po,'uBg'),0); g.uniform1i(obsU(po,'uDisp'),disp);
     var lc=[1-0.45*mix,0.78+0.02*mix,0.48+0.52*mix]; g.uniform2f(obsU(po,'uL'),sun[0]*1.4,sun[1]*1.4); g.uniform3f(obsU(po,'uLc'),lc[0],lc[1],lc[2]);
     g.uniform4fv(obsU(po,'uPose'),OBS.pose||new Float32Array(12)); g.drawArraysInstanced(g.TRIANGLE_STRIP,0,4,n); g.disable(g.BLEND); g.bindVertexArray(OBS.vao); }
   /* 5. the scene to the screen */
@@ -6101,19 +6113,22 @@ function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globa
   if(w1+g+w2>LW-SAFE.l-SAFE.r-2*Math.max(8,Math.round(LW*0.04))){                                        // too narrow for two (a tablet in Russian): one tight column
     var it=act.concat(look), gap=Math.max(2,Math.min(8,Math.floor((bot-top+2-it.length*BH)/(it.length-1))));
     column(it,Math.round((top+bot)/2),undefined,gap); return; }
-  column(act,cy,x1,8); if(mode!=='race'&&pausedFrom==='play'&&obsOn()) obsPanel(left?x2:x2+w2-Math.max(w2,Math.min(150,left?LW-SAFE.r-8-x2:x2+w2-SAFE.l-8)),Math.max(w2,Math.min(150,left?LW-SAFE.r-8-x2:x2+w2-SAFE.l-8)),cy); else column(look,cy,x2,8); }
+  column(act,cy,x1,8); if(mode!=='race'&&pausedFrom==='play'&&obsOn()) obsPanel(left?x2:SAFE.l+6,left?LW-SAFE.r-6-x2:x2+w2-SAFE.l-6,cy);   /* v1.47: all the room beside the actions */ else column(look,cy,x2,8); }
 /* v1.44: the heavy skin's sliders in the pause (the maintainer, of each: «ползунок? :)»), in place of the look column (the skin is fixed while it is on);
    v1.45: 0–200%, the mark at 100% —
    pause, move them, play on and see. 0 — none; the strengths are 1.44's (its 50% then is 50% now) */
-function obsPanel(px,pw,cy){ var pad=5, rh=Math.max(PF.CAP,10)+5, vw=PF.width('200%'), ids=OBS_SL.map(function(x){ return x[0]; }),
-      tg=[['obs_shot',L('obs_shot')+': '+L('obs_shot'+obsShot())],['obs_grim',L(obsGRim()?'obs_grim_on':'obs_grim_off')],['obs_ringon',L(obsRingOn()?'obs_ringon_on':'obs_ringon_off')]], th=PF.CAP+7,   /* v1.46: one line a slider; the shot and the rim to tap */
-      ph=pad*2+ids.length*rh+tg.length*th+2, y0=Math.max(topY()+12,Math.min(LH-SAFE.b-4-ph,Math.round(cy-ph/2))), ix=px+pad, iw=pw-2*pad, lw=Math.round(iw*0.46), y=y0+pad;
-  px=Math.round(px);
-  lx.globalAlpha=0.9; R(P.bg,px,y0,pw,ph); lx.globalAlpha=1; frame(px,y0,pw,ph,P.line);
-  var scA=Math.min.apply(null,ids.map(function(id){ return Math.min(1,lw/Math.max(1,PF.width(L(id)))); }));   /* the labels all one size */
-  ids.forEach(function(id){ var v=obsSl(id), lab=L(id), sc=scA, cy2=y+Math.round(rh/2)-1; text(lab,ix,cy2-Math.round(PF.CAP*sc/2),P.soft,'left',sc);
-    slider(id,ix+lw+4,cy2-5,iw-lw-vw-10,v/2,0.5); text(Math.round(v*100)+'%',ix+iw,cy2-Math.round(PF.CAP/2),P.text,'right'); y+=rh; });
-  y+=2; tg.forEach(function(x){ var sc=Math.min(1,iw/Math.max(1,PF.width(x[1]))), w2=PF.width(x[1],sc); text(x[1],ix,y,P.band,'left',sc); R(P.band,ix,y+PF.CAP+2,w2,1); BTN.push({id:x[0],x:ix-4,y:y-3,w:w2+8,h:th}); y+=th; }); }
+/* v1.47 (the maintainer: «разведи опции на две колонки, а то пальцем попадать сложно»): two columns — the label over its slider (a taller
+   strip to put a finger on), then the switches two to a row */
+function obsPanel(px,pw,cy){ var pad=5, gap=2, cg=8, rh=PF.CAP+gap+10+5, vw=PF.width('200%'), ids=OBS_SL.map(function(x){ return x[0]; }),
+      tg=[['obs_shot',L('obs_shot')+': '+L('obs_shot'+obsShot())],['obs_grim',L(obsGRim()?'obs_grim_on':'obs_grim_off')],['obs_ringon',L(obsRingOn()?'obs_ringon_on':'obs_ringon_off')],['obs_reco',L('obs_reco')]],
+      th=PF.CAP+9, nl=Math.ceil(ids.length/2), ph=pad*2+nl*rh+Math.ceil(tg.length/2)*th+3, iw=pw-2*pad, cw=Math.floor((iw-cg)/2),
+      y0=Math.max(topY()+10,Math.min(LH-SAFE.b-3-ph,Math.round(cy-ph/2))), ix=Math.round(px)+pad;
+  px=Math.round(px); lx.globalAlpha=0.9; R(P.bg,px,y0,pw,ph); lx.globalAlpha=1; frame(px,y0,pw,ph,P.line);
+  var scA=Math.min.apply(null,ids.map(function(id){ return Math.min(1,cw/Math.max(1,PF.width(L(id)))); }));   /* the labels all one size */
+  ids.forEach(function(id,i){ var col=i<nl?0:1, x=ix+col*(cw+cg), y=y0+pad+(i%nl)*rh, v=obsSl(id);
+    text(L(id),x,y,P.soft,'left',scA); slider(id,x,y+PF.CAP+gap+1,cw-vw-6,v/2,0.5); text(Math.round(v*100)+'%',x+cw,y+PF.CAP+gap+6-Math.round(PF.CAP/2),P.text,'right'); });
+  var scT=Math.min.apply(null,tg.map(function(x){ return Math.min(1,cw/Math.max(1,PF.width(x[1]))); })), yt=y0+pad+nl*rh+3;
+  tg.forEach(function(x,i){ var tx=ix+(i%2)*(cw+cg), ty=yt+Math.floor(i/2)*th, w2=PF.width(x[1],scT); text(x[1],tx,ty,P.band,'left',scT); R(P.band,tx,ty+PF.CAP+2,w2,1); BTN.push({id:x[0],x:tx-3,y:ty-4,w:cw+6,h:th}); }); }
 /* v0.24 "start over" from the pause menu: straight into a countdown with the same calibration, or through calibration again */
 function sRestart(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('restart'),L('restart_s'));
   column([['rs_go',L('rs_go'),'primary'],['rs_cal',L('recal')],['rs_back',L('back')]],Math.round(LH*0.58)); }
@@ -6427,6 +6442,7 @@ var ACT={
   shot_bounce:function(){ store.set('sonaroids_shot_bounce',shotBounce()?'0':'1'); },
   obs_shot:function(){ var i=OBS_SHOTS.indexOf(obsShot()); store.set('sonaroids_obs_shot',String(OBS_SHOTS[(i+1)%OBS_SHOTS.length])); },   /* v1.46 */
   obs_grim:function(){ store.set('sonaroids_obs_grim',obsGRim()?'0':'1'); },
+  obs_reco:function(){ obsReco(); },   /* v1.47 */
   obs_ringon:function(){ store.set('sonaroids_obs_ringon',obsRingOn()?'0':'1'); },
   mouse:function(){ store.set('sonaroids_mouse',store.get('sonaroids_mouse','0')==='1'?'0':'1'); },   /* v1.44 */
   obs:function(){ store.set('sonaroids_obs',store.get('sonaroids_obs','0')==='1'?'0':'1'); setSkin(skinId); },   /* v1.42: the heavy skin on / off (a test) */

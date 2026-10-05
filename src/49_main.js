@@ -565,19 +565,22 @@ function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globa
   if(w1+g+w2>LW-SAFE.l-SAFE.r-2*Math.max(8,Math.round(LW*0.04))){                                        // too narrow for two (a tablet in Russian): one tight column
     var it=act.concat(look), gap=Math.max(2,Math.min(8,Math.floor((bot-top+2-it.length*BH)/(it.length-1))));
     column(it,Math.round((top+bot)/2),undefined,gap); return; }
-  column(act,cy,x1,8); if(mode!=='race'&&pausedFrom==='play'&&obsOn()) obsPanel(left?x2:x2+w2-Math.max(w2,Math.min(150,left?LW-SAFE.r-8-x2:x2+w2-SAFE.l-8)),Math.max(w2,Math.min(150,left?LW-SAFE.r-8-x2:x2+w2-SAFE.l-8)),cy); else column(look,cy,x2,8); }
+  column(act,cy,x1,8); if(mode!=='race'&&pausedFrom==='play'&&obsOn()) obsPanel(left?x2:SAFE.l+6,left?LW-SAFE.r-6-x2:x2+w2-SAFE.l-6,cy);   /* v1.47: all the room beside the actions */ else column(look,cy,x2,8); }
 /* v1.44: the heavy skin's sliders in the pause (the maintainer, of each: «ползунок? :)»), in place of the look column (the skin is fixed while it is on);
    v1.45: 0–200%, the mark at 100% —
    pause, move them, play on and see. 0 — none; the strengths are 1.44's (its 50% then is 50% now) */
-function obsPanel(px,pw,cy){ var pad=5, rh=Math.max(PF.CAP,10)+5, vw=PF.width('200%'), ids=OBS_SL.map(function(x){ return x[0]; }),
-      tg=[['obs_shot',L('obs_shot')+': '+L('obs_shot'+obsShot())],['obs_grim',L(obsGRim()?'obs_grim_on':'obs_grim_off')],['obs_ringon',L(obsRingOn()?'obs_ringon_on':'obs_ringon_off')]], th=PF.CAP+7,   /* v1.46: one line a slider; the shot and the rim to tap */
-      ph=pad*2+ids.length*rh+tg.length*th+2, y0=Math.max(topY()+12,Math.min(LH-SAFE.b-4-ph,Math.round(cy-ph/2))), ix=px+pad, iw=pw-2*pad, lw=Math.round(iw*0.46), y=y0+pad;
-  px=Math.round(px);
-  lx.globalAlpha=0.9; R(P.bg,px,y0,pw,ph); lx.globalAlpha=1; frame(px,y0,pw,ph,P.line);
-  var scA=Math.min.apply(null,ids.map(function(id){ return Math.min(1,lw/Math.max(1,PF.width(L(id)))); }));   /* the labels all one size */
-  ids.forEach(function(id){ var v=obsSl(id), lab=L(id), sc=scA, cy2=y+Math.round(rh/2)-1; text(lab,ix,cy2-Math.round(PF.CAP*sc/2),P.soft,'left',sc);
-    slider(id,ix+lw+4,cy2-5,iw-lw-vw-10,v/2,0.5); text(Math.round(v*100)+'%',ix+iw,cy2-Math.round(PF.CAP/2),P.text,'right'); y+=rh; });
-  y+=2; tg.forEach(function(x){ var sc=Math.min(1,iw/Math.max(1,PF.width(x[1]))), w2=PF.width(x[1],sc); text(x[1],ix,y,P.band,'left',sc); R(P.band,ix,y+PF.CAP+2,w2,1); BTN.push({id:x[0],x:ix-4,y:y-3,w:w2+8,h:th}); y+=th; }); }
+/* v1.47 (the maintainer: «разведи опции на две колонки, а то пальцем попадать сложно»): two columns — the label over its slider (a taller
+   strip to put a finger on), then the switches two to a row */
+function obsPanel(px,pw,cy){ var pad=5, gap=2, cg=8, rh=PF.CAP+gap+10+5, vw=PF.width('200%'), ids=OBS_SL.map(function(x){ return x[0]; }),
+      tg=[['obs_shot',L('obs_shot')+': '+L('obs_shot'+obsShot())],['obs_grim',L(obsGRim()?'obs_grim_on':'obs_grim_off')],['obs_ringon',L(obsRingOn()?'obs_ringon_on':'obs_ringon_off')],['obs_reco',L('obs_reco')]],
+      th=PF.CAP+9, nl=Math.ceil(ids.length/2), ph=pad*2+nl*rh+Math.ceil(tg.length/2)*th+3, iw=pw-2*pad, cw=Math.floor((iw-cg)/2),
+      y0=Math.max(topY()+10,Math.min(LH-SAFE.b-3-ph,Math.round(cy-ph/2))), ix=Math.round(px)+pad;
+  px=Math.round(px); lx.globalAlpha=0.9; R(P.bg,px,y0,pw,ph); lx.globalAlpha=1; frame(px,y0,pw,ph,P.line);
+  var scA=Math.min.apply(null,ids.map(function(id){ return Math.min(1,cw/Math.max(1,PF.width(L(id)))); }));   /* the labels all one size */
+  ids.forEach(function(id,i){ var col=i<nl?0:1, x=ix+col*(cw+cg), y=y0+pad+(i%nl)*rh, v=obsSl(id);
+    text(L(id),x,y,P.soft,'left',scA); slider(id,x,y+PF.CAP+gap+1,cw-vw-6,v/2,0.5); text(Math.round(v*100)+'%',x+cw,y+PF.CAP+gap+6-Math.round(PF.CAP/2),P.text,'right'); });
+  var scT=Math.min.apply(null,tg.map(function(x){ return Math.min(1,cw/Math.max(1,PF.width(x[1]))); })), yt=y0+pad+nl*rh+3;
+  tg.forEach(function(x,i){ var tx=ix+(i%2)*(cw+cg), ty=yt+Math.floor(i/2)*th, w2=PF.width(x[1],scT); text(x[1],tx,ty,P.band,'left',scT); R(P.band,tx,ty+PF.CAP+2,w2,1); BTN.push({id:x[0],x:tx-3,y:ty-4,w:cw+6,h:th}); }); }
 /* v0.24 "start over" from the pause menu: straight into a countdown with the same calibration, or through calibration again */
 function sRestart(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('restart'),L('restart_s'));
   column([['rs_go',L('rs_go'),'primary'],['rs_cal',L('recal')],['rs_back',L('back')]],Math.round(LH*0.58)); }
@@ -891,6 +894,7 @@ var ACT={
   shot_bounce:function(){ store.set('sonaroids_shot_bounce',shotBounce()?'0':'1'); },
   obs_shot:function(){ var i=OBS_SHOTS.indexOf(obsShot()); store.set('sonaroids_obs_shot',String(OBS_SHOTS[(i+1)%OBS_SHOTS.length])); },   /* v1.46 */
   obs_grim:function(){ store.set('sonaroids_obs_grim',obsGRim()?'0':'1'); },
+  obs_reco:function(){ obsReco(); },   /* v1.47 */
   obs_ringon:function(){ store.set('sonaroids_obs_ringon',obsRingOn()?'0':'1'); },
   mouse:function(){ store.set('sonaroids_mouse',store.get('sonaroids_mouse','0')==='1'?'0':'1'); },   /* v1.44 */
   obs:function(){ store.set('sonaroids_obs',store.get('sonaroids_obs','0')==='1'?'0':'1'); setSkin(skinId); },   /* v1.42: the heavy skin on / off (a test) */

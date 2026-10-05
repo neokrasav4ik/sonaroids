@@ -153,3 +153,6 @@ android/app/release.jks
 android/local.properties
 promo/frames_*/
 game/play/__promo.html
+
+# a test run in progress (tests/run_par.py)
+tests/.running

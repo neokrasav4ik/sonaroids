@@ -3,7 +3,7 @@
    Needs Playwright with Chromium (skipped without it). Run: node tests/screens.js */
 let chromium; try{ ({chromium}=require('playwright')); }catch(e){ console.log('playwright not installed — skipped'); process.exit(0); }
 const fs=require('fs'), path=require('path'); const ROOT=path.join(__dirname,'..'), OUT=path.join(__dirname,'out','screens'); fs.mkdirSync(OUT,{recursive:true});
-const SIZES=[[568,320],[667,375],[740,360],[844,390],[932,430],[1024,768],[1366,1024]];
+const SIZES=process.env.SCREENS_QUICK?[[568,320],[1024,768]]:[[568,320],[667,375],[740,360],[844,390],[932,430],[1024,768],[1366,1024]];   // v1.51: SCREENS_QUICK=1 (run_par.py --changed) — the smallest phone and the iPad only
 const SCREENS=['lang','hub','settings','title','skins','sound','phone','mic','probe','wave','wave-try','count','play','pause-play','restart','over','over-here','scores','nick','link','linkshow','linkin','linkdone','lost','nomic',
   'race-menu','race-skins','race-set','race-try','race-count','race-play','race-pause','race-over'];   // v0.84: SonaRace's own screens (its menu, the try-out with the car, the race, its pause and finish)
 // v1.07: the buttons each screen must show (checked below) — waited for before the checks, so a slow frame is not a failure

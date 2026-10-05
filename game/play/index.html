@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='1.50';
+var VERSION='1.53';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -3619,7 +3619,7 @@ var OBS={ok:null,err:'',cv:null,g:null,act:false,rk:[],drew:false,vis:false,t:34
    listed only where WebGL 2 runs on a real graphics chip (not a software one) and this phone has not been found too slow for it */
 function obsCan(){ if(OBS.can!==undefined) return OBS.can; var ok=false;
   try{ if(/[?&]obs=force/.test(location.search)||localStorage.getItem('sonaroids_obs_force')==='1') return OBS.can=true;   /* the tests: a software chip too */
-    if(localStorage.getItem('sonaroids_obs_slow')==='1') return OBS.can=false;
+    localStorage.removeItem('sonaroids_obs_slow');   /* v1.52: no more hiding on a slow phone (the maintainer: «убери эту защиту.. если тормозит — пусть это просто будет видно»); the mark 1.48–1.51 left is wiped */
     var c=document.createElement('canvas'), g=c.getContext('webgl2'); if(g){ var ri=g.getExtension('WEBGL_debug_renderer_info'), r=String(ri?g.getParameter(ri.UNMASKED_RENDERER_WEBGL):g.getParameter(g.RENDERER)||'');
       ok=!/swiftshader|llvmpipe|software|basic render/i.test(r); var lo=g.getExtension('WEBGL_lose_context'); if(lo) lo.loseContext(); } }catch(e){ ok=false; }
   return OBS.can=ok; }
@@ -3850,17 +3850,14 @@ var OBS_FS_O=OBS_SC+'\n'+[
 'uniform int uGRim;',
 'float sdRBox(vec2 p,vec2 b,float r){ vec2 q=abs(p)-b+r; return length(max(q,0.0))+min(max(q.x,q.y),0.0)-r; }',
 'float tileD(vec2 p){ vec2 q=abs(p); return max(max(q.x,q.y)-0.86,(q.x+q.y-1.30)*0.7071); }',   /* an octagon: a square, its corners cut */
-/* v1.50 the power-up «Б6б» (the maintainer, 5 Oct, after the gold plates and the white-gold sketches: «ни один.. плохо считывается и
-   малозаметно.. может сделать его кипельно белым? светящимся?» → «еще варианты б2 и б6.. возможно с кипельностью я погорячился» → «б6б»):
-   a plate of glossy obsidian in a frame of white porcelain, a soft white glow round it; the sign white, drawn over it on the HD canvas */
+/* v1.53 the power-up «Б2б» (the maintainer: «б6б считывается плохо.. ставим б2б»): a pearl-white plate, its corners cut, a thin black
+   edge round it (so it reads on pale ink too), a sheen of colours drifting slowly over the white, a soft white glow; the sign black, drawn
+   over it on the HD canvas. Before: 1.50 «Б6б» (obsidian in a porcelain frame, white sign) — read poorly in the game */
+'vec3 pearl(vec2 p,float t){ float a=dot(p,vec2(0.6,0.8))*2.2+t*0.35; return vec3(0.92)+0.10*vec3(sin(a),sin(a+2.1),sin(a+4.2)); }',
 'vec4 tile(vec2 uv,vec2 c,float S){ vec2 p=(uv-c)/S; float d=tileD(p); float px=1.5/(uRes.y*S); vec3 W=vec3(1.0,0.98,0.94); float br=0.95+0.05*sin(uT*3.0);',
-'  vec3 em=W*exp(-max(d,0.0)*10.0)*0.14*br; if(uGRim==1){ vec3 rc=invOf(bgAt(c+(uv-c)*2.5)); float rim=smoothstep(0.075,0.045,abs(d-0.13)); em+=rc*(rim*1.5+exp(-max(d,0.0)*6.0)*0.18); }',
-'  if(d>px) return vec4(em,0.0); float cov=smoothstep(px,-px,d); float e=-d;',
-'  vec2 g=vec2(tileD(p+vec2(0.01,0.0))-d,tileD(p+vec2(0.0,0.01))-d)/0.01; vec3 Ld=normalize(vec3((uL-c)/0.4,0.6)), hh=normalize(Ld+vec3(0,0,1));',
-'  float fr=1.0-smoothstep(0.14,0.17,e);',
-'  vec3 blk=vec3(0.004)+bgAt(c+(uv-c)*0.5)*0.10+vec3(1.0)*pow(max(dot(normalize(vec3(p*0.15,1.0)),hh),0.0),120.0)*1.6;',
-'  vec3 n=normalize(vec3(g*0.8,1.0)); vec3 frame=W*(0.70+0.40*max(dot(n,Ld),0.0))+vec3(1.0)*pow(max(dot(n,hh),0.0),60.0)*1.2;',
-'  vec3 col=mix(blk,frame,fr);',
+'  vec3 em=W*exp(-max(d,0.0)*10.0)*0.28*br; if(uGRim==1){ vec3 rc=invOf(bgAt(c+(uv-c)*2.5)); float rim=smoothstep(0.075,0.045,abs(d-0.13)); em+=rc*(rim*1.5+exp(-max(d,0.0)*6.0)*0.18); }',
+'  float ew=0.09; if(d>px+ew) return vec4(em,0.0); float cov=smoothstep(px,-px,d-ew);',   /* the black edge: just outside the plate */
+'  vec3 col=pearl(p,uT)*1.15+W*0.1*(1.0-length(p)); col=mix(col,vec3(0.006,0.004,0.006),smoothstep(-px,px,d));',
 '  return vec4(col*cov+em*(1.0-cov),cov); }',
 /* v1.46 the saucer «Г6» (the maintainer: «НЛО пока г6»): an almond of obsidian split in two, red light between the halves, a red pupil looking
    at us, a red edge; hurt — it flashes white */
@@ -3914,7 +3911,7 @@ function obsSize(){ var c=OBS.cv, cssW=LW*S/DPR, cssH=LH*S/DPR, od=Math.min(DPR,
 /* the frame's pace: slower than ~50 a second for two seconds — the wallpaper steps down (1.5 → 0.75 CSS px), then the objects (3 → 1.5) */
 function obsPace(){ var P=OBS.perf, now=performance.now(), dt=P.t?(now-P.t)/1000:0; P.t=now; if(dt<=0||dt>0.25) return;
   if(P.skip>0){ P.skip-=dt; return; } P.sum+=dt; P.n++; if(P.sum<2) return; var avg=P.sum/P.n; P.sum=0; P.n=0; if(avg<=1/50) return;
-  if(OBS.bd>0.75) OBS.bd=Math.max(0.75,OBS.bd-0.25); else if(OBS.od>1.5) OBS.od=Math.max(1.5,Math.min(OBS.od,DPR)-0.5); else if(OBS.q>0) OBS.q--; else if(OBS.bd>0.5) OBS.bd=0.5; else { if(avg>1/40&&++OBS.slowN>=2&&!OBS.slowSet){ OBS.slowSet=true; try{ store.set('sonaroids_obs_slow','1'); Logs.ev('obsidian: '+Math.round(1/avg)+' fps at the lowest — hidden from the skins from the next start'); }catch(e){} } return; }   /* v1.44: then fewer octaves of ink (a Mi 9 was far too slow); v1.48: still too slow — not listed on this phone from then on */
+  if(OBS.bd>0.75) OBS.bd=Math.max(0.75,OBS.bd-0.25); else if(OBS.od>1.5) OBS.od=Math.max(1.5,Math.min(OBS.od,DPR)-0.5); else if(OBS.q>0) OBS.q--; else if(OBS.bd>0.5) OBS.bd=0.5; else return;   /* v1.44: then fewer octaves of ink (a Mi 9 was far too slow); v1.48: still too slow — not listed on this phone from then on */
   P.skip=2; try{ if(typeof Logs!=='undefined'&&Logs.ev) Logs.ev('obsidian: '+Math.round(1/avg)+' fps → ink '+OBS.bd+'×, objects '+Math.min(DPR,OBS.od)+'×, quality '+OBS.q); }catch(e){} }
 var OBS_SUN_T=60, OBS_MIX_T=60;
 function obsSun(t){ var a=2.2+t/OBS_SUN_T*6.2832, ar=LW/LH; return [Math.cos(a)*ar*0.62,Math.sin(a)*0.74]; }
@@ -3924,7 +3921,7 @@ function obsMix(t){ return 0.5-0.5*Math.cos(t/OBS_MIX_T*6.2832); }
    at the same box — the ship's half length 12 (10.4 in 1.48), the saucer 1.22× the core's half width, the shots back at their 1.47 size; the power-up
    (the maintainer: «у подарков размер нормальный, но подхватить их сложно») stands still on the point the core counts — the field bobs every
    power-up ±2 px, here that is taken back; its half side 8.0 (7.2) since it got a frame round the sign, the sign itself a little smaller */
-var OBS_SZ={ship:12,ufo:1.22,pick:8.0};
+var OBS_SZ={ship:12,ufo:1.22,pick:7.3};   /* v1.53: 7.3 with Б2б’s black edge round it — 14 across, as every skin’s power-up */
 function obsUV(x,y){ return [(x-LW/2)/LH,(LH/2-y)/LH]; }
 function obsShipUni(p){ var g=OBS.g, sh=new Float32Array(24), H=OBS.shipH, now=OBS.t, s=OBS.ship;
   for(var k=0;k<24;k++){ var ta=now-k*0.15, v=s?s.y:0; for(var i=H.length-1;i>=0;i--){ if(H[i][0]<=ta){ v=H[i][1]; break; } v=H[i][1]; } sh[k]=v; }
@@ -3978,7 +3975,7 @@ function obsBegin(show){ if(!obsInit()) return; if(OBS.act) OBS_NEST.push({list:
   OBS.main=!!show&&typeof hdCv!=='undefined'&&hdCv&&hx===hdCv.getContext('2d'); OBS.dst=hx; var m=hx.getTransform?hx.getTransform():null; OBS.base=m; OBS.bs=m?Math.hypot(m.a,m.b):1; }
 function obsEnd(){ if(!OBS.act) return; OBS.act=false; try{
     if(OBS.main){ if(!OBS.vis){ OBS.cv.style.display='block'; OBS.vis=true; OBS.perf.t=0; OBS.perf.skip=3; }
-      var tf=hdCv&&hdCv.style.transform||''; if(OBS.cv.style.transform!==tf) OBS.cv.style.transform=tf; obsPace(); obsRender(); }
+      var tf=hdCv&&hdCv.style.transform||''; if(OBS.cv.style.transform!==tf) OBS.cv.style.transform=tf; if(scr==='play'||scr==='count'||scr==='count-resume') obsPace(); else OBS.perf.t=0; obsRender(); }   /* v1.52: the picture steps down for the game only — since 1.49 the getting-ready screens (the sky and, inside it, the drawn phone's world: two renders a frame) could step it down for the whole game */
     else { obsRender(); var d=OBS.dst; d.save(); if(OBS.base) d.setTransform(OBS.base); d.globalCompositeOperation='destination-over'; d.globalAlpha=1; d.drawImage(OBS.cv,0,0,LW,LH); d.restore(); }   /* a demo: the world copied under the pictures */
     OBS.err=''; }catch(e){ OBS.err=String(e&&e.message||e); if(!OBS.logged){ OBS.logged=true; try{ Logs.ev('obsidian: '+OBS.err.slice(0,200)); }catch(e2){} } }
   if(OBS.main) OBS.drew=true;
@@ -4009,7 +4006,7 @@ var OBSK={id:'obsidian', hd:true, glow:false, nolight:true, flyLook:'obsidian', 
   shipRoll:function(x,y,t,ra){ if(!OBS.act) return obsBase('ship',[x,y,t,false]); obsShip(x,y,ra); },
   ufo:function(ux,uy,big,hurt){ if(!OBS.act) return obsBase('ufo',arguments); var u=obsUV(ux,uy), Su=(big?7:5)*K*OBS_SZ.ufo/LH;   /* the core's half width, a little more */ OBS.list.push([u[0],u[1],Su*1.7,4,Su,hurt?1:0]); },
   pick:function(x,y,type){ if(!OBS.act) return obsBase('pick',arguments); y-=Math.sin(clock*3)*2; var u=obsUV(x,y), r=OBS_SZ.pick/LH; OBS.list.push([u[0],u[1],r*2.4,5,r]);
-    var w=hdIconW; hdIconW=1.2; hx.save(); hx.translate(x,y); hx.scale(1.05*OBS_SZ.pick/7.2,1.05*OBS_SZ.pick/7.2); hdIcon(type,'#f4efe6'); hx.restore(); hdIconW=w; },   /* the sign: white on the obsidian, inside the porcelain frame */
+    var w=hdIconW; hdIconW=1.2; hx.save(); hx.translate(x,y); hx.scale(1.05*OBS_SZ.pick/7.2,1.05*OBS_SZ.pick/7.2); hdIcon(type,'#140e12'); hx.restore(); hdIconW=w; },   /* the sign: black on the pearl */
   bullet:function(x,y){ if(!OBS.act) return obsBase('bullet',arguments); var m=hx.getTransform?hx.getTransform():{a:1,b:0}, a=-Math.atan2(m.b,m.a), u=obsUV(x,y); OBS.list.push([u[0],u[1],0.09,2,a]); },
   ebullet:function(x,y){ if(!OBS.act) return obsBase('ebullet',arguments); var u=obsUV(x,y); OBS.list.push([u[0],u[1],0.04,3]); },
   shieldRing:function(x,y,t){ if(!OBS.act) return obsBase('shieldRing',arguments); var u=obsUV(x+11,y), Su=14/LH; OBS.list.push([u[0],u[1],Su*1.4,7,Su]); },

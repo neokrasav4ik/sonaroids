@@ -3,6 +3,7 @@
 
   python3 build.py           write game/play/index.html
   python3 build.py --check   build and compare with game/play/index.html (CI); fails if they differ
+  python3 build.py --force   write even while a test run is on (tests/.running) — normally refused
   python3 build.py --icons   also draw the home-screen icons game/play/icon-*.png (needs Pillow; the icons are committed)
 
 The parts are joined in name order. game/font.js (made by font/make_font.py) goes in right after the <script> tag,
@@ -81,6 +82,12 @@ if __name__ == '__main__':
         print('game/play/index.html matches src/:', same, '| version', version(), '| service worker has it:', same_sw)
         same = same and same_sw
         sys.exit(0 if same and ok else 1)
+    run = os.path.join(HERE, 'tests', '.running')   # v1.51: not under a test run — a rebuild mid-run hung a check for 33 minutes (5 Oct)
+    if os.path.exists(run) and '--force' not in sys.argv:
+        try:
+            pid = int(open(run).read().split()[0]); os.kill(pid, 0)
+            print(f'a test run is on (process {pid}) — not writing the game under it; wait for it to end, or: python3 build.py --force'); sys.exit(2)
+        except (ValueError, ProcessLookupError, PermissionError, IndexError): pass   # a stale mark
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     open(OUT, 'w', encoding='utf-8').write(html)
     swp, sws = sw_source(); open(swp, 'w', encoding='utf-8').write(sws)

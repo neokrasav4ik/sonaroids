@@ -5,7 +5,7 @@
    the old world is drawn again each frame into its own canvases (the game's drawing pointed at them) and laid over the left of the edge,
    so both worlds move. The race's next chunks and the flight's next rocks are made in the seconds before, a little each frame. ── */
 var flyMix=false, raceMix=false, MX={t:0,next:30,hist:[],tr:null,pend:null,warm:null,pre:false}, MX_DUR=1.1, mxH=null, mxL=null;
-function mixOn(){ return mode==='race'?raceMix:(flyMix&&!obsOn()); }   // v1.42: the heavy skin is one skin, no mixing
+function mixOn(){ return mode==='race'?raceMix:flyMix; }
 /* ── v1.29, the skins' playlist (the maintainer: «скинплейлист… выбрать один скин на игру, шаффл всех подряд, или выбрать свой плейлист
    скинов, а также задать время смены скина в секундах»; the screen «В» — one big card to leaf through, «в списке» under it): each game
    keeps the skins ticked (one — always that one; several — they take turns; all — all in a row), the last list of two or more (the menu

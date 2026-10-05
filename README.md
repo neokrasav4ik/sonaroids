@@ -7,7 +7,7 @@
 **Games you play with your palm in mid-air.** You never touch the screen: the phone plays an inaudible ultrasonic tone through its own speaker, listens to the echo with its own microphone and works out how far your palm is. That distance becomes the height of your ship or your car. No camera, no extra hardware, nothing to install — it is a web page.
 
 - **Sonar control** — your palm in mid-air instead of buttons.
-- **Skin playlist** — six worlds in SonaFly and three in SonaRace: build a playlist of them and the world changes right during the game.
+- **Skin playlist** — six worlds in SonaFly (a seventh, obsidian, on flagship phones) and three in SonaRace: build a playlist of them and the world changes right during the game.
 
 **▶ Play: [sonaroids.app](https://sonaroids.app)**
 - **iPhone:** open it in Safari and add it to the Home Screen.
@@ -27,6 +27,7 @@ The ship fires on its own; all you choose is where it is.
 - **Saucers:** a large one from level 2, a small one that aims at you from level 4. Line up with them and they sidestep.
 - **The ship flies like a plane:** its nose goes up and down as it climbs and dives, it does a barrel roll on a sharp turn, swirling trails follow it and its flame flares on a fast move — each skin in its own way. The picture only: the steering and the score are the same.
 - **Six skins:** space, fairy tale, vector 80s, neon, notebook, retro LCD — each in **HD** or in **pixels**, each with its own ship, saucers, power-ups, shots, shield, asteroids and explosions. In every skin things are drawn exactly the size the game counts them.
+- **Obsidian, a heavy skin for flagship phones:** drawn on the graphics chip (WebGL2). Black glass with golden veins drifts on live violet ink: the ink is drawn in to every explosion, an uneven ring spreads from it, the ship and the rocks leave wakes in it. The more action on the screen, the calmer the ink, so the picture does not shimmer. The skin is listed only where it runs well: not on a weak or software graphics chip, and if a phone twice fails to hold ~40 frames a second, the skin is hidden from the next start. For tuning: in the pause, a long tap on the version opens test sliders for the effects' strength (0–200%), the shot choice and a «DEFAULTS» button.
 
 <p align="center"><img src="promo/sonafly_skins.png" width="640" alt="SonaFly's six skins in play: space, fairy tale, vector 80s, neon, notebook, retro LCD — each with its own ship, saucer, power-up, shots and rocks"></p>
 
@@ -137,6 +138,7 @@ A player is a random key kept on the phone; the server stores only its hash. Wit
 | `42_hands.js` | the hands of those pictures in HD, as pictures — made by `hands/make_hands.py` |
 | `43_skins.js`, `45_hd.js`, `46_vecskins.js`, `47_pixskins.js`, `48_sizes.js`, `48_flight.js` | SonaFly's skins: pixels, HD, shape skins; things drawn the size the game counts them |
 | `48_racehd.js`, `48_racecandy.js`, `48_racenote.js`, `48_racepirate.js` | SonaRace's candy land, notebook and pirate world, in HD and in pixels |
+| `48_obsidian.js` | obsidian: its own WebGL2 canvas under the main one, the ink, rings, wakes and every object in shaders; lowers its own quality when frames run late |
 | `48_mix.js` | the skins' list: which are on, how often and in what order they change in a game |
 | `49_main.js` | the screens, the menus and the game loop |
 
@@ -149,7 +151,7 @@ sh tests/run.sh                  # the games and the server (~9 min: the real-ti
 cd lab && sh tools/run_all.sh    # the sonar lab
 ```
 
-Node 22.13+ (the server uses `node:sqlite`) and Python 3. The screen and full-game checks play both games in headless Chromium with a synthetic microphone and a fake high-score server. They need Playwright and are skipped without it. On every check bots drive over a hundred SonaRace races to keep a race's length and difficulty where they were tuned. GitHub Actions runs the checks on every push to `main` and publishes the site only if they pass.
+Node 22.13+ (the server uses `node:sqlite`) and Python 3. The screen and full-game checks play both games in headless Chromium with a synthetic microphone and a fake high-score server. They need Playwright and are skipped without it. Obsidian is checked on a software graphics chip (SwiftShader) with `?obs=force`: `tests/obsidian_sizes.js` measures its objects against the same bounds as every other skin. To look at skins on a computer, `?mouse=1` (or «MOUSE INSTEAD OF SONAR» on the title's test panel) lets the mouse fly the ship instead of the palm; such games are marked as tests and don't go to the high scores. On every check bots drive over a hundred SonaRace races to keep a race's length and difficulty where they were tuned. GitHub Actions runs the checks on every push to `main` and publishes the site only if they pass.
 
 The version is in `VERSION`: it shows on the games' screen and goes into the logs. `CHANGELOG.md` says what each version changed and why. When a change alters play, the rules tag in `src/13_core.js` or `src/14_race.js` changes too, and the server is updated together with the site.
 

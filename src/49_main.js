@@ -55,7 +55,7 @@ function topY(){ return SAFE.t+Math.max(8,Math.round(LH*0.05)); }
 function diagCorner(label,top,ty,flip,ax){ var vr=ty?(freeSide()!=='left')!==!!flip:(flip!==undefined?!!flip:freeSide()==='left'),   /* at the bottom: flip true — always the right corner (the games' screen, v0.71) */   /* under the menu button (ty) — its side; flip — the other side */ vx=ax!==undefined?ax:vr?LW-SAFE.r-8:SAFE.l+8, vy=top?(ty||SAFE.t+8):LH-SAFE.b-12, vw=PF.width(label), al=vr?'right':'left';
   text(label,vx,vy,(scr==='scores'?scPeople:diag)?P.band:P.soft,al); var bx0=Math.max(0,(vr?vx-vw:vx)-8), bx1=Math.min(LW,(vr?vx:vx+vw)+8);
   var by0=top?Math.max(0,vy-8):vy-4; BTN.push({id:'ver',x:bx0,y:by0,w:bx1-bx0,h:Math.min(top?PF.CAP+16:PF.CAP+10,LH-by0)});
-  if(top&&diag&&Logs.has()&&scr!=='scores'){ var ls=L('logs'), lw=PF.width(ls), ly=vy+PF.CAP+12, lx0=vr?vx-lw:vx;
+  if(top&&diag&&Logs.has()&&scr!=='scores'&&scr!=='paused'){ var ls=L('logs'), lw=PF.width(ls), ly=vy+PF.CAP+12, lx0=vr?vx-lw:vx;
     text(ls,lx0,ly,P.band,'left'); R(P.band,lx0,ly+PF.CAP+2,lw,1); BTN.push({id:'logs',x:lx0-8,y:ly-6,w:lw+16,h:PF.CAP+12}); }
   if(top&&diag&&scr==='title'&&mode!=='race') tiltPanel(vr,vy+(Logs.has()?2:1)*(PF.CAP+12)-4);   /* v1.41: the maintainer's test switches as sliders, in a panel of their own */
   // v0.58: at the bottom (the title screen) — a row of service links on the line above the version, the same on every phone:
@@ -229,7 +229,7 @@ function sliderSet(id,f){ var v=Math.round(Math.max(0,Math.min(1,f))*100)/100;
 function sliderAt(e){ var x=e.clientX*DPR/S, y=e.clientY*DPR/S; for(var i=SLD.length-1;i>=0;i--){ var b=SLD[i]; if(x>=b.x-6&&x<b.x+b.w+6&&y>=b.y&&y<b.y+b.h) return b; } return null; }
 function tiltPanel(vr,y0){ var fr=titleFree||[SAFE.l,LW-SAFE.r], pad=8, gap=5, rh=PF.CAP+gap+10+8, fv=flyTiltK(), sv=shotTilt(),
     bs=L(shotBounce()?'bounce_on':'bounce_off'), vw=Math.max(PF.width('100%'),PF.width(L('straight'))),   /* the value stands right of its track */
-    TG=[['shot_bounce',bs],['obs',L(store.get('sonaroids_obs','0')!=='1'?'obs_off':obsInit()?'obs_on':'obs_na')]].concat(mouseFine()||mouseOn()?[['mouse',L(mouseOn()?'mouse_on':'mouse_off')]]:[]),   /* v1.42: the heavy skin (its sliders are in the pause, 1.44) */
+    TG=[['shot_bounce',bs]].concat(mouseFine()||mouseOn()?[['mouse',L(mouseOn()?'mouse_on':'mouse_off')]]:[]),   /* v1.42: the heavy skin (its sliders are in the pause, 1.44) */
     need=Math.max(PF.width(L('ftilt')),PF.width(L('stilt'))+PF.width(' · '+L('as_nose')),90+vw,Math.max.apply(null,TG.map(function(x){ return PF.width(x[1]); })))+2*pad,
     mg=8, free=fr[1]-fr[0]-2*mg, pw, iw, px, ph;
   if(need>free){ need-=2*pad-10; pad=5; mg=4; free=fr[1]-fr[0]-2*mg; }   /* a narrow free area (a tablet): the panel's margins thinner */
@@ -413,7 +413,7 @@ function poolFill(budget){ if(pool.K!==K||pool.skin!==SK||(SK.hd&&pool.hs!==hs))
 function rockFromPool(r){ poolFill(0); var l=pool.list[r.sz]; if(!l||!l.length) return makeSkinRock(SK,r.sz,r.r,r.id);
   var b=l[r.id%l.length], o={}; for(var k in b) o[k]=b[k]; o.ox=b.ox||0; o.rot=(r.id*5)%16; o.vr=b.vr===0?0:((r.id*7)%11-5); return o; }
 function field(dt,speed){ if(mode==='race'&&g&&g.car){ raceScene(g,g.d,g.car.y,dt); raceParts(dt); return; }
-  var GK=SK.glBegin?SK:null; if(GK) GK.glBegin(); try{ fieldIn(dt,speed); } finally { if(GK) GK.glEnd(); } }   /* v1.42: the heavy skin draws the field on the graphics chip */
+  var GK=SK.glBegin?SK:null; if(GK) GK.glBegin(true); try{ fieldIn(dt,speed); } finally { if(GK) GK.glEnd(); } }   /* v1.42: the heavy skin draws the field on the graphics chip */
 function fieldIn(dt,speed){
   poolFill(0); SK.sky(dt,speed);
   if(!g) return;
@@ -436,7 +436,7 @@ function fieldIn(dt,speed){
   drawParts(dt);
 }
 function sCount(){ if(mode==='race'){ raceCount(); return; } countT-=DT; poolFill(2); followShip();
-  var GK=SK.glBegin?SK:null; if(GK) GK.glBegin(); try{ SK.sky(DT,0.6); flyShip(fx(Core.SHIP_X),shipY,clock,false,DT,null); } finally { if(GK) GK.glEnd(); }   // v1.40: the countdown's ship flies too
+  var GK=SK.glBegin?SK:null; if(GK) GK.glBegin(true); try{ SK.sky(DT,0.6); flyShip(fx(Core.SHIP_X),shipY,clock,false,DT,null); } finally { if(GK) GK.glEnd(); }   // v1.40: the countdown's ship flies too
   var n=Math.max(1,Math.ceil(countT)), cx0=Math.round(LW/2), cy0=Math.round(LH/2);
   ring(cx0,cy0,13,1-(countT-Math.floor(countT)),P.band); text(String(n),cx0,cy0-3,P.text,'center'); say(String(n));
   if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.play('tick');
@@ -565,7 +565,8 @@ function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globa
   if(w1+g+w2>LW-SAFE.l-SAFE.r-2*Math.max(8,Math.round(LW*0.04))){                                        // too narrow for two (a tablet in Russian): one tight column
     var it=act.concat(look), gap=Math.max(2,Math.min(8,Math.floor((bot-top+2-it.length*BH)/(it.length-1))));
     column(it,Math.round((top+bot)/2),undefined,gap); return; }
-  column(act,cy,x1,8); if(mode!=='race'&&pausedFrom==='play'&&obsOn()) obsPanel(left?x2:SAFE.l+6,left?LW-SAFE.r-6-x2:x2+w2-SAFE.l-6,cy);   /* v1.47: all the room beside the actions */ else column(look,cy,x2,8); }
+  column(act,cy,x1,8); var ob=mode!=='race'&&pausedFrom==='play'&&obsOn(); if(ob) diagCorner('V'+VERSION,true,SAFE.t+8,true);   /* v1.48: the test sliders hidden — a long press on the version shows them */
+  if(ob&&diag) obsPanel(left?x2:SAFE.l+6,left?LW-SAFE.r-6-x2:x2+w2-SAFE.l-6,cy);   /* v1.47: all the room beside the actions */ else column(look,cy,x2,8); }
 /* v1.44: the heavy skin's sliders in the pause (the maintainer, of each: «ползунок? :)»), in place of the look column (the skin is fixed while it is on);
    v1.45: 0–200%, the mark at 100% —
    pause, move them, play on and see. 0 — none; the strengths are 1.44's (its 50% then is 50% now) */
@@ -897,7 +898,6 @@ var ACT={
   obs_reco:function(){ obsReco(); },   /* v1.47 */
   obs_ringon:function(){ store.set('sonaroids_obs_ringon',obsRingOn()?'0':'1'); },
   mouse:function(){ store.set('sonaroids_mouse',store.get('sonaroids_mouse','0')==='1'?'0':'1'); },   /* v1.44 */
-  obs:function(){ store.set('sonaroids_obs',store.get('sonaroids_obs','0')==='1'?'0':'1'); setSkin(skinId); },   /* v1.42: the heavy skin on / off (a test) */
   audio:function(){ audDev=null; audFrom=null; go('audio'); },
   lab:function(){ location.href='../lab/sonar_lab3.html'; },
   ver:function(){ if(scr==='scores'){ scPeople=!scPeople; return; } diag=!diag; },   /* v1.34: on the scores screen the version's long press is «people only» */
@@ -1058,7 +1058,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:') navigator.service
 go('hub');   // v0.70: the games' screen first (always the menu first since 0.44; a new player's first "Play" walks through the instruction)
 requestAnimationFrame(loop);
 /* test hooks: headless tests drive the screens through these (harmless in the game) */
-window.__sonaroids={mixStart:function(){ mixStart(); },obs:function(c){ if(c==='roll') FLY.roll=0; return {ok:OBS.ok,err:OBS.err,vis:OBS.vis,bd:OBS.bd,od:OBS.od,n:OBS.list.length,an:OBS.an.length,f16:OBS.f16,sk:SK.id}; },fxBurst:function(x,y,n,kind){ var BU=SK.bursts(); burst(fx(x),y*K,n,BU[kind]||BU.rock,50*K); },mixNow:function(){ MX.next=MX.t; if(!MX.pend) MX.pend=mixPick(); },mixInfo:function(){ return {on:mixOn(),cur:mixCur(),pend:MX.pend,tr:MX.tr?MX.tr.t:null,hist:MX.hist.slice(),fly:flyMix,race:raceMix}; },noteZones:function(){ return RC.zones?RC.zones.slice():null; },noteRivals:function(v){ RN_RIV=v; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },noteInfra:function(f){ RN_FORCE=f||null; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },raceNote:function(o){ for(var k in o) RN_LOOK[k]=o[k]; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },raceSuper:function(v){ R_SUPER=v; },racePal:function(pud,bub){ if(pud) for(var k in pud) R_PUD[k]=pud[k]; if(bub) for(var j in bub) R_BUB[j]=bub[j]; RC.sp={}; },skinProbe:skinProbe,hdProbe:hdProbe,sizeProbe:sizeProbe,hdIds:hdIds,pixIds:function(){ return SKIN_IDS.filter(function(i){ return !!SKINS[i]; }); },skinIds:function(){ return SKIN_IDS.slice(); },go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },
+window.__sonaroids={mixStart:function(){ mixStart(); },obsProbe:function(k,a,b){ return obsProbe(k,a,b); },obs:function(c){ if(c==='roll') FLY.roll=0; return {ok:OBS.ok,err:OBS.err,vis:OBS.vis,bd:OBS.bd,od:OBS.od,n:OBS.list.length,an:OBS.an.length,f16:OBS.f16,sk:SK.id}; },fxBurst:function(x,y,n,kind){ var BU=SK.bursts(); burst(fx(x),y*K,n,BU[kind]||BU.rock,50*K); },mixNow:function(){ MX.next=MX.t; if(!MX.pend) MX.pend=mixPick(); },mixInfo:function(){ return {on:mixOn(),cur:mixCur(),pend:MX.pend,tr:MX.tr?MX.tr.t:null,hist:MX.hist.slice(),fly:flyMix,race:raceMix}; },noteZones:function(){ return RC.zones?RC.zones.slice():null; },noteRivals:function(v){ RN_RIV=v; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },noteInfra:function(f){ RN_FORCE=f||null; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },raceNote:function(o){ for(var k in o) RN_LOOK[k]=o[k]; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },raceSuper:function(v){ R_SUPER=v; },racePal:function(pud,bub){ if(pud) for(var k in pud) R_PUD[k]=pud[k]; if(bub) for(var j in bub) R_BUB[j]=bub[j]; RC.sp={}; },skinProbe:skinProbe,hdProbe:hdProbe,sizeProbe:sizeProbe,hdIds:hdIds,pixIds:function(){ return SKIN_IDS.filter(function(i){ return !!SKINS[i]; }); },skinIds:function(){ return SKIN_IDS.slice(); },go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },
   setBooted:function(v){ booted=v; },
   board:function(){ return {tbl:tblBox,nick:nickEl?{shown:nickEl.style.display!=='none',rect:nickEl.getBoundingClientRect().toJSON()}:null}; },
   side:function(){ return {hand:handSide(),rel:handRel,cam:camEnd(),stored:store.get('sonaroids_rel',''),say:sayLast}; }, wave:function(){ toWave(); },

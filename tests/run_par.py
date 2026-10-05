@@ -43,6 +43,7 @@ LANE_B = [  # phase 2, beside lane A: the rest
     ('HD skins: every object readable on its sky (Chromium)', f'env HD=1 {H} tests/skin_audit.js'),
     ('graphics: pixels / HD (Chromium)', f'{H} tests/hd.js'),
     ('skins: objects drawn the size the game counts (Chromium)', f'{H} tests/skin_sizes.js'),
+    ('obsidian (graphics chip): objects the size the game counts (Chromium)', f'{H} tests/obsidian_sizes.js'),
     ('game rules and difficulty (bot)', f'{H} tests/test_rules.js'),
     ('race core: deterministic, rules and length (bot)', f'{H} tests/test_race.js'),
 ]

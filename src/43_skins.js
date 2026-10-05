@@ -294,7 +294,8 @@ function demoMake(){ var R2=srand(5), d={rocks:[],shots:[],ufo:{x:LW*0.8,y:LH*0.
   for(var i=0;i<7;i++) d.rocks.push({x:LW*(0.3+R2()*0.8),y:LH*(0.12+R2()*0.76),sz:i%3===0?0:i%3===1?1:2,v:10+R2()*14,id:i});
   return d; }
 function demoRock(sk,sz,id){ var k=sk.id+(sk.hd?'hd'+hs:'')+':'+sz+':'+id+':'+K; if(!demoSpr[k]) demoSpr[k]=makeSkinRock(sk,sz,Core.R_SIZE[sz],id*13+sz); return demoSpr[k]; }
-function drawDemo(sk,dt,shipX,st,shipY,skyS,shipK){ var d;                   // v0.77: shipK — the ship a little larger (the drawn phone's screen)                            // v0.76: st — a demo of its own (the drawn phone's screen), shipY — the ship's height, skyS — the sky's speed
+function drawDemo(sk,dt,shipX,st,shipY,skyS,shipK){ if(sk.glBegin){ sk.glBegin(false); try{ drawDemoIn(sk,dt,shipX,st,shipY,skyS,shipK); } finally { sk.glEnd(); } return; } drawDemoIn(sk,dt,shipX,st,shipY,skyS,shipK); }   /* v1.48: a skin on the graphics chip draws its world under the demo's pictures */
+function drawDemoIn(sk,dt,shipX,st,shipY,skyS,shipK){ var d;                   // v0.77: shipK — the ship a little larger (the drawn phone's screen)                            // v0.76: st — a demo of its own (the drawn phone's screen), shipY — the ship's height, skyS — the sky's speed
   if(st){ if(!st.d||st.d.LW!==LW){ st.d=demoMake(); st.d.LW=LW; } d=st.d; } else { if(!demo||demo.LW!==LW){ demo=demoMake(); demo.LW=LW; } d=demo; } d.t+=dt;
   sk.sky(dt,skyS===undefined?0.5:skyS);
   d.rocks.forEach(function(r){ r.x-=r.v*K*dt; if(r.x<-20){ r.x=LW+20; r.y=LH*(0.12+Math.random()*0.76); }

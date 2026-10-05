@@ -17,13 +17,21 @@
    The menus keep the space skin's pictures (this skin draws only where the flight field is: the game, its count-down, pause, the end).
    Without WebGL 2 the switch says so and the skin stays off. ── */
 var OBS={ok:null,err:'',cv:null,g:null,act:false,rk:[],drew:false,vis:false,t:34,list:[],an:[],hist:[],shipH:[],ship:null,rollT0:-9,rollWas:false,
-  bd:1.5,od:3,q:2,perf:{t:0,n:0,sum:0,skip:3},P:{},key:'',tx:null};
-function obsOn(){ return typeof store!=='undefined'&&store.get('sonaroids_obs','0')==='1'&&obsInit(); }
+  bd:1.5,od:3,q:2,slowN:0,perf:{t:0,n:0,sum:0,skip:3},P:{},key:'',tx:null};
+/* v1.48: a skin of the game («обсидиан», the maintainer: «скин добавляем в игру… название скина обсидиан»), for flagship phones:
+   listed only where WebGL 2 runs on a real graphics chip (not a software one) and this phone has not been found too slow for it */
+function obsCan(){ if(OBS.can!==undefined) return OBS.can; var ok=false;
+  try{ if(/[?&]obs=force/.test(location.search)||localStorage.getItem('sonaroids_obs_force')==='1') return OBS.can=true;   /* the tests: a software chip too */
+    if(localStorage.getItem('sonaroids_obs_slow')==='1') return OBS.can=false;
+    var c=document.createElement('canvas'), g=c.getContext('webgl2'); if(g){ var ri=g.getExtension('WEBGL_debug_renderer_info'), r=String(ri?g.getParameter(ri.UNMASKED_RENDERER_WEBGL):g.getParameter(g.RENDERER)||'');
+      ok=!/swiftshader|llvmpipe|software|basic render/i.test(r); var lo=g.getExtension('WEBGL_lose_context'); if(lo) lo.loseContext(); } }catch(e){ ok=false; }
+  return OBS.can=ok; }
+function obsOn(){ return SK===OBSK&&obsInit(); }
 /* v1.43–1.44: the maintainer's sliders for the skin (in the pause, 0…1, 0.5 by default; the shaders take twice the value):
    ink — how strongly a hit draws the ink in; ring — how far the ring is from a circle; wake — the ship's wake; rwake — the rocks' wakes */
 /* v1.45: 0–200% (the maintainer: «самое зрелищное это 100/100/50/100.. можно было бы и по зрелищнее (200?)»), those four his picks to start;
    and the ink's fine detail (the maintainer: «иногда слишком широкие мазки без детализации, без нитей… может им тоже ползунок?») */
-var OBS_SL=[['obs_ink','sonaroids_obs_ink',1],['obs_rstr','sonaroids_obs_rstr',1],['obs_ring','sonaroids_obs_ring',1],['obs_wake','sonaroids_obs_wake',0.5],['obs_rwake','sonaroids_obs_rwake',1],['obs_det','sonaroids_obs_det',0.5],['obs_vsp','sonaroids_obs_vsp',0.5],['obs_damp','sonaroids_obs_damp',1]];
+var OBS_SL=[['obs_ink','sonaroids_obs_ink',2],['obs_rstr','sonaroids_obs_rstr',1],['obs_ring','sonaroids_obs_ring',1],['obs_wake','sonaroids_obs_wake',0.7],['obs_rwake','sonaroids_obs_rwake',0.6],['obs_det','sonaroids_obs_det',1],['obs_vsp','sonaroids_obs_vsp',1],['obs_damp','sonaroids_obs_damp',0.7]];
 function obsSl(id){ for(var i=0;i<OBS_SL.length;i++) if(OBS_SL[i][0]===id){ var d=OBS_SL[i][2], v=typeof store!=='undefined'?+store.get(OBS_SL[i][1],String(d)):d; return v>=0&&v<=2?v:d; } return 0.5; }
 function obsSlSet(id,v){ for(var i=0;i<OBS_SL.length;i++) if(OBS_SL[i][0]===id){ store.set(OBS_SL[i][1],String(v)); return true; } return false; }
 function obsInk(){ return obsSl('obs_ink'); }
@@ -35,15 +43,18 @@ function obsBusy(){ var t=OBS.t, h=0; for(var i=0;i<OBS.an.length;i++) if(t-OBS.
   OBS.busy=(OBS.busy||0)+(tg-(OBS.busy||0))*Math.min(1,DT*2); return OBS.busy; }
 function obsCalm(){ return OBS.calm===undefined?1:OBS.calm; }
 /* the recommended settings (a button in the pause) */
-var OBS_RECO={obs_ink:1,obs_rstr:0.7,obs_ring:1,obs_wake:0.5,obs_rwake:0.6,obs_det:0.5,obs_vsp:0.5,obs_damp:1};
-function obsReco(){ for(var k in OBS_RECO) obsSlSet(k,OBS_RECO[k]); }
+/* v1.48 the maintainer's settings — the skin's own (the hidden panel's button puts them back): «чернила на взрыв 200, кольцо сила 100,
+   кольцо неровность 100, след корабля 70, след камней 60, чернила детали 100, прожилки скорость 100, гашение в экшне 70, кольцо от взрыва
+   да»; the shot «Л4 бусины», the power-up without the rim */
+var OBS_RECO={obs_ink:2,obs_rstr:1,obs_ring:1,obs_wake:0.7,obs_rwake:0.6,obs_det:1,obs_vsp:1,obs_damp:0.7};
+function obsReco(){ for(var k in OBS_RECO) obsSlSet(k,OBS_RECO[k]); store.set('sonaroids_obs_ringon','1'); store.set('sonaroids_obs_shot','4'); store.set('sonaroids_obs_grim','0'); }
 /* v1.46: the shot to try (Л1 comet, Л4 beads, Л5 crystal, Л6 a fringe of the ink's opposite colour) and the power-up's rim (on / off) */
 var OBS_SHOTS=[1,4,5,6,9,10];   /* v1.47: and Л9 twin needles, Л10 running bands */
-function obsShot(){ var v=typeof store!=='undefined'?+store.get('sonaroids_obs_shot','1'):1; return OBS_SHOTS.indexOf(v)>=0?v:1; }
+function obsShot(){ var v=typeof store!=='undefined'?+store.get('sonaroids_obs_shot','4'):4; return OBS_SHOTS.indexOf(v)>=0?v:4; }
 function obsRingOn(){ return typeof store==='undefined'||store.get('sonaroids_obs_ringon','1')==='1'; }
-function obsGRim(){ return typeof store==='undefined'||store.get('sonaroids_obs_grim','1')==='1'; }
+function obsGRim(){ return typeof store!=='undefined'&&store.get('sonaroids_obs_grim','0')==='1'; }
 /* the skin for a SonaFly view: this one while the switch is on */
-function obsWrap(sk){ return obsOn()?OBSK:sk; }
+function obsWrap(sk){ return sk; }   /* 1.42–1.47 the test switch; now a skin of its own */
 function obsInit(){ if(OBS.ok!==null) return OBS.ok; OBS.ok=false;
   try{ var c=document.createElement('canvas'); c.id='obs'; c.style.cssText='position:fixed;left:0;top:0;display:none;pointer-events:none';
     var g=c.getContext('webgl2',{alpha:false,antialias:false,depth:false,stencil:false,premultipliedAlpha:false,preserveDrawingBuffer:false,powerPreference:'high-performance'});
@@ -226,7 +237,7 @@ var OBS_FS_O=OBS_SC+'\n'+[
 /* v1.46 the shots — the gold laser's variations to choose in the game (the maintainer: «в игре сделай выбор л1, л4, л5, л6»):
    1 a comet (a white-hot head, a thin gold tail), 4 beads (a head and three fading behind), 5 a gold crystal with a white facet,
    6 the laser with a fringe of the ink's opposite colour; q — along the shot */
-'uniform int uShot;',
+'uniform int uShot; uniform float uGp;',   /* uGp: the screen\'s height in game pixels over 195 — sizes kept in game pixels */
 'vec3 invOf(vec3 lc){ vec3 s=pow(clamp(lc,0.0,1.0),vec3(0.4545)); vec3 v=vec3(1.0)-s; float m=max(v.r,max(v.g,v.b)), n=min(v.r,min(v.g,v.b)); v=(v-n)/max(m-n,1e-3); return mix(vec3(1.0),v,0.8); }',
 'vec3 shot(vec2 q,vec2 c){ vec3 G=vec3(1.0,0.75,0.3), W=vec3(1.0,0.95,0.85); vec3 a=vec3(0.0);',
 '  if(uShot==1){ float h=length(q/vec2(0.006,0.0035)); a+=W*exp(-h*h*2.0)*2.2; float b=-q.x; if(b>0.0&&b<0.07){ float w=0.0018+b*0.02; a+=G*exp(-q.y*q.y/(w*w))*pow(1.0-b/0.07,1.5)*1.3; } a+=G*exp(-dot(q,q)/0.0006)*0.10; }',
@@ -242,10 +253,10 @@ var OBS_FS_O=OBS_SC+'\n'+[
 'uniform int uGRim;',
 'float sdRBox(vec2 p,vec2 b,float r){ vec2 q=abs(p)-b+r; return length(max(q,0.0))+min(max(q.x,q.y),0.0)-r; }',
 'vec4 tile(vec2 uv,vec2 c,float S){ vec2 p=(uv-c)/S; float d=sdRBox(p,vec2(0.86),0.26); float px=1.5/(uRes.y*S); float pulse=0.85+0.15*sin(uT*4.0); vec3 gold=vec3(1.0,0.64,0.20);',
-'  vec3 em=gold*exp(-max(d,0.0)*10.0)*0.12*pulse; if(uGRim==1){ vec3 rc=invOf(bgAt(c+(uv-c)*2.5)); float rim=smoothstep(0.075,0.045,abs(d-0.13)); em+=rc*(rim*1.5+exp(-max(d,0.0)*6.0)*0.18)*pulse; }',
+'  vec3 em=gold*exp(-max(d,0.0)*7.0)*0.26*pulse; if(uGRim==1){ vec3 rc=invOf(bgAt(c+(uv-c)*2.5)); float rim=smoothstep(0.075,0.045,abs(d-0.13)); em+=rc*(rim*1.5+exp(-max(d,0.0)*6.0)*0.18)*pulse; }',
 '  if(d>px) return vec4(em,0.0); float cov=smoothstep(px,-px,d);',
 '  vec2 g=vec2(sdRBox(p+vec2(0.01,0.0),vec2(0.86),0.26)-d,sdRBox(p+vec2(0.0,0.01),vec2(0.86),0.26)-d)/0.01; float bev=smoothstep(0.0,-0.14,d); vec3 n=normalize(vec3(-g*(1.0-bev)*1.2,0.6+bev));',
-'  vec3 Ld=normalize(vec3((uL-c)/0.4,0.6)), hh=normalize(Ld+vec3(0,0,1)); vec3 col=gold*(0.70+0.30*max(dot(n,Ld),0.0))*(0.9+0.1*pulse)+mix(gold,vec3(1.0),0.5)*pow(max(dot(n,hh),0.0),60.0)*1.6;',
+'  vec3 Ld=normalize(vec3((uL-c)/0.4,0.6)), hh=normalize(Ld+vec3(0,0,1)); vec3 col=gold*(1.0+0.35*max(dot(n,Ld),0.0))*(0.9+0.1*pulse)+mix(gold,vec3(1.0),0.55)*pow(max(dot(n,hh),0.0),60.0)*1.8;',   /* v1.48: brighter, glowing */
 '  return vec4(col*cov+em*(1.0-cov),cov); }',
 /* v1.46 the saucer «Г6» (the maintainer: «НЛО пока г6»): an almond of obsidian split in two, red light between the halves, a red pupil looking
    at us, a red edge; hurt — it flashes white */
@@ -267,8 +278,8 @@ var OBS_FS_O=OBS_SC+'\n'+[
 'void main(){ vec2 uv=vP; vec2 c=vA.xy; int K=int(vA.w+0.5); vec4 r=vec4(0.0);',
 '  if(K==0) r=rock(uv,c,vB.x,vB.y,vB.z,0.0);',
 '  else if(K==1) r=ship3(uv,c,vB.x,vB.y);',
-'  else if(K==2) r=vec4(shot(rot(-vB.x)*(uv-c),c),0.0);',
-'  else if(K==3){ float d=length(uv-c)/0.012; r=vec4(vec3(1.0,0.12,0.2)*(exp(-d*d*2.0)*1.5+exp(-d*d*0.3)*0.3)+vec3(1.0)*exp(-d*d*12.0),0.0); }',
+'  else if(K==2) r=vec4(shot(rot(-vB.x)*(uv-c)*uGp*1.6,c),0.0);',   /* v1.48: in game pixels — 4–8.5 long like every skin\'s */
+'  else if(K==3){ float d=length(uv-c)*uGp*1.15/0.012; r=vec4(vec3(1.0,0.12,0.2)*(exp(-d*d*2.0)*1.5+exp(-d*d*0.3)*0.3)+vec3(1.0)*exp(-d*d*12.0),0.0); }',
 '  else if(K==4) r=saucer(uv,c,vB.x,vB.y);',
 '  else if(K==5) r=tile(uv,c,vB.x);',
 '  else if(K==6) r=ann(uv,c,vB.x,vB.z>0.5,vB.w,vC.x,vC.y);',
@@ -299,7 +310,7 @@ function obsSize(){ var c=OBS.cv, cssW=LW*S/DPR, cssH=LH*S/DPR, od=Math.min(DPR,
 /* the frame's pace: slower than ~50 a second for two seconds — the wallpaper steps down (1.5 → 0.75 CSS px), then the objects (3 → 1.5) */
 function obsPace(){ var P=OBS.perf, now=performance.now(), dt=P.t?(now-P.t)/1000:0; P.t=now; if(dt<=0||dt>0.25) return;
   if(P.skip>0){ P.skip-=dt; return; } P.sum+=dt; P.n++; if(P.sum<2) return; var avg=P.sum/P.n; P.sum=0; P.n=0; if(avg<=1/50) return;
-  if(OBS.bd>0.75) OBS.bd=Math.max(0.75,OBS.bd-0.25); else if(OBS.od>1.5) OBS.od=Math.max(1.5,Math.min(OBS.od,DPR)-0.5); else if(OBS.q>0) OBS.q--; else if(OBS.bd>0.5) OBS.bd=0.5; else return;   /* v1.44: then fewer octaves of ink (a Mi 9 was far too slow) */
+  if(OBS.bd>0.75) OBS.bd=Math.max(0.75,OBS.bd-0.25); else if(OBS.od>1.5) OBS.od=Math.max(1.5,Math.min(OBS.od,DPR)-0.5); else if(OBS.q>0) OBS.q--; else if(OBS.bd>0.5) OBS.bd=0.5; else { if(avg>1/40&&++OBS.slowN>=2&&!OBS.slowSet){ OBS.slowSet=true; try{ store.set('sonaroids_obs_slow','1'); Logs.ev('obsidian: '+Math.round(1/avg)+' fps at the lowest — hidden from the skins from the next start'); }catch(e){} } return; }   /* v1.44: then fewer octaves of ink (a Mi 9 was far too slow); v1.48: still too slow — not listed on this phone from then on */
   P.skip=2; try{ if(typeof Logs!=='undefined'&&Logs.ev) Logs.ev('obsidian: '+Math.round(1/avg)+' fps → ink '+OBS.bd+'×, objects '+Math.min(DPR,OBS.od)+'×, quality '+OBS.q); }catch(e){} }
 var OBS_SUN_T=60, OBS_MIX_T=60;
 function obsSun(t){ var a=2.2+t/OBS_SUN_T*6.2832, ar=LW/LH; return [Math.cos(a)*ar*0.62,Math.sin(a)*0.74]; }
@@ -314,6 +325,7 @@ function obsRender(){ var g=OBS.g; if(!g||OBS.lost) return; OBS.calm=Math.max(0.
   var FX=OBS.an.filter(function(e){ return t-e.t0<4.0; }).slice(-8), fx=new Float32Array(32), nf=FX.length, stir=obsInk()*2*obsCalm();
   FX.forEach(function(e,i){ fx[i*4]=e.x; fx[i*4+1]=e.y; fx[i*4+2]=t-e.t0; fx[i*4+3]=e.R*(e.sp?0.7:1); });
   var RK=OBS.rk.slice(0,12), rk=new Float32Array(48), nr=RK.length; RK.forEach(function(k,i){ for(var j=0;j<4;j++) rk[i*4+j]=k[j]; });
+  var P0=OBS.probe; if(!P0){
   /* 1. the ink: near — half its rows this frame (top and bottom in turn), far — all of it at half size */
   var run=function(far,part){ var ww=far?Math.max(1,T.bw>>1):T.bw, hh=far?Math.max(1,T.eh>>1):T.eh; g.bindFramebuffer(g.FRAMEBUFFER,far?T.fc:T.fa); g.drawBuffers(far?[g.COLOR_ATTACHMENT0]:[g.COLOR_ATTACHMENT0,g.COLOR_ATTACHMENT1]);
     g.viewport(0,0,ww,hh); if(part>=0){ var h2=Math.ceil(hh/2); g.enable(g.SCISSOR_TEST); g.scissor(0,part?hh-h2:0,ww,h2); }
@@ -326,12 +338,12 @@ function obsRender(){ var g=OBS.g; if(!g||OBS.lost) return; OBS.calm=Math.max(0.
   g.uniform1f(obsU(pb,'uEnc'),T.enc); g.uniform1f(obsU(pb,'uExt'),T.eh/T.bh); g.uniform1f(obsU(pb,'uMix'),mix); g.uniform2f(obsU(pb,'uSun'),sun[0],sun[1]);
   [[T.a,'uA'],[T.b,'uB'],[T.c,'uF']].forEach(function(x,i){ g.activeTexture(g.TEXTURE1+i); g.bindTexture(g.TEXTURE_2D,x[0]); g.uniform1i(obsU(pb,x[1]),1+i); }); g.drawArrays(g.TRIANGLES,0,3);
   /* 3. on the screen (or into the linear scene): the wallpaper pushed about by the annihilations */
-  var disp=T.fsc?0:1; g.bindFramebuffer(g.FRAMEBUFFER,T.fsc||null); g.viewport(0,0,T.W,T.H);
+  } var disp=P0?1:T.fsc?0:1; g.bindFramebuffer(g.FRAMEBUFFER,P0?OBS.pfb:T.fsc||null); g.viewport(0,0,T.W,T.H);
   var AN=OBS.an.filter(function(e){ return t-e.t0<3.2; }).slice(-12), an=new Float32Array(48), ak=new Float32Array(48);
   AN.forEach(function(e,i){ an[i*4]=e.x; an[i*4+1]=e.y; an[i*4+2]=t-e.t0; an[i*4+3]=e.R; ak[i*4+1]=e.sp?1:0; ak[i*4+2]=e.sd; });
   g.activeTexture(g.TEXTURE0); g.bindTexture(g.TEXTURE_2D,T.bg);
   g.useProgram(pc); g.uniform1f(obsU(pc,'uIrr'),obsSl('obs_ring')*2); g.uniform1i(obsU(pc,'uRingOn'),obsRingOn()?1:0); g.uniform1f(obsU(pc,'uRStr'),obsSl('obs_rstr')*obsCalm()); g.uniform2f(obsU(pc,'uRes'),T.W,T.H); g.uniform1f(obsU(pc,'uT'),t); g.uniform1i(obsU(pc,'uBg'),0); g.uniform1i(obsU(pc,'uDisp'),disp);
-  g.uniform4fv(obsU(pc,'uAn'),an); g.uniform4fv(obsU(pc,'uAk'),ak); g.uniform1i(obsU(pc,'uNa'),AN.length); g.drawArrays(g.TRIANGLES,0,3);
+  g.uniform4fv(obsU(pc,'uAn'),an); g.uniform4fv(obsU(pc,'uAk'),ak); g.uniform1i(obsU(pc,'uNa'),AN.length); if(P0){ g.clearColor(0,0,0,0); g.clear(g.COLOR_BUFFER_BIT); } else g.drawArrays(g.TRIANGLES,0,3);
   /* 4. the objects (premultiplied, light added where they have no body) */
   var L=OBS.list; AN.forEach(function(e){ var a=t-e.t0, ext=e.R*1.5;
     ext=e.sp?Math.max(e.R*1.6,e.R*0.4+0.36*Math.min(a,1.0)+0.01):Math.max(e.R*2.6,0.09,e.R*0.4+0.36*Math.min(Math.max(a-0.3,0),1.6)+0.01);   /* the flash's glow and the ring inside the quad */
@@ -342,44 +354,50 @@ function obsRender(){ var g=OBS.g; if(!g||OBS.lost) return; OBS.calm=Math.max(0.
       for(var a2=0;a2<3;a2++){ g.enableVertexAttribArray(a2); g.vertexAttribPointer(a2,4,g.FLOAT,false,48,a2*16); g.vertexAttribDivisor(a2,1); } }
     g.bindVertexArray(OBS.buf.vao); g.bindBuffer(g.ARRAY_BUFFER,OBS.buf.b); g.bufferSubData(g.ARRAY_BUFFER,0,D,0,n*12);
     g.enable(g.BLEND); g.blendFunc(g.ONE,g.ONE_MINUS_SRC_ALPHA); g.useProgram(po);
-    g.uniform2f(obsU(po,'uRes'),T.W,T.H); g.uniform1f(obsU(po,'uIrr'),obsSl('obs_ring')*2); g.uniform1i(obsU(po,'uShot'),obsShot()); g.uniform1i(obsU(po,'uGRim'),obsGRim()?1:0); g.uniform1i(obsU(po,'uRingOn'),obsRingOn()?1:0); g.uniform1f(obsU(po,'uRStr'),obsSl('obs_rstr')*obsCalm()); g.uniform1f(obsU(po,'uT'),t); g.uniform1i(obsU(po,'uBg'),0); g.uniform1i(obsU(po,'uDisp'),disp);
+    g.uniform2f(obsU(po,'uRes'),T.W,T.H); g.uniform1f(obsU(po,'uIrr'),obsSl('obs_ring')*2); g.uniform1i(obsU(po,'uShot'),obsShot()); g.uniform1f(obsU(po,'uGp'),LH/195); g.uniform1i(obsU(po,'uGRim'),obsGRim()?1:0); g.uniform1i(obsU(po,'uRingOn'),obsRingOn()?1:0); g.uniform1f(obsU(po,'uRStr'),obsSl('obs_rstr')*obsCalm()); g.uniform1f(obsU(po,'uT'),t); g.uniform1i(obsU(po,'uBg'),0); g.uniform1i(obsU(po,'uDisp'),disp);
     var lc=[1-0.45*mix,0.78+0.02*mix,0.48+0.52*mix]; g.uniform2f(obsU(po,'uL'),sun[0]*1.4,sun[1]*1.4); g.uniform3f(obsU(po,'uLc'),lc[0],lc[1],lc[2]);
     g.uniform4fv(obsU(po,'uPose'),OBS.pose||new Float32Array(12)); g.drawArraysInstanced(g.TRIANGLE_STRIP,0,4,n); g.disable(g.BLEND); g.bindVertexArray(OBS.vao); }
+  if(P0) return;
   /* 5. the scene to the screen */
   if(T.fsc){ g.bindFramebuffer(g.FRAMEBUFFER,null); g.viewport(0,0,T.W,T.H); g.useProgram(pf); g.activeTexture(g.TEXTURE0); g.bindTexture(g.TEXTURE_2D,T.sc); g.uniform1i(obsU(pf,'uS'),0); g.uniform2f(obsU(pf,'uRes'),T.W,T.H); g.drawArrays(g.TRIANGLES,0,3); }
   OBS.an=OBS.an.filter(function(e){ return t-e.t0<4.0; }); }
 
 /* ═════ the frame: begun where the flight field is drawn, rendered at its end; hidden on a frame that drew no field ═════ */
-function obsBegin(){ if(!OBS.ok) return; OBS.act=true; OBS.list=[]; OBS.rk=[]; OBS.t+=DT; }
-function obsEnd(){ if(!OBS.act) return; OBS.act=false; try{ if(!OBS.vis){ OBS.cv.style.display='block'; OBS.vis=true; OBS.perf.t=0; OBS.perf.skip=3; }
-    var tf=hdCv&&hdCv.style.transform||''; if(OBS.cv.style.transform!==tf) OBS.cv.style.transform=tf; obsPace(); obsRender(); OBS.err=''; }catch(e){ OBS.err=String(e&&e.message||e); if(!OBS.logged){ OBS.logged=true; try{ Logs.ev('obsidian: '+OBS.err.slice(0,200)); }catch(e2){} } }
-  OBS.drew=true; }
+function obsBegin(show){ if(!obsInit()) return; OBS.act=true; OBS.list=[]; OBS.rk=[]; if(OBS.clk!==clock){ OBS.clk=clock; OBS.t+=DT; }
+  OBS.main=!!show&&typeof hdCv!=='undefined'&&hdCv&&hx===hdCv.getContext('2d'); OBS.dst=hx; var m=hx.getTransform?hx.getTransform():null; OBS.base=m; OBS.bs=m?Math.hypot(m.a,m.b):1; }
+function obsEnd(){ if(!OBS.act) return; OBS.act=false; try{
+    if(OBS.main){ if(!OBS.vis){ OBS.cv.style.display='block'; OBS.vis=true; OBS.perf.t=0; OBS.perf.skip=3; }
+      var tf=hdCv&&hdCv.style.transform||''; if(OBS.cv.style.transform!==tf) OBS.cv.style.transform=tf; obsPace(); obsRender(); }
+    else { obsRender(); var d=OBS.dst; d.save(); if(OBS.base) d.setTransform(OBS.base); d.globalCompositeOperation='destination-over'; d.globalAlpha=1; d.drawImage(OBS.cv,0,0,LW,LH); d.restore(); }   /* a demo: the world copied under the pictures */
+    OBS.err=''; }catch(e){ OBS.err=String(e&&e.message||e); if(!OBS.logged){ OBS.logged=true; try{ Logs.ev('obsidian: '+OBS.err.slice(0,200)); }catch(e2){} } }
+  if(OBS.main) OBS.drew=true; }
 function obsTick(){ if(!OBS.cv) return; if(OBS.vis&&!OBS.drew){ OBS.cv.style.display='none'; OBS.vis=false; } OBS.drew=false; }
 /* the ship's pose: the needle now; each splinter a beat behind (a turn, a roll), drifting out from the axis in a roll and back */
 function obsShip(sx,sy,ra){ var L=FLY_LOOK.obsidian, u=obsUV(sx+L.piv,sy), t=OBS.t, yaw=-Math.atan(FLY.tl*flyTiltK()), D=flyRollDur();
-  var Su=11/LH, nx=u[0]+Math.cos(yaw)*1.1*Su, ny=u[1]+Math.sin(yaw)*1.1*Su;   /* the wake starts at the nose */
+  var Su=10.4/LH, nx=u[0]+Math.cos(yaw)*1.1*Su, ny=u[1]+Math.sin(yaw)*1.1*Su;   /* the wake starts at the nose */
   OBS.ship={x:nx,y:ny}; OBS.shipH.push([t,ny]); while(OBS.shipH.length&&t-OBS.shipH[0][0]>3.8) OBS.shipH.shift();
   OBS.hist.push([t,yaw,ra]); while(OBS.hist.length&&t-OBS.hist[0][0]>1.0) OBS.hist.shift();
   var at=function(lag){ var ta=t-lag, H=OBS.hist, h=H[0]; for(var i=H.length-1;i>=0;i--){ if(H[i][0]<=ta){ h=H[i]; break; } } return h; };
   var on=FLY.roll>=0; if(on&&!OBS.rollWas) OBS.rollT0=t; OBS.rollWas=on; var sp=Math.sin(Math.PI*Math.max(0,Math.min(1,(t-OBS.rollT0)/(D*1.15))));
   var a1=at(0.09*D), a2=at(0.15*D), y1=at(0.10), y2=at(0.14);
   OBS.pose=new Float32Array([yaw,ra,0,0, y1[1],a1[2],0.11*sp+0.006*Math.sin(t*2.7),0.06*sp+0.004*Math.sin(t*2.1), y2[1],a2[2],0.09*sp+0.006*Math.sin(t*2.3+1),0.08*sp+0.004*Math.sin(t*1.7+2)]);
-  OBS.list.push([u[0],u[1],Su*1.9,1,Su,0.8+0.6*(FLY.k||0)]); }
+  var mk=1; try{ var m=hx.getTransform(); mk=Math.max(1,Math.hypot(m.a,m.b)/(OBS.bs||1)); }catch(e){}   /* a demo may draw the ship larger (the drawn phone) */
+  Su*=mk; OBS.list.push([u[0],u[1],Su*1.9,1,Su,0.8+0.6*(FLY.k||0)]); }
 /* a rock gone: the annihilation where it was (the core has put its two halves there already, if it was large or medium) */
 function obsGone(x,y,R,sd,rot,split){ var u=obsUV(x,y); OBS.an.push({x:u[0],y:u[1],R:R,sd:sd,rot:rot,sp:split,t0:OBS.t}); }
 
 /* ═════ the skin: its pictures go to the graphics chip while the field is drawn; anywhere else (the menus' demo) the space skin's ═════ */
 function obsBase(n,a){ var s=HDSK.space; return s[n]?s[n].apply(s,a):undefined; }
 var OBSK={id:'obsidian', hd:true, glow:false, nolight:true, flyLook:'obsidian', motes:['#f0d9a8','#d8b878'],
-  glBegin:function(){ obsBegin(); }, glEnd:function(){ obsEnd(); },
+  glBegin:function(show){ obsBegin(show); }, glEnd:function(){ obsEnd(); },
   sky:function(dt,s){ if(!OBS.act) return obsBase('sky',arguments); hx.clearRect(-4,-4,LW+8,LH+8); },
   rock:function(r,sz,seed){ var b=HDSK.space.rock(r,sz,seed); b.obsR=r; b.obsSd=(seed%97)*0.731+1.3; return b; },
   drawRock:function(sp,x,y){ if(!OBS.act||sp.obsR===undefined) return obsBase('drawRock',arguments); var u=obsUV(x,y), R=sp.obsR/LH; if(sp._ox!==undefined){ var dx=u[0]-sp._ox, dy=u[1]-sp._oy; if(dx*dx+dy*dy>1e-9) sp._ang=Math.atan2(dy,dx); } sp._ox=u[0]; sp._oy=u[1]; OBS.rk.push([u[0],u[1],R,sp._ang===undefined?Math.PI:sp._ang]); OBS.list.push([u[0],u[1],R*1.25,0,R,sp.obsSd+(sp.vr||0)*0.37,-sp.rot/16*6.2832]); },
   ship:function(x,y,t,blink){ if(!OBS.act) return obsBase('ship',arguments); if(blink) return; obsShip(x,y,0); },
   shipRoll:function(x,y,t,ra){ if(!OBS.act) return obsBase('ship',[x,y,t,false]); obsShip(x,y,ra); },
-  ufo:function(ux,uy,big,hurt){ if(!OBS.act) return obsBase('ufo',arguments); var u=obsUV(ux,uy), Su=(big?7:5)*K*1.25/LH;   /* the core's half width, a little more */ OBS.list.push([u[0],u[1],Su*1.7,4,Su,hurt?1:0]); },
+  ufo:function(ux,uy,big,hurt){ if(!OBS.act) return obsBase('ufo',arguments); var u=obsUV(ux,uy), Su=(big?7:5)*K*1.1/LH;   /* the core's half width, a little more */ OBS.list.push([u[0],u[1],Su*1.7,4,Su,hurt?1:0]); },
   pick:function(x,y,type){ if(!OBS.act) return obsBase('pick',arguments); var u=obsUV(x,y), r=7.2/LH; OBS.list.push([u[0],u[1],r*2.4,5,r]);
-    var w=hdIconW; hdIconW=1.55; hx.save(); hx.translate(x,y); hx.scale(1.42,1.42); hdIcon(type,'#140e12'); hx.restore(); hdIconW=w; },   /* the sign: black on the gold, big and bold */
+    var w=hdIconW; hdIconW=1.2; hx.save(); hx.translate(x,y); hx.scale(1.42,1.42); hdIcon(type,'#140e12'); hx.restore(); hdIconW=w; },   /* the sign: black on the gold, big and bold */
   bullet:function(x,y){ if(!OBS.act) return obsBase('bullet',arguments); var m=hx.getTransform?hx.getTransform():{a:1,b:0}, a=-Math.atan2(m.b,m.a), u=obsUV(x,y); OBS.list.push([u[0],u[1],0.09,2,a]); },
   ebullet:function(x,y){ if(!OBS.act) return obsBase('ebullet',arguments); var u=obsUV(x,y); OBS.list.push([u[0],u[1],0.04,3]); },
   shieldRing:function(x,y,t){ if(!OBS.act) return obsBase('shieldRing',arguments); var u=obsUV(x+11,y), Su=14/LH; OBS.list.push([u[0],u[1],Su*1.4,7,Su]); },
@@ -390,3 +408,21 @@ var OBSK={id:'obsidian', hd:true, glow:false, nolight:true, flyLook:'obsidian', 
   goneUfo:function(f){ obsGone(fx(f.x),f.y*K,(f.ufo==='big'?11:8)/LH,4.2,0,false); }
 };
 FLY_LOOK.obsidian={piv:11,tip:[-2,6],trail:'none',c:'255,214,140',life:0.6,w:1.0};
+/* v1.48: into the skins' list where it can run; a player who chose it before gets it back */
+if(obsCan()){ SKIN_IDS.push('obsidian'); HDSK.obsidian=OBSK; try{ if(localStorage.getItem('sonaroids_skin')==='obsidian'){ skinId='obsidian'; SK=OBSK; } }catch(e){} }
+/* v1.48 the size audit (tests/obsidian_sizes.js; the maintainer: «после полного аудита на соразмерность объектов с остальными скинами и моделью»):
+   one object drawn alone at the screen's middle onto nothing, read back; its box in game pixels — by cover for the solid ones, by light
+   (half the brightest) for the shots */
+function obsProbe(kind,a,b){ if(!obsInit()) return null; obsSize(); var g=OBS.g, T=OBS.tx, cx=LW/2, cy=LH/2, u=obsUV(cx,cy), L=[], byLight=false;
+  if(!OBS.pfb||OBS.pkey!==T.W+'x'+T.H){ OBS.ptx=obsTex(T.W,T.H,'b'); OBS.pfb=obsFb([OBS.ptx]); OBS.pkey=T.W+'x'+T.H; }
+  if(kind==='rock'){ var sp=makeSkinRock(OBSK,a,Core.R_SIZE[a],b), R=sp.obsR/LH; L.push([u[0],u[1],R*1.25,0,R,sp.obsSd,(b%4)*1.5708]); }
+  else if(kind==='ship'){ var Su=10.4/LH; OBS.pose=new Float32Array(12); L.push([u[0],u[1],Su*1.9,1,Su,0.8]); }
+  else if(kind==='pick'){ var r=7.2/LH; L.push([u[0],u[1],r*2.4,5,r]); }
+  else if(kind==='ufo'){ var S2=(a?7:5)*K*1.1/LH; L.push([u[0],u[1],S2*1.7,4,S2,0]); }
+  else if(kind==='bullet'){ L.push([u[0],u[1],0.09,2,0]); byLight=true; }
+  else if(kind==='ebullet'){ L.push([u[0],u[1],0.04,3]); byLight=true; }
+  OBS.list=L; OBS.probe=true; var an=OBS.an; OBS.an=[]; try{ obsRender(); } finally { OBS.probe=false; OBS.an=an; OBS.list=[]; }
+  var px=new Uint8Array(T.W*T.H*4); g.bindFramebuffer(g.FRAMEBUFFER,OBS.pfb); g.readPixels(0,0,T.W,T.H,g.RGBA,g.UNSIGNED_BYTE,px); g.bindFramebuffer(g.FRAMEBUFFER,null);
+  var v=function(i){ return byLight?Math.max(px[i],px[i+1],px[i+2]):px[i+3]; }, mx=0, i, x, y; for(i=0;i<px.length;i+=4) mx=Math.max(mx,v(i)); if(!mx) return null;
+  var th=byLight?mx*0.5:128, x0=T.W, y0=T.H, x1=-1, y1=-1; for(y=0;y<T.H;y++) for(x=0;x<T.W;x++){ if(v((y*T.W+x)*4)>=th){ if(x<x0) x0=x; if(x>x1) x1=x; if(y<y0) y0=y; if(y>y1) y1=y; } }
+  if(x1<0) return null; var k=LH/T.H; return {w:+((x1-x0+1)*k).toFixed(1),h:+((y1-y0+1)*k).toFixed(1),dx:+(((x0+x1+1)/2-T.W/2)*k).toFixed(1),dy:+((T.H/2-(y0+y1+1)/2)*k).toFixed(1)}; }

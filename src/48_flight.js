@@ -27,7 +27,9 @@ function flyStep(sy,dt,tl){ var f=FLY, T=Core.TILT, yf=sy/K;
   /* the roll: on a turn after a fast move (down then up, or up then down), not more often than every 2.5 s, over a second */
   var sg=f.sv>0?1:-1; if(Math.abs(f.sv)>Core.FH*0.55){ f.fastS=sg; f.fastT=clock; }
   f.cool-=dt; if(f.roll<0&&f.cool<=0&&clock-f.fastT<0.45&&sg!==f.fastS&&Math.abs(f.sv)>Core.FH*0.2){ f.roll=0; f.cool=flyRollCool(); f.fastT=-9; }
-  if(f.roll>=0){ f.roll+=dt/((SK&&SK.rollDur)||1.0); if(f.roll>=1) f.roll=-1; } }   /* v1.42: a skin may roll slower (obsidian 1.6 s) */
+  if(f.roll>=0){ f.roll+=dt/flyRollDur(); if(f.roll>=1) f.roll=-1; } }
+/* v1.43: the roll takes 1.6 s in every skin (1.0 before; the maintainer chose 1.6 on the obsidian ship: «бочку 1.6 сек можно и всем остальным поставить») */
+function flyRollDur(){ return 1.6; }
 function flyReset(){ FLY.y=null; FLY.tl=0; FLY.sv=0; FLY.roll=-1; FLY.tr=[]; FLY.cool=1; }
 /* the roll's phase eased: 0…1 → the angle round the ship's own axis, 0…2π */
 function flyRollA(){ var r=FLY.roll; if(r<0) return 0; var e=r<0.5?2*r*r:1-2*(1-r)*(1-r); return e*6.2832; }

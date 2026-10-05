@@ -97,7 +97,17 @@ function ringUI(p,st){ var r=ringAt(), col=st==='wait'?P.soft:st==='ok'?P.band:P
   text(L(st==='wait'?'ring_wait':st==='listen'?'ring_listen':st==='catch'?'ring_catch':'ring_ok'),r[0],r[1]+17,col,'center'); }
 function stepSquares(id){ if(!onboarding) return; var n=STEPS.length, q=6, gap=6, x=Math.round(LW/2-(n*q+(n-1)*gap)/2), y=LH-SAFE.b-q*3;
   for(var i=0;i<n;i++) R(STEPS[i]===id?P.band:P.line,x+i*(q+gap),y,q,q); }
-function handFrac(){ var st=Sonar.state(); return (st&&st.present&&T)?Tune.fracOf(T,st.height):null; }
+/* v1.44: the mouse instead of the sonar — a test on a computer (the maintainer: «было бы круто иметь возможность тестировать визуалы
+   И на компе в браузере (управление корабля — мышкой)»): the ship follows the pointer's height; no microphone, no getting ready; the games
+   are tests (not for the tables). On in the test panel («МЫШЬ ВМЕСТО СОНАРА», shown with a mouse) or by ?mouse=1; Esc pauses */
+var MOUSE={y:null};
+function mouseOn(){ return mode!=='race'&&(store.get('sonaroids_mouse','0')==='1'||/[?&]mouse=1(&|$)/.test(location.search)); }
+function mouseFine(){ try{ return matchMedia('(pointer:fine)').matches; }catch(e){ return false; } }
+window.addEventListener('pointermove',function(e){ if(e.pointerType==='mouse') MOUSE.y=e.clientY*DPR/S; },{passive:true});
+window.addEventListener('keydown',function(e){ if(!mouseOn()||e.key!=='Escape') return; if(scr==='play') pauseGame(); else if(scr==='paused') ACT.resume(); });
+function mouseReady(){ prep={res:{ok:true},doneT:-9}; if(!T||!T.ok){ T=Tune.create(100,true); T.ok=true; } T.copied=true; caught=true; }
+function handFrac(){ if(mouseOn()) return MOUSE.y===null?null:Math.max(0,Math.min(1,(Core.FH-Core.MARGIN-MOUSE.y/K)/(Core.FH-2*Core.MARGIN)));
+  var st=Sonar.state(); return (st&&st.present&&T)?Tune.fracOf(T,st.height):null; }
 
 /* ── screens ── */
 function sLang(){ sky(DT,0.3); var y=Math.round(LH*0.3); text('SONAROIDS',LW/2,y,P.band,'center',2);
@@ -215,11 +225,11 @@ function slider(id,x,y,w,v,mark){ var hh=10; R(P.line,x,y+hh/2-1,w,2); R(P.band,
   if(mark!==undefined) R(P.soft,x+Math.round(w*mark),y+1,1,hh-2);
   R(P.bg,x+Math.round(w*v)-3,y,6,hh); frame(x+Math.round(w*v)-3,y,6,hh,P.band); SLD.push({id:id,x:x,y:y-7,w:w,h:hh+14}); }
 function sliderSet(id,f){ var v=Math.round(Math.max(0,Math.min(1,f))*100)/100;
-  if(id==='fly_tilt') store.set('sonaroids_fly_tilt',String(v)); else if(id==='shot_tilt') store.set('sonaroids_shot_tilt',String(v)); }
+  if(id==='fly_tilt') store.set('sonaroids_fly_tilt',String(v)); else if(id==='shot_tilt') store.set('sonaroids_shot_tilt',String(v)); else obsSlSet(id,v); }
 function sliderAt(e){ var x=e.clientX*DPR/S, y=e.clientY*DPR/S; for(var i=SLD.length-1;i>=0;i--){ var b=SLD[i]; if(x>=b.x-6&&x<b.x+b.w+6&&y>=b.y&&y<b.y+b.h) return b; } return null; }
 function tiltPanel(vr,y0){ var fr=titleFree||[SAFE.l,LW-SAFE.r], pad=8, gap=5, rh=PF.CAP+gap+10+8, fv=flyTiltK(), sv=shotTilt(),
     bs=L(shotBounce()?'bounce_on':'bounce_off'), vw=Math.max(PF.width('100%'),PF.width(L('straight'))),   /* the value stands right of its track */
-    TG=[['shot_bounce',bs],['obs',L(store.get('sonaroids_obs','0')!=='1'?'obs_off':obsInit()?'obs_on':'obs_na')]].concat(obsOn()?[['obs_ann',L('obs_ann'+obsAnn())]]:[]),   /* v1.42: the heavy skin and its annihilation */
+    TG=[['shot_bounce',bs],['obs',L(store.get('sonaroids_obs','0')!=='1'?'obs_off':obsInit()?'obs_on':'obs_na')]].concat(mouseFine()||mouseOn()?[['mouse',L(mouseOn()?'mouse_on':'mouse_off')]]:[]),   /* v1.42: the heavy skin (its sliders are in the pause, 1.44) */
     need=Math.max(PF.width(L('ftilt')),PF.width(L('stilt'))+PF.width(' · '+L('as_nose')),90+vw,Math.max.apply(null,TG.map(function(x){ return PF.width(x[1]); })))+2*pad,
     mg=8, free=fr[1]-fr[0]-2*mg, pw, iw, px, ph;
   if(need>free){ need-=2*pad-10; pad=5; mg=4; free=fr[1]-fr[0]-2*mg; }   /* a narrow free area (a tablet): the panel's margins thinner */
@@ -555,7 +565,14 @@ function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globa
   if(w1+g+w2>LW-SAFE.l-SAFE.r-2*Math.max(8,Math.round(LW*0.04))){                                        // too narrow for two (a tablet in Russian): one tight column
     var it=act.concat(look), gap=Math.max(2,Math.min(8,Math.floor((bot-top+2-it.length*BH)/(it.length-1))));
     column(it,Math.round((top+bot)/2),undefined,gap); return; }
-  column(act,cy,x1,8); column(look,cy,x2,8); }
+  column(act,cy,x1,8); if(mode!=='race'&&pausedFrom==='play'&&obsOn()) obsPanel(left?x2:x2+w2-Math.max(w2,Math.min(150,left?LW-SAFE.r-8-x2:x2+w2-SAFE.l-8)),Math.max(w2,Math.min(150,left?LW-SAFE.r-8-x2:x2+w2-SAFE.l-8)),cy); else column(look,cy,x2,8); }
+/* v1.44: the heavy skin's sliders in the pause (the maintainer, of each: «ползунок? :)»), in place of the look column (the skin is fixed while it is on) —
+   pause, move them, play on and see. 50% is where they start; 100% is twice that, 0 — none */
+function obsPanel(px,pw,cy){ var pad=6, gap=4, rh=PF.CAP+gap+10+7, vw=PF.width('100%'), ids=OBS_SL.map(function(x){ return x[0]; }), ph=pad*2+ids.length*rh-6,
+      y0=Math.max(topY()+12,Math.min(LH-SAFE.b-4-ph,Math.round(cy-ph/2))), ix=px+pad, iw=pw-2*pad, tw=iw-vw-6, y=y0+pad;
+  px=Math.round(px);
+  lx.globalAlpha=0.9; R(P.bg,px,y0,pw,ph); lx.globalAlpha=1; frame(px,y0,pw,ph,P.line);
+  ids.forEach(function(id){ var v=obsSl(id), lab=L(id), sc=Math.min(1,iw/Math.max(1,PF.width(lab))); text(lab,ix,y,P.soft,'left',sc); slider(id,ix,y+PF.CAP+gap,tw,v,0.5); text(Math.round(v*100)+'%',ix+iw,y+PF.CAP+gap+5-Math.round(PF.CAP/2),P.text,'right'); y+=rh; }); }
 /* v0.24 "start over" from the pause menu: straight into a countdown with the same calibration, or through calibration again */
 function sRestart(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('restart'),L('restart_s'));
   column([['rs_go',L('rs_go'),'primary'],['rs_cal',L('recal')],['rs_back',L('back')]],Math.round(LH*0.58)); }
@@ -776,7 +793,8 @@ function startPrepare(){
 /* make sure the microphone works before going on; if the phone took it away (the app was in the background), open it again —
    this runs from a tap, which browsers require — and get ready again (take your hand away → wave) */
 var resumeAfterPrep=false;
-function ensure(then){ if(booted&&Sonar.healthy()) then(); else { Sonar.restart(); booted=false; boot(toAway); } }
+function ensure(then){ if(mouseOn()){ mouseReady(); if(then&&then!==toAway) then(); else startCount(); return; }   /* v1.44: the mouse — straight to the count-down */
+  if(booted&&Sonar.healthy()) then(); else { Sonar.restart(); booted=false; boot(toAway); } }
 function boot(then){ Sonar.boot().then(function(){ booted=true; Sfx.play('tap'); then(); })
   .catch(function(e){ errKind=(e&&e.message&&/webaudio|worklet/.test(e.message))?'audio':'mic'; Board.setup(errKind==='mic'?'nomic':'noaudio'); go('nomic'); }); }
 /* v0.40 (27 Sep): before every game — the probe choice, no default: «wide» (cleaner control, children and animals may hear it) or «normal» (silent) */
@@ -809,9 +827,9 @@ function startCount(){ flyReset(); if(resumeAfterPrep&&g&&g.state!=='over'){ res
 function startGame(){ if(mode==='race'){ raceStart(); return; }
   var seed=0; try{ var a=new Uint32Array(1); crypto.getRandomValues(a); seed=a[0]; }catch(e){ seed=Math.floor(Math.random()*4294967296); }
   var y0=shipY===null?null:+(shipY/K).toFixed(3);
-  Core.TUNE.SHOT_TILT=shotTilt(); Core.TUNE.SHOT_BOUNCE=shotBounce(); g=Core.create(seed,Core.FH*(LW-SAFE.l)/LH,y0); Board.start(seed,g.FW,y0,Core.TUNE.SHOT_TILT||Core.TUNE.SHOT_BOUNCE?{test:true}:null); nickAsked=false; acc=0; rockSpr={}; parts=[]; livesT=0; var I=Sonar.info();
+  Core.TUNE.SHOT_TILT=shotTilt(); Core.TUNE.SHOT_BOUNCE=shotBounce(); g=Core.create(seed,Core.FH*(LW-SAFE.l)/LH,y0); Board.start(seed,g.FW,y0,Core.TUNE.SHOT_TILT||Core.TUNE.SHOT_BOUNCE||mouseOn()?{test:true}:null); nickAsked=false; acc=0; rockSpr={}; parts=[]; livesT=0; var I=Sonar.info();
   Logs.gameStart({core:Core.TAG,seed:seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:liveOn()?'live':'frozen',live:liveOn(),room:Sonar.room(),asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
-    chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids',shot_tilt:Core.TUNE.SHOT_TILT,shot_bounce:Core.TUNE.SHOT_BOUNCE,skin_heavy:obsOn()?'obsidian/'+'ABC'.charAt(obsAnn()):undefined,fly_tilt:flyTiltK()});
+    chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids',shot_tilt:Core.TUNE.SHOT_TILT,shot_bounce:Core.TUNE.SHOT_BOUNCE,skin_heavy:obsOn()?'obsidian '+OBS_SL.map(function(x){ return x[0].slice(4)+' '+Math.round(obsSl(x[0])*100)+'%'; }).join(', '):undefined,mouse:mouseOn()||undefined,fly_tilt:flyTiltK()});
   Sfx.play('start'); go('play');
 }
 var ACT={
@@ -866,8 +884,8 @@ var ACT={
   nick_later:function(){ nickField(false); nickMsg=''; go(nickFrom==='over'?'over':'scores'); },
   logs:function(){ Logs.share(); },
   shot_bounce:function(){ store.set('sonaroids_shot_bounce',shotBounce()?'0':'1'); },
+  mouse:function(){ store.set('sonaroids_mouse',store.get('sonaroids_mouse','0')==='1'?'0':'1'); },   /* v1.44 */
   obs:function(){ store.set('sonaroids_obs',store.get('sonaroids_obs','0')==='1'?'0':'1'); setSkin(skinId); },   /* v1.42: the heavy skin on / off (a test) */
-  obs_ann:function(){ store.set('sonaroids_obs_ann',String((obsAnn()+1)%3)); },
   audio:function(){ audDev=null; audFrom=null; go('audio'); },
   lab:function(){ location.href='../lab/sonar_lab3.html'; },
   ver:function(){ if(scr==='scores'){ scPeople=!scPeople; return; } diag=!diag; },   /* v1.34: on the scores screen the version's long press is «people only» */

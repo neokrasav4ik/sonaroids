@@ -44,6 +44,7 @@ LANE_B = [  # phase 2, beside lane A: the rest
     ('is the probe heard: muted vs noisy', f'{H} tests/test_quiet.js'),
     ('strings and font', f'{H} tests/test_text.js'),
     ('leaderboard server (temporary database)', f'{H} tests/test_server.js'),
+    ('СонарЛинк: a room for two phones on the server', f'{H} tests/test_pair.js'),
     ('first open shows the menu (Chromium)', f'{H} tests/first_open.js'),
     ('buttons light up under the finger (Chromium)', f'{H} tests/press.js'),
     ('the settings: defaults, graphics, band, auto-calibration (Chromium)', f'{H} tests/settings.js'),
@@ -70,14 +71,15 @@ def key(cmd):   # the check's script name: «flow», «screens», «build», «f
 # A file under src/, server/, lab/src/ or font/ that no pattern knows runs everything (so a new part is never left unchecked).
 ALWAYS = ['build', 'font']
 MAP = [
-    ('src/10_worklet.js src/11_dsp.js lab/src/*', 'test_same_dsp test_live test_quiet test_eq flow live_flow silent'),
+    ('src/10_worklet.js src/11_dsp.js lab/src/01_worklet.js lab/src/02_dsp.js', 'test_same_dsp test_live test_quiet test_eq flow live_flow silent'),
+    ('lab/src/*', 'test_same_dsp'),   # v1.56c: the lab's own screens do not touch the game (the lab has its own checks, lab/tools/run_all.sh)
     ('src/12_tune.js', 'test_tune flow live_flow'),
     ('src/13_core.js', 'test_core test_rules test_server flow'),
     ('src/14_race.js', 'test_race race_flow test_server'),
     ('src/20_sonar.js', 'flow native_audio silent volume side live_flow test_eq'),
     ('src/21_log.js', 'flow'),
     ('src/22_sfx.js', 'flow native_audio'),
-    ('src/23_net.js server/*', 'test_server flow'),
+    ('src/23_net.js server/*', 'test_server test_pair flow'),
     ('src/3?_lang_*.js font/* game/font.js', 'test_text screens first_open'),
     ('src/00_head.html src/99_end.html src/40_gfx.js src/41_sprites.js src/42_*.js src/44_thumbs.js', 'screens first_open press settings'),
     ('src/43_skins.js src/45_hd.js src/46_vecskins.js src/47_pixskins.js src/48_flight.js src/48_sizes.js',

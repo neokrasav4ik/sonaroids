@@ -14,7 +14,7 @@ function setLinkPar(p){ LINK_PAR=p; try{ localStorage.setItem('sonar_link_par',S
   if(booted&&sS){ var old=sS; sS=loopSrc(makeProbe(p)); sS.connect(gSL); sS.connect(gSR); sS.start(); try{ old.stop(); old.disconnect(); }catch(e){} } }
 function parName(p){ return p===0?'чётные':p===1?'нечётные':'все'; }
 function sleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
-function show(id){ ['home','orient','rec','recDone','cal','game','sideIntro','recSide','dualIntro','rightIntro','rightPlay','arkIntro','arkPlay','arcIntro','arcPlay','probes','twoIntro','recTwo','stIntro','recSt','stLive','depthIntro','pwCheck','link','linkBeacon','more2'].forEach(function(s){ el(s).classList.toggle('hidden',s!==id); });
+function show(id){ ['home','orient','rec','recDone','cal','game','sideIntro','recSide','dualIntro','rightIntro','rightPlay','arkIntro','arkPlay','arcIntro','arcPlay','probes','twoIntro','recTwo','stIntro','recSt','stLive','depthIntro','pwCheck','link','linkBeacon','more2','strIntro','strPlay'].forEach(function(s){ el(s).classList.toggle('hidden',s!==id); });
   /* запись вбок идёт с телефоном вертикально — на её экранах просьба повернуть не показывается */
   if(document.body&&document.body.classList) document.body.classList.toggle('pok',id==='sideIntro'||id==='rightIntro'||id==='rightPlay'||id==='twoIntro'||id==='recTwo'||id==='stIntro'||id==='recSt'||id==='stLive'||id==='depthIntro'||(id==='recTwo'&&lastRec==='recDepth')||(id==='recDone'&&(lastRec==='recTwo'||lastRec==='recSt'||lastRec==='recDepth'))||((id==='recSide'||id==='recDone')&&(lastRec==='recSide'||lastRec==='recRight'))); fitScreen(); }
 /* всё в один экран: если видимый экран (или открытое меню игры) не влезает по высоте или ширине — уменьшаю базовый шрифт, пока не влезет */
@@ -106,6 +106,7 @@ function onFrame(e){
   var gap=(lastSeq>=0&&m.s!==lastSeq+1); lastSeq=m.s; if(gap) gaps++;
   if(collector){ collector.arr.push(m.f); if(collector.arr.length>=collector.n){ var c=collector; collector=null; c.done(c.arr); } }
   if(mode==='rec'&&rec.on){ if(gap) rec.gaps++; rec.frames.push(m.f); }
+  else if(mode==='str'){ var r6=DSP2.frame(m.f); if(r6) absS.st=r6; if(typeof slFrame==='function') slFrame(r6); }
   else if(mode==='arc'){ var r5=DSP2.frame(m.f); if(r5) absS.st=r5; arcFrame(m.f,gap,r5); }
   else if(mode==='ark'){ var r4=DSP2.frame(m.f); if(r4) absS.st=r4; akFrame(m.f,gap,r4); }
   else if(mode==='right'){ var r3=(RP.D||DSP2).frame(m.f); if(r3) absS.st=r3; rpFrame(m.f,gap,r3); }

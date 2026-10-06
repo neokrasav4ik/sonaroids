@@ -74,6 +74,13 @@
   #twoIntro .pic{height:26vh;max-width:100%;margin:.2rem auto 0;display:block} @media (max-height:600px){ #twoIntro .pic{display:none} }
   #recSt{flex-direction:column;justify-content:center;align-items:stretch;gap:1rem;text-align:center} #stSay{font-size:1.7rem;font-weight:600;line-height:1.2} #stSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
   #stClock{font-family:"IBM Plex Mono",monospace;font-size:.85rem;color:var(--soft);margin-top:.4rem} #stInfo{font-size:.95rem;color:var(--soft);line-height:1.6} #stInfo b{color:var(--ink)}
+  #strPlay{padding:0;background:#0d0818} #slC{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+  #slTop{position:absolute;left:0;right:0;top:26%;text-align:center;pointer-events:none;padding:0 1rem;text-shadow:0 1px 6px #000}
+  #slSay{font-size:2rem;font-weight:600} #slSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
+  #slHud{position:absolute;top:calc(max(.5rem,env(safe-area-inset-top)) + .2rem);left:0;right:0;text-align:center;font-family:"IBM Plex Mono",monospace;font-size:.85rem;color:var(--soft);pointer-events:none}
+  #slBtns{position:absolute;left:50%;top:58%;transform:translateX(-50%);width:15rem;display:flex;flex-direction:column;gap:.5rem}
+  #slStop{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + .4rem);width:auto;min-height:0;padding:.5em 1em;font-size:.85rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
+  #siCode{font:600 1.6rem "IBM Plex Mono",monospace;width:7ch;text-align:center;padding:.3rem;border-radius:.5rem;border:1px solid #3A4A52;background:#0b0f14;color:var(--ink);letter-spacing:.2em}
   #arcPlay{padding:0;background:#070a12} #acC{position:absolute;inset:0;width:100%;height:100%;display:block}
   #acTop{position:absolute;left:0;right:0;top:30%;text-align:center;pointer-events:none;padding:0 1rem}
   #acSay{font-size:2rem;font-weight:600} #acSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
@@ -181,8 +188,9 @@
   </div>
   <div class="col btns">
     <button id="lkPar" class="ghost wide">Тоны зонда: …</button>
-    <button id="lkBeacon" class="big">Только пищать</button>
+    <button id="lkBeacon" class="ghost">Только пищать</button>
     <button id="lkRec" class="ghost">Запись для меня</button>
+    <button id="lkString" class="big">Струна (игра на двух)</button>
     <button id="lkGame" class="ghost">Играть (как в лабе)</button>
     <button id="lkBack" class="ghost">Назад</button>
   </div>
@@ -198,6 +206,33 @@
     <button id="lbStop" class="big">Стоп</button>
   </div>
 </div></div>
+
+<div class="screen hidden" id="strIntro"><div class="two wideb">
+  <div class="col">
+    <h1>Струна</h1>
+    <p>Два телефона торец к торцу, камеры друг к другу. Над каждым — свой вихрь, его ведёт ладонь у разъёма. Между вихрями струна: задевайте ею светлые частицы, тёмные сгустки её рвут — чтобы сшить, сведите вихри на одну высоту. На одной высоте струна горит и тянет частицы к себе.</p>
+    <p class="small">На одном телефоне «Создать», на другом — код и «Войти». Тоны зонда телефоны выберут сами. «Один телефон» — второй вихрь ведёт бот, всё поле на одном экране.</p>
+    <p><input id="siCode" inputmode="numeric" maxlength="4" placeholder="код" autocomplete="off"> <span id="siNow" class="mono"></span></p>
+  </div>
+  <div class="col btns">
+    <button id="siNew" class="big">Создать</button>
+    <button id="siJoin" class="ghost">Войти по коду</button>
+    <button id="siBot" class="ghost">Один телефон (бот)</button>
+    <button id="siCtl" class="ghost wide">Управление: ладонь</button>
+    <button id="siBack" class="ghost">Назад</button>
+  </div>
+</div></div>
+
+<div class="screen hidden" id="strPlay">
+  <canvas id="slC"></canvas>
+  <div id="slHud"></div>
+  <div id="slTop"><div id="slSay"></div><div id="slSub"></div></div>
+  <button id="slStop" class="gbtn">Стоп</button>
+  <div id="slBtns" class="hidden">
+    <button id="slAgain" class="big">Ещё раз</button>
+    <button id="slOut" class="ghost">Выйти</button>
+  </div>
+</div>
 
 <div class="screen hidden" id="more2"><div class="two wideb">
   <div class="col">

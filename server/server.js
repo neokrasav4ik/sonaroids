@@ -12,6 +12,7 @@
      GET  /v1/top?period=day|week|all&limit=N[&game=race][&bots=0]   (header X-Player: pid, optional) → {period, game, people, entries:[{rank,nick,score,level,t,me}], me}
                      v1.31: bots=0 — people only (without the server's bots, server/bots.js)
      GET  /v1/health                                                → {ok, core, race}
+     /v1/pair/*  v1.56c, СонарЛинк: a room for two phones that relays their messages (server/pair.js; nothing stored)
    pid — a random secret the game keeps on the device; the database stores only its hash.
    Periods are UTC: "day" since midnight, "week" since Monday midnight.
 
@@ -20,7 +21,8 @@
 const http=require('node:http'), zlib=require('node:zlib'), crypto=require('node:crypto'), path=require('node:path');
 let DatabaseSync; try{ ({DatabaseSync}=require('node:sqlite')); }catch(e){ console.error('Node 22.13 or newer is needed (node:sqlite). This is '+process.version); process.exit(1); }
 const Core=require(path.join(__dirname,'..','src','13_core.js'));
-const Race=require(path.join(__dirname,'..','src','14_race.js'));   // v1.01: SonaRace's core, the same file the page runs
+const Race=require(path.join(__dirname,'..','src','14_race.js'));
+const Pair=require('./pair.js');   // v1.56c: СонарЛинк   // v1.01: SonaRace's core, the same file the page runs
 
 const PORT=+(process.env.PORT||8787);
 const DB_PATH=process.env.DB||path.join(__dirname,'sonaroids.db');
@@ -209,6 +211,12 @@ const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url,'http://x'), now=Date.now(), who=ip(req);
   try{
     if(req.method==='GET'&&url.pathname==='/v1/health') return send(res,200,{ok:true,core:Core.TAG,race:Race.TAG},origin);
+    /* v1.56c, СонарЛинк: rooms for two phones (server/pair.js). Opening and joining are limited like the transfer code; messages per room */
+    if(url.pathname.startsWith('/v1/pair/')){ const pth=url.pathname.slice(9);
+      if(req.method==='GET'&&pth==='sse'){ if(!allow('p:'+who,60)) return send(res,429,{ok:false,error:'slow down'},origin); if(!Pair.getSse(url,req,res,origin,now)) send(res,404,{ok:false,error:'code'},origin); return; }
+      if(req.method==='POST'&&(pth==='new'||pth==='join'||pth==='send')){
+        if(pth!=='send'&&!allow((pth==='join'?'j:':'n:')+who,pth==='join'?20:10)) return send(res,429,{ok:false,error:'slow down'},origin);
+        const b=await readBody(req), [c,o]=pth==='new'?Pair.postNew(b,now):pth==='join'?Pair.postJoin(b,now):Pair.postSend(b,now); return send(res,c,o,origin); } }
     if(req.method==='GET'&&url.pathname==='/v1/top'){ if(!allow('r:'+who,120)) return send(res,429,{ok:false,error:'slow down'},origin); const [c,o]=getTop(url,req,now); return send(res,c,o,origin); }
     if(req.method==='POST'&&(url.pathname==='/v1/game'||url.pathname==='/v1/nick'||url.pathname==='/v1/setup'||url.pathname==='/v1/link'||url.pathname==='/v1/claim')){
       const lim=url.pathname==='/v1/setup'?['s:',30]:url.pathname==='/v1/claim'?['c:',10]:['w:',20];   // a code is guessed at most 10 times a minute

@@ -78,3 +78,7 @@ the palm heights are kept, so a bot's game replays like anyone's. The strongest 
 scores screen shows the table without them (`/v1/top?…&bots=0`); `stats.js` never counts them. Turn on after an update and a restart:
 `sudo -u sonaroids DB=/var/lib/sonaroids/sonaroids.db node --no-warnings server/bots.js init 40 7`, then a cron line every 10 minutes with `bots.js tick`
 (`docs/ru/server.md` has the exact commands). `bots.js remove --yes` takes them all out again (a copy of the database first).
+
+## SonarLink: a room for two phones (since 1.56c)
+
+`server/pair.js`: one phone opens a room (a 4-digit code), the other joins by the code; each listens to a stream (Server-Sent Events — a plain long response, no nginx or Caddy change: the server tells nginx not to buffer it, `X-Accel-Buffering: no`) and posts its messages, which the server hands to the other phone. Nothing is stored: rooms live in memory and die after 30 quiet minutes (or a restart). Limits: opening a room 10 a minute per address, joining 20, messages 60 a second per phone, 2 KB each. Update the server as usual: `cd /opt/sonaroids && sudo git pull && sudo systemctl restart sonaroids-api`.

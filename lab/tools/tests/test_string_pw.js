@@ -19,7 +19,7 @@ const LAB=path.join(__dirname,'..','..','app','sonar_lab3.html');
   let b0; for(let i=0;i<50;i++){ b0=await S(B); if(b0.code) break; await B.waitForTimeout(100); }
   need(a.near&&b0.near&&a.code===b0.code&&a.side===0&&b0.side===1,'«Рядом»: нашли друг друга без кода (комната '+a.code+')');
   let bS; for(let i=0;i<80;i++){ a=await S(A); bS=await S(B); if(a.phase==='play'&&bS.phase==='play') break; await A.waitForTimeout(100); }
-  need(a.phase==='play'&&bS.phase==='play','оба играют');
+  need(a.phase==='play'&&bS.phase==='play','оба играют'+(a.phase==='play'&&bS.phase==='play'?'':' — '+JSON.stringify(await Promise.all([A,B].map(p=>p.evaluate(()=>{ const s=window.__sl(); return [s.phase,s.ready,s.peerReady,s.T0,s.rtcState,s.dc&&s.dc.readyState,document.getElementById('slSay').textContent,window.__slEv()]; }))))));
   for(let i=0;i<40;i++){ a=await S(A); bS=await S(B); if(a.direct&&bS.direct&&a.rttD) break; await A.waitForTimeout(100); }
   need(a.direct&&bS.direct,'связь напрямую (WebRTC): '+(a.direct&&bS.direct?'да, '+(a.rttD||0).toFixed(0)+' мс туда-обратно':'нет'));
   need(a.half==='L'&&bS.half==='R'&&a.par==='0'&&bS.par==='1','половины и тоны: '+a.half+'/'+a.par+', '+bS.half+'/'+bS.par);

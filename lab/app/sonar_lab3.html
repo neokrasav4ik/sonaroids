@@ -81,6 +81,8 @@
   #slBtns{position:absolute;left:50%;top:58%;transform:translateX(-50%);width:15rem;display:flex;flex-direction:column;gap:.5rem}
   #slStop{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + .4rem);width:auto;min-height:0;padding:.5em 1em;font-size:.85rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
   #slAlign{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + .4rem);display:flex;gap:.4rem}
+  #slChk{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + 3rem);display:flex;gap:.5rem}
+  #slChk button{width:auto;min-height:0;padding:.6em 1em;font-size:1rem;background:rgba(4,7,10,.7);color:var(--ink);border:1px solid #3A4A52}
   #slAlign button{width:auto;min-height:0;padding:.5em .9em;font-size:1rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
   #siCode{font:600 1.6rem "IBM Plex Mono",monospace;width:7ch;text-align:center;padding:.3rem;border-radius:.5rem;border:1px solid #3A4A52;background:#0b0f14;color:var(--ink);letter-spacing:.2em}
   #arcPlay{padding:0;background:#070a12} #acC{position:absolute;inset:0;width:100%;height:100%;display:block}
@@ -213,7 +215,7 @@
   <div class="col">
     <h1>Струна</h1>
     <p>Два телефона торец к торцу, камеры друг к другу. Над каждым — свой вихрь, его ведёт ладонь у разъёма. Между вихрями струна: задевайте ею светлые частицы. Тёмная клякса выползает с края, висит и уходит обратно — держите струну по другую сторону, иначе она порвётся (сшить — свести вихри на одну высоту). Вихри на одной высоте — струна горит: ловит частицы шире и сжигает кляксы.</p>
-    <p class="small">Телефоны рядом, в одной Wi-Fi — «Рядом» на обоих (в пределах полуминуты): найдут друг друга сами и свяжутся напрямую. Друг далеко — «Создать комнату», ему код, он «Войти по коду». Тоны зонда телефоны выберут сами. «Один телефон» — второй вихрь ведёт бот. «Калибровка: общая» — после взмахов обе ладони ровно: низко, потом высоко — вихри пойдут одинаково. «Подогнать стык» — если у телефонов разная высота экрана и струна на стыке ломается.</p>
+    <p class="small">Телефоны рядом, в одной Wi-Fi — «Рядом» на обоих (в пределах полуминуты): найдут друг друга сами и свяжутся напрямую. Друг далеко — «Создать комнату», ему код, он «Войти по коду». Тоны зонда телефоны выберут сами. «Один телефон» — второй вихрь ведёт бот. «Играю один, двумя руками» — после взмахов обе ладони ровно: низко, потом высоко, и проверка — вихри пойдут одинаково. «Играем вдвоём» — у каждого своя рука, без этого. «Подогнать стык» — если у телефонов разная высота экрана и струна на стыке ломается.</p>
     <p><input id="siCode" inputmode="numeric" maxlength="4" placeholder="код" autocomplete="off"> <span id="siNow" class="mono"></span></p>
   </div>
   <div class="col btns">
@@ -222,7 +224,7 @@
     <button id="siJoin" class="ghost">Войти по коду</button>
     <button id="siBot" class="ghost">Один телефон (бот)</button>
     <button id="siCtl" class="ghost wide">Управление: ладонь</button>
-    <button id="siCal" class="ghost wide">Калибровка: общая</button>
+    <button id="siCal" class="ghost wide">Играю один, двумя руками</button>
     <button id="siSeam" class="ghost wide">Подогнать стык экранов</button>
     <button id="siBack" class="ghost">Назад</button>
   </div>
@@ -233,6 +235,7 @@
   <div id="slHud"></div>
   <div id="slTop"><div id="slSay"></div><div id="slSub"></div></div>
   <button id="slStop" class="gbtn">Стоп</button>
+  <div id="slChk" class="hidden"><button id="scPlay">Ровно — играть</button><button id="scRedo">Заново: низко и высоко</button></div>
   <div id="slAlign" class="hidden"><button id="saUp">▲</button><button id="saDn">▼</button><button id="saLess">сжать</button><button id="saMore">растянуть</button><button id="saOk">Готово</button></div>
   <div id="slBtns" class="hidden">
     <button id="slAgain" class="big">Ещё раз</button>
@@ -2321,7 +2324,7 @@ function slNow(){ return Date.now()+(SL.off||0); }
    настройки (SLOG, по кругу); здесь — игра: каждый шаг (ладонь, вихри, струна, счёт), отправленные и полученные высоты (с общими часами
    и путём: напрямую / через сервер), пинги, оценки часов, события и сообщения. Времена: ms — от начала журнала (performance.now),
    srv — общие часы (часы сервера по оценке этого телефона), f — кадр звука (512 отсчётов). Разбор двух журналов — lab/tools/eval_string.js ── */
-var SLL=null, SL_VER='1.56m', SL_WK=null;
+var SLL=null, SL_VER='1.56n', SL_WK=null;
 function sllStart(){ SLL={on:true,p0:performance.now(),wall:new Date().toISOString(),game:[],tx:[],rx:[],ping:[],ev:[],off:[],rounds:[],lastG:0}; }
 function slObjsC(a){ return (a||[]).map(function(o){ return [o.k,+o.ts.toFixed(3),+o.u.toFixed(4),o.dir,+o.sp.toFixed(4),o.kind,o.dep===undefined?null:+o.dep.toFixed(4),o.hold===undefined?null:+o.hold.toFixed(3),o.gone?1:0,+o.ph.toFixed(4),+o.sw.toFixed(4)]; }); }
 function sllT(){ return +(performance.now()-SLL.p0).toFixed(1); }
@@ -2387,7 +2390,7 @@ function slListen(){ if(SL.es) try{ SL.es.close(); }catch(e){}
   es.addEventListener('peer',function(e){ var d=JSON.parse(e.data); slE(d.here?'напарник пришёл':'напарник ушёл',{t:d.t}); slPeer(d.here); });
   es.addEventListener('m',function(e){ var d=JSON.parse(e.data); slMsg(d.m,d.t,'s'); });
   es.onerror=function(){ if(SL.link!==false) slE('сервер: связь потеряна'); SL.link=false; slStatus(); }; }
-function slPeer(here){ SL.peerHere=here; if(here){ slSend({e:'hi',half:SL.half,ready:SL.ready}); if(SL.calMe) slSend({e:'cal',r:SL.calMe.r,f:SL.calMe.f,fm:SL.calMe.fm}); } slStatus(); }
+function slPeer(here){ SL.peerHere=here; if(here){ slSend({e:'hi',half:SL.half,ready:SL.ready}); if(SL.calMe) slSend({e:'cal',r:SL.calMe.r,f:SL.calMe.f,fm:SL.calMe.fm,mode:SL_CAL}); } slStatus(); }
 function slStatus(){ var t=SL.code?(SL.near?'рядом':'код '+SL.code)+(SL.link?'':' · нет связи')+(SL.peerHere?(slDirect()?' · напрямую'+(SL.rttD?' '+Math.round(SL.rttD)+' мс':''):' · через сервер'+(SL.rttS?' '+Math.round(SL.rttS)+' мс':'')):' · ждём напарника'):'';
   if(SL.phase==='pair'){ var ls=SL.lastSay; el('slSay').textContent=SL.peerHere?(ls?ls[0]:'Напарник здесь'):SL.near?'Ищу второй телефон…':'Код: '+SL.code; el('slSub').textContent=SL.peerHere?(ls?ls[1]:'Готовимся.'):SL.near?'На нём: СонарЛинк → Струна → «Рядом». Не находит (VPN, разные сети) — там «Войти по коду» '+SL.code+'.':'На втором телефоне: СонарЛинк → Струна → этот код → «Войти».'; }
   el('slHud').textContent=t+(SL.half?' · '+(SL.half==='L'?'левая':'правая')+' половина'+(SL.halfNote?' (телефоны лежат одинаково — взял другую)':''):''); }
@@ -2396,11 +2399,12 @@ function slMsg(m,t,via){ if(!m) return;
   if(m.e==='pong'){ var rt=performance.now()-m.t; if(SLL) SLL.ping.push([sllT(),+rt.toFixed(1),m.v]); if(m.v==='d') SL.rttD=SL.rttD?SL.rttD*0.7+rt*0.3:rt; else SL.rttS=SL.rttS?SL.rttS*0.7+rt*0.3:rt; slStatus(); return; }
   if(m.e==='rtc'){ slE('← rtc '+(m.sdp?m.sdp.type:'адрес'),m.c?{c:String(m.c.candidate||'').split(' ').slice(4,8).join(' ')}:undefined); slRtcMsg(m); return; }
   if(m.e) slE('← '+m.e+(via==='d'?' (напрямую)':' (сервер)'),{m:m,t:t||null});
-  if(m.e==='cal'){ SL.calPeer={r:m.r,f:m.f,fm:m.fm}; slCalShare(); return; }
+  if(m.e==='cal'){ SL.calPeer={r:m.r,f:m.f,fm:m.fm,mode:m.mode}; slCalShare(); return; }
   if(m.e==='lvl'){ SL.peerLvl=SL.peerLvl||{}; if(m.stage) SL.peerLvl[m.stage]=m.skip?'skip':m.r; if(m.skip&&SL.prep==='level') slLevelDone('ровно: у напарника не вышло — калибровка по взмахам'); return; }
   if(typeof m.h==='number'){ if(SLL&&SLL.on) SLL.rx.push([sllT(),Math.round(slNow()),t||null,m.s,m.h,via]); SL.pb.push([m.s,m.h]); if(SL.pb.length>40) SL.pb.shift(); return; }
   if(m.e==='hi'){ SL.peerHi=true; SL.peerHalf=m.half; if(m.half===SL.half&&SL.side===1){ SL.half=SL.half==='L'?'R':'L'; SL.halfNote=true; slE('половина: обе одинаковые — беру '+SL.half); slTones(); } if(m.ready) SL.peerReady=true; slRtcStart(); slStatus(); slMaybeStart(); return; }
   if(m.e==='ready'){ SL.peerReady=true; slMaybeStart(); return; }
+  if(m.e==='relevel'){ slRelevel(false); return; }
   if(m.e==='start'){ slStartAt(m.T0,m.seed); return; }
   if(m.e==='got'){ slGot(m.k,false,m.p); return; }
   if(m.e==='cut'){ slCut(m.k,false); return; }
@@ -2445,20 +2449,23 @@ function slPrep(){ if(SL_CTL==='touch'){ slReady(); return; }
        то же, что в игре 29.09 (v0.91), где уровень на время партии держится. Здесь — держится с той же минуты, как выучен по пустой комнате
        (перед «Помаши»). Прогон журнала iPhone той же обработкой: видна 68% → 100%, потерь 46 → 0; у Ми 9 и в партии 18:22 — без изменений */
     return sleep(500).then(function(){ try{ DSP2.set('holdfloor',1); }catch(e){} slE('пустая комната запомнена',{floor:SL.floor===undefined||SL.floor===null?null:+SL.floor.toFixed(1)}); SL.prep='wave'; SL.T=Tune.create(100,true); say('Помаши ладонью','К разъёму и от него, 5–15 см — вихрь ходит за ней. Секунд пять.');
-      return new Promise(function(r){ SL.onCaught=r; }); }).then(function(){ SL.prep='waved'; slCalMine(); if(SL_CAL==='shared'&&!SL.bot) return slLevel(); }).then(function(){ SL.prep='done'; slReady(); }); })
+      return new Promise(function(r){ SL.onCaught=r; }); }).then(function(){ SL.prep='waved'; slCalMine(); if(SL_CAL==='shared'&&!SL.bot) return slLevel().then(slAfterLevel); }).then(function(){ SL.prep='done'; slReady(); }); })
   .catch(function(e){ say('Не вышло',(e&&e.message)||String(e)); slFail(); }); }
 /* ── 1.56g: общая калибровка (автор: один игрок — каждый телефон подгонял середину под свою ладонь, и чтобы выпрямить струну, одну ладонь
    приходилось уводить вверх, другую вниз). Поймав взмахи, телефон шлёт середину своего размаха по дальности эха (мм от телефона) и поле;
    оба берут среднее: ладонь на одном расстоянии от своего телефона — вихри на одной высоте. «Своя у каждого» — как было ── */
 var SL_CAL='shared'; try{ SL_CAL=localStorage.getItem('sonar_sl_cal')==='own'?'own':'shared'; }catch(e){}
-function slCalLabel(){ el('siCal').textContent='Калибровка: '+(SL_CAL==='own'?'своя у каждого':'общая (один игрок двумя руками)'); }
+/* 1.56n (автор: «синхронизация двух ладоней — это когда один человек двумя руками играет.. когда двое играют — это лишнее.. разведи в меню»):
+   «Играю один, двумя руками» — общая калибровка: «ровно» низко и высоко + проверка; «Играем вдвоём» — у каждого своя, по взмахам, без них.
+   Если на телефонах выбрано разное — «ровно» не ждёт напарника, у которого «вдвоём» */
+function slCalLabel(){ el('siCal').textContent=SL_CAL==='own'?'Играем вдвоём (у каждого своя рука)':'Играю один, двумя руками'; }
 function slCalMine(){ if(!SL.T||SL.bot) return; var c=DSP2.info().cal; SL.calDone=null; SL.calMe={r:+((100-c.o)/c.k).toFixed(1),f:+SL.T.field.toFixed(1),fm:+(SL.T.field/c.k).toFixed(1)}; slE('калибровка: середина '+SL.calMe.r+' мм, поле '+SL.calMe.f+' ('+SL.calMe.fm+' мм)',{k:c.k,o:c.o});
-  slSend({e:'cal',r:SL.calMe.r,f:SL.calMe.f,fm:SL.calMe.fm}); slCalShare(); }
+  slSend({e:'cal',r:SL.calMe.r,f:SL.calMe.f,fm:SL.calMe.fm,mode:SL_CAL}); slCalShare(); }
 /* 1.56i (журналы 06.10 18:22, автор: «правую руку приходилось держать выше или ниже левой»): у Ми 9 был включён широкий зонд лабы —
    другой масштаб (k 1,4 против 1,17 у iPhone), и одно «поле» в условных единицах было 71 мм у одного и 85 мм у другого; а середины размахов
    (105 и 119,5 мм) — это где махала рука, а не где у телефонов одна высота. Теперь: зонд в «Струне» у обоих один (с 1.56k — широкий), поле общее в миллиметрах,
    середину ставит шаг «ровно» — обе ладони на одной высоте секунду, эта высота — середина у обоих */
-function slCalShare(){ if(SL_CAL!=='shared'||!SL.calMe||!SL.calPeer||!SL.T) return; var key=SL.calPeer.r+'/'+SL.calPeer.f+'/'+SL.calMe.f; if(SL.calDone===key) return; SL.calDone=key;
+function slCalShare(){ if(SL_CAL!=='shared'||!SL.calMe||!SL.calPeer||!SL.T||SL.calPeer.mode==='own') return; var key=SL.calPeer.r+'/'+SL.calPeer.f+'/'+SL.calMe.f; if(SL.calDone===key) return; SL.calDone=key;
   var c=DSP2.info().cal, pm=SL.calPeer.fm||SL.calPeer.f/1.17, fm=(SL.calMe.fm+pm)/2;
   SL.T.field=fm*c.k; slE('общее поле: '+fm.toFixed(1)+' мм (моё '+SL.calMe.fm+', напарника '+(+pm).toFixed(1)+') → '+SL.T.field.toFixed(1)); }
 /* шаг «ровно» — 1.56m: две точки (журналы 06.10 19:24, автор: «калибровка ровной ладони опять кривовато — правую руку для ровной струны
@@ -2468,12 +2475,13 @@ function slCalShare(){ if(SL_CAL!=='shared'||!SL.calMe||!SL.calPeer||!SL.T) retu
    высоты экрана, «высоко» — на 85% (середина и ход сразу). Телефоны идут шаг в шаг: «высоко» начинается, когда оба услышали «низко».
    На каждом шаге 3 с прочитать (отсчёт) и 2 с держать с полоской (ладонь в пределах ~1 см; шевельнулась — полоска откатывается);
    25 с не вышло — остаётся калибровка по взмахам, игра идёт */
-var SL_LVL_READ=3000, SL_LVL_HOLD=2000, SL_LVL_TOL=12, SL_LVL_GIVEUP=25000, SL_LVL_LO=0.15, SL_LVL_HI=0.85, SL_LVL_MIN=25;
+var SL_LVL_READ=3000, SL_LVL_HOLD=2000, SL_LVL_TOL=12, SL_LVL_DRIFT=14, SL_LVL_GIVEUP=25000, SL_LVL_LO=0.15, SL_LVL_HI=0.85, SL_LVL_MIN=25;
 function slLevel(){ SL.prep='level'; SL.lvl={stage:'lo',buf:[],prog:0,t0:0,last:0,txt:'',lo:null,hi:null,sent:{}}; return new Promise(function(r){ SL.onLevel=r; }); }
 function slLevelSet(a,b){ var L=SL.lvl, k=a+'|'+b; if(L.txt===k||!SL.prepSay) return; L.txt=k; SL.prepSay(a,b); }
 function slLevelDone(why){ SL.prep='leveled'; if(why) slE(why); var f=SL.onLevel; SL.onLevel=null; if(f) f(); }
 function slLevelSend(stage,v,skip){ var L=SL.lvl, c=DSP2.info().cal; if(L.sent[stage]) return; L.sent[stage]=1; slSend({e:'lvl',stage:stage,r:v===null?null:+((v-c.o)/c.k).toFixed(1),skip:!!skip}); }
 function slLevelStep(now){ var L=SL.lvl, P=SL.peerLvl||{}; if(!SL.calPeer){ slLevelSet('Ждём второй телефон','На нём ещё ловят взмахи.'); return; }
+  if(SL.calPeer.mode==='own'){ slLevelDone('ровно: на втором телефоне «вдвоём» — без «ровно»'); return; }
   if(!L.t0){ L.t0=now; L.last=now; slE('ровно: '+(L.stage==='lo'?'низко':'высоко')+' — начало'); }
   var dt=Math.min(100,now-L.last), lo=L.stage==='lo'; L.last=now;
   /* своя точка уже есть — ждём напарника (ладони держать так же) */
@@ -2483,24 +2491,42 @@ function slLevelStep(now){ var L=SL.lvl, P=SL.peerLvl||{}; if(!SL.calPeer){ slLe
     if(lo) slLevelSet('Обе ладони — низко','Ровно, на нижней удобной высоте (не ниже 5 см). Начну слушать через '+sec+' с.');
     else slLevelSet('Теперь обе — высоко','Ровно, на верхней удобной высоте. Начну слушать через '+sec+' с.'); return; }
   if(now-L.t0>SL_LVL_READ+SL_LVL_GIVEUP){ slLevelSend(L.stage,null,true); slLevelDone('ровно: '+(lo?'низко':'высоко')+' не вышло за '+(SL_LVL_GIVEUP/1000)+' с — калибровка по взмахам'); return; }
-  var ok=SL.present&&SL.dist!==null, note='';
-  if(ok){ L.buf.push([now,SL.dist]); while(L.buf.length&&now-L.buf[0][0]>SL_LVL_HOLD) L.buf.shift();
-    var sm=0; L.buf.forEach(function(b){ sm+=b[1]; }); var m=sm/L.buf.length; if(Math.abs(SL.dist-m)>SL_LVL_TOL/2){ ok=false; L.buf=L.buf.filter(function(b){ return now-b[0]<300; }); }
-    if(!lo&&L.lo!==null&&SL.dist-L.lo<SL_LVL_MIN){ ok=false; note='  выше — до нижней ещё близко'; } }
+  /* 1.56n (журналы 20:00, автор: «на айфоне вихрь начал уплывать вверх, на ми 9 стоял на месте как и ладонь»): высота вихря — быстрая
+     часть (фаза эха) плюс медленное подтягивание к абсолютной (центр эха, медиана), за секунды; у iPhone абсолютная при неподвижной ладони
+     прыгала между двумя отражениями (~2 см), и вихрь полз за ней — точка бралась на ходу (низко — на 20 единиц выше, чем пришла бы).
+     Теперь: держит — значит абсолютная стоит (медианы первой и второй половины отрезка ближе SL_LVL_DRIFT) и вихрь не скачет;
+     точка — где вихрь остановится, если ладонь так и стоит: абсолютная, кроме мёртвой зоны подтягивания (5, а снизу к середине вверх — 15) */
+  var ok=SL.present&&SL.dist!==null&&SL.absH!==null&&SL.absH!==undefined, note='', md=function(a){ var q=a.slice().sort(function(x,y){ return x-y; }); return q[q.length>>1]; };
+  if(ok){ L.buf.push([now,SL.dist,SL.absH]); while(L.buf.length&&now-L.buf[0][0]>SL_LVL_HOLD) L.buf.shift();
+    var t0b=L.buf[0][0], A0=[], A1=[], H=[]; L.buf.forEach(function(b){ if(b[0]-t0b<(now-t0b)/2) A0.push(b[2]); else A1.push(b[2]); H.push(b[1]); });
+    var drift=now-t0b>800&&A0.length&&A1.length?Math.abs(md(A1)-md(A0)):0, jump=Math.max.apply(null,H)-Math.min.apply(null,H);
+    if(drift>SL_LVL_DRIFT||jump>SL_LVL_TOL*3){ ok=false; note='  вихрь ещё плывёт — держи'; L.buf=L.buf.filter(function(b){ return now-b[0]<300; }); } }
   else L.buf=[];
+  var settle=null; if(ok&&L.buf.length>5){ var aM=md(L.buf.map(function(b){ return b[2]; })), x=SL.dist, db=(aM>x&&x<100)?15:5; settle=Math.abs(aM-x)<=db?x:aM-(aM>x?db:-db); }
+  if(ok&&!lo&&L.lo!==null&&settle!==null&&settle-L.lo<SL_LVL_MIN){ ok=false; note='  выше — до нижней ещё близко'; }
   L.prog=Math.max(0,Math.min(1,L.prog+(ok?dt:-dt*1.5)/SL_LVL_HOLD));
   var n=Math.round(L.prog*10), bar=new Array(n+1).join('●')+new Array(11-n).join('○');
   slLevelSet(SL.present?'Держи…':'Ладони не видно',bar+(SL.present?(note||(lo?'  обе низко, ровно':'  обе высоко, ровно')):'  поднеси ладонь к разъёму'));
-  if(L.prog<1||!L.buf.length) return;
-  var sum=0, mn=1e9, mx=-1e9; L.buf.forEach(function(b){ sum+=b[1]; mn=Math.min(mn,b[1]); mx=Math.max(mx,b[1]); });
-  var v=sum/L.buf.length, c=DSP2.info().cal; L[L.stage]=v; slE('ровно: '+(lo?'низко':'высоко')+' — эхо '+((v-c.o)/c.k).toFixed(1)+' мм',{h:+v.toFixed(1),spread:+(mx-mn).toFixed(1),took_ms:Math.round(now-L.t0)}); slLevelSend(L.stage,v); }
+  if(L.prog<1||settle===null||now-L.buf[0][0]<SL_LVL_HOLD*0.9) return;   /* точка — только по полному отрезку, прошедшему проверку */
+  var v=settle, c=DSP2.info().cal; L[L.stage]=v;
+  slE('ровно: '+(lo?'низко':'высоко')+' — эхо '+((v-c.o)/c.k).toFixed(1)+' мм',{h:+v.toFixed(1),x:+SL.dist.toFixed(1),abs:+md(L.buf.map(function(b){ return b[2]; })).toFixed(1),jump:+jump.toFixed(1),took_ms:Math.round(now-L.t0)}); slLevelSend(L.stage,v); }
+/* 1.56n: проверка после «ровно» — обе ладони посередине, струна видна; «Ровно — играть» на обоих — старт; «Заново» на любом — оба ещё раз
+   низко и высоко. Автор (20:00): «на айфоне вихрь начал уплывать вверх.. из-за этого в игре опять был рассинхрон» — увидеть сразу, а не в игре */
+function slCheck(){ SL.prep='check'; SL.chk=null; el('slChk').classList.remove('hidden');
+  if(SL.prepSay) SL.prepSay('Проверка','Обе ладони посередине — струна ровная? Вверх-вниз вместе — вихри идут одинаково?');
+  return new Promise(function(r){ SL.onCheck=r; }); }
+function slCheckPlay(){ if(SL.prep!=='check') return; el('slChk').classList.add('hidden'); slE('проверка: ровно — играть'); var f=SL.onCheck; SL.onCheck=null; if(f) f(); }
+function slRelevel(mine){ if(SL.prep!=='check'&&SL.prep!=='done'&&SL.prep!=='leveled') return; if(SL.T0) return; el('slChk').classList.add('hidden'); slE(mine?'проверка: заново':'напарник: заново');
+  if(mine) slSend({e:'relevel'}); SL.ready=false; SL.peerReady=false; SL.peerLvl=null; var keep=SL.onCheck; SL.onCheck=null;
+  slLevel().then(slAfterLevel).then(function(){ SL.prep='done'; if(keep) keep(); else slReady(); }); }
+function slAfterLevel(){ if(SL.calPeer&&SL.calPeer.mode==='own') return; return slCheck(); }
 /* оба услышали обе точки: «низко» → 15% экрана, «высоко» → 85% (экран ниже середины растянут в ASYM раз — как у корабля) */
 function slLevelApply(){ var L=SL.lvl, A=Tune.ASYM, a=0.5-SL_LVL_LO, b=SL_LVL_HI-0.5, F=(L.hi-L.lo)*(1+A)/(2*a+2*A*b), FL=2*F/(1+A), d=100-a*FL-L.lo, c=DSP2.info().cal;
   DSP2.shift(d); if(SL.dist!==null&&SL.dist!==undefined) SL.dist+=d; SL.T.field=F;
   slE('ровно: низко → '+Math.round(SL_LVL_LO*100)+'%, высоко → '+Math.round(SL_LVL_HI*100)+'%: поле '+F.toFixed(1)+' ('+(F/c.k).toFixed(1)+' мм), сдвиг '+d.toFixed(1),{lo:+L.lo.toFixed(1),hi:+L.hi.toFixed(1),F:+F.toFixed(1),d:+d.toFixed(1),peer:SL.peerLvl||null});
   slLevelDone(); }
 function slFail(){ el('slBtns').classList.remove('hidden'); el('slAgain').classList.add('hidden'); el('slRetry').classList.remove('hidden'); }
-function slFrame(r){ if(r){ SL.floor=r.floor; SL.present=r.present; if(r.present) SL.dist=r.height; } }
+function slFrame(r){ if(r){ SL.floor=r.floor; SL.absH=r.present?r.abs:null; SL.present=r.present; if(r.present) SL.dist=r.height; } }
 function slReady(){ SL.ready=true; if(SL.bot){ slStartAt(Date.now()+3200,(Math.random()*4294967296)>>>0); return; }
   el('slSay').textContent=SL.peerReady?'Начинаем':'Готово'; el('slSub').textContent=SL.peerReady?'':'Ждём напарника.'; slSend({e:'ready'}); slMaybeStart(); }
 /* старт — только после «hi» напарника: до него его поток мог ещё не слушать, и «start» пропадал (стенд, «палец»: второй готов сразу) */
@@ -2585,7 +2611,7 @@ function slHud(){ if(SL.phase==='play'||SL.phase==='over') el('slHud').textConte
 function slOver(err){ slE(err?'остановка: '+el('slSay').textContent:'финиш',{score:SL.score||0,got:SL.got||0,burned:SL.burned||0,cuts:SL.cuts||0,t:SL.t===undefined?null:+SL.t.toFixed(2)}); if(!err) SL.logStop=performance.now()+3000;
   el('slAgain').classList.toggle('hidden',!!err); el('slRetry').classList.add('hidden'); if(!err){ SL.phase='over'; el('slSay').textContent='Финиш'; el('slSub').textContent='счёт '+SL.score+' · частиц '+SL.got+' · сожжено клякс '+(SL.burned||0)+' · обрывов '+SL.cuts; }
   el('slBtns').classList.remove('hidden'); el('slStop').classList.add('hidden'); }
-function slExit(){ slReset(); if(booted) setProbe('off'); try{ DSP2.set('holdfloor',0); }catch(e){} mode=null; if(SL_WK!==null&&typeof probeWide!=='undefined'){ probeWide=SL_WK; SL_WK=null; } el('slAlign').classList.add('hidden'); slOpen(); }
+function slExit(){ slReset(); if(booted) setProbe('off'); try{ DSP2.set('holdfloor',0); }catch(e){} mode=null; if(SL_WK!==null&&typeof probeWide!=='undefined'){ probeWide=SL_WK; SL_WK=null; } el('slAlign').classList.add('hidden'); el('slChk').classList.add('hidden'); slOpen(); }
 /* ── рисование: своя половина поля (или всё поле — «один телефон») ── */
 var SLC={w:0,h:0,dpr:1,bg:null,vx:{}};
 /* 1.56i: стык экранов (автор: «когда телефоны ровно друг к другу — нить не совсем совпадает»). Высота экрана у телефонов разная, а v — доля
@@ -2661,6 +2687,7 @@ el('siSeam').addEventListener('click',slSeam);
 el('saUp').addEventListener('click',function(){ slSeamMove(-0.004,0); }); el('saDn').addEventListener('click',function(){ slSeamMove(0.004,0); });
 el('saLess').addEventListener('click',function(){ slSeamMove(0,-0.01); }); el('saMore').addEventListener('click',function(){ slSeamMove(0,0.01); });
 el('saOk').addEventListener('click',slExit);
+el('scPlay').addEventListener('click',slCheckPlay); el('scRedo').addEventListener('click',function(){ slRelevel(true); });
 el('slStop').addEventListener('click',function(){ if(SL.phase==='play'){ slOver(false); SL.phase='over'; } else slExit(); });
 el('slAgain').addEventListener('click',function(){ if(SL.bot){ slBegin('bot'); return; } SL.logStop=0; if(SLL) SLL.on=true; if(SLOG&&SL.logging) SLOG.on=true; slE('ещё раунд'); SL.T0=0; SL.ready=false; SL.peerReady=false; el('slBtns').classList.add('hidden'); el('slStop').classList.remove('hidden');
   SL.objs=[]; SL.phase='prep'; SL.ready=true; slSend({e:'ready'}); el('slSay').textContent='Готово'; el('slSub').textContent='Ждём напарника.'; slMaybeStart(); });

@@ -81,6 +81,8 @@
   #slBtns{position:absolute;left:50%;top:58%;transform:translateX(-50%);width:15rem;display:flex;flex-direction:column;gap:.5rem}
   #slStop{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + .4rem);width:auto;min-height:0;padding:.5em 1em;font-size:.85rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
   #slAlign{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + .4rem);display:flex;gap:.4rem}
+  #slChk{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + 3rem);display:flex;gap:.5rem}
+  #slChk button{width:auto;min-height:0;padding:.6em 1em;font-size:1rem;background:rgba(4,7,10,.7);color:var(--ink);border:1px solid #3A4A52}
   #slAlign button{width:auto;min-height:0;padding:.5em .9em;font-size:1rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
   #siCode{font:600 1.6rem "IBM Plex Mono",monospace;width:7ch;text-align:center;padding:.3rem;border-radius:.5rem;border:1px solid #3A4A52;background:#0b0f14;color:var(--ink);letter-spacing:.2em}
   #arcPlay{padding:0;background:#070a12} #acC{position:absolute;inset:0;width:100%;height:100%;display:block}
@@ -213,7 +215,7 @@
   <div class="col">
     <h1>Струна</h1>
     <p>Два телефона торец к торцу, камеры друг к другу. Над каждым — свой вихрь, его ведёт ладонь у разъёма. Между вихрями струна: задевайте ею светлые частицы. Тёмная клякса выползает с края, висит и уходит обратно — держите струну по другую сторону, иначе она порвётся (сшить — свести вихри на одну высоту). Вихри на одной высоте — струна горит: ловит частицы шире и сжигает кляксы.</p>
-    <p class="small">Телефоны рядом, в одной Wi-Fi — «Рядом» на обоих (в пределах полуминуты): найдут друг друга сами и свяжутся напрямую. Друг далеко — «Создать комнату», ему код, он «Войти по коду». Тоны зонда телефоны выберут сами. «Один телефон» — второй вихрь ведёт бот. «Калибровка: общая» — после взмахов обе ладони ровно: низко, потом высоко — вихри пойдут одинаково. «Подогнать стык» — если у телефонов разная высота экрана и струна на стыке ломается.</p>
+    <p class="small">Телефоны рядом, в одной Wi-Fi — «Рядом» на обоих (в пределах полуминуты): найдут друг друга сами и свяжутся напрямую. Друг далеко — «Создать комнату», ему код, он «Войти по коду». Тоны зонда телефоны выберут сами. «Один телефон» — второй вихрь ведёт бот. «Играю один, двумя руками» — после взмахов обе ладони ровно: низко, потом высоко, и проверка — вихри пойдут одинаково. «Играем вдвоём» — у каждого своя рука, без этого. «Подогнать стык» — если у телефонов разная высота экрана и струна на стыке ломается.</p>
     <p><input id="siCode" inputmode="numeric" maxlength="4" placeholder="код" autocomplete="off"> <span id="siNow" class="mono"></span></p>
   </div>
   <div class="col btns">
@@ -222,7 +224,7 @@
     <button id="siJoin" class="ghost">Войти по коду</button>
     <button id="siBot" class="ghost">Один телефон (бот)</button>
     <button id="siCtl" class="ghost wide">Управление: ладонь</button>
-    <button id="siCal" class="ghost wide">Калибровка: общая</button>
+    <button id="siCal" class="ghost wide">Играю один, двумя руками</button>
     <button id="siSeam" class="ghost wide">Подогнать стык экранов</button>
     <button id="siBack" class="ghost">Назад</button>
   </div>
@@ -233,6 +235,7 @@
   <div id="slHud"></div>
   <div id="slTop"><div id="slSay"></div><div id="slSub"></div></div>
   <button id="slStop" class="gbtn">Стоп</button>
+  <div id="slChk" class="hidden"><button id="scPlay">Ровно — играть</button><button id="scRedo">Заново: низко и высоко</button></div>
   <div id="slAlign" class="hidden"><button id="saUp">▲</button><button id="saDn">▼</button><button id="saLess">сжать</button><button id="saMore">растянуть</button><button id="saOk">Готово</button></div>
   <div id="slBtns" class="hidden">
     <button id="slAgain" class="big">Ещё раз</button>

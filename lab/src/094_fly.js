@@ -30,7 +30,9 @@ function flStep(dt){ if(!FL.W) return; var fMe=SL.frac===undefined?0.5:SL.frac, 
   SL.vL=slV(fL); SL.vR=slV(fR); var inTime=slSync(dt)===1; SL.res+=((inTime?1:0)-SL.res)*(1-Math.pow(0.02,dt));
   if(!flAuth()) return;
   FL.s+=FL_V*dt; var xc=flXc(FL.s), hw=flHalfW(FL.s), slope=(flXc(FL.s+2)-xc)/2;
-  var phiT=SL.bot?Math.max(-0.8,Math.min(0.8,(xc-FL.x)*0.25+slope*1.5)):Math.max(-0.8,Math.min(0.8,(fL-fR)*1.6));
+  /* 1.56v: крен — разность рук минус её же среднее за ~4 с (что бы ни держали руки ровно — через пару секунд это «прямо»), с мёртвой зоной 0,06 */
+  var bd=fL-fR; FL.bM=FL.bM===undefined?bd:FL.bM+(bd-FL.bM)*(1-Math.exp(-dt/4)); var bn=bd-FL.bM; bn=Math.abs(bn)<0.06?0:bn-(bn>0?0.06:-0.06); FL.bn=bn;
+  var phiT=SL.bot?Math.max(-0.8,Math.min(0.8,(xc-FL.x)*0.25+slope*1.5)):Math.max(-0.8,Math.min(0.8,bn*1.8));
   FL.phi+=(phiT-FL.phi)*(1-Math.exp(-dt/0.12)); FL.x+=FL_V*0.45*Math.sin(FL.phi)*dt;
   var yT=0.8+((fL+fR)/2)*9; FL.y+=(yT-FL.y)*(1-Math.exp(-dt/0.18));
   FL.cool=Math.max(0,FL.cool-dt); FL.flash=Math.max(0,FL.flash-dt);

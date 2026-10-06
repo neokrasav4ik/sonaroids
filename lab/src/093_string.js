@@ -299,7 +299,10 @@ function slLoop(now){ var dt=Math.min(0.05,(now-SL.last)/1000); SL.last=now; slS
      ±2–3 см, у каждого телефона по-своему, — а движение (куда и как быстро) точно. Поэтому вихрь показывает не высоту, а отклонение руки от её
      среднего за последние ~6 с, в долях её обычного размаха за ~4 с: одинаковое движение обеих рук — одинаковый ход обоих вихрей, на любом телефоне */
   SL.rules=SL_RULES_Q||((SL.mode==='fly'||(SL_CAL==='shared'&&!SL.bot&&SL.mode==='game'&&(!SL.calPeer||SL.calPeer.mode!=='own')))?'sync':'level');
-  if(SL.rules==='sync'&&SL_CTL!=='touch'&&SL.present&&SL.frac!==undefined&&SL.prep!=='wave'){ var fr=SL.frac, kM=1-Math.exp(-dt/6), kA=1-Math.exp(-dt/4); SL.fRaw=fr;
+  /* 1.56v (автор, «Ущелье»: «опять рассинхрон высоты рук.. чтобы лететь прямо — одна выше должна быть, другая ниже»): основа — сама высота
+     вихря из обработки (SL.dist, без обрезки), а не доля по калибровке взмахов: доля упирается в 0 или 1, если рука ходит вне откалиброванного
+     хода, и такая рука отвечает только в одну сторону — середина её «ползёт», и для ровного полёта приходилось держать её выше или ниже */
+  if(SL.rules==='sync'&&SL_CTL!=='touch'&&SL.present&&SL.dist!==null&&SL.dist!==undefined&&SL.prep!=='wave'){ var fr=SL.dist/100, kM=1-Math.exp(-dt/6), kA=1-Math.exp(-dt/4); SL.fRaw=fr;
     SL.nM=SL.nM===undefined?fr:SL.nM+(fr-SL.nM)*kM; SL.nA=SL.nA===undefined?0.15:SL.nA+(Math.abs(fr-SL.nM)-SL.nA)*kA;
     SL.frac=Math.max(0,Math.min(1,0.5+0.25*(fr-SL.nM)/Math.max(0.1,SL.nA))); }
   if(SL_CTL==='touch'&&SL.touchY!==null&&SL.touchY!==undefined) SL.frac=Math.max(0,Math.min(1,(1-SL.touchY-SL_M)/(1-2*SL_M)));

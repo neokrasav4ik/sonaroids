@@ -78,7 +78,7 @@ MAP = [
     ('src/21_log.js', 'flow'),
     ('src/22_sfx.js', 'flow native_audio'),
     ('src/23_net.js server/*', 'test_server flow'),
-    ('src/30_lang_*.js font/* game/font.js', 'test_text screens first_open'),
+    ('src/3?_lang_*.js font/* game/font.js', 'test_text screens first_open'),
     ('src/00_head.html src/99_end.html src/40_gfx.js src/41_sprites.js src/42_*.js src/44_thumbs.js', 'screens first_open press settings'),
     ('src/43_skins.js src/45_hd.js src/46_vecskins.js src/47_pixskins.js src/48_flight.js src/48_sizes.js',
      'skin_audit skin_audit_hd skin_sizes hd mix obsidian_sizes screens'),

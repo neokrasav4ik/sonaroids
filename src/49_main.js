@@ -65,9 +65,12 @@ function diagCorner(label,top,ty,flip,ax){ var vr=ty?(freeSide()!=='left')!==!!f
       text(it[1],x0,ly2,P.band,'left'); R(P.band,x0,ly2+PF.CAP+2,w,1); BTN.push({id:it[0],x:x0-8,y:ly2-4,w:w+16,h:PF.CAP+8}); xx=vr?x0-24:x0+w+24; }); }
   // v0.50: in the app, on the title screen — «sound»: the app's own sound, the microphone and the speaker (a service screen for trying phones)
  }
-function titles(t,s,col){ var y=topY(), mw=LW-SAFE.l-SAFE.r-24, cx0=Math.round((SAFE.l+LW-SAFE.r)/2);
+function titles(t,s,col){ var y=topY(), mw=LW-SAFE.l-SAFE.r-2*(BH+14),   /* v1.54 (the review's п.3): clear of the corner button and the version */
+     cx0=Math.round((SAFE.l+LW-SAFE.r)/2);
   PF.wrap(t,mw,1).forEach(function(l){ text(l,cx0,y,col||P.text,'center'); y+=10; });
-  if(s){ y+=3; y=para(s,cx0,y,mw,P.soft); } say(t+(s?'. '+s:'')); return y; }
+  if(s){ y+=3; var n=PF.wrap(s,mw,1).length, lo=Math.floor(mw/Math.max(1,n)), hi=mw;   /* v1.54: the lines balanced — the narrowest width that keeps their count, so no word hangs alone («…ОДНО / ИМЯ…») */
+    if(n>1) while(hi-lo>2){ var md=(lo+hi)>>1; if(PF.wrap(s,md,1).length>n) lo=md; else hi=md; }
+    y=para(s,cx0,y,hi,P.soft); } say(t+(s?'. '+s:'')); return y; }
 function btnW(labels){ var w=0; labels.forEach(function(s){ w=Math.max(w,PF.width(s)); }); return Math.max(Math.round(LW*0.2),Math.round((w+14)*1.16)); }
 function sideX(w){ return freeSide()==='left'?SAFE.l+Math.max(8,Math.round(LW*0.04)):LW-SAFE.r-Math.max(8,Math.round(LW*0.04))-w; }
 /* a column of buttons on the free side, vertically centred on y0 */
@@ -557,11 +560,16 @@ function gfxLabel(){ return L('gfx')+': '+(gfxMode==='hd'?'HD'+(hdAvail(skinId)?
 /* v0.78: «ГРАФИКА: ПИКСЕЛИ / HD» in the pause too (the maintainer: switch it right during a session) — the same action as in the menu */
 /* v0.82: the pause in two columns (the maintainer's pick «Б»): the game's actions on the free side, and beside them the look and the sound —
    «◀ skin ▶» (the maintainer: «добавить выбор скина и в меню игры»), graphics, sounds; the skin changes at once, the game waits */
-function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('paused'));
+/* v1.54 (the review's п.1, the maintainer's «3»): the pause and «start over» — the field's glow no longer lies over the buttons, the veil
+   deeper, the ship let through it, and the buttons kept off the ship's lane (as on the try-out) — the player sees where the ship is */
+function pauseVeil(){ lights=[]; lx.globalAlpha=0.68; R(P.bg,0,0,LW,LH); lx.globalAlpha=1;
+  if(mode!=='race'&&g&&g.ship){ var sx=fx(g.ship.x)+11, sy=g.ship.y*K, r=22*K, gr=lx.createRadialGradient(sx,sy,r*0.35,sx,sy,r); gr.addColorStop(0,'rgba(0,0,0,1)'); gr.addColorStop(1,'rgba(0,0,0,0)');
+    lx.save(); lx.globalCompositeOperation='destination-out'; lx.fillStyle=gr; lx.fillRect(sx-r,sy-r,2*r,2*r); lx.restore(); } }
+function sPaused(){ field(DT,0); pauseVeil(); titles(L('paused'));
   var act=[['resume',L('resume'),'primary']].concat(pausedFrom==='play'?[['restart',L('restart')],['quit',L('quit')]]:[]).concat([['exit',L('exit')]]),
       look=(mode==='race'?[['rskin',raceSkinLabel(),'rskin']]:[['skin','','skin']]).concat(gfxFree()?[['gfx',mode==='race'?L('gfx')+': '+(gfxMode==='hd'?'HD':L('gfx_pixel')):gfxLabel()]]:[]).concat([['sfx','','sound']]), top=topY()+12, bot=LH-SAFE.b-4;
   // v1.03: SonaRace's pause as SonaFly's — the skin and the graphics beside the actions (Den: «во флае можно скин и графику менять прямо во время игры в меню паузы, в гонках надо сделать аналогичное»)
-  var w1=colW(act), w2=colW(look), g=10, left=freeSide()==='left', x1=sideX(w1), x2=left?x1+w1+g:x1-g-w2, cy=Math.min(Math.round(LH*0.55),Math.round((top+bot)/2));
+  var w1=colW(act), w2=colW(look), g=10, left=freeSide()==='left', x1=mode!=='race'&&left?Math.max(sideX(w1),Math.min(Math.round(fx(Core.SHIP_X))+34,LW-SAFE.r-Math.max(8,Math.round(LW*0.04))-w1-10-w2)):sideX(w1),   /* off the ship's lane, but both columns on screen */ x2=left?x1+w1+g:x1-g-w2, cy=Math.min(Math.round(LH*0.55),Math.round((top+bot)/2));
   if(w1+g+w2>LW-SAFE.l-SAFE.r-2*Math.max(8,Math.round(LW*0.04))){                                        // too narrow for two (a tablet in Russian): one tight column
     var it=act.concat(look), gap=Math.max(2,Math.min(8,Math.floor((bot-top+2-it.length*BH)/(it.length-1))));
     column(it,Math.round((top+bot)/2),undefined,gap); return; }
@@ -583,8 +591,9 @@ function obsPanel(px,pw,cy){ var pad=5, gap=2, cg=8, rh=PF.CAP+gap+10+5, vw=PF.w
   var scT=Math.min.apply(null,tg.map(function(x){ return Math.min(1,cw/Math.max(1,PF.width(x[1]))); })), yt=y0+pad+nl*rh+3;
   tg.forEach(function(x,i){ var tx=ix+(i%2)*(cw+cg), ty=yt+Math.floor(i/2)*th, w2=PF.width(x[1],scT); text(x[1],tx,ty,P.band,'left',scT); R(P.band,tx,ty+PF.CAP+2,w2,1); BTN.push({id:x[0],x:tx-3,y:ty-4,w:cw+6,h:th}); }); }
 /* v0.24 "start over" from the pause menu: straight into a countdown with the same calibration, or through calibration again */
-function sRestart(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('restart'),L('restart_s'));
-  column([['rs_go',L('rs_go'),'primary'],['rs_cal',L('recal')],['rs_back',L('back')]],Math.round(LH*0.58)); }
+function sRestart(){ field(DT,0); pauseVeil(); titles(L('restart'),L('restart_s'));
+  var it=[['rs_go',L('rs_go'),'primary'],['rs_cal',L('recal')],['rs_back',L('back')]], bw=btnW(it.map(function(q){ return q[1]; }));
+  column(it,Math.round(LH*0.58),mode!=='race'&&freeSide()==='left'?Math.max(sideX(bw),Math.round(fx(Core.SHIP_X))+34):undefined); }
 /* the running game is dropped without the game-over screen; its score still counts for the best */
 function dropGame(){ if(mode==='race'&&g&&g.car){ if(g.state!=='over'){ Logs.gameEv('restarted by the player'); g.state='over'; Logs.gameStop(); if(g.score>raceBest){ raceBest=g.score; store.set('sonaroids_race_best',raceBest); } } return; }
   if(g&&g.state==='play'){ Logs.gameEv('restarted by the player'); g.state='over'; Logs.gameStop(); Board.finish(g.score); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } } }

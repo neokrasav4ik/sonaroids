@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='1.53';
+var VERSION='1.54';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -1289,7 +1289,7 @@ STR.en={
   probe_t:'CHOOSE THE PROBE', probe_s:'WITH THIS SOUND THE PHONE HEARS YOUR HAND', probe_wide:'WIDE', probe_wide1:'CLEANER CONTROL', probe_wide2:'CHILDREN AND PETS MAY HEAR IT',
   probe_norm:'NORMAL', probe_norm1:'SILENT', probe_norm2:'SLIGHTLY ROUGHER CONTROL',
   away_t:'TAKE YOUR HAND AWAY', away_s:'LISTENING TO THE EMPTY ROOM', away_ok:'THE ROOM IS QUIET',
-  aud_fx:'PHONE PROCESSING:', aud_src:'SOURCE', aud_usage:'PROBE AS', aud_end:'PROBE FROM', turn_t:'TURN THE PHONE ROUND', hub_s:'GAMES YOU PLAY WITH YOUR PALM IN MID-AIR', soon:'SOON', all_games:'← ALL GAMES', skin:'SKIN', gfx:'GRAPHICS', gfx_pixel:'PIXELS', skin_space:'SPACE', skin_vector:'VECTOR 80S', skin_neon:'NEON', skin_note:'NOTEBOOK', skin_lcd:'RETRO LCD', skin_obsidian:'OBSIDIAN', skin_fairy:'FAIRY TALE', turn_s:'BY 180° IF YOU PLAY', turn_s2:'WITH YOUR RIGHT HAND', turn_h:'ROUND LIKE A WHEEL — DON\'T FLIP IT FACE DOWN', lefty:'I PLAY LEFT-HANDED', aud_vol:'VOLUME', aud_keep:'LEAVE AS IS', aud_cam:'CAMERA END', aud_port:'PORT END', aud_media:'MEDIA', aud_game:'GAME', aud_autotest:'AUTO PICK', aud_notyet:'NOT DONE YET', aud_retest:'TEST AGAIN', aud_lab:'LAB', aud_nextgame:'WITH THE NEXT GAME', aud_on:'ON', aud_off:'OFF', aud_t2:'SOUND', aud_s2:'TRIALS OF THE ECHO PROCESSING', settings:'SETTINGS', settings_t:'SETTINGS', set_gfx:'GRAPHICS', set_gfx_menu:'CHOSEN IN THE GAME', set_gfx_hd:'ALWAYS HD', set_gfx_px:'ALWAYS PIXELS', set_band:'PROBE BAND', set_band_ask:'CHOSEN BEFORE A GAME', set_band_w:'ALWAYS WIDE', set_band_n:'ALWAYS NORMAL', set_live:'AUTO-CALIBRATION', set_on:'ON', set_off:'OFF', set_live_on_s:'NO WAVING: THE GAME TAKES YOUR LAST MANUAL CALIBRATION AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', set_live_on_d:'NO WAVING: THE GAME TAKES YOUR MANUAL CALIBRATION OF {d} AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', auto_ok:'CALIBRATION FROM YOUR LAST GAME', set_room:'ROOM FOLLOWING', set_live_new_s:'NO MANUAL CALIBRATION YET: SWITCH THIS OFF, PLAY ONE GAME WAVING YOUR PALM, SWITCH IT ON AGAIN — AUTO-CALIBRATION WILL TAKE IT', set_live_off_s:'BEFORE EVERY GAME: TAKE YOUR HAND AWAY, WAVE YOUR PALM, TAP «START». A GOOD SETUP CAN THEN BE KEPT WITH AUTO-CALIBRATION', set_expert:'ADVANCED PROBE SETTINGS', aud_link:'SOUND', aud_t:'APP SOUND', aud_s:'WHERE THE GAME TAKES THE MICROPHONE FROM AND WHERE THE PROBE PLAYS', aud_mode:'SOUND', aud_browser:'BROWSER', aud_app:'APP', aud_mic:'MICROPHONE', aud_out:'SPEAKER', aud_auto:'AUTO', aud_speaker:'SPEAKER', aud_earpiece:'EARPIECE', aud_bottom:'BOTTOM', aud_top:'TOP', aud_back:'BACK', aud_now:'NOW:', aud_active:'RECORDING:', aud_idle:'THE MICROPHONE OPENS WITH THE GAME', aud_browser_now:'NOW THE SOUND GOES THROUGH THE BROWSER: ANDROID PICKS THE MICROPHONE', aud_nopos:'THE PHONE DOES NOT TELL WHERE ITS MICROPHONES ARE',
+  aud_fx:'PHONE PROCESSING:', aud_src:'SOURCE', aud_usage:'PROBE AS', aud_end:'PROBE FROM', turn_t:'TURN THE PHONE ROUND', hub_s:'GAMES YOU PLAY WITH YOUR PALM IN MID-AIR', soon:'SOON', all_games:'← ALL GAMES', skin:'SKIN', gfx:'GRAPHICS', gfx_pixel:'PIXELS', skin_space:'SPACE', skin_vector:'VECTOR 80S', skin_neon:'NEON', skin_note:'NOTEBOOK', skin_lcd:'RETRO LCD', skin_obsidian:'OBSIDIAN', skin_fairy:'FAIRY TALE', turn_s:'BY 180° IF YOU PLAY', turn_s2:'WITH YOUR RIGHT HAND', turn_h:'ROUND LIKE A WHEEL — DON\'T FLIP IT FACE DOWN', lefty:'I PLAY LEFT-HANDED', aud_vol:'VOLUME', aud_keep:'LEAVE AS IS', aud_cam:'CAMERA END', aud_port:'PORT END', aud_media:'MEDIA', aud_game:'GAME', aud_autotest:'AUTO PICK', aud_notyet:'NOT DONE YET', aud_retest:'TEST AGAIN', aud_lab:'LAB', aud_nextgame:'WITH THE NEXT GAME', aud_on:'ON', aud_off:'OFF', aud_t2:'SOUND', aud_s2:'TRIALS OF THE ECHO PROCESSING', settings:'SETTINGS', settings_t:'SETTINGS', set_gfx:'GRAPHICS', set_gfx_menu:'CHOSEN IN THE GAME', set_gfx_hd:'ALWAYS HD', set_gfx_px:'ALWAYS PIXELS', set_band:'PROBE BAND', set_band_ask:'CHOSEN BEFORE A GAME', set_band_w:'ALWAYS WIDE', set_band_n:'ALWAYS NORMAL', set_live:'AUTO-CALIBRATION', set_on:'ON', set_off:'OFF', set_live_on_s:'NO WAVING: THE GAME TAKES YOUR LAST MANUAL CALIBRATION AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', set_live_on_d:'NO WAVING: THE GAME TAKES YOUR MANUAL CALIBRATION OF {d} AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', auto_ok:'CALIBRATION FROM YOUR LAST GAME', set_room:'ROOM FOLLOWING', set_live_new_s:'NO MANUAL CALIBRATION YET: SWITCH THIS OFF, PLAY ONE GAME WAVING YOUR PALM, SWITCH IT ON AGAIN — AUTO-CALIBRATION WILL TAKE IT', set_live_off_s:'BEFORE EVERY GAME: TAKE YOUR HAND AWAY, WAVE YOUR PALM, TAP "PLAY". A GOOD SETUP CAN THEN BE KEPT WITH AUTO-CALIBRATION', set_expert:'ADVANCED PROBE SETTINGS', aud_link:'SOUND', aud_t:'APP SOUND', aud_s:'WHERE THE GAME TAKES THE MICROPHONE FROM AND WHERE THE PROBE PLAYS', aud_mode:'SOUND', aud_browser:'BROWSER', aud_app:'APP', aud_mic:'MICROPHONE', aud_out:'SPEAKER', aud_auto:'AUTO', aud_speaker:'SPEAKER', aud_earpiece:'EARPIECE', aud_bottom:'BOTTOM', aud_top:'TOP', aud_back:'BACK', aud_now:'NOW:', aud_active:'RECORDING:', aud_idle:'THE MICROPHONE OPENS WITH THE GAME', aud_browser_now:'NOW THE SOUND GOES THROUGH THE BROWSER: ANDROID PICKS THE MICROPHONE', aud_nopos:'THE PHONE DOES NOT TELL WHERE ITS MICROPHONES ARE',
   wave_t:'WAVE YOUR PALM', wave_s:'5–10 CM ABOVE THE TABLE OR 5–15 CM FROM THE PHONE\'S END', wave_ok:'GOT YOUR RANGE', other_t:'WAVE ON THE OTHER SIDE', other_s:'THE PHONE DOES NOT HEAR THE PALM ON THIS SIDE', try_s:'THE SHIP FOLLOWS YOUR PALM — TRY THE TOP AND THE BOTTOM', cm:'CM',
   ring_wait:'GET READY', ring_listen:'LISTENING', ring_catch:'CATCHING THE RANGE', ring_ok:'DONE',
   start:'START', over:'GAME OVER', best:'BEST', again:'AGAIN', menu:'MENU', logs:'LOGS', tilt_test:'TEST RULES: NOT FOR THE TABLES', ftilt:'PICTURE TILT', stilt:'SHOT TILT', straight:'STRAIGHT', as_nose:'AS THE NOSE', bounce_off:'SHOTS OFF THE EDGES: NO', obs_off:'HEAVY SKIN: OFF', obs_on:'HEAVY SKIN: OBSIDIAN', obs_na:'HEAVY SKIN: NO WEBGL 2', mouse_off:'MOUSE INSTEAD OF SONAR: NO', mouse_on:'MOUSE INSTEAD OF SONAR: YES', obs_ink:'INK ON HITS', obs_ring:'RING: UNEVEN', obs_wake:'SHIP WAKE', obs_rwake:'ROCK WAKES', obs_det:'INK DETAIL', obs_vsp:'VEINS SPEED', obs_shot:'SHOT', obs_shot1:'L1 COMET', obs_shot4:'L4 BEADS', obs_shot5:'L5 CRYSTAL', obs_shot6:'L6 FRINGE', obs_shot9:'L9 TWIN NEEDLES', obs_shot10:'L10 BANDS', obs_rstr:'RING: STRENGTH', obs_damp:'CALMER IN ACTION', obs_reco:'DEFAULTS', obs_ringon_on:'HIT RING: YES', obs_ringon_off:'HIT RING: NO', obs_grim_on:'POWER-UP RIM: YES', obs_grim_off:'POWER-UP RIM: NO', bounce_on:'SHOTS OFF THE EDGES: YES', 
@@ -1300,7 +1300,7 @@ STR.en={
   nick_bad:'THAT NAME IS NOT ALLOWED', nick_net:'NO CONNECTION — TRY LATER', sending:'SENDING TO THE TABLE…', sent_off:'OFFLINE — WILL SEND LATER', old:'UPDATE THE GAME TO GET INTO THE TABLE',
   here_day:'THIS GAME: #{n} TODAY', here_week:'THIS GAME: #{n} THIS WEEK', here_all:'THIS GAME: #{n} ALL TIME',
   pb_day:'YOUR BEST TODAY: #{n}', pb_week:'YOUR BEST THIS WEEK: #{n}', pb_all:'YOUR BEST: #{n}',
-  link:'TRANSFER', link_t:'TRANSFER YOUR SCORES', link_s:'SAFARI, THE HOME SCREEN AND ANOTHER PHONE ARE DIFFERENT PLAYERS TO THE GAME. A CODE JOINS THEM INTO ONE: THE NAME AND THE SCORES BECOME SHARED',
+  link:'TRANSFER', link_t:'TRANSFER YOUR SCORES', link_s:'SAFARI, THE HOME SCREEN AND ANOTHER PHONE ARE SEPARATE PLAYERS. A CODE LINKS THEM: ONE NAME, ONE SET OF SCORES',
   link_show:'SHOW A CODE', link_in:'ENTER A CODE', link_code_t:'TRANSFER CODE', link_code_s:'ON THE OTHER DEVICE: HIGH SCORES → TRANSFER → ENTER A CODE. THE CODE WORKS FOR 10 MINUTES',
   link_in_t:'ENTER THE CODE', link_in_s:'THE OTHER DEVICE SHOWS IT: HIGH SCORES → TRANSFER → SHOW A CODE', link_bad:'WRONG OR EXPIRED CODE',
   link_ok_t:'DONE', link_ok_s:'NOW IT IS ONE PLAYER{nick}. THE SCORES ARE JOINED',
@@ -1324,7 +1324,7 @@ STR.ru={
   probe_t:'ВЫБЕРИ ЗОНД', probe_s:'ЭТИМ ЗВУКОМ ТЕЛЕФОН СЛЫШИТ ТВОЮ РУКУ', probe_wide:'ШИРОКИЙ', probe_wide1:'УПРАВЛЕНИЕ ЧИЩЕ', probe_wide2:'МОГУТ СЛЫШАТЬ ДЕТИ И ЖИВОТНЫЕ',
   probe_norm:'ОБЫЧНЫЙ', probe_norm1:'НЕ СЛЫШЕН', probe_norm2:'УПРАВЛЕНИЕ ЧУТЬ ГРУБЕЕ',
   away_t:'УБЕРИ РУКУ', away_s:'СЛУШАЮ ПУСТУЮ КОМНАТУ', away_ok:'КОМНАТА ТИХАЯ',
-  aud_fx:'ОБРАБОТКА ТЕЛЕФОНА:', aud_src:'ИСТОЧНИК', aud_usage:'ЗОНД КАК', aud_end:'ЗОНД ИЗ', turn_t:'РАЗВЕРНИ ТЕЛЕФОН', hub_s:'ИГРЫ, КОТОРЫМИ УПРАВЛЯЕТ ЛАДОНЬ В ВОЗДУХЕ', soon:'СКОРО', all_games:'← ВСЕ ИГРЫ', skin:'СКИН', gfx:'ГРАФИКА', gfx_pixel:'ПИКСЕЛИ', skin_space:'КОСМОС', skin_vector:'ВЕКТОР 80-Х', skin_neon:'НЕОН', skin_note:'ТЕТРАДКА', skin_lcd:'РЕТРО LCD', skin_obsidian:'ОБСИДИАН', skin_fairy:'СКАЗКА', turn_s:'НА 180°, ЕСЛИ ИГРАЕШЬ', turn_s2:'ПРАВОЙ РУКОЙ', turn_h:'ПО КРУГУ, КАК РУЛЬ — НЕ ПЕРЕВОРАЧИВАЙ ЭКРАНОМ ВНИЗ', lefty:'ИГРАЮ ЛЕВОЙ РУКОЙ', aud_vol:'ГРОМКОСТЬ', aud_keep:'НЕ ТРОГАТЬ', aud_cam:'У КАМЕРЫ', aud_port:'У РАЗЪЁМА', aud_media:'МЕДИА', aud_game:'ИГРА', aud_autotest:'АВТОВЫБОР', aud_notyet:'ЕЩЁ НЕ ДЕЛАЛСЯ', aud_retest:'ПЕРЕПРОВЕРИТЬ', aud_lab:'ЛАБА', aud_nextgame:'БУДЕТ ПРИ СЛЕДУЮЩЕЙ ИГРЕ', aud_on:'ВКЛ', aud_off:'ВЫКЛ', aud_t2:'ЗВУК', aud_s2:'ОПЫТЫ С ОБРАБОТКОЙ ЭХА', settings:'НАСТРОЙКИ', settings_t:'НАСТРОЙКИ', set_gfx:'ГРАФИКА', set_gfx_menu:'ВЫБОР В ИГРЕ', set_gfx_hd:'ВСЕГДА HD', set_gfx_px:'ВСЕГДА ПИКСЕЛИ', set_band:'ПОЛОСА ЗОНДА', set_band_ask:'ВЫБОР ПЕРЕД ИГРОЙ', set_band_w:'ВСЕГДА ШИРОКАЯ', set_band_n:'ВСЕГДА ОБЫЧНАЯ', set_live:'АВТОКАЛИБРОВКА', set_on:'ВКЛ', set_off:'ВЫКЛ', set_live_on_s:'БЕЗ ВЗМАХОВ: ИГРА БЕРЁТ ТВОЮ ПОСЛЕДНЮЮ РУЧНУЮ КАЛИБРОВКУ И САМА ПОДСТРАИВАЕТСЯ ПОД ЗВУКИ КОМНАТЫ. УПРАВЛЯЕТСЯ ХУЖЕ? ВЫКЛЮЧИ, СЫГРАЙ С РУЧНОЙ И ВКЛЮЧИ СНОВА', set_live_on_d:'БЕЗ ВЗМАХОВ: ИГРА БЕРЁТ ТВОЮ РУЧНУЮ КАЛИБРОВКУ ОТ {d} И САМА ПОДСТРАИВАЕТСЯ ПОД ЗВУКИ КОМНАТЫ. УПРАВЛЯЕТСЯ ХУЖЕ? ВЫКЛЮЧИ, СЫГРАЙ С РУЧНОЙ И ВКЛЮЧИ СНОВА', auto_ok:'КАЛИБРОВКА ИЗ ПРОШЛОЙ ИГРЫ', set_room:'ПОДСТРОЙКА ПОД КОМНАТУ', set_live_new_s:'РУЧНОЙ КАЛИБРОВКИ ЕЩЁ НЕ БЫЛО: ВЫКЛЮЧИ, СЫГРАЙ ОДНУ ИГРУ С ВЗМАХАМИ И ВКЛЮЧИ СНОВА — АВТОКАЛИБРОВКА ВОЗЬМЁТ ЕЁ', set_live_off_s:'ПЕРЕД КАЖДОЙ ИГРОЙ: УБРАТЬ РУКУ, ПОМАХАТЬ ЛАДОНЬЮ, НАЖАТЬ «СТАРТ». УДАЧНУЮ НАСТРОЙКУ ПОТОМ МОЖНО ОСТАВИТЬ АВТОКАЛИБРОВКОЙ', set_expert:'РАСШИРЕННЫЕ НАСТРОЙКИ ЗОНДА', aud_link:'ЗВУК', aud_t:'ЗВУК ПРИЛОЖЕНИЯ', aud_s:'ОТКУДА ИГРА БЕРЁТ МИКРОФОН И КУДА ИГРАЕТ ЗОНД', aud_mode:'ЗВУК', aud_browser:'БРАУЗЕР', aud_app:'ПРИЛОЖЕНИЕ', aud_mic:'МИКРОФОН', aud_out:'ДИНАМИК', aud_auto:'АВТО', aud_speaker:'ДИНАМИК', aud_earpiece:'РАЗГОВОРНЫЙ', aud_bottom:'НИЗ', aud_top:'ВЕРХ', aud_back:'СЗАДИ', aud_now:'СЕЙЧАС:', aud_active:'ПИШУТ:', aud_idle:'МИКРОФОН ОТКРОЕТСЯ ПРИ ИГРЕ', aud_browser_now:'СЕЙЧАС ЗВУК ЧЕРЕЗ БРАУЗЕР: МИКРОФОН ВЫБИРАЕТ ANDROID', aud_nopos:'ТЕЛЕФОН НЕ СООБЩАЕТ, ГДЕ МИКРОФОНЫ',
+  aud_fx:'ОБРАБОТКА ТЕЛЕФОНА:', aud_src:'ИСТОЧНИК', aud_usage:'ЗОНД КАК', aud_end:'ЗОНД ИЗ', turn_t:'РАЗВЕРНИ ТЕЛЕФОН', hub_s:'ИГРЫ, КОТОРЫМИ УПРАВЛЯЕТ ЛАДОНЬ В ВОЗДУХЕ', soon:'СКОРО', all_games:'← ВСЕ ИГРЫ', skin:'СКИН', gfx:'ГРАФИКА', gfx_pixel:'ПИКСЕЛИ', skin_space:'КОСМОС', skin_vector:'ВЕКТОР 80-Х', skin_neon:'НЕОН', skin_note:'ТЕТРАДКА', skin_lcd:'РЕТРО LCD', skin_obsidian:'ОБСИДИАН', skin_fairy:'СКАЗКА', turn_s:'НА 180°, ЕСЛИ ИГРАЕШЬ', turn_s2:'ПРАВОЙ РУКОЙ', turn_h:'ПО КРУГУ, КАК РУЛЬ — НЕ ПЕРЕВОРАЧИВАЙ ЭКРАНОМ ВНИЗ', lefty:'ИГРАЮ ЛЕВОЙ РУКОЙ', aud_vol:'ГРОМКОСТЬ', aud_keep:'НЕ ТРОГАТЬ', aud_cam:'У КАМЕРЫ', aud_port:'У РАЗЪЁМА', aud_media:'МЕДИА', aud_game:'ИГРА', aud_autotest:'АВТОВЫБОР', aud_notyet:'ЕЩЁ НЕ ДЕЛАЛСЯ', aud_retest:'ПЕРЕПРОВЕРИТЬ', aud_lab:'ЛАБА', aud_nextgame:'БУДЕТ ПРИ СЛЕДУЮЩЕЙ ИГРЕ', aud_on:'ВКЛ', aud_off:'ВЫКЛ', aud_t2:'ЗВУК', aud_s2:'ОПЫТЫ С ОБРАБОТКОЙ ЭХА', settings:'НАСТРОЙКИ', settings_t:'НАСТРОЙКИ', set_gfx:'ГРАФИКА', set_gfx_menu:'ВЫБОР В ИГРЕ', set_gfx_hd:'ВСЕГДА HD', set_gfx_px:'ВСЕГДА ПИКСЕЛИ', set_band:'ПОЛОСА ЗОНДА', set_band_ask:'ВЫБОР ПЕРЕД ИГРОЙ', set_band_w:'ВСЕГДА ШИРОКАЯ', set_band_n:'ВСЕГДА ОБЫЧНАЯ', set_live:'АВТОКАЛИБРОВКА', set_on:'ВКЛ', set_off:'ВЫКЛ', set_live_on_s:'БЕЗ ВЗМАХОВ: ИГРА БЕРЁТ ТВОЮ ПОСЛЕДНЮЮ РУЧНУЮ КАЛИБРОВКУ И САМА ПОДСТРАИВАЕТСЯ ПОД ЗВУКИ КОМНАТЫ. УПРАВЛЯЕТСЯ ХУЖЕ? ВЫКЛЮЧИ, СЫГРАЙ С РУЧНОЙ И ВКЛЮЧИ СНОВА', set_live_on_d:'БЕЗ ВЗМАХОВ: ИГРА БЕРЁТ ТВОЮ РУЧНУЮ КАЛИБРОВКУ ОТ {d} И САМА ПОДСТРАИВАЕТСЯ ПОД ЗВУКИ КОМНАТЫ. УПРАВЛЯЕТСЯ ХУЖЕ? ВЫКЛЮЧИ, СЫГРАЙ С РУЧНОЙ И ВКЛЮЧИ СНОВА', auto_ok:'КАЛИБРОВКА ИЗ ПРОШЛОЙ ИГРЫ', set_room:'ПОДСТРОЙКА ПОД КОМНАТУ', set_live_new_s:'РУЧНОЙ КАЛИБРОВКИ ЕЩЁ НЕ БЫЛО: ВЫКЛЮЧИ, СЫГРАЙ ОДНУ ИГРУ С ВЗМАХАМИ И ВКЛЮЧИ СНОВА — АВТОКАЛИБРОВКА ВОЗЬМЁТ ЕЁ', set_live_off_s:'ПЕРЕД КАЖДОЙ ИГРОЙ: УБРАТЬ РУКУ, ПОМАХАТЬ ЛАДОНЬЮ, НАЖАТЬ «ИГРАТЬ». УДАЧНУЮ НАСТРОЙКУ ПОТОМ МОЖНО ОСТАВИТЬ АВТОКАЛИБРОВКОЙ', set_expert:'РАСШИРЕННЫЕ НАСТРОЙКИ ЗОНДА', aud_link:'ЗВУК', aud_t:'ЗВУК ПРИЛОЖЕНИЯ', aud_s:'ОТКУДА ИГРА БЕРЁТ МИКРОФОН И КУДА ИГРАЕТ ЗОНД', aud_mode:'ЗВУК', aud_browser:'БРАУЗЕР', aud_app:'ПРИЛОЖЕНИЕ', aud_mic:'МИКРОФОН', aud_out:'ДИНАМИК', aud_auto:'АВТО', aud_speaker:'ДИНАМИК', aud_earpiece:'РАЗГОВОРНЫЙ', aud_bottom:'НИЗ', aud_top:'ВЕРХ', aud_back:'СЗАДИ', aud_now:'СЕЙЧАС:', aud_active:'ПИШУТ:', aud_idle:'МИКРОФОН ОТКРОЕТСЯ ПРИ ИГРЕ', aud_browser_now:'СЕЙЧАС ЗВУК ЧЕРЕЗ БРАУЗЕР: МИКРОФОН ВЫБИРАЕТ ANDROID', aud_nopos:'ТЕЛЕФОН НЕ СООБЩАЕТ, ГДЕ МИКРОФОНЫ',
   wave_t:'ПОМАШИ ЛАДОНЬЮ', wave_s:'5–10 СМ НАД СТОЛОМ ИЛИ 5–15 СМ ОТ ТОРЦА ТЕЛЕФОНА', wave_ok:'РАЗМАХ ПОЙМАН', other_t:'ПОМАШИ С ДРУГОЙ СТОРОНЫ', other_s:'С ЭТОЙ СТОРОНЫ ТЕЛЕФОН НЕ СЛЫШИТ ЛАДОНЬ', try_s:'КОРАБЛЬ ИДЁТ ЗА ЛАДОНЬЮ — ПРОВЕРЬ ВЕРХ И НИЗ', cm:'СМ',
   ring_wait:'ПРИГОТОВЬСЯ', ring_listen:'СЛУШАЮ', ring_catch:'ЛОВЛЮ РАЗМАХ', ring_ok:'ГОТОВО',
   start:'СТАРТ', over:'ИГРА ОКОНЧЕНА', best:'РЕКОРД', again:'ЕЩЁ РАЗ', menu:'МЕНЮ', logs:'ЖУРНАЛЫ', tilt_test:'ТЕСТОВЫЕ ПРАВИЛА: НЕ В ТАБЛИЦАХ', ftilt:'НАКЛОН КАРТИНКИ', stilt:'НАКЛОН ВЫСТРЕЛОВ', straight:'ПРЯМО', as_nose:'КАК НОС', bounce_off:'ВЫСТРЕЛЫ ОТ КРАЁВ: НЕТ', obs_off:'ТЯЖЁЛЫЙ СКИН: НЕТ', obs_on:'ТЯЖЁЛЫЙ СКИН: ОБСИДИАН', obs_na:'ТЯЖЁЛЫЙ СКИН: НЕТ WEBGL 2', mouse_off:'МЫШЬ ВМЕСТО СОНАРА: НЕТ', mouse_on:'МЫШЬ ВМЕСТО СОНАРА: ДА', obs_ink:'ЧЕРНИЛА НА ВЗРЫВЫ', obs_ring:'КОЛЬЦО: НЕРОВНОСТЬ', obs_wake:'СЛЕД КОРАБЛЯ', obs_rwake:'СЛЕД КАМНЕЙ', obs_det:'ЧЕРНИЛА: ДЕТАЛИ', obs_vsp:'ПРОЖИЛКИ: СКОРОСТЬ', obs_shot:'ВЫСТРЕЛ', obs_shot1:'Л1 КОМЕТА', obs_shot4:'Л4 БУСИНЫ', obs_shot5:'Л5 КРИСТАЛЛ', obs_shot6:'Л6 КАЙМА', obs_shot9:'Л9 ДВЕ ИГЛЫ', obs_shot10:'Л10 ПОЛОСЫ', obs_rstr:'КОЛЬЦО: СИЛА', obs_damp:'ГАШЕНИЕ В ЭКШНЕ', obs_reco:'ПО УМОЛЧАНИЮ', obs_ringon_on:'КОЛЬЦО ОТ ВЗРЫВА: ДА', obs_ringon_off:'КОЛЬЦО ОТ ВЗРЫВА: НЕТ', obs_grim_on:'КРОМКА ПОДАРКА: ДА', obs_grim_off:'КРОМКА ПОДАРКА: НЕТ', bounce_on:'ВЫСТРЕЛЫ ОТ КРАЁВ: ДА', 
@@ -1335,7 +1335,7 @@ STR.ru={
   nick_bad:'ТАКОЕ ИМЯ НЕЛЬЗЯ', nick_net:'НЕТ СВЯЗИ — ПОПРОБУЙ ПОЗЖЕ', sending:'ОТПРАВЛЯЮ В ТАБЛИЦУ…', sent_off:'НЕТ СЕТИ — ОТПРАВЛЮ ПОЗЖЕ', old:'ОБНОВИ ИГРУ, ЧТОБЫ ПОПАСТЬ В ТАБЛИЦУ',
   here_day:'ЭТА ИГРА — МЕСТО {n} ЗА СЕГОДНЯ', here_week:'ЭТА ИГРА — МЕСТО {n} ЗА НЕДЕЛЮ', here_all:'ЭТА ИГРА — МЕСТО {n} ЗА ВСЁ ВРЕМЯ',
   pb_day:'ТВОЙ РЕКОРД ЗА СЕГОДНЯ — МЕСТО {n}', pb_week:'ТВОЙ РЕКОРД ЗА НЕДЕЛЮ — МЕСТО {n}', pb_all:'ТВОЙ РЕКОРД — МЕСТО {n}',
-  link:'ПЕРЕНОС', link_t:'ПЕРЕНОС РЕКОРДОВ', link_s:'SAFARI, ЭКРАН «ДОМОЙ» И ДРУГОЙ ТЕЛЕФОН — ДЛЯ ИГРЫ РАЗНЫЕ ИГРОКИ. КОД ОБЪЕДИНИТ ИХ В ОДНОГО: ИМЯ И РЕКОРДЫ СТАНУТ ОБЩИМИ',
+  link:'ПЕРЕНОС', link_t:'ПЕРЕНОС РЕКОРДОВ', link_s:'SAFARI, ЭКРАН «ДОМОЙ» И ДРУГОЙ ТЕЛЕФОН — РАЗНЫЕ ИГРОКИ. КОД СОЕДИНИТ ИХ: ОДНО ИМЯ, ОБЩИЕ РЕКОРДЫ',
   link_show:'ПОКАЗАТЬ КОД', link_in:'ВВЕСТИ КОД', link_code_t:'КОД ПЕРЕНОСА', link_code_s:'НА ДРУГОМ УСТРОЙСТВЕ: РЕКОРДЫ → ПЕРЕНОС → ВВЕСТИ КОД. КОД ДЕЙСТВУЕТ 10 МИНУТ',
   link_in_t:'ВВЕДИ КОД', link_in_s:'ЕГО ПОКАЖЕТ ДРУГОЕ УСТРОЙСТВО: РЕКОРДЫ → ПЕРЕНОС → ПОКАЗАТЬ КОД', link_bad:'КОД НЕВЕРНЫЙ ИЛИ УСТАРЕЛ',
   link_ok_t:'ГОТОВО', link_ok_s:'ТЕПЕРЬ ЭТО ОДИН ИГРОК{nick}. РЕКОРДЫ ОБЪЕДИНЕНЫ',
@@ -1445,8 +1445,20 @@ function para(s,cx0,y,maxW,col){ PF.wrap(s,maxW,1).forEach(function(l){ text(l,c
 var BTN=[];                                                         // buttons of the current frame: hit areas in game pixels
 var BH=22;                                                          // button height in game pixels (17 → 20 in v0.6 → 22 in v0.9)
 /* a small icon button: three bars (menu) in a frame; the hit area is larger than the drawing */
-function iconButton(id,x,y){ var s=BH-3; if(uiS>1){ lx.fillStyle=P.bg; lx.beginPath(); lx.roundRect(x,y,s,s,3); lx.fill(); lx.strokeStyle=P.line; lx.lineWidth=0.7; lx.stroke(); lx.fillStyle=P.soft; for(var j=0;j<3;j++){ lx.beginPath(); lx.roundRect(x+4.5,y+5+j*3.2,s-9,1.2,0.6); lx.fill(); } }
-  else { R(P.bg,x,y,s,s); frame(x,y,s,s,P.line); for(var i=0;i<3;i++) R(P.soft,x+4,y+5+i*3,s-8,1); }
+/* v1.54 (the polish review's п.2, the maintainer's «1»): the corner button says what it does — «←» where it goes back (the scores, the settings,
+   the skins, the sound from the settings), «❚❚» where it pauses (the count-down, the game), «☰» only where it opens the menu */
+var ICON_BACK={sc_back:1,set_back:1,sk_back:1,settings:1};
+function iconButton(id,x,y){ var s=BH-3, kind=id==='pause'?'pause':ICON_BACK[id]?'back':'menu';
+  if(uiS>1){ lx.fillStyle=P.bg; lx.beginPath(); lx.roundRect(x,y,s,s,3); lx.fill(); lx.strokeStyle=P.line; lx.lineWidth=0.7; lx.stroke(); lx.fillStyle=P.soft; lx.strokeStyle=P.soft;
+    if(kind==='pause'){ lx.beginPath(); lx.roundRect(x+s*0.33,y+s*0.27,s*0.12,s*0.46,0.6); lx.roundRect(x+s*0.55,y+s*0.27,s*0.12,s*0.46,0.6); lx.fill(); }
+    else if(kind==='back'){ lx.lineWidth=1.3; lx.lineCap='round'; lx.lineJoin='round'; lx.beginPath();
+      lx.moveTo(x+s*0.72,y+s/2); lx.lineTo(x+s*0.28,y+s/2); lx.moveTo(x+s*0.46,y+s*0.30); lx.lineTo(x+s*0.27,y+s/2); lx.lineTo(x+s*0.46,y+s*0.70);
+      lx.stroke(); }
+    else for(var j=0;j<3;j++){ lx.beginPath(); lx.roundRect(x+4.5,y+5+j*3.2,s-9,1.2,0.6); lx.fill(); } }
+  else { R(P.bg,x,y,s,s); frame(x,y,s,s,P.line); var cx=x+Math.floor(s/2), cy=y+Math.floor(s/2), k;
+    if(kind==='pause'){ R(P.soft,cx-3,cy-3,2,7); R(P.soft,cx+1,cy-3,2,7); }
+    else if(kind==='back'){ R(P.soft,cx-3,cy,7,1); for(k=1;k<=3;k++){ R(P.soft,cx-3+k,cy-k,1,1); R(P.soft,cx-3+k,cy+k,1,1); } }
+    else for(var i=0;i<3;i++) R(P.soft,x+4,y+5+i*3,s-8,1); }
   BTN.push({id:id,x:x-4,y:y-4,w:s+8,h:s+8}); }
 function button(id,label,x,y,w,h,kind,on){
   var hot=kind==='primary', blink=hot&&on;
@@ -3807,6 +3819,7 @@ var OBS_FS_O=OBS_SC+'\n'+[
 '  float fe=length(lq/vec2(0.28*fl,0.06)); vec3 eng=vec3(1.0,0.82,0.5)*exp(-fe*fe*1.3)*1.2;',
 '  float px=1.0/(uRes.y*S); float z=1.0, dmin=1e5, zmin=1.0; int id=0; bool hit=false;',
 '  for(int s=0;s<64;s++){ int ii; float d=mapS(vec3(q,z),ii); if(d<dmin){ dmin=d; zmin=z; id=ii; } if(d<0.0008){ hit=true; break; } z-=max(d*0.9,0.002); if(z<-1.0) break; }',
+'  eng*=1.8;',   /* v1.54 (the review's п.7, the maintainer's «3»): the ship easier to find — its engine and gold edge brighter, the edge wider */
 '  if(!hit) eng+=GOLD*0.10*exp(-dmin*45.0); float cov=hit?1.0:smoothstep(px*1.2,0.0,dmin); if(cov<=0.0) return vec4(eng,0.0);',
 '  vec3 pb=toBody(id,vec3(q,zmin)); mat3 M=PM[id];',
 '  float e=0.002; vec3 nb=normalize(vec3(piece(id,pb+vec3(e,0,0))-piece(id,pb-vec3(e,0,0)),piece(id,pb+vec3(0,e,0))-piece(id,pb-vec3(0,e,0)),piece(id,pb+vec3(0,0,e))-piece(id,pb-vec3(0,0,e))));',
@@ -3815,9 +3828,9 @@ var OBS_FS_O=OBS_SC+'\n'+[
 '  vec3 Ld=normalize(vec3((uL-c)/0.5,0.6)), V=vec3(0,0,1), hh=normalize(Ld+V); float df=max(dot(n,Ld),0.0);',
 '  float fr=0.04+0.96*pow(1.0-max(n.z,0.0),4.0); vec3 env=bgAt(c+(uv-c)*0.5+n.xy*0.15)*1.8;',
 '  vec3 col=vec3(0.0012,0.0012,0.002)+vec3(0.006)*df+env*fr*0.8+uLc*(pow(max(dot(n,hh),0.0),200.0)*6.0+pow(max(dot(n,hh),0.0),28.0)*0.12);',
-'  float trim=smoothstep(0.030,0.009,-d2);',
+'  float trim=smoothstep(0.050,0.012,-d2);',
 '  if(belly&&id==0){ float vein=abs(pb.y-0.025*sin(pb.x*6.0+1.0)); float sm=smoothstep(0.022,0.008,vein)*step(-0.62,pb.x)*step(pb.x,0.85); vec3 vb=vor(pb.xy*vec2(2.2,3.0)+11.0); sm=max(sm,smoothstep(0.05,0.018,vb.x)*smoothstep(0.0,-0.06,d2)*0.9); trim=max(trim,sm); }',
-'  vec3 g=GOLD*(1.15+0.8*df)+vec3(1.0,0.9,0.7)*pow(max(dot(n,hh),0.0),30.0)*1.5; col=mix(col,g,trim); if(!hit) col=mix(col,g,0.6);',
+'  vec3 g=GOLD*1.5*(1.0+0.7*df)+vec3(1.0,0.9,0.7)*pow(max(dot(n,hh),0.0),30.0)*1.5; col=mix(col,g,trim); if(!hit) col=mix(col,g,0.6);',
 '  return vec4(col*cov+eng*(1.0-cov),cov); }',
 /* the shield: a thin gold ring round the ship, shimmering */
 'vec4 shield(vec2 uv,vec2 c,float S){ vec2 p=(uv-c)/S; float L=length(p/vec2(1.0,0.8)); float a=atan(p.y,p.x); float w=0.035+0.02*sin(a*3.0+uT*5.0);',
@@ -3855,7 +3868,7 @@ var OBS_FS_O=OBS_SC+'\n'+[
    over it on the HD canvas. Before: 1.50 «Б6б» (obsidian in a porcelain frame, white sign) — read poorly in the game */
 'vec3 pearl(vec2 p,float t){ float a=dot(p,vec2(0.6,0.8))*2.2+t*0.35; return vec3(0.92)+0.10*vec3(sin(a),sin(a+2.1),sin(a+4.2)); }',
 'vec4 tile(vec2 uv,vec2 c,float S){ vec2 p=(uv-c)/S; float d=tileD(p); float px=1.5/(uRes.y*S); vec3 W=vec3(1.0,0.98,0.94); float br=0.95+0.05*sin(uT*3.0);',
-'  vec3 em=W*exp(-max(d,0.0)*10.0)*0.28*br; if(uGRim==1){ vec3 rc=invOf(bgAt(c+(uv-c)*2.5)); float rim=smoothstep(0.075,0.045,abs(d-0.13)); em+=rc*(rim*1.5+exp(-max(d,0.0)*6.0)*0.18); }',
+'  vec3 em=W*exp(-max(d,0.0)*10.0)*0.12*br;   /* v1.54: a softer glow — it outshone the ship */ if(uGRim==1){ vec3 rc=invOf(bgAt(c+(uv-c)*2.5)); float rim=smoothstep(0.075,0.045,abs(d-0.13)); em+=rc*(rim*1.5+exp(-max(d,0.0)*6.0)*0.18); }',
 '  float ew=0.09; if(d>px+ew) return vec4(em,0.0); float cov=smoothstep(px,-px,d-ew);',   /* the black edge: just outside the plate */
 '  vec3 col=pearl(p,uT)*1.15+W*0.1*(1.0-length(p)); col=mix(col,vec3(0.006,0.004,0.006),smoothstep(-px,px,d));',
 '  return vec4(col*cov+em*(1.0-cov),cov); }',
@@ -3868,19 +3881,22 @@ var OBS_FS_O=OBS_SC+'\n'+[
 'vec4 saucer(vec2 uv,vec2 c,float S,float hurt){ vec2 p=(uv-c)/S; if(length(p)>1.6) return vec4(0.0); float t=uT; float d=eyeD(p); float px=1.5/(uRes.y*S); vec3 red=vec3(1.0,0.12,0.16);',
 '  vec2 pc=vec2(-0.25+0.06*sin(t*1.3),0.03*sin(t*0.9)); float pu=length(p-pc); float gap=exp(-pow(p.y/0.04,2.0))*step(almond(p),0.02);',
 '  vec3 em=red*(exp(-max(d,0.0)*9.0)*0.28+gap*1.2)*(0.85+0.15*sin(t*6.0))+red*exp(-pu*pu*14.0)*0.25*step(0.0,d);',
-'  if(d>px) return vec4(em,0.0); float cov=smoothstep(px,-px,d);',
+'  float ol=smoothstep(0.13,0.05,d)*0.85;',   /* v1.54 (the review's п.6): a dark outline round the eye and a white-hot pupil — it reads on pale ink */
+'  if(d>px) return vec4(em*(1.0-ol),ol); float cov=smoothstep(px,-px,d);',
 '  vec2 g=vec2(eyeD(p+vec2(0.01,0.0))-d,eyeD(p+vec2(0.0,0.01))-d)/0.01; float inner=clamp(-d*6.0,0.0,1.0); vec3 n=normalize(vec3(-g*(1.0-inner)*0.9,0.55+inner));',
 '  vec3 v=vor(p*2.4+15.0); n=normalize(n+vec3(h12(v.yz)-0.5,h12(v.yz+3.1)-0.5,0.0)*0.7);',
 '  vec3 Ld=normalize(vec3((uL-c)/0.5,0.6)), hh=normalize(Ld+vec3(0,0,1)); float df=max(dot(n,Ld),0.0); float fr=0.04+0.96*pow(1.0-n.z,4.0);',
 '  vec3 col=vec3(0.0012)+bgAt(c+(uv-c)*0.5+n.xy*0.15)*1.8*fr*0.8+uLc*(pow(max(dot(n,hh),0.0),200.0)*6.0+pow(max(dot(n,hh),0.0),28.0)*0.12);',
 '  float trim=smoothstep(0.035,0.010,-d)*(0.85+0.15*sin(t*7.0)); float pupil=smoothstep(0.17,0.10,pu), iris=exp(-pow((pu-0.19)/0.025,2.0));',
-'  col=mix(col,red*(1.3+0.6*df),trim); col+=red*(pupil*1.8+iris*0.9)+vec3(1.0,0.6,0.5)*pupil*0.5+red*gap*1.5; col=mix(col,vec3(1.0),hurt*0.8);',
+'  col=mix(col,red*(1.3+0.6*df),trim); col+=red*(pupil*1.8+iris*0.9)+vec3(1.0,0.6,0.5)*pupil*0.5+red*gap*1.5; col+=vec3(1.6,1.2,1.1)*smoothstep(0.13,0.05,pu); col=mix(col,vec3(1.0),hurt*0.8);',
 '  return vec4(col*cov+em*(1.0-cov),cov); }',
 'void main(){ vec2 uv=vP; vec2 c=vA.xy; int K=int(vA.w+0.5); vec4 r=vec4(0.0);',
 '  if(K==0) r=rock(uv,c,vB.x,vB.y,vB.z,0.0);',
 '  else if(K==1) r=ship3(uv,c,vB.x,vB.y);',
 '  else if(K==2) r=vec4(shot(rot(-vB.x)*(uv-c)*uGp*1.1,c),0.0);',   /* v1.48: in game pixels — 4–8.5 long like every skin\'s */
-'  else if(K==3){ float d=length(uv-c)*uGp/0.012; r=vec4(vec3(1.0,0.12,0.2)*(exp(-d*d*2.0)*1.5+exp(-d*d*0.3)*0.3)+vec3(1.0)*exp(-d*d*12.0),0.0); }',
+'  else if(K==3){ float d=length(uv-c)*uGp/0.012; float a=smoothstep(1.40,1.10,d);',   /* v1.54 (the review's п.6): the enemy's shot — a white-hot core, a red ring, a thin dark rim; it reads on pale ink */
+'    vec3 col=mix(vec3(0.02,0.0,0.01),vec3(1.0,0.12,0.18)*1.7,smoothstep(1.10,0.95,d)); col=mix(col,vec3(1.8,1.3,1.2),smoothstep(0.55,0.32,d));',
+'    r=vec4(col*a+vec3(1.0,0.12,0.2)*exp(-d*d*0.35)*0.25*(1.0-a),a); }',
 '  else if(K==4) r=saucer(uv,c,vB.x,vB.y);',
 '  else if(K==5) r=tile(uv,c,vB.x);',
 '  else if(K==6) r=ann(uv,c,vB.x,vB.z>0.5,vB.w,vC.x,vC.y);',
@@ -3921,7 +3937,7 @@ function obsMix(t){ return 0.5-0.5*Math.cos(t/OBS_MIX_T*6.2832); }
    at the same box — the ship's half length 12 (10.4 in 1.48), the saucer 1.22× the core's half width, the shots back at their 1.47 size; the power-up
    (the maintainer: «у подарков размер нормальный, но подхватить их сложно») stands still on the point the core counts — the field bobs every
    power-up ±2 px, here that is taken back; its half side 8.0 (7.2) since it got a frame round the sign, the sign itself a little smaller */
-var OBS_SZ={ship:12,ufo:1.22,pick:7.3};   /* v1.53: 7.3 with Б2б’s black edge round it — 14 across, as every skin’s power-up */
+var OBS_SZ={ship:12,ufo:1.12,pick:7.3};   /* v1.54: the saucer 1.12 — with its dark outline it measures as 1.22 did */   /* v1.53: 7.3 with Б2б’s black edge round it — 14 across, as every skin’s power-up */
 function obsUV(x,y){ return [(x-LW/2)/LH,(LH/2-y)/LH]; }
 function obsShipUni(p){ var g=OBS.g, sh=new Float32Array(24), H=OBS.shipH, now=OBS.t, s=OBS.ship;
   for(var k=0;k<24;k++){ var ta=now-k*0.15, v=s?s.y:0; for(var i=H.length-1;i>=0;i--){ if(H[i][0]<=ta){ v=H[i][1]; break; } v=H[i][1]; } sh[k]=v; }
@@ -4315,9 +4331,13 @@ function cwCable(road,x){ var a=rpAt(road,x), yT=a[0]-a[1]-RP_SH-30, yB=a[0]+a[1
   rx.strokeStyle='rgba(40,30,40,0.18)'; rx.lineWidth=2; rx.beginPath(); rx.moveTo(xT+14,yT+16); rx.lineTo(xB+14,yB+16); rx.stroke(); rx.strokeStyle='#4a3a40'; rx.lineWidth=1.4; rx.beginPath(); rx.moveTo(xT-2,yT); rx.lineTo(xB-2,yB); rx.moveTo(xT+2,yT); rx.lineTo(xB+2,yB); rx.stroke();
   [0.3,0.68].forEach(function(t,k){ var cx=xT+(xB-xT)*t, cy=yT+(yB-yT)*t; rpEll(cx+14,cy+16,10,7,0,'rgba(40,20,40,0.2)'); rx.fillStyle=k?'#56c8f5':'#ffd447'; rx.beginPath(); rx.moveTo(cx-14,cy-5); rx.lineTo(cx-8,cy); rx.lineTo(cx-14,cy+5); rx.fill(); rx.beginPath(); rx.moveTo(cx+14,cy-5); rx.lineTo(cx+8,cy); rx.lineTo(cx+14,cy+5); rx.fill();
     rpEll(cx,cy,9,7,0,rpRg(cx,cy,9,k?'#c6ecff':'#fff2a8',k?'#2a8ad8':'#e0a010')); rpEll(cx-3,cy-3,3,1.6,-0.5,'rgba(255,255,255,0.8)'); }); }
-function cwScoopTunnel(road,x){ var a=rpAt(road,x), n=5, k, C=[[340,80,82],[30,60,70],[150,50,78],[40,80,85],[200,70,84]];   // a ridge of scoops across the road, the road through it
+function cwScoopTunnel(road,x){ var a=rpAt(road,x), n=5, k, C=[[340,80,82],[30,60,70],[150,50,78],[40,80,85],[200,70,84]];
   for(k=0;k<n;k++){ var f=-1.3+2.6*k/(n-1), py=a[0]+f*(a[1]+RP_SH), q=rpSeed(k*17+Math.round(x)); cwScoop(x+(q()-0.5)*30,py,46+q()*12,C[k],k===2?'cherry':k%2?'spr':'choc'); }
-  [-1,1].forEach(function(e){ var px=x+e*64, b=rpAt(road,px); rx.fillStyle=rpLg(px-e*16,0,px+e*4,0,['rgba(90,30,50,0.5)','rgba(90,30,50,0)']); rx.fillRect(Math.min(px-e*16,px+e*4),b[0]-b[1],20,2*b[1]); }); }
+  /* v1.54 (the review's п.5, the maintainer's «1»): a soft shadow under the ridge — the mouths' shading (20 px strips ending at their darkest)
+     drew hard seams across the road */
+  rx.save(); rx.globalCompositeOperation='destination-over';
+  for(var X=x-90;X<=x+90;X+=3){ var bb=rpAt(road,X), w=Math.exp(-Math.pow((X-x)/62,4)); rx.fillStyle='rgba(70,20,40,'+(0.26*w).toFixed(3)+')'; rx.fillRect(X-1.5,bb[0]-bb[1],3,2*bb[1]); }
+  rx.restore(); }
 function cwBollards(road,x,sd){ for(var X=x-90;X<=x+90;X+=22){ var y=cwY(road,X,sd,RP_SH*0.6); rpSw(4,2,3,0.35); rpDisc(X,y,5.4,'#f0dcd0'); rpNos(); rpDisc(X,y,5.4,rpRg(X,y,5.4,'#ffffff','#f0d8cc')); rx.strokeStyle='#ff8ab0'; rx.lineWidth=1.6; rx.beginPath(); rx.arc(X,y,3.6,0,6.2832); rx.stroke(); } }
 function cwIgloo(road,x,sd){ var y=cwY(road,x,sd,RP_SH+40), k, j; rpSw(12,6,8,0.35); rpDisc(x,y,28,'#e8e0e8'); rpNos();
   for(j=4;j>=1;j--){ var rr=28*j/4; for(k=0;k<j*7;k++){ var a=k/(j*7)*6.2832+j*0.4; rx.fillStyle=rpRg(x+Math.cos(a)*rr*0.85,y+Math.sin(a)*rr*0.85,7,'#ffffff','#e6dce6'); rx.beginPath(); rx.roundRect(x+Math.cos(a)*rr*0.85-4.5,y+Math.sin(a)*rr*0.85-4.5,9,9,2.5); rx.fill(); } }
@@ -5666,9 +5686,12 @@ function diagCorner(label,top,ty,flip,ax){ var vr=ty?(freeSide()!=='left')!==!!f
       text(it[1],x0,ly2,P.band,'left'); R(P.band,x0,ly2+PF.CAP+2,w,1); BTN.push({id:it[0],x:x0-8,y:ly2-4,w:w+16,h:PF.CAP+8}); xx=vr?x0-24:x0+w+24; }); }
   // v0.50: in the app, on the title screen — «sound»: the app's own sound, the microphone and the speaker (a service screen for trying phones)
  }
-function titles(t,s,col){ var y=topY(), mw=LW-SAFE.l-SAFE.r-24, cx0=Math.round((SAFE.l+LW-SAFE.r)/2);
+function titles(t,s,col){ var y=topY(), mw=LW-SAFE.l-SAFE.r-2*(BH+14),   /* v1.54 (the review's п.3): clear of the corner button and the version */
+     cx0=Math.round((SAFE.l+LW-SAFE.r)/2);
   PF.wrap(t,mw,1).forEach(function(l){ text(l,cx0,y,col||P.text,'center'); y+=10; });
-  if(s){ y+=3; y=para(s,cx0,y,mw,P.soft); } say(t+(s?'. '+s:'')); return y; }
+  if(s){ y+=3; var n=PF.wrap(s,mw,1).length, lo=Math.floor(mw/Math.max(1,n)), hi=mw;   /* v1.54: the lines balanced — the narrowest width that keeps their count, so no word hangs alone («…ОДНО / ИМЯ…») */
+    if(n>1) while(hi-lo>2){ var md=(lo+hi)>>1; if(PF.wrap(s,md,1).length>n) lo=md; else hi=md; }
+    y=para(s,cx0,y,hi,P.soft); } say(t+(s?'. '+s:'')); return y; }
 function btnW(labels){ var w=0; labels.forEach(function(s){ w=Math.max(w,PF.width(s)); }); return Math.max(Math.round(LW*0.2),Math.round((w+14)*1.16)); }
 function sideX(w){ return freeSide()==='left'?SAFE.l+Math.max(8,Math.round(LW*0.04)):LW-SAFE.r-Math.max(8,Math.round(LW*0.04))-w; }
 /* a column of buttons on the free side, vertically centred on y0 */
@@ -6158,11 +6181,16 @@ function gfxLabel(){ return L('gfx')+': '+(gfxMode==='hd'?'HD'+(hdAvail(skinId)?
 /* v0.78: «ГРАФИКА: ПИКСЕЛИ / HD» in the pause too (the maintainer: switch it right during a session) — the same action as in the menu */
 /* v0.82: the pause in two columns (the maintainer's pick «Б»): the game's actions on the free side, and beside them the look and the sound —
    «◀ skin ▶» (the maintainer: «добавить выбор скина и в меню игры»), graphics, sounds; the skin changes at once, the game waits */
-function sPaused(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('paused'));
+/* v1.54 (the review's п.1, the maintainer's «3»): the pause and «start over» — the field's glow no longer lies over the buttons, the veil
+   deeper, the ship let through it, and the buttons kept off the ship's lane (as on the try-out) — the player sees where the ship is */
+function pauseVeil(){ lights=[]; lx.globalAlpha=0.68; R(P.bg,0,0,LW,LH); lx.globalAlpha=1;
+  if(mode!=='race'&&g&&g.ship){ var sx=fx(g.ship.x)+11, sy=g.ship.y*K, r=22*K, gr=lx.createRadialGradient(sx,sy,r*0.35,sx,sy,r); gr.addColorStop(0,'rgba(0,0,0,1)'); gr.addColorStop(1,'rgba(0,0,0,0)');
+    lx.save(); lx.globalCompositeOperation='destination-out'; lx.fillStyle=gr; lx.fillRect(sx-r,sy-r,2*r,2*r); lx.restore(); } }
+function sPaused(){ field(DT,0); pauseVeil(); titles(L('paused'));
   var act=[['resume',L('resume'),'primary']].concat(pausedFrom==='play'?[['restart',L('restart')],['quit',L('quit')]]:[]).concat([['exit',L('exit')]]),
       look=(mode==='race'?[['rskin',raceSkinLabel(),'rskin']]:[['skin','','skin']]).concat(gfxFree()?[['gfx',mode==='race'?L('gfx')+': '+(gfxMode==='hd'?'HD':L('gfx_pixel')):gfxLabel()]]:[]).concat([['sfx','','sound']]), top=topY()+12, bot=LH-SAFE.b-4;
   // v1.03: SonaRace's pause as SonaFly's — the skin and the graphics beside the actions (Den: «во флае можно скин и графику менять прямо во время игры в меню паузы, в гонках надо сделать аналогичное»)
-  var w1=colW(act), w2=colW(look), g=10, left=freeSide()==='left', x1=sideX(w1), x2=left?x1+w1+g:x1-g-w2, cy=Math.min(Math.round(LH*0.55),Math.round((top+bot)/2));
+  var w1=colW(act), w2=colW(look), g=10, left=freeSide()==='left', x1=mode!=='race'&&left?Math.max(sideX(w1),Math.min(Math.round(fx(Core.SHIP_X))+34,LW-SAFE.r-Math.max(8,Math.round(LW*0.04))-w1-10-w2)):sideX(w1),   /* off the ship's lane, but both columns on screen */ x2=left?x1+w1+g:x1-g-w2, cy=Math.min(Math.round(LH*0.55),Math.round((top+bot)/2));
   if(w1+g+w2>LW-SAFE.l-SAFE.r-2*Math.max(8,Math.round(LW*0.04))){                                        // too narrow for two (a tablet in Russian): one tight column
     var it=act.concat(look), gap=Math.max(2,Math.min(8,Math.floor((bot-top+2-it.length*BH)/(it.length-1))));
     column(it,Math.round((top+bot)/2),undefined,gap); return; }
@@ -6184,8 +6212,9 @@ function obsPanel(px,pw,cy){ var pad=5, gap=2, cg=8, rh=PF.CAP+gap+10+5, vw=PF.w
   var scT=Math.min.apply(null,tg.map(function(x){ return Math.min(1,cw/Math.max(1,PF.width(x[1]))); })), yt=y0+pad+nl*rh+3;
   tg.forEach(function(x,i){ var tx=ix+(i%2)*(cw+cg), ty=yt+Math.floor(i/2)*th, w2=PF.width(x[1],scT); text(x[1],tx,ty,P.band,'left',scT); R(P.band,tx,ty+PF.CAP+2,w2,1); BTN.push({id:x[0],x:tx-3,y:ty-4,w:cw+6,h:th}); }); }
 /* v0.24 "start over" from the pause menu: straight into a countdown with the same calibration, or through calibration again */
-function sRestart(){ field(DT,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; titles(L('restart'),L('restart_s'));
-  column([['rs_go',L('rs_go'),'primary'],['rs_cal',L('recal')],['rs_back',L('back')]],Math.round(LH*0.58)); }
+function sRestart(){ field(DT,0); pauseVeil(); titles(L('restart'),L('restart_s'));
+  var it=[['rs_go',L('rs_go'),'primary'],['rs_cal',L('recal')],['rs_back',L('back')]], bw=btnW(it.map(function(q){ return q[1]; }));
+  column(it,Math.round(LH*0.58),mode!=='race'&&freeSide()==='left'?Math.max(sideX(bw),Math.round(fx(Core.SHIP_X))+34):undefined); }
 /* the running game is dropped without the game-over screen; its score still counts for the best */
 function dropGame(){ if(mode==='race'&&g&&g.car){ if(g.state!=='over'){ Logs.gameEv('restarted by the player'); g.state='over'; Logs.gameStop(); if(g.score>raceBest){ raceBest=g.score; store.set('sonaroids_race_best',raceBest); } } return; }
   if(g&&g.state==='play'){ Logs.gameEv('restarted by the player'); g.state='over'; Logs.gameStop(); Board.finish(g.score); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } } }

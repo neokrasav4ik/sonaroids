@@ -278,9 +278,13 @@ function cwCable(road,x){ var a=rpAt(road,x), yT=a[0]-a[1]-RP_SH-30, yB=a[0]+a[1
   rx.strokeStyle='rgba(40,30,40,0.18)'; rx.lineWidth=2; rx.beginPath(); rx.moveTo(xT+14,yT+16); rx.lineTo(xB+14,yB+16); rx.stroke(); rx.strokeStyle='#4a3a40'; rx.lineWidth=1.4; rx.beginPath(); rx.moveTo(xT-2,yT); rx.lineTo(xB-2,yB); rx.moveTo(xT+2,yT); rx.lineTo(xB+2,yB); rx.stroke();
   [0.3,0.68].forEach(function(t,k){ var cx=xT+(xB-xT)*t, cy=yT+(yB-yT)*t; rpEll(cx+14,cy+16,10,7,0,'rgba(40,20,40,0.2)'); rx.fillStyle=k?'#56c8f5':'#ffd447'; rx.beginPath(); rx.moveTo(cx-14,cy-5); rx.lineTo(cx-8,cy); rx.lineTo(cx-14,cy+5); rx.fill(); rx.beginPath(); rx.moveTo(cx+14,cy-5); rx.lineTo(cx+8,cy); rx.lineTo(cx+14,cy+5); rx.fill();
     rpEll(cx,cy,9,7,0,rpRg(cx,cy,9,k?'#c6ecff':'#fff2a8',k?'#2a8ad8':'#e0a010')); rpEll(cx-3,cy-3,3,1.6,-0.5,'rgba(255,255,255,0.8)'); }); }
-function cwScoopTunnel(road,x){ var a=rpAt(road,x), n=5, k, C=[[340,80,82],[30,60,70],[150,50,78],[40,80,85],[200,70,84]];   // a ridge of scoops across the road, the road through it
+function cwScoopTunnel(road,x){ var a=rpAt(road,x), n=5, k, C=[[340,80,82],[30,60,70],[150,50,78],[40,80,85],[200,70,84]];
   for(k=0;k<n;k++){ var f=-1.3+2.6*k/(n-1), py=a[0]+f*(a[1]+RP_SH), q=rpSeed(k*17+Math.round(x)); cwScoop(x+(q()-0.5)*30,py,46+q()*12,C[k],k===2?'cherry':k%2?'spr':'choc'); }
-  [-1,1].forEach(function(e){ var px=x+e*64, b=rpAt(road,px); rx.fillStyle=rpLg(px-e*16,0,px+e*4,0,['rgba(90,30,50,0.5)','rgba(90,30,50,0)']); rx.fillRect(Math.min(px-e*16,px+e*4),b[0]-b[1],20,2*b[1]); }); }
+  /* v1.54 (the review's п.5, the maintainer's «1»): a soft shadow under the ridge — the mouths' shading (20 px strips ending at their darkest)
+     drew hard seams across the road */
+  rx.save(); rx.globalCompositeOperation='destination-over';
+  for(var X=x-90;X<=x+90;X+=3){ var bb=rpAt(road,X), w=Math.exp(-Math.pow((X-x)/62,4)); rx.fillStyle='rgba(70,20,40,'+(0.26*w).toFixed(3)+')'; rx.fillRect(X-1.5,bb[0]-bb[1],3,2*bb[1]); }
+  rx.restore(); }
 function cwBollards(road,x,sd){ for(var X=x-90;X<=x+90;X+=22){ var y=cwY(road,X,sd,RP_SH*0.6); rpSw(4,2,3,0.35); rpDisc(X,y,5.4,'#f0dcd0'); rpNos(); rpDisc(X,y,5.4,rpRg(X,y,5.4,'#ffffff','#f0d8cc')); rx.strokeStyle='#ff8ab0'; rx.lineWidth=1.6; rx.beginPath(); rx.arc(X,y,3.6,0,6.2832); rx.stroke(); } }
 function cwIgloo(road,x,sd){ var y=cwY(road,x,sd,RP_SH+40), k, j; rpSw(12,6,8,0.35); rpDisc(x,y,28,'#e8e0e8'); rpNos();
   for(j=4;j>=1;j--){ var rr=28*j/4; for(k=0;k<j*7;k++){ var a=k/(j*7)*6.2832+j*0.4; rx.fillStyle=rpRg(x+Math.cos(a)*rr*0.85,y+Math.sin(a)*rr*0.85,7,'#ffffff','#e6dce6'); rx.beginPath(); rx.roundRect(x+Math.cos(a)*rr*0.85-4.5,y+Math.sin(a)*rr*0.85-4.5,9,9,2.5); rx.fill(); } }

@@ -210,6 +210,7 @@ var OBS_FS_O=OBS_SC+'\n'+[
 '  float fe=length(lq/vec2(0.28*fl,0.06)); vec3 eng=vec3(1.0,0.82,0.5)*exp(-fe*fe*1.3)*1.2;',
 '  float px=1.0/(uRes.y*S); float z=1.0, dmin=1e5, zmin=1.0; int id=0; bool hit=false;',
 '  for(int s=0;s<64;s++){ int ii; float d=mapS(vec3(q,z),ii); if(d<dmin){ dmin=d; zmin=z; id=ii; } if(d<0.0008){ hit=true; break; } z-=max(d*0.9,0.002); if(z<-1.0) break; }',
+'  eng*=1.8;',   /* v1.54 (the review's п.7, the maintainer's «3»): the ship easier to find — its engine and gold edge brighter, the edge wider */
 '  if(!hit) eng+=GOLD*0.10*exp(-dmin*45.0); float cov=hit?1.0:smoothstep(px*1.2,0.0,dmin); if(cov<=0.0) return vec4(eng,0.0);',
 '  vec3 pb=toBody(id,vec3(q,zmin)); mat3 M=PM[id];',
 '  float e=0.002; vec3 nb=normalize(vec3(piece(id,pb+vec3(e,0,0))-piece(id,pb-vec3(e,0,0)),piece(id,pb+vec3(0,e,0))-piece(id,pb-vec3(0,e,0)),piece(id,pb+vec3(0,0,e))-piece(id,pb-vec3(0,0,e))));',
@@ -218,9 +219,9 @@ var OBS_FS_O=OBS_SC+'\n'+[
 '  vec3 Ld=normalize(vec3((uL-c)/0.5,0.6)), V=vec3(0,0,1), hh=normalize(Ld+V); float df=max(dot(n,Ld),0.0);',
 '  float fr=0.04+0.96*pow(1.0-max(n.z,0.0),4.0); vec3 env=bgAt(c+(uv-c)*0.5+n.xy*0.15)*1.8;',
 '  vec3 col=vec3(0.0012,0.0012,0.002)+vec3(0.006)*df+env*fr*0.8+uLc*(pow(max(dot(n,hh),0.0),200.0)*6.0+pow(max(dot(n,hh),0.0),28.0)*0.12);',
-'  float trim=smoothstep(0.030,0.009,-d2);',
+'  float trim=smoothstep(0.050,0.012,-d2);',
 '  if(belly&&id==0){ float vein=abs(pb.y-0.025*sin(pb.x*6.0+1.0)); float sm=smoothstep(0.022,0.008,vein)*step(-0.62,pb.x)*step(pb.x,0.85); vec3 vb=vor(pb.xy*vec2(2.2,3.0)+11.0); sm=max(sm,smoothstep(0.05,0.018,vb.x)*smoothstep(0.0,-0.06,d2)*0.9); trim=max(trim,sm); }',
-'  vec3 g=GOLD*(1.15+0.8*df)+vec3(1.0,0.9,0.7)*pow(max(dot(n,hh),0.0),30.0)*1.5; col=mix(col,g,trim); if(!hit) col=mix(col,g,0.6);',
+'  vec3 g=GOLD*1.5*(1.0+0.7*df)+vec3(1.0,0.9,0.7)*pow(max(dot(n,hh),0.0),30.0)*1.5; col=mix(col,g,trim); if(!hit) col=mix(col,g,0.6);',
 '  return vec4(col*cov+eng*(1.0-cov),cov); }',
 /* the shield: a thin gold ring round the ship, shimmering */
 'vec4 shield(vec2 uv,vec2 c,float S){ vec2 p=(uv-c)/S; float L=length(p/vec2(1.0,0.8)); float a=atan(p.y,p.x); float w=0.035+0.02*sin(a*3.0+uT*5.0);',
@@ -258,7 +259,7 @@ var OBS_FS_O=OBS_SC+'\n'+[
    over it on the HD canvas. Before: 1.50 «Б6б» (obsidian in a porcelain frame, white sign) — read poorly in the game */
 'vec3 pearl(vec2 p,float t){ float a=dot(p,vec2(0.6,0.8))*2.2+t*0.35; return vec3(0.92)+0.10*vec3(sin(a),sin(a+2.1),sin(a+4.2)); }',
 'vec4 tile(vec2 uv,vec2 c,float S){ vec2 p=(uv-c)/S; float d=tileD(p); float px=1.5/(uRes.y*S); vec3 W=vec3(1.0,0.98,0.94); float br=0.95+0.05*sin(uT*3.0);',
-'  vec3 em=W*exp(-max(d,0.0)*10.0)*0.28*br; if(uGRim==1){ vec3 rc=invOf(bgAt(c+(uv-c)*2.5)); float rim=smoothstep(0.075,0.045,abs(d-0.13)); em+=rc*(rim*1.5+exp(-max(d,0.0)*6.0)*0.18); }',
+'  vec3 em=W*exp(-max(d,0.0)*10.0)*0.12*br;   /* v1.54: a softer glow — it outshone the ship */ if(uGRim==1){ vec3 rc=invOf(bgAt(c+(uv-c)*2.5)); float rim=smoothstep(0.075,0.045,abs(d-0.13)); em+=rc*(rim*1.5+exp(-max(d,0.0)*6.0)*0.18); }',
 '  float ew=0.09; if(d>px+ew) return vec4(em,0.0); float cov=smoothstep(px,-px,d-ew);',   /* the black edge: just outside the plate */
 '  vec3 col=pearl(p,uT)*1.15+W*0.1*(1.0-length(p)); col=mix(col,vec3(0.006,0.004,0.006),smoothstep(-px,px,d));',
 '  return vec4(col*cov+em*(1.0-cov),cov); }',
@@ -271,19 +272,22 @@ var OBS_FS_O=OBS_SC+'\n'+[
 'vec4 saucer(vec2 uv,vec2 c,float S,float hurt){ vec2 p=(uv-c)/S; if(length(p)>1.6) return vec4(0.0); float t=uT; float d=eyeD(p); float px=1.5/(uRes.y*S); vec3 red=vec3(1.0,0.12,0.16);',
 '  vec2 pc=vec2(-0.25+0.06*sin(t*1.3),0.03*sin(t*0.9)); float pu=length(p-pc); float gap=exp(-pow(p.y/0.04,2.0))*step(almond(p),0.02);',
 '  vec3 em=red*(exp(-max(d,0.0)*9.0)*0.28+gap*1.2)*(0.85+0.15*sin(t*6.0))+red*exp(-pu*pu*14.0)*0.25*step(0.0,d);',
-'  if(d>px) return vec4(em,0.0); float cov=smoothstep(px,-px,d);',
+'  float ol=smoothstep(0.13,0.05,d)*0.85;',   /* v1.54 (the review's п.6): a dark outline round the eye and a white-hot pupil — it reads on pale ink */
+'  if(d>px) return vec4(em*(1.0-ol),ol); float cov=smoothstep(px,-px,d);',
 '  vec2 g=vec2(eyeD(p+vec2(0.01,0.0))-d,eyeD(p+vec2(0.0,0.01))-d)/0.01; float inner=clamp(-d*6.0,0.0,1.0); vec3 n=normalize(vec3(-g*(1.0-inner)*0.9,0.55+inner));',
 '  vec3 v=vor(p*2.4+15.0); n=normalize(n+vec3(h12(v.yz)-0.5,h12(v.yz+3.1)-0.5,0.0)*0.7);',
 '  vec3 Ld=normalize(vec3((uL-c)/0.5,0.6)), hh=normalize(Ld+vec3(0,0,1)); float df=max(dot(n,Ld),0.0); float fr=0.04+0.96*pow(1.0-n.z,4.0);',
 '  vec3 col=vec3(0.0012)+bgAt(c+(uv-c)*0.5+n.xy*0.15)*1.8*fr*0.8+uLc*(pow(max(dot(n,hh),0.0),200.0)*6.0+pow(max(dot(n,hh),0.0),28.0)*0.12);',
 '  float trim=smoothstep(0.035,0.010,-d)*(0.85+0.15*sin(t*7.0)); float pupil=smoothstep(0.17,0.10,pu), iris=exp(-pow((pu-0.19)/0.025,2.0));',
-'  col=mix(col,red*(1.3+0.6*df),trim); col+=red*(pupil*1.8+iris*0.9)+vec3(1.0,0.6,0.5)*pupil*0.5+red*gap*1.5; col=mix(col,vec3(1.0),hurt*0.8);',
+'  col=mix(col,red*(1.3+0.6*df),trim); col+=red*(pupil*1.8+iris*0.9)+vec3(1.0,0.6,0.5)*pupil*0.5+red*gap*1.5; col+=vec3(1.6,1.2,1.1)*smoothstep(0.13,0.05,pu); col=mix(col,vec3(1.0),hurt*0.8);',
 '  return vec4(col*cov+em*(1.0-cov),cov); }',
 'void main(){ vec2 uv=vP; vec2 c=vA.xy; int K=int(vA.w+0.5); vec4 r=vec4(0.0);',
 '  if(K==0) r=rock(uv,c,vB.x,vB.y,vB.z,0.0);',
 '  else if(K==1) r=ship3(uv,c,vB.x,vB.y);',
 '  else if(K==2) r=vec4(shot(rot(-vB.x)*(uv-c)*uGp*1.1,c),0.0);',   /* v1.48: in game pixels — 4–8.5 long like every skin\'s */
-'  else if(K==3){ float d=length(uv-c)*uGp/0.012; r=vec4(vec3(1.0,0.12,0.2)*(exp(-d*d*2.0)*1.5+exp(-d*d*0.3)*0.3)+vec3(1.0)*exp(-d*d*12.0),0.0); }',
+'  else if(K==3){ float d=length(uv-c)*uGp/0.012; float a=smoothstep(1.40,1.10,d);',   /* v1.54 (the review's п.6): the enemy's shot — a white-hot core, a red ring, a thin dark rim; it reads on pale ink */
+'    vec3 col=mix(vec3(0.02,0.0,0.01),vec3(1.0,0.12,0.18)*1.7,smoothstep(1.10,0.95,d)); col=mix(col,vec3(1.8,1.3,1.2),smoothstep(0.55,0.32,d));',
+'    r=vec4(col*a+vec3(1.0,0.12,0.2)*exp(-d*d*0.35)*0.25*(1.0-a),a); }',
 '  else if(K==4) r=saucer(uv,c,vB.x,vB.y);',
 '  else if(K==5) r=tile(uv,c,vB.x);',
 '  else if(K==6) r=ann(uv,c,vB.x,vB.z>0.5,vB.w,vC.x,vC.y);',
@@ -324,7 +328,7 @@ function obsMix(t){ return 0.5-0.5*Math.cos(t/OBS_MIX_T*6.2832); }
    at the same box — the ship's half length 12 (10.4 in 1.48), the saucer 1.22× the core's half width, the shots back at their 1.47 size; the power-up
    (the maintainer: «у подарков размер нормальный, но подхватить их сложно») stands still on the point the core counts — the field bobs every
    power-up ±2 px, here that is taken back; its half side 8.0 (7.2) since it got a frame round the sign, the sign itself a little smaller */
-var OBS_SZ={ship:12,ufo:1.22,pick:7.3};   /* v1.53: 7.3 with Б2б’s black edge round it — 14 across, as every skin’s power-up */
+var OBS_SZ={ship:12,ufo:1.12,pick:7.3};   /* v1.54: the saucer 1.12 — with its dark outline it measures as 1.22 did */   /* v1.53: 7.3 with Б2б’s black edge round it — 14 across, as every skin’s power-up */
 function obsUV(x,y){ return [(x-LW/2)/LH,(LH/2-y)/LH]; }
 function obsShipUni(p){ var g=OBS.g, sh=new Float32Array(24), H=OBS.shipH, now=OBS.t, s=OBS.ship;
   for(var k=0;k<24;k++){ var ta=now-k*0.15, v=s?s.y:0; for(var i=H.length-1;i>=0;i--){ if(H[i][0]<=ta){ v=H[i][1]; break; } v=H[i][1]; } sh[k]=v; }

@@ -102,8 +102,20 @@ function para(s,cx0,y,maxW,col){ PF.wrap(s,maxW,1).forEach(function(l){ text(l,c
 var BTN=[];                                                         // buttons of the current frame: hit areas in game pixels
 var BH=22;                                                          // button height in game pixels (17 → 20 in v0.6 → 22 in v0.9)
 /* a small icon button: three bars (menu) in a frame; the hit area is larger than the drawing */
-function iconButton(id,x,y){ var s=BH-3; if(uiS>1){ lx.fillStyle=P.bg; lx.beginPath(); lx.roundRect(x,y,s,s,3); lx.fill(); lx.strokeStyle=P.line; lx.lineWidth=0.7; lx.stroke(); lx.fillStyle=P.soft; for(var j=0;j<3;j++){ lx.beginPath(); lx.roundRect(x+4.5,y+5+j*3.2,s-9,1.2,0.6); lx.fill(); } }
-  else { R(P.bg,x,y,s,s); frame(x,y,s,s,P.line); for(var i=0;i<3;i++) R(P.soft,x+4,y+5+i*3,s-8,1); }
+/* v1.54 (the polish review's п.2, the maintainer's «1»): the corner button says what it does — «←» where it goes back (the scores, the settings,
+   the skins, the sound from the settings), «❚❚» where it pauses (the count-down, the game), «☰» only where it opens the menu */
+var ICON_BACK={sc_back:1,set_back:1,sk_back:1,settings:1};
+function iconButton(id,x,y){ var s=BH-3, kind=id==='pause'?'pause':ICON_BACK[id]?'back':'menu';
+  if(uiS>1){ lx.fillStyle=P.bg; lx.beginPath(); lx.roundRect(x,y,s,s,3); lx.fill(); lx.strokeStyle=P.line; lx.lineWidth=0.7; lx.stroke(); lx.fillStyle=P.soft; lx.strokeStyle=P.soft;
+    if(kind==='pause'){ lx.beginPath(); lx.roundRect(x+s*0.33,y+s*0.27,s*0.12,s*0.46,0.6); lx.roundRect(x+s*0.55,y+s*0.27,s*0.12,s*0.46,0.6); lx.fill(); }
+    else if(kind==='back'){ lx.lineWidth=1.3; lx.lineCap='round'; lx.lineJoin='round'; lx.beginPath();
+      lx.moveTo(x+s*0.72,y+s/2); lx.lineTo(x+s*0.28,y+s/2); lx.moveTo(x+s*0.46,y+s*0.30); lx.lineTo(x+s*0.27,y+s/2); lx.lineTo(x+s*0.46,y+s*0.70);
+      lx.stroke(); }
+    else for(var j=0;j<3;j++){ lx.beginPath(); lx.roundRect(x+4.5,y+5+j*3.2,s-9,1.2,0.6); lx.fill(); } }
+  else { R(P.bg,x,y,s,s); frame(x,y,s,s,P.line); var cx=x+Math.floor(s/2), cy=y+Math.floor(s/2), k;
+    if(kind==='pause'){ R(P.soft,cx-3,cy-3,2,7); R(P.soft,cx+1,cy-3,2,7); }
+    else if(kind==='back'){ R(P.soft,cx-3,cy,7,1); for(k=1;k<=3;k++){ R(P.soft,cx-3+k,cy-k,1,1); R(P.soft,cx-3+k,cy+k,1,1); } }
+    else for(var i=0;i<3;i++) R(P.soft,x+4,y+5+i*3,s-8,1); }
   BTN.push({id:id,x:x-4,y:y-4,w:s+8,h:s+8}); }
 function button(id,label,x,y,w,h,kind,on){
   var hot=kind==='primary', blink=hot&&on;

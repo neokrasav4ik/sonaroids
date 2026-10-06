@@ -53,7 +53,7 @@ function topY(){ return SAFE.t+Math.max(8,Math.round(LH*0.05)); }
    a setup that stopped ("too quiet", "too loud") or went badly can be sent right away. A tap on the version shows the link, another hides it.
    top — at the top corner (the getting-ready screens: the bottom has the buttons, the ring and the "wave here" beacon), else at the bottom */
 function diagCorner(label,top,ty,flip,ax){ var vr=ty?(freeSide()!=='left')!==!!flip:(flip!==undefined?!!flip:freeSide()==='left'),   /* at the bottom: flip true — always the right corner (the games' screen, v0.71) */   /* under the menu button (ty) — its side; flip — the other side */ vx=ax!==undefined?ax:vr?LW-SAFE.r-8:SAFE.l+8, vy=top?(ty||SAFE.t+8):LH-SAFE.b-12, vw=PF.width(label), al=vr?'right':'left';
-  text(label,vx,vy,(scr==='scores'?scPeople:diag)?P.band:P.soft,al); var bx0=Math.max(0,(vr?vx-vw:vx)-8), bx1=Math.min(LW,(vr?vx:vx+vw)+8);
+  var hot=(scr==='scores'?scPeople:diag); if(!hot) lx.globalAlpha=0.5;   /* v1.55 (the review's п.10): the version quieter — the place and the touch zone as before */ text(label,vx,vy,hot?P.band:P.soft,al); lx.globalAlpha=1; var bx0=Math.max(0,(vr?vx-vw:vx)-8), bx1=Math.min(LW,(vr?vx:vx+vw)+8);
   var by0=top?Math.max(0,vy-8):vy-4; BTN.push({id:'ver',x:bx0,y:by0,w:bx1-bx0,h:Math.min(top?PF.CAP+16:PF.CAP+10,LH-by0)});
   if(top&&diag&&Logs.has()&&scr!=='scores'&&scr!=='paused'){ var ls=L('logs'), lw=PF.width(ls), ly=vy+PF.CAP+12, lx0=vr?vx-lw:vx;
     text(ls,lx0,ly,P.band,'left'); R(P.band,lx0,ly+PF.CAP+2,lw,1); BTN.push({id:'logs',x:lx0-8,y:ly-6,w:lw+16,h:PF.CAP+12}); }
@@ -66,8 +66,10 @@ function diagCorner(label,top,ty,flip,ax){ var vr=ty?(freeSide()!=='left')!==!!f
   // v0.50: in the app, on the title screen — «sound»: the app's own sound, the microphone and the speaker (a service screen for trying phones)
  }
 function titles(t,s,col){ var y=topY(), mw=LW-SAFE.l-SAFE.r-2*(BH+14),   /* v1.54 (the review's п.3): clear of the corner button and the version */
-     cx0=Math.round((SAFE.l+LW-SAFE.r)/2);
-  PF.wrap(t,mw,1).forEach(function(l){ text(l,cx0,y,col||P.text,'center'); y+=10; });
+     cx0=Math.round((SAFE.l+LW-SAFE.r)/2), tl=PF.wrap(t,mw,1);
+  var pq=mode==='race'||(SK&&SK.id==='obsidian');   /* v1.55 (the review's п.8): a plaque under the titles over the busy worlds (the race's, obsidian) */
+  if(pq){ var sl=s?PF.wrap(s,mw,1):[], ww=0; tl.concat(sl).forEach(function(l){ ww=Math.max(ww,PF.width(l)); }); plaque(cx0-ww/2,y-2,cx0+ww/2,y+tl.length*10+(s?3+sl.length*10:0)-3,0.55); }
+  tl.forEach(function(l){ text(l,cx0,y,col||P.text,'center'); y+=10; });
   if(s){ y+=3; var n=PF.wrap(s,mw,1).length, lo=Math.floor(mw/Math.max(1,n)), hi=mw;   /* v1.54: the lines balanced — the narrowest width that keeps their count, so no word hangs alone («…ОДНО / ИМЯ…») */
     if(n>1) while(hi-lo>2){ var md=(lo+hi)>>1; if(PF.wrap(s,md,1).length>n) lo=md; else hi=md; }
     y=para(s,cx0,y,hi,P.soft); } say(t+(s?'. '+s:'')); return y; }
@@ -150,7 +152,7 @@ var hubTmp=null; function hubHdTmp(){ if(!hubTmp||hubTmp.width!==hdCv.width||hub
 function hubCard(id,x,y,w,ih,img,name,sub,on){
   R(P.bg,x,y,w,ih+26);
   if(img&&(img===hdCv||img===flyHC||img===hubTmp)){ var tc=img; if(img===hdCv){ tc=hubHdTmp(); tc.getContext('2d').drawImage(hdCv,0,0); } lx.clearRect(x+2,y+2,w-4,ih);   // v0.72, HD: the card cut into the pixel canvas, the
-    hx.save(); hx.setTransform(1,0,0,1,0,0); hx.drawImage(tc,Math.round((x+2)*hs),Math.round((y+2)*hs),Math.round((w-4)*hs),Math.round(ih*hs)); hx.restore(); }   // world drawn sharp under it
+    hx.save(); hx.setTransform(1,0,0,1,0,0); if(id==='hub_rocks') hx.drawImage(tc,0,tc.height*0.18,tc.width*0.62,tc.height*0.62,Math.round((x+2)*hs),Math.round((y+2)*hs),Math.round((w-4)*hs),Math.round(ih*hs)); else hx.drawImage(tc,Math.round((x+2)*hs),Math.round((y+2)*hs),Math.round((w-4)*hs),Math.round(ih*hs)); hx.restore(); }   // world drawn sharp under it
   else if(img) lx.drawImage(img,x+2,y+2,w-4,ih);
   if(!on){ lx.globalAlpha=0.55; R(P.bg,x+2,y+2,w-4,ih); lx.globalAlpha=1; }
   frame(x,y,w,ih+26,on?P.band:P.line); if(on) frame(x-1,y-1,w+2,ih+28,P.band);
@@ -271,8 +273,8 @@ function sSettings(){ sky(DT,0.3); var y=titles(L('settings_t')), cx0=Math.round
   var desc=PF.wrap(liveDesc(),w,1)   /* v1.17: how to use it (the maintainer: «надо так в меню настроек и написать, чтоб понятно было, для чего и как это использовать») */
   , rows=setRows(), need=(ex?2:1+rows.length)*BH+(ex?rows.length*BH:0)+desc.length*10+2, room=LH-SAFE.b-6-(y+4), g=Math.max(3,Math.min(6,Math.floor((room-need)/4)));
   y+=Math.max(2,Math.min(6,room-need-4*g)); soundRow(x,y,w,BH); y+=BH+g;
-  rows.forEach(function(r){ if(r[0]==='set_room'){ desc.forEach(function(l){ text(l,cx0,y+1,P.soft,'center'); y+=10; }); y+=g-1; desc=[]; } arrowRow(r[0],lab(r),x,y,w,BH); y+=BH+(r[0]==='set_live'?2:g); });
-  desc.forEach(function(l){ text(l,cx0,y+1,P.soft,'center'); y+=10; }); y+=g-1;
+  rows.forEach(function(r){ if(r[0]==='set_room'){ lx.globalAlpha=0.68; desc.forEach(function(l){ text(l,cx0,y+1,P.soft,'center'); y+=10; }); lx.globalAlpha=1; y+=g-1; desc=[]; } arrowRow(r[0],lab(r),x,y,w,BH); y+=BH+(r[0]==='set_live'?2:g); });
+  lx.globalAlpha=0.68; desc.forEach(function(l){ text(l,cx0,y+1,P.soft,'center'); y+=10; }); lx.globalAlpha=1; y+=g-1;
   if(ex) button('set_expert',L('set_expert'),x,y,w,BH,'');
   say(L('settings_t')+'. '+setRows().map(lab).join('. ')); }
 /* ── the game's own screen (SonaFly): the chosen skin flies behind, the buttons on the free side over a dim band:
@@ -293,7 +295,7 @@ function sTitle(){
   var w=Math.max(btnW(items.filter(function(b){ return b[1]; }).map(function(b){ return b[1]; })),PF.width(L('skin')+': '+L('skin_'+SKIN_IDS.concat(['mix']).reduce(function(a,k){ return PF.width(L('skin_'+k))>PF.width(L('skin_'+a))?k:a; })))+2*Math.round(BH*0.9)+24,soundW());
   var bx0=sideX(w), band0=freeSide()==='left'?0:bx0-Math.max(8,Math.round(LW*0.04)), band1=freeSide()==='left'?bx0+w+Math.max(8,Math.round(LW*0.04)):LW;
   noLight=true; drawDemo(SK,DT,freeSide()==='left'?band1+16:SAFE.l+16); noLight=false;           // the ship flies beside the buttons' band; no soft light over the buttons
-  lx.globalAlpha=0.55; R(P.bg,band0,0,band1-band0,LH); lx.globalAlpha=1;
+  bandVeil(band0,band1,0.55);
   var h=BH, gap=items.length>6?6:items.length>5?7:10, y=Math.round(LH*0.52-(items.length*(h+gap)-gap)/2);
   items.forEach(function(b){ if(b[2]==='skin') skinRow(bx0,y,w,h,gap); else if(b[2]==='sound') soundRow(bx0,y,w,h); else button(b[0],b[1],bx0,y,w,h,b[2]||'',Math.floor(clock*2)%2===0); y+=h+gap; });
   var a0=freeSide()==='left'?band1:SAFE.l, a1=freeSide()==='left'?LW-SAFE.r:band0, lsc=PF.width('SonaFly',2)<=a1-a0-12?2:1; titleFree=[a0,a1]; if(!diag) text('SonaFly',Math.round((a0+a1)/2),Math.round(LH*0.16),P.band,'center',lsc);
@@ -322,9 +324,10 @@ function sProbe(){ sky(DT,0.3); titles(L('probe_t'),L('probe_s'));
   var x0=Math.round((SAFE.l+LW-SAFE.r)/2-cw-gap/2);
   [['probe_wide',x0,4,[['probe_wide1',P.soft],['probe_wide2',WARN]]],['probe_norm',x0+cw+gap,2.2,[['probe_norm1',P.soft],['probe_norm2',P.soft]]]].forEach(function(c){
     var x=c[1]; R(P.bg,x,y,cw,ch); frame(x,y,cw,ch,P.line);
-    var wx=x+Math.round(cw*0.28), ww=Math.round(cw*0.44), wy=y+Math.round(ch*0.2);             // the wave sign: wide — taller, fewer bends
+    var wx=x+Math.round(cw*0.28), ww=Math.round(cw*0.44), wy=y+Math.round(ch*0.27);   /* v1.55 (the review's п.16): centred, the frame breathing — it is a choice */             // the wave sign: wide — taller, fewer bends
     for(var i=0;i<ww;i++) R(P.band,wx+i,wy+Math.round(Math.sin(i/c[2])*(c[2]>3?4:2.5)),1,2);
-    var ty=y+Math.round(ch*0.36); text(L(c[0]),x+cw/2,ty,P.text,'center'); ty+=14;
+    var ty=y+Math.round(ch*0.44); text(L(c[0]),x+cw/2,ty,P.text,'center'); ty+=14;
+    { lx.globalAlpha=0.35+0.3*Math.sin(clock*4); frame(x-1,y-1,cw+2,ch+2,P.band); lx.globalAlpha=1; }
     c[3].forEach(function(q){ ty=para(L(q[0]),x+cw/2,ty,cw-10,q[1])+2; });
     BTN.push({id:c[0],x:x,y:y,w:cw,h:ch}); });
   stepSquares('probe'); }
@@ -441,7 +444,8 @@ function fieldIn(dt,speed){
 function sCount(){ if(mode==='race'){ raceCount(); return; } countT-=DT; poolFill(2); followShip();
   var GK=SK.glBegin?SK:null; if(GK) GK.glBegin(true); try{ SK.sky(DT,0.6); flyShip(fx(Core.SHIP_X),shipY,clock,false,DT,null); } finally { if(GK) GK.glEnd(); }   // v1.40: the countdown's ship flies too
   var n=Math.max(1,Math.ceil(countT)), cx0=Math.round(LW/2), cy0=Math.round(LH/2);
-  ring(cx0,cy0,13,1-(countT-Math.floor(countT)),P.band); text(String(n),cx0,cy0-3,P.text,'center'); say(String(n));
+  var fr=countT-Math.floor(countT), cs=3,   /* v1.55 (the review's п.18): the number three times larger, a beat on each second */ pu=cs>1?1+0.18*Math.max(0,fr-0.75)/0.25:1;
+  ring(cx0,cy0,13*cs,1-fr,P.band); if(cs>1){ lx.save(); lx.translate(cx0,cy0); lx.scale(pu,pu); lx.translate(-cx0,-cy0); } text(String(n),cx0,cy0-Math.round(3.5*cs),P.text,'center',cs); if(cs>1) lx.restore(); say(String(n));
   if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.play('tick');
   if(countT<=0) startGame(); }
 var SITE='sonaroids.app';
@@ -512,7 +516,9 @@ function sScores(){ var rc=mode==='race'; if(rc){ raceDemoTick(); raceScene(rDem
   var nm=Board.nick(), items=[['p_day',L('p_day'),period==='day'?'primary':''],['p_week',L('p_week'),period==='week'?'primary':''],['p_all',L('p_all'),period==='all'?'primary':''],
     ['name',nm?L('name')+': '+nm:L('name_set')],['link',L('link')]], /* v0.48: «back» is the menu button in the corner (it goes back, as «back» did) */ bw=btnW(items.map(function(q){ return q[1]; })), bx=sideX(bw), m=Math.max(10,Math.round(LW*0.03));
   var x0=freeSide()==='left'?bx+bw+m:SAFE.l+m, x1=freeSide()==='left'?LW-SAFE.r-m:bx-m;          // the list takes the rest of the width
-  tblBox=[x0,x1]; var y=topY(), ttl=L('scores')+' — '+L('p_'+period); text(ttl,x0,y,P.text);
+  var tw=Math.min(x1-x0,Math.round(LW*0.5)); if(freeSide()==='left') x1=x0+tw; else x0=x1-tw;   /* v1.55 (the review's п.12): the table a column, its title naming the game */
+  tblBox=[x0,x1]; var y=topY(), ttl=(rc?'SONARACE':'SONAFLY')+' · '+L('scores')+' — '+L('p_'+period);
+  plaque(x0,y-2,x1,LH-SAFE.b-14,0.5); text(ttl,Math.round((x0+x1)/2),y,P.text,'center');
   /* v1.34 (the maintainer: «"только люди" будет показываться по долгому тапу на версию на этих экранах. А кнопки выбора уберем»): no tabs
      (v1.31's «EVERYONE | PEOPLE ONLY»); a long press on the version switches, and while it is on, «PEOPLE ONLY» stands on the title's line */
   if(scPeople){ var pw=PF.width(L('sc_people')); if(x1-pw<x0+PF.width(ttl)+8){ y+=11; text(L('sc_people'),x0,y,P.band); } else text(L('sc_people'),x1,y,P.band,'right'); }
@@ -635,11 +641,11 @@ function sSkins(){ var m=sklM(), all=sklAll(m), s=SKL[m], id=all[skB], on=s.list
   // the world, its ship or car inside the card
   if(m==='race'){ raceDemoTick(); rX0=cx+Math.round(cw*0.12)-Race.CAR_X*K; try{ raceScene(rDemo,rDemo.d,rDemo.car.y,DT); } finally { rX0=null; } } else { noLight=true; drawDemo(SK,DT,cx+Math.round(cw*0.12),undefined,Math.round(cy+ch*0.45+ch*0.26*pathStep(skPath||(skPath=pathMake()),DT))); noLight=false; }
   // the world seen through the card: a veil round it
-  lx.globalAlpha=0.62; R(P.bg,0,0,LW,cy); R(P.bg,0,cy+ch,LW,LH-cy-ch); R(P.bg,0,cy,cx,ch); R(P.bg,cx+cw,cy,LW-cx-cw,ch); lx.globalAlpha=1;
+  lx.globalAlpha=0.9; R(P.bg,0,0,LW,cy);   /* v1.55 (the review's п.15): the world only in the card */  R(P.bg,0,cy+ch,LW,LH-cy-ch); R(P.bg,0,cy,cx,ch); R(P.bg,cx+cw,cy,LW-cx-cw,ch); lx.globalAlpha=1;
   frame(cx-1,cy-1,cw+2,ch+2,on?P.band:P.line); if(on) frame(cx-2,cy-2,cw+4,ch+4,P.band);
   lx.globalAlpha=0.7; R(P.bg,cx,cy+ch-12,cw,12); lx.globalAlpha=1; text(L((m==='race'?'r_sk_':'skin_')+id),cx+cw/2,cy+ch-10,P.text,'center',1,true);
   if(on) skBox(cx+cw-13,cy+4,true);
-  text(L('skins_t'),Math.round((SAFE.l+LW-SAFE.r)/2),SAFE.t+9,P.band,'center',1,true);
+  text(L('skins_t'),Math.round((SAFE.l+LW-SAFE.r)/2),SAFE.t+9,P.text,'center',1,true);
   var ay=Math.round(cy+ch/2-aw/2); button('skins_prev','',cx-8-aw,ay,aw,aw,''); polyFill([[cx-8-aw/2+2,ay+aw/2-5],[cx-8-aw/2+2,ay+aw/2+5],[cx-8-aw/2-4,ay+aw/2]],P.band);
   button('skins_next','',cx+cw+8,ay,aw,aw,''); polyFill([[cx+cw+8+aw/2-2,ay+aw/2-5],[cx+cw+8+aw/2-2,ay+aw/2+5],[cx+cw+8+aw/2+4,ay+aw/2]],P.band);
   /* 1.29a, «А» (the maintainer: «внизу надо показывать списком какие выбраны сейчас»): a line of the playlist under the card instead of the dots */
@@ -650,7 +656,8 @@ function sSkins(){ var m=sklM(), all=sklAll(m), s=SKL[m], id=all[skB], on=s.list
   button('sk_in',L(on?'sk_out':'sk_add'),bx,rowsY,bw,h,'');   // 1.30 (the maintainer: «кнопка должна либо добавлять либо убирать»): it names what it does; the card's tick and the playlist line show the state
   skStep('sk_time_prev','sk_time_next',L('sk_time')+': '+tl,bx2,rowsY,bw,h);
   button('sk_order',L('sk_order')+': '+L(s.order==='loop'?'sk_oloop':'sk_orand'),bx,rowsY+h+gp,bw,h,'');
-  button('sk_all','   '+L('sk_all'),bx2,rowsY+h+gp,bw,h,''); skBox(bx2+8,rowsY+h+gp+Math.round((h-9)/2),allOn);   // 1.29a: a tick — off again brings your own list back
+  button('sk_all','   '+L('sk_all'),bx2,rowsY+h+gp,bw,h,''); skBox(bx2+8,rowsY+h+gp+Math.round((h-9)/2),allOn);
+  if(s.list.length<2){ lx.globalAlpha=0.6; R(P.bg,bx2,rowsY,bw,h); R(P.bg,bx,rowsY+h+gp,bw,h); lx.globalAlpha=1; }   /* one skin: the change's time and order mean nothing yet */   // 1.29a: a tick — off again brings your own list back
   say(L('skins_t')+'. '+L((m==='race'?'r_sk_':'skin_')+id)+(on?'. '+L('sk_in'):'')+'. '+sklLabel(m)); }
 /* v1.00: the race's skins (the candy land, the notebook), kept on the phone; the switch is in the race's menu */
 var RACE_SKINS=['candy','note','pirate'],   // v1.06: the pirate world
@@ -710,11 +717,12 @@ function sRTitle(){ raceDemoTick();
   var bx0=sideX(w), m=Math.max(8,Math.round(LW*0.04)), band0=freeSide()==='left'?0:bx0-m, band1=freeSide()==='left'?bx0+w+m:LW;
   // v1.29: the car beside the buttons' band, as SonaFly's ship (the maintainer: «в меню игры гонок машинку закрывают кнопки») — the road is shifted, not the car
   if(freeSide()==='left') rX0=band1+34-Race.CAR_X*K; try{ raceScene(rDemo,rDemo.d,rDemo.car.y,DT); } finally { rX0=null; }
-  lx.globalAlpha=0.55; R(P.bg,band0,0,band1-band0,LH); lx.globalAlpha=1;
+  bandVeil(band0,band1,0.55);
   column(items,Math.round(LH*0.52),bx0,items.length>5?6:8);
   var a0=freeSide()==='left'?band1:SAFE.l, a1=freeSide()==='left'?LW-SAFE.r:band0, cx0=Math.round((a0+a1)/2), lsc=PF.width('SonaRace',2)<=a1-a0-12?2:1, y=Math.round(LH*0.14);
+  var rl=PF.wrap(L(RSKIN==='pirate'?'r_s_boat':'r_s'),a1-a0-16,1), rw=PF.width('SonaRace',lsc); rl.forEach(function(l){ rw=Math.max(rw,PF.width(l)); }); plaque(cx0-rw/2,y-2,cx0+rw/2,y+lsc*10+6+rl.length*10-3,0.55);
   text('SonaRace',cx0,y,P.band,'center',lsc); y+=lsc*10+6;
-  PF.wrap(L(RSKIN==='pirate'?'r_s_boat':'r_s'),a1-a0-16,1).forEach(function(l){ text(l,cx0,y,P.text,'center'); y+=10; });
+  rl.forEach(function(l){ text(l,cx0,y,P.text,'center'); y+=10; });
   if(raceBest>0) text(L('best')+' '+raceBest,cx0,LH-SAFE.b-28,P.text,'center');
   say('SonaRace. '+L('play')); }
 /* the try-out before the race: an empty stretch of road rolls slowly, the car follows the palm */
@@ -729,7 +737,8 @@ function raceTry(){ followShip(); lx.clearRect(0,0,LW,LH); if(!rTry){ rTry=Race.
 /* the countdown: the race's own road, still, the car at the palm */
 function raceCount(){ countT-=DT; followShip(); raceScene(g,g.d,raceCarY(g,g.d),DT);
   var n=Math.max(1,Math.ceil(countT)), cx0=Math.round(LW/2), cy0=Math.round(LH/2);
-  ring(cx0,cy0,13,1-(countT-Math.floor(countT)),P.band); text(String(n),cx0,cy0-3,P.text,'center'); say(String(n));
+  var fr=countT-Math.floor(countT), cs=3,   /* v1.55 (the review's п.18): the number three times larger, a beat on each second */ pu=cs>1?1+0.18*Math.max(0,fr-0.75)/0.25:1;
+  ring(cx0,cy0,13*cs,1-fr,P.band); if(cs>1){ lx.save(); lx.translate(cx0,cy0); lx.scale(pu,pu); lx.translate(-cx0,-cy0); } text(String(n),cx0,cy0-Math.round(3.5*cs),P.text,'center',cs); if(cs>1) lx.restore(); say(String(n));
   if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.play('tick');
   if(countT<=0) startGame(); }
 function raceStart(){ var y0=raceSteer==='road'?(rCarYs===null?null:+rCarYs.toFixed(3)):(shipY===null?null:+(shipY/K).toFixed(3)); if(y0!==null) g.car.y=Math.max(Race.MARGIN,Math.min(Race.FH-Race.MARGIN,y0)); g.car.y=+g.car.y.toFixed(3); g.car.off=g.car.y-Race.centre(g,g.d+g.car.x); if(!RACE_TEST) Board.start(g.seed,g.FW,g.car.y,{game:'race',core:Race.TAG,steer:g.steer});   /* v1.01: the race goes to the tables — the server replays it from this start */
@@ -780,8 +789,9 @@ function racePlay(){
 function raceEnd(){ g.state='over'; overT=0; nickAsked=false; Logs.gameStop(); Board.finish(g.score); Board.flush(); if(g.score>raceBest){ raceBest=g.score; raceNew=true; store.set('sonaroids_race_best',raceBest); } go('over'); }
 function raceOver(){ overT+=DT; field(DT,0); lx.globalAlpha=0.35; R(P.bg,0,0,LW,LH); lx.globalAlpha=1;
   var cx0=freeSide()==='left'?Math.round(LW*0.6):Math.round(LW*0.4), y=Math.round(LH*0.22);
+  { var fw=PF.width(L('r_passed')+' 9999')+20; plaque(cx0-fw/2,y-2,cx0+fw/2,y+38+5*11+(boardLine()?22:0),0.6); }
   text(L('r_finish'),cx0,y,P.text,'center'); text(String(g.score),cx0,y+13,P.band,'center',2);
-  var ls=[[L('r_dist')+' '+Math.floor(g.d/10)+' '+L('r_m'),P.text],[L('r_coins')+' '+g.coins,P.text],[L('r_passed')+' '+g.passed,P.text],[raceNew?L('best')+'!':L('best')+' '+raceBest,raceNew?P.band:P.soft]];
+  var ls=[[L('r_dist')+' '+Math.floor(g.d/10)+' '+L('r_m'),P.text],[L('r_coins')+' '+g.coins,P.text],[L('r_passed')+' '+g.passed,P.text],].concat(raceNew?[[L('best')+'!',P.band]]:raceBest>0?[[L('best')+' '+raceBest,P.soft]]:[]);   /* v1.55 (the review's п.13): no «best 0» when the best is unknown */
   ls.forEach(function(q,i){ text(q[0],cx0,y+38+i*11,q[1],'center'); });
   var vs='V'+VERSION, vr=freeSide()==='left', vx=vr?LW-SAFE.r-8:SAFE.l+8, vy=LH-SAFE.b-12, vw=PF.width(vs);
   text(vs,vx,vy,diag?P.band:P.soft,vr?'right':'left'); var bx0=Math.max(0,(vr?vx-vw:vx)-8), bx1=Math.min(LW,(vr?vx:vx+vw)+8), by0=vy-8; BTN.push({id:'ver',x:bx0,y:by0,w:bx1-bx0,h:Math.min(PF.CAP+16,LH-by0)});
@@ -1052,7 +1062,7 @@ function audAct(id){ var p=id.split(':'), k=p[1], v=p.slice(2).join(':');
   else if(k==='retest') Sonar.audioRetest();
   else if(k==='lab'){ location.href='../lab/sonar_lab3.html'; return; }
   Sonar.restart(); booted=false; acoustic=false; audDev=null; }
-var NO_MENU={hub:1,title:1,rtitle:1,lang:1,paused:1,restart:1,play:1}, NO_VER={skins:1,rset:1,hub:1,over:1,play:1,count:1,'count-resume':1,paused:1,restart:1};
+var NO_MENU={hub:1,title:1,rtitle:1,lang:1,paused:1,restart:1,play:1,over:1},   /* v1.55 (the review's п.14): the game over has its «menu» button */ NO_VER={skins:1,rset:1,hub:1,over:1,play:1,count:1,'count-resume':1,paused:1,restart:1};
 function chrome(){ if(LH>LW) return;
   var s=BH-3, vr=freeSide()!=='left', x=vr?LW-Math.round(SAFE.r*0.5)-10-s:Math.round(SAFE.l*0.5)+10, y=SAFE.t+7;
   if(!NO_MENU[scr]) iconButton(scr==='count'||scr==='count-resume'?'pause':scr==='scores'?'sc_back':scr==='settings'?'set_back':scr==='skins'?'sk_back':scr==='audio'&&audFrom==='settings'?'settings':'menu',x,y);

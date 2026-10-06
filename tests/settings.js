@@ -22,7 +22,7 @@ const path=require('path'); const ROOT=path.join(__dirname,'..');
   const want=['vol_dn','vol_up','sfx','set_gfx_prev','set_gfx_next','set_band_prev','set_band_next','set_live_prev','set_live_next','set_room_prev','set_room_next','set_back'];
   check('the settings: sounds, graphics, band, auto-calibration; no advanced in a browser (v1.18)',want.every(x=>st.includes(x))&&!st.includes('set_expert'),st.join(' '));
   const say0=await p.evaluate(()=>document.getElementById('say').textContent);
-  check('the defaults: graphics and band chosen in the game, auto-calibration off, the room following off (v1.19)',/GRAPHICS: CHOSEN IN THE GAME/.test(say0)&&/PROBE BAND: CHOSEN BEFORE A GAME/.test(say0)&&/AUTO-CALIBRATION: OFF/.test(say0)&&/ROOM FOLLOWING: OFF/.test(say0),say0);
+  check('the defaults: graphics and band chosen in the game, auto-calibration off, the room following off (v1.19)',/GRAPHICS: ASK IN GAME/.test(say0)&&/PROBE BAND: ASK EVERY GAME/.test(say0)&&/AUTO-CALIBRATION: OFF/.test(say0)&&/ROOM ADAPTATION: OFF/.test(say0),say0);
   // graphics: always pixels → switched, and out of the menus
   await p.evaluate(()=>__sonaroids.act.set_gfx_next()); await p.evaluate(()=>__sonaroids.act.set_gfx_next()); await p.waitForTimeout(200);
   const gx=await p.evaluate(async()=>{ const S=__sonaroids, w=ms=>new Promise(r=>setTimeout(r,ms)); const r={lock:localStorage.getItem('sonaroids_gfx_lock'),mode:S.state().gfx};

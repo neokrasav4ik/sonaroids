@@ -73,6 +73,12 @@ function spaceSky(dt,speed){                                        // nebula an
   var t=performance.now()/1000;
   stars.forEach(function(s){ var i=s.z<0.5?0:s.z<0.85?1:2; if(i===2&&Math.sin(t*3+s.tw)>0.6) i=1; lx.fillStyle=P.stars[i]; lx.fillRect(Math.round(s.x),Math.round(s.y),1,1); });
 }
+/* v1.55 (the review's п.8): a soft dark plaque under text over a busy picture */
+function plaque(x0,y0,x1,y1,a){ var k, A=a||0.5; for(k=0;k<4;k++){ lx.globalAlpha=A*(k===3?1:0.22); lx.fillStyle=P.bg; lx.beginPath(); lx.roundRect(x0-6+k*1.5,y0-4+k*1.2,x1-x0+12-k*3,y1-y0+8-k*2.4,6); lx.fill(); } lx.globalAlpha=1; }
+/* the menu's dim band, its open edge fading (п.9) */
+function bandVeil(b0,b1,a){ lx.globalAlpha=a; R(P.bg,b0,0,b1-b0,LH); var F=Math.round(LW*0.06), c=P.bg;   /* v1.55 (the review's п.9): the menu's dim band, its open edge fading, not cut */
+  [[b0,-1],[b1,1]].forEach(function(e){ if(e[0]<=0||e[0]>=LW) return; var x=e[0], gr=lx.createLinearGradient(x,0,x+e[1]*F,0); gr.addColorStop(0,c); gr.addColorStop(1,c.length===7?c+'00':'rgba(0,0,0,0)'); lx.fillStyle=gr; lx.fillRect(Math.min(x,x+e[1]*F),0,F,LH); });
+  lx.globalAlpha=1; }
 function light(x,y,rad,rgb,a){ if(noLight||(SK&&SK.nolight)) return; lights.push([x,y,rad,rgb,a]); }
 /* a soft light sprite per colour, made once: drawing it is much cheaper than a new gradient per light per frame */
 function glowSprite(rgb){ var c=glowSpr[rgb]; if(c) return c; c=document.createElement('canvas'); c.width=c.height=64; var x=c.getContext('2d'), g=x.createRadialGradient(32,32,0,32,32,32);

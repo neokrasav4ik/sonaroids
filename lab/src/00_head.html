@@ -84,6 +84,7 @@
   #slChk{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + 3rem);display:flex;gap:.5rem}
   #slChk button{width:auto;min-height:0;padding:.6em 1em;font-size:1rem;background:rgba(4,7,10,.7);color:var(--ink);border:1px solid #3A4A52}
   #slAlign button{width:auto;min-height:0;padding:.5em .9em;font-size:1rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
+  #flCode{font:600 1.6rem "IBM Plex Mono",monospace;width:7ch;text-align:center;padding:.3rem;border-radius:.5rem;border:1px solid #3A4A52;background:#0b0f14;color:var(--ink);letter-spacing:.2em}
   #rlCode{font:600 1.6rem "IBM Plex Mono",monospace;width:7ch;text-align:center;padding:.3rem;border-radius:.5rem;border:1px solid #3A4A52;background:#0b0f14;color:var(--ink);letter-spacing:.2em}
   #siCode{font:600 1.6rem "IBM Plex Mono",monospace;width:7ch;text-align:center;padding:.3rem;border-radius:.5rem;border:1px solid #3A4A52;background:#0b0f14;color:var(--ink);letter-spacing:.2em}
   #arcPlay{padding:0;background:#070a12} #acC{position:absolute;inset:0;width:100%;height:100%;display:block}
@@ -197,6 +198,7 @@
     <button id="lkRec" class="ghost">Запись для меня</button>
     <button id="lkString" class="big">Струна (игра на двух)</button>
     <button id="lkRuler" class="ghost">Линейка: запись на двух</button>
+    <button id="lkFly" class="big">Ущелье (полёт на двух)</button>
     <button id="lkGame" class="ghost">Играть (как в лабе)</button>
     <button id="lkBack" class="ghost">Назад</button>
   </div>
@@ -230,6 +232,23 @@
     <button id="siCal" class="ghost wide">Играю один, двумя руками</button>
     <button id="siSeam" class="ghost wide">Подогнать стык экранов</button>
     <button id="siBack" class="ghost">Назад</button>
+  </div>
+</div></div>
+
+<div class="screen hidden" id="flyIntro"><div class="two wideb">
+  <div class="col">
+    <h1>Ущелье</h1>
+    <p>Полёт по ущелью на двух телефонах торец к торцу — одна широкая картинка. Кулаки у разъёмов: <b>вместе вверх-вниз</b> — высота, <b>один выше другого</b> — крен и поворот, как штурвал. Руки всё время в движении: ущелье виляет. Стены — минус щит, под арками — ниже, огоньки — очки, руки в такт — вдвое.</p>
+    <p class="small">Подготовка как в «Струне»: убрать руки, помахать кулаками. «Один телефон» — вся картинка на одном, ведёт высота кулака, поворачивает автопилот. Вид — сзади или из кабины (на обоих одинаково). После полёта — «Сохранить журнал».</p>
+    <p><input id="flCode" inputmode="numeric" maxlength="4" placeholder="код" autocomplete="off"> <span id="flNow" class="mono"></span></p>
+  </div>
+  <div class="col btns">
+    <button id="flNear" class="big">Рядом (на обоих)</button>
+    <button id="flNew" class="ghost">Создать комнату (код)</button>
+    <button id="flJoin" class="ghost">Войти по коду</button>
+    <button id="flSolo" class="ghost">Один телефон</button>
+    <button id="flView" class="ghost wide">Вид: сзади</button>
+    <button id="flBack" class="ghost">Назад</button>
   </div>
 </div></div>
 

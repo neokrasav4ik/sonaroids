@@ -36,5 +36,6 @@ echo; echo "== СонарЛинк: соседний телефон пищит р
 echo; echo "== СонарЛинк через страницу: чётные тоны, сосед нечётными рядом, экран «пищу» =="; o=$(node tests/test_link.js); echo "$o" | grep -E "^(ok|FAIL|ИТОГ)"
 echo; echo "== СонарЛинк, «Струна»: две страницы через настоящий сервер — комната, половины, тоны, одно поле, высота напарника, счёт, журналы с обоих и их разбор; бот (Chromium; без playwright пропускается) =="; o=$(NODE_PATH=$(npm root -g 2>/dev/null) node --no-warnings tests/test_string_pw.js); echo "$o" | grep -E "^(ok|FAIL|ИТОГ)"
 echo; echo "== СонарЛинк, «Линейка»: две страницы через сервер — одна программа по общим часам, журналы с обоих, разбор; один телефон (Chromium; без playwright пропускается) =="; o=$(NODE_PATH=$(npm root -g 2>/dev/null) node --no-warnings tests/test_ruler_pw.js); echo "$o" | grep -E "^(ok|FAIL|ИТОГ)"
+echo; echo "== СонарЛинк, «Ущелье»: две страницы через сервер — левый считает корабль, правый рисует, высота и крен от рук, одинаковый итог; один телефон из кабины (Chromium; без playwright пропускается) =="; o=$(NODE_PATH=$(npm root -g 2>/dev/null) node --no-warnings tests/test_fly_pw.js); echo "$o" | grep -E "^(ok|FAIL|ИТОГ)"
 echo; echo "== всё в один экран (Chromium; без playwright пропускается) =="; python3 tests/test_layout.py | tail -8
 echo; echo "== микрофон и звуковая сессия =="; node tests/test_mic_session.js

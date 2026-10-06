@@ -104,7 +104,7 @@ function slMsg(m,t,via){ if(!m) return;
   if(m.e) slE('← '+m.e+(via==='d'?' (напрямую)':' (сервер)'),{m:m,t:t||null});
   if(m.e==='cal'){ SL.calPeer={r:m.r,f:m.f,fm:m.fm,mode:m.mode}; slCalShare(); return; }
   if(m.e==='lvl'){ SL.peerLvl=SL.peerLvl||{}; if(m.stage) SL.peerLvl[m.stage]=m.skip?'skip':m.r; if(m.skip&&SL.prep==='level') slLevelDone('ровно: у напарника не вышло — калибровка по взмахам'); return; }
-  if(typeof m.h==='number'){ if(SLL&&SLL.on) SLL.rx.push([sllT(),Math.round(slNow()),t||null,m.s,m.h,via]); SL.pb.push([m.s,m.h]); if(SL.pb.length>40) SL.pb.shift(); return; }
+  if(typeof m.h==='number'){ if(m.q) flRecv(m.s,m.q); if(SLL&&SLL.on) SLL.rx.push([sllT(),Math.round(slNow()),t||null,m.s,m.h,via]); SL.pb.push([m.s,m.h]); if(SL.pb.length>40) SL.pb.shift(); return; }
   if(m.e==='hi'){ SL.peerHi=true; SL.peerHalf=m.half; if(m.half===SL.half&&SL.side===1){ SL.half=SL.half==='L'?'R':'L'; SL.halfNote=true; slE('половина: обе одинаковые — беру '+SL.half); slTones(); } if(m.ready) SL.peerReady=true; slRtcStart(); slStatus(); slMaybeStart(); return; }
   if(m.e==='ready'){ SL.peerReady=true; slMaybeStart(); return; }
   if(m.e==='relevel'){ slRelevel(false); return; }
@@ -244,7 +244,7 @@ function slReady(){ SL.ready=true; if(SL.bot){ slStartAt(Date.now()+3200,(Math.r
   el('slSay').textContent=SL.peerReady?'Начинаем':'Готово'; el('slSub').textContent=SL.peerReady?'':'Ждём напарника.'; slSend({e:'ready'}); slMaybeStart(); }
 /* старт — только после «hi» напарника: до него его поток мог ещё не слушать, и «start» пропадал (стенд, «палец»: второй готов сразу) */
 function slMaybeStart(){ if(SL.bot||SL.side!==0||!SL.ready||!SL.peerReady||!SL.peerHi||SL.T0) return; var T0=slNow()+3500, seed=(Math.random()*4294967296)>>>0; slSend({e:'start',T0:T0,seed:seed,mode:SL.mode}); slStartAt(T0,seed); }
-function slStartAt(T0,seed){ if(SL.mode==='ruler'||SL.mode==='calib') return slRulerStart(T0); SL.T0=T0; SL.seed=seed; SL.objs=slWorld(seed); slE('старт раунда',{T0:T0,seed:seed,in_ms:Math.round(T0-(SL.bot?Date.now():slNow())),objs:SL.objs.length,clots:SL.objs.filter(function(o){ return o.kind==='c'; }).length,off:SL.off===undefined?null:Math.round(SL.off),half:SL.half,peer_half:SL.peerHalf||null,screen:slGeom()}); if(SLL) SLL.rounds.push({T0:T0,seed:seed,objs:slObjsC(SL.objs)}); SL.phase='count'; SL.score=0; SL.got=0; SL.cuts=0; SL.burned=0; SL.combo=1; SL.cut=null; }
+function slStartAt(T0,seed){ if(SL.mode==='ruler'||SL.mode==='calib') return slRulerStart(T0); if(SL.mode==='fly') flStart(seed); SL.T0=T0; SL.seed=seed; SL.objs=slWorld(seed); slE('старт раунда',{T0:T0,seed:seed,in_ms:Math.round(T0-(SL.bot?Date.now():slNow())),objs:SL.objs.length,clots:SL.objs.filter(function(o){ return o.kind==='c'; }).length,off:SL.off===undefined?null:Math.round(SL.off),half:SL.half,peer_half:SL.peerHalf||null,screen:slGeom()}); if(SLL) SLL.rounds.push({T0:T0,seed:seed,objs:slObjsC(SL.objs)}); SL.phase='count'; SL.score=0; SL.got=0; SL.cuts=0; SL.burned=0; SL.combo=1; SL.cut=null; }
 /* ── поле: из зерна, одинаковое у обоих. Предмет k: появляется в ts, по u, сверху или снизу, плывёт поперёк ── */
 function slRng(s){ return function(){ s=(s+0x6D2B79F5)>>>0; var t=s; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
 function slWorld(seed){ var r=slRng(seed), a=[], t=1.2, k=0;
@@ -298,7 +298,7 @@ function slLoop(now){ var dt=Math.min(0.05,(now-SL.last)/1000); SL.last=now; slS
   /* 1.56s: «один, двумя руками» — свой вихрь в середине своего хода. Записи с линейкой (06.10) показали: высоту руки сонар мерит с точностью
      ±2–3 см, у каждого телефона по-своему, — а движение (куда и как быстро) точно. Поэтому вихрь показывает не высоту, а отклонение руки от её
      среднего за последние ~6 с, в долях её обычного размаха за ~4 с: одинаковое движение обеих рук — одинаковый ход обоих вихрей, на любом телефоне */
-  SL.rules=SL_RULES_Q||((SL_CAL==='shared'&&!SL.bot&&SL.mode==='game'&&(!SL.calPeer||SL.calPeer.mode!=='own'))?'sync':'level');
+  SL.rules=SL_RULES_Q||((SL.mode==='fly'||(SL_CAL==='shared'&&!SL.bot&&SL.mode==='game'&&(!SL.calPeer||SL.calPeer.mode!=='own')))?'sync':'level');
   if(SL.rules==='sync'&&SL_CTL!=='touch'&&SL.present&&SL.frac!==undefined&&SL.prep!=='wave'){ var fr=SL.frac, kM=1-Math.exp(-dt/6), kA=1-Math.exp(-dt/4); SL.fRaw=fr;
     SL.nM=SL.nM===undefined?fr:SL.nM+(fr-SL.nM)*kM; SL.nA=SL.nA===undefined?0.15:SL.nA+(Math.abs(fr-SL.nM)-SL.nA)*kA;
     SL.frac=Math.max(0,Math.min(1,0.5+0.25*(fr-SL.nM)/Math.max(0.1,SL.nA))); }
@@ -307,20 +307,20 @@ function slLoop(now){ var dt=Math.min(0.05,(now-SL.last)/1000); SL.last=now; slS
   if(SL.frac!==undefined){ var ty=slV(SL.frac); SL.hy=SL.hy===null?ty:SL.hy+(ty-SL.hy)*(1-Math.pow(0.51,dt*60)); }
   SL.palm=palm;
   /* высота — напарнику, 25 раз в секунду */
-  if(!SL.bot&&SL.code&&now-(SL.sent||0)>(slDirect()?15:40)){ SL.sent=now; var hm={h:palm&&SL.frac!==undefined?+SL.frac.toFixed(4):-1,s:Math.round(slNow())}; if(SLL&&SLL.on) SLL.tx.push([sllT(),hm.s,hm.h,slDirect()?'d':'s']); slSend(hm); }
+  if(!SL.bot&&SL.code&&now-(SL.sent||0)>(slDirect()?15:40)){ SL.sent=now; var hm={h:palm&&SL.frac!==undefined?+SL.frac.toFixed(4):-1,s:Math.round(slNow())}; if(SL.mode==='fly'&&flAuth()&&FL.W&&(SL.phase==='play'||SL.phase==='over')) hm.q=flQ(); if(SLL&&SLL.on) SLL.tx.push([sllT(),hm.s,hm.h,slDirect()?'d':'s']); slSend(hm); }
   if(!SL.bot&&SL.code&&now-(SL.pinged||0)>2000){ SL.pinged=now; slPing(); }
   var vMe=SL.hy===null?0.5:SL.hy;
-  if(SL.bot&&(SL.phase==='play'||SL.phase==='count')) slBot(dt,vMe);
+  if(SL.bot&&SL.mode!=='fly'&&(SL.phase==='play'||SL.phase==='count')) slBot(dt,vMe);
   var hp=slPartner(); if(hp!==null&&hp!==undefined){ var tp=slV(hp); SL.pv=SL.pv===undefined?tp:SL.pv+(tp-SL.pv)*(1-Math.pow(0.4,dt*60)); }
   var vL=SL.half==='L'?vMe:(SL.pv===undefined?0.5:SL.pv), vR=SL.half==='R'?vMe:(SL.pv===undefined?0.5:SL.pv); SL.vL=vL; SL.vR=vR;
   /* время игры по общим часам */
   if(SL.T0){ SL.t=((SL.bot?Date.now():slNow())-SL.T0)/1000;
-    if(SL.phase==='count'){ var c=Math.ceil(-SL.t); el('slSay').textContent=c>0?String(c):''; el('slSub').textContent=c>0?(SL.rules==='sync'?'Струной — по частицам. Руки в такт (вместе вверх-вниз) — струна горит: ловит шире и жжёт кляксы.':'Струной — по частицам. От кляксы — держись по другую сторону, или выровняйте вихри и сожгите её.'):''; if(SL.t>=0){ SL.phase='play'; el('slSay').textContent=''; el('slSub').textContent=''; } }
-    if(SL.phase==='play'){ slStep(dt); if(SL.t>=SL_ROUND) slOver(false); }
+    if(SL.phase==='count'){ var c=Math.ceil(-SL.t); el('slSay').textContent=c>0?String(c):''; el('slSub').textContent=c>0?(SL.mode==='fly'?'Кулаки у разъёмов. Вместе вверх-вниз — высота, один выше другого — крен и поворот. Стены — щит, арки — ниже, огоньки — очки.':SL.rules==='sync'?'Струной — по частицам. Руки в такт (вместе вверх-вниз) — струна горит: ловит шире и жжёт кляксы.':'Струной — по частицам. От кляксы — держись по другую сторону, или выровняйте вихри и сожгите её.'):''; if(SL.t>=0){ SL.phase='play'; el('slSay').textContent=''; el('slSub').textContent=''; } }
+    if(SL.phase==='play'){ if(SL.mode==='fly') flStep(dt); else slStep(dt); if(SL.t>=SL_ROUND) slOver(false); }
     if(SL.phase==='ruler') slRulerStep(); }
   sllGame(now,SL.bot?r4(SL.botH):hp,SL.bot?0:slDirect()&&SL.rttD?Math.round(Math.max(40,Math.min(120,SL.rttD/2+30))):120);
   if(SL.logStop&&now>SL.logStop){ SL.logStop=0; slE('журнал: пауза до следующего раунда'); if(SLL) SLL.on=false; if(SLOG) SLOG.on=false; }
-  slDraw(now/1000); slHud(); SL.raf=requestAnimationFrame(slLoop); }
+  if(SL.mode==='fly'&&(SL.phase==='count'||SL.phase==='play'||SL.phase==='over')){ flDraw(now/1000); flHud(); } else { slDraw(now/1000); slHud(); } SL.raf=requestAnimationFrame(slLoop); }
 /* 1.56s: «в такт» — ходы обоих вихрей за последнюю секунду: похожи по направлению (корреляция > 0,8) и оба ходят (> 0,25 экрана в секунду).
    Пороги — по записям с линейкой 06.10 (те же вихри, пересчитанные так): кулаки вместе вверх-вниз — горит 51% времени, ходит одна — 11–13%,
    обе стоят — 0%; ладонью — плохо (8%: ладонь сонар ведёт хуже) — играть кулаками */
@@ -341,11 +341,12 @@ function slStep(dt){ var vL=SL.vL, vR=SL.vR, sync=SL.rules==='sync', res=(sync?s
   if(SL.cut&&(SL.bot||SL.half==='L')){ SL.alignT=(sync?SL.syncC>0.7&&SL.sb&&SL.sb.length>5:Math.abs(vL-vR)<0.07)?SL.alignT+dt:0; if(SL.alignT>0.6) slStitch(true); } }
 function slHud(){ if(SL.phase==='play'||SL.phase==='over') el('slHud').textContent='счёт '+SL.score+' · частиц '+SL.got+' · сожжено '+(SL.burned||0)+' · обрывов '+SL.cuts+(SL.phase==='play'?' · '+Math.max(0,Math.ceil(SL_ROUND-SL.t))+' с':'')+(SL.code?' · код '+SL.code:''); }
 function slOver(err){ if(!err&&SL.mode==='calib'){ var cr=slCalibFinish(); SL.logStop=performance.now()+3000; SL.phase='over'; el('slSay').textContent=cr.ok?'Готово':'Не вышло'; el('slSub').textContent=cr.ok?'Таблица сохранена: '+SL_TAB.pts.map(function(p){ return p[1]+' см → '+Math.round(p[0])+' мм'; }).join(', ')+'. Теперь «Струна» — кулаками, без взмахов.':cr.why+'. Ещё раз — кулак ровно над разъёмом, низом кулака по линейке.'; el('slAgain').classList.remove('hidden'); el('slRetry').classList.add('hidden'); el('slBtns').classList.remove('hidden'); el('slStop').classList.add('hidden'); return; }
+  if(!err&&SL.mode==='fly'){ var Fo=flAuth()?FL:flShown(); slE('ущелье: финиш',{score:Fo.score,gems:Fo.gems,hits:Fo.hits,shield:Fo.shield,s:Fo.s}); SL.logStop=performance.now()+3000; SL.phase='over'; flOverText(Fo); el('slAgain').classList.remove('hidden'); el('slRetry').classList.add('hidden'); el('slBtns').classList.remove('hidden'); el('slStop').classList.add('hidden'); return; }
   if(!err&&SL.mode==='ruler'){ slE('линейка: конец'); SL.logStop=performance.now()+3000; SL.phase='over'; el('slSay').textContent='Записано'; el('slSub').textContent='«Сохранить журнал партии» — на обоих телефонах, и присылай оба.'; el('slAgain').classList.remove('hidden'); el('slRetry').classList.add('hidden'); el('slBtns').classList.remove('hidden'); el('slStop').classList.add('hidden'); return; }
   slE(err?'остановка: '+el('slSay').textContent:'финиш',{score:SL.score||0,got:SL.got||0,burned:SL.burned||0,cuts:SL.cuts||0,t:SL.t===undefined?null:+SL.t.toFixed(2)}); if(!err) SL.logStop=performance.now()+3000;
   el('slAgain').classList.toggle('hidden',!!err); el('slRetry').classList.add('hidden'); if(!err){ SL.phase='over'; el('slSay').textContent='Финиш'; el('slSub').textContent='счёт '+SL.score+' · частиц '+SL.got+' · сожжено клякс '+(SL.burned||0)+' · обрывов '+SL.cuts; }
   el('slBtns').classList.remove('hidden'); el('slStop').classList.add('hidden'); }
-function slExit(){ slReset(); if(booted) setProbe('off'); try{ DSP2.set('holdfloor',0); }catch(e){} mode=null; if(SL_WK!==null&&typeof probeWide!=='undefined'){ probeWide=SL_WK; SL_WK=null; } el('slAlign').classList.add('hidden'); el('slChk').classList.add('hidden'); if(SL_LASTMODE==='ruler') slRulerOpen(); else slOpen(); }
+function slExit(){ slReset(); if(booted) setProbe('off'); try{ DSP2.set('holdfloor',0); }catch(e){} mode=null; if(SL_WK!==null&&typeof probeWide!=='undefined'){ probeWide=SL_WK; SL_WK=null; } el('slAlign').classList.add('hidden'); el('slChk').classList.add('hidden'); if(SL_LASTMODE==='ruler') slRulerOpen(); else if(SL_LASTMODE==='fly') flOpen(); else slOpen(); }
 /* ── 1.56o: «Линейка» — запись с линейкой на двух телефонах (автор: «мы ходим по кругу.. давай заново и с линейкой.. два телефона, две руки,
    линейка, линк по локалке.. запись движений ладони.. потом будешь анализировать»). Подготовка как в «Струне» (пустая комната, взмахи), без
    «ровно» и без игры; затем оба телефона по общим часам ведут одну и ту же программу: обе ладони на 5, 10, 15, 20, 25 см по линейке и обратно
@@ -478,7 +479,7 @@ el('saUp').addEventListener('click',function(){ slSeamMove(-0.004,0); }); el('sa
 el('saLess').addEventListener('click',function(){ slSeamMove(0,-0.01); }); el('saMore').addEventListener('click',function(){ slSeamMove(0,0.01); });
 el('saOk').addEventListener('click',slExit);
 el('scPlay').addEventListener('click',slCheckPlay); el('scRedo').addEventListener('click',function(){ slRelevel(true); });
-el('slStop').addEventListener('click',function(){ if(SL.phase==='ruler'){ slOver(false); return; } if(SL.phase==='play'){ slOver(false); SL.phase='over'; } else slExit(); });
+el('slStop').addEventListener('click',function(){ if(SL.mode==='fly'&&SL.phase==='play'){ slOver(false); return; } if(SL.phase==='ruler'){ slOver(false); return; } if(SL.phase==='play'){ slOver(false); SL.phase='over'; } else slExit(); });
 el('slAgain').addEventListener('click',function(){ if(SL.bot){ slBegin('bot',SL.mode); return; } SL.logStop=0; if(SLL) SLL.on=true; if(SLOG&&SL.logging) SLOG.on=true; slE('ещё раунд'); SL.T0=0; SL.ready=false; SL.peerReady=false; el('slBtns').classList.add('hidden'); el('slStop').classList.remove('hidden');
   SL.objs=[]; SL.phase='prep'; SL.ready=true; slSend({e:'ready'}); el('slSay').textContent='Готово'; el('slSub').textContent='Ждём напарника.'; slMaybeStart(); });
 el('slOut').addEventListener('click',slExit);

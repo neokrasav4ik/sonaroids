@@ -2349,8 +2349,13 @@ function slBegin(how){ slReset(); SL.bot=how==='bot'; show('strPlay'); el('slBtn
 function slPrep(){ if(SL_CTL==='touch'){ slReady(); return; }
   var say=function(a,b){ SL.lastSay=[a,b||'']; if(SL.phase==='pair'&&!SL.peerHere&&!SL.bot) return; el('slSay').textContent=a; el('slSub').textContent=b||''; };
   /* 06.10: журнал подготовки (как «журнал настройки» лабы, до 120 с) — сохранить кнопкой, если не вышло; порог запаса при своих тонах — 26 дБ */
-  var thr=linkPar()==='all'?30:26;
-  SL.prepSay=say; el('slBtns').classList.add('hidden'); boot().then(function(){ SL.logging=true; slogStart('струна '+(SL.half||'')+' '+parName(linkPar())); slogEv('сеть: '+(SL.bot?'бот':'комната '+SL.code+', сторона '+SL.side)); return pickChannel(); })
+  /* как в игре: запас зонда не порог (Ми 9 в приложении играет и при 21 дБ — журнал 06.10 15:39, партия 1.19 при 20,9 дБ на 668 тыс. очков);
+     судит обработка — «зонда не слышно» при выраженности ниже 12 дБ. Порог только для совсем тихого (громкость на нуле) */
+  var thr=12;
+  SL.prepSay=say; el('slBtns').classList.add('hidden'); boot().then(function(){ SL.logging=true; slogStart('струна '+(SL.half||'')+' '+parName(linkPar())); slogEv('сеть: '+(SL.bot?'бот':'комната '+SL.code+', сторона '+SL.side));
+    /* в приложении Android громкость ставлю сама, как игра: ниже 20% — 25% (лаба в окне приложения слышит зонд хуже игры со своим звуком) */
+    try{ var A=window.SonaroidsApp; if(A&&A.getVolume&&A.setVolume){ var v0=A.getVolume(); if(v0<0.2){ A.setVolume(0.25); slogEv('громкость телефона: '+Math.round(v0*100)+'% → 25%'); } else slogEv('громкость телефона: '+Math.round(v0*100)+'%'); } }catch(e){}
+    return sleep(150).then(function(){ return pickChannel(); }); })
   .then(function(){ slogEv('канал: '+chan); return autoLevel(); }).then(function(L){
     slogEv('уровень: запас '+L.snr.toFixed(1)+' дБ, громкость зонда '+L.g.toFixed(3)+(L.atMax?' (на пределе)':''));
     if(L.snr<thr){ setProbe('off'); slogEv('не готово: тихо'); say('Зонда почти не слышно','Запас '+L.snr.toFixed(0)+' дБ, нужно '+thr+(L.atMax?'; громкость зонда уже на пределе — прибавь громкость телефона':'')+'. '+NOPROBE); slFail(); return null; }

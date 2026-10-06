@@ -45,15 +45,15 @@ function logBlob(){
   return glogWav(pcm,meta,glog);
 }
 /* WAV: PCM16 моно + метаданные JSON в LIST/INFO/ICMT + кусок glog с JSON — общий для журнала партии и журнала настройки */
-function glogWav(pcm,meta,glog){
-  var n=pcm.length, i;
+function glogWav(pcm,meta,glog,rate){
+  var n=pcm.length, i, fs2=rate||fs||48000;
   var mtxt=unescape(encodeURIComponent(JSON.stringify(meta))); if(mtxt.length%2) mtxt+=' ';
   var gtxt=unescape(encodeURIComponent(JSON.stringify(glog))); if(gtxt.length%2) gtxt+=' ';
   var infoLen=4+8+mtxt.length, dataLen=n*2, total2=12+(8+16)+(8+infoLen)+(8+gtxt.length)+(8+dataLen);
   var buf=new ArrayBuffer(total2), v=new DataView(buf), p=0;
   function s4(x){ for(var k=0;k<4;k++) v.setUint8(p++,x.charCodeAt(k)); } function u32(x){ v.setUint32(p,x,true); p+=4; } function u16(x){ v.setUint16(p,x,true); p+=2; }
   s4('RIFF'); u32(total2-8); s4('WAVE');
-  s4('fmt '); u32(16); u16(1); u16(1); u32(fs); u32(fs*2); u16(2); u16(16);
+  s4('fmt '); u32(16); u16(1); u16(1); u32(fs2); u32(fs2*2); u16(2); u16(16);
   s4('LIST'); u32(infoLen); s4('INFO'); s4('ICMT'); u32(mtxt.length); for(i=0;i<mtxt.length;i++) v.setUint8(p++,mtxt.charCodeAt(i));
   s4('glog'); u32(gtxt.length); for(i=0;i<gtxt.length;i++) v.setUint8(p++,gtxt.charCodeAt(i));
   s4('data'); u32(dataLen); for(i=0;i<n;i++){ v.setInt16(p,pcm[i],true); p+=2; }
@@ -75,19 +75,21 @@ function shareWav(b,prefix){
 /* ── ЖУРНАЛ НАСТРОЙКИ: от запуска обработки (пустая комната) через шаги калибровки и ожидание «Старта» — до 120 с.
    Нужен для разбора старта: как учились фон и уровень пустой комнаты, когда рука появлялась и пропадала и почему. ── */
 var SLOG=null, SLOG_SEC=120;
-function slogStart(kind){
-  var cap=SLOG_SEC*fs;
+/* sec, ring — 1.56h, «Струна»: длиннее (подготовка + раунд) и по кругу — в журнале последние sec секунд звука; числа и события — все */
+function slogStart(kind,sec,ring){
+  var cap=Math.ceil((sec||SLOG_SEC)*fs/N)*N;                                 // целое число кадров — круг не рвёт кадр
   if(!SLOG||!SLOG.pcm||SLOG.pcm.length!==cap) SLOG={pcm:new Int16Array(cap)};
-  var S=SLOG; S.on=true; S.f=0; S.clip=0; S.gaps=0; S.dsp=[]; S.ev=[]; S.pres=null; S.kind=kind;
+  var S=SLOG; S.on=true; S.f=0; S.clip=0; S.gaps=0; S.dsp=[]; S.ev=[]; S.pres=null; S.kind=kind; S.ring=!!ring;
   S.meta0={kind:kind,cal:curCal,autocenter:true,tune:'waves',asym:ASYM,field_auto:gAutoField,field_mm:gSpan,chan:chan,hand:hand,probe_gain:PROBE_G,probe_snr:PROBE_SNR,f_lo:bandLo(),prom:null,started:new Date().toISOString()};
   slogEv('старт: '+kind);
 }
 function slogEv(k,x){ var S=SLOG; if(!S||!S.on) return; S.ev.push(x===undefined?[S.f,k]:[S.f,k,x]); }
 function slogFrame(fr,r,gap){
   var S=SLOG, i, v;
-  if(S.f*N>=S.pcm.length){ S.on=false; return; }                              // 120 с — хватит на настройку и начало игры
+  var cap=S.pcm.length, o=S.ring?(S.f*N)%cap:S.f*N;
+  if(!S.ring&&S.f*N>=cap){ S.on=false; return; }                              // 120 с — хватит на настройку и начало игры
   if(gap) S.gaps++;
-  for(i=0;i<N;i++){ v=Math.round(fr[i]*32767*LOG_SCALE); if(v>32767){ v=32767; S.clip++; } else if(v<-32768){ v=-32768; S.clip++; } S.pcm[S.f*N+i]=v; }
+  for(i=0;i<N;i++){ v=Math.round(fr[i]*32767*LOG_SCALE); if(v>32767){ v=32767; S.clip++; } else if(v<-32768){ v=-32768; S.clip++; } S.pcm[o+i]=v; }
   if(r){ S.dsp.push([S.f,r.present?1:0,+r.height.toFixed(1),+r.abs.toFixed(1),+r.range.toFixed(1),+r.fast.toFixed(1),+r.E.toFixed(1),+r.resE.toFixed(1),
       r.floor===null||r.floor===undefined?null:+r.floor.toFixed(1),+(r.Em||0).toFixed(1)]);
     if(S.pres!==null&&r.present!==S.pres) slogEv(r.present?'рука есть: '+r.why:'рука ушла: '+r.why);
@@ -95,14 +97,17 @@ function slogFrame(fr,r,gap){
   S.f++;
 }
 function slogInfo(){ if(!SLOG||!SLOG.f) return 'Журнала настройки пока нет.'; return 'Журнал настройки: '+(SLOG.f*N/fs).toFixed(0)+' с'+(SLOG.on?', пишется':'')+'.'; }
-function slogBlob(){
-  var S=SLOG, n=S.f*N, pcm=S.pcm.slice(0,n), inf=DSP2.info();
+function slogBlob(extra){
+  var S=SLOG, total=S.f*N, cap=S.pcm.length, n=Math.min(total,cap), start=total-n, pcm=new Int16Array(n), i, inf=DSP2.info();
+  for(i=0;i<n;i++) pcm[i]=S.pcm[(start+i)%cap];
   var meta={v:1,kind:'setup-log',fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:(typeof linkPar==='function'?linkPar():'all'),channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
-    pcm:{bits:16,full_scale:1/LOG_SCALE},first_frame:0,frames:S.f,clipped:S.clip,gaps:S.gaps,setup:S.meta0,cal_now:DSP2.info().cal,
+    pcm:{bits:16,full_scale:1/LOG_SCALE},first_frame:Math.floor(start/N),frames:S.f-Math.floor(start/N),clipped:S.clip,gaps:S.gaps,setup:S.meta0,cal_now:DSP2.info().cal,
     dsp_info:{d0:inf.d0,prom:inf.prom,mm:inf.mm},ended:new Date().toISOString(),ua:navigator.userAgent,
     columns:{dsp:['frame','present','height_mm','abs_mm','range_mm','fast_mm','motion_db','echo_db','empty_floor_db','motion_smooth_db'],
              events:['frame','event','data']}};
-  return glogWav(pcm,meta,{dsp:S.dsp,render:[],events:S.ev});
+  var g={dsp:S.dsp,render:[],events:S.ev};
+  if(extra){ if(extra.meta) for(var k in extra.meta) meta[k]=extra.meta[k]; if(extra.glog) for(var k2 in extra.glog) g[k2]=extra.glog[k2]; }
+  return glogWav(pcm,meta,g);
 }
 function slogSave(){ if(!SLOG||!SLOG.f) return; shareWav(slogBlob(),'sonar_setup_'); }
 /* строка диагностики: что сейчас видит обработка — в калибровке всегда, в игре по переключателю в меню */

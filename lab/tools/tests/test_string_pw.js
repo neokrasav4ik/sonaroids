@@ -31,13 +31,26 @@ const LAB=path.join(__dirname,'..','..','app','sonar_lab3.html');
   for(let i=0;i<40;i++){ a=await S(A); bS=await S(B); if(a.phase==='over'&&bS.phase==='over') break; await A.waitForTimeout(100); }
   need(a.phase==='over'&&bS.phase==='over','финиш у обоих');
   need(a.got>0&&a.got===bS.got&&a.score===bS.score,`частиц ${a.got} / ${bS.got}, счёт ${a.score} / ${bS.score}`);
+  /* 1.56h: журнал партии с каждого телефона — и разбор пары: часы, высоты, поле, события, счёт сходятся */
+  const OUT=path.join(__dirname,'..','out'); try{ fs.mkdirSync(OUT,{recursive:true}); }catch(e){}
+  const logOf=async(p,name)=>{ const b64=await p.evaluate(async()=>{ const b=window.__slLog(), u=new Uint8Array(await b.arrayBuffer()); let s=''; for(let i=0;i<u.length;i+=8192) s+=String.fromCharCode.apply(null,u.subarray(i,i+8192)); return btoa(s); });
+    const f=path.join(OUT,name); fs.writeFileSync(f,Buffer.from(b64,'base64')); return f; };
+  const fA=await logOf(A,'string_log_L.wav'), fB=await logOf(B,'string_log_R.wav');
+  const E=require('../eval_string.js'); let R=null; try{ R=E.analyze([fA,fB]); }catch(e){ console.log(e.stack); }
+  need(R&&R.phones.length===2&&R.pair,'журналы с обоих телефонов читаются ('+(R?R.phones.map(p=>p.file).join(', '):'—')+')');
+  if(R){ console.log(R.lines.map(l=>'      '+l).join('\n'));
+    const P=R.pair; need(P.ab.got>20&&P.ba.got>20&&P.ab.loss<0.05&&P.ba.loss<0.05,'высоты в журналах: дошли '+P.ab.got+' и '+P.ba.got+', потери '+(100*P.ab.loss).toFixed(0)+'% / '+(100*P.ba.loss).toFixed(0)+'%');
+    need(Math.abs(P.clock)<30,'часы по журналам сходятся: ~'+P.clock.toFixed(0)+' мс');
+    need(P.visL&&P.visR&&P.visL.best<0.05&&P.visR.best<0.05&&P.visL.lag<=250,'вихрь напарника там, где у хозяина: отставание '+(P.visL&&P.visL.lag)+' мс, расхождение '+(P.visL?(100*P.visL.best).toFixed(1):'—')+'%');
+    need(P.events.n>0&&P.events.agree===P.events.n,'события у обоих одни и те же: '+P.events.agree+' из '+P.events.n);
+    need(R.ok,'разбор: замечаний нет'); }
   /* по коду (для игры по сети): создать — войти */
   const A2=await b.newPage({viewport:{width:844,height:390}}), B2=await b.newPage({viewport:{width:844,height:390}});
   for(const p of [A2,B2]){ await p.goto(url); await p.click('#goLink'); await p.click('#lkString'); }
   await A2.click('#siNew'); let a2; for(let i=0;i<50;i++){ a2=await S(A2); if(a2.code) break; await A2.waitForTimeout(100); }
   await B2.fill('#siCode',a2.code); await B2.click('#siJoin'); let b2;
   for(let i=0;i<80;i++){ a2=await S(A2); b2=await S(B2); if(a2.phase==='play'&&b2.phase==='play') break; await A2.waitForTimeout(100); }
-  need(a2.phase==='play'&&b2.phase==='play'&&!a2.near,'по коду: '+a2.code+' — оба играют');
+  need(a2.phase==='play'&&b2.phase==='play'&&!a2.near,'по коду: '+a2.code+' — оба играют'+(a2.phase==='play'&&b2.phase==='play'?'':' ('+JSON.stringify([a2.phase,b2.phase,b2.code,await B2.evaluate(()=>document.getElementById('slSay').textContent+' / '+document.getElementById('slSub').textContent)])+')'));
   /* один телефон: бот */
   const C=await b.newPage({viewport:{width:844,height:390}}); C.on('pageerror',e=>errs.push(e.message)); await C.goto(origin+'/?mouse=1&round=6'); await C.click('#goLink'); await C.click('#lkString'); await C.click('#siBot');
   let c; for(let i=0;i<120;i++){ await C.mouse.move(400,195+150*Math.sin(i/7)); await C.waitForTimeout(100); c=await S(C); if(c.phase==='over') break; }

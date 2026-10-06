@@ -22,7 +22,7 @@ function slNow(){ return Date.now()+(SL.off||0); }
    настройки (SLOG, по кругу); здесь — игра: каждый шаг (ладонь, вихри, струна, счёт), отправленные и полученные высоты (с общими часами
    и путём: напрямую / через сервер), пинги, оценки часов, события и сообщения. Времена: ms — от начала журнала (performance.now),
    srv — общие часы (часы сервера по оценке этого телефона), f — кадр звука (512 отсчётов). Разбор двух журналов — lab/tools/eval_string.js ── */
-var SLL=null, SL_VER='1.56k', SL_WK=null;
+var SLL=null, SL_VER='1.56l', SL_WK=null;
 function sllStart(){ SLL={on:true,p0:performance.now(),wall:new Date().toISOString(),game:[],tx:[],rx:[],ping:[],ev:[],off:[],rounds:[],lastG:0}; }
 function slObjsC(a){ return (a||[]).map(function(o){ return [o.k,+o.ts.toFixed(3),+o.u.toFixed(4),o.dir,+o.sp.toFixed(4),o.kind,o.dep===undefined?null:+o.dep.toFixed(4),o.hold===undefined?null:+o.hold.toFixed(3),o.gone?1:0,+o.ph.toFixed(4),+o.sw.toFixed(4)]; }); }
 function sllT(){ return +(performance.now()-SLL.p0).toFixed(1); }
@@ -37,12 +37,16 @@ function sllGame(now,hp,lag){ if(!SLL||!SLL.on) return; var live=SL.phase==='cou
 /* где предмет и где струна в момент события — по взгляду этого телефона (у решившего зазор должен быть меньше порога; у другого — близок к нему, если синхронно) */
 function slGeo(k){ var o=SL.objs[k]; if(!o||SL.t===undefined) return {k:k}; var p=slPos(o,SL.t), sv=slStr(p.u,SL.vL,SL.vR);
   return {k:k,u:r4(p.u),v:r4(p.v),str:r4(sv),dv:r4(Math.abs(p.v-sv)),vL:r4(SL.vL),vR:r4(SL.vR),res:+(SL.res||0).toFixed(3),rs:Math.abs(SL.vL-SL.vR)<0.05&&!SL.cut?1:0,half:p.u<0.5?'L':'R'}; }
+/* 1.56l: размеры экрана — автор: «на айфоне вихрь был чуть ли не в середине экрана» */
+function slGeom(){ var vv=window.visualViewport, cv=el('slC'), b=cv&&cv.getBoundingClientRect?cv.getBoundingClientRect():null;
+  return {w:SLC.w,h:SLC.h,dpr:SLC.dpr,inner:[window.innerWidth,window.innerHeight],screen:[screen.width,screen.height],vv:vv?[+vv.width.toFixed(1),+vv.height.toFixed(1),+vv.offsetLeft.toFixed(1),+vv.scale.toFixed(3)]:null,
+    canvas:b?[+b.left.toFixed(1),+b.top.toFixed(1),+b.width.toFixed(1),+b.height.toFixed(1)]:null,vortex_x:SL.half?+slX(SL.half==='L'?SL_UL:SL_UR).toFixed(1):null,seam:SL_VIEW}; }
 function slLogMeta(){ var inf=null; try{ inf=booted?DSP2.info():null; }catch(e){}
   var objs=slObjsC(SL.objs);
   return {meta:{kind:'string-log',string:{v:1,lab:SL_VER,side:SL.side===undefined?null:SL.side,half:SL.half||null,peer_half:SL.peerHalf||null,half_swapped:!!SL.halfNote,bot:!!SL.bot,near:!!SL.near,code:SL.code||null,
       control:SL_CTL,cal_mode:SL_CAL,seam:SL_VIEW,peer_level_mm:SL.peerLvl===undefined?null:SL.peerLvl,cal_me:SL.calMe||null,cal_peer:SL.calPeer||null,cal_shared:SL.calDone||null,field:SL.T?+SL.T.field.toFixed(1):null,cal:inf?inf.cal:null,tones:(typeof linkPar==='function'?linkPar():'all'),
       round_s:SL_ROUND,seed:SL.seed===undefined?null:SL.seed,T0:SL.T0||null,clock_off_ms:SL.off===undefined?null:Math.round(SL.off),clock_rtt_ms:SL.rtt===undefined?null:SL.rtt,
-      rtt_direct_ms:SL.rttD?Math.round(SL.rttD):null,rtt_server_ms:SL.rttS?Math.round(SL.rttS):null,rtc_state:SL.rtcState||null,direct_now:slDirect(),phase:SL.phase,
+      rtt_direct_ms:SL.rttD?Math.round(SL.rttD):null,rtt_server_ms:SL.rttS?Math.round(SL.rttS):null,rtc_state:SL.rtcState||null,direct_now:slDirect(),phase:SL.phase,screen:slGeom(),screen:slGeom(),
       result:{score:SL.score||0,got:SL.got||0,burned:SL.burned||0,cuts:SL.cuts||0},log_start:SLL?SLL.wall:null,saved:new Date().toISOString(),ua:navigator.userAgent,audio:!!(SLOG&&SL.logging&&SLOG.f),
       columns:{game:['ms','srv','f','phase 0idle 1pair 2prep 3count 4play 5over','t_s','palm','frac_0_1','dist_mm','my_v (0 top)','partner_frac_interp','partner_v','vL','vR','resonance_0_1','cut','align_s','score','got','cuts','burned','lag_ms','direct'],
         tx:['ms','srv_stamp','frac (-1 no palm)','via d/s'],rx:['ms','srv_now','server_t (via s)','srv_stamp','frac (-1 no palm)','via d/s'],ping:['ms','rtt_ms','via d/s'],off:['ms','clock_off_ms','post_rtt_ms'],
@@ -132,11 +136,15 @@ function slPrep(){ if(SL_CTL==='touch'){ slReady(); return; }
   .then(function(){ slE('канал: '+chan); return autoLevel(); }).then(function(L){
     slE('уровень: запас '+L.snr.toFixed(1)+' дБ, громкость зонда '+L.g.toFixed(3)+(L.atMax?' (на пределе)':''));
     if(L.snr<thr){ setProbe('off'); slE('не готово: тихо'); say('Зонда почти не слышно','Запас '+L.snr.toFixed(0)+' дБ, нужно '+thr+(L.atMax?'; громкость зонда уже на пределе — прибавь громкость телефона':'')+'. '+NOPROBE); slFail(); return null; }
-    var cal0=dspBand(DSP2); DSP2.init(fs,linkPar()); DSP2.setCal(cal0); DSP2.set('autocenter',1); mode='str'; SL.sonar=true; SL.prep='empty';
+    try{ DSP2.set('holdfloor',0); }catch(e){} var cal0=dspBand(DSP2); DSP2.init(fs,linkPar()); DSP2.setCal(cal0); DSP2.set('autocenter',1); mode='str'; SL.sonar=true; SL.prep='empty';
     say('Убери руку','Слушаю пустую комнату. Тоны: '+parName(linkPar())+'.'); return rpWait(DSP2); }).then(function(st){
     if(!st) return; var inf=DSP2.info(); slE('обработка: выраженность '+(inf.prom===null?'—':inf.prom.toFixed(1))+' дБ');
     if(st==='noprobe'){ setProbe('off'); mode=null; slE('не готово: зонда не слышно'); say('Зонда не слышно','Выраженность '+(inf.prom===null?'—':inf.prom.toFixed(0))+' дБ, нужно 12. '+NOPROBE); slFail(); return; }
-    return sleep(500).then(function(){ SL.prep='wave'; SL.T=Tune.create(100,true); say('Помаши ладонью','К разъёму и от него, 5–15 см — вихрь ходит за ней. Секунд пять.');
+    /* 1.56l (журналы 06.10 18:51: на iPhone ладонь пропадала 46 раз, видна 68% раунда, «нить дёргалась и прыгала, особенно во второй половине»):
+       пока ладонь считалась ушедшей, уровень пустой комнаты учился на её эхе и полз вверх (−21 → −12 дБ), и каждая потеря облегчала следующую —
+       то же, что в игре 29.09 (v0.91), где уровень на время партии держится. Здесь — держится с той же минуты, как выучен по пустой комнате
+       (перед «Помаши»). Прогон журнала iPhone той же обработкой: видна 68% → 100%, потерь 46 → 0; у Ми 9 и в партии 18:22 — без изменений */
+    return sleep(500).then(function(){ try{ DSP2.set('holdfloor',1); }catch(e){} slE('пустая комната запомнена',{floor:SL.floor===undefined||SL.floor===null?null:+SL.floor.toFixed(1)}); SL.prep='wave'; SL.T=Tune.create(100,true); say('Помаши ладонью','К разъёму и от него, 5–15 см — вихрь ходит за ней. Секунд пять.');
       return new Promise(function(r){ SL.onCaught=r; }); }).then(function(){ SL.prep='waved'; slCalMine(); if(SL_CAL==='shared'&&!SL.bot) return slLevel(); }).then(function(){ SL.prep='done'; slReady(); }); })
   .catch(function(e){ say('Не вышло',(e&&e.message)||String(e)); slFail(); }); }
 /* ── 1.56g: общая калибровка (автор: один игрок — каждый телефон подгонял середину под свою ладонь, и чтобы выпрямить струну, одну ладонь
@@ -179,11 +187,11 @@ function slLevelStep(now){ var L=SL.lvl; if(!SL.calPeer){ slLevelSet('Ждём �
   slE('ровно: ладонь на '+((mm-c.o)/c.k).toFixed(1)+' мм — середина, сдвиг '+d.toFixed(1),{h:+mm.toFixed(1),d:+d.toFixed(1),spread:+(mx-mn).toFixed(1),took_ms:Math.round(now-L.t0)}); slSend({e:'lvl',r:+((mm-c.o)/c.k).toFixed(1)});
   var f=SL.onLevel; SL.onLevel=null; if(f) f(); }
 function slFail(){ el('slBtns').classList.remove('hidden'); el('slAgain').classList.add('hidden'); el('slRetry').classList.remove('hidden'); }
-function slFrame(r){ if(r){ SL.present=r.present; if(r.present) SL.dist=r.height; } }
+function slFrame(r){ if(r){ SL.floor=r.floor; SL.present=r.present; if(r.present) SL.dist=r.height; } }
 function slReady(){ SL.ready=true; if(SL.bot){ slStartAt(Date.now()+3200,(Math.random()*4294967296)>>>0); return; }
   el('slSay').textContent=SL.peerReady?'Начинаем':'Готово'; el('slSub').textContent=SL.peerReady?'':'Ждём напарника.'; slSend({e:'ready'}); slMaybeStart(); }
 function slMaybeStart(){ if(SL.bot||SL.side!==0||!SL.ready||!SL.peerReady||SL.T0) return; var T0=slNow()+3500, seed=(Math.random()*4294967296)>>>0; slSend({e:'start',T0:T0,seed:seed}); slStartAt(T0,seed); }
-function slStartAt(T0,seed){ SL.T0=T0; SL.seed=seed; SL.objs=slWorld(seed); slE('старт раунда',{T0:T0,seed:seed,in_ms:Math.round(T0-(SL.bot?Date.now():slNow())),objs:SL.objs.length,clots:SL.objs.filter(function(o){ return o.kind==='c'; }).length,off:SL.off===undefined?null:Math.round(SL.off),half:SL.half,peer_half:SL.peerHalf||null}); if(SLL) SLL.rounds.push({T0:T0,seed:seed,objs:slObjsC(SL.objs)}); SL.phase='count'; SL.score=0; SL.got=0; SL.cuts=0; SL.burned=0; SL.combo=1; SL.cut=null; }
+function slStartAt(T0,seed){ SL.T0=T0; SL.seed=seed; SL.objs=slWorld(seed); slE('старт раунда',{T0:T0,seed:seed,in_ms:Math.round(T0-(SL.bot?Date.now():slNow())),objs:SL.objs.length,clots:SL.objs.filter(function(o){ return o.kind==='c'; }).length,off:SL.off===undefined?null:Math.round(SL.off),half:SL.half,peer_half:SL.peerHalf||null,screen:slGeom()}); if(SLL) SLL.rounds.push({T0:T0,seed:seed,objs:slObjsC(SL.objs)}); SL.phase='count'; SL.score=0; SL.got=0; SL.cuts=0; SL.burned=0; SL.combo=1; SL.cut=null; }
 /* ── поле: из зерна, одинаковое у обоих. Предмет k: появляется в ts, по u, сверху или снизу, плывёт поперёк ── */
 function slRng(s){ return function(){ s=(s+0x6D2B79F5)>>>0; var t=s; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
 function slWorld(seed){ var r=slRng(seed), a=[], t=1.2, k=0;
@@ -263,7 +271,7 @@ function slHud(){ if(SL.phase==='play'||SL.phase==='over') el('slHud').textConte
 function slOver(err){ slE(err?'остановка: '+el('slSay').textContent:'финиш',{score:SL.score||0,got:SL.got||0,burned:SL.burned||0,cuts:SL.cuts||0,t:SL.t===undefined?null:+SL.t.toFixed(2)}); if(!err) SL.logStop=performance.now()+3000;
   el('slAgain').classList.toggle('hidden',!!err); el('slRetry').classList.add('hidden'); if(!err){ SL.phase='over'; el('slSay').textContent='Финиш'; el('slSub').textContent='счёт '+SL.score+' · частиц '+SL.got+' · сожжено клякс '+(SL.burned||0)+' · обрывов '+SL.cuts; }
   el('slBtns').classList.remove('hidden'); el('slStop').classList.add('hidden'); }
-function slExit(){ slReset(); if(booted) setProbe('off'); mode=null; if(SL_WK!==null&&typeof probeWide!=='undefined'){ probeWide=SL_WK; SL_WK=null; } el('slAlign').classList.add('hidden'); slOpen(); }
+function slExit(){ slReset(); if(booted) setProbe('off'); try{ DSP2.set('holdfloor',0); }catch(e){} mode=null; if(SL_WK!==null&&typeof probeWide!=='undefined'){ probeWide=SL_WK; SL_WK=null; } el('slAlign').classList.add('hidden'); slOpen(); }
 /* ── рисование: своя половина поля (или всё поле — «один телефон») ── */
 var SLC={w:0,h:0,dpr:1,bg:null,vx:{}};
 /* 1.56i: стык экранов (автор: «когда телефоны ровно друг к другу — нить не совсем совпадает»). Высота экрана у телефонов разная, а v — доля

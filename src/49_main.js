@@ -52,7 +52,7 @@ function topY(){ return SAFE.t+Math.max(8,Math.round(LH*0.05)); }
 /* v0.47: the version as a switch for the "logs" link on the title and the getting-ready screens too (it was only on the game-over screen) —
    a setup that stopped ("too quiet", "too loud") or went badly can be sent right away. A tap on the version shows the link, another hides it.
    top — at the top corner (the getting-ready screens: the bottom has the buttons, the ring and the "wave here" beacon), else at the bottom */
-function diagCorner(label,top,ty,flip,ax){ var vr=ty?(freeSide()!=='left')!==!!flip:(flip!==undefined?!!flip:freeSide()==='left'),   /* at the bottom: flip true — always the right corner (the games' screen, v0.71) */   /* under the menu button (ty) — its side; flip — the other side */ vx=ax!==undefined?ax:vr?LW-SAFE.r-8:SAFE.l+8, vy=top?(ty||SAFE.t+8):LH-SAFE.b-12, vw=PF.width(label), al=vr?'right':'left';
+function diagCorner(label,top,ty,flip,ax){ var vr=ty?(freeSide()!=='left')!==!!flip:(flip!==undefined?!!flip:freeSide()==='left'),   /* at the bottom: flip true — always the right corner (the games' screen, v0.71) */   /* under the menu button (ty) — its side; flip — the other side */ vx=ax!==undefined?ax:vr?LW-SAFE.r-8-(scr==='wave'?12:0):SAFE.l+8+(scr==='wave'?12:0),   /* v1.56 (the review's п.25): off the «wave here» glow */ vy=top?(ty||SAFE.t+8):LH-SAFE.b-12, vw=PF.width(label), al=vr?'right':'left';
   var hot=(scr==='scores'?scPeople:diag); if(!hot) lx.globalAlpha=0.5;   /* v1.55 (the review's п.10): the version quieter — the place and the touch zone as before */ text(label,vx,vy,hot?P.band:P.soft,al); lx.globalAlpha=1; var bx0=Math.max(0,(vr?vx-vw:vx)-8), bx1=Math.min(LW,(vr?vx:vx+vw)+8);
   var by0=top?Math.max(0,vy-8):vy-4; BTN.push({id:'ver',x:bx0,y:by0,w:bx1-bx0,h:Math.min(top?PF.CAP+16:PF.CAP+10,LH-by0)});
   if(top&&diag&&Logs.has()&&scr!=='scores'&&scr!=='paused'){ var ls=L('logs'), lw=PF.width(ls), ly=vy+PF.CAP+12, lx0=vr?vx-lw:vx;
@@ -89,14 +89,14 @@ function column(items,y0,x0,gap){ var w=colW(items), h=BH; gap=gap===undefined?1
 function soundW(){ return PF.width(L('sfx_off'))+6+Sfx.steps*4+2*Math.round(BH*0.9)+12; }
 function soundRow(x,y,w,h){ var on=Sfx.on(), n=Sfx.steps, lv=Sfx.lvl(), s=Math.round(h*0.9), ty=y+Math.round((h-7)/2);
   R(P.bg,x,y,w,h); frame(x,y,w,h,P.line);
-  text('-',x+s/2,ty,P.text,'center',1,true); text('+',x+w-s/2,ty,P.text,'center',1,true); R(P.line,x+s,y+3,1,h-6); R(P.line,x+w-s,y+3,1,h-6);
+  text('–',x+s/2,ty,P.text,'center',1,true);   /* v1.56 (п.27): a dash for «minus» */ text('+',x+w-s/2,ty,P.text,'center',1,true); R(P.line,x+s,y+3,1,h-6); R(P.line,x+w-s,y+3,1,h-6);
   BTN.push({id:'vol_dn',x:x,y:y,w:s,h:h}); BTN.push({id:'vol_up',x:x+w-s,y:y,w:s,h:h});
   var lab=L(on?'sfx_row':'sfx_off'), tw=PF.width(lab), cw=tw+6+n*4, cx=x+s+Math.round((w-2*s-cw)/2);
   text(lab,cx,ty,on?P.text:P.soft,'left',1,true);
   for(var j=0;j<n;j++) R(on&&j<lv?P.band:P.line,cx+tw+6+j*4,ty,3,7);
   BTN.push({id:'sfx',x:x+s,y:y,w:w-2*s,h:h}); }
 function nextBtn(id,label){ var w=btnW([label]); button(id,label,sideX(w),Math.round(LH*0.76),w,BH,'primary',Math.floor(scrT*2)%2===0); }   /* v0.35: lower, off the pictures */
-function ringAt(){ return freeSide()==='left'?[Math.round(LW*0.13),Math.round(LH*0.74)]:[Math.round(LW*0.87),Math.round(LH*0.74)]; }   /* v0.35: lower, under the two pictures */
+function ringAt(){ var yy=0.80;   /* v1.56 (the review's п.24): off the drawn table (0.74 before) */ return freeSide()==='left'?[Math.round(LW*0.13),Math.round(LH*yy)]:[Math.round(LW*0.87),Math.round(LH*yy)]; }   /* v0.35: lower, under the two pictures */
 function ringUI(p,st){ var r=ringAt(), col=st==='wait'?P.soft:st==='ok'?P.band:P.bullet;
   ring(r[0],r[1],11,p,col); if(st==='ok') tick(r[0],r[1],P.band);
   text(L(st==='wait'?'ring_wait':st==='listen'?'ring_listen':st==='catch'?'ring_catch':'ring_ok'),r[0],r[1]+17,col,'center'); }
@@ -357,7 +357,7 @@ function arcArrow(cx,cy,r,a0,a1,c){ var n=Math.ceil(Math.abs(a1-a0)*r*2)+2, i, a
   for(i=0;i<=n;i++){ a=a0+(a1-a0)*i/n; R(c,cx+Math.cos(a)*r,cy+Math.sin(a)*r,1,1); R(c,cx+Math.cos(a)*(r+1),cy+Math.sin(a)*(r+1),1,1); }
   var sg=a1>a0?1:-1, tx=cx+Math.cos(a1)*r, ty=cy+Math.sin(a1)*r, dx=-Math.sin(a1)*sg, dy=Math.cos(a1)*sg, nx=Math.cos(a1), ny=Math.sin(a1), h=Math.max(6,r*0.2);
   polyFill([[tx+dx*h,ty+dy*h],[tx+nx*h*0.62,ty+ny*h*0.62],[tx-nx*h*0.62,ty-ny*h*0.62]],c); }
-function turnOverlay(){ lx.globalAlpha=0.92; R(P.bg,0,0,LW,LH); lx.globalAlpha=1;
+function turnOverlay(){ lx.globalAlpha=0.985;   /* v1.56 (the review's п.26): the pictures no longer show through */ R(P.bg,0,0,LW,LH); lx.globalAlpha=1;
   var cx=Math.round((SAFE.l+LW-SAFE.r)/2), mw=LW-SAFE.l-SAFE.r-2*56, y=topY(), sc=2;   // clear of the menu button and the version in the top corners
   var lines=[L('turn_t'),L('turn_s'),L('turn_s2')]; if(lines.some(function(l){ return PF.width(l,sc)>mw; })) sc=1;                              // both lines the same size (the maintainer)
   lines.forEach(function(l){ text(l,cx,y,P.text,'center',sc); y+=PF.CAP*sc+6; });
@@ -580,7 +580,8 @@ function sPaused(){ field(DT,0); pauseVeil(); titles(L('paused'));
     var it=act.concat(look), gap=Math.max(2,Math.min(8,Math.floor((bot-top+2-it.length*BH)/(it.length-1))));
     column(it,Math.round((top+bot)/2),undefined,gap); return; }
   column(act,cy,x1,8); var ob=mode!=='race'&&pausedFrom==='play'&&obsOn(); if(ob) diagCorner('V'+VERSION,true,SAFE.t+8,true);   /* v1.48: the test sliders hidden — a long press on the version shows them */
-  if(ob&&diag) obsPanel(left?x2:SAFE.l+6,left?LW-SAFE.r-6-x2:x2+w2-SAFE.l-6,cy);   /* v1.47: all the room beside the actions */ else column(look,cy,x2,8); }
+  var cyL=Math.round(cy-(act.length*(BH+8)-8)/2+(look.length*(BH+8)-8)/2);   /* v1.56 (the review's п.23): the two columns' tops level */
+  if(ob&&diag) obsPanel(left?x2:SAFE.l+6,left?LW-SAFE.r-6-x2:x2+w2-SAFE.l-6,cy);   /* v1.47: all the room beside the actions */ else column(look,cyL,x2,8); }
 /* v1.44: the heavy skin's sliders in the pause (the maintainer, of each: «ползунок? :)»), in place of the look column (the skin is fixed while it is on);
    v1.45: 0–200%, the mark at 100% —
    pause, move them, play on and see. 0 — none; the strengths are 1.44's (its 50% then is 50% now) */
@@ -603,8 +604,12 @@ function sRestart(){ field(DT,0); pauseVeil(); titles(L('restart'),L('restart_s'
 /* the running game is dropped without the game-over screen; its score still counts for the best */
 function dropGame(){ if(mode==='race'&&g&&g.car){ if(g.state!=='over'){ Logs.gameEv('restarted by the player'); g.state='over'; Logs.gameStop(); if(g.score>raceBest){ raceBest=g.score; store.set('sonaroids_race_best',raceBest); } } return; }
   if(g&&g.state==='play'){ Logs.gameEv('restarted by the player'); g.state='over'; Logs.gameStop(); Board.finish(g.score); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } } }
-function sLost(){ sky(DT,0.2); titles(L('lost_t'),L('lost_s'),P.hit); nextBtn('retry',L('retry')); }
-function sNomic(){ sky(DT,0.2); titles(L('nomic_t'),L(errKind==='mic'?'nomic_s':'noaudio_s'),P.hit); nextBtn('retry',L('retry')); }
+function errSign(kind){ var cx=Math.round((SAFE.l+LW-SAFE.r)/2), cy=Math.round(LH*0.5), c=lx; c.save(); c.strokeStyle=P.soft; c.lineWidth=2; c.lineCap='round';
+  if(kind==='mic'){ c.beginPath(); c.roundRect(cx-5,cy-16,10,20,5); c.stroke(); c.beginPath(); c.arc(cx,cy-2,10,0.15,Math.PI-0.15); c.stroke(); c.beginPath(); c.moveTo(cx,cy+8); c.lineTo(cx,cy+13); c.moveTo(cx-6,cy+13); c.lineTo(cx+6,cy+13); c.stroke(); }
+  else { c.beginPath(); c.arc(cx,cy,13,Math.PI*1.05,Math.PI*1.95); c.stroke(); c.beginPath(); c.roundRect(cx-15,cy-2,6,11,2); c.roundRect(cx+9,cy-2,6,11,2); c.stroke(); }
+  c.strokeStyle=P.hit; c.beginPath(); c.moveTo(cx-16,cy+12); c.lineTo(cx+16,cy-16); c.stroke(); c.restore(); }   /* v1.56 (the review's п.22): a small sign in the empty middle — a crossed microphone / headphones */
+function sLost(){ sky(DT,0.2); titles(L('lost_t'),L('lost_s'),P.hit); errSign('out'); nextBtn('retry',L('retry')); }
+function sNomic(){ sky(DT,0.2); titles(L('nomic_t'),L(errKind==='mic'?'nomic_s':'noaudio_s'),P.hit); errSign('mic'); nextBtn('retry',L('retry')); }
 function sRotate(){ lx.fillStyle=P.bg; lx.fillRect(0,0,LW,LH); var y=Math.round(LH/2-24); y=para(L('rotate'),LW/2,y,LW-16,P.text);
   para(L('rotate_s'),LW/2,y+12,LW-24,P.soft); say(L('rotate')+'. '+L('rotate_s')); }   // 25 Sep: some players don't think of the rotation lock
 
@@ -729,7 +734,7 @@ function sRTitle(){ raceDemoTick();
 /* the car before the race: by the height as the ship, or along the road (then its place across the road, as in the race) */
 var rCarYs=null;
 function raceCarY(rg,vd){ if(raceSteer!=='road') return shipY/K; var t=Race.steerY(rg,vd+Race.CAR_X,lastHand===null?0.5:lastHand); rCarYs=rCarYs===null?t:rCarYs+(t-rCarYs)*0.49; return rCarYs; }
-function raceTry(){ followShip(); lx.clearRect(0,0,LW,LH); if(!rTry){ rTry=Race.create(7,raceFW(),Race.FH/2); rTryD=0; } rTryD+=45*DT;
+function raceTry(){ followShip(); lx.clearRect(0,0,LW,LH); if(!rTry){ rTry=Race.create(7,raceFW(),Race.FH/2); rTryD=150; }   /* v1.56 (the review's п.29): the try-out starts past the candy village's crossing (it lay under the car like a scale) */ rTryD+=45*DT;
   raceScene(rTry,rTryD,raceCarY(rTry,rTryD),DT);
   titles(L(autoTry?'auto_ok':'wave_ok'),L(RSKIN==='pirate'?'r_try_boat':'r_try'));   // v1.06: the pirates' is a boat
   var items=[['start',L('play'),'primary'],autoTry?['try_wave',L('recal')]:['again',L('recal')]], bw=btnW(items.map(function(q){ return q[1]; })), lane=Math.round(fx(Race.CAR_X))+30;

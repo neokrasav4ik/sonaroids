@@ -28,6 +28,7 @@ function phone(L){ const s=L.s, g=L.g, out={file:L.file,half:s.half,side:s.side,
   const play=g.game.filter(r=>r[COL.ph]===4);
   P(`${L.file}: ${s.bot?'один телефон с ботом':'сторона '+s.side+', '+(s.half==='L'?'левая':'правая')+' половина'}${s.half_swapped?' (взял другую — телефоны лежали одинаково)':''}, тоны ${s.tones===0?'чётные':s.tones===1?'нечётные':'все'}, управление ${s.control==='touch'?'палец':'ладонь'}`);
   P(`  связь: ${s.bot?'—':(s.near?'«рядом»':'код '+s.code)+', в конце '+(s.direct_now?'напрямую':'через сервер')+', пинг напрямую '+f0(s.rtt_direct_ms)+' мс, через сервер '+f0(s.rtt_server_ms)+' мс; часы: сдвиг к серверу '+f0(s.clock_off_ms)+' мс (по запросу '+f0(s.clock_rtt_ms)+' мс)'}`);
+  if(!s.bot){ const rtc=g.events.filter(e=>/rtc|прямой канал/.test(e[4])).map(e=>e[4]); P(`  прямой канал: ${rtc.length?rtc.slice(0,8).join(' · ')+(rtc.length>8?' …':''):'ни одного сообщения — не начинался'}`); }
   const offs=g.off.map(r=>r[1]); if(offs.length>1) P(`  оценки часов: ${offs.length}, разброс ${f0(Math.max(...offs)-Math.min(...offs))} мс`);
   if(s.cal_me||s.cal_peer) P(`  калибровка (${s.cal_mode==='own'?'своя':'общая'}): моя середина ${f1(s.cal_me&&s.cal_me.r)} мм, поле ${f1(s.cal_me&&s.cal_me.f)}; напарника ${f1(s.cal_peer&&s.cal_peer.r)} мм, ${f1(s.cal_peer&&s.cal_peer.f)}; итог поле ${f1(s.field)}`);
   P(`  раунд: зерно ${s.seed}, предметов ${g.objs.length}, раундов в журнале ${g.rounds.length}; итог: счёт ${s.result.score}, частиц ${s.result.got}, сожжено ${s.result.burned}, обрывов ${s.result.cuts}`);
@@ -69,12 +70,14 @@ function pair(A,B){ const out={lines:[],flags:[]}, P=t=>out.lines.push(t), F=t=>
   if(A.s.cal_mode==='shared'&&A.s.cal_me&&B.s.cal_me){ const cross=A.s.cal_peer&&B.s.cal_peer&&A.s.cal_peer.r===B.s.cal_me.r&&B.s.cal_peer.r===A.s.cal_me.r;
     P(`  калибровка: ${cross?'обменялись':'НЕ обменялись'}; итог поле ${f1(A.s.field)} / ${f1(B.s.field)}, середины ${f1(A.s.cal_me.r)} и ${f1(B.s.cal_me.r)} мм`); if(!cross) F('калибровками не обменялись'); else if(Math.abs(A.s.field-B.s.field)>0.5) F('поле разное после общей калибровки'); }
   /* высоты: что ушло от одного — пришло ли к другому, за сколько; часы — по разнице двух направлений */
-  const dir=(X,Y)=>{ const rx=new Map(Y.g.rx.map(r=>[r[3]+'|'+r[4],r])); let got=0; const d=[], dv={d:[],s:[]};
-    for(const t of X.g.tx){ const r=rx.get(t[1]+'|'+t[2]); if(r){ got++; d.push(r[1]-t[1]); dv[r[5]].push(r[1]-t[1]); } }
-    return {sent:X.g.tx.length,got,loss:X.g.tx.length?1-got/X.g.tx.length:NaN,d,med:med(d),p90:pct(d,0.9),dmed:med(dv.d),smed:med(dv.s),nd:dv.d.length,ns:dv.s.length}; };
+  /* считаю только высоты, отправленные в раунде: до прихода напарника их некому получать (журналы 06.10 18:22 — «потери» 8% были отсюда) */
+  const inRound=(X,ts)=>X.g.rounds.some(r=>ts>=r.T0&&ts<=r.T0+X.s.round_s*1000);
+  const dir=(X,Y)=>{ const rx=new Map(Y.g.rx.map(r=>[r[3]+'|'+r[4],r])); let got=0; const d=[], dv={d:[],s:[]}, tx=X.g.tx.filter(t=>inRound(X,t[1]));
+    for(const t of tx){ const r=rx.get(t[1]+'|'+t[2]); if(r){ got++; d.push(r[1]-t[1]); dv[r[5]].push(r[1]-t[1]); } }
+    return {sent:tx.length,got,loss:tx.length?1-got/tx.length:NaN,d,med:med(d),p90:pct(d,0.9),dmed:med(dv.d),smed:med(dv.s),nd:dv.d.length,ns:dv.s.length}; };
   const ab=dir(A,B), ba=dir(B,A); out.ab=ab; out.ba=ba;
-  P(`  высоты ${A.s.half}→${B.s.half}: дошло ${ab.got} из ${ab.sent} (${pc(1-ab.loss)}), в пути медиана ${f0(ab.med)} мс, 90% ${f0(ab.p90)} мс (напрямую ${ab.nd} шт., ${f0(ab.dmed)} мс; через сервер ${ab.ns} шт., ${f0(ab.smed)} мс)`);
-  P(`  высоты ${B.s.half}→${A.s.half}: дошло ${ba.got} из ${ba.sent} (${pc(1-ba.loss)}), в пути медиана ${f0(ba.med)} мс, 90% ${f0(ba.p90)} мс (напрямую ${ba.nd} шт., ${f0(ba.dmed)} мс; через сервер ${ba.ns} шт., ${f0(ba.smed)} мс)`);
+  P(`  высоты в раунде ${A.s.half}→${B.s.half}: дошло ${ab.got} из ${ab.sent} (${pc(1-ab.loss)}), в пути медиана ${f0(ab.med)} мс, 90% ${f0(ab.p90)} мс (напрямую ${ab.nd} шт., ${f0(ab.dmed)} мс; через сервер ${ab.ns} шт., ${f0(ab.smed)} мс)`);
+  P(`  высоты в раунде ${B.s.half}→${A.s.half}: дошло ${ba.got} из ${ba.sent} (${pc(1-ba.loss)}), в пути медиана ${f0(ba.med)} мс, 90% ${f0(ba.p90)} мс (напрямую ${ba.nd} шт., ${f0(ba.dmed)} мс; через сервер ${ba.ns} шт., ${f0(ba.smed)} мс)`);
   out.clock=(ab.med-ba.med)/2; P(`  часы: по разнице направлений общие часы ${B.s.half} ${out.clock>=0?'впереди':'позади'} ${A.s.half} на ~${f0(Math.abs(out.clock))} мс (честный путь в одну сторону ~${f0((ab.med+ba.med)/2)} мс)`);
   if(Math.abs(out.clock)>40) F(`часы телефонов расходятся на ~${f0(Math.abs(out.clock))} мс — старт и предметы у них сдвинуты на столько же`);
   if(ab.loss>0.05||ba.loss>0.05) F(`теряются высоты: ${pc(ab.loss)} / ${pc(ba.loss)}`);

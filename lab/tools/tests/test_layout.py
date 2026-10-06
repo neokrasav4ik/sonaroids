@@ -32,6 +32,7 @@ SETUP={
  'arcOver':"lastRec='arc'; show('arcPlay'); ARC.game='bombs'; arcInit(); ARC.phase='over'; ARC.score=37; ARC.caught=20; arcDraw(); arcText('Финиш','поймано 20 · очки 37 · волна 2'); arcButtons(true);",
  'pwCheck':"show('pwCheck');",
  'link':"lkLabel(); show('link');",
+ 'more2':"show('more2');",
  'linkBeacon':"show('linkBeacon'); el('lbSay').textContent='Пищу: нечётные тоны'; el('lbNow').textContent='Свой зонд: 42 дБ над шумом | соседа: 27 дБ (на 15 дБ тише) | громкость зонда 0.084';",
  'arkOver':"lastRec='ark'; show('arkPlay'); AK.bricks=akBricks(1); AK.ball={x:0.42,y:0.62}; AK.px=0.55; AK.phase='over'; AK.score=120; AK.lives=0; AK.level=1; akDraw(); akText('Конец','счёт 120 · уровень 1 · лучший 120'); akButtons(true);",
  'menu':"show('game'); el('gPanel').classList.remove('hidden'); el('gLogI').textContent='Записано 150 с партии (последние 150 с). Журнал настройки: 120 с.'; fitScreen();",

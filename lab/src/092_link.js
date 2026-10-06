@@ -27,3 +27,6 @@ el('lbStop').addEventListener('click',lkStop);
 el('lkRec').addEventListener('click',function(){ boot().then(function(){ viaOrient('rec'); }).catch(fail); });
 el('lkGame').addEventListener('click',function(){ boot().then(function(){ viaOrient('game'); }).catch(fail); });
 el('lkBack').addEventListener('click',function(){ show('home'); });
+/* 06.10: прототипы и пробы 27.09 с главного экрана — на экран «Ещё 2» (автор: «спрячь лишнее под „еще2“») */
+el('goMore2').addEventListener('click',function(){ show('more2'); });
+el('more2Back').addEventListener('click',function(){ show('home'); });

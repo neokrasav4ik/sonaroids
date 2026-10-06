@@ -162,14 +162,10 @@
   <div class="col btns g2">
     <button id="goGame" class="big">Играть</button>
     <button id="goLink" class="ghost">СонарЛинк: два телефона</button>
-    <button id="goDepth" class="ghost">Ближняя и дальняя рука</button>
-    <button id="goTwo" class="ghost">Две ладони (проба)</button>
-    <button id="go_race" class="ghost">Трасса (прототип)</button>
-    <button id="go_slalom" class="ghost">Слалом (прототип)</button>
-    <button id="goArk" class="ghost">Арканоид (прототип)</button>
     <button id="goRec" class="ghost">Запись для меня</button>
     <button id="goRecLong" class="ghost">Длинная запись (1,5 мин)</button>
     <button id="goProbes" class="ghost">Ещё: пробы, беззвучный…</button>
+    <button id="goMore2" class="ghost">Ещё 2: прототипы</button>
     <button id="reload1" class="ghost">Перезагрузить</button>
     <button id="pwToggle" class="ghost wide">Зонд: …</button>
     <button id="toGame" class="ghost wide">← В игру</button>
@@ -200,6 +196,21 @@
   </div>
   <div class="col btns">
     <button id="lbStop" class="big">Стоп</button>
+  </div>
+</div></div>
+
+<div class="screen hidden" id="more2"><div class="two wideb">
+  <div class="col">
+    <h1>Ещё 2</h1>
+    <p>Прототипы и пробы 27.09: две руки, Арканоид, экшн-игры. Не пошли — оставлены, чтобы можно было повторить.</p>
+  </div>
+  <div class="col btns g2">
+    <button id="goDepth" class="ghost">Ближняя и дальняя рука</button>
+    <button id="goTwo" class="ghost">Две ладони (проба)</button>
+    <button id="go_race" class="ghost">Трасса (прототип)</button>
+    <button id="go_slalom" class="ghost">Слалом (прототип)</button>
+    <button id="goArk" class="ghost">Арканоид (прототип)</button>
+    <button id="more2Back" class="ghost">Назад</button>
   </div>
 </div></div>
 
@@ -876,7 +887,7 @@ function setLinkPar(p){ LINK_PAR=p; try{ localStorage.setItem('sonar_link_par',S
   if(booted&&sS){ var old=sS; sS=loopSrc(makeProbe(p)); sS.connect(gSL); sS.connect(gSR); sS.start(); try{ old.stop(); old.disconnect(); }catch(e){} } }
 function parName(p){ return p===0?'чётные':p===1?'нечётные':'все'; }
 function sleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
-function show(id){ ['home','orient','rec','recDone','cal','game','sideIntro','recSide','dualIntro','rightIntro','rightPlay','arkIntro','arkPlay','arcIntro','arcPlay','probes','twoIntro','recTwo','stIntro','recSt','stLive','depthIntro','pwCheck','link','linkBeacon'].forEach(function(s){ el(s).classList.toggle('hidden',s!==id); });
+function show(id){ ['home','orient','rec','recDone','cal','game','sideIntro','recSide','dualIntro','rightIntro','rightPlay','arkIntro','arkPlay','arcIntro','arcPlay','probes','twoIntro','recTwo','stIntro','recSt','stLive','depthIntro','pwCheck','link','linkBeacon','more2'].forEach(function(s){ el(s).classList.toggle('hidden',s!==id); });
   /* запись вбок идёт с телефоном вертикально — на её экранах просьба повернуть не показывается */
   if(document.body&&document.body.classList) document.body.classList.toggle('pok',id==='sideIntro'||id==='rightIntro'||id==='rightPlay'||id==='twoIntro'||id==='recTwo'||id==='stIntro'||id==='recSt'||id==='stLive'||id==='depthIntro'||(id==='recTwo'&&lastRec==='recDepth')||(id==='recDone'&&(lastRec==='recTwo'||lastRec==='recSt'||lastRec==='recDepth'))||((id==='recSide'||id==='recDone')&&(lastRec==='recSide'||lastRec==='recRight'))); fitScreen(); }
 /* всё в один экран: если видимый экран (или открытое меню игры) не влезает по высоте или ширине — уменьшаю базовый шрифт, пока не влезет */
@@ -2232,6 +2243,9 @@ el('lbStop').addEventListener('click',lkStop);
 el('lkRec').addEventListener('click',function(){ boot().then(function(){ viaOrient('rec'); }).catch(fail); });
 el('lkGame').addEventListener('click',function(){ boot().then(function(){ viaOrient('game'); }).catch(fail); });
 el('lkBack').addEventListener('click',function(){ show('home'); });
+/* 06.10: прототипы и пробы 27.09 с главного экрана — на экран «Ещё 2» (автор: «спрячь лишнее под „еще2“») */
+el('goMore2').addEventListener('click',function(){ show('more2'); });
+el('more2Back').addEventListener('click',function(){ show('home'); });
 
 
 /* ── ЖУРНАЛ ПАРТИИ: звук + что видела обработка + что происходило в игре ── */

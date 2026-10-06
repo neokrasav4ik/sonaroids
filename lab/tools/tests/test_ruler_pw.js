@@ -36,6 +36,12 @@ const LAB=path.join(__dirname,'..','..','app','sonar_lab3.html'), OUT=path.join(
   let c; for(let i=0;i<150;i++){ await C.waitForTimeout(100); c=await S(C); if(c.phase==='over') break; }
   need(c.phase==='over'&&c.mode==='ruler','один телефон: до конца');
   await C.click('#slOut'); const back=await C.evaluate(()=>!document.getElementById('rulIntro').classList.contains('hidden')); need(back,'«Выйти» — к экрану «Линейки»');
+  /* 1.56q: «Калибровка кулаком по линейке» — проходит программу (5, 10, 15, 10, 5 см) и заканчивается; пальцем кулака нет — «Не вышло», таблица не пишется */
+  const K=await b.newPage({viewport:{width:844,height:390}}); K.on('pageerror',e=>errs.push(e.message)); await K.goto(url); await K.click('#goLink'); await K.click('#lkString');
+  const lbl=await K.evaluate(()=>document.getElementById('siTab').textContent); await K.click('#siTab'); let k;
+  for(let i=0;i<120;i++){ await K.waitForTimeout(100); k=await S(K); if(k.phase==='over') break; }
+  const say=await K.evaluate(()=>[document.getElementById('slSay').textContent,localStorage.getItem('sonar_sl_tab'),window.__sl().rs?window.__sl().rs.length:0]);
+  need(k.phase==='over'&&k.mode==='calib'&&say[2]===10&&say[0]==='Не вышло'&&!say[1]&&/один раз/.test(lbl),'калибровка кулаком: 10 шагов, без сонара — «Не вышло», таблица не записана');
   need(!errs.length,'без ошибок страницы'+(errs.length?': '+errs.join('; '):''));
   await b.close(); server.closeAllConnections&&server.closeAllConnections(); server.close(); st.close(); try{ fs.unlinkSync(process.env.DB); }catch(e){}
   console.log(bad?'ИТОГ: ПРОВАЛ':'ИТОГ: ok'); process.exit(bad?1:0); })();

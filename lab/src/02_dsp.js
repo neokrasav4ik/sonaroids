@@ -2,6 +2,7 @@
 var DSP2=(function(){
   var fzF=[],fzA=[],fzN=0,fzHold=0,frozen=false,frozenN=0,N=512,C=343,fs,kLo,kHi,kc,ks,M,Pr,Pi,lam,mm,T,gA,gB,G,cosT,sinT,BAND_LO=null;   // BAND_LO — нижний край полосы зонда, если не 18,3 кГц (широкий зонд, с 0.39u; задаётся set('flo') до init)
   var d0,dref,boot,bootN=30,prevH,hist,L=4,prom,noProbe,bgAcc,bgN,bgR,bgI,BG_N=40;
+  var ldP=null,ldS=null,ldQ=[];   // 1.56q: ближнее сильное эхо (lead)
   var holdFloor=false, Es,hold,present,refr,Q_FLOOR=-28,T_ON=-16,T_INT=-30,HOLD_S=1.5,tauE=0.15,REFR_S=0.35,TAU_BG=2.0,TAU=1.5;
   var eqW=null,eqDb=0,EQ_ON=16,ACC_N=24,FINE_N=188,EQ_MAX=10,gN=null,drops=0,sinceDrop=1e9,covered=false,lastPeak=null,d0B=0,fineN=-1,fR=null,fI=null,refR=null,refI=null,acR=null,acI=null,acN=0,moveN=0,scanWait=0,relocks=0,eAvg=0,TE=3,E_FAST=12,ePres=0,why='',rngBuf=[],xBuf=[],centered=false,autoC=false,presN=0,x,fast,cal={k:0.75,o:1,s:0.8},eHold=null,lowN=0,resS=-99,resFloor=null,upN=0,warm=0,absBuf=[],ABS_MED=15,DEADB=5,DEADB_UP=15,dirS=null,lostN=0,lost=false;
   /* v1.08, the live mode (an experiment, off unless set('live',1)): see liveNoise and the background learnt round the palm below */
@@ -16,7 +17,7 @@ var DSP2=(function(){
     cosT=new Float64Array(M*N); sinT=new Float64Array(M*N);
     for(q=0;q<M;q++){ var w=-2*Math.PI*ks[q]/N; for(var n=0;n<N;n++){ cosT[q*N+n]=Math.cos(w*n); sinT[q*N+n]=Math.sin(w*n); } }
     d0=null; dref=null; eqW=null; eqDb=0; gN=null; drops=0; sinceDrop=1e9; covered=false; lastPeak=null; d0B=0; fineN=-1; fR=null; fI=null; refR=null; refI=null; acR=null; acI=null; acN=0; moveN=0; scanWait=0; relocks=0; boot=[]; prevH=null; hist=[]; prom=null; noProbe=false;
-    bgAcc=null; bgN=0; bgR=null; bgI=null; Es=-80; hold=0; present=false; refr=0; x=null; fast=0; eHold=null; ePres=0; why=""; rngBuf=[]; xBuf=[]; centered=false; presN=0; lowN=0; resS=-99; resFloor=null; upN=0; warm=0; absBuf=[]; dirS=null; lostN=0; lost=false; fzF=[]; fzA=[]; fzN=0; fzHold=0; frozen=false; frozenN=0; nD=0; nS=0; nBase=null; nX=0; burst=0; nMin=null; nzK=null; nzC=null; nzS=null; nzP=null; nzN=0; lagB=[]; lagD=null; lagR=null; gStill=0; postB=0; fresh=0; EsR=-80; zc=null;
+    ldP=null; ldQ=[]; bgAcc=null; bgN=0; bgR=null; bgI=null; Es=-80; hold=0; present=false; refr=0; x=null; fast=0; eHold=null; ePres=0; why=""; rngBuf=[]; xBuf=[]; centered=false; presN=0; lowN=0; resS=-99; resFloor=null; upN=0; warm=0; absBuf=[]; dirS=null; lostN=0; lost=false; fzF=[]; fzA=[]; fzN=0; fzHold=0; frozen=false; frozenN=0; nD=0; nS=0; nBase=null; nX=0; burst=0; nMin=null; nzK=null; nzC=null; nzS=null; nzP=null; nzN=0; lagB=[]; lagD=null; lagR=null; gStill=0; postB=0; fresh=0; EsR=-80; zc=null;
   }
   function bandSpec(fr){
     var Hr=new Float64Array(M),Hi=new Float64Array(M),q,n;
@@ -155,7 +156,14 @@ var DSP2=(function(){
         // and all the taps together, frame by frame (the sum over 76 taps is steady enough): «all of it stands still» 5 frames running
         gStill=sD1-G*nD<STILL*Math.max(0,sR1-G*nD/2)?gStill+1:0; } }
     // медленное: центр тяжести эха относительно пустой комнаты
-    var sw=0,sx=0,swr=0,nH=live?nX/2:0; for(i=0;i<G;i++){ var dr=h2[0][i]-bgR[i],di=h2[1][i]-bgI[i],p0=dr*dr+di*di,p=p0-nH; if(p<0) p=0; if(live&&lagD&&lagD[i]<1e29) p*=Math.min(1,Math.max(0,lagD[i]-nD)/(MOVW*Math.max(1e-30,lagR[i]-nD/2))); swr+=p0; sw+=p; sx+=p*(gA+i); }   // live: the noise's share of each tap off the centre
+    /* 1.56q (лаба, «Струна»): ближнее сильное эхо — профиль эха по дальности за последние 5 кадров, первый горб не слабее 45% самого сильного.
+       Записи с линейкой 06.10 21:39 (кулак): на обоих телефонах ложится на линейку до ~1 см, «вверх» и «вниз» совпадают; центр эха (range) —
+       ошибка до 6 см (дальние отражения запястья, предплечья тянут его). На остальное не влияет: только выход lead (мм) */
+    if(!ldP||ldP.length!==G){ ldP=new Float64Array(G); ldS=new Float64Array(G); ldQ=[]; }
+    var sw=0,sx=0,swr=0,nH=live?nX/2:0; for(i=0;i<G;i++){ var dr=h2[0][i]-bgR[i],di=h2[1][i]-bgI[i],p0=dr*dr+di*di,p=p0-nH; if(p<0) p=0; if(live&&lagD&&lagD[i]<1e29) p*=Math.min(1,Math.max(0,lagD[i]-nD)/(MOVW*Math.max(1e-30,lagR[i]-nD/2))); swr+=p0; sw+=p; sx+=p*(gA+i); if(ldP) ldP[i]=p; }
+    var ldC=Float64Array.from(ldP); ldQ.push(ldC); for(i=0;i<G;i++) ldS[i]+=ldC[i]; if(ldQ.length>5){ var ldO=ldQ.shift(); for(i=0;i<G;i++) ldS[i]-=ldO[i]; }
+    var ldM=0, ldJ=-1; for(i=0;i<G;i++) if(ldS[i]>ldM) ldM=ldS[i]; for(i=1;i<G-1&&ldM>0;i++) if(ldS[i]>=0.45*ldM&&ldS[i]>=ldS[i-1]&&ldS[i]>=ldS[i+1]){ ldJ=i; break; }
+    var lead=null; if(ldJ>0){ var ly0=ldS[ldJ-1], ly1=ldS[ldJ], ly2=ldS[ldJ+1], lq=ly0-2*ly1+ly2; lead=(gA+ldJ+(lq<0?0.5*(ly0-ly2)/lq:0))*mm; }   // live: the noise's share of each tap off the centre
     var range=sx/(sw||1e-30)*mm, abs=cal.k*range+cal.o;
     var fpsF=fs/N, aE=1-Math.exp(-1/(tauE*fpsF)); Es+=aE*(E-Es); EsR+=aE*(10*Math.log10(eR/dref+1e-30)-EsR);   // live: EsR — with the noise in (the room's quiet frames are judged by it: noise taken off must not make a stir look quiet)
     var resE=10*Math.log10(swr/dref+1e-30); resS+=0.2*(resE-resS);
@@ -237,7 +245,7 @@ var DSP2=(function(){
     if(present){ rngBuf.push(range); xBuf.push(x); if(rngBuf.length>Math.round(fpsF)){ rngBuf.shift(); xBuf.shift(); } presN++; }
     else { rngBuf=[]; xBuf=[]; presN=0; }
     if(autoC&&!centered&&presN>=Math.round(0.8*fpsF)) recenter();
-    return {present:present,started:started,height:x,abs:abs,range:range,fast:fast,E:E,resE:resS,floor:resFloor,Em:Es,why:why};
+    return {present:present,started:started,height:x,abs:abs,range:range,fast:fast,E:E,resE:resS,floor:resFloor,Em:Es,why:why,lead:lead};
   }
   /* центровка: середина поля (100) — там, где ладонь была последнюю секунду. Сдвигает и абсолютную часть (o), и итог (x) —
      движение не теряется, корабль лишь переезжает так, чтобы среднее положение ладони пришлось на середину */

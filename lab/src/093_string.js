@@ -14,23 +14,43 @@ try{ var rq=+new URLSearchParams(location.search).get('round'); if(rq>=3&&rq<=60
 window.__sl=function(){ return SL; };
 try{ SL_CTL=localStorage.getItem('sonar_sl_ctl')==='touch'?'touch':'palm'; if(/[?&]mouse=1/.test(location.search)) SL_CTL='touch'; }catch(e){}
 function slCtlLabel(){ el('siCtl').textContent='Управление: '+(SL_CTL==='touch'?'палец / мышь (без сонара)':'ладонь (сонар)'); }
-function slOpen(){ slCtlLabel(); el('siNow').textContent=''; show('strIntro'); }
+function slOpen(){ slCtlLabel(); slCalLabel(); el('siNow').textContent=''; show('strIntro'); }
 /* ── сеть ── */
 function slNow(){ return Date.now()+(SL.off||0); }
 function slPost(path,body){ var t0=Date.now(); return fetch(SL_API+'/v1/pair/'+path,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)})
   .then(function(r){ return r.json().then(function(j){ var t1=Date.now(); if(j&&typeof j.t==='number'){ var rtt=t1-t0; if(SL.rtt===undefined||rtt<SL.rtt+5){ SL.rtt=Math.min(SL.rtt===undefined?1e9:SL.rtt,rtt); SL.off=j.t-(t0+t1)/2; } } j.status=r.status; return j; }); }); }
-function slSend(m){ if(SL.bot||!SL.code) return; slPost('send',{code:SL.code,key:SL.key,m:m}).catch(function(){}); }
+function slSend(m){ if(SL.bot||!SL.code) return; if(SL.dc&&SL.dc.readyState==='open'){ try{ SL.dc.send(JSON.stringify(m)); return; }catch(e){} } slSrv(m); }
+function slSrv(m){ slPost('send',{code:SL.code,key:SL.key,m:m}).catch(function(){}); }
+/* ── 1.56g: прямой канал телефон↔телефон (WebRTC). Знакомит их сервер (предложение, ответ, адреса — сообщениями комнаты), дальше
+   высоты и события идут напрямую: в одной Wi-Fi — несколько миллисекунд. Без внешних серверов (только адреса самих телефонов): в разных
+   сетях прямого пути нет — тогда всё идёт через сервер, как раньше. Задержку меряю «пингом» по обоим путям раз в 2 с ── */
+function slRtc(){ if(SL.pc||SL.bot||typeof RTCPeerConnection==='undefined') return; var pc; try{ pc=new RTCPeerConnection({iceServers:[]}); }catch(e){ return; } SL.pc=pc;
+  pc.onicecandidate=function(e){ if(e.candidate) slSrv({e:'rtc',c:e.candidate.toJSON?e.candidate.toJSON():e.candidate}); };
+  pc.ondatachannel=function(e){ slDc(e.channel); };
+  pc.onconnectionstatechange=function(){ SL.rtcState=pc.connectionState; slStatus(); };
+  if(SL.side===0){ slDc(pc.createDataChannel("sl")); pc.createOffer().then(function(o){ return pc.setLocalDescription(o); }).then(function(){ slSrv({e:'rtc',sdp:pc.localDescription.toJSON?pc.localDescription.toJSON():pc.localDescription}); }).catch(function(){}); } }
+function slDc(dc){ SL.dc=dc; dc.onmessage=function(e){ try{ slMsg(JSON.parse(e.data),null,'d'); }catch(x){} }; dc.onopen=function(){ slStatus(); }; dc.onclose=function(){ slStatus(); }; }
+function slRtcMsg(m){ if(!SL.pc) slRtc(); var pc=SL.pc; if(!pc) return;
+  if(m.sdp){ pc.setRemoteDescription(m.sdp).then(function(){ if(m.sdp.type==='offer') return pc.createAnswer().then(function(a){ return pc.setLocalDescription(a); }).then(function(){ slSrv({e:'rtc',sdp:pc.localDescription.toJSON?pc.localDescription.toJSON():pc.localDescription}); }); })
+    .then(function(){ (SL.rtcQ||[]).forEach(function(c){ pc.addIceCandidate(c).catch(function(){}); }); SL.rtcQ=[]; }).catch(function(){}); }
+  if(m.c){ if(pc.remoteDescription) pc.addIceCandidate(m.c).catch(function(){}); else (SL.rtcQ=SL.rtcQ||[]).push(m.c); } }
+function slDirect(){ return !!(SL.dc&&SL.dc.readyState==='open'); }
+function slPing(){ if(SL.bot||!SL.code||!SL.peerHere) return; var t=performance.now(); slSrv({e:'ping',t:t,v:'s'}); if(slDirect()) try{ SL.dc.send(JSON.stringify({e:'ping',t:t,v:'d'})); }catch(e){} }
 function slListen(){ if(SL.es) try{ SL.es.close(); }catch(e){}
   var es=new EventSource(SL_API+'/v1/pair/sse?code='+SL.code+'&key='+SL.key); SL.es=es;
   es.addEventListener('hello',function(e){ var d=JSON.parse(e.data); SL.link=true; if(d.peer) slPeer(true); slStatus(); });
   es.addEventListener('peer',function(e){ slPeer(JSON.parse(e.data).here); });
-  es.addEventListener('m',function(e){ var d=JSON.parse(e.data); slMsg(d.m,d.t); });
+  es.addEventListener('m',function(e){ var d=JSON.parse(e.data); slMsg(d.m,d.t,'s'); });
   es.onerror=function(){ SL.link=false; slStatus(); }; }
-function slPeer(here){ SL.peerHere=here; if(here) slSend({e:'hi',half:SL.half,ready:SL.ready}); slStatus(); }
-function slStatus(){ var t=SL.code?'код '+SL.code+(SL.link?'':' · нет связи')+(SL.peerHere?' · напарник здесь':' · ждём напарника'):'';
-  if(SL.phase==='pair'){ var ls=SL.lastSay; el('slSay').textContent=SL.peerHere?(ls?ls[0]:'Напарник здесь'):'Код: '+SL.code; el('slSub').textContent=SL.peerHere?(ls?ls[1]:'Готовимся.'):'На втором телефоне: СонарЛинк → Струна → этот код → «Войти».'; }
+function slPeer(here){ SL.peerHere=here; if(here){ slSend({e:'hi',half:SL.half,ready:SL.ready}); if(SL.side===0) slRtc(); if(SL.calMe) slSend({e:'cal',r:SL.calMe.r,f:SL.calMe.f}); } slStatus(); }
+function slStatus(){ var t=SL.code?(SL.near?'рядом':'код '+SL.code)+(SL.link?'':' · нет связи')+(SL.peerHere?(slDirect()?' · напрямую'+(SL.rttD?' '+Math.round(SL.rttD)+' мс':''):' · через сервер'+(SL.rttS?' '+Math.round(SL.rttS)+' мс':'')):' · ждём напарника'):'';
+  if(SL.phase==='pair'){ var ls=SL.lastSay; el('slSay').textContent=SL.peerHere?(ls?ls[0]:'Напарник здесь'):SL.near?'Ищу второй телефон…':'Код: '+SL.code; el('slSub').textContent=SL.peerHere?(ls?ls[1]:'Готовимся.'):SL.near?'На нём: СонарЛинк → Струна → «Рядом». Полминуты.':'На втором телефоне: СонарЛинк → Струна → этот код → «Войти».'; }
   el('slHud').textContent=t+(SL.half?' · '+(SL.half==='L'?'левая':'правая')+' половина'+(SL.halfNote?' (телефоны лежат одинаково — взял другую)':''):''); }
-function slMsg(m,t){ if(!m) return;
+function slMsg(m,t,via){ if(!m) return;
+  if(m.e==='ping'){ var r={e:'pong',t:m.t,v:m.v}; if(m.v==='d'&&slDirect()) try{ SL.dc.send(JSON.stringify(r)); }catch(e){} else slSrv(r); return; }
+  if(m.e==='pong'){ var rt=performance.now()-m.t; if(m.v==='d') SL.rttD=SL.rttD?SL.rttD*0.7+rt*0.3:rt; else SL.rttS=SL.rttS?SL.rttS*0.7+rt*0.3:rt; slStatus(); return; }
+  if(m.e==='rtc'){ slRtcMsg(m); return; }
+  if(m.e==='cal'){ SL.calPeer={r:m.r,f:m.f}; slCalShare(); return; }
   if(typeof m.h==='number'){ SL.pb.push([m.s,m.h]); if(SL.pb.length>40) SL.pb.shift(); return; }
   if(m.e==='hi'){ SL.peerHalf=m.half; if(m.half===SL.half&&SL.side===1){ SL.half=SL.half==='L'?'R':'L'; SL.halfNote=true; slTones(); } if(m.ready) SL.peerReady=true; slStatus(); slMaybeStart(); return; }
   if(m.e==='ready'){ SL.peerReady=true; slMaybeStart(); return; }
@@ -43,14 +63,15 @@ function slMsg(m,t){ if(!m) return;
 function slTones(){ setLinkPar(SL.bot?'all':SL.half==='L'?0:1); }   /* один телефон — соседа нет, все тоны */
 function slHalfGuess(){ var o=orientSide(); return o==='left'?'L':o==='right'?'R':(SL.side===1?'R':'L'); }
 /* ── начало: комната, бот ── */
-function slReset(){ if(SL.es) try{ SL.es.close(); }catch(e){} cancelAnimationFrame(SL.raf||0);
+function slReset(){ if(SL.es) try{ SL.es.close(); }catch(e){} try{ if(SL.dc) SL.dc.close(); if(SL.pc) SL.pc.close(); }catch(e){} cancelAnimationFrame(SL.raf||0);
   SL={phase:'idle',pb:[],objs:[],score:0,got:0,cuts:0,combo:1,cut:null,alignT:0,res:0,fx:[],ph:0.5,hy:null,present:false,dist:null,T:null,last:0,raf:0,shifts:[]}; }
 function slBegin(how){ slReset(); SL.bot=how==='bot'; show('strPlay'); el('slBtns').classList.add('hidden'); el('slStop').classList.remove('hidden'); slSize();
   if(SL.bot){ SL.half=slHalfGuess(); SL.full=true; slTones(); SL.phase='prep'; slPrep(); slLoopStart(); return; }
-  SL.phase='pair'; el('slSay').textContent=how==='new'?'Открываю комнату…':'Вхожу…'; el('slSub').textContent='';
-  var p=how==='new'?slPost('new',{}):slPost('join',{code:el('siCode').value});
-  p.then(function(j){ if(!j.ok){ el('slSay').textContent=j.status===404&&how==='new'?'Сервер не умеет комнаты':j.status===404?'Нет такой комнаты':j.status===409?'Комната занята':'Сервер не ответил'; if(j.status===404&&how==='new'){ el('slSub').textContent='Его нужно обновить: cd /opt/sonaroids && sudo git pull && sudo systemctl restart sonaroids-api'; slOver(true); return; } el('slSub').textContent='Проверь код.'; slOver(true); return; }
-      SL.code=j.code; SL.key=j.key; SL.side=j.side; SL.half=slHalfGuess(); slTones(); slListen(); slStatus(); slLoopStart(); slPrep(); })
+  SL.phase='pair'; SL.near=how==='near'; el('slSay').textContent=how==='join'?'Вхожу…':'Открываю комнату…'; el('slSub').textContent='';
+  var p=how==='new'?slPost('new',{}):how==='near'?slPost('near',{}):slPost('join',{code:el('siCode').value});
+  p.then(function(j){ if(!j.ok){ el('slSay').textContent=j.status===404&&how!=='join'?'Сервер не умеет комнаты':j.status===404?'Нет такой комнаты':j.status===409?'Комната занята':'Сервер не ответил'; if(j.status===404&&how!=='join'){ el('slSub').textContent='Его нужно обновить: cd /opt/sonaroids && sudo git pull && sudo systemctl restart sonaroids-api'; slOver(true); return; } el('slSub').textContent='Проверь код.'; slOver(true); return; }
+      SL.code=j.code; SL.key=j.key; SL.side=j.side; SL.half=slHalfGuess(); slTones(); slListen(); slStatus(); slLoopStart(); slPrep();
+      if(SL.near&&SL.side===0) setTimeout(function(){ if(SL.code===j.code&&!SL.peerHere&&SL.phase==='pair'){ el('slSay').textContent='Второй телефон не нашёлся'; el('slSub').textContent='Нажми «Рядом» на обоих телефонах в пределах полуминуты, в одной Wi-Fi. Или по коду: '+j.code+'.'; } },31000); })
    .catch(function(e){ el('slSay').textContent='Нет связи с сервером'; el('slSub').textContent=String(e&&e.message||e); slOver(true); }); }
 /* ── подготовка сонара: как в Sonaroids (пустая комната → взмахи → «поймал») ── */
 function slPrep(){ if(SL_CTL==='touch'){ slReady(); return; }
@@ -71,8 +92,18 @@ function slPrep(){ if(SL_CTL==='touch'){ slReady(); return; }
     if(!st) return; var inf=DSP2.info(); slogEv('обработка: выраженность '+(inf.prom===null?'—':inf.prom.toFixed(1))+' дБ');
     if(st==='noprobe'){ setProbe('off'); mode=null; slogEv('не готово: зонда не слышно'); say('Зонда не слышно','Выраженность '+(inf.prom===null?'—':inf.prom.toFixed(0))+' дБ, нужно 12. '+NOPROBE); slFail(); return; }
     return sleep(500).then(function(){ SL.prep='wave'; SL.T=Tune.create(100,true); say('Помаши ладонью','К разъёму и от него, 5–15 см — вихрь ходит за ней. Секунд пять.');
-      return new Promise(function(r){ SL.onCaught=r; }); }).then(function(){ SL.prep='done'; slReady(); }); })
+      return new Promise(function(r){ SL.onCaught=r; }); }).then(function(){ SL.prep='done'; slCalMine(); slReady(); }); })
   .catch(function(e){ say('Не вышло',(e&&e.message)||String(e)); slFail(); }); }
+/* ── 1.56g: общая калибровка (автор: один игрок — каждый телефон подгонял середину под свою ладонь, и чтобы выпрямить струну, одну ладонь
+   приходилось уводить вверх, другую вниз). Поймав взмахи, телефон шлёт середину своего размаха по дальности эха (мм от телефона) и поле;
+   оба берут среднее: ладонь на одном расстоянии от своего телефона — вихри на одной высоте. «Своя у каждого» — как было ── */
+var SL_CAL='shared'; try{ SL_CAL=localStorage.getItem('sonar_sl_cal')==='own'?'own':'shared'; }catch(e){}
+function slCalLabel(){ el('siCal').textContent='Калибровка: '+(SL_CAL==='own'?'своя у каждого':'общая (один игрок двумя руками)'); }
+function slCalMine(){ if(!SL.T||SL.bot) return; var c=DSP2.info().cal; SL.calMe={r:+((100-c.o)/c.k).toFixed(1),f:+SL.T.field.toFixed(1)}; slogEv('калибровка: середина '+SL.calMe.r+' мм, поле '+SL.calMe.f);
+  slSend({e:'cal',r:SL.calMe.r,f:SL.calMe.f}); slCalShare(); }
+function slCalShare(){ if(SL_CAL!=='shared'||!SL.calMe||!SL.calPeer||!SL.T||SL.calDone===SL.calPeer.r+'/'+SL.calPeer.f) return; SL.calDone=SL.calPeer.r+'/'+SL.calPeer.f;
+  var c=DSP2.info().cal, rc=(SL.calMe.r+SL.calPeer.r)/2, fc=(SL.calMe.f+SL.calPeer.f)/2, d=100-(c.k*rc+c.o);
+  DSP2.shift(d); if(SL.dist!==null&&SL.dist!==undefined) SL.dist+=d; SL.T.field=fc; slogEv('общая калибровка: середина '+rc.toFixed(1)+' мм (моя '+SL.calMe.r+', напарника '+SL.calPeer.r+'), поле '+fc.toFixed(1)+', сдвиг '+d.toFixed(1)); }
 function slFail(){ el('slBtns').classList.remove('hidden'); el('slAgain').classList.add('hidden'); el('slRetry').classList.remove('hidden'); }
 function slFrame(r){ if(r){ SL.present=r.present; if(r.present) SL.dist=r.height; } }
 function slReady(){ SL.ready=true; if(SL.bot){ slStartAt(Date.now()+3200,(Math.random()*4294967296)>>>0); return; }
@@ -97,7 +128,8 @@ function slPos(o,t){ var dt=t-o.ts, v;
   v=o.dir>0?-0.08+o.sp*dt:1.08-o.sp*dt; return {u:o.u+o.sw*Math.sin(o.ph+dt*1.3),v:v}; }
 /* ── высоты: доля ладони → v (0 — верх экрана); напарник — с задержкой 120 мс по общим часам, без рывков ── */
 function slV(f){ return 1-(SL_M+f*(1-2*SL_M)); }
-function slPartner(){ if(SL.bot) return SL.botH; var b=SL.pb, n=b.length; if(!n) return null; var tt=slNow()-120, i;
+/* напарник рисуется чуть позади общих часов, чтобы ехал плавно: через сервер — 120 мс, напрямую — половина задержки + 30 мс (не меньше 40) */
+function slPartner(){ if(SL.bot) return SL.botH; var b=SL.pb, n=b.length; if(!n) return null; var lag=slDirect()&&SL.rttD?Math.max(40,Math.min(120,SL.rttD/2+30)):120, tt=slNow()-lag, i;
   for(i=n-1;i>0;i--) if(b[i-1][0]<=tt) break; if(i<=0) return b[0][1]<0?null:b[0][1];
   var p=b[i-1], q=b[i]; if(p[1]<0||q[1]<0) return q[1]<0?null:q[1]; var w=Math.max(0,Math.min(1,(tt-p[0])/Math.max(1,q[0]-p[0]))); return p[1]+(q[1]-p[1])*w; }
 function slStr(u,vL,vR){ return vL+(vR-vL)*(u-SL_UL)/(SL_UR-SL_UL); }
@@ -130,7 +162,8 @@ function slLoop(now){ var dt=Math.min(0.05,(now-SL.last)/1000); SL.last=now; slS
   if(SL.frac!==undefined){ var ty=slV(SL.frac); SL.hy=SL.hy===null?ty:SL.hy+(ty-SL.hy)*(1-Math.pow(0.51,dt*60)); }
   SL.palm=palm;
   /* высота — напарнику, 25 раз в секунду */
-  if(!SL.bot&&SL.code&&now-(SL.sent||0)>40){ SL.sent=now; slSend({h:palm&&SL.frac!==undefined?+SL.frac.toFixed(4):-1,s:Math.round(slNow())}); }
+  if(!SL.bot&&SL.code&&now-(SL.sent||0)>(slDirect()?15:40)){ SL.sent=now; slSend({h:palm&&SL.frac!==undefined?+SL.frac.toFixed(4):-1,s:Math.round(slNow())}); }
+  if(!SL.bot&&SL.code&&now-(SL.pinged||0)>2000){ SL.pinged=now; slPing(); }
   var vMe=SL.hy===null?0.5:SL.hy;
   if(SL.bot&&(SL.phase==='play'||SL.phase==='count')) slBot(dt,vMe);
   var hp=slPartner(); if(hp!==null&&hp!==undefined){ var tp=slV(hp); SL.pv=SL.pv===undefined?tp:SL.pv+(tp-SL.pv)*(1-Math.pow(0.4,dt*60)); }
@@ -209,6 +242,8 @@ function slDraw(ts){ var cv=el('slC'); if(!cv||!cv.getContext) return; var g=cv.
 el('lkString').addEventListener('click',slOpen);
 el('siCtl').addEventListener('click',function(){ SL_CTL=SL_CTL==='touch'?'palm':'touch'; try{ localStorage.setItem('sonar_sl_ctl',SL_CTL); }catch(e){} slCtlLabel(); });
 el('siNew').addEventListener('click',function(){ slBegin('new'); });
+el('siNear').addEventListener('click',function(){ slBegin('near'); });
+el('siCal').addEventListener('click',function(){ SL_CAL=SL_CAL==='own'?'shared':'own'; try{ localStorage.setItem('sonar_sl_cal',SL_CAL); }catch(e){} slCalLabel(); });
 el('siJoin').addEventListener('click',function(){ if(!/^\d{4}$/.test(el('siCode').value)){ el('siNow').textContent='Код — 4 цифры'; return; } slBegin('join'); });
 el('siBot').addEventListener('click',function(){ slBegin('bot'); });
 el('siBack').addEventListener('click',function(){ show('link'); });

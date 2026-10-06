@@ -82,3 +82,5 @@ scores screen shows the table without them (`/v1/top?…&bots=0`); `stats.js` ne
 ## SonarLink: a room for two phones (since 1.56c)
 
 `server/pair.js`: one phone opens a room (a 4-digit code), the other joins by the code; each listens to a stream (Server-Sent Events — a plain long response, no nginx or Caddy change: the server tells nginx not to buffer it, `X-Accel-Buffering: no`) and posts its messages, which the server hands to the other phone. Nothing is stored: rooms live in memory and die after 30 quiet minutes (or a restart). Limits: opening a room 10 a minute per address, joining 20, messages 60 a second per phone, 2 KB each. Update the server as usual: `cd /opt/sonaroids && sudo git pull && sudo systemctl restart sonaroids-api`.
+
+**«Near» (since 1.56g):** `POST /v1/pair/near` — two presses from one network (one public IPv4 address or one IPv6 /64) within half a minute land in one room, no code. The phones then open a direct WebRTC channel; the server only introduces them through the room's messages.

@@ -33,6 +33,13 @@ const wait=(f,ms)=>new Promise(r=>{ const t0=Date.now(); (function k(){ if(f()||
   check('each carries the server clock', eb.filter(e=>e.name==='m').every(e=>typeof e.data.t==='number'));
   r=await post('/v1/pair/send',{code:A.code,key:A.key,m:'x'.repeat(3000)}); check('a message over 2 KB is refused', r.code===400);
   let lim=0; for(let i=0;i<70;i++){ r=await post('/v1/pair/send',{code:A.code,key:A.key,m:i}); if(r.code===429) lim++; } check('a side cannot flood the room (60 a second)', lim>0, lim+' of 70 refused');
+  /* v1.56g: two phones side by side, no code — the same network meets in one room; another network gets its own */
+  const postIp=(u,b,ipx)=>fetch(base+u,{method:'POST',headers:{'Content-Type':'text/plain','Origin':'https://sonaroids.app','X-Forwarded-For':ipx},body:JSON.stringify(b)}).then(async r=>({code:r.status,j:await r.json()}));
+  const n1=await postIp('/v1/pair/near',{},'203.0.113.7'), n3=await postIp('/v1/pair/near',{},'198.51.100.9'), n2=await postIp('/v1/pair/near',{},'203.0.113.7');
+  check('«рядом»: the same network meets in one room, without a code', n1.j.ok&&n2.j.ok&&n1.j.code===n2.j.code&&n1.j.side===0&&n2.j.side===1&&n1.j.near&&n2.j.near, 'room '+n1.j.code);
+  check('«рядом»: another network gets a room of its own', n3.j.ok&&n3.j.code!==n1.j.code&&n3.j.side===0);
+  const v6a=await postIp('/v1/pair/near',{},'2001:db8:1:2:aaaa::1'), v6b=await postIp('/v1/pair/near',{},'2001:db8:1:2:bbbb::2');
+  check('«рядом»: IPv6 phones of one Wi-Fi (one /64) meet too', v6a.j.code===v6b.j.code&&v6b.j.side===1);
   eb.close(); await wait(()=>ea.some(e=>e.name==='peer'&&e.data.here===false),2000);
   check('the first phone hears its partner go', ea.some(e=>e.name==='peer'&&e.data.here===false));
   ea.close(); server.closeAllConnections&&server.closeAllConnections(); server.close(); try{ fs.unlinkSync(tmp); }catch(e){}

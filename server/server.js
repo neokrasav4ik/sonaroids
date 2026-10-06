@@ -214,9 +214,9 @@ const server=http.createServer(async(req,res)=>{
     /* v1.56c, СонарЛинк: rooms for two phones (server/pair.js). Opening and joining are limited like the transfer code; messages per room */
     if(url.pathname.startsWith('/v1/pair/')){ const pth=url.pathname.slice(9);
       if(req.method==='GET'&&pth==='sse'){ if(!allow('p:'+who,60)) return send(res,429,{ok:false,error:'slow down'},origin); if(!Pair.getSse(url,req,res,origin,now)) send(res,404,{ok:false,error:'code'},origin); return; }
-      if(req.method==='POST'&&(pth==='new'||pth==='join'||pth==='send')){
+      if(req.method==='POST'&&(pth==='new'||pth==='join'||pth==='send'||pth==='near')){
         if(pth!=='send'&&!allow((pth==='join'?'j:':'n:')+who,pth==='join'?20:10)) return send(res,429,{ok:false,error:'slow down'},origin);
-        const b=await readBody(req), [c,o]=pth==='new'?Pair.postNew(b,now):pth==='join'?Pair.postJoin(b,now):Pair.postSend(b,now); return send(res,c,o,origin); } }
+        const b=await readBody(req), [c,o]=pth==='new'?Pair.postNew(b,now):pth==='join'?Pair.postJoin(b,now):pth==='near'?Pair.postNear(b,now,who):Pair.postSend(b,now); return send(res,c,o,origin); } }
     if(req.method==='GET'&&url.pathname==='/v1/top'){ if(!allow('r:'+who,120)) return send(res,429,{ok:false,error:'slow down'},origin); const [c,o]=getTop(url,req,now); return send(res,c,o,origin); }
     if(req.method==='POST'&&(url.pathname==='/v1/game'||url.pathname==='/v1/nick'||url.pathname==='/v1/setup'||url.pathname==='/v1/link'||url.pathname==='/v1/claim')){
       const lim=url.pathname==='/v1/setup'?['s:',30]:url.pathname==='/v1/claim'?['c:',10]:['w:',20];   // a code is guessed at most 10 times a minute

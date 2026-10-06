@@ -7,6 +7,9 @@
      POST /v1/pair/join  {code}                 → {ok, code, key, side:1, t}      404 — no such room, 409 — the room is full
      GET  /v1/pair/sse?code=&key=               → text/event-stream: «hello» {side, peer, t}, «peer» {here}, «m» {m, t}; a comment every 15 s
      POST /v1/pair/send  {code, key, m}         → {ok, t}                         m — any JSON up to 2 KB
+     POST /v1/pair/near  {}                     → {ok, code, key, side, near:true, t}   v1.56g: two phones side by side, no code —
+                         the first press from a network opens a room and waits 30 s; the next press from the same network joins it.
+                         «The same network» — the same public IPv4 address, or the same IPv6 /64 (phones on one Wi-Fi share them).
    key — the side's secret (only the one who got it can listen or speak for that side). t — the server's clock, ms (for syncing the two). */
 'use strict';
 const crypto=require('node:crypto');
@@ -18,6 +21,12 @@ function newKey(){ return crypto.randomBytes(12).toString('hex'); }
 function sideOf(r,key){ return typeof key==='string'&&key.length===24?r.keys.indexOf(key):-1; }
 function event(res,name,obj){ try{ res.write('event: '+name+'\ndata: '+JSON.stringify(obj)+'\n\n'); }catch(e){} }
 
+const NEAR_WAIT=30000, near=new Map();   // network → {code, exp}
+function netOf(ip){ ip=String(ip||'').replace(/^::ffff:/,''); if(ip.indexOf(':')<0) return ip; return ip.split(':').slice(0,4).join(':')+'::/64'; }
+function postNear(b,now,ip){ const net=netOf(ip); for(const [k,w] of near) if(w.exp<now) near.delete(k);
+  const w=near.get(net), r=w&&rooms.get(w.code);
+  if(r&&!r.keys[1]&&w.exp>=now){ near.delete(net); const [c,o]=postJoin({code:w.code},now); o.near=true; return [c,o]; }
+  const [c,o]=postNew(b,now); if(o.ok){ near.set(net,{code:o.code,exp:now+NEAR_WAIT}); o.near=true; } return [c,o]; }
 function postNew(b,now){ sweep(now); if(rooms.size>=MAX_ROOMS) return [503,{ok:false,error:'busy'}];
   const code=newCode(); if(!code) return [503,{ok:false,error:'busy'}];
   const key=newKey(); rooms.set(code,{keys:[key,null],sse:[null,null],seen:now,n:[0,0],win:[now,now]});
@@ -45,4 +54,4 @@ function getSse(url,req,res,origin,now){ const r=rooms.get(String(url.searchPara
   const ping=setInterval(()=>{ try{ res.write(':\n\n'); }catch(e){} },PING); ping.unref&&ping.unref();
   req.on('close',()=>{ clearInterval(ping); if(r.sse[s]===res){ r.sse[s]=null; if(r.sse[1-s]) event(r.sse[1-s],'peer',{here:false,t:Date.now()}); } });
   return true; }
-module.exports={postNew,postJoin,postSend,getSse,rooms,sweep};
+module.exports={postNew,postJoin,postSend,postNear,getSse,rooms,sweep,netOf};

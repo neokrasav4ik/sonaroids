@@ -210,7 +210,7 @@
 <div class="screen hidden" id="strIntro"><div class="two wideb">
   <div class="col">
     <h1>Струна</h1>
-    <p>Два телефона торец к торцу, камеры друг к другу. Над каждым — свой вихрь, его ведёт ладонь у разъёма. Между вихрями струна: задевайте ею светлые частицы, тёмные сгустки её рвут — чтобы сшить, сведите вихри на одну высоту. На одной высоте струна горит и тянет частицы к себе.</p>
+    <p>Два телефона торец к торцу, камеры друг к другу. Над каждым — свой вихрь, его ведёт ладонь у разъёма. Между вихрями струна: задевайте ею светлые частицы. Тёмная клякса выползает с края, висит и уходит обратно — держите струну по другую сторону, иначе она порвётся (сшить — свести вихри на одну высоту). Вихри на одной высоте — струна горит: ловит частицы шире и сжигает кляксы.</p>
     <p class="small">На одном телефоне «Создать», на другом — код и «Войти». Тоны зонда телефоны выберут сами. «Один телефон» — второй вихрь ведёт бот, всё поле на одном экране.</p>
     <p><input id="siCode" inputmode="numeric" maxlength="4" placeholder="код" autocomplete="off"> <span id="siNow" class="mono"></span></p>
   </div>
@@ -2286,7 +2286,7 @@ el('more2Back').addEventListener('click',function(){ show('home'); });
 /* ── СОНАРЛИНК: «СТРУНА» — прототип игры на двух телефонах (06.10, 1.56c) ──
    Эскиз «А» (sonarlink_3): два телефона торец к торцу, камеры друг к другу — одно поле из двух экранов. У внешнего края каждого
    (у разъёма) свой вихрь, его высоту ведёт ладонь у этого разъёма (как корабль Sonaroids: подстройка Tune, доля высоты). Между вихрями
-   струна через стык экранов. Сверху и снизу через поле плывут светлые частицы (задеть струной — собрать) и тёмные сгустки (рвут струну;
+   струна через стык экранов. Сверху и снизу через поле плывут светлые частицы (задеть струной — собрать) и тёмные кляксы (рвут струну;
    сшить — свести вихри на одну высоту и подержать). Вихри на одной высоте — «резонанс»: струна горит и тянет частицы к себе. Раунд 90 с.
    Связь — комната на сервере рекордов (server/pair.js): код из 4 цифр, высота ладони 25 раз в секунду, события. Каждый телефон решает
    за свою половину поля (столкновения там, где предмет) и сообщает другому; поле одинаковое у обоих — из одного зерна и общих часов.
@@ -2321,6 +2321,7 @@ function slMsg(m,t){ if(!m) return;
   if(m.e==='start'){ slStartAt(m.T0,m.seed); return; }
   if(m.e==='got'){ slGot(m.k,false); return; }
   if(m.e==='cut'){ slCut(m.k,false); return; }
+  if(m.e==='burn'){ slBurn(m.k,false); return; }
   if(m.e==='stitch'){ slStitch(false); return; } }
 /* ── половина и тоны: разъём слева — левая половина, чётные тоны; справа — правая, нечётные ── */
 function slTones(){ setLinkPar(SL.bot?'all':SL.half==='L'?0:1); }   /* один телефон — соседа нет, все тоны */
@@ -2350,15 +2351,23 @@ function slFrame(r){ if(r){ SL.present=r.present; if(r.present) SL.dist=r.height
 function slReady(){ SL.ready=true; if(SL.bot){ slStartAt(Date.now()+3200,(Math.random()*4294967296)>>>0); return; }
   el('slSay').textContent=SL.peerReady?'Начинаем':'Готово'; el('slSub').textContent=SL.peerReady?'':'Ждём напарника.'; slSend({e:'ready'}); slMaybeStart(); }
 function slMaybeStart(){ if(SL.bot||SL.side!==0||!SL.ready||!SL.peerReady||SL.T0) return; var T0=slNow()+3500, seed=(Math.random()*4294967296)>>>0; slSend({e:'start',T0:T0,seed:seed}); slStartAt(T0,seed); }
-function slStartAt(T0,seed){ SL.T0=T0; SL.seed=seed; SL.objs=slWorld(seed); SL.phase='count'; SL.score=0; SL.got=0; SL.cuts=0; SL.combo=1; SL.cut=null; }
+function slStartAt(T0,seed){ SL.T0=T0; SL.seed=seed; SL.objs=slWorld(seed); SL.phase='count'; SL.score=0; SL.got=0; SL.cuts=0; SL.burned=0; SL.combo=1; SL.cut=null; }
 /* ── поле: из зерна, одинаковое у обоих. Предмет k: появляется в ts, по u, сверху или снизу, плывёт поперёк ── */
 function slRng(s){ return function(){ s=(s+0x6D2B79F5)>>>0; var t=s; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
 function slWorld(seed){ var r=slRng(seed), a=[], t=1.2, k=0;
   while(t<SL_ROUND){ var d=Math.min(1,t/70), clot=t>18&&r()<0.12+0.25*d, up=r()<0.5, sp=0.11+0.11*d+0.04*r();
-    a.push({k:k++,ts:t,u:0.14+0.72*r(),dir:up?-1:1,sp:sp,kind:clot?'c':'p',ph:r()*6.28,sw:0.012+0.02*r(),gone:false});
+    var o={k:k++,ts:t,u:0.14+0.72*r(),dir:up?-1:1,sp:sp,kind:clot?'c':'p',ph:r()*6.28,sw:0.012+0.02*r(),gone:false};
+    /* 06.10 (автор: «как от неё увернуться? если никак — в чём смысл?»): клякса не пролетает поле насквозь — выползает с края до своей
+       глубины (0,22–0,5 высоты), висит 3–5 с и уходит обратно; перед выходом 1 с светится край. Держи струну по другую сторону —
+       или выровняйте вихри: горящая струна (резонанс) кляксу сжигает */
+    if(clot){ o.sp=0.16+0.06*d; o.dep=0.22+0.28*r(); o.hold=3+2*r(); o.ts+=1; o.warn=1; }
+    a.push(o);
     t+=Math.max(0.3,0.75-0.4*d+0.4*r()); }   /* на поле разом ~8–14 предметов */
   return a; }
-function slPos(o,t){ var dt=t-o.ts, v=o.dir>0?-0.08+o.sp*dt:1.08-o.sp*dt; return {u:o.u+o.sw*Math.sin(o.ph+dt*1.3),v:v}; }
+function slPos(o,t){ var dt=t-o.ts, v;
+  if(o.kind==='c'){ var tin=(o.dep+0.08)/o.sp, d2=dt<tin?o.dep+0.08-o.sp*dt:dt<tin+o.hold?0.012*Math.sin(dt*3+o.ph):o.sp*(dt-tin-o.hold);   /* d2 — насколько клякса не дошла до своей глубины (при уходе — насколько отошла) */
+    var depth=o.dep-d2; v=o.dir>0?depth:1-depth; return {u:o.u+o.sw*Math.sin(o.ph+dt*0.7),v:v,hover:dt>=tin&&dt<tin+o.hold,out:dt>tin+o.hold}; }
+  v=o.dir>0?-0.08+o.sp*dt:1.08-o.sp*dt; return {u:o.u+o.sw*Math.sin(o.ph+dt*1.3),v:v}; }
 /* ── высоты: доля ладони → v (0 — верх экрана); напарник — с задержкой 120 мс по общим часам, без рывков ── */
 function slV(f){ return 1-(SL_M+f*(1-2*SL_M)); }
 function slPartner(){ if(SL.bot) return SL.botH; var b=SL.pb, n=b.length; if(!n) return null; var tt=slNow()-120, i;
@@ -2370,11 +2379,16 @@ function slGot(k,mine){ var o=SL.objs[k]; if(!o||o.gone) return; o.gone=true; SL
   var p=slPos(o,SL.t); SL.fx.push({u:p.u,v:p.v,t:SL.t,kind:'got'}); if(mine) slSend({e:'got',k:k}); }
 function slCut(k,mine){ var o=SL.objs[k]; if(o) o.gone=true; if(SL.cut) return; var p=o?slPos(o,SL.t):{u:0.5,v:0.5}; SL.cut={u:p.u,t:SL.t}; SL.cuts++; SL.combo=1; SL.alignT=0;
   SL.fx.push({u:p.u,v:p.v,t:SL.t,kind:'cut'}); if(mine) slSend({e:'cut',k:k}); }
+function slBurn(k,mine){ var o=SL.objs[k]; if(!o||o.gone) return; o.gone=true; SL.burned=(SL.burned||0)+1; SL.score+=Math.round(25*SL.combo); var p=slPos(o,SL.t); SL.fx.push({u:p.u,v:p.v,t:SL.t,kind:'burn'}); if(mine) slSend({e:'burn',k:k}); }
 function slStitch(mine){ if(!SL.cut) return; SL.cut=null; SL.fx.push({u:0.5,v:0.5,t:SL.t,kind:'stitch'}); if(mine) slSend({e:'stitch'}); }
-/* ── бот второго вихря (режим «один телефон»): ведёт струну к ближней частице своей половины, уходит от сгустков, при обрыве идёт к игроку ── */
+/* ── бот второго вихря (режим «один телефон»): ведёт струну к ближней частице своей половины, уходит от клякс, при обрыве идёт к игроку ── */
 function slBot(dt,vMe){ var mine=SL.half==='L'?'R':'L', want=0.5, best=1e9, i, o, p;
   if(SL.cut) want=vMe; else for(i=0;i<SL.objs.length;i++){ o=SL.objs[i]; if(o.gone||o.ts>SL.t) continue; p=slPos(o,SL.t); if(p.v<-0.05||p.v>1.05) continue; if((p.u<0.5)!==(mine==='L')) continue;
     var tt=Math.abs(p.v-0.5)/o.sp; if(o.kind==='p'&&tt<best){ best=tt; var uo=mine==='L'?SL_UL:SL_UR, um=mine==='L'?SL_UR:SL_UL, s=(p.u-uo)/(um-uo); want=Math.max(0.05,Math.min(0.95,(p.v-s*vMe)/(1-s||1))); } }
+  /* клякса на половине бота у струны — увести свой конец за неё (на сторону, противоположную её краю) */
+  for(i=0;i<SL.objs.length;i++){ o=SL.objs[i]; if(o.gone||o.kind!=='c'||o.ts>SL.t) continue; p=slPos(o,SL.t); if(p.v<-0.05||p.v>1.05) continue;
+    var uo2=mine==='L'?SL_UL:SL_UR, um2=mine==='L'?SL_UR:SL_UL, s2=(p.u-uo2)/(um2-uo2), vs=(SL.botV===undefined?0.5:SL.botV)*(1-s2)+vMe*s2;
+    if(Math.abs(p.v-vs)<0.18&&s2<0.85){ var tgt=o.dir>0?Math.min(0.97,p.v+0.16):Math.max(0.03,p.v-0.16); want=Math.max(0.03,Math.min(0.97,(tgt-s2*vMe)/(1-s2||1))); break; } }
   if(SL.botV===undefined) SL.botV=0.5; SL.botV+=(want-SL.botV)*(1-Math.pow(0.12,dt)); SL.botH=Math.max(0,Math.min(1,(1-SL.botV-SL_M)/(1-2*SL_M))); }
 /* ── шаг ── */
 function slLoopStart(){ SL.last=performance.now(); cancelAnimationFrame(SL.raf||0); SL.raf=requestAnimationFrame(slLoop); }
@@ -2395,20 +2409,20 @@ function slLoop(now){ var dt=Math.min(0.05,(now-SL.last)/1000); SL.last=now; slS
   var vL=SL.half==='L'?vMe:(SL.pv===undefined?0.5:SL.pv), vR=SL.half==='R'?vMe:(SL.pv===undefined?0.5:SL.pv); SL.vL=vL; SL.vR=vR;
   /* время игры по общим часам */
   if(SL.T0){ SL.t=((SL.bot?Date.now():slNow())-SL.T0)/1000;
-    if(SL.phase==='count'){ var c=Math.ceil(-SL.t); el('slSay').textContent=c>0?String(c):''; el('slSub').textContent=c>0?'Вихри — к частицам, мимо сгустков.':''; if(SL.t>=0){ SL.phase='play'; el('slSay').textContent=''; el('slSub').textContent=''; } }
+    if(SL.phase==='count'){ var c=Math.ceil(-SL.t); el('slSay').textContent=c>0?String(c):''; el('slSub').textContent=c>0?'Струной — по частицам. От кляксы — держись по другую сторону, или выровняйте вихри и сожгите её.':''; if(SL.t>=0){ SL.phase='play'; el('slSay').textContent=''; el('slSub').textContent=''; } }
     if(SL.phase==='play'){ slStep(dt); if(SL.t>=SL_ROUND) slOver(false); } }
   slDraw(now/1000); slHud(); SL.raf=requestAnimationFrame(slLoop); }
-function slStep(dt){ var vL=SL.vL, vR=SL.vR, res=Math.abs(vL-vR)<0.04&&!SL.cut, i, o, p;
+function slStep(dt){ var vL=SL.vL, vR=SL.vR, res=Math.abs(vL-vR)<0.05&&!SL.cut, i, o, p;
   SL.res+=((res?1:0)-SL.res)*(1-Math.pow(0.02,dt));
-  for(i=0;i<SL.objs.length;i++){ o=SL.objs[i]; if(o.gone||o.ts>SL.t) continue; p=slPos(o,SL.t); if(p.v<-0.1||p.v>1.1){ if(SL.t-o.ts>2) o.gone=true; continue; }
+  for(i=0;i<SL.objs.length;i++){ o=SL.objs[i]; if(o.gone||o.ts>SL.t) continue; p=slPos(o,SL.t); if(p.v<-0.1||p.v>1.1){ if(SL.t-o.ts>2&&(o.kind!=='c'||p.out)) o.gone=true; continue; }
     var myHalf=SL.bot||((p.u<0.5)===(SL.half==='L')); if(!myHalf) continue;   /* решает тот, на чьей половине предмет */
     var dv=Math.abs(p.v-slStr(p.u,vL,vR));
     if(o.kind==='p'&&!SL.cut){ if(dv<(res?0.11:0.05)) slGot(o.k,true); }
-    else if(o.kind==='c'&&!SL.cut&&dv<0.045) slCut(o.k,true); }
+    else if(o.kind==='c'&&!SL.cut&&dv<0.045){ if(res) slBurn(o.k,true); else slCut(o.k,true); } }
   /* сшить: вихри на одной высоте 0,6 с — решает левая половина (или бот) */
   if(SL.cut&&(SL.bot||SL.half==='L')){ SL.alignT=Math.abs(vL-vR)<0.07?SL.alignT+dt:0; if(SL.alignT>0.6) slStitch(true); } }
-function slHud(){ if(SL.phase==='play'||SL.phase==='over') el('slHud').textContent='счёт '+SL.score+' · частиц '+SL.got+' · обрывов '+SL.cuts+(SL.phase==='play'?' · '+Math.max(0,Math.ceil(SL_ROUND-SL.t))+' с':'')+(SL.code?' · код '+SL.code:''); }
-function slOver(err){ if(!err){ SL.phase='over'; el('slSay').textContent='Финиш'; el('slSub').textContent='счёт '+SL.score+' · частиц '+SL.got+' · обрывов '+SL.cuts; }
+function slHud(){ if(SL.phase==='play'||SL.phase==='over') el('slHud').textContent='счёт '+SL.score+' · частиц '+SL.got+' · сожжено '+(SL.burned||0)+' · обрывов '+SL.cuts+(SL.phase==='play'?' · '+Math.max(0,Math.ceil(SL_ROUND-SL.t))+' с':'')+(SL.code?' · код '+SL.code:''); }
+function slOver(err){ if(!err){ SL.phase='over'; el('slSay').textContent='Финиш'; el('slSub').textContent='счёт '+SL.score+' · частиц '+SL.got+' · сожжено клякс '+(SL.burned||0)+' · обрывов '+SL.cuts; }
   el('slBtns').classList.remove('hidden'); el('slStop').classList.add('hidden'); }
 function slExit(){ slReset(); if(booted) setProbe('off'); mode=null; slOpen(); }
 /* ── рисование: своя половина поля (или всё поле — «один телефон») ── */
@@ -2436,8 +2450,12 @@ function slDraw(ts){ var cv=el('slC'); if(!cv||!cv.getContext) return; var g=cv.
   if(SL.phase==='play'||SL.phase==='over') for(i=0;i<SL.objs.length;i++){ var o=SL.objs[i]; if(o.gone||o.ts>SL.t) continue; var p=slPos(o,SL.t); if(p.v<-0.1||p.v>1.1) continue; var x=slX(p.u), y=p.v*H;
     if(x<-30||x>W+30) continue;
     if(o.kind==='p'){ slGlow(g,x,y,15,SL_P,0.75); g.strokeStyle=slHex(SL_P,0.8); g.lineWidth=1; g.beginPath(); g.moveTo(x-8,y); g.lineTo(x+8,y); g.moveTo(x,y-8); g.lineTo(x,y+8); g.stroke(); g.fillStyle='#fff'; g.beginPath(); g.arc(x,y,2.6,0,7); g.fill(); }
-    else { slGlow(g,x,y,26,'#7a4cff',0.3); g.fillStyle='#05030a'; g.strokeStyle=slHex('#7a4cff',0.9); g.lineWidth=1.6; g.beginPath(); var rr=slRng(o.k+7);
+    else { var pc=slPos(o,SL.t); if(pc.hover) slGlow(g,x,y,34+6*Math.sin(ts*6),'#b48cff',0.25);
+      slGlow(g,x,y,26,'#7a4cff',0.3); g.fillStyle='#05030a'; g.strokeStyle=slHex('#7a4cff',0.9); g.lineWidth=1.6; g.beginPath(); var rr=slRng(o.k+7);
       for(var j=0;j<=18;j++){ var a=j/18*6.283+ts*0.6, R=13*(0.75+rr()*0.45)*(j%2?0.8:1.1); if(j) g.lineTo(x+Math.cos(a)*R,y+Math.sin(a)*R); else g.moveTo(x+Math.cos(a)*R,y+Math.sin(a)*R); } g.closePath(); g.fill(); g.stroke(); } }
+  /* клякса скоро выйдет: край светится там, где она появится */
+  if(SL.phase==='play') for(i=0;i<SL.objs.length;i++){ var oc=SL.objs[i]; if(oc.kind!=='c'||oc.gone||SL.t<oc.ts-oc.warn||SL.t>oc.ts) continue; var xw=slX(oc.u); if(xw<-40||xw>W+40) continue;
+    var k2=1-(oc.ts-SL.t)/oc.warn, yw=oc.dir>0?0:H; slGlow(g,xw,yw,40+20*k2,'#7a4cff',0.25+0.35*k2); }
   /* струна */
   if(SL.half&&(live||SL.phase==='prep'||SL.phase==='pair')){ var N2=64, pts=[]; for(i=0;i<=N2;i++){ var tt=i/N2, u=SL_UL+(SL_UR-SL_UL)*tt; pts.push({u:u,v:vL+(vR-vL)*tt,t:tt}); }
     var cutU=SL.cut?SL.cut.u:null, wob=SL.cut?Math.min(1,(SL.t-SL.cut.t)*2):0, glow=1+SL.res*1.5;
@@ -2454,7 +2472,7 @@ function slDraw(ts){ var cv=el('slC'); if(!cv||!cv.getContext) return; var g=cv.
     g.save(); g.globalAlpha=dim; g.translate(x,y); g.rotate(q[4]*ts*1.4); g.drawImage(sp,-S/2,-S/2,S,S); g.restore(); g.fillStyle='#fff'; g.beginPath(); g.arc(x,y,4,0,7); g.fill(); });
   /* вспышки */
   SL.fx=SL.fx.filter(function(e){ return SL.t-e.t<0.6; }); SL.fx.forEach(function(e){ var k=(SL.t-e.t)/0.6, x=slX(e.u), y=e.v*H;
-    g.strokeStyle=e.kind==='cut'?slHex('#b48cff',1-k):slHex(e.kind==='stitch'?'#ffffff':SL_P,1-k); g.lineWidth=2; g.beginPath(); g.arc(x,y,6+k*(e.kind==='stitch'?120:28),0,7); g.stroke(); });
+    g.strokeStyle=e.kind==='cut'?slHex('#b48cff',1-k):e.kind==='burn'?slHex('#ffd34d',1-k):slHex(e.kind==='stitch'?'#ffffff':SL_P,1-k); g.lineWidth=2; g.beginPath(); g.arc(x,y,6+k*(e.kind==='stitch'?120:e.kind==='burn'?60:28),0,7); g.stroke(); });
   /* стык: на своём телефоне у внутреннего края — тонкий свет */
   if(!SL.full&&SL.half){ var sx=SL.half==='L'?W:0, q2=g.createLinearGradient(sx,0,SL.half==='L'?W-18:18,0); q2.addColorStop(0,'rgba(255,244,224,.18)'); q2.addColorStop(1,'rgba(255,244,224,0)'); g.fillStyle=q2; g.fillRect(SL.half==='L'?W-18:0,0,18,H); } }
 /* ── кнопки и палец ── */

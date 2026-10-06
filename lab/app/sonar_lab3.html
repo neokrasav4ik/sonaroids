@@ -2718,7 +2718,7 @@ function slRulerStep(){ var t=SL.t, sc=SL.rs; if(!sc) return;
    совпадают. Автор: «25–5 слишком много — махать устанешь.. 5–15 норм»; «калибровка по линейке перед каждой игрой — недружелюбно»).
    Один раз на телефоне: кулак на 5, 10, 15, 10, 5 см (2,5 с перевести, 3 с держать) — таблица «мм эха → см» хранится в телефоне; в «Струне»
    вихрь ставится прямо по высоте кулака: 5 см — низ, 15 см — верх, одинаково на обоих телефонах, без взмахов и «ровно» ── */
-var SL_TAB=null, SL_TAB_LO=5, SL_TAB_HI=15, SL_TAB_ON=/[?&]tab=1/.test(location.search); try{ if(SL_TAB_ON) var tb=JSON.parse(localStorage.getItem('sonar_sl_tab')||'null'); if(tb&&tb.pts&&tb.pts.length>=2) SL_TAB=tb; }catch(e){}
+var SL_TAB=null, SL_TAB_LO=5, SL_TAB_HI=15, SL_TAB_ON=(function(){ try{ return /[?&]tab=1/.test(location.search); }catch(e){ return false; } })();   /* стенды в node — без location */ try{ if(SL_TAB_ON) var tb=JSON.parse(localStorage.getItem('sonar_sl_tab')||'null'); if(tb&&tb.pts&&tb.pts.length>=2) SL_TAB=tb; }catch(e){}
 function slCalibScript(){ var a=[], cms=[5,10,15,10,5], i;
   for(i=0;i<cms.length;i++){ a.push({k:'move',cm:cms[i],dur:2.5,txt:'Кулак — '+cms[i]+' см',sub:'Низ кулака на '+cms[i]+' см по линейке, над разъёмом'}); a.push({k:'hold',cm:cms[i],dur:3,txt:'Держи: '+cms[i]+' см',sub:'Кулак неподвижно'}); }
   return a; }

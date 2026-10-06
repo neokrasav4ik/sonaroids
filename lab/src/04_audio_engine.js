@@ -51,8 +51,14 @@ function openMic(){
     audioNote='Режим для беззвучного iOS не принял — включил обычный.';
     return attempt('auto'); });
 }
+/* 06.10 (Ми 9 в приложении: игра слышит ладонь, лаба — нет): игра в приложении пишет микрофон и играет зонд сама (NativeAudio), а уходя
+   в лабу (тот же WebView), их не выключала — запись приложения держала микрофон (Android глушит вторую запись — см. 0.61), а зонд игры
+   (все тоны) продолжал пищать. Лаба при открытии и перед своим микрофоном выключает звук приложения */
+function natOff(){ try{ var A=window.SonaroidsApp; if(A&&A.audioStop) A.audioStop(); }catch(e){} }
+natOff();
 function boot(){
   if(booted) return Promise.resolve();
+  natOff();
 
   var AC=window.AudioContext||window.webkitAudioContext;
   if(!AC) return Promise.reject(new Error('нет Web Audio'));
@@ -106,7 +112,8 @@ function onFrame(e){
   var gap=(lastSeq>=0&&m.s!==lastSeq+1); lastSeq=m.s; if(gap) gaps++;
   if(collector){ collector.arr.push(m.f); if(collector.arr.length>=collector.n){ var c=collector; collector=null; c.done(c.arr); } }
   if(mode==='rec'&&rec.on){ if(gap) rec.gaps++; rec.frames.push(m.f); }
-  else if(mode==='str'){ var r6=DSP2.frame(m.f); if(r6) absS.st=r6; if(typeof slFrame==='function') slFrame(r6); }
+  else if(mode==='str'){ var r6=DSP2.frame(m.f); if(r6) absS.st=r6; if(typeof slFrame==='function') slFrame(r6); if(SLOG&&SLOG.on) slogFrame(m.f,r6,gap); }
+  else if(mode===null&&typeof SL!=='undefined'&&SL.logging&&SLOG&&SLOG.on) slogFrame(m.f,null,gap);   /* «Струна»: подготовка до обработки (выбор динамика, громкость) — тоже в журнал */
   else if(mode==='arc'){ var r5=DSP2.frame(m.f); if(r5) absS.st=r5; arcFrame(m.f,gap,r5); }
   else if(mode==='ark'){ var r4=DSP2.frame(m.f); if(r4) absS.st=r4; akFrame(m.f,gap,r4); }
   else if(mode==='right'){ var r3=(RP.D||DSP2).frame(m.f); if(r3) absS.st=r3; rpFrame(m.f,gap,r3); }

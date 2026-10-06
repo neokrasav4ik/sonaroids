@@ -35,9 +35,9 @@ function slMsg(m,t){ if(!m) return;
   if(m.e==='hi'){ SL.peerHalf=m.half; if(m.half===SL.half&&SL.side===1){ SL.half=SL.half==='L'?'R':'L'; SL.halfNote=true; slTones(); } if(m.ready) SL.peerReady=true; slStatus(); slMaybeStart(); return; }
   if(m.e==='ready'){ SL.peerReady=true; slMaybeStart(); return; }
   if(m.e==='start'){ slStartAt(m.T0,m.seed); return; }
-  if(m.e==='got'){ slGot(m.k,false); return; }
+  if(m.e==='got'){ slGot(m.k,false,m.p); return; }
   if(m.e==='cut'){ slCut(m.k,false); return; }
-  if(m.e==='burn'){ slBurn(m.k,false); return; }
+  if(m.e==='burn'){ slBurn(m.k,false,m.p); return; }
   if(m.e==='stitch'){ slStitch(false); return; } }
 /* ── половина и тоны: разъём слева — левая половина, чётные тоны; справа — правая, нечётные ── */
 function slTones(){ setLinkPar(SL.bot?'all':SL.half==='L'?0:1); }   /* один телефон — соседа нет, все тоны */
@@ -49,20 +49,26 @@ function slBegin(how){ slReset(); SL.bot=how==='bot'; show('strPlay'); el('slBtn
   if(SL.bot){ SL.half=slHalfGuess(); SL.full=true; slTones(); SL.phase='prep'; slPrep(); slLoopStart(); return; }
   SL.phase='pair'; el('slSay').textContent=how==='new'?'Открываю комнату…':'Вхожу…'; el('slSub').textContent='';
   var p=how==='new'?slPost('new',{}):slPost('join',{code:el('siCode').value});
-  p.then(function(j){ if(!j.ok){ el('slSay').textContent=j.status===404?'Нет такой комнаты':j.status===409?'Комната занята':'Сервер не ответил'; el('slSub').textContent='Проверь код.'; slOver(true); return; }
+  p.then(function(j){ if(!j.ok){ el('slSay').textContent=j.status===404&&how==='new'?'Сервер не умеет комнаты':j.status===404?'Нет такой комнаты':j.status===409?'Комната занята':'Сервер не ответил'; if(j.status===404&&how==='new'){ el('slSub').textContent='Его нужно обновить: cd /opt/sonaroids && sudo git pull && sudo systemctl restart sonaroids-api'; slOver(true); return; } el('slSub').textContent='Проверь код.'; slOver(true); return; }
       SL.code=j.code; SL.key=j.key; SL.side=j.side; SL.half=slHalfGuess(); slTones(); slListen(); slStatus(); slLoopStart(); slPrep(); })
    .catch(function(e){ el('slSay').textContent='Нет связи с сервером'; el('slSub').textContent=String(e&&e.message||e); slOver(true); }); }
 /* ── подготовка сонара: как в Sonaroids (пустая комната → взмахи → «поймал») ── */
 function slPrep(){ if(SL_CTL==='touch'){ slReady(); return; }
   var say=function(a,b){ SL.lastSay=[a,b||'']; if(SL.phase==='pair'&&!SL.peerHere&&!SL.bot) return; el('slSay').textContent=a; el('slSub').textContent=b||''; };
-  SL.prepSay=say; boot().then(function(){ return pickChannel(); }).then(function(){ return autoLevel(); }).then(function(L){
-    if(L.snr<30){ setProbe('off'); say('Зонда почти не слышно',NOPROBE); return null; }
+  /* 06.10: журнал подготовки (как «журнал настройки» лабы, до 120 с) — сохранить кнопкой, если не вышло; порог запаса при своих тонах — 26 дБ */
+  var thr=linkPar()==='all'?30:26;
+  SL.prepSay=say; el('slBtns').classList.add('hidden'); boot().then(function(){ SL.logging=true; slogStart('струна '+(SL.half||'')+' '+parName(linkPar())); slogEv('сеть: '+(SL.bot?'бот':'комната '+SL.code+', сторона '+SL.side)); return pickChannel(); })
+  .then(function(){ slogEv('канал: '+chan); return autoLevel(); }).then(function(L){
+    slogEv('уровень: запас '+L.snr.toFixed(1)+' дБ, громкость зонда '+L.g.toFixed(3)+(L.atMax?' (на пределе)':''));
+    if(L.snr<thr){ setProbe('off'); slogEv('не готово: тихо'); say('Зонда почти не слышно','Запас '+L.snr.toFixed(0)+' дБ, нужно '+thr+(L.atMax?'; громкость зонда уже на пределе — прибавь громкость телефона':'')+'. '+NOPROBE); slFail(); return null; }
     var cal0=dspBand(DSP2); DSP2.init(fs,linkPar()); DSP2.setCal(cal0); DSP2.set('autocenter',1); mode='str'; SL.sonar=true; SL.prep='empty';
     say('Убери руку','Слушаю пустую комнату. Тоны: '+parName(linkPar())+'.'); return rpWait(DSP2); }).then(function(st){
-    if(!st) return; if(st==='noprobe'){ setProbe('off'); mode=null; say('Зонда не слышно',NOPROBE); return; }
+    if(!st) return; var inf=DSP2.info(); slogEv('обработка: выраженность '+(inf.prom===null?'—':inf.prom.toFixed(1))+' дБ');
+    if(st==='noprobe'){ setProbe('off'); mode=null; slogEv('не готово: зонда не слышно'); say('Зонда не слышно','Выраженность '+(inf.prom===null?'—':inf.prom.toFixed(0))+' дБ, нужно 12. '+NOPROBE); slFail(); return; }
     return sleep(500).then(function(){ SL.prep='wave'; SL.T=Tune.create(100,true); say('Помаши ладонью','К разъёму и от него, 5–15 см — вихрь ходит за ней. Секунд пять.');
       return new Promise(function(r){ SL.onCaught=r; }); }).then(function(){ SL.prep='done'; slReady(); }); })
-  .catch(function(e){ say('Не вышло',(e&&e.message)||String(e)); }); }
+  .catch(function(e){ say('Не вышло',(e&&e.message)||String(e)); slFail(); }); }
+function slFail(){ el('slBtns').classList.remove('hidden'); el('slAgain').classList.add('hidden'); el('slRetry').classList.remove('hidden'); }
 function slFrame(r){ if(r){ SL.present=r.present; if(r.present) SL.dist=r.height; } }
 function slReady(){ SL.ready=true; if(SL.bot){ slStartAt(Date.now()+3200,(Math.random()*4294967296)>>>0); return; }
   el('slSay').textContent=SL.peerReady?'Начинаем':'Готово'; el('slSub').textContent=SL.peerReady?'':'Ждём напарника.'; slSend({e:'ready'}); slMaybeStart(); }
@@ -91,11 +97,12 @@ function slPartner(){ if(SL.bot) return SL.botH; var b=SL.pb, n=b.length; if(!n)
   var p=b[i-1], q=b[i]; if(p[1]<0||q[1]<0) return q[1]<0?null:q[1]; var w=Math.max(0,Math.min(1,(tt-p[0])/Math.max(1,q[0]-p[0]))); return p[1]+(q[1]-p[1])*w; }
 function slStr(u,vL,vR){ return vL+(vR-vL)*(u-SL_UL)/(SL_UR-SL_UL); }
 /* ── события ── */
-function slGot(k,mine){ var o=SL.objs[k]; if(!o||o.gone) return; o.gone=true; SL.got++; SL.score+=Math.round(10*SL.combo); SL.combo=Math.min(5,SL.combo+0.25);
-  var p=slPos(o,SL.t); SL.fx.push({u:p.u,v:p.v,t:SL.t,kind:'got'}); if(mine) slSend({e:'got',k:k}); }
+/* очки считает тот, кто поймал, и присылает их — у обоих счёт одинаковый, в каком бы порядке ни пришли события */
+function slGot(k,mine,pts){ var o=SL.objs[k]; if(!o||o.gone) return; o.gone=true; SL.got++; if(pts===undefined) pts=Math.round(10*SL.combo); SL.score+=pts; SL.combo=Math.min(5,SL.combo+0.25);
+  var p=slPos(o,SL.t); SL.fx.push({u:p.u,v:p.v,t:SL.t,kind:'got'}); if(mine) slSend({e:'got',k:k,p:pts}); }
 function slCut(k,mine){ var o=SL.objs[k]; if(o) o.gone=true; if(SL.cut) return; var p=o?slPos(o,SL.t):{u:0.5,v:0.5}; SL.cut={u:p.u,t:SL.t}; SL.cuts++; SL.combo=1; SL.alignT=0;
   SL.fx.push({u:p.u,v:p.v,t:SL.t,kind:'cut'}); if(mine) slSend({e:'cut',k:k}); }
-function slBurn(k,mine){ var o=SL.objs[k]; if(!o||o.gone) return; o.gone=true; SL.burned=(SL.burned||0)+1; SL.score+=Math.round(25*SL.combo); var p=slPos(o,SL.t); SL.fx.push({u:p.u,v:p.v,t:SL.t,kind:'burn'}); if(mine) slSend({e:'burn',k:k}); }
+function slBurn(k,mine,pts){ var o=SL.objs[k]; if(!o||o.gone) return; o.gone=true; SL.burned=(SL.burned||0)+1; if(pts===undefined) pts=Math.round(25*SL.combo); SL.score+=pts; var p=slPos(o,SL.t); SL.fx.push({u:p.u,v:p.v,t:SL.t,kind:'burn'}); if(mine) slSend({e:'burn',k:k,p:pts}); }
 function slStitch(mine){ if(!SL.cut) return; SL.cut=null; SL.fx.push({u:0.5,v:0.5,t:SL.t,kind:'stitch'}); if(mine) slSend({e:'stitch'}); }
 /* ── бот второго вихря (режим «один телефон»): ведёт струну к ближней частице своей половины, уходит от клякс, при обрыве идёт к игроку ── */
 function slBot(dt,vMe){ var mine=SL.half==='L'?'R':'L', want=0.5, best=1e9, i, o, p;
@@ -138,7 +145,7 @@ function slStep(dt){ var vL=SL.vL, vR=SL.vR, res=Math.abs(vL-vR)<0.05&&!SL.cut, 
   /* сшить: вихри на одной высоте 0,6 с — решает левая половина (или бот) */
   if(SL.cut&&(SL.bot||SL.half==='L')){ SL.alignT=Math.abs(vL-vR)<0.07?SL.alignT+dt:0; if(SL.alignT>0.6) slStitch(true); } }
 function slHud(){ if(SL.phase==='play'||SL.phase==='over') el('slHud').textContent='счёт '+SL.score+' · частиц '+SL.got+' · сожжено '+(SL.burned||0)+' · обрывов '+SL.cuts+(SL.phase==='play'?' · '+Math.max(0,Math.ceil(SL_ROUND-SL.t))+' с':'')+(SL.code?' · код '+SL.code:''); }
-function slOver(err){ if(!err){ SL.phase='over'; el('slSay').textContent='Финиш'; el('slSub').textContent='счёт '+SL.score+' · частиц '+SL.got+' · сожжено клякс '+(SL.burned||0)+' · обрывов '+SL.cuts; }
+function slOver(err){ el('slAgain').classList.toggle('hidden',!!err); el('slRetry').classList.add('hidden'); if(!err){ SL.phase='over'; el('slSay').textContent='Финиш'; el('slSub').textContent='счёт '+SL.score+' · частиц '+SL.got+' · сожжено клякс '+(SL.burned||0)+' · обрывов '+SL.cuts; }
   el('slBtns').classList.remove('hidden'); el('slStop').classList.add('hidden'); }
 function slExit(){ slReset(); if(booted) setProbe('off'); mode=null; slOpen(); }
 /* ── рисование: своя половина поля (или всё поле — «один телефон») ── */
@@ -204,3 +211,5 @@ el('slStop').addEventListener('click',function(){ if(SL.phase==='play'){ slOver(
 el('slAgain').addEventListener('click',function(){ if(SL.bot){ slBegin('bot'); return; } SL.T0=0; SL.ready=false; SL.peerReady=false; el('slBtns').classList.add('hidden'); el('slStop').classList.remove('hidden');
   SL.objs=[]; SL.phase='prep'; SL.ready=true; slSend({e:'ready'}); el('slSay').textContent='Готово'; el('slSub').textContent='Ждём напарника.'; slMaybeStart(); });
 el('slOut').addEventListener('click',slExit);
+el('slRetry').addEventListener('click',function(){ el('slBtns').classList.add('hidden'); SL.ready=false; slPrep(); });
+el('slLogB').addEventListener('click',function(){ slogSave(); });

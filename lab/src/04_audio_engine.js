@@ -4,9 +4,17 @@ if(typeof document==='undefined') return;
 var el=function(i){ return document.getElementById(i); };
 var N=512,fs,kLo,kHi,kc;
 var ctx,stream,node,an,gSL,gSR,gL,gR,booted=false, F_LO=18300, PROBE_G=0.25, PROBE_SNR=null;
-var mode=null,lastSeq=-1,gaps=0,collector=null;
+var mode=null,lastSeq=-1,gaps=0,collector=null,sS=null;
+/* СонарЛинк (06.10): два телефона рядом пищат каждый своими тонами — один чётными, другой нечётными, иначе зонд соседа путает обработку
+   (синтетика tools/sim_link.js: с одинаковыми тонами — ложная ладонь в пустой комнате и дрожь 16–28 мм; с разведёнными — как без соседа).
+   'all' — все тоны, как в игре; 0 — чётные; 1 — нечётные. Действует на всё в лабе: одиночный зонд (обычный и широкий), обработку, записи */
+var LINK_PAR='all'; try{ var lp=localStorage.getItem('sonar_link_par'); LINK_PAR=lp==='0'?0:lp==='1'?1:'all'; }catch(e){}
+function linkPar(){ return LINK_PAR; }
+function setLinkPar(p){ LINK_PAR=p; try{ localStorage.setItem('sonar_link_par',String(p)); }catch(e){}
+  if(booted&&sS){ var old=sS; sS=loopSrc(makeProbe(p)); sS.connect(gSL); sS.connect(gSR); sS.start(); try{ old.stop(); old.disconnect(); }catch(e){} } }
+function parName(p){ return p===0?'чётные':p===1?'нечётные':'все'; }
 function sleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
-function show(id){ ['home','orient','rec','recDone','cal','game','sideIntro','recSide','dualIntro','rightIntro','rightPlay','arkIntro','arkPlay','arcIntro','arcPlay','probes','twoIntro','recTwo','stIntro','recSt','stLive','depthIntro','pwCheck'].forEach(function(s){ el(s).classList.toggle('hidden',s!==id); });
+function show(id){ ['home','orient','rec','recDone','cal','game','sideIntro','recSide','dualIntro','rightIntro','rightPlay','arkIntro','arkPlay','arcIntro','arcPlay','probes','twoIntro','recTwo','stIntro','recSt','stLive','depthIntro','pwCheck','link','linkBeacon'].forEach(function(s){ el(s).classList.toggle('hidden',s!==id); });
   /* запись вбок идёт с телефоном вертикально — на её экранах просьба повернуть не показывается */
   if(document.body&&document.body.classList) document.body.classList.toggle('pok',id==='sideIntro'||id==='rightIntro'||id==='rightPlay'||id==='twoIntro'||id==='recTwo'||id==='stIntro'||id==='recSt'||id==='stLive'||id==='depthIntro'||(id==='recTwo'&&lastRec==='recDepth')||(id==='recDone'&&(lastRec==='recTwo'||lastRec==='recSt'||lastRec==='recDepth'))||((id==='recSide'||id==='recDone')&&(lastRec==='recSide'||lastRec==='recRight'))); fitScreen(); }
 /* всё в один экран: если видимый экран (или открытое меню игры) не влезает по высоте или ширине — уменьшаю базовый шрифт, пока не влезет */
@@ -56,7 +64,7 @@ function boot(){
   .then(function(){
     fs=ctx.sampleRate; var df=fs/N; kLo=Math.ceil(F_LO/df); kHi=Math.floor(20500/df); kc=Math.floor((kLo+kHi)/2);
     var mg=ctx.createChannelMerger(2);
-    var sS=loopSrc(makeProbe('all')), sL=loopSrc(makeProbe(0)), sR=loopSrc(makeProbe(1));
+    sS=loopSrc(makeProbe(linkPar())); var sL=loopSrc(makeProbe(0)), sR=loopSrc(makeProbe(1));
     gSL=ctx.createGain(); gSR=ctx.createGain(); gL=ctx.createGain(); gR=ctx.createGain();
     [gSL,gSR,gL,gR].forEach(function(g){ g.gain.value=0; });
     sS.connect(gSL); sS.connect(gSR); sL.connect(gL); sR.connect(gR);
@@ -111,7 +119,7 @@ setInterval(function(){ absS.fpsC=absS.fpsN; absS.fpsN=0; },1000);
 
 /* ── сигнал/шум в полосе зонда: 8 периодов подряд → зонд ровно в каждой 8-й линии спектра, шум — во всех ── */
 /* отношение сигнал/шум в полосе: 8 периодов подряд → зонд ровно в каждой 8-й линии, шум — во всех */
-function probeSNR(frames,fs,fLo,fHi){
+function probeSNR(frames,fs,fLo,fHi,par){   /* par — только свои тоны (СонарЛинк): линии тонов соседа не считаются ни зондом, ни шумом */
   var N8=frames.length*512, x=new Float64Array(N8), i, j;
   for(i=0;i<frames.length;i++) for(j=0;j<512;j++) x[i*512+j]=frames[i][j];
   var P=frames.length, df=fs/N8, b0=Math.floor(fLo/df), b1=Math.ceil(fHi/df), sig=0, nz=0, nl=0, nn=0;
@@ -119,7 +127,7 @@ function probeSNR(frames,fs,fLo,fHi){
     var w=2*Math.PI*b/N8, c=1, s=0, cw=Math.cos(w), sw=Math.sin(w), re=0, im=0;
     for(i=0;i<N8;i++){ re+=x[i]*c; im-=x[i]*s; var t=c*cw-s*sw; s=s*cw+c*sw; c=t; }
     var p=re*re+im*im, r=b%P;
-    if(r===0){ sig+=p; nl++; } else if(r>=2&&r<=P-2){ nz+=p; nn++; }
+    if(r===0){ if(par===0||par===1){ if((b/P)%2!==par) continue; } sig+=p; nl++; } else if(r>=2&&r<=P-2){ nz+=p; nn++; }
   }
   var noisePerBin=nz/(nn||1), probe=sig-noisePerBin*nl, noiseBand=noisePerBin*(b1-b0+1);
   return 10*Math.log10(Math.max(probe,1e-30)/Math.max(noiseBand,1e-30));
@@ -127,7 +135,7 @@ function probeSNR(frames,fs,fLo,fHi){
 
 /* ── автоуровень: убавляю свой зонд до минимума с запасом — громкость в комнате почти не зависит от громкости телефона ── */
 var SNR_TARGET=48, G_MIN=0.015, G_MAX=0.3;
-function measureSNR(){ return sleep(350).then(function(){ return collect(8); }).then(function(fr){ return probeSNR(fr,fs,bandLo(),20450); }); }
+function measureSNR(){ return sleep(350).then(function(){ return collect(8); }).then(function(fr){ return probeSNR(fr,fs,bandLo(),20450,(typeof linkPar==='function'?linkPar():'all')); }); }
 function autoLevel(){
   var tries=0;
   function step(){ return measureSNR().then(function(s){
@@ -143,7 +151,7 @@ function promSub(frames,parity){
   /* 0.46: with the wide probe playing, the check decodes the wide band with the wide probe's own tones and phases. Before, it decoded the
      game's band with the game probe's phases — the wide probe's tones there have other phases, the peak smeared, and on the Mi 9 Lite the
      recording refused to start even at 100% ("7–11 dB, need 15"), while the game with the same probe heard it at 33 dB */
-  var wideP=parity==='all'&&bandLo()!==F_LO, lo=wideP?Math.ceil(DEPTH_LO/(fs/N)):kLo, hi=wideP?Math.floor(DEPTH_HI/(fs/N)):kHi, kc=Math.floor((lo+hi)/2);
+  var wideP=bandLo()!==F_LO, lo=wideP?Math.ceil(DEPTH_LO/(fs/N)):kLo, hi=wideP?Math.floor(DEPTH_HI/(fs/N)):kHi, kc=Math.floor((lo+hi)/2);
   var ks=[],k,q,n; for(k=lo;k<=hi;k++) if(parity==='all'||k%2===parity) ks.push(k);
   var M=ks.length, T=(parity==='all')?N:N/2, acc=new Float64Array(T);
   frames.forEach(function(fr){

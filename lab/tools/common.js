@@ -50,6 +50,8 @@ function loadWav(file){
   return {meta,glog,x};
 }
 /* нижний край полосы по метаданным записи */
+/* СонарЛинк (06.10): какими тонами играл зонд — 'all', 0 (чётные) или 1 (нечётные) */
+function binsOf(meta){ const b=meta&&meta.probe&&meta.probe.bins; return b===0||b==='0'?0:b===1||b==='1'?1:'all'; }
 function bandOf(meta){ return (meta&&meta.probe&&meta.probe.f_lo)||17750; }
 function pass(DSP2,x){ const o=[]; for(let k=0;k<Math.floor(x.length/512);k++){ const r=DSP2.frame(x.subarray(k*512,(k+1)*512)); if(r) o.push(Object.assign({t:(k+1)*512/48000},r)); } return o; }
-module.exports={ROOT,OUT,appHtml,appJs,grab,dspSrc,gameSrc,makeDSP,makeGame,calCompute,physCal,probeSNR,loadWav,bandOf,pass};
+module.exports={ROOT,OUT,appHtml,appJs,grab,dspSrc,gameSrc,makeDSP,makeGame,calCompute,physCal,probeSNR,loadWav,bandOf,binsOf,pass};

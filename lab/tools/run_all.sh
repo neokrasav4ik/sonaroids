@@ -32,5 +32,7 @@ echo; echo "== широкий зонд для записи по метке: од
 echo; echo "== стерео вживую и запись с проводкой: один счёт, синтетика с микрофоном вбок =="; o=$(node tests/test_sweep.js); echo "$o" | grep -E "^(ok|FAIL|ИТОГ)"
 echo; echo "== широкий зонд: «слышен ли зонд» перед записью читает широкую полосу =="; o=$(node tests/test_wide_prom.js); echo "$o" | grep -E "^(ok|FAIL|ИТОГ)"
 echo; echo "== широкий зонд в игре лабы: полоса DSP2 с 16 кГц, калибровка широкого, высота за ладонью =="; o=$(node tests/test_wide_game.js); echo "$o" | grep -E "^(ok|FAIL|ИТОГ)"
+echo; echo "== СонарЛинк: соседний телефон пищит рядом — разведённые тоны (синтетика) =="; node sim_link.js --quick | tail -4
+echo; echo "== СонарЛинк через страницу: чётные тоны, сосед нечётными рядом, экран «пищу» =="; o=$(node tests/test_link.js); echo "$o" | grep -E "^(ok|FAIL|ИТОГ)"
 echo; echo "== всё в один экран (Chromium; без playwright пропускается) =="; python3 tests/test_layout.py | tail -8
 echo; echo "== микрофон и звуковая сессия =="; node tests/test_mic_session.js

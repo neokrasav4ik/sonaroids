@@ -21,7 +21,7 @@ function quickStart(){
   if(!calLive){ calLive=true; calLoop(); }
   pickChannel().then(function(){ return autoLevel(); }).then(function(L){
     if(L.snr<30){ setProbe('off'); CS.busy=false; calText('Готовлюсь','Зонда почти не слышно',NOPROBE); return null; }
-    curCal=dspBand(DSP2); DSP2.init(fs,'all'); DSP2.setCal(curCal); DSP2.set('autocenter',1); mode='cal'; slogStart('подготовка'); return waitReady(); }).then(function(st){
+    curCal=dspBand(DSP2); DSP2.init(fs,(typeof linkPar==='function'?linkPar():'all')); DSP2.setCal(curCal); DSP2.set('autocenter',1); mode='cal'; slogStart('подготовка'); return waitReady(); }).then(function(st){
     if(st===null||st===undefined) return;
     if(st==='noprobe'){ CS.busy=false; setProbe('off'); calText('Готовлюсь','Зонда не слышно',NOPROBE); return; }
     el('calS').textContent='Комната готова. Сейчас начнём.';

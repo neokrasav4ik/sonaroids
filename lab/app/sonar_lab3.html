@@ -161,6 +161,7 @@
   </div>
   <div class="col btns g2">
     <button id="goGame" class="big">Играть</button>
+    <button id="goLink" class="ghost">СонарЛинк: два телефона</button>
     <button id="goDepth" class="ghost">Ближняя и дальняя рука</button>
     <button id="goTwo" class="ghost">Две ладони (проба)</button>
     <button id="go_race" class="ghost">Трасса (прототип)</button>
@@ -172,6 +173,33 @@
     <button id="reload1" class="ghost">Перезагрузить</button>
     <button id="pwToggle" class="ghost wide">Зонд: …</button>
     <button id="toGame" class="ghost wide">← В игру</button>
+  </div>
+</div></div>
+
+<div class="screen hidden" id="link"><div class="two wideb">
+  <div class="col">
+    <h1>СонарЛинк: два телефона</h1>
+    <p>Два телефона торец к торцу, камеры друг к другу. Если оба пищат одними и теми же тонами, каждый слышит чужой зонд, и ладонь путается. Поэтому один телефон пищит <b>чётными</b> тонами, другой — <b>нечётными</b>.</p>
+    <p class="small"><b>Проба:</b> на правом телефоне — «нечётные» и «Только пищать». На левом — «чётные» и «Запись для меня». Потом то же, но оба «все». Потом правый выключен, левый «чётные». Три записи с левого — присылай.</p>
+    <p id="lkNow" class="mono"></p>
+  </div>
+  <div class="col btns">
+    <button id="lkPar" class="ghost wide">Тоны зонда: …</button>
+    <button id="lkBeacon" class="big">Только пищать</button>
+    <button id="lkRec" class="ghost">Запись для меня</button>
+    <button id="lkGame" class="ghost">Играть (как в лабе)</button>
+    <button id="lkBack" class="ghost">Назад</button>
+  </div>
+</div></div>
+
+<div class="screen hidden" id="linkBeacon"><div class="two">
+  <div class="col">
+    <h1 id="lbSay">Пищу</h1>
+    <p id="lbSub">Этот телефон только пищит — рядом второй телефон пишет или играет. Руку к этому телефону не подноси.</p>
+    <p id="lbNow" class="mono"></p>
+  </div>
+  <div class="col btns">
+    <button id="lbStop" class="big">Стоп</button>
   </div>
 </div></div>
 
@@ -838,9 +866,17 @@ if(typeof document==='undefined') return;
 var el=function(i){ return document.getElementById(i); };
 var N=512,fs,kLo,kHi,kc;
 var ctx,stream,node,an,gSL,gSR,gL,gR,booted=false, F_LO=18300, PROBE_G=0.25, PROBE_SNR=null;
-var mode=null,lastSeq=-1,gaps=0,collector=null;
+var mode=null,lastSeq=-1,gaps=0,collector=null,sS=null;
+/* СонарЛинк (06.10): два телефона рядом пищат каждый своими тонами — один чётными, другой нечётными, иначе зонд соседа путает обработку
+   (синтетика tools/sim_link.js: с одинаковыми тонами — ложная ладонь в пустой комнате и дрожь 16–28 мм; с разведёнными — как без соседа).
+   'all' — все тоны, как в игре; 0 — чётные; 1 — нечётные. Действует на всё в лабе: одиночный зонд (обычный и широкий), обработку, записи */
+var LINK_PAR='all'; try{ var lp=localStorage.getItem('sonar_link_par'); LINK_PAR=lp==='0'?0:lp==='1'?1:'all'; }catch(e){}
+function linkPar(){ return LINK_PAR; }
+function setLinkPar(p){ LINK_PAR=p; try{ localStorage.setItem('sonar_link_par',String(p)); }catch(e){}
+  if(booted&&sS){ var old=sS; sS=loopSrc(makeProbe(p)); sS.connect(gSL); sS.connect(gSR); sS.start(); try{ old.stop(); old.disconnect(); }catch(e){} } }
+function parName(p){ return p===0?'чётные':p===1?'нечётные':'все'; }
 function sleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
-function show(id){ ['home','orient','rec','recDone','cal','game','sideIntro','recSide','dualIntro','rightIntro','rightPlay','arkIntro','arkPlay','arcIntro','arcPlay','probes','twoIntro','recTwo','stIntro','recSt','stLive','depthIntro','pwCheck'].forEach(function(s){ el(s).classList.toggle('hidden',s!==id); });
+function show(id){ ['home','orient','rec','recDone','cal','game','sideIntro','recSide','dualIntro','rightIntro','rightPlay','arkIntro','arkPlay','arcIntro','arcPlay','probes','twoIntro','recTwo','stIntro','recSt','stLive','depthIntro','pwCheck','link','linkBeacon'].forEach(function(s){ el(s).classList.toggle('hidden',s!==id); });
   /* запись вбок идёт с телефоном вертикально — на её экранах просьба повернуть не показывается */
   if(document.body&&document.body.classList) document.body.classList.toggle('pok',id==='sideIntro'||id==='rightIntro'||id==='rightPlay'||id==='twoIntro'||id==='recTwo'||id==='stIntro'||id==='recSt'||id==='stLive'||id==='depthIntro'||(id==='recTwo'&&lastRec==='recDepth')||(id==='recDone'&&(lastRec==='recTwo'||lastRec==='recSt'||lastRec==='recDepth'))||((id==='recSide'||id==='recDone')&&(lastRec==='recSide'||lastRec==='recRight'))); fitScreen(); }
 /* всё в один экран: если видимый экран (или открытое меню игры) не влезает по высоте или ширине — уменьшаю базовый шрифт, пока не влезет */
@@ -890,7 +926,7 @@ function boot(){
   .then(function(){
     fs=ctx.sampleRate; var df=fs/N; kLo=Math.ceil(F_LO/df); kHi=Math.floor(20500/df); kc=Math.floor((kLo+kHi)/2);
     var mg=ctx.createChannelMerger(2);
-    var sS=loopSrc(makeProbe('all')), sL=loopSrc(makeProbe(0)), sR=loopSrc(makeProbe(1));
+    sS=loopSrc(makeProbe(linkPar())); var sL=loopSrc(makeProbe(0)), sR=loopSrc(makeProbe(1));
     gSL=ctx.createGain(); gSR=ctx.createGain(); gL=ctx.createGain(); gR=ctx.createGain();
     [gSL,gSR,gL,gR].forEach(function(g){ g.gain.value=0; });
     sS.connect(gSL); sS.connect(gSR); sL.connect(gL); sR.connect(gR);
@@ -945,7 +981,7 @@ setInterval(function(){ absS.fpsC=absS.fpsN; absS.fpsN=0; },1000);
 
 /* ── сигнал/шум в полосе зонда: 8 периодов подряд → зонд ровно в каждой 8-й линии спектра, шум — во всех ── */
 /* отношение сигнал/шум в полосе: 8 периодов подряд → зонд ровно в каждой 8-й линии, шум — во всех */
-function probeSNR(frames,fs,fLo,fHi){
+function probeSNR(frames,fs,fLo,fHi,par){   /* par — только свои тоны (СонарЛинк): линии тонов соседа не считаются ни зондом, ни шумом */
   var N8=frames.length*512, x=new Float64Array(N8), i, j;
   for(i=0;i<frames.length;i++) for(j=0;j<512;j++) x[i*512+j]=frames[i][j];
   var P=frames.length, df=fs/N8, b0=Math.floor(fLo/df), b1=Math.ceil(fHi/df), sig=0, nz=0, nl=0, nn=0;
@@ -953,7 +989,7 @@ function probeSNR(frames,fs,fLo,fHi){
     var w=2*Math.PI*b/N8, c=1, s=0, cw=Math.cos(w), sw=Math.sin(w), re=0, im=0;
     for(i=0;i<N8;i++){ re+=x[i]*c; im-=x[i]*s; var t=c*cw-s*sw; s=s*cw+c*sw; c=t; }
     var p=re*re+im*im, r=b%P;
-    if(r===0){ sig+=p; nl++; } else if(r>=2&&r<=P-2){ nz+=p; nn++; }
+    if(r===0){ if(par===0||par===1){ if((b/P)%2!==par) continue; } sig+=p; nl++; } else if(r>=2&&r<=P-2){ nz+=p; nn++; }
   }
   var noisePerBin=nz/(nn||1), probe=sig-noisePerBin*nl, noiseBand=noisePerBin*(b1-b0+1);
   return 10*Math.log10(Math.max(probe,1e-30)/Math.max(noiseBand,1e-30));
@@ -961,7 +997,7 @@ function probeSNR(frames,fs,fLo,fHi){
 
 /* ── автоуровень: убавляю свой зонд до минимума с запасом — громкость в комнате почти не зависит от громкости телефона ── */
 var SNR_TARGET=48, G_MIN=0.015, G_MAX=0.3;
-function measureSNR(){ return sleep(350).then(function(){ return collect(8); }).then(function(fr){ return probeSNR(fr,fs,bandLo(),20450); }); }
+function measureSNR(){ return sleep(350).then(function(){ return collect(8); }).then(function(fr){ return probeSNR(fr,fs,bandLo(),20450,(typeof linkPar==='function'?linkPar():'all')); }); }
 function autoLevel(){
   var tries=0;
   function step(){ return measureSNR().then(function(s){
@@ -977,7 +1013,7 @@ function promSub(frames,parity){
   /* 0.46: with the wide probe playing, the check decodes the wide band with the wide probe's own tones and phases. Before, it decoded the
      game's band with the game probe's phases — the wide probe's tones there have other phases, the peak smeared, and on the Mi 9 Lite the
      recording refused to start even at 100% ("7–11 dB, need 15"), while the game with the same probe heard it at 33 dB */
-  var wideP=parity==='all'&&bandLo()!==F_LO, lo=wideP?Math.ceil(DEPTH_LO/(fs/N)):kLo, hi=wideP?Math.floor(DEPTH_HI/(fs/N)):kHi, kc=Math.floor((lo+hi)/2);
+  var wideP=bandLo()!==F_LO, lo=wideP?Math.ceil(DEPTH_LO/(fs/N)):kLo, hi=wideP?Math.floor(DEPTH_HI/(fs/N)):kHi, kc=Math.floor((lo+hi)/2);
   var ks=[],k,q,n; for(k=lo;k<=hi;k++) if(parity==='all'||k%2===parity) ks.push(k);
   var M=ks.length, T=(parity==='all')?N:N/2, acc=new Float64Array(T);
   frames.forEach(function(fr){
@@ -1080,7 +1116,7 @@ function runRec(kind){ var long=kind==='long', dual=kind==='dual', right=kind===
     el(SUB).textContent=right?'Ладонь справа от нижнего торца.':dual?'Телефон лежит горизонтально.':side?'Правая ладонь у разъёма.':'Рука будет '+(hand==='left'?'слева':'справа')+' от телефона'+(orientSide()?(hand===orientSide()?', у разъёма.':', у фронтальной камеры.'):'.');
     return sleep(400).then(function(){ return collect(10); });
   }).then(function(fr){
-    prom=promSub(fr,'all');
+    prom=promSub(fr,(typeof linkPar==='function'?linkPar():'all'));
     if(prom<15){
       el(SAY).textContent='Зонда не слышно';
       el(SUB).textContent='Прибавь громкость, выключи беззвучный, отключи наушники, открой динамики. Сейчас '+prom.toFixed(0)+' дБ, нужно 15.';
@@ -1105,13 +1141,13 @@ function runRec(kind){ var long=kind==='long', dual=kind==='dual', right=kind===
       var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
       var so=(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0);
       recMeta={v:4,pose:right?rpPose:undefined,kind:right?'right-portrait':dual?'dual-landscape':side?'side-portrait':long?'single-landscape-long':'single-landscape',port:orientSide(),dual_gain:0.25,fs:fs,N:N,kLo:kLo,kHi:kHi,
-        hand:hand,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:wideP?DEPTH_LO:F_LO,f_hi:wideP?DEPTH_HI:20500,loop:true},
+        hand:hand,probe:{bins:(typeof linkPar==='function'?linkPar():'all'),channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:wideP?DEPTH_LO:F_LO,f_hi:wideP?DEPTH_HI:20500,loop:true},
         prom_db:prom,samples:n,gaps:rec.gaps,peak:pk,orientation:{angle:so,w:window.innerWidth,h:window.innerHeight},
         script:S.filter(function(s){return s.k!=='end';}).map(function(s){ return {k:s.k,t:s.t,H:s.d,probe:s.probe}; }),
         marks:marks,units:right?'target distance of the palm from the phone in mm (phone upright, port towards the player, palm to the right of the bottom end, level with it)':dual?'target position of the palm along the phone in mm from its middle, + = to the right as the player sees it (phone flat, landscape); port — the end with the port, from the screen rotation':side?'target sideways offset of the palm in mm, + = to the right as the player sees it (phone upright, port towards the player)':'target height in mm above the table',ua:navigator.userAgent,date:new Date().toISOString()};
       blob=wav(all,recMeta);
       var d=new Date(), z=function(x){ return (x<10?'0':'')+x; };
-      fname=(right?'sonar1r_':dual?'sonardual_':side?'sonarside_':long?'sonarlong_':'sonar1h_')+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+(wideP?'_wide':'')+'.wav';
+      fname=(right?'sonar1r_':dual?'sonardual_':side?'sonarside_':long?'sonarlong_':'sonar1h_')+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+(wideP?'_wide':'')+((typeof linkPar==='function'?linkPar():'all')==='all'?'':(typeof linkPar==='function'?linkPar():'all')?'_odd':'_even')+'.wav';
       showDone(pk,prom);
     });
   });
@@ -1197,7 +1233,7 @@ function quickStart(){
   if(!calLive){ calLive=true; calLoop(); }
   pickChannel().then(function(){ return autoLevel(); }).then(function(L){
     if(L.snr<30){ setProbe('off'); CS.busy=false; calText('Готовлюсь','Зонда почти не слышно',NOPROBE); return null; }
-    curCal=dspBand(DSP2); DSP2.init(fs,'all'); DSP2.setCal(curCal); DSP2.set('autocenter',1); mode='cal'; slogStart('подготовка'); return waitReady(); }).then(function(st){
+    curCal=dspBand(DSP2); DSP2.init(fs,(typeof linkPar==='function'?linkPar():'all')); DSP2.setCal(curCal); DSP2.set('autocenter',1); mode='cal'; slogStart('подготовка'); return waitReady(); }).then(function(st){
     if(st===null||st===undefined) return;
     if(st==='noprobe'){ CS.busy=false; setProbe('off'); calText('Готовлюсь','Зонда не слышно',NOPROBE); return; }
     el('calS').textContent='Комната готова. Сейчас начнём.';
@@ -1524,7 +1560,7 @@ function arkPlay(){
   akNewBall(); akText('Готовлюсь','Убери руку. Подбираю громкость зонда.'); mode=null; akDraw();
   pickChannel().then(function(){ return autoLevel(); }).then(function(L){
     if(L.snr<30){ setProbe('off'); akText('Зонда почти не слышно',NOPROBE); akButtons(true); return null; }
-    var cal0=dspBand(DSP2); DSP2.init(fs,'all'); DSP2.setCal(cal0); mode='ark'; AK.on=true; akMark('empty'); AK.phase='empty';
+    var cal0=dspBand(DSP2); DSP2.init(fs,(typeof linkPar==='function'?linkPar():'all')); DSP2.setCal(cal0); mode='ark'; AK.on=true; akMark('empty'); AK.phase='empty';
     akText('Убери руку','Слушаю пустую комнату.'); return rpWait(DSP2); }).then(function(st){
     if(!st) return;
     if(st==='noprobe'){ setProbe('off'); mode=null; AK.on=false; akText('Зонда не слышно',NOPROBE); akButtons(true); return; }
@@ -1604,7 +1640,7 @@ function akDraw(){ var cv=el('akC'); if(!cv||!cv.getContext) return; var dpr=Mat
   c.fillText(AK.dist===null||AK.dist===undefined?'ладони не слышно':(AK.present?'':'(нет ладони) ')+'ладонь '+(AK.dist/10).toFixed(1).replace('.',',')+' см',SW/2,SH-6*dpr); }
 function akSave(){ if(!AK.frames.length) return; var n=AK.frames.length*N, all=new Float32Array(n); AK.frames.forEach(function(f,j){ all.set(f,j*N); });
   var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
-  var meta={v:3,kind:'ark-play',port:AK.port,field:AK.field,autocenter:true,tune:AK.T?{field:+AK.T.field.toFixed(2),asym:Tune.ASYM,shifts:AK.shifts}:null,ctl:{range:null,lock:AK.lock?AK_LOCK:null,pix:AK.pix?AK_PIX:null,mag:AK.mag?AK_MAG:null},fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
+  var meta={v:3,kind:'ark-play',port:AK.port,field:AK.field,autocenter:true,tune:AK.T?{field:+AK.T.field.toFixed(2),asym:Tune.ASYM,shifts:AK.shifts}:null,ctl:{range:null,lock:AK.lock?AK_LOCK:null,pix:AK.pix?AK_PIX:null,mag:AK.mag?AK_MAG:null},fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:(typeof linkPar==='function'?linkPar():'all'),channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
     cal:DSP2.info().cal||PHYS_CAL,map:AK.map,marks:AK.marks,log:AK.log,score:AK.score,level:AK.level,lives:AK.lives,samples:n,gaps:AK.gaps,peak:pk,
     orientation:{angle:(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0),w:window.innerWidth,h:window.innerHeight},
     units:'log: [frame, paddle x 0..1 on the field (field: classic/twin — second paddle at x+0.5/funnel/side — the field turned 90°, x up the screen), ball x, ball y (0 top), palm seen] or [frame, event]; paddle x = 0.09+0.82·f, f from height (DSP2, PHYS_CAL) by map, mirrored if the port is on the left',
@@ -1666,7 +1702,7 @@ function arcPlay(){
   arcInit(); arcText('Готовлюсь','Убери руку. Подбираю громкость зонда.'); mode=null; arcDraw();
   pickChannel().then(function(){ return autoLevel(); }).then(function(L){
     if(L.snr<30){ setProbe('off'); arcText('Зонда почти не слышно',NOPROBE); arcButtons(true); return null; }
-    var cal0=dspBand(DSP2); DSP2.init(fs,'all'); DSP2.setCal(cal0); DSP2.set('autocenter',1); mode='arc'; ARC.on=true; arcMark('empty'); ARC.phase='empty';
+    var cal0=dspBand(DSP2); DSP2.init(fs,(typeof linkPar==='function'?linkPar():'all')); DSP2.setCal(cal0); DSP2.set('autocenter',1); mode='arc'; ARC.on=true; arcMark('empty'); ARC.phase='empty';
     arcText('Убери руку','Слушаю пустую комнату.'); return rpWait(DSP2); }).then(function(st){
     if(!st) return;
     if(st==='noprobe'){ setProbe('off'); mode=null; ARC.on=false; arcText('Зонда не слышно',NOPROBE); arcButtons(true); return; }
@@ -1813,7 +1849,7 @@ function arcDraw(){ var cv=el('acC'); if(!cv||!cv.getContext) return; var dpr=Ma
 function arcSave(){ if(!ARC.frames.length) return; var n=ARC.frames.length*N, all=new Float32Array(n); ARC.frames.forEach(function(f,j){ all.set(f,j*N); });
   var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
   var meta={v:1,kind:'arc-play',game:ARC.game,port:ARC.port,autocenter:true,tune:ARC.T?{field:+ARC.T.field.toFixed(2),asym:Tune.ASYM,shifts:ARC.shifts}:null,margin:ARC_M,
-    fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
+    fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:(typeof linkPar==='function'?linkPar():'all'),channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
     cal:DSP2.info().cal||PHYS_CAL,marks:ARC.marks,log:ARC.log,score:ARC.score,summary:arcSummary(),samples:n,gaps:ARC.gaps,peak:pk,
     orientation:{angle:(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0),w:window.innerWidth,h:window.innerHeight},
     units:'log: [frame, palm share of the height by Tune.fracOf (0 low … 1 high), player y (0 top … 1 bottom, eased 0.49 per 60 Hz frame), palm seen] or [frame, event]',
@@ -2122,7 +2158,8 @@ var SCRIPT_DEPTH=[
 function dpProbe(on){ dpSide(on?'single-'+chan:'off'); }
 /* 0.39u: широкий зонд — свой источник, отдельные уровни на левый и правый канал (выбор динамика, игра, записи) */
 function dpSide(w){ if(typeof ctx==="undefined"||!ctx||!ctx.createBuffer) return;   /* стенд без звука */
-  if(!DP.gl){ if(w==='off') return; var df=fs/N, ks=[], k, n, q; for(k=Math.ceil(DEPTH_LO/df);k<=Math.floor(DEPTH_HI/df);k++) ks.push(k);
+  if(DP.gl&&DP.par!==(typeof linkPar==='function'?linkPar():'all')){ try{ DP.src.stop(); DP.mg.disconnect(); }catch(e){} DP.gl=null; }   /* СонарЛинк: тоны поменялись — собрать заново */
+  if(!DP.gl){ if(w==='off') return; var df=fs/N, ks=[], k, n, q, par=(typeof linkPar==='function'?linkPar():'all'); DP.par=par; for(k=Math.ceil(DEPTH_LO/df);k<=Math.floor(DEPTH_HI/df);k++) if(par==='all'||k%2===par) ks.push(k);
     var M=ks.length, x=new Float64Array(N), mx=0; for(n=0;n<N;n++){ var s=0; for(q=0;q<M;q++) s+=Math.cos(2*Math.PI*ks[q]*n/N+Math.PI*q*q/M); x[n]=s; if(Math.abs(s)>mx) mx=Math.abs(s); }
     var buf=ctx.createBuffer(1,N,fs), d=buf.getChannelData(0); for(n=0;n<N;n++) d[n]=x[n]/mx*0.9;
     DP.src=loopSrc(buf); DP.gl=ctx.createGain(); DP.gr=ctx.createGain(); DP.gl.gain.value=0; DP.gr.gain.value=0; DP.mg=ctx.createChannelMerger(2);
@@ -2167,6 +2204,35 @@ el('goDepth').addEventListener('click',function(){ boot().then(toDepth).catch(fa
 el('dpGo').addEventListener('click',function(){ lastRec='recDepth'; runDepth(); });
 el('dpBack').addEventListener('click',function(){ show('home'); });
 
+/* ── СОНАРЛИНК (06.10): два телефона рядом, каждый пищит своими тонами ──
+   Экран «СонарЛинк»: тоны зонда (все / чётные / нечётные — для всей лабы), «Только пищать» (второй телефон — источник соседа),
+   «Запись для меня» и игра лабы с выбранными тонами. На экране «пищу» раз в секунду — что слышит микрофон: свои тоны, тоны соседа
+   и шум между ними (8 периодов подряд: тоны ложатся в каждую 8-ю линию). Разбор записей — tools/eval_link.js и eval_recording.js. */
+function lkLabel(){ el('lkPar').textContent='Тоны зонда: '+parName(linkPar()); el('lkNow').textContent=linkPar()==='all'?'Сейчас: все тоны — как в игре.':'Сейчас: '+parName(linkPar())+' — второй телефон ставь на '+(linkPar()?'чётные':'нечётные')+'.'; }
+function lkLevels(frames,par){ var N8=frames.length*512, x=new Float64Array(N8), i, j; for(i=0;i<frames.length;i++) for(j=0;j<512;j++) x[i*512+j]=frames[i][j];
+  var P=frames.length, df=fs/N8, b0=Math.ceil(bandLo()/df/P)*P, b1=Math.floor(20450/df), own=0, oth=0, no=0, nn=0, b;
+  for(b=b0;b<=b1;b++){ var w=2*Math.PI*b/N8, c=1, s=0, cw=Math.cos(w), sw=Math.sin(w), re=0, im=0;
+    for(i=0;i<N8;i++){ re+=x[i]*c; im-=x[i]*s; var t=c*cw-s*sw; s=s*cw+c*sw; c=t; }
+    var p=re*re+im*im, r=b%P; if(r===0){ if(par==='all'||(b/P)%2===par) own+=p; else oth+=p; } else if(r>=2&&r<=P-2){ no+=p; nn++; } }
+  var nb=no/(nn||1)*(b1-b0+1), db=function(v){ return 10*Math.log10(Math.max(v,1e-30)/Math.max(nb,1e-30)); };
+  return {own:db(own),other:par==='all'?null:db(oth)}; }
+var LB={on:false,lock:null};
+function lkBeacon(){ show('linkBeacon'); el('lbSay').textContent='Пищу: '+parName(linkPar())+' тоны'; el('lbNow').textContent='Выбираю динамик…'; mode=null;
+  LB.on=true; try{ if(navigator.wakeLock) navigator.wakeLock.request('screen').then(function(l){ LB.lock=l; }).catch(function(){}); }catch(e){}
+  boot().then(function(){ return pickChannel(); }).then(function(){ return autoLevel(); }).then(function(){
+    (function loop(){ if(!LB.on) return; collect(8).then(function(fr){ if(!LB.on) return; var L=lkLevels(fr,linkPar());
+      el('lbNow').textContent='Свой зонд: '+L.own.toFixed(0)+' дБ над шумом'+(L.other===null?'':' | соседа: '+(L.other<3?'не слышно':L.other.toFixed(0)+' дБ (на '+(L.own-L.other).toFixed(0)+' дБ тише)'))+' | громкость зонда '+PROBE_G.toFixed(3);
+      setTimeout(loop,700); }); })();
+  }).catch(function(e){ LB.on=false; fail(e); }); }
+function lkStop(){ LB.on=false; try{ if(LB.lock) LB.lock.release(); }catch(e){} LB.lock=null; if(booted) setProbe('off'); lkLabel(); show('link'); }
+el('goLink').addEventListener('click',function(){ lkLabel(); show('link'); });
+el('lkPar').addEventListener('click',function(){ var p=linkPar(); setLinkPar(p==='all'?0:p===0?1:'all'); lkLabel(); });
+el('lkBeacon').addEventListener('click',lkBeacon);
+el('lbStop').addEventListener('click',lkStop);
+el('lkRec').addEventListener('click',function(){ boot().then(function(){ viaOrient('rec'); }).catch(fail); });
+el('lkGame').addEventListener('click',function(){ boot().then(function(){ viaOrient('game'); }).catch(fail); });
+el('lkBack').addEventListener('click',function(){ show('home'); });
+
 
 /* ── ЖУРНАЛ ПАРТИИ: звук + что видела обработка + что происходило в игре ── */
 var LOG=null, logOn=true, LOG_SEC=150, LOG_SCALE=4;          // 16 бит, полная шкала = 1/4 входа
@@ -2203,7 +2269,7 @@ function logBlob(){
   var L=LOG, cap=L.pcm.length, total=L.f*N, n=Math.min(total,cap), start=total-n, i;
   var pcm=new Int16Array(n); for(i=0;i<n;i++) pcm[i]=L.pcm[(start+i)%cap];
   var f0=Math.floor(start/N);
-  var meta={v:5,kind:'game-log',fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:0.25,loop:true},
+  var meta={v:5,kind:'game-log',fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:(typeof linkPar==='function'?linkPar():'all'),channel:chan,phase:'pi*q^2/M',peak:0.9,gain:0.25,loop:true},
     pcm:{bits:16,full_scale:1/LOG_SCALE},first_frame:f0,frames:L.f-f0,clipped:L.clip,gaps:L.gaps,game:L.meta0,
     ended:new Date().toISOString(),ua:navigator.userAgent,
     columns:{dsp:['frame','present','height_mm','abs_mm','range_mm','fast_mm','motion_db','echo_db'],
@@ -2265,7 +2331,7 @@ function slogFrame(fr,r,gap){
 function slogInfo(){ if(!SLOG||!SLOG.f) return 'Журнала настройки пока нет.'; return 'Журнал настройки: '+(SLOG.f*N/fs).toFixed(0)+' с'+(SLOG.on?', пишется':'')+'.'; }
 function slogBlob(){
   var S=SLOG, n=S.f*N, pcm=S.pcm.slice(0,n), inf=DSP2.info();
-  var meta={v:1,kind:'setup-log',fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
+  var meta={v:1,kind:'setup-log',fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:(typeof linkPar==='function'?linkPar():'all'),channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
     pcm:{bits:16,full_scale:1/LOG_SCALE},first_frame:0,frames:S.f,clipped:S.clip,gaps:S.gaps,setup:S.meta0,cal_now:DSP2.info().cal,
     dsp_info:{d0:inf.d0,prom:inf.prom,mm:inf.mm},ended:new Date().toISOString(),ua:navigator.userAgent,
     columns:{dsp:['frame','present','height_mm','abs_mm','range_mm','fast_mm','motion_db','echo_db','empty_floor_db','motion_smooth_db'],

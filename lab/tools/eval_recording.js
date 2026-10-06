@@ -20,13 +20,13 @@ function shape(o){ const mv=o.filter(r=>r.t>=5.3&&r.t<11&&r.present), ts=mv.map(
     if(!best||c>best.c){ const res=hs.map((h,i)=>Math.abs(h-(k*g[i]+b))/k).sort((u,v)=>u-v); best={c,shift:s,k,med:res[res.length>>1]}; } } return best; }
 for(const f of files){
   const {meta,x}=C.loadWav(f), wide=C.bandOf(meta)<18000, flo=narrow&&wide?18300:C.bandOf(meta), DSP2=narrow&&wide?C.makeDSP(18300,{lo:C.bandOf(meta),hi:20500}):C.makeDSP(flo);
-  DSP2.init(48000,'all'); let o=C.pass(DSP2,x); const W=(a,b)=>o.filter(r=>r.t>=a&&r.t<b); const inf=DSP2.info();
+  const par=C.binsOf(meta); DSP2.init(48000,par); let o=C.pass(DSP2,x); const W=(a,b)=>o.filter(r=>r.t>=a&&r.t<b); const inf=DSP2.info();
   const cal=calCompute(W(9.2,9.8),W(6.2,6.8),W(5.2,11));
-  DSP2.init(48000,'all'); DSP2.setCal(cal); o=C.pass(DSP2,x);
+  DSP2.init(48000,par); DSP2.setCal(cal); o=C.pass(DSP2,x);
   const sh=shape(o), e=o.filter(r=>r.t>=5.3&&r.t<11&&r.present).map(r=>Math.abs(r.height-sn(r.t))).sort((a,b)=>a-b);
   const hd=o.filter(r=>r.t>=11.8&&r.t<13.8&&r.present).map(r=>r.height);
   const pres=(a,b)=>{ const q=o.filter(r=>r.t>=a&&r.t<b); return (100*q.filter(r=>r.present).length/q.length).toFixed(0)+'%'; };
-  console.log(`\n== ${f.split('/').pop()} ==  полоса с ${flo} Гц | зонд: выраженность ${inf.prom.toFixed(1)} дБ` + (meta.probe&&meta.probe.gain!==undefined?` | уровень ${(+meta.probe.gain).toFixed(3)}, запас ${meta.probe.snr_db?meta.probe.snr_db.toFixed(1):'—'} дБ`:''));
+  console.log(`\n== ${f.split('/').pop()} ==  полоса с ${flo} Гц${par==='all'?'':', тоны '+(par?'нечётные':'чётные')} | зонд: выраженность ${inf.prom.toFixed(1)} дБ` + (meta.probe&&meta.probe.gain!==undefined?` | уровень ${(+meta.probe.gain).toFixed(3)}, запас ${meta.probe.snr_db?meta.probe.snr_db.toFixed(1):'—'} дБ`:''));
   console.log(phys?`  калибровка как в игре: k=${cal.k} s=${cal.s}`:`  калибровка по записи: k=${cal.k.toFixed(2)} o=${cal.o.toFixed(0)} s=${cal.s.toFixed(2)} (согласие ${cal.r.toFixed(2)})`);
   if(!sh) console.log(`  по форме: руки почти не видно, пока она ведёт по метке (${o.filter(r=>r.t>=5.3&&r.t<11&&r.present).length} кадров) — сравнивать не с чем`); else
   console.log(`  по форме: ${sh.c.toFixed(3)} (сдвиг ${sh.shift>=0?'+':''}${sh.shift.toFixed(2)} с, масштаб ${sh.k.toFixed(2)}), разброс ${sh.med.toFixed(1)} мм | против метки: медиана ${e[e.length>>1].toFixed(1)}, p90 ${e[Math.floor(e.length*.9)].toFixed(0)} мм`);

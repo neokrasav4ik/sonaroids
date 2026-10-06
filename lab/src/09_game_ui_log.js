@@ -35,7 +35,7 @@ function logBlob(){
   var L=LOG, cap=L.pcm.length, total=L.f*N, n=Math.min(total,cap), start=total-n, i;
   var pcm=new Int16Array(n); for(i=0;i<n;i++) pcm[i]=L.pcm[(start+i)%cap];
   var f0=Math.floor(start/N);
-  var meta={v:5,kind:'game-log',fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:0.25,loop:true},
+  var meta={v:5,kind:'game-log',fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:(typeof linkPar==='function'?linkPar():'all'),channel:chan,phase:'pi*q^2/M',peak:0.9,gain:0.25,loop:true},
     pcm:{bits:16,full_scale:1/LOG_SCALE},first_frame:f0,frames:L.f-f0,clipped:L.clip,gaps:L.gaps,game:L.meta0,
     ended:new Date().toISOString(),ua:navigator.userAgent,
     columns:{dsp:['frame','present','height_mm','abs_mm','range_mm','fast_mm','motion_db','echo_db'],
@@ -97,7 +97,7 @@ function slogFrame(fr,r,gap){
 function slogInfo(){ if(!SLOG||!SLOG.f) return 'Журнала настройки пока нет.'; return 'Журнал настройки: '+(SLOG.f*N/fs).toFixed(0)+' с'+(SLOG.on?', пишется':'')+'.'; }
 function slogBlob(){
   var S=SLOG, n=S.f*N, pcm=S.pcm.slice(0,n), inf=DSP2.info();
-  var meta={v:1,kind:'setup-log',fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:'all',channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
+  var meta={v:1,kind:'setup-log',fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:(typeof linkPar==='function'?linkPar():'all'),channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
     pcm:{bits:16,full_scale:1/LOG_SCALE},first_frame:0,frames:S.f,clipped:S.clip,gaps:S.gaps,setup:S.meta0,cal_now:DSP2.info().cal,
     dsp_info:{d0:inf.d0,prom:inf.prom,mm:inf.mm},ended:new Date().toISOString(),ua:navigator.userAgent,
     columns:{dsp:['frame','present','height_mm','abs_mm','range_mm','fast_mm','motion_db','echo_db','empty_floor_db','motion_smooth_db'],

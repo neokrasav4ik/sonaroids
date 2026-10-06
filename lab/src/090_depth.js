@@ -24,7 +24,8 @@ var SCRIPT_DEPTH=[
 function dpProbe(on){ dpSide(on?'single-'+chan:'off'); }
 /* 0.39u: широкий зонд — свой источник, отдельные уровни на левый и правый канал (выбор динамика, игра, записи) */
 function dpSide(w){ if(typeof ctx==="undefined"||!ctx||!ctx.createBuffer) return;   /* стенд без звука */
-  if(!DP.gl){ if(w==='off') return; var df=fs/N, ks=[], k, n, q; for(k=Math.ceil(DEPTH_LO/df);k<=Math.floor(DEPTH_HI/df);k++) ks.push(k);
+  if(DP.gl&&DP.par!==(typeof linkPar==='function'?linkPar():'all')){ try{ DP.src.stop(); DP.mg.disconnect(); }catch(e){} DP.gl=null; }   /* СонарЛинк: тоны поменялись — собрать заново */
+  if(!DP.gl){ if(w==='off') return; var df=fs/N, ks=[], k, n, q, par=(typeof linkPar==='function'?linkPar():'all'); DP.par=par; for(k=Math.ceil(DEPTH_LO/df);k<=Math.floor(DEPTH_HI/df);k++) if(par==='all'||k%2===par) ks.push(k);
     var M=ks.length, x=new Float64Array(N), mx=0; for(n=0;n<N;n++){ var s=0; for(q=0;q<M;q++) s+=Math.cos(2*Math.PI*ks[q]*n/N+Math.PI*q*q/M); x[n]=s; if(Math.abs(s)>mx) mx=Math.abs(s); }
     var buf=ctx.createBuffer(1,N,fs), d=buf.getChannelData(0); for(n=0;n<N;n++) d[n]=x[n]/mx*0.9;
     DP.src=loopSrc(buf); DP.gl=ctx.createGain(); DP.gr=ctx.createGain(); DP.gl.gain.value=0; DP.gr.gain.value=0; DP.mg=ctx.createChannelMerger(2);

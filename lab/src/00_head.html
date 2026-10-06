@@ -84,6 +84,7 @@
   #slChk{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + 3rem);display:flex;gap:.5rem}
   #slChk button{width:auto;min-height:0;padding:.6em 1em;font-size:1rem;background:rgba(4,7,10,.7);color:var(--ink);border:1px solid #3A4A52}
   #slAlign button{width:auto;min-height:0;padding:.5em .9em;font-size:1rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
+  #rlCode{font:600 1.6rem "IBM Plex Mono",monospace;width:7ch;text-align:center;padding:.3rem;border-radius:.5rem;border:1px solid #3A4A52;background:#0b0f14;color:var(--ink);letter-spacing:.2em}
   #siCode{font:600 1.6rem "IBM Plex Mono",monospace;width:7ch;text-align:center;padding:.3rem;border-radius:.5rem;border:1px solid #3A4A52;background:#0b0f14;color:var(--ink);letter-spacing:.2em}
   #arcPlay{padding:0;background:#070a12} #acC{position:absolute;inset:0;width:100%;height:100%;display:block}
   #acTop{position:absolute;left:0;right:0;top:30%;text-align:center;pointer-events:none;padding:0 1rem}
@@ -195,6 +196,7 @@
     <button id="lkBeacon" class="ghost">Только пищать</button>
     <button id="lkRec" class="ghost">Запись для меня</button>
     <button id="lkString" class="big">Струна (игра на двух)</button>
+    <button id="lkRuler" class="ghost">Линейка: запись на двух</button>
     <button id="lkGame" class="ghost">Играть (как в лабе)</button>
     <button id="lkBack" class="ghost">Назад</button>
   </div>
@@ -227,6 +229,23 @@
     <button id="siCal" class="ghost wide">Играю один, двумя руками</button>
     <button id="siSeam" class="ghost wide">Подогнать стык экранов</button>
     <button id="siBack" class="ghost">Назад</button>
+  </div>
+</div></div>
+
+<div class="screen hidden" id="rulIntro"><div class="two wideb">
+  <div class="col">
+    <h1>Линейка: запись на двух</h1>
+    <p>Два телефона торец к торцу, одна Wi-Fi. У разъёма каждого — линейка стоймя. Подготовка как в «Струне» (убрать руки, помахать), потом оба телефона по очереди говорят: обе ладони на 5, 10, 15, 20, 25 см и обратно (3 с перевести, 4 с держать), потом обе вместе вверх-вниз, потом левая ходит — правая стоит, и наоборот. Около двух минут.</p>
+    <p class="small">Ладонь — горизонтально, над разъёмом, высота — от стола до ладони. После записи — «Сохранить журнал партии» на обоих, присылай оба. Можно ещё раз с другим зондом.</p>
+    <p><input id="rlCode" inputmode="numeric" maxlength="4" placeholder="код" autocomplete="off" class="codein"> <span id="rlNow" class="mono"></span></p>
+  </div>
+  <div class="col btns">
+    <button id="rlNear" class="big">Рядом (на обоих)</button>
+    <button id="rlNew" class="ghost">Создать комнату (код)</button>
+    <button id="rlJoin" class="ghost">Войти по коду</button>
+    <button id="rlSolo" class="ghost">Один телефон</button>
+    <button id="rlProbe" class="ghost wide">Зонд: широкий</button>
+    <button id="rlBack" class="ghost">Назад</button>
   </div>
 </div></div>
 

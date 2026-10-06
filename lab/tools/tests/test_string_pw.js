@@ -46,11 +46,18 @@ const LAB=path.join(__dirname,'..','..','app','sonar_lab3.html');
     need(R.ok,'разбор: замечаний нет'); }
   /* по коду (для игры по сети): создать — войти */
   const A2=await b.newPage({viewport:{width:844,height:390}}), B2=await b.newPage({viewport:{width:844,height:390}});
-  for(const p of [A2,B2]){ await p.goto(url); await p.click('#goLink'); await p.click('#lkString'); }
+  for(const p of [A2,B2]){ await p.goto(url+'&rules=sync'); await p.click('#goLink'); await p.click('#lkString'); }
   await A2.click('#siNew'); let a2; for(let i=0;i<50;i++){ a2=await S(A2); if(a2.code) break; await A2.waitForTimeout(100); }
   await B2.fill('#siCode',a2.code); await B2.click('#siJoin'); let b2;
   for(let i=0;i<80;i++){ a2=await S(A2); b2=await S(B2); if(a2.phase==='play'&&b2.phase==='play') break; await A2.waitForTimeout(100); }
   need(a2.phase==='play'&&b2.phase==='play'&&!a2.near,'по коду: '+a2.code+' — оба играют'+(a2.phase==='play'&&b2.phase==='play'?'':' ('+JSON.stringify([a2.phase,b2.phase,b2.code,await B2.evaluate(()=>document.getElementById('slSay').textContent+' / '+document.getElementById('slSub').textContent)])+')'));
+  /* 1.56s: правила «в такт» (?rules=sync): руки вместе вверх-вниз — струна горит; навстречу — нет */
+  const R2=p=>p.evaluate(()=>{ const s=window.__sl(); return {res:s.res,rules:s.rules,c:s.syncC}; });
+  for(let i=0;i<22;i++){ const y=195+130*Math.sin(i/2.2); await A2.mouse.move(400,y); await B2.mouse.move(400,y); await A2.waitForTimeout(60); }
+  const rs1=await R2(A2), rs1b=await R2(B2);
+  for(let i=0;i<22;i++){ const y=195+130*Math.sin(i/2.2); await A2.mouse.move(400,y); await B2.mouse.move(400,390-y); await A2.waitForTimeout(60); }
+  const rs2=await R2(A2);
+  need(rs1.rules==='sync'&&rs1.res>0.5&&rs1b.res>0.5&&rs2.res<0.3,'в такт: вместе — резонанс '+rs1.res.toFixed(2)+'/'+rs1b.res.toFixed(2)+' (корреляция '+(rs1.c||0).toFixed(2)+'), навстречу — '+rs2.res.toFixed(2)+' ('+(rs2.c||0).toFixed(2)+')');
   /* 1.56i: по коду прямой канал тоже открывается (06.10 18:22 предложение уходило, пока второй ещё не слушал, и пропадало) */
   for(let i=0;i<40;i++){ a2=await S(A2); b2=await S(B2); if(a2.direct&&b2.direct) break; await A2.waitForTimeout(100); }
   need(a2.direct&&b2.direct,'по коду: связь напрямую '+(a2.direct&&b2.direct?'да':'нет'));

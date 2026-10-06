@@ -37,7 +37,7 @@ const LAB=path.join(__dirname,'..','..','app','sonar_lab3.html'), OUT=path.join(
   need(c.phase==='over'&&c.mode==='ruler','один телефон: до конца');
   await C.click('#slOut'); const back=await C.evaluate(()=>!document.getElementById('rulIntro').classList.contains('hidden')); need(back,'«Выйти» — к экрану «Линейки»');
   /* 1.56q: «Калибровка кулаком по линейке» — проходит программу (5, 10, 15, 10, 5 см) и заканчивается; пальцем кулака нет — «Не вышло», таблица не пишется */
-  const K=await b.newPage({viewport:{width:844,height:390}}); K.on('pageerror',e=>errs.push(e.message)); await K.goto(url); await K.click('#goLink'); await K.click('#lkString');
+  const K=await b.newPage({viewport:{width:844,height:390}}); K.on('pageerror',e=>errs.push(e.message)); await K.goto(url+'&tab=1');   /* 1.56s: кнопка калибровки кулаком — только с ?tab=1 */ await K.click('#goLink'); await K.click('#lkString');
   const lbl=await K.evaluate(()=>document.getElementById('siTab').textContent); await K.click('#siTab'); let k;
   for(let i=0;i<120;i++){ await K.waitForTimeout(100); k=await S(K); if(k.phase==='over') break; }
   const say=await K.evaluate(()=>[document.getElementById('slSay').textContent,localStorage.getItem('sonar_sl_tab'),window.__sl().rs?window.__sl().rs.length:0]);

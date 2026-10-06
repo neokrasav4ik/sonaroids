@@ -56,7 +56,18 @@ function openMic(){
    (все тоны) продолжал пищать. Лаба при открытии и перед своим микрофоном выключает звук приложения */
 function natOff(){ try{ var A=window.SonaroidsApp; if(A&&A.audioStop) A.audioStop(); }catch(e){} }
 natOff();
+/* 1.56r (автор: «после сворачивания лабы и возврата — опять не видит зонд, приходится перезагружать приложение»): свёрнутой странице
+   телефон отключает микрофон и звук и сам не возвращает (iOS гасит микрофон; так и в игре, 24.09). Как в игре (src/20_sonar.js healthy/restart):
+   при каждом запуске с нажатия проверяю — дорожка микрофона живая, звук идёт, кадры приходят; нет — всё сбросить и открыть заново */
+var lastFrameAt=0;
+function labHealthy(){ if(!booted) return false; var tr=stream?stream.getAudioTracks():[];
+  if(!tr.length||tr.some(function(t){ return t.readyState!=='live'||t.muted; })) return false;
+  return !!ctx&&ctx.state==='running'&&performance.now()-lastFrameAt<600; }
+function labRestart(){ try{ if(stream) stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
+  try{ if(node){ node.port.onmessage=null; node.disconnect(); } }catch(e){} try{ if(ctx) ctx.close(); }catch(e){}
+  if(typeof DP!=='undefined'){ DP.gl=null; DP.src=null; } ctx=null; stream=null; node=null; an=null; booted=false; collector=null; lastSeq=-1; }
 function boot(){
+  if(booted&&!labHealthy()){ labRestart(); }
   if(booted) return Promise.resolve();
   natOff();
 
@@ -108,7 +119,7 @@ function collect(n){ return new Promise(function(r){ collector={n:n,arr:[],done:
 /* ── единая точка входа кадров: и запись, и игра видят ровно одно и то же ── */
 var rec={on:false,frames:[],gaps:0};
 function onFrame(e){
-  var m=e.data;
+  var m=e.data; lastFrameAt=performance.now();
   var gap=(lastSeq>=0&&m.s!==lastSeq+1); lastSeq=m.s; if(gap) gaps++;
   if(collector){ collector.arr.push(m.f); if(collector.arr.length>=collector.n){ var c=collector; collector=null; c.done(c.arr); } }
   if(mode==='rec'&&rec.on){ if(gap) rec.gaps++; rec.frames.push(m.f); }

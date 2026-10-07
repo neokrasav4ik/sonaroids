@@ -42,6 +42,7 @@ function palm(t){ const A=H.ARC(); if(!A||A.phase==='prep'||A.phase==='empty'||A
     if(car&&r){ const up=car.y-0.13, dn=car.y+0.13; ty=Math.abs(up-r.c)<Math.abs(dn-r.c)?up:dn; } }
   if(A.game==='cave'){ const c=(A.cols||[]).find(c=>c.x>=0.32+0.25); if(c) ty=c.c; }
   if(A.game==='juggle') return juggler(t,A);
+  if(A.game==='pong') return ponger(t,A);
   if(A.game==='follow'){ const st=300*N/SR, e=(A.fwCm===null?100+30*Math.sin(t*3):A.fwCm*10)-dPrev; dPrev+=Math.max(-st,Math.min(st,e)); return dPrev; }   /* 1.57e: рука идёт к кружку (5 см → 50 мм) не быстрее 30 см/с */
   const want=(1-ty-0.06)/0.88, e=want-A.frac, step=400*N/SR;
   dPrev=Math.max(45,Math.min(175,dPrev+Math.max(-step,Math.min(step,0.25*e*A.T.field)))); return dPrev; }
@@ -57,16 +58,23 @@ function juggler(t,A){ const dt=N/SR, base=60, T=0.16;
     if(b){ const s=(A.stars||[]).find(s=>s.slot===b.slot), top=A.py-b.r, h=s?Math.max(0.08,top-s.y):0.25;
       const v=Math.sqrt(2*b.g*h)*0.97; jgS={st:'up',t0:t,v:Math.min(+(process.env.JG_V||900),v/0.60*A.T.field)}; } }
   dPrev=Math.max(45,Math.min(175,dPrev)); return dPrev; }
+/* СонаПонг (1.58e): мяч падает на платформу и уже близко — взмах вверх (синус 0,16 с, пик PG_V мм/с), потом рука медленно вниз */
+let pgS=null;
+function ponger(t,A){ const dt=N/SR, base=60, T=0.16;
+  if(!pgS) pgS={st:'wait'};
+  if(pgS.st==='up'){ const u=(t-pgS.t0)/T; if(u>=1) pgS.st='down'; else dPrev+=pgS.v*Math.sin(Math.PI*u)*dt; }
+  else { if(dPrev>base) dPrev=Math.max(base,dPrev-200*dt); const ar=A.ar||2, b=(A.balls||[]).find(b=>{ if(!(b.vy>0)) return false; const i=b.x<ar/2?0:1, xc=ar*(i?0.78:0.22); if(Math.abs(b.x-xc)>ar*0.12) return false; return A.py-0.1-b.y<+(process.env.PG_H||0.10); }); if(b) pgS={st:'up',t0:t,v:+(process.env.PG_V||200)}; }
+  dPrev=Math.max(45,Math.min(175,dPrev)); return dPrev; }
 function feed(){ const due=Math.floor(now/1000*SR/N); while(fed<due){ H.onFrame({data:{s:seq++,f:S.synthFrame(palm(fed*N/SR),fed*7+1)}}); fed++; } }
 async function tick(dt){ const t1=now+dt*1000; while(now<t1){ now+=1000/60; feed();
   for(let i=timers.length-1;i>=0;i--) if(timers[i].t<=now){ const f=timers[i].f; timers.splice(i,1); f(); }
   const rs=rafs; rafs=[]; rs.forEach(f=>f(now)); await null; await null; } }
 (async()=>{
   let bad=0; const need=(ok,msg)=>{ console.log((ok?'ok  ':'FAIL')+'  '+msg); if(!ok) bad++; };
-  for(const g of ['slalom','bombs','cave','race','juggle','follow']){
+  for(const g of ['slalom','bombs','cave','race','juggle','follow','pong']){
     H.game(g); H.goFlow('arcIntro'); need(!els.arcIntro.classList.contains('hidden')&&/прототип/.test(els.acTitle.textContent),`${g}: экран-подсказка — ${els.acTitle.textContent}`);
     tWave=null; dPrev=100; H.arcPlay(); const seen=[];
-    for(let i=0;i<1600;i++){ await tick(0.1); const A=H.ARC(); if(g==='juggle'&&A.phase==='play'&&A.t>75) A.over=true;   /* жонглёр без потолка-смерти может играть долго — 75 с хватит */ if(seen[seen.length-1]!==A.phase) seen.push(A.phase); if(A.phase==='over') break; }
+    for(let i=0;i<1600;i++){ await tick(0.1); const A=H.ARC(); if((g==='juggle'||g==='pong')&&A.phase==='play'&&A.t>75) A.over=true;   /* жонглёр без потолка-смерти может играть долго — 75 с хватит */ if(seen[seen.length-1]!==A.phase) seen.push(A.phase); if(A.phase==='over') break; }
     const A=H.ARC(); need(seen.join(' → ').indexOf('empty → wave → count → play → over')>=0&&A.T&&A.T.ok&&A.T.field>=50&&A.T.field<=120,`${g}: фазы ${seen.join(' → ')}, ход пойман: весь путь ${A.T&&A.T.field.toFixed(0)} мм`);
     need(!els.acBtns.classList.contains('hidden'),`${g}: конец — ${els.acSay.textContent}: ${els.acSub.textContent}`);
     H.arcSave(); const f=path.join(C.OUT,'arc_'+g+'_test.wav'); fs.mkdirSync(C.OUT,{recursive:true}); fs.writeFileSync(f,Buffer.from(await A.blob.arrayBuffer()));
@@ -74,6 +82,8 @@ async function tick(dt){ const t1=now+dt*1000; while(now<t1){ now+=1000/60; feed
     if(g==='follow'){ const FW=require('../eval_follow'), R2=FW.analyse(w.meta,w.x,[]), m=R2.moves;
       console.log(`      follow: удержания ${R2.fit.pts.map(p=>p[0]+'→'+p[1].toFixed(0)).join(' ')}; ходы ${m.map(q=>q.per+' с: '+q.bot.toFixed(1)+'…'+q.top.toFixed(1)).join(' | ')}; рывки до ${R2.flick&&R2.flick.peak.toFixed(1)}`);
       need(w.meta.log.filter(e=>typeof e[1]==='string'&&e[1].startsWith('step')).length===20&&m.length===3&&Math.abs(m[0].travel-10)<3&&R2.fit.lin<1.5,`follow: программа (20 шагов), медленный ход ${m[0].travel.toFixed(1)} из 10 см (синтетика — грубая), прямая по удержаниям ±${R2.fit.lin.toFixed(2)} см`); continue; }
+    if(g==='pong'){ const ev=w.meta.log.filter(e=>typeof e[1]==='string'), n=k=>ev.filter(e=>e[1].startsWith(k)).length; console.log(`      pong: подач ${n('serve')}, бросков ${n('toss')}, пасов ${n('pass')}, в сетку ${n('net')}, потеряно ${n('lost')} — ${w.meta.summary}`);
+      need(n('toss')>=1&&n('serve')>=1&&w.meta.jg&&w.meta.jg.pong,`pong: игра идёт (${w.meta.summary})`); continue; }
     const R=E.report('arc_'+g+'_test.wav (через страницу)',w.meta,w.x);
     const good=g==='slalom'?(R.gate>=20&&R.finish===1):g==='bombs'?(R.caught>=10&&R.wave>=1):g==='race'?(A.score>300&&R.fuel>=1):g==='juggle'?(R.jg&&R.jg.tosses>=20&&A.nb===1&&R.jg.star===0&&R.jg.burn===0&&R.jg.visFlick>95&&R.jg.vMed>0.3):   /* 1.57c: учебный режим — один мяч, без звёзд и жара */(R.hit<=3&&R.gate===0&&A.score>100);
     need(good&&R.vis>95&&R.match<0.005&&R.moving>(g==='juggle'?10:25),`${g}: игра идёт (${w.meta.summary}), сверка ${(R.match*100).toFixed(2)}%, ладонь в движении ${R.moving.toFixed(0)}%`); }

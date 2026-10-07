@@ -91,8 +91,12 @@
   #acTop{position:absolute;left:0;right:0;top:30%;text-align:center;pointer-events:none;padding:0 1rem}
   #acSay{font-size:2rem;font-weight:600} #acSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
   #acBtns{position:absolute;left:calc(max(1rem,env(safe-area-inset-left)) + 1rem);top:50%;transform:translateY(-50%);width:15rem;display:flex;flex-direction:column;gap:.5rem}
-  #jgCtl{position:absolute;right:calc(max(.7rem,env(safe-area-inset-right)) + .3rem);top:calc(max(.5rem,env(safe-area-inset-top)) + .3rem);display:flex;flex-direction:column;gap:.3rem;width:auto}
-  #jgCtl button{width:auto;min-height:0;margin:0;padding:.4em .8em;font-size:.8rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
+  #arcPauseB{position:absolute;right:calc(max(.7rem,env(safe-area-inset-right)) + .3rem);top:calc(max(.5rem,env(safe-area-inset-top)) + .3rem);width:auto;min-height:0;padding:.75em 1.4em;font-size:1.15rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
+  #arcPause{position:absolute;inset:0;background:rgba(4,7,10,.82);display:flex;align-items:center;justify-content:center;padding:calc(max(.6rem,env(safe-area-inset-top))) calc(max(1rem,env(safe-area-inset-right)))}
+  #arcPause.hidden{display:none}
+  #arcPause .pzw{display:grid;grid-template-columns:repeat(2,minmax(0,16rem));gap:.55rem;width:100%;justify-content:center}
+  #arcPause button{width:100%;margin:0;min-height:2.9rem;padding:.6em .9em;font-size:1.05rem}
+  #arcPause #pzGo{grid-column:1/-1}
   #acStop{position:absolute;left:calc(max(.7rem,env(safe-area-inset-left)) + .3rem);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + 3.4rem);width:auto;min-height:0;padding:.6em 1em;font-size:.9rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
   #rightPlay{padding:0;background:#04070A} #rpC{position:absolute;inset:0;width:100%;height:100%;display:block}
   #rpTop{position:absolute;left:0;right:0;top:calc(max(.8rem,env(safe-area-inset-top)) + 5.4rem);text-align:center;pointer-events:none;padding:0 1rem}
@@ -178,6 +182,7 @@
     <button id="goGame" class="big">Играть</button>
     <button id="goLink" class="ghost">СонарЛинк: два телефона</button>
     <button id="go_juggle" class="ghost">Жонглёр (прототип)</button>
+    <button id="go_pong" class="ghost">СонаПонг (прототип)</button>
     <button id="go_follow" class="ghost">Ладонь по линейке (запись)</button>
     <button id="goRec" class="ghost">Запись для меня</button>
     <button id="goRecLong" class="ghost">Длинная запись (1,5 мин)</button>
@@ -462,7 +467,12 @@
   <canvas id="acC"></canvas>
   <div id="acTop"><div id="acSay"></div><div id="acSub"></div></div>
   <button id="acStop" class="gbtn">Стоп</button>
-  <div id="jgCtl" class="hidden"><button id="jgSens" class="ghost">Чувствительность</button><button id="jgBowl" class="ghost">Чаша</button><button id="jgKick" class="ghost">Толчок вбок</button><button id="jgWall" class="ghost">Бортики</button><button id="jgDamp" class="ghost">Тормоз вбок</button></div>
+  <button id="arcPauseB" class="gbtn hidden">Пауза</button>
+  <div id="arcPause" class="hidden"><div class="pzw">
+    <button id="pzGo" class="big">Продолжить</button>
+    <button id="jgSens" class="ghost">Чувствительность</button><button id="jgBowl" class="ghost">Чаша</button><button id="jgKick" class="ghost">Толчок вбок</button><button id="jgWall" class="ghost">Бортики</button><button id="jgDamp" class="ghost">Тормоз вбок</button><button id="jgTilt" class="ghost">Наклон</button><button id="jgNet" class="ghost">Сетка</button>
+    <button id="pzStop" class="ghost">Стоп</button>
+  </div></div>
   <div id="acBtns" class="hidden">
     <button id="acAgain" class="big">Ещё раз</button>
     <button id="acSave" class="ghost">Сохранить запись</button>

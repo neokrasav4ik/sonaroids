@@ -21,6 +21,9 @@ var ARC_GAMES={
   cave:{title:'Пещера',file:'cave',
     intro:'Корабль летит по извилистой пещере — она сужается и ускоряется. Не задевай стены. Три жизни; после удара — полторы секунды неуязвимости.',
     unit:'метры'},
+  follow:{title:'Ладонь по линейке',file:'follow',
+    intro:'Запись для настройки: точно ли сонар повторяет ладонь — медленно и быстро. Поставь линейку стоймя у разъёма телефона (ноль — на столе). Ладонь держи как в игре. Около минуты: сначала держишь ладонь на 5, 10 и 15 см, потом водишь её между 5 и 15 под стук — медленно, быстрее, быстро, потом резкие рывки до 15 и обратно. Кружок на экране показывает, где ладонь должна быть. В конце нажми «Сохранить запись» и пришли мне.',
+    unit:''},
   juggle:{title:'Жонглёр',file:'juggle',
     intro:'Учебный режим: один мяч, без очков. Внизу — твоя ладонь, на ней мяч. Подбрось его резким взмахом вверх — чем резче взмах, тем выше. Лови и подбрасывай снова, сколько хочется; выход — «Стоп». Черта над мячом — куда он долетит. Платформа повторяет быстрые движения ладони крупнее, а в покое возвращается.',
     unit:'очки'}
@@ -49,7 +52,7 @@ function arcPlay(){
     if(!st) return;
     if(st==='noprobe'){ setProbe('off'); mode=null; ARC.on=false; arcText('Зонда не слышно',NOPROBE); arcButtons(true); return; }
     return sleep(600).then(function(){ arcMark('wave'); ARC.phase='wave'; ARC.T=Tune.create(100,true);
-      arcText('Помаши ладонью','К разъёму и от него, 5–15 см — '+(arcGame==='slalom'?'лыжник':arcGame==='bombs'?'вёдра':arcGame==='race'?'машина':arcGame==='juggle'?'ладонь внизу':'корабль')+' ходит за ней. Секунд пять.');
+      arcText('Помаши ладонью','К разъёму и от него, 5–15 см — '+(arcGame==='slalom'?'лыжник':arcGame==='bombs'?'вёдра':arcGame==='race'?'машина':arcGame==='juggle'?'ладонь внизу':arcGame==='follow'?'метка':'корабль')+' ходит за ней. Секунд пять.');
       ARC.last=performance.now(); ARC.raf=requestAnimationFrame(arcLive); return new Promise(function(r){ ARC.onCaught=r; }); }).then(function(){
       arcMark('count'); ARC.phase='count'; arcText('Поймал','Ладонь дальше от разъёма — выше.');
       return sleep(1500).then(function(){ arcText('3',''); return sleep(1000); }).then(function(){ arcText('2',''); return sleep(1000); }).then(function(){ arcText('1',''); return sleep(1000); }); }).then(function(){
@@ -69,7 +72,7 @@ function arcLoop(now){
   var dt=Math.min(0.033,(now-ARC.last)/1000); ARC.last=now; ARC.t+=dt; arcMove(dt);
   var cv=el('acC'); ARC.ar=(cv.width||800)/(cv.height||400);
   ARC_STEP[ARC.game](dt);
-  ARC.log.push([ARC.frames.length,ARC.frac===null?null:+ARC.frac.toFixed(4),+ARC.py.toFixed(4),ARC.present?1:0]);
+  ARC.log.push([ARC.frames.length,ARC.frac===null?null:+ARC.frac.toFixed(4),ARC.game==='follow'?+ARC.fwCm.toFixed(2):+ARC.py.toFixed(4),ARC.present?1:0]);
   arcDraw();
   if(ARC.over||(ARC.frames.length>=ARC_MAX&&ARC.game!=='juggle')){ ARC.phase='over'; arcMark('over'); ARC.on=false; mode=null; setProbe('off');
     var g=ARC.game, res=g==='slalom'?ARC.time:ARC.score, b=ARC.best[g], better=g==='slalom'?(ARC.done&&(b===undefined||res<b)):(b===undefined||res>b);
@@ -81,6 +84,7 @@ function arcSummary(){ var g=ARC.game;
   if(g==='slalom') return 'ворот '+ARC.passed+' из '+ARC.gates+' · время '+arcFmt(g,ARC.time||ARC.t)+' (штраф '+(ARC.missed*3)+' с)';
   if(g==='race') return 'проехал '+Math.round(ARC.score)+' м · канистр '+ARC.cans+' · аварий '+ARC.crashes+' · на траве '+ARC.grassT.toFixed(0)+' с';
   if(g==='bombs') return 'поймано '+ARC.caught+' · очки '+ARC.score+' · волна '+ARC.wave;
+  if(g==='follow') return 'программа пройдена за '+Math.round(ARC.t)+' с — сохрани запись и пришли';
   if(g==='juggle') return 'очки '+ARC.score+' · звёзд '+ARC.nst+' · лучшая серия '+ARC.comboMax+' · подбросов '+ARC.tosses+' · мячей было '+ARC.nb+' · сгорело '+ARC.burns+' · в потолок '+ARC.ceils+' · самый сильный бросок '+ARC.vmax.toFixed(1).replace('.',',')+(ARC.recFull?' · запись — первые 150 с':'');
   return 'пролетел '+Math.round(ARC.score)+' м · ударов '+ARC.hits; }
 
@@ -92,9 +96,26 @@ function arcInit(){ var g=ARC.game; ARC.py=0.5; ARC.score=0; ARC.lives=3; ARC.t=
   if(g==='race'){ ARC.cols=[]; ARC.cx=0; ARC.cc=0.5; ARC.ctg=0.5; ARC.rw=0.56; ARC.v=0.3; ARC.fuel=100; ARC.cars=[]; ARC.fcans=[]; ARC.nextCar=1.2; ARC.nextCan=2.5;
     ARC.cans=0; ARC.crashes=0; ARC.grassT=0; ARC.onGrass=false; ARC.inv=0; ARC.flash=0; ARC.dash=0; }
   if(g==='cave'){ ARC.cols=[]; ARC.cx=0; ARC.cc=0.5; ARC.cg=0.62; ARC.ctg=0.5; ARC.v=0.45; ARC.hits=0; ARC.inv=0; ARC.flash=0; }
+  if(g==='follow'){ ARC.fw=fwScript(); ARC.fwI=-1; ARC.fwBeat=0; ARC.fwCm=5; }
   if(g==='juggle'){ ARC.py=JG_PAD_LO-0.5*JG_PAD_H; ARC.padPrev=null; ARC.balls=[jgBall(0,ARC.py-JG_R,true)]; ARC.nb=1; ARC.stars=[]; ARC.nst=0; ARC.combo=0; ARC.comboMax=0;
     ARC.tosses=0; ARC.burns=0; ARC.ceils=0; ARC.vmax=0; ARC.vlast=0; ARC.respawn=0; ARC.say=0; ARC.flash=0; ARC.pf=[]; ARC.recFull=false; }
 }
+/* ── «Ладонь по линейке» (1.57e; Ден 14:27 после 1.57d: «стало не сильно лучше, а может даже и хуже.. давай начнем с нуля.. тесты линейка
+   запись и пр.. задача 1: научить платформу точно следовать движениям ладони — медленным и быстрым.. без дерганий и пр.. когда это
+   сделаем — добавим мяч»). Один телефон, линейка у разъёма. Программа по времени партии: удержания на 5/10/15 см (дрожь в покое и
+   «где эта высота» у сонара), ходы 5↔15 под стук — по 2, 1 и 0,5 с на ход (сжимается ли ход на скорости, запаздывание), рывки до 15
+   и обратно (резкие движения), замри на 10. Журнал по кадрам экрана: [кадр, доля по подстройке, где должна быть ладонь (см), видна];
+   события: step:номер:вид:… и beat:цель_см. Разбор — tools/eval_follow.js */
+function fwScript(){ var S=[], t=0; function add(o){ o.t0=t; t+=o.d; o.t1=t; S.push(o); }
+  add({k:'hold',cm:5,d:4,say:'Держи ладонь на 5 см'}); add({k:'hold',cm:10,d:4,say:'Теперь на 10 см'}); add({k:'hold',cm:15,d:4,say:'Теперь на 15 см'});
+  add({k:'hold',cm:5,d:2.5,say:'Опусти на 5 — сейчас пойдём под стук'});
+  [[2,4,'Медленно: 5 ↔ 15, по стуку'],[1,6,'Быстрее'],[0.5,8,'Быстро']].forEach(function(m){ add({k:'move',per:m[0],n:m[1],d:m[0]*m[1],say:m[2]}); add({k:'hold',cm:5,d:2,say:'Отдохни на 5'}); });
+  add({k:'flick',n:6,gap:1.5,d:9,say:'Рывок до 15 и сразу вниз — по стуку'}); add({k:'hold',cm:10,d:3,say:'Замри на 10'}); return S; }
+function fwCmAt(S,t){ for(var i=0;i<S.length;i++){ var s=S[i]; if(t<s.t1){ var u=t-s.t0;
+      if(s.k==='hold') return s.cm;
+      if(s.k==='move'){ var leg=Math.floor(u/s.per), a=(u-leg*s.per)/s.per, from=leg%2?15:5; return from+(from===5?10:-10)*a; }
+      if(s.k==='flick'){ var q=u%s.gap; return q<0.2?5+10*q/0.2:q<0.4?15-10*(q-0.2)/0.2:5; } } }
+  return 10; }
 /* ── жонглёр (7.10, 1.57a; Ден выбрал из идей «для одного»: «жонглёр эскизы варианты» → «да, давай посмотрим») ──
    Ладонь — полоса внизу экрана (доля хода ладони → 0,94…0,54 высоты), мяч отскакивает от неё как от ракетки бесконечной массы:
    при ударе относительная скорость отражается с коэффициентом JG_E, медленное касание — мяч лежит и едет вместе с ладонью; когда
@@ -201,6 +222,12 @@ var ARC_STEP={
     for(var i=0;i<ARC.cars.length;i++){ var k=ARC.cars[i]; if(ARC.inv<=0&&Math.abs(k.x-px)<pw&&Math.abs(k.y-ARC.py)<ph){ ARC.crashes++; ARC.v=0.15; ARC.inv=1.0; ARC.flash=0.3; arcEv('crash:'+(ARC.py-k.y).toFixed(3)); ARC.cars.splice(i,1); break;   /* сбитая машина уходит с дороги — иначе, пока мы тормозим, она догоняет и бьёт снова */ } }
     for(var j=ARC.fcans.length-1;j>=0;j--){ var f=ARC.fcans[j]; if(Math.abs(f.x-px)<0.06&&Math.abs(f.y-ARC.py)<0.07){ ARC.fcans.splice(j,1); ARC.fuel=Math.min(100,ARC.fuel+25); ARC.cans++; arcEv('fuel'); } else if(f.x<-0.1) ARC.fcans.splice(j,1); } },
   /* пещера: середина прохода блуждает (цель меняется каждые 0,6–1,2 высоты пути), проход 0,62 → 0,30; скорость 0,45 → 1,0 высоты/с */
+  follow:function(dt){ var S=ARC.fw, t=ARC.t, i=0; while(i<S.length&&t>=S[i].t1) i++;
+    if(i>=S.length){ arcEv('done'); ARC.over=true; return; }
+    if(i!==ARC.fwI){ ARC.fwI=i; ARC.fwBeat=0; var s0=S[i]; arcEv('step:'+i+':'+s0.k+':'+(s0.k==='hold'?s0.cm:s0.k==='move'?s0.per:s0.gap)); arcText(s0.say,''); if(s0.k==='hold') sfx('level'); }
+    var s=S[i], u=t-s.t0;
+    if(s.k==='move'||s.k==='flick'){ var per=s.k==='move'?s.per:s.gap, nb=Math.floor(u/per); if(nb>=ARC.fwBeat&&nb<s.n){ ARC.fwBeat=nb+1; arcEv('beat:'+(s.k==='move'?(nb%2?5:15):15)); sfx('jtoss',1); } }
+    ARC.fwCm=fwCmAt(S,t); var left=Math.max(0,s.t1-t); el('acSub').textContent=left>0.5?Math.ceil(left)+' с':''; },
   juggle:function(dt){ var pad=ARC.py, vr=ARC.padPrev===null?0:(pad-ARC.padPrev)/Math.max(dt,1e-3); ARC.padPrev=pad;
     /* скорость платформы — сглаженная (кадры сонара 94 в секунду, экрана 60: положение идёт ступеньками, и сырая скорость давала броски
        до 9 высот экрана в секунду) и не больше 4 */
@@ -263,6 +290,12 @@ function arcDraw(){ var cv=el('acC'); if(!cv||!cv.getContext) return; var dpr=Ma
   if(g==='cave'){ c.fillStyle='#4a4270'; var cols=ARC.cols||[]; cols.forEach(function(k){ c.fillRect(X(k.x),0,0.02*H+1,Y(k.c-k.g/2)); c.fillRect(X(k.x),Y(k.c+k.g/2),0.02*H+1,H); });
     if(ARC.flash>0){ c.fillStyle='rgba(255,122,138,.35)'; c.fillRect(0,0,W,H); }
     if(!(ARC.inv>0&&Math.floor(ARC.inv*10)%2)){ c.fillStyle='#5fe0b8'; c.beginPath(); c.moveTo(X(px)+0.04*H,Y(py)); c.lineTo(X(px)-0.03*H,Y(py)-0.025*H); c.lineTo(X(px)-0.03*H,Y(py)+0.025*H); c.closePath(); c.fill(); } }
+  if(g==='follow'){ c.fillStyle='#0f1530'; c.fillRect(0,0,W,H); var cmY=function(cm){ return Y(0.92-cm/20*0.8); }, rx=W*0.62;
+    c.strokeStyle='#5b6aa8'; c.lineWidth=2*dpr; c.beginPath(); c.moveTo(rx,cmY(0)); c.lineTo(rx,cmY(20)); c.stroke();
+    c.fillStyle='#8f9cc0'; c.font=Math.round(0.045*H)+'px "IBM Plex Mono",monospace'; c.textAlign='left';
+    for(var cm=0;cm<=20;cm++){ var big=cm%5===0; c.fillRect(rx,cmY(cm)-1*dpr,(big?0.05:0.025)*H,2*dpr); if(big) c.fillText(cm+' см',rx+0.07*H,cmY(cm)+0.015*H); }
+    var gy=cmY(ARC.fwCm||5); c.strokeStyle='#ffd166'; c.lineWidth=3*dpr; c.beginPath(); c.arc(rx-0.12*H,gy,0.04*H,0,6.283); c.stroke();
+    if(ARC.frac!==null&&ARC.frac!==undefined){ var my=cmY(5+10*ARC.frac); c.fillStyle='#ff8a3d'; c.fillRect(rx-0.32*H,my-0.012*H,0.16*H,0.024*H); } }
   if(g==='juggle'){ var ar2=W/H, sx=function(sl){ return X(ar2*JG_SLOTS[sl]); }, star=function(x,y,r,col){ c.fillStyle=col; c.beginPath(); for(var i=0;i<10;i++){ var a=-Math.PI/2+i*Math.PI/5, rr=i%2?r*0.45:r; c.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr); } c.closePath(); c.fill(); };
     c.fillStyle='#0f1530'; c.fillRect(0,0,W,H); c.fillStyle='#3a4373'; c.fillRect(0,0,W,Y(JG_TOP)); c.fillStyle='#4d578f'; for(var k=0;k<W;k+=0.04*H) c.fillRect(k,0,0.012*H,Y(JG_TOP));
     (ARC.stars||[]).forEach(function(s){ c.strokeStyle='rgba(232,238,252,.12)'; c.setLineDash([3*dpr,5*dpr]); c.beginPath(); c.moveTo(sx(s.slot),Y(s.y)); c.lineTo(sx(s.slot),Y(py)); c.stroke(); c.setLineDash([]); c.globalAlpha=s.wait>0?0.25:1; star(sx(s.slot),Y(s.y),Y(s.r)*(s.wait>0?1-s.wait:1),s.t>10&&Math.floor(s.t*8)%2?'#6a6f90':'#ffd166'); c.globalAlpha=1; });
@@ -278,9 +311,10 @@ function arcDraw(){ var cv=el('acC'); if(!cv||!cv.getContext) return; var dpr=Ma
   if(ARC.phase!=='play'){ c.fillStyle=ARC.phase==='wave'||ARC.phase==='count'?'rgba(7,10,18,.4)':'rgba(7,10,18,.72)'; c.fillRect(0,0,W,H); }
   c.fillStyle='#E7EDE9'; c.font=Math.round(15*dpr)+'px "IBM Plex Mono",monospace'; c.textAlign='left';
   if(ARC.phase==='play'||ARC.phase==='over'){ var left=g==='slalom'?(ARC.t+3*(ARC.missed||0)).toFixed(1).replace('.',',')+' с':(g==='cave'||g==='race')?Math.round(ARC.score)+' м':String(ARC.score);
-    if(g==='juggle'&&JG_PRACTICE) left='бросков '+(ARC.tosses||0)+'   последний — '+(ARC.lastH===undefined?'—':Math.round(ARC.lastH*100)+'% высоты');
+    if(g==='follow') left='';
+    else if(g==='juggle'&&JG_PRACTICE) left='бросков '+(ARC.tosses||0)+'   последний — '+(ARC.lastH===undefined?'—':Math.round(ARC.lastH*100)+'% высоты');
     else if(g==='juggle') left='очки '+ARC.score+(ARC.combo>1?'  серия ×'+Math.min(5,ARC.combo):'')+'   звёзд '+(ARC.nst||0)+(ARC.nb<3?'/'+(ARC.nb<2?JG_N2:JG_N3):'');
-    var right=g==='slalom'?'ворота '+(ARC.passed||0)+'/'+ARC.gates+(ARC.missed?'  +'+ARC.missed*3+' с':''):g==='bombs'?'волна '+ARC.wave:g==='race'?Math.round((ARC.v||0)*100)+' км/ч  бензин':'♥'.repeat(Math.max(0,ARC.lives)); if(g==='juggle'&&JG_PRACTICE) right='';
+    var right=g==='slalom'?'ворота '+(ARC.passed||0)+'/'+ARC.gates+(ARC.missed?'  +'+ARC.missed*3+' с':''):g==='bombs'?'волна '+ARC.wave:g==='race'?Math.round((ARC.v||0)*100)+' км/ч  бензин':'♥'.repeat(Math.max(0,ARC.lives)); if(g==='juggle'&&JG_PRACTICE) right=''; if(g==='follow') right='';
     c.fillText(left,10*dpr,0.07*H); c.textAlign='right'; c.fillText(right,W-10*dpr,0.07*H); }
   c.textAlign='center'; c.fillStyle='#8A9B96'; c.font=Math.round(11*dpr)+'px "IBM Plex Mono",monospace';
   c.fillText(ARC.dist===null||ARC.dist===undefined?'ладони не слышно':(ARC.present?'':'(нет ладони) ')+'ладонь '+(ARC.dist/10).toFixed(1).replace('.',',')+' см',W/2,H-6*dpr); }
@@ -290,7 +324,7 @@ function arcSave(){ if(!ARC.frames.length) return; var n=ARC.frames.length*N, al
     fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:(typeof linkPar==='function'?linkPar():'all'),channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
     cal:DSP2.info().cal||PHYS_CAL,marks:ARC.marks,log:ARC.log,score:ARC.score,summary:arcSummary(),samples:n,gaps:ARC.gaps,peak:pk,
     orientation:{angle:(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0),w:window.innerWidth,h:window.innerHeight},
-    units:'log: [frame, palm share of the height by Tune.fracOf (0 low … 1 high), player y (0 top … 1 bottom, eased 0.49 per 60 Hz frame), palm seen] or [frame, event]',
+    units:ARC.game==='follow'?'log: [frame, palm share by Tune.fracOf, where the palm should be (cm on the ruler), palm seen] or [frame, event]':'log: [frame, palm share of the height by Tune.fracOf (0 low … 1 high), player y (0 top … 1 bottom, eased 0.49 per 60 Hz frame), palm seen] or [frame, event]',
     ua:navigator.userAgent,date:new Date().toISOString()};
   var b=wav(all,meta), d=new Date(), z=function(x){ return (x<10?'0':'')+x; };
   var name='sonararc_'+ARC_GAMES[ARC.game].file+'_'+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+'.wav'; ARC.blob=b; ARC.fname=name;
@@ -298,7 +332,7 @@ function arcSave(){ if(!ARC.frames.length) return; var n=ARC.frames.length*N, al
   if(navigator.canShare){ try{ var fl=new File([b],name,{type:'audio/wav'}); if(navigator.canShare({files:[fl]})){ navigator.share({files:[fl],title:name}).catch(function(){}); return; } }catch(e){} }
   var a2=document.createElement('a'); a2.href=URL.createObjectURL(b); a2.download=name; document.body.appendChild(a2); a2.click(); setTimeout(function(){ a2.remove(); },1000); }
 function arcHalt(){ cancelAnimationFrame(ARC.raf); ARC.on=false; ARC.phase=''; mode=null; setProbe('off'); }
-['slalom','bombs','cave','race','juggle'].forEach(function(g){ el('go_'+g).addEventListener('click',function(){ boot().then(function(){ lastRec='arc'; arcGame=g; viaOrient('arcIntro'); }).catch(fail); }); });
+['slalom','bombs','cave','race','juggle','follow'].forEach(function(g){ el('go_'+g).addEventListener('click',function(){ boot().then(function(){ lastRec='arc'; arcGame=g; viaOrient('arcIntro'); }).catch(fail); }); });
 el('acGo').addEventListener('click',function(){ arcPlay(); });
 el('acBack').addEventListener('click',function(){ show('home'); });
 el('acAgain').addEventListener('click',function(){ arcPlay(); });

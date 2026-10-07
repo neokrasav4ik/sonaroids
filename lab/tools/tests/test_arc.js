@@ -54,7 +54,7 @@ function juggler(t,A){ const dt=N/SR, base=60, T=0.16;
   else { if(dPrev>base) dPrev=Math.max(base,dPrev-250*dt);
     const b=(A.balls||[]).find(b=>b.on&&b.heat>0.15);
     if(b){ const s=(A.stars||[]).find(s=>s.slot===b.slot), top=A.py-b.r, h=s?Math.max(0.08,top-s.y):0.25;
-      const v=Math.sqrt(2*b.g*h)*0.97; jgS={st:'up',t0:t,v:Math.min(+(process.env.JG_V||900),v/0.40*A.T.field)}; } }
+      const v=Math.sqrt(2*b.g*h)*0.97; jgS={st:'up',t0:t,v:Math.min(+(process.env.JG_V||900),v/0.95*A.T.field)}; } }
   dPrev=Math.max(45,Math.min(175,dPrev)); return dPrev; }
 function feed(){ const due=Math.floor(now/1000*SR/N); while(fed<due){ H.onFrame({data:{s:seq++,f:S.synthFrame(palm(fed*N/SR),fed*7+1)}}); fed++; } }
 async function tick(dt){ const t1=now+dt*1000; while(now<t1){ now+=1000/60; feed();
@@ -71,7 +71,7 @@ async function tick(dt){ const t1=now+dt*1000; while(now<t1){ now+=1000/60; feed
     H.arcSave(); const f=path.join(C.OUT,'arc_'+g+'_test.wav'); fs.mkdirSync(C.OUT,{recursive:true}); fs.writeFileSync(f,Buffer.from(await A.blob.arrayBuffer()));
     const w=C.loadWav(f); need(w.meta.kind==='arc-play'&&w.meta.game===g&&new RegExp('^sonararc_'+g+'_').test(A.fname)&&w.meta.log.length>300,`${g}: запись ${A.fname}, журнал ${w.meta.log.length} строк`);
     const R=E.report('arc_'+g+'_test.wav (через страницу)',w.meta,w.x);
-    const good=g==='slalom'?(R.gate>=20&&R.finish===1):g==='bombs'?(R.caught>=10&&R.wave>=1):g==='race'?(A.score>300&&R.fuel>=1):g==='juggle'?(R.jg&&R.jg.star>=15&&R.jg.tosses>=10&&A.nb>=2&&R.jg.visFlick>95&&A.score>=R.jg.star):(R.hit<=3&&R.gate===0&&A.score>100);
+    const good=g==='slalom'?(R.gate>=20&&R.finish===1):g==='bombs'?(R.caught>=10&&R.wave>=1):g==='race'?(A.score>300&&R.fuel>=1):g==='juggle'?(R.jg&&R.jg.tosses>=20&&A.nb===1&&R.jg.star===0&&R.jg.burn===0&&R.jg.visFlick>95&&R.jg.vMed>0.6):   /* 1.57c: учебный режим — один мяч, без звёзд и жара */(R.hit<=3&&R.gate===0&&A.score>100);
     need(good&&R.vis>95&&R.match<0.005&&R.moving>(g==='juggle'?10:25),`${g}: игра идёт (${w.meta.summary}), сверка ${(R.match*100).toFixed(2)}%, ладонь в движении ${R.moving.toFixed(0)}%`); }
   console.log(bad?'ИТОГ: ПРОВАЛ':'ИТОГ: ok'); process.exitCode=bad?1:0;
 })();

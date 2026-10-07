@@ -35,7 +35,7 @@ var arcGame='slalom';
 function arcText(a,b){ el('acSay').textContent=a; el('acSub').textContent=b||''; }
 function arcButtons(v){ el('acBtns').classList.toggle('hidden',!v); }
 function arcMark(k){ ARC.marks[k]=ARC.frames.length*N; }
-function arcEv(k){ ARC.log.push([ARC.frames.length,k]); }
+function arcEv(k){ if(ARC.log&&ARC.frames) ARC.log.push([ARC.frames.length,k]); }
 function arcFrame(f,gap,r){ if(!ARC.on) return; if(ARC.frames.length<ARC_MAX){ if(gap) ARC.gaps++; ARC.frames.push(f); }
   if(r){ ARC.present=r.present; if(r.present) ARC.dist=r.height; if(ARC.game==='juggle'||ARC.game==='follow'||ARC.game==='pong') mixFrame(r); } }
 /* 1.57f — «смесь» для платформы (жонглёр и «по линейке»). Запись Дена «по линейке» 14:49 (iPhone), разбор eval_follow.js, ход 5↔15 см,
@@ -156,7 +156,7 @@ var PG_HIT=0.75, PG_HW=0.15, PG_XC=0.22, PG_G=2.4, PG_LIFT=0.10, PG_NET0=0.72, P
    тяжесть, сила удара, прыгучесть, ширина платформ, расстояние между ними, высота сетки, наклон; запоминаются; «Сбросить» — как было */
 PG_SL=[{k:'g',t:'Тяжесть',min:0.8,max:4.5,st:0.1,d:2},{k:'hit',t:'Сила удара',min:0.2,max:1.6,st:0.05,d:0.4},{k:'e',t:'Прыгучесть',min:0.1,max:0.95,st:0.05,d:0.65},
   {k:'hw',t:'Ширина ракеток',min:0.04,max:0.24,st:0.01,d:0.06},{k:'gap',t:'Расстояние',min:0.02,max:0.5,st:0.01,d:0.1},
-  {k:'net',t:'Высота сетки',min:0,max:0.3,st:0.01,d:0.07},{k:'tilt',t:'Наклон, °',min:0,max:60,st:1,d:25},
+  {k:'net',t:'Высота сетки',min:0,max:0.3,st:0.01,d:0.07},{k:'tilt',t:'Наклон для отскока, °',min:0,max:60,st:1,d:25},{k:'tiltv',t:'Наклон на экране, °',min:0,max:60,st:1,d:25},
   {k:'grip',t:'Цепкие ракетки',min:0,max:1,st:1,d:1},{k:'wall',t:'Боковые стенки',min:0,max:1,st:1,d:0},{k:'vx',t:'Скорость вбок',min:0,max:3,st:0.05,d:0}],
 /* 1.58l (Ден 20:49: «просто найти сбалансированные настройки ползунков!! и убери счётчик пасов… чтобы было не сложно, но и не легко
    перепасовываться мячом по воздуху.. не перекатывать туда-сюда, не ловить отскоки от кучи стенок и потолков»). Подбор — моделью
@@ -188,18 +188,20 @@ PG_SL=[{k:'g',t:'Тяжесть',min:0.8,max:4.5,st:0.1,d:2},{k:'hit',t:'Сил�
 /* 1.58h (Ден 19:33: «добавь боковые стенки, невероятно сложно играть. не пойму какие настройки брать»): стенки по краям (мяч отскакивает
    с потерей 40%, теряется только вниз); готовые наборы «Легко / Средне / Трудно»; «Легко» — по умолчанию: тяжесть 1,6 (мяч дольше
    в воздухе), удар 0,6, прыгучесть 0,35 (мяч меньше скачет), платформы шире 0,2 и ближе 0,12, сетка низкая, наклон 22° */
-PG_PRE={'Легче':{g:2,hit:0.4,e:0.65,hw:0.06,gap:0.06,net:0.07,tilt:25,grip:1,wall:0,vx:0},
-  'Сбалансированный':{g:2,hit:0.4,e:0.65,hw:0.06,gap:0.1,net:0.07,tilt:25,grip:1,wall:0,vx:0},
-  'Труднее':{g:2,hit:0.4,e:0.65,hw:0.06,gap:0.13,net:0.07,tilt:25,grip:1,wall:0,vx:0}},
+PG_PRE={'Легче':{g:2,hit:0.4,e:0.65,hw:0.06,gap:0.06,net:0.07,tilt:25,tiltv:25,grip:1,wall:0,vx:0},
+  'Сбалансированный':{g:2,hit:0.4,e:0.65,hw:0.06,gap:0.1,net:0.07,tilt:25,tiltv:25,grip:1,wall:0,vx:0},
+  'Труднее':{g:2,hit:0.4,e:0.65,hw:0.06,gap:0.13,net:0.07,tilt:25,tiltv:25,grip:1,wall:0,vx:0}},
 /* 1.58m (Ден 21:16: «когда сбалансированный — платформы очень большой угол имеют — полэкрана на это отнимают, совсем хода не остаётся»):
    ракетки короче и положе — наклон 25°, ширина 0,06: по высоте ракетка занимает 0,12 экрана (было 0,30). Та же модель:
    «Сбалансированный» (расстояние 0,1) — пас у точной / обычной / неточной руки 97 / 81 / 62%; «Легче» (0,06) — 100 / 92 / 76%;
    «Труднее» (0,13) — 84 / 62 / 48%. Рука ~170 мм/с, мяч на ~0,3 экрана */
 PG_V={};
-function pgApply(){ PG_G=PG_V.g; PG_HIT=PG_V.hit; PG_E=PG_V.e; PG_HW=PG_V.hw; PG_XC=Math.max(PG_V.hw+0.01,0.5-PG_V.gap/2-PG_V.hw); PG_NET0=1-PG_V.net; PG_TILT=PG_V.tilt; }
+function pgApply(){ PG_TILTV=PG_V.tiltv; PG_G=PG_V.g; PG_HIT=PG_V.hit; PG_E=PG_V.e; PG_HW=PG_V.hw; PG_XC=Math.max(PG_V.hw+0.01,0.5-PG_V.gap/2-PG_V.hw); PG_NET0=1-PG_V.net; PG_TILT=PG_V.tilt; }
 function pgLoad(){ var o=null; try{ o=JSON.parse(localStorage.getItem('sonar_pg_sl5')||'null'); }catch(e){} PG_SL.forEach(function(q){ PG_V[q.k]=o&&typeof o[q.k]==='number'?Math.max(q.min,Math.min(q.max,o[q.k])):q.d; }); pgApply(); }
 function pgSave(){ try{ localStorage.setItem('sonar_pg_sl5',JSON.stringify(PG_V)); }catch(e){} pgApply(); if(ARC&&ARC.log) arcEv('pg:'+JSON.stringify(PG_V)); }
-function pgFmt(q,v){ if(q.k==='wall'||q.k==='grip') return v>=0.5?'есть':'нет'; return q.k==='tilt'?String(Math.round(v)):(Math.round(v*100)/100).toFixed(2).replace('.',','); }
+function pgNamed(){ try{ var o=JSON.parse(localStorage.getItem('sonar_pg_named')||'{}'); return o&&typeof o==='object'?o:{}; }catch(e){ return {}; } }
+function pgNamedSave(m){ try{ localStorage.setItem('sonar_pg_named',JSON.stringify(m)); }catch(e){} }
+function pgFmt(q,v){ if(q.k==='wall'||q.k==='grip') return v>=0.5?'есть':'нет'; return q.k==='tilt'||q.k==='tiltv'?String(Math.round(v)):(Math.round(v*100)/100).toFixed(2).replace('.',','); }
 function pgBuild(){ var box=el('pgSliders'); if(!box) return; box.innerHTML='';
   /* 1.58m (Ден 21:16: «сделай все ползунки и настройки в 3–4 колонки и покрупнее.. неудобно нажимать»): наборы — сверху, крупно,
      выбранный подсвечен; ползунки — 4 в ряд, крупные; включатели (цепкие ракетки, стенки) — кнопками, а не ползунками 0/1 */
@@ -207,14 +209,27 @@ function pgBuild(){ var box=el('pgSliders'); if(!box) return; box.innerHTML='';
     var o=PG_PRE[nm], same=PG_SL.every(function(q){ return Math.abs(PG_V[q.k]-o[q.k])<1e-6; }); if(same) b.classList.add('on');
     b.addEventListener('click',function(){ PG_SL.forEach(function(q){ PG_V[q.k]=o[q.k]; }); pgSave(); pgBuild(); arcEv('pg-preset:'+nm); }); pr.appendChild(b); });
   box.appendChild(pr);
+  /* 1.58o (Ден 21:59: «сохранять/загружать настройки под своим именем»): свои наборы — кнопками под готовыми; × — удалить */
+  var my=pgNamed(), mine=document.createElement('div'); mine.className='pgmine';
+  Object.keys(my).forEach(function(nm){ var o=my[nm], w=document.createElement('div'); w.className='pgm'; var b=document.createElement('button'); b.className='ghost'; b.textContent=nm;
+    if(PG_SL.every(function(q){ return typeof o[q.k]!=='number'||Math.abs(PG_V[q.k]-o[q.k])<1e-6; })) b.classList.add('on');
+    b.addEventListener('click',function(){ PG_SL.forEach(function(q){ if(typeof o[q.k]==='number') PG_V[q.k]=o[q.k]; }); pgSave(); pgBuild(); arcEv('pg-mine:'+nm); });
+    var x=document.createElement('button'); x.className='ghost pgx'; x.textContent='×'; x.title='Удалить';
+    x.addEventListener('click',function(){ if(x.dataset.sure!=='1'){ x.dataset.sure='1'; x.textContent='удалить?'; return; } var m=pgNamed(); delete m[nm]; pgNamedSave(m); pgBuild(); });
+    w.appendChild(b); w.appendChild(x); mine.appendChild(w); });
+  var nmIn=document.createElement('input'); nmIn.type='text'; nmIn.placeholder='имя своих настроек'; nmIn.maxLength=24; nmIn.className='pgname';
+  var sv=document.createElement('button'); sv.className='ghost'; sv.textContent='Сохранить';
+  sv.addEventListener('click',function(){ var nm=(nmIn.value||'').trim(); if(!nm){ nmIn.focus(); return; } var m=pgNamed(), o={}; PG_SL.forEach(function(q){ o[q.k]=PG_V[q.k]; }); m[nm]=o; pgNamedSave(m); arcEv('pg-save:'+nm); pgBuild(); });
+  var row=document.createElement('div'); row.className='pgsave'; row.appendChild(nmIn); row.appendChild(sv); mine.appendChild(row);
+  box.appendChild(mine);
   var tog=[];
   PG_SL.forEach(function(q){ if(q.max===1&&q.st===1){ tog.push(q); return; }
     var row=document.createElement('label'); row.className='pgrow'; var t=document.createElement('span'); var inp=document.createElement('input'); inp.type='range'; inp.min=q.min; inp.max=q.max; inp.step=q.st; inp.value=PG_V[q.k];
     var upd=function(){ t.innerHTML=q.t+': <b>'+pgFmt(q,PG_V[q.k])+'</b>'; }; upd(); inp.addEventListener('input',function(){ PG_V[q.k]=+inp.value; upd(); pgApply(); }); inp.addEventListener('change',function(){ pgSave(); pgBuild(); }); row.appendChild(t); row.appendChild(inp); box.appendChild(row); });
   tog.forEach(function(q){ var b=document.createElement('button'); b.className='ghost pgtog'+(PG_V[q.k]>=0.5?' on':''); b.textContent=q.t+': '+pgFmt(q,PG_V[q.k]);
     b.addEventListener('click',function(){ PG_V[q.k]=PG_V[q.k]>=0.5?0:1; pgSave(); pgBuild(); }); box.appendChild(b); });
-  var rs=document.createElement('button'); rs.className='ghost'; rs.textContent='Сбросить'; rs.addEventListener('click',function(){ PG_SL.forEach(function(q){ PG_V[q.k]=q.d; }); pgSave(); pgBuild(); }); box.appendChild(rs); }
-var PG_TILTS=[20,30,40], PG_STOP=0.05;
+  var rs=document.createElement('button'); rs.className='ghost'; rs.textContent='Сбросить'; rs.addEventListener('click',function(){ PG_SL.forEach(function(q){ PG_V[q.k]=q.d; }); pgSave(); pgBuild(); }); pr.appendChild(rs); }
+var PG_TILTS=[20,30,40], PG_STOP=0.05, PG_TILTV=25;
 pgLoad();
 function pgSurf(i,x,py,ar,A){ var s=i?-1:1, xc=ar*(i?1-PG_XC:PG_XC), u=(x-xc)/(ar*PG_HW); return {u:u,s:s,xc:xc,y:py-PG_LIFT+s*A*u}; }
 function pgSpawn(){ var ar=ARC.ar, i=ARC.serve, b=jgBall(0,0,false);
@@ -356,7 +371,7 @@ var ARC_STEP={
   pong:function(dt){ var pad=ARC.py, vr=ARC.padPrev===null?0:(pad-ARC.padPrev)/Math.max(dt,1e-3); ARC.padPrev=pad;
     ARC.vpS=(ARC.vpS||0)+(Math.max(-4,Math.min(4,vr))-(ARC.vpS||0))*0.45; var vp=ARC.vpS, vk=0.6/jgPadH(), vpb=vp*vk*PG_HIT;
     if(ARC.flash>0) ARC.flash-=dt; if(ARC.say>0){ ARC.say-=dt; if(ARC.say<=0) arcText('',''); }
-    var ar=ARC.ar, hw=ar*PG_HW, A=Math.tan(PG_TILT*Math.PI/180)*hw, xn=ar/2, nw=0.012;
+    var ar=ARC.ar, hw=ar*PG_HW, A=Math.tan(PG_TILTV*Math.PI/180)*hw, Ap=Math.tan(PG_TILT*Math.PI/180)*hw, xn=ar/2, nw=0.012;   /* A — как ракетка нарисована (о неё мяч ударяется), Ap — куда отскакивает */
     var nb=pad-PG_LIFT-PG_V.net, nt=JG_SET.net===0?2:JG_SET.net===2?nb+0.05*Math.sin(2*Math.PI*ARC.t/7):JG_SET.net===3?nb-(ARC.netY||0):nb; ARC.netTop=nt;
     if(!ARC.balls.length&&!ARC.over){ ARC.respawn-=dt; if(ARC.respawn<=0) pgSpawn(); }
     ARC.balls.slice().forEach(function(b){ var was=b.on, py0=b.y; b.vy+=PG_G*dt; b.x+=b.vx*dt; b.y+=b.vy*dt; b.on=false;
@@ -365,7 +380,7 @@ var ARC_STEP={
       if(Math.abs(b.x-xn)<b.r+nw&&b.y+b.r>nt){ if(py0+b.r<=nt+0.005&&b.vy>0){ b.y=nt-b.r; b.vy=-Math.abs(b.vy)*0.5; } else { b.x=xn+(b.x<xn?-1:1)*(b.r+nw); b.vx=-b.vx*(PG_V.vx>0?1:0.4); ARC.nets++; arcEv('net'); sfx('jland'); } }
       for(var i=0;i<2;i++){ var S=pgSurf(i,b.x,pad,ar,A);
         if(Math.abs(S.u)<=1){ var top=S.y-b.r;
-          if(b.y>top&&b.y<top+0.12&&py0<=top-vr*dt+0.01){ var sl=S.s*A/hw, nl=Math.sqrt(sl*sl+1), nx=sl/nl, ny=-1/nl, rx=b.vx, ry=b.vy-vpb, vn=rx*nx+ry*ny; b.y=top;
+          if(b.y>top&&b.y<top+0.12&&py0<=top-vr*dt+0.01){ var sl=S.s*Ap/hw, nl=Math.sqrt(sl*sl+1), nx=sl/nl, ny=-1/nl, rx=b.vx, ry=b.vy-vpb, vn=rx*nx+ry*ny; b.y=top;
             if(vn<0){ if(-vn>JG_STICK){ rx-=(1+PG_E)*vn*nx; ry-=(1+PG_E)*vn*ny; if(PG_V.grip>=0.5){ var vt=-rx*ny+ry*nx; rx+=vt*ny; ry-=vt*nx; } if(-vn>0.5) sfx('jland'); } else { rx-=vn*nx; ry-=vn*ny; } }
             b.vx=rx; b.vy=ry+vpb; b.on=true; b.onI=i;
             if(b.from!==i){ if(b.from!==null&&b.from!==undefined){ ARC.passes++; ARC.streak++; ARC.score=Math.max(ARC.score,ARC.streak); if(ARC.streak>ARC.pbest) ARC.pbest=ARC.streak; arcEv('pass:'+ARC.streak); sfx('jstar',Math.min(8,ARC.streak));
@@ -460,7 +475,7 @@ function arcDraw(){ var cv=el('acC'); if(!cv||!cv.getContext) return; var dpr=Ma
     if(ARC.fwCm!==null){ var gy=cmY(ARC.fwCm||5); c.strokeStyle='#ffd166'; c.lineWidth=3*dpr; c.beginPath(); c.arc(rx-0.12*H,gy,0.04*H,0,6.283); c.stroke(); }
     var fm=ARC.mix!==undefined&&ARC.mix!==null&&ARC.T?Tune.fracOf(ARC.T,ARC.mix):ARC.frac;
     if(fm!==null&&fm!==undefined){ var my=cmY(5+10*fm); c.fillStyle='#ff8a3d'; c.fillRect(rx-0.32*H,my-0.012*H,0.16*H,0.024*H); } }
-  if(g==='pong'){ var ar3=W/H, hw3=ar3*PG_HW, A3=Math.tan(PG_TILT*Math.PI/180)*hw3, py3=ARC.py;
+  if(g==='pong'){ var ar3=W/H, hw3=ar3*PG_HW, A3=Math.tan(PG_TILTV*Math.PI/180)*hw3, py3=ARC.py;
     c.fillStyle='#0f1530'; c.fillRect(0,0,W,H); c.fillStyle='#3a4373'; c.fillRect(0,0,W,Y(JG_TOP));
     var nt3=ARC.netTop===undefined?PG_NET0:ARC.netTop; if(nt3<1.5){ c.fillStyle='#8f9cc0'; c.fillRect(X(ar3/2)-0.012*H,Y(nt3),0.024*H,H); c.fillStyle='#e8eefc'; c.fillRect(X(ar3/2)-0.02*H,Y(nt3)-0.008*H,0.04*H,0.016*H); }
     if(PG_V.wall>=0.5){ c.fillStyle='#8f9cc0'; c.fillRect(0,Y(JG_TOP),X(0.012)-X(0),H); c.fillRect(X(ar3-0.012),Y(JG_TOP),X(0.012)-X(0),H); }

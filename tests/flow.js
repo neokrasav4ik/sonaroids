@@ -29,7 +29,7 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
   const shot=async n=>p.screenshot({path:path.join(OUT,n+(SKIN?'_'+SKIN:'')+(process.env.GFX==='hd'?'_hd':'')+'.png')});   // GFX=hd: the HD pictures
   await shot('01_title');
   await p.evaluate(()=>__sonaroids.act.play()); t0=Date.now();
-  let appShare=null, probeSeen=0, probeBtns=[]; let logs={setup:null,game:null}, pausedOk=false, nickScreen=null, afterNick=null, restartOk=false, restartInfo='', healthyAfter=null, again=null, seen2=[], last2=null, caughtAt=null, startAt=null, range=null, follow=[], shots={};
+  let appShare=null, probeSeen=0, probeBtns=[]; let logs={setup:null,game:null}, pausedOk=false, nickScreen=null, afterNick=null, restartOk=false, restartInfo='', healthyAfter=null, hidBefore=null, hidAfter=null, again=null, seen2=[], last2=null, caughtAt=null, startAt=null, range=null, follow=[], shots={};
   while(T()<150){   // v1.04: was 95 s — on a slower machine the logs at game over took so long that «again» was cut off before its screens
     await p.waitForTimeout(100);
     const s=await p.evaluate(()=>{ const s=__sonaroids.state(), st=Sonar.state(); return {scr:s.scr,caught:s.caught,
@@ -74,6 +74,8 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
         const sz=async b=>b?(await b.arrayBuffer()).byteLength:0; return {got,shared,want:[await sz(Logs.gameBlob()),await sz(Logs.setupBlob())]}; });   // the logs keep growing while the page runs — sizes are compared loosely
       // a second game after the app was in the background (iOS takes the microphone away: no frames), with the palm still moving
       // next to the phone (24 Sep: this start said "too quiet"): "again" must re-open the microphone and get ready again
+      // v1.57: frames may keep coming after a background while the probe is dead (the maintainer, 7 Oct) — the background alone must count
+      hidBefore=await p.evaluate(()=>Sonar.healthy()); hidAfter=await p.evaluate(()=>{ Sonar.pause(); Sonar.resume(); return Sonar.healthy(); });
       await p.evaluate(()=>Sonar.simStall(true)); await p.waitForTimeout(1000); healthyAfter=await p.evaluate(()=>Sonar.healthy());
       await p.evaluate(()=>__sonaroids.act.again()); again=T(); }
     if(again!==null&&s.scr!==last2){ seen2.push(s.scr); last2=s.scr; }
@@ -92,6 +94,7 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
   console.log(`range caught at ${caughtAt===null?'never':caughtAt.toFixed(1)+' s'}; at START the waved range sits at ${range?(range[0]*100).toFixed(0)+'–'+(range[1]*100).toFixed(0)+'% of the screen, field '+range[2].toFixed(0)+' mm':'?'} (want ~6–90%)`);
   console.log(`(«again» pressed at ${again===null?'—':again.toFixed(1)+' s'})`);
   console.log(`microphone gone while in the background noticed: ${healthyAfter===false?'yes':'NO'}; “again” then: ${seen2.join(' → ')} (want → away → wave)`);
+  console.log(`after a background with frames still coming the sound counts as gone: ${hidBefore===true&&hidAfter===false?'yes':'NO'} (before ${hidBefore}, after ${hidAfter})`);
   console.log(`flight: ship follows the palm, correlation ${corr.toFixed(3)} over ${follow.length} samples`);
   console.log(`logs: setup ${logs.setup?(logs.setup.length/1024).toFixed(0)+' KB':'none'}, game ${logs.game?(logs.game.length/1024).toFixed(0)+' KB':'none'}; lab replay of the setup log: echo range differs from the page by ${m?m[1]:'?'} mm (median)`);
   if(errors.length) console.log('page errors:',errors.join(' | '));
@@ -111,6 +114,6 @@ const SCEN=`function(t){ if(t<8) return null; if(t<9) return 100; if(t<20) retur
   console.log(`probe choice before every game: ${probeOk?'yes':'NO'} (buttons ${probeBtns.join(', ')})`);
   const appOk=!!appShare&&appShare.shared===1&&appShare.got.length===2&&appShare.got.every((g,i)=>g.head==='RIFF'&&g.len>0.9*appShare.want[i]&&g.len<=appShare.want[i]*1.001+1);
   console.log(`logs through the Android app: ${appOk?'yes':'NO'} (${appShare?appShare.got.map(g=>g.n.replace(/_\d.*/,'')+' '+(g.len/1024).toFixed(0)+' KB').join(', '):'—'})`);
-  const ok=appOk&&probeOk&&boardOk&&devOk&&setups.includes('caught')&&pausedOk&&restartOk&&healthyAfter===false&&seen2.includes('away')&&seen2[seen2.length-1]==='wave'&&got&&caughtAt!==null&&range&&range[0]<0.12&&range[1]>0.8&&range[1]<0.95&&corr>0.95&&logs.setup&&logs.game&&m&&+m[1]<0.5&&!errors.length;
+  const ok=appOk&&probeOk&&boardOk&&devOk&&setups.includes('caught')&&pausedOk&&restartOk&&healthyAfter===false&&hidBefore===true&&hidAfter===false&&seen2.includes('away')&&seen2[seen2.length-1]==='wave'&&got&&caughtAt!==null&&range&&range[0]<0.12&&range[1]>0.8&&range[1]<0.95&&corr>0.95&&logs.setup&&logs.game&&m&&+m[1]<0.5&&!errors.length;
   console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;
 })();

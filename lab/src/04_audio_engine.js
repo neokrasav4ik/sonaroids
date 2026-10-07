@@ -60,12 +60,16 @@ natOff();
    телефон отключает микрофон и звук и сам не возвращает (iOS гасит микрофон; так и в игре, 24.09). Как в игре (src/20_sonar.js healthy/restart):
    при каждом запуске с нажатия проверяю — дорожка микрофона живая, звук идёт, кадры приходят; нет — всё сбросить и открыть заново */
 var lastFrameAt=0;
-function labHealthy(){ if(!booted) return false; var tr=stream?stream.getAudioTracks():[];
+/* 1.57: кадры могут идти и после сворачивания, а зонда уже нет (автор, 7.10: «та же проблема и в основной игре») — после любого
+   сворачивания звук считается пропавшим, и следующий запуск с нажатия открывает его заново */
+var labHidden=false;
+try{ document.addEventListener('visibilitychange',function(){ if(document.hidden&&booted) labHidden=true; }); }catch(e){}
+function labHealthy(){ if(!booted||labHidden) return false; var tr=stream?stream.getAudioTracks():[];
   if(!tr.length||tr.some(function(t){ return t.readyState!=='live'||t.muted; })) return false;
   return !!ctx&&ctx.state==='running'&&performance.now()-lastFrameAt<600; }
 function labRestart(){ try{ if(stream) stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
   try{ if(node){ node.port.onmessage=null; node.disconnect(); } }catch(e){} try{ if(ctx) ctx.close(); }catch(e){}
-  if(typeof DP!=='undefined'){ DP.gl=null; DP.src=null; } ctx=null; stream=null; node=null; an=null; booted=false; collector=null; lastSeq=-1; }
+  if(typeof DP!=='undefined'){ DP.gl=null; DP.src=null; } ctx=null; stream=null; node=null; an=null; booted=false; collector=null; lastSeq=-1; labHidden=false; }
 function boot(){
   if(booted&&!labHealthy()){ labRestart(); }
   if(booted) return Promise.resolve();

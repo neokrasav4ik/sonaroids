@@ -352,13 +352,17 @@ var Sonar=(function(){
   function simBoot(){ if(booted) return Promise.resolve(); booted=true; var i=0, t0=performance.now(); lastSeq=-1;
     simIv=setInterval(function(){ var due=Math.floor((performance.now()-t0)/1000*fs/N); if(simStalled){ i=due; return; } while(i<due){ onFrame({data:{f:sim.source(i,PROBE_G),s:i}}); i++; } },10);
     return Promise.resolve(); }
-  function pause(){ if(ctx||natOn){ setProbe('off'); } }
+  /* v1.57 (the maintainer, 7 Oct: after the app was minimised and opened again the probe was gone, on the iPhone and on Android, until the
+     app was restarted): frames could still come while the probe was dead, so healthy() said yes and «again» / «try again» kept the dead
+     sound. Now after any background the sound counts as unhealthy until restart(): the next tap opens the microphone and the sound anew */
+  var wasHidden=false;
+  function pause(){ if(ctx||natOn||booted) wasHidden=true; if(ctx||natOn){ setProbe('off'); } }
   function resume(){ if(natOn&&active){ setProbe('single-'+chan); return; } if(ctx&&active){ if(ctx.state!=='running') ctx.resume().catch(function(){}); setProbe('single-'+chan); } }
   /* Is the microphone still with us? When the app goes to the background iOS takes the microphone away (the island's mic light goes out)
      and does not give it back by itself (24 Sep). Signs: the track has ended or is muted, the audio context is not running,
      or no frames for half a second. Then the game has to ask for the microphone again — from a tap. */
   function healthy(){
-    if(!booted) return false;
+    if(!booted||wasHidden||lost) return false;               // v1.57: after a background or with the probe gone — reopen
     if(sim) return !simStalled&&performance.now()-lastFrameAt<600;
     if(natOn) return performance.now()-lastFrameAt<600;
     var tr=stream?stream.getAudioTracks():[];
@@ -372,7 +376,7 @@ var Sonar=(function(){
     try{ if(ctx) ctx.close(); }catch(e){}
     if(natOn||natPort){ try{ NATA.audioStop(); }catch(e){} try{ natPort.onmessage=null; natPort.close(); }catch(e){} natPort=null; natOn=false; }
     if(simIv){ clearInterval(simIv); simIv=null; } simStalled=false;     // in simulation a re-opened microphone works again
-    ctx=null; stream=null; node=null; an=null; booted=false; active=false; collector=null; lastSeq=-1; last=null; lost=false; lastFrameAt=0;
+    ctx=null; stream=null; node=null; an=null; booted=false; active=false; collector=null; lastSeq=-1; last=null; lost=false; lastFrameAt=0; wasHidden=false;
   }
   return {live:liveOn,room:roomOn,savedMid:savedMid,boot:boot,prepare:prepare,setBand:setBand,band:function(){ return band; },simulate:simulate,healthy:healthy,restart:restart,simStall:function(v){ simStalled=!!v; },setProbe:setProbe,pause:pause,resume:resume,probeSNR:probeSNR,
     listen:function(f){ listeners.push(f); },

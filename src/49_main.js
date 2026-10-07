@@ -927,7 +927,7 @@ var ACT={
   ver:function(){ if(scr==='scores'){ scPeople=!scPeople; return; } diag=!diag; },   /* v1.34: on the scores screen the version's long press is «people only» */
   apk:function(){ try{ window.open('https://github.com/neokrasav4ik/sonaroids/releases/latest/download/sonaroids.apk','_blank','noopener'); }catch(e){} },
   source:function(){ try{ window.open('https://github.com/neokrasav4ik/sonaroids','_blank','noopener'); }catch(e){} },
-  retry:function(){ Sonar.clearLost(); ensure(toAway); },
+  retry:function(){ ensure(toAway); },   // v1.57: the probe is gone → healthy() is false → the sound is opened anew (before: the same dead sound again)
   pause:function(){ pauseGame(); },
   quit:function(){ Logs.gameEv('ended by the player'); endGame(); },
   restart:function(){ go('restart'); },

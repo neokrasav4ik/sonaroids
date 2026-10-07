@@ -155,8 +155,8 @@ var PG_HIT=0.75, PG_HW=0.15, PG_XC=0.22, PG_G=2.4, PG_LIFT=0.10, PG_NET0=0.72, P
 /* 1.58g (Ден 19:13: «и добавь ему всяких ползунков в паузу чтоб я настроил под себя и поиграл с условиями»): ползунки в паузе понга —
    тяжесть, сила удара, прыгучесть, ширина платформ, расстояние между ними, высота сетки, наклон; запоминаются; «Сбросить» — как было */
 PG_SL=[{k:'g',t:'Тяжесть',min:0.8,max:4.5,st:0.1,d:2},{k:'hit',t:'Сила удара',min:0.2,max:1.6,st:0.05,d:0.4},{k:'e',t:'Прыгучесть',min:0.1,max:0.95,st:0.05,d:0.65},
-  {k:'hw',t:'Ширина ракеток',min:0.04,max:0.24,st:0.01,d:0.06},{k:'gap',t:'Расстояние',min:0.02,max:0.5,st:0.01,d:0.1},
-  {k:'net',t:'Высота сетки',min:0,max:0.3,st:0.01,d:0.07},{k:'tilt',t:'Наклон для отскока, °',min:0,max:60,st:1,d:25},{k:'tiltv',t:'Наклон на экране, °',min:0,max:60,st:1,d:25},
+  {k:'hwr',t:'Ширина ракеток',min:0.1,max:1,st:0.05,d:0.6},{k:'fw',t:'Ширина поля',min:0.3,max:1,st:0.05,d:0.7},
+  {k:'net',t:'Высота сетки',min:0,max:0.3,st:0.01,d:0.07},{k:'tilt',t:'Наклон для отскока, °',min:0,max:60,st:1,d:45},{k:'tiltv',t:'Наклон на экране, °',min:0,max:60,st:1,d:20},
   {k:'grip',t:'Цепкие ракетки',min:0,max:1,st:1,d:1},{k:'wall',t:'Боковые стенки',min:0,max:1,st:1,d:0},{k:'vx',t:'Скорость вбок',min:0,max:3,st:0.05,d:0}],
 /* 1.58l (Ден 20:49: «просто найти сбалансированные настройки ползунков!! и убери счётчик пасов… чтобы было не сложно, но и не легко
    перепасовываться мячом по воздуху.. не перекатывать туда-сюда, не ловить отскоки от кучи стенок и потолков»). Подбор — моделью
@@ -188,17 +188,23 @@ PG_SL=[{k:'g',t:'Тяжесть',min:0.8,max:4.5,st:0.1,d:2},{k:'hit',t:'Сил�
 /* 1.58h (Ден 19:33: «добавь боковые стенки, невероятно сложно играть. не пойму какие настройки брать»): стенки по краям (мяч отскакивает
    с потерей 40%, теряется только вниз); готовые наборы «Легко / Средне / Трудно»; «Легко» — по умолчанию: тяжесть 1,6 (мяч дольше
    в воздухе), удар 0,6, прыгучесть 0,35 (мяч меньше скачет), платформы шире 0,2 и ближе 0,12, сетка низкая, наклон 22° */
-PG_PRE={'Легче':{g:2,hit:0.4,e:0.65,hw:0.06,gap:0.06,net:0.07,tilt:25,tiltv:25,grip:1,wall:0,vx:0},
-  'Сбалансированный':{g:2,hit:0.4,e:0.65,hw:0.06,gap:0.1,net:0.07,tilt:25,tiltv:25,grip:1,wall:0,vx:0},
-  'Труднее':{g:2,hit:0.4,e:0.65,hw:0.06,gap:0.13,net:0.07,tilt:25,tiltv:25,grip:1,wall:0,vx:0}},
+PG_PRE={'Легче':{g:2,hit:0.4,e:0.65,hwr:0.7,fw:0.6,net:0.07,tilt:45,tiltv:20,grip:1,wall:0,vx:0},
+  'Сбалансированный':{g:2,hit:0.4,e:0.65,hwr:0.6,fw:0.7,net:0.07,tilt:45,tiltv:20,grip:1,wall:0,vx:0},
+  'Труднее':{g:2,hit:0.4,e:0.65,hwr:0.5,fw:0.8,net:0.07,tilt:45,tiltv:20,grip:1,wall:0,vx:0}},
+/* 1.58p (Ден 22:10: «когда платформа меньше широкой — она должна быть по центру своего поля, а не прижата к сетке.. широкая — во всё
+   своё поле, а чем меньше — тем уже, но в центре»): поле — середина экрана шириной «Ширина поля»; у каждой ракетки — своя половина,
+   ракетка в её середине, «Ширина ракеток» — доля этой половины (1 — во всю). Стенки — по краям поля, края поля видны. Центры ракеток
+   теперь дальше друг от друга — пас длиннее, поэтому отскок круче (45°, иначе мяч летел бы в потолок), а на экране — 20° (ракетка
+   не занимает полэкрана). Модель: «Сбалансированный» (поле 0,7, ракетки 0,6) — 92 / 80 / 64% пасов у точной / обычной / неточной
+   руки; «Легче» (0,6 и 0,7) — 97 / 87 / 69%; «Труднее» (0,8 и 0,5) — 87 / 73 / 58%. Мяч на ~0,3 экрана, рука ~170 мм/с */
 /* 1.58m (Ден 21:16: «когда сбалансированный — платформы очень большой угол имеют — полэкрана на это отнимают, совсем хода не остаётся»):
    ракетки короче и положе — наклон 25°, ширина 0,06: по высоте ракетка занимает 0,12 экрана (было 0,30). Та же модель:
    «Сбалансированный» (расстояние 0,1) — пас у точной / обычной / неточной руки 97 / 81 / 62%; «Легче» (0,06) — 100 / 92 / 76%;
    «Труднее» (0,13) — 84 / 62 / 48%. Рука ~170 мм/с, мяч на ~0,3 экрана */
 PG_V={};
-function pgApply(){ PG_TILTV=PG_V.tiltv; PG_G=PG_V.g; PG_HIT=PG_V.hit; PG_E=PG_V.e; PG_HW=PG_V.hw; PG_XC=Math.max(PG_V.hw+0.01,0.5-PG_V.gap/2-PG_V.hw); PG_NET0=1-PG_V.net; PG_TILT=PG_V.tilt; }
-function pgLoad(){ var o=null; try{ o=JSON.parse(localStorage.getItem('sonar_pg_sl5')||'null'); }catch(e){} PG_SL.forEach(function(q){ PG_V[q.k]=o&&typeof o[q.k]==='number'?Math.max(q.min,Math.min(q.max,o[q.k])):q.d; }); pgApply(); }
-function pgSave(){ try{ localStorage.setItem('sonar_pg_sl5',JSON.stringify(PG_V)); }catch(e){} pgApply(); if(ARC&&ARC.log) arcEv('pg:'+JSON.stringify(PG_V)); }
+function pgApply(){ PG_TILTV=PG_V.tiltv; PG_G=PG_V.g; PG_HIT=PG_V.hit; PG_E=PG_V.e; PG_HW=PG_V.hwr*PG_V.fw/4; PG_XC=(1-PG_V.fw)/2+PG_V.fw/4; PG_NET0=1-PG_V.net; PG_TILT=PG_V.tilt; }
+function pgLoad(){ var o=null; try{ o=JSON.parse(localStorage.getItem('sonar_pg_sl6')||'null'); }catch(e){} PG_SL.forEach(function(q){ PG_V[q.k]=o&&typeof o[q.k]==='number'?Math.max(q.min,Math.min(q.max,o[q.k])):q.d; }); pgApply(); }
+function pgSave(){ try{ localStorage.setItem('sonar_pg_sl6',JSON.stringify(PG_V)); }catch(e){} pgApply(); if(ARC&&ARC.log) arcEv('pg:'+JSON.stringify(PG_V)); }
 function pgNamed(){ try{ var o=JSON.parse(localStorage.getItem('sonar_pg_named')||'{}'); return o&&typeof o==='object'?o:{}; }catch(e){ return {}; } }
 function pgNamedSave(m){ try{ localStorage.setItem('sonar_pg_named',JSON.stringify(m)); }catch(e){} }
 function pgFmt(q,v){ if(q.k==='wall'||q.k==='grip') return v>=0.5?'есть':'нет'; return q.k==='tilt'||q.k==='tiltv'?String(Math.round(v)):(Math.round(v*100)/100).toFixed(2).replace('.',','); }
@@ -376,7 +382,7 @@ var ARC_STEP={
     if(!ARC.balls.length&&!ARC.over){ ARC.respawn-=dt; if(ARC.respawn<=0) pgSpawn(); }
     ARC.balls.slice().forEach(function(b){ var was=b.on, py0=b.y; b.vy+=PG_G*dt; b.x+=b.vx*dt; b.y+=b.vy*dt; b.on=false;
       if(b.y-b.r<JG_TOP&&b.vy<0){ b.y=JG_TOP+b.r; b.vy=-b.vy*0.35; arcEv('ceil'); sfx('jceil'); }
-      if(PG_V.wall>=0.5){ var ww=0.012; if(b.x-b.r<ww&&b.vx<0){ b.x=ww+b.r; b.vx=-b.vx*(PG_V.vx>0?1:0.6); arcEv('wall'); sfx('jland'); } else if(b.x+b.r>ar-ww&&b.vx>0){ b.x=ar-ww-b.r; b.vx=-b.vx*(PG_V.vx>0?1:0.6); arcEv('wall'); sfx('jland'); } }
+      if(PG_V.wall>=0.5){ var ww=0.012, wl=ar*(1-PG_V.fw)/2+ww, wr=ar*(1+PG_V.fw)/2-ww; if(b.x-b.r<wl&&b.vx<0){ b.x=wl+b.r; b.vx=-b.vx*(PG_V.vx>0?1:0.6); arcEv('wall'); sfx('jland'); } else if(b.x+b.r>wr&&b.vx>0){ b.x=wr-b.r; b.vx=-b.vx*(PG_V.vx>0?1:0.6); arcEv('wall'); sfx('jland'); } }
       if(Math.abs(b.x-xn)<b.r+nw&&b.y+b.r>nt){ if(py0+b.r<=nt+0.005&&b.vy>0){ b.y=nt-b.r; b.vy=-Math.abs(b.vy)*0.5; } else { b.x=xn+(b.x<xn?-1:1)*(b.r+nw); b.vx=-b.vx*(PG_V.vx>0?1:0.4); ARC.nets++; arcEv('net'); sfx('jland'); } }
       for(var i=0;i<2;i++){ var S=pgSurf(i,b.x,pad,ar,A);
         if(Math.abs(S.u)<=1){ var top=S.y-b.r;
@@ -478,7 +484,7 @@ function arcDraw(){ var cv=el('acC'); if(!cv||!cv.getContext) return; var dpr=Ma
   if(g==='pong'){ var ar3=W/H, hw3=ar3*PG_HW, A3=Math.tan(PG_TILTV*Math.PI/180)*hw3, py3=ARC.py;
     c.fillStyle='#0f1530'; c.fillRect(0,0,W,H); c.fillStyle='#3a4373'; c.fillRect(0,0,W,Y(JG_TOP));
     var nt3=ARC.netTop===undefined?PG_NET0:ARC.netTop; if(nt3<1.5){ c.fillStyle='#8f9cc0'; c.fillRect(X(ar3/2)-0.012*H,Y(nt3),0.024*H,H); c.fillStyle='#e8eefc'; c.fillRect(X(ar3/2)-0.02*H,Y(nt3)-0.008*H,0.04*H,0.016*H); }
-    if(PG_V.wall>=0.5){ c.fillStyle='#8f9cc0'; c.fillRect(0,Y(JG_TOP),X(0.012)-X(0),H); c.fillRect(X(ar3-0.012),Y(JG_TOP),X(0.012)-X(0),H); }
+    var fl3=ar3*(1-PG_V.fw)/2, fr3=ar3*(1+PG_V.fw)/2; if(PG_V.wall>=0.5){ c.fillStyle='#8f9cc0'; c.fillRect(X(fl3),Y(JG_TOP),X(0.012)-X(0),H); c.fillRect(X(fr3-0.012),Y(JG_TOP),X(0.012)-X(0),H); } else if(PG_V.fw<0.99){ c.fillStyle='rgba(143,156,192,0.18)'; c.fillRect(X(fl3)-1,Y(JG_TOP),2,H); c.fillRect(X(fr3)-1,Y(JG_TOP),2,H); }   /* края поля */
     for(var pi3=0;pi3<2;pi3++){ var s3=pi3?-1:1, xc3=ar3*(pi3?1-PG_XC:PG_XC), ya=py3-PG_LIFT-s3*A3, yb=py3-PG_LIFT+s3*A3;
       c.fillStyle='#ff8a3d'; c.beginPath(); c.moveTo(X(xc3-hw3),Y(ya)); c.lineTo(X(xc3+hw3),Y(yb)); c.lineTo(X(xc3+hw3),Y(yb)+0.03*H); c.lineTo(X(xc3-hw3),Y(ya)+0.03*H); c.closePath(); c.fill();
     }

@@ -573,7 +573,7 @@ function pauseVeil(){ lights=[]; lx.globalAlpha=0.68; R(P.bg,0,0,LW,LH); lx.glob
     lx.save(); lx.globalCompositeOperation='destination-out'; lx.fillStyle=gr; lx.fillRect(sx-r,sy-r,2*r,2*r); lx.restore(); } }
 function sPaused(){ field(DT,0); pauseVeil(); titles(L('paused'));
   var act=[['resume',L('resume'),'primary']].concat(pausedFrom==='play'?[['restart',L('restart')],['quit',L('quit')]]:[]).concat([['exit',L('exit')]]),
-      look=(mode==='race'?[['rskin',raceSkinLabel(),'rskin']]:[['skin','','skin']]).concat(gfxFree()?[['gfx',mode==='race'?L('gfx')+': '+(gfxMode==='hd'?'HD':L('gfx_pixel')):gfxLabel()]]:[]).concat([['sfx','','sound']]), top=topY()+12, bot=LH-SAFE.b-4;
+      look=(mode==='race'?[['rskin',raceSkinLabel(),'rskin']]:[['skin','','skin']]).concat([['smooth',L('smooth')+': '+(noSmooth?L('s_off'):L('s_on'))]]).concat(gfxFree()?[['gfx',mode==='race'?L('gfx')+': '+(gfxMode==='hd'?'HD':L('gfx_pixel')):gfxLabel()]]:[]).concat([['sfx','','sound']]), top=topY()+12, bot=LH-SAFE.b-4;
   // v1.03: SonaRace's pause as SonaFly's — the skin and the graphics beside the actions (Den: «во флае можно скин и графику менять прямо во время игры в меню паузы, в гонках надо сделать аналогичное»)
   var w1=colW(act), w2=colW(look), g=10, left=freeSide()==='left', x1=mode!=='race'&&left?Math.max(sideX(w1),Math.min(Math.round(fx(Core.SHIP_X))+34,LW-SAFE.r-Math.max(8,Math.round(LW*0.04))-w1-10-w2)):sideX(w1),   /* off the ship's lane, but both columns on screen */ x2=left?x1+w1+g:x1-g-w2, cy=Math.min(Math.round(LH*0.55),Math.round((top+bot)/2));
   if(w1+g+w2>LW-SAFE.l-SAFE.r-2*Math.max(8,Math.round(LW*0.04))){                                        // too narrow for two (a tablet in Russian): one tight column
@@ -675,6 +675,9 @@ if(!flyMix&&skinId!==SKL.fly.list[0]) setSkin(SKL.fly.list[0]); if(!raceMix){ ra
 function flySkinStep(sd){ sklStep('fly',sd); }   // v1.29: the playlist's (48_mix.js)
 function raceSkinStep(sd){ sklStep('race',sd); }
 var RACE_TEST=false;
+var noSmooth=store.get('sonaroids_nosmooth','0')==='1';
+function applySmooth(){ Core.TUNE.FOLLOW=noSmooth?1:0; Race.TUNE.FOLLOW=noSmooth?1:0; }
+applySmooth();
 function raceRules(){ return RACE_TEST?raceOpt:Race.optOf(null); }
 if(!RACE_TEST) raceSteer='road';
 function raceOptSave(){ store.set('sonaroids_race_opt',JSON.stringify(raceOpt)); }
@@ -746,7 +749,7 @@ function raceCount(){ countT-=DT; followShip(); raceScene(g,g.d,raceCarY(g,g.d),
   ring(cx0,cy0,13*cs,1-fr,P.band); if(cs>1){ lx.save(); lx.translate(cx0,cy0); lx.scale(pu,pu); lx.translate(-cx0,-cy0); } text(String(n),cx0,cy0-Math.round(3.5*cs),P.text,'center',cs); if(cs>1) lx.restore(); say(String(n));
   if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.play('tick');
   if(countT<=0) startGame(); }
-function raceStart(){ var y0=raceSteer==='road'?(rCarYs===null?null:+rCarYs.toFixed(3)):(shipY===null?null:+(shipY/K).toFixed(3)); if(y0!==null) g.car.y=Math.max(Race.MARGIN,Math.min(Race.FH-Race.MARGIN,y0)); g.car.y=+g.car.y.toFixed(3); g.car.off=g.car.y-Race.centre(g,g.d+g.car.x); if(!RACE_TEST) Board.start(g.seed,g.FW,g.car.y,{game:'race',core:Race.TAG,steer:g.steer});   /* v1.01: the race goes to the tables — the server replays it from this start */
+function raceStart(){ var y0=raceSteer==='road'?(rCarYs===null?null:+rCarYs.toFixed(3)):(shipY===null?null:+(shipY/K).toFixed(3)); if(y0!==null) g.car.y=Math.max(Race.MARGIN,Math.min(Race.FH-Race.MARGIN,y0)); g.car.y=+g.car.y.toFixed(3); g.car.off=g.car.y-Race.centre(g,g.d+g.car.x); if(!RACE_TEST) Board.start(g.seed,g.FW,g.car.y,{game:'race',core:Race.TAG,steer:g.steer,test:noSmooth});   /* v1.01: the race goes to the tables — the server replays it from this start */
   acc=0; parts=[]; raceNew=false; var I=Sonar.info();
   Logs.gameStart({core:Race.TAG,game:'race',steer:g.steer,opt:g.opt,seed:g.seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:liveOn()?'live':'frozen',live:liveOn(),room:Sonar.room(),asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
     chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids'});
@@ -860,7 +863,7 @@ function startCount(){ flyReset(); if(resumeAfterPrep&&g&&g.state!=='over'){ res
 function startGame(){ if(mode==='race'){ raceStart(); return; }
   var seed=0; try{ var a=new Uint32Array(1); crypto.getRandomValues(a); seed=a[0]; }catch(e){ seed=Math.floor(Math.random()*4294967296); }
   var y0=shipY===null?null:+(shipY/K).toFixed(3);
-  Core.TUNE.SHOT_TILT=shotTilt(); Core.TUNE.SHOT_BOUNCE=shotBounce(); g=Core.create(seed,Core.FH*(LW-SAFE.l)/LH,y0); Board.start(seed,g.FW,y0,Core.TUNE.SHOT_TILT||Core.TUNE.SHOT_BOUNCE||mouseOn()?{test:true}:null); nickAsked=false; acc=0; rockSpr={}; parts=[]; livesT=0; var I=Sonar.info();
+  Core.TUNE.SHOT_TILT=shotTilt(); Core.TUNE.SHOT_BOUNCE=shotBounce(); g=Core.create(seed,Core.FH*(LW-SAFE.l)/LH,y0); Board.start(seed,g.FW,y0,Core.TUNE.SHOT_TILT||Core.TUNE.SHOT_BOUNCE||mouseOn()||noSmooth?{test:true}:null); nickAsked=false; acc=0; rockSpr={}; parts=[]; livesT=0; var I=Sonar.info();
   Logs.gameStart({core:Core.TAG,seed:seed,y0:y0,FW:+g.FW.toFixed(3),cal:DSP2.info().cal,autocenter:false,tune:liveOn()?'live':'frozen',live:liveOn(),room:Sonar.room(),asym:Tune.ASYM,field_mm:+T.field.toFixed(1),
     chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids',shot_tilt:Core.TUNE.SHOT_TILT,shot_bounce:Core.TUNE.SHOT_BOUNCE,skin_heavy:obsOn()?'obsidian '+OBS_SL.map(function(x){ return x[0].slice(4)+' '+Math.round(obsSl(x[0])*100)+'%'; }).join(', ')+', shot L'+obsShot()+', gift rim '+(obsGRim()?'on':'off')+', ring '+(obsRingOn()?'on':'off'):undefined,mouse:mouseOn()||undefined,fly_tilt:flyTiltK()});
   Sfx.play('start'); go('play');
@@ -884,6 +887,10 @@ var ACT={
   set_live_prev:function(){ SET_ROWS[2][2](-1); }, set_live_next:function(){ SET_ROWS[2][2](1); }, set_room_prev:function(){ SET_ROOM[2](-1); }, set_room_next:function(){ SET_ROOM[2](1); },
   rset:function(){ go('rset'); },
   hub_rocks:function(){ mode='fly'; go('title'); }, rskin:function(){ raceSkinStep(1); }, rskin_next:function(){ raceSkinStep(1); }, rskin_prev:function(){ raceSkinStep(-1); }, hub_play:function(){ mode='fly'; go('title'); }, hub_race:function(){ mode='race'; go('rtitle'); },
+  /* v1.58 (Ден, 7.10, после «Жонглёра» в лабе — «лучшее управление, что я вообще пробовал»: «да, сделай переключатель в меню паузы —
+     чтоб я сравнил управляемость»): корабль / машина без сглаживания (там, куда показывает ладонь, без догоняния 25 мс). Проба: такая
+     партия не идёт в таблицы — переключил посреди партии, и она тоже уже не идёт */
+  smooth:function(){ noSmooth=!noSmooth; store.set('sonaroids_nosmooth',noSmooth?'1':'0'); applySmooth(); if(g&&g.state==='play') Board.start(0,0,0,{test:true}); Logs.ev('плавность',{on:!noSmooth}); },
   gfx:function(){ setGfx(gfxMode==='hd'?'pixel':'hd'); pool={K:0,list:[[],[],[]]}; },
   skin_prev:function(){ flySkinStep(-1); },
   skins_open:function(){ skinsOpen(); }, sk_back:function(){ skinsBack(); },

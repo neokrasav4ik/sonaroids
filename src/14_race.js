@@ -15,7 +15,7 @@
 var Race=(function(){
   var DT=1/60, FH=180, MARGIN=FH*0.04, CAR_X=40, FOLLOW=0.48658, GLIDE=0.12;   // GLIDE: after the palm was lost (v0.91)          // the car follows the palm with the ship's 25 ms lag
   var CAR={hl:9,hw:4.6};                                                   // half the car's length and width (every car the same)
-  var TUNE={V0:98,V1:200,VT:280, ACC:55, BRAKE:120, OFF:0.5, KERB:0.9, KERB_W:4, SYRUP:0.62, SYRUP_T:0.7,
+  var TUNE={FOLLOW:0,V0:98,V1:200,VT:280, ACC:55, BRAKE:120, OFF:0.5, KERB:0.9, KERB_W:4, SYRUP:0.62, SYRUP_T:0.7,
     HW0:0.25*FH, HW1:0.185*FH, HWD:40000, FUEL:100, BURN0:2.0, BURN1:3.2, BURNT:360, SODA:30, CRASH_V:0.35, CRASH_FUEL:6, INV:1.1,
     SODA_GAP:[800,1050], SODA_GROW:40000, GIFT_GAP:[1600,2300], COIN_GAP:[330,620], CAR_GAP:[240,480], PUD_GAP:[520,980],
     MAGNET:6, BUBBLE:12, TURBO:5, TURBO_K:1.33, PASS:25, COIN:10, LINE:50};
@@ -106,8 +106,8 @@ var Race=(function(){
     // 40 units in a frame. Now after a gap of 0.1 s or more the car glides to the palm over ~0.3 s instead
     var seen=hand!==null&&hand!==undefined;
     if(!seen) s.gap++; else { if(s.gap>=6) s.glide=18; s.gap=0; }
-    var fol=s.glide>0?GLIDE:FOLLOW; if(seen&&s.glide>0) s.glide--;
-    if(g.steer==='road'){ if(seen&&g.state==='play') s.off=offOf(g,g.d+s.x,hand); var rr0=at(g,g.d+s.x); s.y+=(clamp(rr0.c+s.off,MARGIN,FH-MARGIN)-s.y)*(g.state==='play'?fol:FOLLOW); }
+    var FOL=TUNE.FOLLOW||FOLLOW, fol=s.glide>0?GLIDE:FOL;   /* v1.58: TUNE.FOLLOW 1 — без сглаживания (проба из паузы) */ if(seen&&s.glide>0) s.glide--;
+    if(g.steer==='road'){ if(seen&&g.state==='play') s.off=offOf(g,g.d+s.x,hand); var rr0=at(g,g.d+s.x); s.y+=(clamp(rr0.c+s.off,MARGIN,FH-MARGIN)-s.y)*(g.state==='play'?fol:FOL); }
     else if(seen&&g.state==='play'){ var ty=FH-MARGIN-hand*(FH-2*MARGIN); s.y+=(ty-s.y)*fol; }
     if(s.inv>0) s.inv-=DT; if(s.bubble>0) s.bubble-=DT; if(s.magnet>0) s.magnet-=DT; if(s.turbo>0) s.turbo-=DT; if(s.syrup>0) s.syrup-=DT; if(s.rub>0) s.rub-=DT;
     // where the car is: on the road, on the kerb or off it

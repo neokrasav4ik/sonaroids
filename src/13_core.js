@@ -22,7 +22,7 @@ var Core=(function(){
   var STREAK_MAX=4;                        // the streak adds up to ×4 (after 15 hits in a row)
   /* tuning, set with a bot player (tests/bot.js): a rock every SPAWN s at pace 1, and pace^1.125 times as often later (more rocks, not just faster ones); pieces fly off at SPLIT_VX × the parent's speed
      and SPLIT_VY up or down; a new level every LEVEL base points (points before the height and streak multipliers) */
-  var TUNE={SPAWN:[1.0,1.7],SPLIT_VX:[0.85,1.15],SPLIT_VY:[8,18],HIT_R:0.8,LEVEL:5000,SLOW_FROM:1.4,SHOT_TILT:0,SHOT_BOUNCE:0};   // v1.40: SHOT_BOUNCE 1 — the shots glance off the top and bottom edges as the rocks do (a test)
+  var TUNE={FOLLOW:0,SPAWN:[1.0,1.7],SPLIT_VX:[0.85,1.15],SPLIT_VY:[8,18],HIT_R:0.8,LEVEL:5000,SLOW_FROM:1.4,SHOT_TILT:0,SHOT_BOUNCE:0};   // v1.40: SHOT_BOUNCE 1 — the shots glance off the top and bottom edges as the rocks do (a test)
   /* v1.35 (experiment, off): the ship tilts with its own vertical speed — smoothed 0.12 s, a dead zone of 6% of the field a second
      (a still palm's shake leaves it level), then 0.08 s more; the slope (rise per unit ahead) up to ±0.33 (~18°). The picture always
      shows it; the shots follow SHOT_TILT × it (0 — straight ahead, as before). Literals: 1 − exp(−(1/60)/0.12), 1 − exp(−(1/60)/0.08) */
@@ -61,7 +61,7 @@ var Core=(function(){
     g.events=[]; g.gone=[]; g.fx=[]; if(g.state!=='play') return g;
     g.n++; g.t=g.n*DT;
     var s=g.ship, m=pace(g.t), w=g.slow>0?0.5:1, wdt=DT*w, i, j, b, r, u=g.ufo;
-    var y0=s.y; if(hand!==null&&hand!==undefined){ var ty=FH-MARGIN-hand*(FH-2*MARGIN); s.y+=(ty-s.y)*FOLLOW; }
+    var y0=s.y; if(hand!==null&&hand!==undefined){ var ty=FH-MARGIN-hand*(FH-2*MARGIN); s.y+=(ty-s.y)*(TUNE.FOLLOW||FOLLOW); }   /* v1.58: TUNE.FOLLOW 1 — без сглаживания (пробный режим из паузы, партия не в таблицы) */
     s.sv+=((s.y-y0)/DT-s.sv)*TILT.k1; var vv=s.sv>TILT.dead?s.sv-TILT.dead:s.sv<-TILT.dead?s.sv+TILT.dead:0, tt=vv*TILT.gain;
     if(tt>TILT.max) tt=TILT.max; else if(tt<-TILT.max) tt=-TILT.max; s.tl+=(tt-s.tl)*TILT.k2;   // the slope: + nose down (y grows down)
     if(s.inv>0) s.inv-=DT; if(s.shield>0) s.shield-=DT; if(s.triple>0) s.triple-=DT; if(g.slow>0) g.slow-=DT;

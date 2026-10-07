@@ -1994,10 +1994,15 @@ function fwCmAt(S,t){ for(var i=0;i<S.length;i++){ var s=S[i]; if(t<s.t1){ var u
 var PG_HIT=0.75, PG_HW=0.15, PG_XC=0.22, PG_G=2.4, PG_LIFT=0.10, PG_NET0=0.72, PG_E=0.5, PG_TILT=30,
 /* 1.58g (Ден 19:13: «и добавь ему всяких ползунков в паузу чтоб я настроил под себя и поиграл с условиями»): ползунки в паузе понга —
    тяжесть, сила удара, прыгучесть, ширина платформ, расстояние между ними, высота сетки, наклон; запоминаются; «Сбросить» — как было */
-PG_SL=[{k:'g',t:'Тяжесть',min:0.8,max:4.5,st:0.1,d:2.4},{k:'hit',t:'Сила удара',min:0.3,max:1.6,st:0.05,d:0.75},{k:'e',t:'Прыгучесть',min:0.1,max:0.95,st:0.05,d:0.5},
-  {k:'hw',t:'Ширина платформ',min:0.06,max:0.24,st:0.01,d:0.15},{k:'gap',t:'Расстояние между платформами',min:0.05,max:0.5,st:0.01,d:0.26},
-  {k:'net',t:'Высота сетки',min:0.05,max:0.6,st:0.01,d:0.12},{k:'tilt',t:'Наклон платформ, °',min:5,max:55,st:1,d:22},
-  {k:'wall',t:'Боковые стенки',min:0,max:1,st:1,d:1},{k:'aim',t:'Ловля и бросок к другой',min:0,max:1,st:1,d:1}],
+PG_SL=[{k:'g',t:'Тяжесть',min:0.8,max:4.5,st:0.1,d:4.2},{k:'hit',t:'Сила удара',min:0.3,max:1.6,st:0.05,d:1},{k:'e',t:'Прыгучесть',min:0.1,max:0.95,st:0.05,d:0.5},
+  {k:'hw',t:'Ширина платформ',min:0.06,max:0.24,st:0.01,d:0.22},{k:'gap',t:'Расстояние между платформами',min:0.05,max:0.5,st:0.01,d:0.12},
+  {k:'net',t:'Высота сетки',min:0.05,max:0.6,st:0.01,d:0.15},{k:'tilt',t:'Наклон платформ, °',min:0,max:55,st:1,d:0},
+  {k:'wall',t:'Боковые стенки',min:0,max:1,st:1,d:1},{k:'vx',t:'Скорость вбок',min:0,max:2,st:0.05,d:1}],
+/* 1.58j (Ден 20:18: «"ловля и бросок" — это просто игра играет за тебя»; 20:19–20:20: понг как жонглёр — «но хочется, чтобы выглядело
+   как что-то, что не нарушает законов физики.. естественно и красиво»): «ловля» 1.58i убрана. «Как жонглёр» (по умолчанию): тяжесть,
+   отскок и удар — как в жонглёре (4,2; 0,5; 1), платформы ровные; мяч летит вбок с постоянной скоростью (как настоящий: в полёте её
+   ничто не меняет, ровная платформа — тоже), от стенок и сетки отскакивает упруго — сам ходит туда-обратно. Рука — только вверх-вниз:
+   слабо — мяч стукнется о сетку и вернётся, сильно — в потолок. Ползунки — заново (новый ключ хранения) */
 /* 1.58i (Ден 20:05: «оч сложно играть даже на лёгком с удлинёнными до края платформами.. что-то неправильно»; запись 20:07 — 38 пасов
    подряд, 0 потерь, но 11 раз в потолок, сила броска 0,5–1,9 почти не зависит от скорости руки 130–390 мм/с: мяч, упавший на
    движущуюся платформу, отлетает по-разному, а вбок — как придётся от наклона): «Ловля и бросок к другой» — мяч ложится на платформу
@@ -2006,14 +2011,14 @@ PG_SL=[{k:'g',t:'Тяжесть',min:0.8,max:4.5,st:0.1,d:2.4},{k:'hit',t:'Си�
 /* 1.58h (Ден 19:33: «добавь боковые стенки, невероятно сложно играть. не пойму какие настройки брать»): стенки по краям (мяч отскакивает
    с потерей 40%, теряется только вниз); готовые наборы «Легко / Средне / Трудно»; «Легко» — по умолчанию: тяжесть 1,6 (мяч дольше
    в воздухе), удар 0,6, прыгучесть 0,35 (мяч меньше скачет), платформы шире 0,2 и ближе 0,12, сетка низкая, наклон 22° */
-PG_PRE={'Легко':{g:1.6,hit:0.6,e:0.35,hw:0.2,gap:0.12,net:0.12,tilt:22,wall:1,aim:1},
-  'Средне':{g:2.4,hit:0.75,e:0.5,hw:0.15,gap:0.26,net:0.28,tilt:30,wall:1,aim:0},
-  'Трудно':{g:3.2,hit:0.9,e:0.55,hw:0.11,gap:0.36,net:0.36,tilt:35,wall:0,aim:0}},
+PG_PRE={'Как жонглёр':{g:4.2,hit:1,e:0.5,hw:0.22,gap:0.12,net:0.15,tilt:0,wall:1,vx:1},
+  'С наклоном':{g:2.4,hit:0.75,e:0.5,hw:0.15,gap:0.26,net:0.28,tilt:30,wall:1,vx:0},
+  'Трудно':{g:3.2,hit:0.9,e:0.55,hw:0.11,gap:0.36,net:0.36,tilt:35,wall:0,vx:0}},
 PG_V={};
 function pgApply(){ PG_G=PG_V.g; PG_HIT=PG_V.hit; PG_E=PG_V.e; PG_HW=PG_V.hw; PG_XC=Math.max(PG_V.hw+0.01,0.5-PG_V.gap/2-PG_V.hw); PG_NET0=1-PG_V.net; PG_TILT=PG_V.tilt; }
-function pgLoad(){ var o=null; try{ o=JSON.parse(localStorage.getItem('sonar_pg_sl')||'null'); }catch(e){} PG_SL.forEach(function(q){ PG_V[q.k]=o&&typeof o[q.k]==='number'?Math.max(q.min,Math.min(q.max,o[q.k])):q.d; }); pgApply(); }
-function pgSave(){ try{ localStorage.setItem('sonar_pg_sl',JSON.stringify(PG_V)); }catch(e){} pgApply(); if(ARC&&ARC.log) arcEv('pg:'+JSON.stringify(PG_V)); }
-function pgFmt(q,v){ if(q.k==='wall'||q.k==='aim') return v>=0.5?'есть':'нет'; return q.k==='tilt'?String(Math.round(v)):(Math.round(v*100)/100).toFixed(2).replace('.',','); }
+function pgLoad(){ var o=null; try{ o=JSON.parse(localStorage.getItem('sonar_pg_sl2')||'null'); }catch(e){} PG_SL.forEach(function(q){ PG_V[q.k]=o&&typeof o[q.k]==='number'?Math.max(q.min,Math.min(q.max,o[q.k])):q.d; }); pgApply(); }
+function pgSave(){ try{ localStorage.setItem('sonar_pg_sl2',JSON.stringify(PG_V)); }catch(e){} pgApply(); if(ARC&&ARC.log) arcEv('pg:'+JSON.stringify(PG_V)); }
+function pgFmt(q,v){ if(q.k==='wall') return v>=0.5?'есть':'нет'; return q.k==='tilt'?String(Math.round(v)):(Math.round(v*100)/100).toFixed(2).replace('.',','); }
 function pgBuild(){ var box=el('pgSliders'); if(!box) return; box.innerHTML='';
   PG_SL.forEach(function(q){ var row=document.createElement('label'); row.className='pgrow'; var t=document.createElement('span'); var inp=document.createElement('input'); inp.type='range'; inp.min=q.min; inp.max=q.max; inp.step=q.st; inp.value=PG_V[q.k];
     var upd=function(){ t.textContent=q.t+': '+pgFmt(q,PG_V[q.k]); }; upd(); inp.addEventListener('input',function(){ PG_V[q.k]=+inp.value; upd(); pgApply(); }); inp.addEventListener('change',function(){ pgSave(); }); row.appendChild(t); row.appendChild(inp); box.appendChild(row); });
@@ -2025,7 +2030,7 @@ var PG_TILTS=[20,30,40], PG_STOP=0.05;
 pgLoad();
 function pgSurf(i,x,py,ar,A){ var s=i?-1:1, xc=ar*(i?1-PG_XC:PG_XC), u=(x-xc)/(ar*PG_HW); return {u:u,s:s,xc:xc,y:py-PG_LIFT+s*A*u}; }
 function pgSpawn(){ var ar=ARC.ar, i=ARC.serve, b=jgBall(0,0,false);
-  b.x=ar*(i?1-PG_XC:PG_XC)-(i?-1:1)*0.3*ar*PG_HW; b.y=0.3; b.vy=0; b.from=i; b.rest=0; ARC.balls.push(b); arcEv('serve:'+i); }
+  b.x=ar*(i?1-PG_XC:PG_XC)-(i?-1:1)*0.3*ar*PG_HW; b.y=0.3; b.vy=0; b.vx=(i?-1:1)*(PG_V.vx||0); b.from=i; b.rest=0; ARC.balls.push(b); arcEv('serve:'+i); }
 /* ── жонглёр (7.10, 1.57a; Ден выбрал из идей «для одного»: «жонглёр эскизы варианты» → «да, давай посмотрим») ──
    Ладонь — полоса внизу экрана (доля хода ладони → 0,94…0,54 высоты), мяч отскакивает от неё как от ракетки бесконечной массы:
    при ударе относительная скорость отражается с коэффициентом JG_E, медленное касание — мяч лежит и едет вместе с ладонью; когда
@@ -2168,18 +2173,15 @@ var ARC_STEP={
     if(!ARC.balls.length&&!ARC.over){ ARC.respawn-=dt; if(ARC.respawn<=0) pgSpawn(); }
     ARC.balls.slice().forEach(function(b){ var was=b.on, py0=b.y; b.vy+=PG_G*dt; b.x+=b.vx*dt; b.y+=b.vy*dt; b.on=false;
       if(b.y-b.r<JG_TOP&&b.vy<0){ b.y=JG_TOP+b.r; b.vy=-b.vy*0.35; arcEv('ceil'); sfx('jceil'); }
-      if(PG_V.wall>=0.5){ var ww=0.012; if(b.x-b.r<ww&&b.vx<0){ b.x=ww+b.r; b.vx=-b.vx*0.6; arcEv('wall'); sfx('jland'); } else if(b.x+b.r>ar-ww&&b.vx>0){ b.x=ar-ww-b.r; b.vx=-b.vx*0.6; arcEv('wall'); sfx('jland'); } }
-      if(Math.abs(b.x-xn)<b.r+nw&&b.y+b.r>nt){ if(py0+b.r<=nt+0.005&&b.vy>0){ b.y=nt-b.r; b.vy=-Math.abs(b.vy)*0.5; } else { b.x=xn+(b.x<xn?-1:1)*(b.r+nw); b.vx=-b.vx*0.4; ARC.nets++; arcEv('net'); sfx('jland'); } }
+      if(PG_V.wall>=0.5){ var ww=0.012; if(b.x-b.r<ww&&b.vx<0){ b.x=ww+b.r; b.vx=-b.vx*(PG_V.vx>0?1:0.6); arcEv('wall'); sfx('jland'); } else if(b.x+b.r>ar-ww&&b.vx>0){ b.x=ar-ww-b.r; b.vx=-b.vx*(PG_V.vx>0?1:0.6); arcEv('wall'); sfx('jland'); } }
+      if(Math.abs(b.x-xn)<b.r+nw&&b.y+b.r>nt){ if(py0+b.r<=nt+0.005&&b.vy>0){ b.y=nt-b.r; b.vy=-Math.abs(b.vy)*0.5; } else { b.x=xn+(b.x<xn?-1:1)*(b.r+nw); b.vx=-b.vx*(PG_V.vx>0?1:0.4); ARC.nets++; arcEv('net'); sfx('jland'); } }
       for(var i=0;i<2;i++){ var S=pgSurf(i,b.x,pad,ar,A);
         if(Math.abs(S.u)<=1){ var top=S.y-b.r;
           if(b.y>top&&b.y<top+0.12){ var sl=S.s*A/hw, nl=Math.sqrt(sl*sl+1), nx=sl/nl, ny=-1/nl, rx=b.vx, ry=b.vy-vpb, vn=rx*nx+ry*ny; b.y=top;
-            if(PG_V.aim>=0.5){ if(vn<-0.5) sfx('jland'); rx=0; ry=0; }   /* ловля: мяч ложится и едет с платформой */
-            else if(vn<0){ if(-vn>JG_STICK){ rx-=(1+PG_E)*vn*nx; ry-=(1+PG_E)*vn*ny; if(-vn>0.5) sfx('jland'); } else { rx-=vn*nx; ry-=vn*ny; } }
+            if(vn<0){ if(-vn>JG_STICK){ rx-=(1+PG_E)*vn*nx; ry-=(1+PG_E)*vn*ny; if(-vn>0.5) sfx('jland'); } else { rx-=vn*nx; ry-=vn*ny; } }
             b.vx=rx; b.vy=ry+vpb; b.on=true; b.onI=i;
             if(b.from!==i){ if(b.from!==null&&b.from!==undefined){ ARC.passes++; ARC.streak++; ARC.score=Math.max(ARC.score,ARC.streak); if(ARC.streak>ARC.pbest) ARC.pbest=ARC.streak; arcEv('pass:'+ARC.streak); sfx('jstar',Math.min(8,ARC.streak)); ARC.pf.push({x:b.x,y:b.y-0.08,t:0.8,pts:ARC.streak});
                 if(JG_SET.net===3) ARC.netY=Math.max(0.35,Math.min(0.95,PG_NET0+(Math.random()-0.5)*0.3)); } b.from=i; } } } }
-      if(was&&!b.on&&b.vy<-0.5&&PG_V.aim>=0.5){ var vmx=Math.sqrt(2*PG_G*Math.max(0.02,b.y-b.r-JG_TOP-0.03)); if(-b.vy>vmx) b.vy=-vmx;   /* не выше потолка */
-        var xt=ar*(b.onI?PG_XC:1-PG_XC), tf=2*(-b.vy)/PG_G; b.vx=Math.max(-2.5,Math.min(2.5,(xt-b.x)/tf)); }   /* к середине другой платформы */
       if(was&&!b.on&&b.vy<-0.5){ ARC.tosses++; arcEv('toss:'+(-b.vy).toFixed(2)+':'+b.vx.toFixed(2)); sfx('jtoss',-b.vy); }
       b.rest=b.on?(b.rest||0)+dt:0;
       if(b.y>1.1||b.x<-0.15||b.x>ar+0.15){ ARC.falls++; arcEv('lost:'+b.x.toFixed(2)); ARC.streak=0; ARC.flash=0.25; sfx('jburn'); ARC.balls.splice(ARC.balls.indexOf(b),1);

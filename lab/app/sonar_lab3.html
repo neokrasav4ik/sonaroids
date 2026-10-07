@@ -103,6 +103,8 @@
   .pgrow{display:flex;flex-direction:column;gap:.1rem;font-size:.95rem;color:var(--ink)}
   .pgrow input{width:100%;height:2rem}
   #pgSliders button{grid-column:1/-1}
+  .pgpre{grid-column:1/-1;display:flex;gap:.5rem}
+  .pgpre button{flex:1;font-size:1.1rem;padding:.7rem 0}
   #acStop{position:absolute;left:calc(max(.7rem,env(safe-area-inset-left)) + .3rem);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + 3.4rem);width:auto;min-height:0;padding:.6em 1em;font-size:.9rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
   #rightPlay{padding:0;background:#04070A} #rpC{position:absolute;inset:0;width:100%;height:100%;display:block}
   #rpTop{position:absolute;left:0;right:0;top:calc(max(.8rem,env(safe-area-inset-top)) + 5.4rem);text-align:center;pointer-events:none;padding:0 1rem}
@@ -1994,16 +1996,26 @@ var PG_HIT=0.75, PG_HW=0.15, PG_XC=0.22, PG_G=2.4, PG_LIFT=0.10, PG_NET0=0.72, P
    тяжесть, сила удара, прыгучесть, ширина платформ, расстояние между ними, высота сетки, наклон; запоминаются; «Сбросить» — как было */
 PG_SL=[{k:'g',t:'Тяжесть',min:0.8,max:4.5,st:0.1,d:2.4},{k:'hit',t:'Сила удара',min:0.3,max:1.6,st:0.05,d:0.75},{k:'e',t:'Прыгучесть',min:0.1,max:0.95,st:0.05,d:0.5},
   {k:'hw',t:'Ширина платформ',min:0.06,max:0.24,st:0.01,d:0.15},{k:'gap',t:'Расстояние между платформами',min:0.05,max:0.5,st:0.01,d:0.26},
-  {k:'net',t:'Высота сетки',min:0.05,max:0.6,st:0.01,d:0.28},{k:'tilt',t:'Наклон платформ, °',min:5,max:55,st:1,d:30}],
+  {k:'net',t:'Высота сетки',min:0.05,max:0.6,st:0.01,d:0.12},{k:'tilt',t:'Наклон платформ, °',min:5,max:55,st:1,d:22},
+  {k:'wall',t:'Боковые стенки',min:0,max:1,st:1,d:1}],
+/* 1.58h (Ден 19:33: «добавь боковые стенки, невероятно сложно играть. не пойму какие настройки брать»): стенки по краям (мяч отскакивает
+   с потерей 40%, теряется только вниз); готовые наборы «Легко / Средне / Трудно»; «Легко» — по умолчанию: тяжесть 1,6 (мяч дольше
+   в воздухе), удар 0,6, прыгучесть 0,35 (мяч меньше скачет), платформы шире 0,2 и ближе 0,12, сетка низкая, наклон 22° */
+PG_PRE={'Легко':{g:1.6,hit:0.6,e:0.35,hw:0.2,gap:0.12,net:0.12,tilt:22,wall:1},
+  'Средне':{g:2.4,hit:0.75,e:0.5,hw:0.15,gap:0.26,net:0.28,tilt:30,wall:1},
+  'Трудно':{g:3.2,hit:0.9,e:0.55,hw:0.11,gap:0.36,net:0.36,tilt:35,wall:0}},
 PG_V={};
 function pgApply(){ PG_G=PG_V.g; PG_HIT=PG_V.hit; PG_E=PG_V.e; PG_HW=PG_V.hw; PG_XC=Math.max(PG_V.hw+0.01,0.5-PG_V.gap/2-PG_V.hw); PG_NET0=1-PG_V.net; PG_TILT=PG_V.tilt; }
 function pgLoad(){ var o=null; try{ o=JSON.parse(localStorage.getItem('sonar_pg_sl')||'null'); }catch(e){} PG_SL.forEach(function(q){ PG_V[q.k]=o&&typeof o[q.k]==='number'?Math.max(q.min,Math.min(q.max,o[q.k])):q.d; }); pgApply(); }
 function pgSave(){ try{ localStorage.setItem('sonar_pg_sl',JSON.stringify(PG_V)); }catch(e){} pgApply(); if(ARC&&ARC.log) arcEv('pg:'+JSON.stringify(PG_V)); }
-function pgFmt(q,v){ return q.k==='tilt'?String(Math.round(v)):(Math.round(v*100)/100).toFixed(2).replace('.',','); }
+function pgFmt(q,v){ if(q.k==='wall') return v>=0.5?'есть':'нет'; return q.k==='tilt'?String(Math.round(v)):(Math.round(v*100)/100).toFixed(2).replace('.',','); }
 function pgBuild(){ var box=el('pgSliders'); if(!box) return; box.innerHTML='';
   PG_SL.forEach(function(q){ var row=document.createElement('label'); row.className='pgrow'; var t=document.createElement('span'); var inp=document.createElement('input'); inp.type='range'; inp.min=q.min; inp.max=q.max; inp.step=q.st; inp.value=PG_V[q.k];
     var upd=function(){ t.textContent=q.t+': '+pgFmt(q,PG_V[q.k]); }; upd(); inp.addEventListener('input',function(){ PG_V[q.k]=+inp.value; upd(); pgApply(); }); inp.addEventListener('change',function(){ pgSave(); }); row.appendChild(t); row.appendChild(inp); box.appendChild(row); });
-  var rs=document.createElement('button'); rs.className='ghost'; rs.textContent='Сбросить ползунки'; rs.addEventListener('click',function(){ PG_SL.forEach(function(q){ PG_V[q.k]=q.d; }); pgSave(); pgBuild(); }); box.appendChild(rs); }
+  var rs=document.createElement('button'); rs.className='ghost'; rs.textContent='Сбросить ползунки'; rs.addEventListener('click',function(){ PG_SL.forEach(function(q){ PG_V[q.k]=q.d; }); pgSave(); pgBuild(); });
+  var pr=document.createElement('div'); pr.className='pgpre'; Object.keys(PG_PRE).forEach(function(nm){ var b=document.createElement('button'); b.textContent=nm;
+    b.addEventListener('click',function(){ var o=PG_PRE[nm]; PG_SL.forEach(function(q){ PG_V[q.k]=o[q.k]; }); pgSave(); pgBuild(); arcEv('pg-preset:'+nm); }); pr.appendChild(b); });
+  box.insertBefore(pr,box.firstChild); box.appendChild(rs); }
 var PG_TILTS=[20,30,40], PG_STOP=0.05;
 pgLoad();
 function pgSurf(i,x,py,ar,A){ var s=i?-1:1, xc=ar*(i?1-PG_XC:PG_XC), u=(x-xc)/(ar*PG_HW); return {u:u,s:s,xc:xc,y:py-PG_LIFT+s*A*u}; }
@@ -2151,6 +2163,7 @@ var ARC_STEP={
     if(!ARC.balls.length&&!ARC.over){ ARC.respawn-=dt; if(ARC.respawn<=0) pgSpawn(); }
     ARC.balls.slice().forEach(function(b){ var was=b.on, py0=b.y; b.vy+=PG_G*dt; b.x+=b.vx*dt; b.y+=b.vy*dt; b.on=false;
       if(b.y-b.r<JG_TOP&&b.vy<0){ b.y=JG_TOP+b.r; b.vy=-b.vy*0.35; arcEv('ceil'); sfx('jceil'); }
+      if(PG_V.wall>=0.5){ var ww=0.012; if(b.x-b.r<ww&&b.vx<0){ b.x=ww+b.r; b.vx=-b.vx*0.6; arcEv('wall'); sfx('jland'); } else if(b.x+b.r>ar-ww&&b.vx>0){ b.x=ar-ww-b.r; b.vx=-b.vx*0.6; arcEv('wall'); sfx('jland'); } }
       if(Math.abs(b.x-xn)<b.r+nw&&b.y+b.r>nt){ if(py0+b.r<=nt+0.005&&b.vy>0){ b.y=nt-b.r; b.vy=-Math.abs(b.vy)*0.5; } else { b.x=xn+(b.x<xn?-1:1)*(b.r+nw); b.vx=-b.vx*0.4; ARC.nets++; arcEv('net'); sfx('jland'); } }
       for(var i=0;i<2;i++){ var S=pgSurf(i,b.x,pad,ar,A);
         if(Math.abs(S.u)<=1){ var top=S.y-b.r;
@@ -2252,6 +2265,7 @@ function arcDraw(){ var cv=el('acC'); if(!cv||!cv.getContext) return; var dpr=Ma
   if(g==='pong'){ var ar3=W/H, hw3=ar3*PG_HW, A3=Math.tan(PG_TILT*Math.PI/180)*hw3, py3=ARC.py;
     c.fillStyle='#0f1530'; c.fillRect(0,0,W,H); c.fillStyle='#3a4373'; c.fillRect(0,0,W,Y(JG_TOP));
     var nt3=ARC.netTop===undefined?PG_NET0:ARC.netTop; if(nt3<1.5){ c.fillStyle='#8f9cc0'; c.fillRect(X(ar3/2)-0.012*H,Y(nt3),0.024*H,H); c.fillStyle='#e8eefc'; c.fillRect(X(ar3/2)-0.02*H,Y(nt3)-0.008*H,0.04*H,0.016*H); }
+    if(PG_V.wall>=0.5){ c.fillStyle='#8f9cc0'; c.fillRect(0,Y(JG_TOP),X(0.012)-X(0),H); c.fillRect(X(ar3-0.012),Y(JG_TOP),X(0.012)-X(0),H); }
     for(var pi3=0;pi3<2;pi3++){ var s3=pi3?-1:1, xc3=ar3*(pi3?1-PG_XC:PG_XC), ya=py3-PG_LIFT-s3*A3, yb=py3-PG_LIFT+s3*A3;
       c.fillStyle='#ff8a3d'; c.beginPath(); c.moveTo(X(xc3-hw3),Y(ya)); c.lineTo(X(xc3+hw3),Y(yb)); c.lineTo(X(xc3+hw3),Y(yb)+0.03*H); c.lineTo(X(xc3-hw3),Y(ya)+0.03*H); c.closePath(); c.fill();
     }

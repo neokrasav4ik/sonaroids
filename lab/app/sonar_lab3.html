@@ -1997,18 +1997,23 @@ var PG_HIT=0.75, PG_HW=0.15, PG_XC=0.22, PG_G=2.4, PG_LIFT=0.10, PG_NET0=0.72, P
 PG_SL=[{k:'g',t:'Тяжесть',min:0.8,max:4.5,st:0.1,d:2.4},{k:'hit',t:'Сила удара',min:0.3,max:1.6,st:0.05,d:0.75},{k:'e',t:'Прыгучесть',min:0.1,max:0.95,st:0.05,d:0.5},
   {k:'hw',t:'Ширина платформ',min:0.06,max:0.24,st:0.01,d:0.15},{k:'gap',t:'Расстояние между платформами',min:0.05,max:0.5,st:0.01,d:0.26},
   {k:'net',t:'Высота сетки',min:0.05,max:0.6,st:0.01,d:0.12},{k:'tilt',t:'Наклон платформ, °',min:5,max:55,st:1,d:22},
-  {k:'wall',t:'Боковые стенки',min:0,max:1,st:1,d:1}],
+  {k:'wall',t:'Боковые стенки',min:0,max:1,st:1,d:1},{k:'aim',t:'Ловля и бросок к другой',min:0,max:1,st:1,d:1}],
+/* 1.58i (Ден 20:05: «оч сложно играть даже на лёгком с удлинёнными до края платформами.. что-то неправильно»; запись 20:07 — 38 пасов
+   подряд, 0 потерь, но 11 раз в потолок, сила броска 0,5–1,9 почти не зависит от скорости руки 130–390 мм/с: мяч, упавший на
+   движущуюся платформу, отлетает по-разному, а вбок — как придётся от наклона): «Ловля и бросок к другой» — мяч ложится на платформу
+   без отскока и едет с ней; подброс — рукой вверх; сила броска — только от скорости руки, не выше потолка, и мяч летит к середине
+   другой платформы. Рука решает одно: насколько высоко (слабо — в сетку). В «Легко» включено, в «Средне» и «Трудно» — как было */
 /* 1.58h (Ден 19:33: «добавь боковые стенки, невероятно сложно играть. не пойму какие настройки брать»): стенки по краям (мяч отскакивает
    с потерей 40%, теряется только вниз); готовые наборы «Легко / Средне / Трудно»; «Легко» — по умолчанию: тяжесть 1,6 (мяч дольше
    в воздухе), удар 0,6, прыгучесть 0,35 (мяч меньше скачет), платформы шире 0,2 и ближе 0,12, сетка низкая, наклон 22° */
-PG_PRE={'Легко':{g:1.6,hit:0.6,e:0.35,hw:0.2,gap:0.12,net:0.12,tilt:22,wall:1},
-  'Средне':{g:2.4,hit:0.75,e:0.5,hw:0.15,gap:0.26,net:0.28,tilt:30,wall:1},
-  'Трудно':{g:3.2,hit:0.9,e:0.55,hw:0.11,gap:0.36,net:0.36,tilt:35,wall:0}},
+PG_PRE={'Легко':{g:1.6,hit:0.6,e:0.35,hw:0.2,gap:0.12,net:0.12,tilt:22,wall:1,aim:1},
+  'Средне':{g:2.4,hit:0.75,e:0.5,hw:0.15,gap:0.26,net:0.28,tilt:30,wall:1,aim:0},
+  'Трудно':{g:3.2,hit:0.9,e:0.55,hw:0.11,gap:0.36,net:0.36,tilt:35,wall:0,aim:0}},
 PG_V={};
 function pgApply(){ PG_G=PG_V.g; PG_HIT=PG_V.hit; PG_E=PG_V.e; PG_HW=PG_V.hw; PG_XC=Math.max(PG_V.hw+0.01,0.5-PG_V.gap/2-PG_V.hw); PG_NET0=1-PG_V.net; PG_TILT=PG_V.tilt; }
 function pgLoad(){ var o=null; try{ o=JSON.parse(localStorage.getItem('sonar_pg_sl')||'null'); }catch(e){} PG_SL.forEach(function(q){ PG_V[q.k]=o&&typeof o[q.k]==='number'?Math.max(q.min,Math.min(q.max,o[q.k])):q.d; }); pgApply(); }
 function pgSave(){ try{ localStorage.setItem('sonar_pg_sl',JSON.stringify(PG_V)); }catch(e){} pgApply(); if(ARC&&ARC.log) arcEv('pg:'+JSON.stringify(PG_V)); }
-function pgFmt(q,v){ if(q.k==='wall') return v>=0.5?'есть':'нет'; return q.k==='tilt'?String(Math.round(v)):(Math.round(v*100)/100).toFixed(2).replace('.',','); }
+function pgFmt(q,v){ if(q.k==='wall'||q.k==='aim') return v>=0.5?'есть':'нет'; return q.k==='tilt'?String(Math.round(v)):(Math.round(v*100)/100).toFixed(2).replace('.',','); }
 function pgBuild(){ var box=el('pgSliders'); if(!box) return; box.innerHTML='';
   PG_SL.forEach(function(q){ var row=document.createElement('label'); row.className='pgrow'; var t=document.createElement('span'); var inp=document.createElement('input'); inp.type='range'; inp.min=q.min; inp.max=q.max; inp.step=q.st; inp.value=PG_V[q.k];
     var upd=function(){ t.textContent=q.t+': '+pgFmt(q,PG_V[q.k]); }; upd(); inp.addEventListener('input',function(){ PG_V[q.k]=+inp.value; upd(); pgApply(); }); inp.addEventListener('change',function(){ pgSave(); }); row.appendChild(t); row.appendChild(inp); box.appendChild(row); });
@@ -2168,10 +2173,13 @@ var ARC_STEP={
       for(var i=0;i<2;i++){ var S=pgSurf(i,b.x,pad,ar,A);
         if(Math.abs(S.u)<=1){ var top=S.y-b.r;
           if(b.y>top&&b.y<top+0.12){ var sl=S.s*A/hw, nl=Math.sqrt(sl*sl+1), nx=sl/nl, ny=-1/nl, rx=b.vx, ry=b.vy-vpb, vn=rx*nx+ry*ny; b.y=top;
-            if(vn<0){ if(-vn>JG_STICK){ rx-=(1+PG_E)*vn*nx; ry-=(1+PG_E)*vn*ny; if(-vn>0.5) sfx('jland'); } else { rx-=vn*nx; ry-=vn*ny; } }
-            b.vx=rx; b.vy=ry+vpb; b.on=true;
+            if(PG_V.aim>=0.5){ if(vn<-0.5) sfx('jland'); rx=0; ry=0; }   /* ловля: мяч ложится и едет с платформой */
+            else if(vn<0){ if(-vn>JG_STICK){ rx-=(1+PG_E)*vn*nx; ry-=(1+PG_E)*vn*ny; if(-vn>0.5) sfx('jland'); } else { rx-=vn*nx; ry-=vn*ny; } }
+            b.vx=rx; b.vy=ry+vpb; b.on=true; b.onI=i;
             if(b.from!==i){ if(b.from!==null&&b.from!==undefined){ ARC.passes++; ARC.streak++; ARC.score=Math.max(ARC.score,ARC.streak); if(ARC.streak>ARC.pbest) ARC.pbest=ARC.streak; arcEv('pass:'+ARC.streak); sfx('jstar',Math.min(8,ARC.streak)); ARC.pf.push({x:b.x,y:b.y-0.08,t:0.8,pts:ARC.streak});
                 if(JG_SET.net===3) ARC.netY=Math.max(0.35,Math.min(0.95,PG_NET0+(Math.random()-0.5)*0.3)); } b.from=i; } } } }
+      if(was&&!b.on&&b.vy<-0.5&&PG_V.aim>=0.5){ var vmx=Math.sqrt(2*PG_G*Math.max(0.02,b.y-b.r-JG_TOP-0.03)); if(-b.vy>vmx) b.vy=-vmx;   /* не выше потолка */
+        var xt=ar*(b.onI?PG_XC:1-PG_XC), tf=2*(-b.vy)/PG_G; b.vx=Math.max(-2.5,Math.min(2.5,(xt-b.x)/tf)); }   /* к середине другой платформы */
       if(was&&!b.on&&b.vy<-0.5){ ARC.tosses++; arcEv('toss:'+(-b.vy).toFixed(2)+':'+b.vx.toFixed(2)); sfx('jtoss',-b.vy); }
       b.rest=b.on?(b.rest||0)+dt:0;
       if(b.y>1.1||b.x<-0.15||b.x>ar+0.15){ ARC.falls++; arcEv('lost:'+b.x.toFixed(2)); ARC.streak=0; ARC.flash=0.25; sfx('jburn'); ARC.balls.splice(ARC.balls.indexOf(b),1);

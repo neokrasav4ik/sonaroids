@@ -42,7 +42,7 @@ function palm(t){ const A=H.ARC(); if(!A||A.phase==='prep'||A.phase==='empty'||A
     if(car&&r){ const up=car.y-0.13, dn=car.y+0.13; ty=Math.abs(up-r.c)<Math.abs(dn-r.c)?up:dn; } }
   if(A.game==='cave'){ const c=(A.cols||[]).find(c=>c.x>=0.32+0.25); if(c) ty=c.c; }
   if(A.game==='juggle') return juggler(t,A);
-  if(A.game==='follow'){ const st=300*N/SR, e=A.fwCm*10-dPrev; dPrev+=Math.max(-st,Math.min(st,e)); return dPrev; }   /* 1.57e: рука идёт к кружку (5 см → 50 мм) не быстрее 30 см/с */
+  if(A.game==='follow'){ const st=300*N/SR, e=(A.fwCm===null?100+30*Math.sin(t*3):A.fwCm*10)-dPrev; dPrev+=Math.max(-st,Math.min(st,e)); return dPrev; }   /* 1.57e: рука идёт к кружку (5 см → 50 мм) не быстрее 30 см/с */
   const want=(1-ty-0.06)/0.88, e=want-A.frac, step=400*N/SR;
   dPrev=Math.max(45,Math.min(175,dPrev+Math.max(-step,Math.min(step,0.25*e*A.T.field)))); return dPrev; }
 /* жонглёр (1.57a): рука ждёт внизу (60 мм); мяч на ладони и уже чуть нагрелся — взмах вверх: скорость растёт и спадает по синусу
@@ -55,7 +55,7 @@ function juggler(t,A){ const dt=N/SR, base=60, T=0.16;
   else { if(dPrev>base) dPrev=Math.max(base,dPrev-250*dt);
     const b=(A.balls||[]).find(b=>b.on&&b.heat>0.15);
     if(b){ const s=(A.stars||[]).find(s=>s.slot===b.slot), top=A.py-b.r, h=s?Math.max(0.08,top-s.y):0.25;
-      const v=Math.sqrt(2*b.g*h)*0.97; jgS={st:'up',t0:t,v:Math.min(+(process.env.JG_V||900),v/0.95*A.T.field)}; } }
+      const v=Math.sqrt(2*b.g*h)*0.97; jgS={st:'up',t0:t,v:Math.min(+(process.env.JG_V||900),v/0.60*A.T.field)}; } }
   dPrev=Math.max(45,Math.min(175,dPrev)); return dPrev; }
 function feed(){ const due=Math.floor(now/1000*SR/N); while(fed<due){ H.onFrame({data:{s:seq++,f:S.synthFrame(palm(fed*N/SR),fed*7+1)}}); fed++; } }
 async function tick(dt){ const t1=now+dt*1000; while(now<t1){ now+=1000/60; feed();
@@ -73,7 +73,7 @@ async function tick(dt){ const t1=now+dt*1000; while(now<t1){ now+=1000/60; feed
     const w=C.loadWav(f); need(w.meta.kind==='arc-play'&&w.meta.game===g&&new RegExp('^sonararc_'+g+'_').test(A.fname)&&w.meta.log.length>300,`${g}: запись ${A.fname}, журнал ${w.meta.log.length} строк`);
     if(g==='follow'){ const FW=require('../eval_follow'), R2=FW.analyse(w.meta,w.x,[]), m=R2.moves;
       console.log(`      follow: удержания ${R2.fit.pts.map(p=>p[0]+'→'+p[1].toFixed(0)).join(' ')}; ходы ${m.map(q=>q.per+' с: '+q.bot.toFixed(1)+'…'+q.top.toFixed(1)).join(' | ')}; рывки до ${R2.flick&&R2.flick.peak.toFixed(1)}`);
-      need(w.meta.log.filter(e=>typeof e[1]==='string'&&e[1].startsWith('step')).length===12&&m.length===3&&Math.abs(m[0].travel-10)<3&&R2.fit.lin<1.5,`follow: программа (12 шагов), медленный ход ${m[0].travel.toFixed(1)} из 10 см (синтетика — грубая), прямая по удержаниям ±${R2.fit.lin.toFixed(2)} см`); continue; }
+      need(w.meta.log.filter(e=>typeof e[1]==='string'&&e[1].startsWith('step')).length===13&&m.length===3&&Math.abs(m[0].travel-10)<3&&R2.fit.lin<1.5,`follow: программа (13 шагов), медленный ход ${m[0].travel.toFixed(1)} из 10 см (синтетика — грубая), прямая по удержаниям ±${R2.fit.lin.toFixed(2)} см`); continue; }
     const R=E.report('arc_'+g+'_test.wav (через страницу)',w.meta,w.x);
     const good=g==='slalom'?(R.gate>=20&&R.finish===1):g==='bombs'?(R.caught>=10&&R.wave>=1):g==='race'?(A.score>300&&R.fuel>=1):g==='juggle'?(R.jg&&R.jg.tosses>=20&&A.nb===1&&R.jg.star===0&&R.jg.burn===0&&R.jg.visFlick>95&&R.jg.vMed>0.6):   /* 1.57c: учебный режим — один мяч, без звёзд и жара */(R.hit<=3&&R.gate===0&&A.score>100);
     need(good&&R.vis>95&&R.match<0.005&&R.moving>(g==='juggle'?10:25),`${g}: игра идёт (${w.meta.summary}), сверка ${(R.match*100).toFixed(2)}%, ладонь в движении ${R.moving.toFixed(0)}%`); }

@@ -14,7 +14,12 @@ var DSP2=(function(){
      поворот фазы ещё и по окну, сдвинутому на полкадра (хвост прошлого кадра + начало этого; зонд периодичен в N, поэтому такое окно —
      тот же отклик, со знаком (−1)^k у тона k). Поворот за кадр = за первую половину + за вторую, каждая однозначна до ±π — предел
      скорости вдвое выше (~80 см/с вместо ~40). Сырые отклики без усреднения двух кадров. По умолчанию выключено — игра как была */
-  var HALF=false,lastFr=null,hRh=[],hMh=[],halfN=0;   // 1.56q: ближнее сильное эхо (lead)
+  /* 1.57f: 'quarter' — то же по четвертям кадра (окна со сдвигом N/4, N/2, 3N/4; тон k — множитель e^(−i2πk·сдвиг/N)): предел ~1,6 м/с.
+     Запись Дена «по линейке» 14:49 (iPhone): медленные и быстрые ходы быстрая часть повторяет целиком (10 из 10 см и на 0,5 с за ход),
+     а рывки до 15 и обратно — нет: обычная — 3–4 см из 10, по полукадрам — 5–7 и уплывает */
+  var HALF=false,SUBN=2,lastFr=null,hRh=[],hMh=[],halfN=0;
+  function gDiff(a,b){ var o=[new Float64Array(G),new Float64Array(G)]; for(var q=0;q<G;q++){ o[0][q]=a[0][q]-b[0][q]; o[1][q]=a[1][q]-b[1][q]; } return o; }
+  function gRot(a,b){ var r=0,m=0; for(var q=0;q<G;q++){ r+=b[0][q]*a[0][q]+b[1][q]*a[1][q]; m+=b[1][q]*a[0][q]-b[0][q]*a[1][q]; } return Math.atan2(m,r); }   // 1.56q: ближнее сильное эхо (lead)
   var holdFloor=false, Es,hold,present,refr,Q_FLOOR=-28,T_ON=-16,T_INT=-30,HOLD_S=1.5,tauE=0.15,REFR_S=0.35,TAU_BG=2.0,TAU=1.5;
   var eqW=null,eqDb=0,EQ_ON=16,ACC_N=24,FINE_N=188,EQ_MAX=10,gN=null,drops=0,sinceDrop=1e9,covered=false,lastPeak=null,d0B=0,fineN=-1,fR=null,fI=null,refR=null,refI=null,acR=null,acI=null,acN=0,moveN=0,scanWait=0,relocks=0,eAvg=0,TE=3,E_FAST=12,ePres=0,why='',rngBuf=[],xBuf=[],centered=false,autoC=false,presN=0,x,fast,cal={k:0.75,o:1,s:0.8},eHold=null,lowN=0,resS=-99,resFloor=null,upN=0,warm=0,absBuf=[],ABS_MED=15,DEADB=5,DEADB_UP=15,dirS=null,lostN=0,lost=false;
   /* v1.08, the live mode (an experiment, off unless set('live',1)): see liveNoise and the background learnt round the palm below */
@@ -29,7 +34,7 @@ var DSP2=(function(){
     cosT=new Float64Array(M*N); sinT=new Float64Array(M*N);
     for(q=0;q<M;q++){ var w=-2*Math.PI*ks[q]/N; for(var n=0;n<N;n++){ cosT[q*N+n]=Math.cos(w*n); sinT[q*N+n]=Math.sin(w*n); } }
     d0=null; dref=null; eqW=null; eqDb=0; gN=null; drops=0; sinceDrop=1e9; covered=false; lastPeak=null; d0B=0; fineN=-1; fR=null; fI=null; refR=null; refI=null; acR=null; acI=null; acN=0; moveN=0; scanWait=0; relocks=0; boot=[]; prevH=null; hist=[]; prom=null; noProbe=false;
-    ldP=null; ldQ=[]; UNWRAP=false; vPrev=null; vPrev2=null; unwN=0; HALF=false; lastFr=null; hRh=[]; hMh=[]; halfN=0; bgAcc=null; bgN=0; bgR=null; bgI=null; Es=-80; hold=0; present=false; refr=0; x=null; fast=0; eHold=null; ePres=0; why=""; rngBuf=[]; xBuf=[]; centered=false; presN=0; lowN=0; resS=-99; resFloor=null; upN=0; warm=0; absBuf=[]; dirS=null; lostN=0; lost=false; fzF=[]; fzA=[]; fzN=0; fzHold=0; frozen=false; frozenN=0; nD=0; nS=0; nBase=null; nX=0; burst=0; nMin=null; nzK=null; nzC=null; nzS=null; nzP=null; nzN=0; lagB=[]; lagD=null; lagR=null; gStill=0; postB=0; fresh=0; EsR=-80; zc=null;
+    ldP=null; ldQ=[]; UNWRAP=false; vPrev=null; vPrev2=null; unwN=0; HALF=false; SUBN=2; lastFr=null; hRh=[]; hMh=[]; halfN=0; bgAcc=null; bgN=0; bgR=null; bgI=null; Es=-80; hold=0; present=false; refr=0; x=null; fast=0; eHold=null; ePres=0; why=""; rngBuf=[]; xBuf=[]; centered=false; presN=0; lowN=0; resS=-99; resFloor=null; upN=0; warm=0; absBuf=[]; dirS=null; lostN=0; lost=false; fzF=[]; fzA=[]; fzN=0; fzHold=0; frozen=false; frozenN=0; nD=0; nS=0; nBase=null; nX=0; burst=0; nMin=null; nzK=null; nzC=null; nzS=null; nzP=null; nzN=0; lagB=[]; lagD=null; lagR=null; gStill=0; postB=0; fresh=0; EsR=-80; zc=null;
   }
   function bandSpec(fr){
     var Hr=new Float64Array(M),Hi=new Float64Array(M),q,n;
@@ -78,9 +83,10 @@ var DSP2=(function(){
     var gm=gN[0]*gN[0]+gN[1]*gN[1], sq=Math.sqrt(dref), nr=sq*gN[0]/gm, ni=-sq*gN[1]/gm;
     var h=[new Float64Array(G),new Float64Array(G)];
     for(i=0;i<G;i++){ var v2=tap(H,(d0+gA+i)%T); h[0][i]=v2[0]*nr-v2[1]*ni; h[1][i]=v2[0]*ni+v2[1]*nr; }
-    var hm=null; if(HALF&&prevFr&&prevFr.length===N&&fr.length===N){ var wn=new Float32Array(N); wn.set(prevFr.subarray(N/2)); wn.set(fr.subarray(0,N/2),N/2);
-      var Hm=bandSpec(wn); for(i=0;i<M;i++){ var sgn=(ks[i]&1?-1:1)*(eqW?eqW[i]:1); Hm[0][i]*=sgn; Hm[1][i]*=sgn; }
-      hm=[new Float64Array(G),new Float64Array(G)]; for(i=0;i<G;i++){ var v3=tap(Hm,(d0+gA+i)%T); hm[0][i]=v3[0]*nr-v3[1]*ni; hm[1][i]=v3[0]*ni+v3[1]*nr; } }
+    var hm=null; if(HALF&&prevFr&&prevFr.length===N&&fr.length===N){ hm=[];
+      for(var sj=1;sj<SUBN;sj++){ var off=sj*N/SUBN, wn=new Float32Array(N); wn.set(prevFr.subarray(off)); wn.set(fr.subarray(0,off),N-off);
+        var Hm=bandSpec(wn), ang=2*Math.PI*sj/SUBN; for(i=0;i<M;i++){ var cA=Math.cos(ang*ks[i]), sA=-Math.sin(ang*ks[i]), wq=eqW?eqW[i]:1, re=Hm[0][i]*wq, im=Hm[1][i]*wq; Hm[0][i]=re*cA-im*sA; Hm[1][i]=re*sA+im*cA; }
+        var hj=[new Float64Array(G),new Float64Array(G)]; for(i=0;i<G;i++){ var v3=tap(Hm,(d0+gA+i)%T); hj[0][i]=v3[0]*nr-v3[1]*ni; hj[1][i]=v3[0]*ni+v3[1]*nr; } hm.push(hj); } }
     // прямой сигнал пропал на 20 дБ и больше целую секунду — звук ушёл в другое устройство
     sinceDrop++; var vd=tap(H,d0), pd=vd[0]*vd[0]+vd[1]*vd[1]; dirS=(dirS===null)?pd:dirS+0.1*(pd-dirS);
     // с 26.09: зонд пропал, только если его не слышно ни на одной задержке. Закрытый ладонью динамик глушит прямой сигнал на 20–35 дБ,
@@ -161,10 +167,9 @@ var DSP2=(function(){
       rr+=g1r*g0r+g1i*g0i; ri+=g1i*g0r-g1r*g0i; var em=g1r*g1r+g1i*g1i; e+=em; if(live){ var ex0=em-nD; if(ex0>0){ mz+=ex0*i; mzw+=ex0; } } }
     var eR=e; if(live) e=Math.max(e-G*nXg,e*1e-4);
     var E=10*Math.log10(e/dref+1e-30), phR=Math.atan2(ri,rr);
-    if(HALF&&hRh.length===L+2&&hMh[L+1]&&hMh[1]){ var pR=hRh, pM=hMh, x1r=0,x1i=0,x2r=0,x2i=0;   // g(n−1), g(n−½), g(n): разности через L кадров
-      for(i=0;i<G;i++){ var gpr=pR[L][0][i]-pR[0][0][i], gpi=pR[L][1][i]-pR[0][1][i], gcr=pR[L+1][0][i]-pR[1][0][i], gci=pR[L+1][1][i]-pR[1][1][i], gmr=pM[L+1][0][i]-pM[1][0][i], gmi=pM[L+1][1][i]-pM[1][1][i];
-        x1r+=gmr*gpr+gmi*gpi; x1i+=gmi*gpr-gmr*gpi; x2r+=gcr*gmr+gci*gmi; x2i+=gci*gmr-gcr*gmi; }
-      phR=Math.atan2(x1i,x1r)+Math.atan2(x2i,x2r); halfN++; }
+    if(HALF&&hRh.length===L+2&&hMh[L+1]&&hMh[1]){   // g(n−1) → g(n−(S−1)/S) → … → g(n): разности через L кадров, поворот по шагам
+      var gP=gDiff(hRh[L],hRh[0]), acc=0; for(var sj2=0;sj2<SUBN-1;sj2++){ var gS=gDiff(hMh[L+1][sj2],hMh[1][sj2]); acc+=gRot(gP,gS); gP=gS; }
+      phR=acc+gRot(gP,gDiff(hRh[L+1],hRh[1])); halfN++; }
     if(UNWRAP&&vPrev!==null&&vPrev2!==null&&E>T_INT+10){ var phP=-vPrev*4*Math.PI/lam, phQ=-vPrev2*4*Math.PI/lam, phF=2*phP-phQ, PI2=2*Math.PI;
       phF=phP+0.5*(phP-phQ);
       if(Math.abs(phP)>Math.PI/3&&Math.abs(phP-phQ)<0.6*Math.PI){ var kW=Math.max(-1,Math.min(1,Math.round((phF-phR)/PI2))); if(kW){ phR+=kW*PI2; unwN++; } } }
@@ -285,7 +290,7 @@ var DSP2=(function(){
   function shift(d){ var i; cal.o+=d; for(i=0;i<absBuf.length;i++) absBuf[i]+=d; if(x!==null) x+=d; for(i=0;i<xBuf.length;i++) xBuf[i]+=d; centered=true; }
   return {init:init,frame:frame,recenter:recenter,shift:shift,
     setCal:function(c){ cal.k=c.k; cal.o=c.o; cal.s=c.s; },
-    set:function(k,v){ if(k==='flo') BAND_LO=v||null; if(k==='tint') T_INT=v; if(k==='tau') TAU=v; if(k==='absmed') ABS_MED=Math.max(1,Math.round(v)); if(k==='deadband') DEADB=Math.max(0,v); if(k==='autocenter') autoC=!!v; if(k==='unwrap') UNWRAP=!!v; if(k==='half') HALF=!!v; if(k==='holdfloor') holdFloor=!!v; if(k==='live') live=!!v; if(k==='tausw') TAU_SW=v; if(k==='taust') TAU_ST=v; if(k==='still') STILL=v; if(k==='tauall') TAU_ALL=v; if(k==='movw') MOVW=v; if(k==='burst') BURST=v; if(k==='nxt') NXT=v; if(k==='nxk') NXK=v; if(k==='burstk') BURSTK=v; if(k==='bend') BEND=v; if(k==='bmax') BMAX=v; if(k==='nzh'){ NZH=v; nzC=null; } if(k==='nzg'){ NZG=v; nzC=null; } },
+    set:function(k,v){ if(k==='flo') BAND_LO=v||null; if(k==='tint') T_INT=v; if(k==='tau') TAU=v; if(k==='absmed') ABS_MED=Math.max(1,Math.round(v)); if(k==='deadband') DEADB=Math.max(0,v); if(k==='autocenter') autoC=!!v; if(k==='unwrap') UNWRAP=!!v; if(k==='half'){ HALF=!!v; SUBN=2; } if(k==='quarter'){ HALF=!!v; SUBN=4; } if(k==='holdfloor') holdFloor=!!v; if(k==='live') live=!!v; if(k==='tausw') TAU_SW=v; if(k==='taust') TAU_ST=v; if(k==='still') STILL=v; if(k==='tauall') TAU_ALL=v; if(k==='movw') MOVW=v; if(k==='burst') BURST=v; if(k==='nxt') NXT=v; if(k==='nxk') NXK=v; if(k==='burstk') BURSTK=v; if(k==='bend') BEND=v; if(k==='bmax') BMAX=v; if(k==='nzh'){ NZH=v; nzC=null; } if(k==='nzg'){ NZG=v; nzC=null; } },
     info:function(){ return {covered:covered,eq_db:eqDb,eq:!!eqW,relocks:relocks,drops:drops,d0:d0,prom:prom,noProbe:noProbe,lost:lost,ready:bgR!==null,mm:mm,centered:centered,band:[kLo,kHi],frozen:frozenN,unw:unwN,half:halfN,cal:{k:cal.k,o:cal.o,s:cal.s},live:live,noise:live?+(10*Math.log10(nD/dref+1e-30)).toFixed(1):null,zone:zc===null?null:+((gA+zc)*mm).toFixed(0)}; }};
 })();
 if(typeof module!=='undefined') module.exports=DSP2;

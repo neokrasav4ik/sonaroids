@@ -34,7 +34,16 @@ function arcButtons(v){ el('acBtns').classList.toggle('hidden',!v); }
 function arcMark(k){ ARC.marks[k]=ARC.frames.length*N; }
 function arcEv(k){ ARC.log.push([ARC.frames.length,k]); }
 function arcFrame(f,gap,r){ if(!ARC.on) return; if(ARC.frames.length<ARC_MAX){ if(gap) ARC.gaps++; ARC.frames.push(f); }
-  if(r){ ARC.present=r.present; if(r.present) ARC.dist=r.height; } }
+  if(r){ ARC.present=r.present; if(r.present) ARC.dist=r.height; if(ARC.game==='juggle'||ARC.game==='follow') mixFrame(r); } }
+/* 1.57f — «смесь» для платформы (жонглёр и «по линейке»). Запись Дена «по линейке» 14:49 (iPhone), разбор eval_follow.js, ход 5↔15 см,
+   медленный = 100%:   как в игре — 1 с за ход 83%, 0,5 с — 71%, рывки 36%, в покое высота плывёт ~18 мм/с (абсолютная часть сонара
+   ходит на 2–3 см и тянет за собой);   фаза по четвертям кадра — 87/85%, рывки 74%;   смесь — 90/86%, рывки 79%, плывёт вдвое меньше.
+   Смесь: медленное — от высоты как в игре, сглаженной за MIX_TAU с; быстрое — только от фазы (её отклонение от своей такой же
+   сглаженной). Никаких добавок, упреждений и фильтров сверх этого — платформа там, куда сонар видит ладонь. */
+var MIX_TAU=3;
+function mixFrame(r){ if(!r.present||r.height===null||!(ARC.phase==='play'||ARC.phase==='count')){ return; } var F=r.fast*(DSP2.info().cal.s||1), a=1-Math.exp(-N/(MIX_TAU*fs));
+  if(ARC.mxH===undefined||ARC.mxH===null){ ARC.mxH=r.height; ARC.mxF=F; }
+  ARC.mxH+=a*(r.height-ARC.mxH); ARC.mxF+=a*(F-ARC.mxF); ARC.mix=ARC.mxH+(F-ARC.mxF); }
 function arcOpen(g){ arcGame=g; var G=ARC_GAMES[g]; el('acTitle').textContent=G.title+' — прототип'; el('acIntro').textContent=G.intro;
   var b=ARC.best[g]; el('acBest').textContent=b===undefined?'':'Лучший результат: '+arcFmt(g,b); show('arcIntro'); }
 function arcFmt(g,v){ return g==='slalom'?v.toFixed(1).replace('.',',')+' с':(g==='cave'||g==='race')?Math.round(v)+' м':String(v); }
@@ -47,7 +56,7 @@ function arcPlay(){
   arcInit(); arcText('Готовлюсь','Убери руку. Подбираю громкость зонда.'); mode=null; arcDraw();
   pickChannel().then(function(){ return autoLevel(); }).then(function(L){
     if(L.snr<30){ setProbe('off'); arcText('Зонда почти не слышно',NOPROBE); arcButtons(true); return null; }
-    var cal0=dspBand(DSP2); DSP2.init(fs,(typeof linkPar==='function'?linkPar():'all')); DSP2.setCal(cal0); DSP2.set('autocenter',1); if(arcGame==='juggle') DSP2.set('half',1); mode='arc'; ARC.on=true; arcMark('empty'); ARC.phase='empty';
+    var cal0=dspBand(DSP2); DSP2.init(fs,(typeof linkPar==='function'?linkPar():'all')); DSP2.setCal(cal0); DSP2.set('autocenter',1); if(arcGame==='juggle'||arcGame==='follow') DSP2.set('quarter',1); mode='arc'; ARC.on=true; arcMark('empty'); ARC.phase='empty';
     arcText('Убери руку','Слушаю пустую комнату.'); return rpWait(DSP2); }).then(function(st){
     if(!st) return;
     if(st==='noprobe'){ setProbe('off'); mode=null; ARC.on=false; arcText('Зонда не слышно',NOPROBE); arcButtons(true); return; }
@@ -72,7 +81,7 @@ function arcLoop(now){
   var dt=Math.min(0.033,(now-ARC.last)/1000); ARC.last=now; ARC.t+=dt; arcMove(dt);
   var cv=el('acC'); ARC.ar=(cv.width||800)/(cv.height||400);
   ARC_STEP[ARC.game](dt);
-  ARC.log.push([ARC.frames.length,ARC.frac===null?null:+ARC.frac.toFixed(4),ARC.game==='follow'?+ARC.fwCm.toFixed(2):+ARC.py.toFixed(4),ARC.present?1:0]);
+  ARC.log.push([ARC.frames.length,ARC.frac===null?null:+ARC.frac.toFixed(4),ARC.game==='follow'?(ARC.fwCm===null?null:+ARC.fwCm.toFixed(2)):+ARC.py.toFixed(4),ARC.present?1:0,ARC.mix===undefined||ARC.mix===null?null:+ARC.mix.toFixed(1)]);
   arcDraw();
   if(ARC.over||(ARC.frames.length>=ARC_MAX&&ARC.game!=='juggle')){ ARC.phase='over'; arcMark('over'); ARC.on=false; mode=null; setProbe('off');
     var g=ARC.game, res=g==='slalom'?ARC.time:ARC.score, b=ARC.best[g], better=g==='slalom'?(ARC.done&&(b===undefined||res<b)):(b===undefined||res>b);
@@ -110,9 +119,10 @@ function fwScript(){ var S=[], t=0; function add(o){ o.t0=t; t+=o.d; o.t1=t; S.p
   add({k:'hold',cm:5,d:4,say:'Держи ладонь на 5 см'}); add({k:'hold',cm:10,d:4,say:'Теперь на 10 см'}); add({k:'hold',cm:15,d:4,say:'Теперь на 15 см'});
   add({k:'hold',cm:5,d:2.5,say:'Опусти на 5 — сейчас пойдём под стук'});
   [[2,4,'Медленно: 5 ↔ 15, по стуку'],[1,6,'Быстрее'],[0.5,8,'Быстро']].forEach(function(m){ add({k:'move',per:m[0],n:m[1],d:m[0]*m[1],say:m[2]}); add({k:'hold',cm:5,d:2,say:'Отдохни на 5'}); });
-  add({k:'flick',n:6,gap:1.5,d:9,say:'Рывок до 15 и сразу вниз — по стуку'}); add({k:'hold',cm:10,d:3,say:'Замри на 10'}); return S; }
+  add({k:'flick',n:6,gap:1.5,d:9,say:'Рывок до 15 и сразу вниз — по стуку'}); add({k:'hold',cm:10,d:3,say:'Замри на 10'});
+  add({k:'free',d:15,say:'Свободно: води ладонью как хочешь — смотри, как идёт метка'}); return S; }
 function fwCmAt(S,t){ for(var i=0;i<S.length;i++){ var s=S[i]; if(t<s.t1){ var u=t-s.t0;
-      if(s.k==='hold') return s.cm;
+      if(s.k==='hold') return s.cm; if(s.k==='free') return null;
       if(s.k==='move'){ var leg=Math.floor(u/s.per), a=(u-leg*s.per)/s.per, from=leg%2?15:5; return from+(from===5?10:-10)*a; }
       if(s.k==='flick'){ var q=u%s.gap; return q<0.2?5+10*q/0.2:q<0.4?15-10*(q-0.2)/0.2:5; } } }
   return 10; }
@@ -155,14 +165,9 @@ function fwCmAt(S,t){ for(var i=0;i<S.length;i++){ var s=S[i]; if(t<s.t1){ var u
    только на ходу. */
 var JG_HP=0.8, JG_HPG=0.55, JG_LEAD=0.03, JG_PRACTICE=true, JG_OE={mc:1.0,beta:8,dc:1.0}, JG_W={lo:0.6,hi:2.0};
 function jgRawFrac(T,h){ var FL=2*T.field/(1+Tune.ASYM), FU=2*Tune.ASYM*T.field/(1+Tune.ASYM); return h<100?0.5+(h-100)/FL:0.5+(h-100)/FU; }
-function jgPad(dt){ if(!ARC.T||ARC.dist===null||!ARC.present||!(dt>0)){ return; } var f=jgRawFrac(ARC.T,ARC.dist), al=function(c){ var tau=1/(2*Math.PI*c); return 1/(1+tau/dt); };
-  if(ARC.jfX===undefined||ARC.jfX===null){ ARC.jfX=f; ARC.jfD=0; ARC.jfE=0; }
-  var prev=ARC.jfX, dx=(f-ARC.jfX)/dt; ARC.jfD+=al(JG_OE.dc)*(dx-ARC.jfD); ARC.jfX+=al(JG_OE.mc+JG_OE.beta*Math.abs(ARC.jfD))*(f-ARC.jfX);
-  var w=Math.max(0,Math.min(1,(Math.abs(ARC.jfD)-JG_W.lo)/(JG_W.hi-JG_W.lo)));
-  ARC.jfE+=JG_HPG*w*(ARC.jfX-prev); ARC.jfE*=Math.exp(-dt/JG_HP);
-  var fc=Math.max(-0.15,Math.min(1.15,ARC.jfX)), ty=JG_PAD_LO-fc*JG_PAD_H-ARC.jfE-ARC.jfD*JG_LEAD*w*(JG_PAD_H+JG_HPG);
-  ARC.py=Math.max(0.28,Math.min(0.97,ty)); }
-var JG_PAD_LO=0.94, JG_PAD_H=0.40, JG_R=0.032, JG_G=4.2, JG_E=0.5, JG_STICK=0.25, JG_HOT=1.2, JG_SLOTS=[0.5,0.36,0.64], JG_N2=15, JG_N3=40, JG_TOP=0.03;
+function jgPad(dt){ var hh=ARC.mix!==undefined&&ARC.mix!==null?ARC.mix:ARC.dist; if(!ARC.T||hh===null||hh===undefined) return;   // 1.57f: без добавок — весь ход ладони = 0,6 экрана
+  ARC.py=Math.max(0.3,Math.min(0.97,JG_PAD_LO-jgRawFrac(ARC.T,hh)*JG_PAD_H)); }
+var JG_PAD_LO=0.94, JG_PAD_H=0.60, JG_R=0.032, JG_G=4.2, JG_E=0.5, JG_STICK=0.25, JG_HOT=1.2, JG_SLOTS=[0.5,0.36,0.64], JG_N2=15, JG_N3=40, JG_TOP=0.03;
 var JG_KIND=[{g:1,r:1,col:'#ffd166'},{g:0.72,r:1.15,col:'#5ad1c0'},{g:1.35,r:0.85,col:'#ff8fa8'}];   // обычный, лёгкий, тяжёлый
 function jgBall(slot,y,on){ var K=JG_KIND[slot]; return {slot:slot,y:y,vy:0,heat:0,on:!!on,apex:null,g:JG_G*K.g,r:JG_R*K.r}; }
 function jgStar(b){ var k=Math.min(1,ARC.nst/60), y=0.3, i;
@@ -224,7 +229,7 @@ var ARC_STEP={
   /* пещера: середина прохода блуждает (цель меняется каждые 0,6–1,2 высоты пути), проход 0,62 → 0,30; скорость 0,45 → 1,0 высоты/с */
   follow:function(dt){ var S=ARC.fw, t=ARC.t, i=0; while(i<S.length&&t>=S[i].t1) i++;
     if(i>=S.length){ arcEv('done'); ARC.over=true; return; }
-    if(i!==ARC.fwI){ ARC.fwI=i; ARC.fwBeat=0; var s0=S[i]; arcEv('step:'+i+':'+s0.k+':'+(s0.k==='hold'?s0.cm:s0.k==='move'?s0.per:s0.gap)); arcText(s0.say,''); if(s0.k==='hold') sfx('level'); }
+    if(i!==ARC.fwI){ ARC.fwI=i; ARC.fwBeat=0; var s0=S[i]; arcEv('step:'+i+':'+s0.k+':'+(s0.k==='hold'?s0.cm:s0.k==='move'?s0.per:s0.k==='flick'?s0.gap:0)); arcText(s0.say,''); if(s0.k==='hold') sfx('level'); }
     var s=S[i], u=t-s.t0;
     if(s.k==='move'||s.k==='flick'){ var per=s.k==='move'?s.per:s.gap, nb=Math.floor(u/per); if(nb>=ARC.fwBeat&&nb<s.n){ ARC.fwBeat=nb+1; arcEv('beat:'+(s.k==='move'?(nb%2?5:15):15)); sfx('jtoss',1); } }
     ARC.fwCm=fwCmAt(S,t); var left=Math.max(0,s.t1-t); el('acSub').textContent=left>0.5?Math.ceil(left)+' с':''; },
@@ -294,8 +299,9 @@ function arcDraw(){ var cv=el('acC'); if(!cv||!cv.getContext) return; var dpr=Ma
     c.strokeStyle='#5b6aa8'; c.lineWidth=2*dpr; c.beginPath(); c.moveTo(rx,cmY(0)); c.lineTo(rx,cmY(20)); c.stroke();
     c.fillStyle='#8f9cc0'; c.font=Math.round(0.045*H)+'px "IBM Plex Mono",monospace'; c.textAlign='left';
     for(var cm=0;cm<=20;cm++){ var big=cm%5===0; c.fillRect(rx,cmY(cm)-1*dpr,(big?0.05:0.025)*H,2*dpr); if(big) c.fillText(cm+' см',rx+0.07*H,cmY(cm)+0.015*H); }
-    var gy=cmY(ARC.fwCm||5); c.strokeStyle='#ffd166'; c.lineWidth=3*dpr; c.beginPath(); c.arc(rx-0.12*H,gy,0.04*H,0,6.283); c.stroke();
-    if(ARC.frac!==null&&ARC.frac!==undefined){ var my=cmY(5+10*ARC.frac); c.fillStyle='#ff8a3d'; c.fillRect(rx-0.32*H,my-0.012*H,0.16*H,0.024*H); } }
+    if(ARC.fwCm!==null){ var gy=cmY(ARC.fwCm||5); c.strokeStyle='#ffd166'; c.lineWidth=3*dpr; c.beginPath(); c.arc(rx-0.12*H,gy,0.04*H,0,6.283); c.stroke(); }
+    var fm=ARC.mix!==undefined&&ARC.mix!==null&&ARC.T?Tune.fracOf(ARC.T,ARC.mix):ARC.frac;
+    if(fm!==null&&fm!==undefined){ var my=cmY(5+10*fm); c.fillStyle='#ff8a3d'; c.fillRect(rx-0.32*H,my-0.012*H,0.16*H,0.024*H); } }
   if(g==='juggle'){ var ar2=W/H, sx=function(sl){ return X(ar2*JG_SLOTS[sl]); }, star=function(x,y,r,col){ c.fillStyle=col; c.beginPath(); for(var i=0;i<10;i++){ var a=-Math.PI/2+i*Math.PI/5, rr=i%2?r*0.45:r; c.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr); } c.closePath(); c.fill(); };
     c.fillStyle='#0f1530'; c.fillRect(0,0,W,H); c.fillStyle='#3a4373'; c.fillRect(0,0,W,Y(JG_TOP)); c.fillStyle='#4d578f'; for(var k=0;k<W;k+=0.04*H) c.fillRect(k,0,0.012*H,Y(JG_TOP));
     (ARC.stars||[]).forEach(function(s){ c.strokeStyle='rgba(232,238,252,.12)'; c.setLineDash([3*dpr,5*dpr]); c.beginPath(); c.moveTo(sx(s.slot),Y(s.y)); c.lineTo(sx(s.slot),Y(py)); c.stroke(); c.setLineDash([]); c.globalAlpha=s.wait>0?0.25:1; star(sx(s.slot),Y(s.y),Y(s.r)*(s.wait>0?1-s.wait:1),s.t>10&&Math.floor(s.t*8)%2?'#6a6f90':'#ffd166'); c.globalAlpha=1; });
@@ -320,11 +326,11 @@ function arcDraw(){ var cv=el('acC'); if(!cv||!cv.getContext) return; var dpr=Ma
   c.fillText(ARC.dist===null||ARC.dist===undefined?'ладони не слышно':(ARC.present?'':'(нет ладони) ')+'ладонь '+(ARC.dist/10).toFixed(1).replace('.',',')+' см',W/2,H-6*dpr); }
 function arcSave(){ if(!ARC.frames.length) return; var n=ARC.frames.length*N, all=new Float32Array(n); ARC.frames.forEach(function(f,j){ all.set(f,j*N); });
   var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
-  var meta={v:1,kind:'arc-play',game:ARC.game,port:ARC.port,autocenter:true,unwrap:false,half:ARC.game==='juggle',unw:DSP2.info().unw,halfN:DSP2.info().half,jg:ARC.game==='juggle'?{pad_lo:JG_PAD_LO,pad_h:JG_PAD_H,hp_s:JG_HP,hp_g:JG_HPG,lead_s:JG_LEAD,g:JG_G,practice:JG_PRACTICE,oe:JG_OE,w:JG_W,v:'1.57d'}:null,tune:ARC.T?{field:+ARC.T.field.toFixed(2),asym:Tune.ASYM,shifts:ARC.shifts}:null,margin:ARC_M,
+  var meta={v:1,kind:'arc-play',game:ARC.game,port:ARC.port,autocenter:true,unwrap:false,half:false,quarter:ARC.game==='juggle'||ARC.game==='follow',mix_tau:MIX_TAU,unw:DSP2.info().unw,halfN:DSP2.info().half,jg:ARC.game==='juggle'?{pad_lo:JG_PAD_LO,pad_h:JG_PAD_H,hp_s:JG_HP,hp_g:JG_HPG,lead_s:JG_LEAD,g:JG_G,practice:JG_PRACTICE,oe:JG_OE,w:JG_W,v:'1.57d'}:null,tune:ARC.T?{field:+ARC.T.field.toFixed(2),asym:Tune.ASYM,shifts:ARC.shifts}:null,margin:ARC_M,
     fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:(typeof linkPar==='function'?linkPar():'all'),channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
     cal:DSP2.info().cal||PHYS_CAL,marks:ARC.marks,log:ARC.log,score:ARC.score,summary:arcSummary(),samples:n,gaps:ARC.gaps,peak:pk,
     orientation:{angle:(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0),w:window.innerWidth,h:window.innerHeight},
-    units:ARC.game==='follow'?'log: [frame, palm share by Tune.fracOf, where the palm should be (cm on the ruler), palm seen] or [frame, event]':'log: [frame, palm share of the height by Tune.fracOf (0 low … 1 high), player y (0 top … 1 bottom, eased 0.49 per 60 Hz frame), palm seen] or [frame, event]',
+    units:ARC.game==='follow'?'log: [frame, palm share by Tune.fracOf, where the palm should be (cm on the ruler; null — free), palm seen, mixed height (slow from the height, fast from the phase)] or [frame, event]':'log: [frame, palm share of the height by Tune.fracOf (0 low … 1 high), player y (0 top … 1 bottom, eased 0.49 per 60 Hz frame), palm seen] or [frame, event]',
     ua:navigator.userAgent,date:new Date().toISOString()};
   var b=wav(all,meta), d=new Date(), z=function(x){ return (x<10?'0':'')+x; };
   var name='sonararc_'+ARC_GAMES[ARC.game].file+'_'+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes())+'.wav'; ARC.blob=b; ARC.fname=name;

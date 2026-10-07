@@ -6,7 +6,7 @@ const C=require('./common'), path=require('path');
 const SR=48000, N=512;
 function tuneMod(){ const js=C.appJs(), i=js.indexOf('var Tune=(function(){'); return new Function(js.slice(i,js.indexOf('if(typeof module',i))+'\nreturn Tune;')(); }
 /* 1.57a: тоны — как пищал телефон (лаба помнит чётные/нечётные со СонарЛинка) */
-function replay(meta,x){ const D=C.makeDSP(C.bandOf(meta)); D.init(SR,meta.probe&&(meta.probe.bins===0||meta.probe.bins===1)?meta.probe.bins:'all'); D.setCal(meta.cal); if(meta.autocenter) D.set('autocenter',1); const uw=process.env.UNWRAP!==undefined?process.env.UNWRAP==='1':!!meta.unwrap; if(uw) D.set('unwrap',1); const hf=process.env.HALF!==undefined?process.env.HALF==='1':!!meta.half; if(hf) D.set('half',1);   // UNWRAP=0/1 — разобрать иначе, чем играли
+function replay(meta,x){ const D=C.makeDSP(C.bandOf(meta)); D.init(SR,meta.probe&&(meta.probe.bins===0||meta.probe.bins===1)?meta.probe.bins:'all'); D.setCal(meta.cal); if(meta.autocenter) D.set('autocenter',1); const uw=process.env.UNWRAP!==undefined?process.env.UNWRAP==='1':!!meta.unwrap; if(uw) D.set('unwrap',1); const hf=process.env.HALF!==undefined?process.env.HALF==='1':!!meta.half; if(hf) D.set('half',1); if(meta.quarter&&process.env.HALF===undefined) D.set('quarter',1);   // UNWRAP=0/1 — разобрать иначе, чем играли
   const sh=(meta.tune&&meta.tune.shifts)||[], o=[]; let j=0;
   for(let k=0;k<Math.floor(x.length/N);k++){ while(j<sh.length&&sh[j][0]<=k){ D.shift(sh[j][1]); j++; } const r=D.frame(x.subarray(k*N,(k+1)*N)); if(r) o.push(Object.assign({k:k+1,t:(k+1)*N/SR},r)); }
   return o; }

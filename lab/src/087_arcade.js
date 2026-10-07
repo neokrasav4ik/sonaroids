@@ -124,12 +124,22 @@ function arcInit(){ var g=ARC.game; ARC.py=0.5; ARC.score=0; ARC.lives=3; ARC.t=
    она сама возвращается к прежнему ходу; (3) упреждение JG_LEAD — платформа ставится туда, где ладонь будет через 30 мс (задержка
    микрофона и экрана); (4) DSP 'half' — поворот фазы по полукадрам, предел скорости ~80 см/с вместо ~40; (5) тяжесть 4,2 — от
    более быстрой платформы мяч не улетает в потолок; (6) учебный режим: один мяч, без звёзд, жизней, очков и жара. */
-var JG_HP=0.8, JG_HPG=0.55, JG_LEAD=0.03, JG_PRACTICE=true;
+/* 1.57d (Ден 14:07: «уже лучше.. но платформа постоянно подергивается и дрожит»). В 1.57c добавка к ходу шла от любого отклонения
+   ладони от её среднего, а упреждение — от сырой скорости: дрожь руки и сонара (~1–2 мм) тоже множилась. Прогон его записи 14:07
+   через разные фильтры (дрожь — отклонение платформы от её среднего за 0,15 с, когда ладонь почти стоит; взмах — ход платформы за
+   рывок; запаздывание — по скорости):  1.57b — дрожь 3,0‰ экрана, взмах 0,08, запаздывание 21 мс;  1.57c — 12,0‰, 0,21, −32 мс;
+   теперь — 7,1‰, 0,21, 0 мс. Как: (1) ладонь сглаживается фильтром «one euro» — в покое сильно (срез 1 Гц), на ходу почти нет
+   (срез растёт со скоростью, β 8); (2) добавка к ходу — как «ускорение» у мыши: копится только из быстрых приращений (вес 0 при
+   скорости до 0,6 хода в секунду ≈ 6 см/с, 1 — от 2 ≈ 20 см/с), 0,55 экрана на ход, и тает за 0,8 с; (3) упреждение 30 мс — тоже
+   только на ходу. */
+var JG_HP=0.8, JG_HPG=0.55, JG_LEAD=0.03, JG_PRACTICE=true, JG_OE={mc:1.0,beta:8,dc:1.0}, JG_W={lo:0.6,hi:2.0};
 function jgRawFrac(T,h){ var FL=2*T.field/(1+Tune.ASYM), FU=2*Tune.ASYM*T.field/(1+Tune.ASYM); return h<100?0.5+(h-100)/FL:0.5+(h-100)/FU; }
-function jgPad(dt){ if(!ARC.T||ARC.dist===null||!ARC.present){ return; } var f=jgRawFrac(ARC.T,ARC.dist);
-  if(ARC.jfS===undefined||ARC.jfS===null){ ARC.jfS=f; ARC.jfP=f; ARC.jfV=0; }
-  ARC.jfS+=(f-ARC.jfS)*(1-Math.exp(-dt/JG_HP)); var v=dt>0?(f-ARC.jfP)/dt:0; ARC.jfP=f; ARC.jfV+=(v-ARC.jfV)*0.5;
-  var fc=Math.max(-0.15,Math.min(1.15,f)), ty=JG_PAD_LO-fc*JG_PAD_H-(f-ARC.jfS)*JG_HPG-ARC.jfV*JG_LEAD*(JG_PAD_H+JG_HPG);
+function jgPad(dt){ if(!ARC.T||ARC.dist===null||!ARC.present||!(dt>0)){ return; } var f=jgRawFrac(ARC.T,ARC.dist), al=function(c){ var tau=1/(2*Math.PI*c); return 1/(1+tau/dt); };
+  if(ARC.jfX===undefined||ARC.jfX===null){ ARC.jfX=f; ARC.jfD=0; ARC.jfE=0; }
+  var prev=ARC.jfX, dx=(f-ARC.jfX)/dt; ARC.jfD+=al(JG_OE.dc)*(dx-ARC.jfD); ARC.jfX+=al(JG_OE.mc+JG_OE.beta*Math.abs(ARC.jfD))*(f-ARC.jfX);
+  var w=Math.max(0,Math.min(1,(Math.abs(ARC.jfD)-JG_W.lo)/(JG_W.hi-JG_W.lo)));
+  ARC.jfE+=JG_HPG*w*(ARC.jfX-prev); ARC.jfE*=Math.exp(-dt/JG_HP);
+  var fc=Math.max(-0.15,Math.min(1.15,ARC.jfX)), ty=JG_PAD_LO-fc*JG_PAD_H-ARC.jfE-ARC.jfD*JG_LEAD*w*(JG_PAD_H+JG_HPG);
   ARC.py=Math.max(0.28,Math.min(0.97,ty)); }
 var JG_PAD_LO=0.94, JG_PAD_H=0.40, JG_R=0.032, JG_G=4.2, JG_E=0.5, JG_STICK=0.25, JG_HOT=1.2, JG_SLOTS=[0.5,0.36,0.64], JG_N2=15, JG_N3=40, JG_TOP=0.03;
 var JG_KIND=[{g:1,r:1,col:'#ffd166'},{g:0.72,r:1.15,col:'#5ad1c0'},{g:1.35,r:0.85,col:'#ff8fa8'}];   // обычный, лёгкий, тяжёлый
@@ -276,7 +286,7 @@ function arcDraw(){ var cv=el('acC'); if(!cv||!cv.getContext) return; var dpr=Ma
   c.fillText(ARC.dist===null||ARC.dist===undefined?'ладони не слышно':(ARC.present?'':'(нет ладони) ')+'ладонь '+(ARC.dist/10).toFixed(1).replace('.',',')+' см',W/2,H-6*dpr); }
 function arcSave(){ if(!ARC.frames.length) return; var n=ARC.frames.length*N, all=new Float32Array(n); ARC.frames.forEach(function(f,j){ all.set(f,j*N); });
   var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
-  var meta={v:1,kind:'arc-play',game:ARC.game,port:ARC.port,autocenter:true,unwrap:false,half:ARC.game==='juggle',unw:DSP2.info().unw,halfN:DSP2.info().half,jg:ARC.game==='juggle'?{pad_lo:JG_PAD_LO,pad_h:JG_PAD_H,hp_s:JG_HP,hp_g:JG_HPG,lead_s:JG_LEAD,g:JG_G,practice:JG_PRACTICE}:null,tune:ARC.T?{field:+ARC.T.field.toFixed(2),asym:Tune.ASYM,shifts:ARC.shifts}:null,margin:ARC_M,
+  var meta={v:1,kind:'arc-play',game:ARC.game,port:ARC.port,autocenter:true,unwrap:false,half:ARC.game==='juggle',unw:DSP2.info().unw,halfN:DSP2.info().half,jg:ARC.game==='juggle'?{pad_lo:JG_PAD_LO,pad_h:JG_PAD_H,hp_s:JG_HP,hp_g:JG_HPG,lead_s:JG_LEAD,g:JG_G,practice:JG_PRACTICE,oe:JG_OE,w:JG_W,v:'1.57d'}:null,tune:ARC.T?{field:+ARC.T.field.toFixed(2),asym:Tune.ASYM,shifts:ARC.shifts}:null,margin:ARC_M,
     fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:(typeof linkPar==='function'?linkPar():'all'),channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
     cal:DSP2.info().cal||PHYS_CAL,marks:ARC.marks,log:ARC.log,score:ARC.score,summary:arcSummary(),samples:n,gaps:ARC.gaps,peak:pk,
     orientation:{angle:(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0),w:window.innerWidth,h:window.innerHeight},

@@ -1,5 +1,8 @@
-# Publishes the site to GitHub Pages (sonaroids.app) on every push to main.
-# The lab checks run first: if they fail, nothing is published.
+# Publishes the site to GitHub Pages (sonaroids.app): on every push to main and after «Unpack uploaded zip».
+# 7 Oct (Den: «сделай чтоб на гитхабе воркфлоу сайт быстрее собирал.. а то там каждый раз много действий которые уже не нужны»):
+# only copy and publish — the game (game/play/index.html) and the lab (lab/app/sonar_lab3.html) come already built in the zip,
+# and the checks are run before every zip. The long checks moved to «Checks» (by hand). The artifact's name carries the run
+# attempt: a re-run of a failed deploy had found two «github-pages» artifacts in one run and failed again.
 name: Publish site
 
 on:
@@ -25,19 +28,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Lab checks
-        run: |
-          cd lab
-          python3 build.py --check
-          sh tools/run_all.sh
-
-      - name: Game checks
-        run: sh tests/run.sh
-
       - name: Assemble the site
         run: |
           mkdir -p _site/lab
@@ -49,6 +39,9 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
+          name: github-pages-${{ github.run_attempt }}
 
       - id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages-${{ github.run_attempt }}

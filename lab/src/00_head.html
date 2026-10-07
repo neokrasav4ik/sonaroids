@@ -31,8 +31,8 @@
   button{font-family:inherit;font-size:1rem;font-weight:500;color:var(--bg);background:var(--ink);touch-action:manipulation;
     border:0;border-radius:3px;padding:.95em .8em;min-height:3.1rem;width:100%;cursor:pointer;margin:0;line-height:1.2}
   /* 27.09 (0.39m): кнопки крупнее и в две колонки — «маленькие сложно нажимать» */
-  .btns.g2{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;align-content:center} .btns.g2>.big,.btns.g2>p,.btns.g2>.wide,.btns.g2>div{grid-column:1/-1}
-  .two.wideb{grid-template-columns:minmax(0,.8fr) minmax(0,1.35fr);gap:1.6rem}
+  .btns.g2{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;align-content:center} .btns.g2>.big,.btns.g2>p,.btns.g2>div{grid-column:1/-1}
+  .two.wideb{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:1.6rem}
   button.big{font-size:1.2rem;padding:.95em 1em}
   button.ghost{background:transparent;color:var(--ink);border:1px solid var(--hair)}
   button:disabled{opacity:.35}
@@ -59,7 +59,7 @@
   body.pok #portrait{display:none!important}
   body.pok button{min-height:0;padding:.75em 1em}   /* старые пробы в портрете: кнопки прежнего размера — иначе не влезают на SE */
   @media (orientation:portrait){ body.pok .two{grid-template-columns:minmax(0,1fr);gap:1rem} body.pok .two .btns{order:1} }
-  #sideIntro .pic{height:24vh;max-width:100%;margin:.2rem auto 0;display:block}
+  #sideIntro .pic{height:24vh;max-width:100%;margin:.2rem auto 0;display:block} @media (max-height:600px){ #sideIntro .pic{display:none} }
   #sideOri{font-family:"IBM Plex Mono",monospace;font-size:.8rem;margin:.2rem 0 .4rem}
   #recSide{flex-direction:column;align-items:stretch;gap:.6rem}
   #rightIntro .pic{height:16vh;max-width:100%;margin:.2rem auto 0;display:block} @media (max-height:600px){ #rightIntro .pic{display:none} } #rightIntro .pic.away{transform:scaleY(-1)} #rightIntro .pic.away text{display:none} #rightOri{font-family:"IBM Plex Mono",monospace;font-size:.8rem;margin:.2rem 0 .4rem}
@@ -68,7 +68,7 @@
   #akTop{position:absolute;left:0;right:0;top:30%;text-align:center;pointer-events:none;padding:0 1rem}
   #akSay{font-size:2rem;font-weight:600} #akSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
   #akBtns{position:absolute;left:calc(max(1rem,env(safe-area-inset-left)) + 1rem);top:50%;transform:translateY(-50%);width:15rem;display:flex;flex-direction:column;gap:.5rem}
-  #akStop{position:absolute;left:calc(max(.7rem,env(safe-area-inset-left)) + .3rem);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + 3.4rem);width:auto;min-height:0;padding:.6em 1em;font-size:.9rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
+  #akStop{position:absolute;left:calc(max(.7rem,env(safe-area-inset-left)) + .3rem);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + 3.4rem);width:auto;min-height:0;padding:.7em 1.3em;font-size:1.05rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
   #recTwo{flex-direction:column;align-items:stretch;gap:.4rem} #twHead{text-align:center} #twSay{font-size:1.7rem;font-weight:600;line-height:1.2} #twSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
   #twClock{font-family:"IBM Plex Mono",monospace;font-size:.85rem;color:var(--soft);margin-top:.4rem} #twC{flex:1;width:100%;min-height:0;display:block}
   #twoIntro .pic{height:26vh;max-width:100%;margin:.2rem auto 0;display:block} @media (max-height:600px){ #twoIntro .pic{display:none} }
@@ -79,7 +79,7 @@
   #slSay{font-size:2rem;font-weight:600} #slSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
   #slHud{position:absolute;top:calc(max(.5rem,env(safe-area-inset-top)) + .2rem);left:0;right:0;text-align:center;font-family:"IBM Plex Mono",monospace;font-size:.85rem;color:var(--soft);pointer-events:none}
   #slBtns{position:absolute;left:50%;top:58%;transform:translateX(-50%);width:15rem;display:flex;flex-direction:column;gap:.5rem}
-  #slStop{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + .4rem);width:auto;min-height:0;padding:.5em 1em;font-size:.85rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
+  #slStop{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + .4rem);width:auto;min-height:0;padding:.7em 1.3em;font-size:1.05rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
   #slAlign{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + .4rem);display:flex;gap:.4rem}
   #slChk{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + 3rem);display:flex;gap:.5rem}
   #slChk button{width:auto;min-height:0;padding:.6em 1em;font-size:1rem;background:rgba(4,7,10,.7);color:var(--ink);border:1px solid #3A4A52}
@@ -109,12 +109,12 @@
   .pgpre button.on{background:#ffd166;color:#14181f;border-color:#ffd166}
   #pgSliders .pgtog.on{border-color:#ffd166;color:#ffd166}
   @media (max-width:560px){ #arcPause .pzw,#pgSliders{grid-template-columns:repeat(2,minmax(0,1fr))} }
-  #acStop{position:absolute;left:calc(max(.7rem,env(safe-area-inset-left)) + .3rem);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + 3.4rem);width:auto;min-height:0;padding:.6em 1em;font-size:.9rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
+  #acStop{position:absolute;left:calc(max(.7rem,env(safe-area-inset-left)) + .3rem);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + 3.4rem);width:auto;min-height:0;padding:.75em 1.4em;font-size:1.15rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
   #rightPlay{padding:0;background:#04070A} #rpC{position:absolute;inset:0;width:100%;height:100%;display:block}
   #rpTop{position:absolute;left:0;right:0;top:calc(max(.8rem,env(safe-area-inset-top)) + 5.4rem);text-align:center;pointer-events:none;padding:0 1rem}
   #rpSay{font-size:2rem;font-weight:600} #rpSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
   #rpBtns{position:absolute;left:1rem;right:1rem;bottom:calc(max(1rem,env(safe-area-inset-bottom)) + 2.4rem);display:flex;flex-direction:column;gap:.5rem}
-  #rpStop{position:absolute;left:calc(max(.7rem,env(safe-area-inset-left)) + .3rem);top:calc(max(.6rem,env(safe-area-inset-top)) + 2.2rem);width:auto;min-height:0;padding:.5em .9em;font-size:.85rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
+  #rpStop{position:absolute;left:calc(max(.7rem,env(safe-area-inset-left)) + .3rem);top:calc(max(.6rem,env(safe-area-inset-top)) + 2.2rem);width:auto;min-height:0;padding:.7em 1.3em;font-size:1.05rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
   #sdCenter{flex:1;display:flex;flex-direction:column;justify-content:center;text-align:center}
   #sdSay{font-size:1.9rem;font-weight:600;line-height:1.2} #sdSub{color:var(--soft);font-size:1.05rem;margin-top:.5rem}
   #sdClock{font-family:"IBM Plex Mono",monospace;font-size:.9rem;color:var(--soft);margin-top:.7rem}
@@ -164,15 +164,30 @@
     padding:max(.8rem,env(safe-area-inset-top)) max(1rem,env(safe-area-inset-right)) max(.8rem,env(safe-area-inset-bottom)) max(1rem,env(safe-area-inset-left))}
   .menu{margin:auto;width:100%;max-width:62rem;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.3rem;align-items:start}
   .menu .col{gap:.42rem}
-  .menu button{font-size:.86rem;padding:.62em .6em}
+  .menu button{font-size:1rem;padding:.7em .6em}
   .menu .ptitle{font-family:"Press Start 2P",monospace;font-size:.78rem;color:var(--ink);margin:0 0 .2rem}
   .seg{display:flex;border:1px solid var(--hair);border-radius:2px;overflow:hidden}
-  .seg button{border-radius:0;background:transparent;color:var(--soft);font-size:.8rem;padding:.62em .2em;border:0;border-right:1px solid var(--hair);font-weight:400}
+  .seg button{border-radius:0;background:transparent;color:var(--soft);font-size:.92rem;padding:.62em .2em;border:0;border-right:1px solid var(--hair);font-weight:400}
   .seg button:last-child{border-right:0}
   .seg button.sel{background:var(--ink);color:var(--bg)}
-  .ctl label{display:flex;justify-content:space-between;font-size:.76rem;color:var(--soft)}
+  .ctl label{display:flex;justify-content:space-between;font-size:.88rem;color:var(--soft)}
   .ctl label b{font-family:"IBM Plex Mono",monospace;color:var(--ink);font-weight:500}
   input[type=range]{width:100%;margin:.15rem 0 0;accent-color:var(--hot);touch-action:pan-x}
+  /* 1.58n: главная и архив — шапка, разделы, карточки-кнопки */
+  .hub{margin:auto;width:100%;max-width:64rem;display:flex;flex-direction:column;gap:.45rem}
+  .hubtop{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:.1rem}
+  .hubtop h1{margin:0 0 .1rem;font-size:1.6rem} .hubtop p{margin:0}
+  .hubsvc{display:flex;gap:.5rem;flex:none} .hubsvc button{width:auto;min-height:2.6rem;padding:.5em 1em;font-size:.95rem}
+  .sec{font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;color:var(--soft);margin:.35rem 0 0}
+  .cards{display:grid;gap:.55rem} .cards.c3{grid-template-columns:repeat(3,minmax(0,1fr))} .cards.c6{grid-template-columns:repeat(6,minmax(0,1fr))} .cards.c6 .card{min-height:4.2rem;padding:.5em .65em} .cards.c6 .card b{font-size:1rem}
+  .card{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;text-align:left;gap:.1rem;min-height:3.3rem;padding:.6em .9em;
+    background:#151d24;color:var(--ink);border:1px solid var(--hair);border-radius:.6rem}
+  .card b{font-size:1.12rem;font-weight:600;overflow-wrap:anywhere;hyphens:auto} .card span{font-size:.85rem;color:var(--soft);font-weight:400;line-height:1.25;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .card.hot{border-color:var(--hot);background:#22170f} .card.hot b{color:#ffd0b0}
+  .card.wide2{grid-column:span 2;font-size:.95rem;justify-content:center}
+  #home .note,#home .err{max-width:none;margin:0}
+  /* текст крупнее (было мелко: .9 / .76 rem) */
+  @media (orientation:landscape){ p{font-size:1rem} .small{font-size:.86rem} }   /* портретные старые пробы — как было, иначе не влезают на SE */
 </style>
 </head>
 <body>
@@ -182,27 +197,32 @@
   <p>Поворачивай, пока держишь его в руке, — лёжа плашмя телефон ориентацию не меняет. Потом положи экраном вверх.</p>
 </div></div>
 
-<div class="screen" id="home"><div class="two wideb">
-  <div class="col">
-    <h1>Сонар: астероиды</h1>
-    <p>Корабль летит между астероидами. Его высота — твоя ладонь сбоку от лежащего телефона, у короткого края с микрофоном.</p>
-    <p>Настраивать ничего не нужно: пару секунд приложение слушает пустую комнату — руку в это время убери. Перед стартом помаши ладонью вверх-вниз в рабочем диапазоне — примерно 5–15 см над столом, — и корабль подстроится под твой размах.</p>
-    <div id="a2hs" class="note hidden"><b>На весь экран:</b> в Safari «Поделиться» → «На экран „Домой“» и запускай с иконки.</div>
-    <div class="err hidden" id="err"></div>
+<div class="screen" id="home"><div class="hub">
+  <!-- 7.10 (1.58n, Ден: «сделай всю лабу дружелюбнее… рассортируй, ненужное спрячь подальше, что может пригодиться — поближе»):
+       сверху — что пробуем сейчас, ниже — записи для разбора и другое; старые прототипы и пробы — в «Архиве» -->
+  <div class="hubtop">
+    <div><h1>Лаба сонара</h1></div>
+    <div class="hubsvc"><button id="pwToggle" class="ghost">Зонд: …</button><button id="reload1" class="ghost">Обновить</button><button id="toGame" class="ghost">← В игру</button></div>
   </div>
-  <div class="col btns g2">
-    <button id="goGame" class="big">Играть</button>
-    <button id="goLink" class="ghost">СонарЛинк: два телефона</button>
-    <button id="go_juggle" class="ghost">Жонглёр (прототип)</button>
-    <button id="go_pong" class="ghost">СонаПонг (прототип)</button>
-    <button id="go_follow" class="ghost">Ладонь по линейке (запись)</button>
-    <button id="goRec" class="ghost">Запись для меня</button>
-    <button id="goRecLong" class="ghost">Длинная запись (1,5 мин)</button>
-    <button id="goProbes" class="ghost">Ещё: пробы, беззвучный…</button>
-    <button id="goMore2" class="ghost">Ещё 2: прототипы</button>
-    <button id="reload1" class="ghost">Перезагрузить</button>
-    <button id="pwToggle" class="ghost wide">Зонд: …</button>
-    <button id="toGame" class="ghost wide">← В игру</button>
+  <div id="a2hs" class="note hidden"><b>На весь экран:</b> в Safari «Поделиться» → «На экран „Домой“» и запускай с иконки.</div>
+  <div class="err hidden" id="err"></div>
+  <div class="sec">Пробуем сейчас</div>
+  <div class="cards c3">
+    <button id="go_juggle" class="card hot"><b>Жонглёр</b><span>подбрасывай мяч ладонью</span></button>
+    <button id="go_pong" class="card hot"><b>СонаПонг</b><span>пас мячом между ракетками</span></button>
+    <button id="go_follow" class="card"><b>Ладонь по линейке</b><span>запись: точно ли платформа за рукой</span></button>
+  </div>
+  <div class="sec">Записи для разбора</div>
+  <div class="cards c3">
+    <button id="goRec" class="card"><b>Запись для меня</b><span>16 с по меткам на экране</span></button>
+    <button id="goRecLong" class="card"><b>Длинная запись</b><span>1,5 мин по меткам</span></button>
+    <button id="goGame" class="card"><b>Игра лабы</b><span>астероиды, с журналом партии</span></button>
+  </div>
+  <div class="sec">Другое</div>
+  <div class="cards c3">
+    <button id="goLink" class="card"><b>Два телефона</b><span>Струна, Ущелье, линейка</span></button>
+    <button id="goProbes" class="card"><b>Архив</b><span>старые пробы, проверка писка</span></button>
+    <button id="goMore2" class="card hidden"><b>Ещё 2</b><span></span></button>
   </div>
 </div></div>
 
@@ -213,14 +233,14 @@
     <p class="small"><b>Проба:</b> на правом телефоне — «нечётные» и «Только пищать». На левом — «чётные» и «Запись для меня». Потом то же, но оба «все». Потом правый выключен, левый «чётные». Три записи с левого — присылай.</p>
     <p id="lkNow" class="mono"></p>
   </div>
-  <div class="col btns">
-    <button id="lkPar" class="ghost wide">Тоны зонда: …</button>
-    <button id="lkBeacon" class="ghost">Только пищать</button>
-    <button id="lkRec" class="ghost">Запись для меня</button>
+  <div class="col btns g2">
     <button id="lkString" class="big">Струна (игра на двух)</button>
-    <button id="lkRuler" class="ghost">Линейка: запись на двух</button>
     <button id="lkFly" class="big">Ущелье (полёт на двух)</button>
+    <button id="lkRuler" class="ghost">Линейка: запись на двух</button>
     <button id="lkGame" class="ghost">Играть (как в лабе)</button>
+    <button id="lkRec" class="ghost">Запись для меня</button>
+    <button id="lkBeacon" class="ghost">Только пищать</button>
+    <button id="lkPar" class="ghost wide">Тоны зонда: …</button>
     <button id="lkBack" class="ghost">Назад</button>
   </div>
 </div></div>
@@ -243,7 +263,7 @@
     <p class="small">Телефоны рядом, в одной Wi-Fi — «Рядом» на обоих (в пределах полуминуты): найдут друг друга сами и свяжутся напрямую. Друг далеко — «Создать комнату», ему код, он «Войти по коду». Тоны зонда телефоны выберут сами. «Один телефон» — второй вихрь ведёт бот. «Играю один, двумя руками» (лучше кулаками) — каждый вихрь сам держится в середине хода своей руки, а струна горит, когда руки идут <b>в такт</b> (вместе вверх, вместе вниз). «Играем вдвоём» — вихрь по высоте руки, струна горит, когда вихри вровень.</p>
     <p><input id="siCode" inputmode="numeric" maxlength="4" placeholder="код" autocomplete="off"> <span id="siNow" class="mono"></span></p>
   </div>
-  <div class="col btns">
+  <div class="col btns g2">
     <button id="siNear" class="big">Рядом (без кода)</button>
     <button id="siNew" class="ghost">Создать комнату (по сети)</button>
     <button id="siJoin" class="ghost">Войти по коду</button>
@@ -263,7 +283,7 @@
     <p class="small">Подготовка как в «Струне»: убрать руки, помахать кулаками. «Один телефон» — вся картинка на одном, ведёт высота кулака, поворачивает автопилот. Вид — сзади или из кабины (на обоих одинаково). После полёта — «Сохранить журнал».</p>
     <p><input id="flCode" inputmode="numeric" maxlength="4" placeholder="код" autocomplete="off"> <span id="flNow" class="mono"></span></p>
   </div>
-  <div class="col btns">
+  <div class="col btns g2">
     <button id="flNear" class="big">Рядом (на обоих)</button>
     <button id="flNew" class="ghost">Создать комнату (код)</button>
     <button id="flJoin" class="ghost">Войти по коду</button>
@@ -280,7 +300,7 @@
     <p class="small">Ладонь — горизонтально, над разъёмом, высота — от стола до ладони. После записи — «Сохранить журнал партии» на обоих, присылай оба. Можно ещё раз с другим зондом.</p>
     <p><input id="rlCode" inputmode="numeric" maxlength="4" placeholder="код" autocomplete="off" class="codein"> <span id="rlNow" class="mono"></span></p>
   </div>
-  <div class="col btns">
+  <div class="col btns g2">
     <button id="rlNear" class="big">Рядом (на обоих)</button>
     <button id="rlNew" class="ghost">Создать комнату (код)</button>
     <button id="rlJoin" class="ghost">Войти по коду</button>
@@ -305,39 +325,38 @@
   </div>
 </div>
 
-<div class="screen hidden" id="more2"><div class="two wideb">
-  <div class="col">
-    <h1>Ещё 2</h1>
-    <p>Прототипы и пробы 27.09: две руки, Арканоид, экшн-игры. Не пошли — оставлены, чтобы можно было повторить.</p>
-  </div>
-  <div class="col btns g2">
-    <button id="goDepth" class="ghost">Ближняя и дальняя рука</button>
-    <button id="goTwo" class="ghost">Две ладони (проба)</button>
-    <button id="go_race" class="ghost">Трасса (прототип)</button>
-    <button id="go_slalom" class="ghost">Слалом (прототип)</button>
-    <button id="goArk" class="ghost">Арканоид (прототип)</button>
-    <button id="more2Back" class="ghost">Назад</button>
-  </div>
+<div class="screen hidden" id="more2"><div class="hub">
+  <div class="hubtop"><div><h1>Ещё 2</h1></div><div class="hubsvc"><button id="more2Back" class="ghost">Назад</button></div></div>
 </div></div>
 
-<div class="screen hidden" id="probes"><div class="two wideb">
-  <div class="col">
-    <h1>Ещё</h1>
-    <p>Отложенные прототипы (27.09 не пошли) и пробы других способов управления (26–27.09 — все закрыты, остаётся «разъёмом к ладони», как в игре). Оставлены, чтобы можно было повторить.</p>
-    <p class="small">Записи по метке (16 с или 1,5 мин) — на главном экране: присылаешь WAV, я проверяю механику на твоём сигнале.</p>
+<div class="screen hidden" id="probes"><div class="hub">
+  <div class="hubtop">
+    <div><h1>Архив</h1><p class="small">Что пробовали 26–29.09 и отложили. Оставлено, чтобы можно было повторить.</p></div>
+    <div class="hubsvc"><button id="probesBack" class="ghost">← Назад</button></div>
   </div>
-  <div class="col btns g2">
-    <button id="goPw" class="ghost">Проверка писка</button>
-    <button id="goStereo" class="ghost">Стереомикрофон (проба)</button>
-    <button id="go_bombs" class="ghost">Ловец бомб (прототип)</button>
-    <button id="go_cave" class="ghost">Пещера (прототип)</button>
-    <button id="goRecSide" class="ghost">Запись вбок (вертикально)</button>
-    <button id="goRecDual" class="ghost">Два динамика</button>
-    <button id="goRight" class="ghost">Ладонь справа (вертикально)</button>
-    <button id="probesBack" class="ghost">Назад</button>
-    <button id="silentT" class="ghost wide" style="font-size:.9rem">Беззвучный режим телефона: …</button>
-    <p id="silentP" class="small" style="margin:-.15rem 0 .2rem"></p>
+  <div class="sec">Прототипы игр</div>
+  <div class="cards c6">
+    <button id="go_slalom" class="card"><b>Слалом</b></button>
+    <button id="go_race" class="card"><b>Трасса</b></button>
+    <button id="goArk" class="card"><b>Арканоид</b></button>
+    <button id="go_bombs" class="card"><b>Ловец бомб</b></button>
+    <button id="go_cave" class="card"><b>Пещера</b></button>
   </div>
+  <div class="sec">Пробы управления</div>
+  <div class="cards c6">
+    <button id="goTwo" class="card"><b>Две ладони</b></button>
+    <button id="goDepth" class="card"><b>Ближняя и дальняя рука</b></button>
+    <button id="goStereo" class="card"><b>Стереомикрофон</b></button>
+    <button id="goRecSide" class="card"><b>Запись вбок</b><span>вертикально</span></button>
+    <button id="goRight" class="card"><b>Ладонь справа</b><span>вертикально</span></button>
+    <button id="goRecDual" class="card"><b>Два динамика</b></button>
+  </div>
+  <div class="sec">Служебное</div>
+  <div class="cards c3">
+    <button id="goPw" class="card"><b>Проверка писка</b><span>слышен ли зонд</span></button>
+    <button id="silentT" class="card wide2">Беззвучный режим телефона: …</button>
+  </div>
+  <p id="silentP" class="small"></p>
 </div></div>
 
 <div class="screen hidden" id="orient"><div class="two">
@@ -398,7 +417,7 @@
   </div>
 </div></div>
 
-<div class="screen hidden" id="rightIntro"><div class="two">
+<div class="screen hidden" id="rightIntro"><div class="two wideb">
   <div class="col">
     <h1>Ладонь справа</h1>
     <p id="rightHow">Телефон <b>вертикально</b>, экраном вверх, разъёмом к себе — в левой руке или на столе. Правая ладонь ребром (мизинец внизу), ладонью к телефону, <b>справа от нижнего торца, на одной линии с ним</b>, в 5–15 см. Дальше вправо — корабль правее.</p>
@@ -411,7 +430,7 @@
       <text x="71" y="146" fill="#8A9B96" font-size="8" text-anchor="middle">разъём</text><text x="71" y="166" fill="#8A9B96" font-size="8" text-anchor="middle">ты ↓</text>
     </svg>
   </div>
-  <div class="col btns">
+  <div class="col btns g2">
     <div id="rightOri"></div>
     <button id="rightPlayGo" class="big">Проба-игра</button>
     <button id="rightPose" class="ghost">Поза: …</button>
@@ -466,7 +485,7 @@
   <div class="col">
     <h1 id="acTitle">Прототип</h1>
     <p id="acIntro"></p>
-    <p>Управление и подстройка как в Sonaroids: телефон горизонтально, разъёмом к ладони. Сначала убери руку, потом помаши ладонью к разъёму и от него (5–15 см) — игрок сразу ходит за ней. <b>Ладонь дальше — выше.</b></p>
+    <p class="small">Телефон горизонтально, разъёмом к ладони. Сначала убери руку, потом помаши ладонью к разъёму и от него (5–15 см). <b>Ладонь дальше — выше.</b></p>
     <p id="acBest" class="small"></p>
   </div>
   <div class="col btns">

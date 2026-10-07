@@ -91,14 +91,14 @@ with sync_playwright() as p:
         pg=b.new_page(viewport={'width':844,'height':390}); pg.goto(URL); pg.wait_for_timeout(150)
         r=pg.evaluate('''(hand)=>{ document.body.classList.toggle('hand-left',hand==='left');
           const x=id=>{ const e=document.getElementById(id); e.classList.remove('hidden'); return e; };
-          const home=x('home'), g=document.getElementById('goGame').getBoundingClientRect(), t=home.querySelector('h1').getBoundingClientRect();
+          /* 1.58n: главная — во всю ширину (разделы и карточки), сторона руки проверяется только в игре */
           document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('hidden',s.id!=='game')); ['gStart','gAgain','gSave'].forEach(i=>x(i));
           const st=document.getElementById('gStart').getBoundingClientRect(), mn=document.getElementById('gMenu').getBoundingClientRect();
-          return {playLeft:g.left<t.left, startLeft:st.right<innerWidth/2, menuLeft:mn.right<innerWidth/2}; }''',hand)
-        want=(hand=='right'); ok=r['playLeft']==want and r['startLeft']==want and r['menuLeft']==want
+          return {startLeft:st.right<innerWidth/2, menuLeft:mn.right<innerWidth/2}; }''',hand)
+        want=(hand=='right'); ok=r['startLeft']==want and r['menuLeft']==want
         if not ok: bad+=1
         pg.screenshot(path=str(OUT/f'layout_game_buttons_{hand}.png'))
-        print(f"{'ok ' if ok else 'НЕ ТАК'} рука {'справа' if hand=='right' else 'слева'}: «Играть» {'слева' if r['playLeft'] else 'справа'}, «Старт» {'слева' if r['startLeft'] else 'справа'}, «Меню» {'слева' if r['menuLeft'] else 'справа'}")
+        print(f"{'ok ' if ok else 'НЕ ТАК'} рука {'справа' if hand=='right' else 'слева'}: «Старт» {'слева' if r['startLeft'] else 'справа'}, «Меню» {'слева' if r['menuLeft'] else 'справа'}")
         pg.close()
     pg=b.new_page(viewport={'width':390,'height':844}); pg.goto(URL); pg.wait_for_timeout(150)
     vis=pg.evaluate("()=>getComputedStyle(document.getElementById('portrait')).display")

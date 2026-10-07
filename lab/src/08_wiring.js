@@ -1,7 +1,7 @@
 
 /* ── кнопки ── */
 var nextFlow='game';
-function fail(e){ show('home'); el('err').classList.remove('hidden'); el('err').textContent='Не вышло: '+((e&&e.message)||e); fitScreen(); }
+function fail(e){ backTo=null; show('home'); el('err').classList.remove('hidden'); el('err').textContent='Не вышло: '+((e&&e.message)||e); fitScreen(); }
 /* без масштабирования Safari: ни щипка, ни двойного тапа (на кнопках двойной тап уже снят через touch-action) */
 (function(){ function stop(e){ e.preventDefault(); }
   ['gesturestart','gesturechange','gestureend'].forEach(function(t){ document.addEventListener(t,stop,{passive:false}); });

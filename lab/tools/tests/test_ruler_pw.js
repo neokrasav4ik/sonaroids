@@ -20,7 +20,7 @@ const LAB=path.join(__dirname,'..','..','app','sonar_lab3.html'), OUT=path.join(
   /* «ладонь» по программе: доля = 0.05 + 0.9·(см−5)/20; волна — синус */
   const yOf=f=>390*(1-(0.08+f*(1-0.16)));
   for(let i=0;i<200;i++){ const now=await A.evaluate(()=>Date.now()+(window.__sl().off||0)); const s=a.rs.find(x=>now>=x[2]&&now<x[3])||a.rs[0];
-    const f=s[0]==='wave'?0.5+0.4*Math.sin(now/300):s[1]!==null&&s[1]!==undefined?0.05+0.9*(s[1]-5)/20:0.5; await A.mouse.move(400,yOf(f)); await B.mouse.move(400,yOf(f)); await A.waitForTimeout(40);
+    const f=s[0]==='wave'?0.5+0.4*Math.sin(now/300):s[1]!==null&&s[1]!==undefined?0.05+0.9*(s[1]-5)/20:0.5; await A.mouse.move(200,yOf(f)); await B.mouse.move(200,yOf(f));   /* 1.58n: не по центру — там теперь крупная «Стоп» */ await A.waitForTimeout(40);
     if(i%10===0){ a=await S(A); bb=await S(B); if(a.phase==='over'&&bb.phase==='over') break; } }
   need(a.phase==='over'&&bb.phase==='over','оба дошли до конца');
   const logOf=async(p,name)=>{ const b64=await p.evaluate(async()=>{ const b=window.__slLog(), u=new Uint8Array(await b.arrayBuffer()); let s=''; for(let i=0;i<u.length;i+=8192) s+=String.fromCharCode.apply(null,u.subarray(i,i+8192)); return btoa(s); });

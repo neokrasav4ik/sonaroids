@@ -96,7 +96,13 @@
   #arcPause.hidden{display:none}
   #arcPause .pzw{display:grid;grid-template-columns:repeat(2,minmax(0,16rem));gap:.55rem;width:100%;justify-content:center}
   #arcPause button{width:100%;margin:0;min-height:2.9rem;padding:.6em .9em;font-size:1.05rem}
-  #arcPause #pzGo{grid-column:1/-1}
+  #arcPause{overflow-y:auto;align-items:flex-start}
+  #arcPause .pzw{margin:auto 0}
+  #pgSliders{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.3rem .9rem}
+  #pgSliders.hidden{display:none}
+  .pgrow{display:flex;flex-direction:column;gap:.1rem;font-size:.95rem;color:var(--ink)}
+  .pgrow input{width:100%;height:2rem}
+  #pgSliders button{grid-column:1/-1}
   #acStop{position:absolute;left:calc(max(.7rem,env(safe-area-inset-left)) + .3rem);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + 3.4rem);width:auto;min-height:0;padding:.6em 1em;font-size:.9rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
   #rightPlay{padding:0;background:#04070A} #rpC{position:absolute;inset:0;width:100%;height:100%;display:block}
   #rpTop{position:absolute;left:0;right:0;top:calc(max(.8rem,env(safe-area-inset-top)) + 5.4rem);text-align:center;pointer-events:none;padding:0 1rem}
@@ -469,9 +475,9 @@
   <button id="acStop" class="gbtn">Стоп</button>
   <button id="arcPauseB" class="gbtn hidden">Пауза</button>
   <div id="arcPause" class="hidden"><div class="pzw">
-    <button id="pzGo" class="big">Продолжить</button>
+    <button id="pzGo" class="big">Продолжить</button><button id="pzStop" class="ghost">Стоп</button>
     <button id="jgSens" class="ghost">Чувствительность</button><button id="jgBowl" class="ghost">Чаша</button><button id="jgKick" class="ghost">Толчок вбок</button><button id="jgWall" class="ghost">Бортики</button><button id="jgDamp" class="ghost">Тормоз вбок</button><button id="jgTilt" class="ghost">Наклон</button><button id="jgNet" class="ghost">Сетка</button>
-    <button id="pzStop" class="ghost">Стоп</button>
+    <div id="pgSliders" class="hidden"></div>
   </div></div>
   <div id="acBtns" class="hidden">
     <button id="acAgain" class="big">Ещё раз</button>
@@ -1857,7 +1863,7 @@ var ARC_GAMES={
     intro:'Запись для настройки: точно ли сонар повторяет ладонь — медленно и быстро. Поставь линейку стоймя у разъёма телефона (ноль — на столе). Ладонь держи как в игре. Около минуты: сначала держишь ладонь на 5, 10 и 15 см, потом водишь её между 5 и 15 под стук — медленно, быстрее, быстро, потом резкие рывки до 15 и обратно. Кружок на экране показывает, где ладонь должна быть. В конце нажми «Сохранить запись» и пришли мне.',
     unit:''},
   pong:{title:'СонаПонг',file:'pong',
-    intro:'Две платформы по краям экрана ходят за одной твоей ладонью. Каждая наклонена к середине: мяч отскакивает от неё вверх и к сетке, а взмах в момент удара добавляет силы. Мяч падает на одну платформу — отбей его через сетку на другую, там снова отбей обратно. Сила взмаха решает, долетит ли мяч: слабо — упадёт в яму или в сетку, сильно — перелетит. Сетка посередине двигается. Счёт — пасов подряд. Три мяча. Переключатели — в паузе (кнопка справа вверху).',
+    intro:'Тренировка — без жизней и рекордов: учимся перекидывать. Две платформы по краям экрана ходят за одной ладонью; каждая наклонена к середине, мяч отскакивает от неё вверх и к сетке, взмах в момент удара добавляет силы. Перекинь мяч на другую платформу, там отбей обратно. Упал — сразу новая подача, сколько угодно. Сетка, наклон, чувствительность — в паузе (кнопка справа вверху).',
     unit:'пасов'},
   juggle:{title:'Жонглёр',file:'juggle',
     intro:'Подкидывай мяч так, чтобы он подольше провисел в воздухе: начни снизу, подними почти до потолка, пусти вбок. Очки за бросок — время в воздухе, умноженное на пролёт вбок. Задел потолок — бросок не в счёт. Платформа — чаша: мяч от неё уходит влево-вправо и может улететь мимо — три мяча на игру. Справа вверху — переключатели: чувствительность, чаша, толчок вбок, бортики, тормоз; меняй прямо в игре.',
@@ -1979,7 +1985,27 @@ function fwCmAt(S,t){ for(var i=0;i<S.length;i++){ var s=S[i]; if(t<s.t1){ var u
    платформу, дальше его надо всё время отбивать (первая проба с бортиком у внутреннего края, где мяч лежал, — бортик гасил бросок к середине). Пас — мяч коснулся другой платформы. Сетка посередине: стоит / ходит (синус, 7 с) /
    скачет (новая высота после каждого паса). Яма, сетка снизу, за край экрана — мяч потерян; три мяча. Тяжесть меньше, чем в жонглёре (2,0 против
    4,2): чтобы перекинуть мяч, хватало взмаха ~30 см/с, а не ~45 (у Дена самый резкий взмах — 30–39 см/с). */
-var PG_HW=0.12, PG_XC=0.22, PG_G=2.0, PG_LIFT=0.10, PG_NET0=0.62, PG_TILTS=[20,30,40], PG_STOP=0.05;
+/* 1.58f (Ден 19:10, партия 22 с: 3 паса, 4 раза в потолок, три мяча потеряны за 10 с — «сделай сонапонг тренировочным.. какие нахрен
+   жизни.. почему так сложно с самого начала.. мы ищем механику контроля, а не рекорды ставим.. я человек а не робот»): тренировка —
+   мячей сколько угодно (потерял — новая подача через 0,6 с, серия с нуля), платформы шире (0,15 ширины против 0,12), удар мягче (×0,75 —
+   броски уходили в потолок), тяжесть 2,4 (была 2,0), сетка по умолчанию стоит низко (0,72), есть «сетка: нет» */
+var PG_HIT=0.75, PG_HW=0.15, PG_XC=0.22, PG_G=2.4, PG_LIFT=0.10, PG_NET0=0.72, PG_E=0.5, PG_TILT=30,
+/* 1.58g (Ден 19:13: «и добавь ему всяких ползунков в паузу чтоб я настроил под себя и поиграл с условиями»): ползунки в паузе понга —
+   тяжесть, сила удара, прыгучесть, ширина платформ, расстояние между ними, высота сетки, наклон; запоминаются; «Сбросить» — как было */
+PG_SL=[{k:'g',t:'Тяжесть',min:0.8,max:4.5,st:0.1,d:2.4},{k:'hit',t:'Сила удара',min:0.3,max:1.6,st:0.05,d:0.75},{k:'e',t:'Прыгучесть',min:0.1,max:0.95,st:0.05,d:0.5},
+  {k:'hw',t:'Ширина платформ',min:0.06,max:0.24,st:0.01,d:0.15},{k:'gap',t:'Расстояние между платформами',min:0.05,max:0.5,st:0.01,d:0.26},
+  {k:'net',t:'Высота сетки',min:0.05,max:0.6,st:0.01,d:0.28},{k:'tilt',t:'Наклон платформ, °',min:5,max:55,st:1,d:30}],
+PG_V={};
+function pgApply(){ PG_G=PG_V.g; PG_HIT=PG_V.hit; PG_E=PG_V.e; PG_HW=PG_V.hw; PG_XC=Math.max(PG_V.hw+0.01,0.5-PG_V.gap/2-PG_V.hw); PG_NET0=1-PG_V.net; PG_TILT=PG_V.tilt; }
+function pgLoad(){ var o=null; try{ o=JSON.parse(localStorage.getItem('sonar_pg_sl')||'null'); }catch(e){} PG_SL.forEach(function(q){ PG_V[q.k]=o&&typeof o[q.k]==='number'?Math.max(q.min,Math.min(q.max,o[q.k])):q.d; }); pgApply(); }
+function pgSave(){ try{ localStorage.setItem('sonar_pg_sl',JSON.stringify(PG_V)); }catch(e){} pgApply(); if(ARC&&ARC.log) arcEv('pg:'+JSON.stringify(PG_V)); }
+function pgFmt(q,v){ return q.k==='tilt'?String(Math.round(v)):(Math.round(v*100)/100).toFixed(2).replace('.',','); }
+function pgBuild(){ var box=el('pgSliders'); if(!box) return; box.innerHTML='';
+  PG_SL.forEach(function(q){ var row=document.createElement('label'); row.className='pgrow'; var t=document.createElement('span'); var inp=document.createElement('input'); inp.type='range'; inp.min=q.min; inp.max=q.max; inp.step=q.st; inp.value=PG_V[q.k];
+    var upd=function(){ t.textContent=q.t+': '+pgFmt(q,PG_V[q.k]); }; upd(); inp.addEventListener('input',function(){ PG_V[q.k]=+inp.value; upd(); pgApply(); }); inp.addEventListener('change',function(){ pgSave(); }); row.appendChild(t); row.appendChild(inp); box.appendChild(row); });
+  var rs=document.createElement('button'); rs.className='ghost'; rs.textContent='Сбросить ползунки'; rs.addEventListener('click',function(){ PG_SL.forEach(function(q){ PG_V[q.k]=q.d; }); pgSave(); pgBuild(); }); box.appendChild(rs); }
+var PG_TILTS=[20,30,40], PG_STOP=0.05;
+pgLoad();
 function pgSurf(i,x,py,ar,A){ var s=i?-1:1, xc=ar*(i?1-PG_XC:PG_XC), u=(x-xc)/(ar*PG_HW); return {u:u,s:s,xc:xc,y:py-PG_LIFT+s*A*u}; }
 function pgSpawn(){ var ar=ARC.ar, i=ARC.serve, b=jgBall(0,0,false);
   b.x=ar*(i?1-PG_XC:PG_XC)-(i?-1:1)*0.3*ar*PG_HW; b.y=0.3; b.vy=0; b.from=i; b.rest=0; ARC.balls.push(b); arcEv('serve:'+i); }
@@ -2043,16 +2069,16 @@ var JG_KIND=[{g:1,r:1,col:'#ffd166'},{g:0.72,r:1.15,col:'#5ad1c0'},{g:1.35,r:0.8
    «мелкой» и «глубокой» (по умолчанию 0,028 — между мелкой и средней); толчок вбок при броске — отдельный переключатель; очки за бросок =
    время в воздухе (с отрыва до касания платформы) × 100 × (1 + пролёт вбок в долях ширины платформы) — «ниже начал, выше поднял, дальше
    пролетел»; задел потолок — бросок не в счёт; три мяча: упал мимо платформы — минус мяч, без мячей — конец. */
-var JG_HW=0.30, JG_BOWLS=[0,0.012,0.02,0.028,0.038,0.05], JG_KICKS=[0,0.12,0.25,0.4], JG_DAMPS=[0,2,0.7], JG_SET={bowl:3,kick:2,wall:0,damp:0,sens:1,tilt:1,net:1}, JG_LIVES=3;
+var JG_HW=0.30, JG_BOWLS=[0,0.012,0.02,0.028,0.038,0.05], JG_KICKS=[0,0.12,0.25,0.4], JG_DAMPS=[0,2,0.7], JG_SET={bowl:3,kick:2,wall:0,damp:0,sens:1,tilt:1,net:1,v:2}, JG_LIVES=3;
 /* чувствительность (Ден 16:46: «платформа реагирует даже на малейшее движение ладони — слишком чувствительная.. чтобы жонглировать ловко,
    приходится двигать ладонью в довольно узком диапазоне»): весь ход ладони = 0,3 / 0,4 / 0,5 / 0,6 экрана (было 0,6). Меньше — платформа
    спокойнее, ладонь ходит шире. 1.58d (Ден 17:05: «когда меняется чувствительность — меняется вся скорость игры.. на низкой — гравитация как
    на луне»): тяжесть больше не трогаю (в 1.58c она падала в (ход/0,6)² раза); вместо этого удар платформы по мячу считается со скоростью
    ладони как при ходе 0,6 — от того же взмаха мяч летит так же, а платформа на экране ходит меньше */
 var JG_SENS=[0.3,0.4,0.5,0.6]; function jgPadH(){ return JG_SENS[JG_SET.sens]||0.6; }
-try{ var jgs=JSON.parse(localStorage.getItem('sonar_jg_set2')||'null'); if(jgs) JG_SET={bowl:Math.min(5,+jgs.bowl||0),kick:Math.min(3,+jgs.kick||0),wall:jgs.wall?1:0,damp:+jgs.damp||0,sens:jgs.sens===undefined?1:Math.min(3,+jgs.sens||0),tilt:jgs.tilt===undefined?1:Math.min(2,+jgs.tilt||0),net:jgs.net===undefined?1:Math.min(2,+jgs.net||0)}; }catch(e){}
+try{ var jgs=JSON.parse(localStorage.getItem('sonar_jg_set2')||'null'); if(jgs) JG_SET={bowl:Math.min(5,+jgs.bowl||0),kick:Math.min(3,+jgs.kick||0),wall:jgs.wall?1:0,damp:+jgs.damp||0,sens:jgs.sens===undefined?1:Math.min(3,+jgs.sens||0),tilt:jgs.tilt===undefined?1:Math.min(2,+jgs.tilt||0),net:jgs.net===undefined||jgs.v!==2?1:Math.min(3,+jgs.net||0),v:2}; }catch(e){}
 function jgSetSave(){ try{ localStorage.setItem('sonar_jg_set2',JSON.stringify(JG_SET)); }catch(e){} jgCtlLabels(); if(ARC&&ARC.log) arcEv('set:'+JSON.stringify(JG_SET)); }
-function jgCtlLabels(){ var b=el('jgBowl'); if(!b) return; b.textContent='Чаша: '+(JG_SET.bowl?JG_SET.bowl+' из 5':'нет'); el('jgKick').textContent='Толчок вбок: '+['нет','слабый','средний','сильный'][JG_SET.kick]; el('jgSens').textContent='Чувствительность: '+['низкая','ниже средней','средняя','высокая'][JG_SET.sens]; el('jgTilt').textContent='Наклон: '+['малый','средний','большой'][JG_SET.tilt]; el('jgNet').textContent='Сетка: '+['стоит','ходит','скачет'][JG_SET.net]; el('jgWall').textContent='Бортики: '+(JG_SET.wall?'да':'нет'); el('jgDamp').textContent='Тормоз вбок: '+['нет','слабый','сильный'][JG_SET.damp]; }
+function jgCtlLabels(){ var b=el('jgBowl'); if(!b) return; b.textContent='Чаша: '+(JG_SET.bowl?JG_SET.bowl+' из 5':'нет'); el('jgKick').textContent='Толчок вбок: '+['нет','слабый','средний','сильный'][JG_SET.kick]; el('jgSens').textContent='Чувствительность: '+['низкая','ниже средней','средняя','высокая'][JG_SET.sens]; el('jgTilt').textContent='Наклон: '+['малый','средний','большой'][JG_SET.tilt]; el('jgNet').textContent='Сетка: '+['нет','стоит','ходит','скачет'][JG_SET.net]; el('jgWall').textContent='Бортики: '+(JG_SET.wall?'да':'нет'); el('jgDamp').textContent='Тормоз вбок: '+['нет','слабый','сильный'][JG_SET.damp]; }
 function jgBall(slot,y,on){ var K=JG_KIND[slot]; return {slot:slot,x:null,vx:0,y:y,vy:0,heat:0,on:!!on,apex:null,peak:null,touched:false,g:JG_G*K.g,r:JG_R*K.r}; }
 function jgStar(b){ var k=Math.min(1,ARC.nst/60), y=0.3, i;
   for(i=0;i<20;i++){ y=0.12+0.38*Math.random(); if(Math.abs(y-b.y)<0.2) continue; if(b.apex!==null&&y>b.apex-0.06&&y<b.y) continue; break; }
@@ -2118,10 +2144,10 @@ var ARC_STEP={
     if(s.k==='move'||s.k==='flick'){ var per=s.k==='move'?s.per:s.gap, nb=Math.floor(u/per); if(nb>=ARC.fwBeat&&nb<s.n){ ARC.fwBeat=nb+1; arcEv('beat:'+(s.k==='move'?(nb%2?5:15):15)); sfx('jtoss',1); } }
     ARC.fwCm=fwCmAt(S,t); var left=Math.max(0,s.t1-t); el('acSub').textContent=left>0.5?Math.ceil(left)+' с':''; },
   pong:function(dt){ var pad=ARC.py, vr=ARC.padPrev===null?0:(pad-ARC.padPrev)/Math.max(dt,1e-3); ARC.padPrev=pad;
-    ARC.vpS=(ARC.vpS||0)+(Math.max(-4,Math.min(4,vr))-(ARC.vpS||0))*0.45; var vp=ARC.vpS, vk=0.6/jgPadH(), vpb=vp*vk;
+    ARC.vpS=(ARC.vpS||0)+(Math.max(-4,Math.min(4,vr))-(ARC.vpS||0))*0.45; var vp=ARC.vpS, vk=0.6/jgPadH(), vpb=vp*vk*PG_HIT;
     if(ARC.flash>0) ARC.flash-=dt; if(ARC.say>0){ ARC.say-=dt; if(ARC.say<=0) arcText('',''); }
-    var ar=ARC.ar, hw=ar*PG_HW, A=Math.tan(PG_TILTS[JG_SET.tilt]*Math.PI/180)*hw, xn=ar/2, nw=0.012;
-    var nt=JG_SET.net===1?PG_NET0+0.12*Math.sin(2*Math.PI*ARC.t/7):JG_SET.net===2?ARC.netY:PG_NET0; ARC.netTop=nt;
+    var ar=ARC.ar, hw=ar*PG_HW, A=Math.tan(PG_TILT*Math.PI/180)*hw, xn=ar/2, nw=0.012;
+    var nt=JG_SET.net===0?2:JG_SET.net===2?PG_NET0+0.1*Math.sin(2*Math.PI*ARC.t/7):JG_SET.net===3?ARC.netY:PG_NET0; ARC.netTop=nt;
     if(!ARC.balls.length&&!ARC.over){ ARC.respawn-=dt; if(ARC.respawn<=0) pgSpawn(); }
     ARC.balls.slice().forEach(function(b){ var was=b.on, py0=b.y; b.vy+=PG_G*dt; b.x+=b.vx*dt; b.y+=b.vy*dt; b.on=false;
       if(b.y-b.r<JG_TOP&&b.vy<0){ b.y=JG_TOP+b.r; b.vy=-b.vy*0.35; arcEv('ceil'); sfx('jceil'); }
@@ -2129,14 +2155,14 @@ var ARC_STEP={
       for(var i=0;i<2;i++){ var S=pgSurf(i,b.x,pad,ar,A);
         if(Math.abs(S.u)<=1){ var top=S.y-b.r;
           if(b.y>top&&b.y<top+0.12){ var sl=S.s*A/hw, nl=Math.sqrt(sl*sl+1), nx=sl/nl, ny=-1/nl, rx=b.vx, ry=b.vy-vpb, vn=rx*nx+ry*ny; b.y=top;
-            if(vn<0){ if(-vn>JG_STICK){ rx-=(1+JG_E)*vn*nx; ry-=(1+JG_E)*vn*ny; if(-vn>0.5) sfx('jland'); } else { rx-=vn*nx; ry-=vn*ny; } }
+            if(vn<0){ if(-vn>JG_STICK){ rx-=(1+PG_E)*vn*nx; ry-=(1+PG_E)*vn*ny; if(-vn>0.5) sfx('jland'); } else { rx-=vn*nx; ry-=vn*ny; } }
             b.vx=rx; b.vy=ry+vpb; b.on=true;
             if(b.from!==i){ if(b.from!==null&&b.from!==undefined){ ARC.passes++; ARC.streak++; ARC.score=Math.max(ARC.score,ARC.streak); if(ARC.streak>ARC.pbest) ARC.pbest=ARC.streak; arcEv('pass:'+ARC.streak); sfx('jstar',Math.min(8,ARC.streak)); ARC.pf.push({x:b.x,y:b.y-0.08,t:0.8,pts:ARC.streak});
-                if(JG_SET.net===2) ARC.netY=0.45+0.3*Math.random(); } b.from=i; } } } }
+                if(JG_SET.net===3) ARC.netY=Math.max(0.35,Math.min(0.95,PG_NET0+(Math.random()-0.5)*0.3)); } b.from=i; } } } }
       if(was&&!b.on&&b.vy<-0.5){ ARC.tosses++; arcEv('toss:'+(-b.vy).toFixed(2)+':'+b.vx.toFixed(2)); sfx('jtoss',-b.vy); }
       b.rest=b.on?(b.rest||0)+dt:0;
       if(b.y>1.1||b.x<-0.15||b.x>ar+0.15){ ARC.falls++; arcEv('lost:'+b.x.toFixed(2)); ARC.streak=0; ARC.flash=0.25; sfx('jburn'); ARC.balls.splice(ARC.balls.indexOf(b),1);
-        if(ARC.falls>=JG_LIVES){ ARC.over=true; return; } ARC.serve=1-ARC.serve; ARC.respawn=1.0; ARC.say=1.2; arcText('Мимо! Осталось мячей: '+(JG_LIVES-ARC.falls),''); } });
+        ARC.serve=1-ARC.serve; ARC.respawn=0.6; } });   // тренировка: мячей сколько угодно
     ARC.pf=ARC.pf.filter(function(p){ p.t-=dt; return p.t>0; }); },
   juggle:function(dt){ var pad=ARC.py, vr=ARC.padPrev===null?0:(pad-ARC.padPrev)/Math.max(dt,1e-3); ARC.padPrev=pad;
     /* скорость платформы — сглаженная (кадры сонара 94 в секунду, экрана 60: положение идёт ступеньками, и сырая скорость давала броски
@@ -2223,9 +2249,9 @@ function arcDraw(){ var cv=el('acC'); if(!cv||!cv.getContext) return; var dpr=Ma
     if(ARC.fwCm!==null){ var gy=cmY(ARC.fwCm||5); c.strokeStyle='#ffd166'; c.lineWidth=3*dpr; c.beginPath(); c.arc(rx-0.12*H,gy,0.04*H,0,6.283); c.stroke(); }
     var fm=ARC.mix!==undefined&&ARC.mix!==null&&ARC.T?Tune.fracOf(ARC.T,ARC.mix):ARC.frac;
     if(fm!==null&&fm!==undefined){ var my=cmY(5+10*fm); c.fillStyle='#ff8a3d'; c.fillRect(rx-0.32*H,my-0.012*H,0.16*H,0.024*H); } }
-  if(g==='pong'){ var ar3=W/H, hw3=ar3*PG_HW, A3=Math.tan(PG_TILTS[JG_SET.tilt]*Math.PI/180)*hw3, py3=ARC.py;
+  if(g==='pong'){ var ar3=W/H, hw3=ar3*PG_HW, A3=Math.tan(PG_TILT*Math.PI/180)*hw3, py3=ARC.py;
     c.fillStyle='#0f1530'; c.fillRect(0,0,W,H); c.fillStyle='#3a4373'; c.fillRect(0,0,W,Y(JG_TOP));
-    var nt3=ARC.netTop===undefined?PG_NET0:ARC.netTop; c.fillStyle='#8f9cc0'; c.fillRect(X(ar3/2)-0.012*H,Y(nt3),0.024*H,H); c.fillStyle='#e8eefc'; c.fillRect(X(ar3/2)-0.02*H,Y(nt3)-0.008*H,0.04*H,0.016*H);
+    var nt3=ARC.netTop===undefined?PG_NET0:ARC.netTop; if(nt3<1.5){ c.fillStyle='#8f9cc0'; c.fillRect(X(ar3/2)-0.012*H,Y(nt3),0.024*H,H); c.fillStyle='#e8eefc'; c.fillRect(X(ar3/2)-0.02*H,Y(nt3)-0.008*H,0.04*H,0.016*H); }
     for(var pi3=0;pi3<2;pi3++){ var s3=pi3?-1:1, xc3=ar3*(pi3?1-PG_XC:PG_XC), ya=py3-PG_LIFT-s3*A3, yb=py3-PG_LIFT+s3*A3;
       c.fillStyle='#ff8a3d'; c.beginPath(); c.moveTo(X(xc3-hw3),Y(ya)); c.lineTo(X(xc3+hw3),Y(yb)); c.lineTo(X(xc3+hw3),Y(yb)+0.03*H); c.lineTo(X(xc3-hw3),Y(ya)+0.03*H); c.closePath(); c.fill();
     }
@@ -2255,7 +2281,7 @@ function arcDraw(){ var cv=el('acC'); if(!cv||!cv.getContext) return; var dpr=Ma
   c.fillStyle='#E7EDE9'; c.font=Math.round(15*dpr)+'px "IBM Plex Mono",monospace'; c.textAlign='left';
   if(ARC.phase==='play'||ARC.phase==='over'){ var left=g==='slalom'?(ARC.t+3*(ARC.missed||0)).toFixed(1).replace('.',',')+' с':(g==='cave'||g==='race')?Math.round(ARC.score)+' м':String(ARC.score);
     if(g==='follow') left='';
-    else if(g==='pong') left='пасов подряд '+(ARC.streak||0)+'   лучший '+(ARC.pbest||0)+'   мячи '+'●'.repeat(Math.max(0,JG_LIVES-(ARC.falls||0)));
+    else if(g==='pong') left='пасов подряд '+(ARC.streak||0)+'   лучший '+(ARC.pbest||0)+'   всего '+(ARC.passes||0);
     else if(g==='juggle'&&JG_PRACTICE) left='бросок '+(ARC.lastTouch?'— потолок, не в счёт':ARC.lastPts?ARC.lastAir.toFixed(2).replace('.',',')+' с · вбок '+Math.round(ARC.lastSide*100)+'% → '+ARC.lastPts:'—')+'   лучший '+(ARC.bestPts||'—')+'   всего '+ARC.score+'   мячи '+'●'.repeat(Math.max(0,JG_LIVES-(ARC.falls||0)));
     else if(g==='juggle') left='очки '+ARC.score+(ARC.combo>1?'  серия ×'+Math.min(5,ARC.combo):'')+'   звёзд '+(ARC.nst||0)+(ARC.nb<3?'/'+(ARC.nb<2?JG_N2:JG_N3):'');
     var right=g==='slalom'?'ворота '+(ARC.passed||0)+'/'+ARC.gates+(ARC.missed?'  +'+ARC.missed*3+' с':''):g==='bombs'?'волна '+ARC.wave:g==='race'?Math.round((ARC.v||0)*100)+' км/ч  бензин':'♥'.repeat(Math.max(0,ARC.lives)); if(g==='juggle'&&JG_PRACTICE) right=''; if(g==='follow'||g==='pong') right='';
@@ -2264,7 +2290,7 @@ function arcDraw(){ var cv=el('acC'); if(!cv||!cv.getContext) return; var dpr=Ma
   c.fillText(ARC.dist===null||ARC.dist===undefined?'ладони не слышно':(ARC.present?'':'(нет ладони) ')+'ладонь '+(ARC.dist/10).toFixed(1).replace('.',',')+' см',W/2,H-6*dpr); }
 function arcSave(){ if(!ARC.frames.length) return; var n=ARC.frames.length*N, all=new Float32Array(n); ARC.frames.forEach(function(f,j){ all.set(f,j*N); });
   var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
-  var meta={v:1,kind:'arc-play',game:ARC.game,port:ARC.port,autocenter:true,unwrap:false,half:false,quarter:ARC.game==='juggle'||ARC.game==='follow'||ARC.game==='pong',mix_tau:MIX_TAU,unw:DSP2.info().unw,halfN:DSP2.info().half,jg:ARC.game==='juggle'||ARC.game==='pong'?{pad_lo:JG_PAD_LO,pad_h:JG_PAD_H,hp_s:JG_HP,hp_g:JG_HPG,lead_s:JG_LEAD,g:JG_G,practice:JG_PRACTICE,set:JG_SET,bowls:JG_BOWLS,kicks:JG_KICKS,sens:JG_SENS,damps:JG_DAMPS,hw:JG_HW,lives:JG_LIVES,pong:{hw:PG_HW,xc:PG_XC,g:PG_G,lift:PG_LIFT,net0:PG_NET0,tilts:PG_TILTS},v:'1.58e'}:null,tune:ARC.T?{field:+ARC.T.field.toFixed(2),asym:Tune.ASYM,shifts:ARC.shifts}:null,margin:ARC_M,
+  var meta={v:1,kind:'arc-play',game:ARC.game,port:ARC.port,autocenter:true,unwrap:false,half:false,quarter:ARC.game==='juggle'||ARC.game==='follow'||ARC.game==='pong',mix_tau:MIX_TAU,unw:DSP2.info().unw,halfN:DSP2.info().half,jg:ARC.game==='juggle'||ARC.game==='pong'?{pad_lo:JG_PAD_LO,pad_h:JG_PAD_H,hp_s:JG_HP,hp_g:JG_HPG,lead_s:JG_LEAD,g:JG_G,practice:JG_PRACTICE,set:JG_SET,bowls:JG_BOWLS,kicks:JG_KICKS,sens:JG_SENS,damps:JG_DAMPS,hw:JG_HW,lives:JG_LIVES,pong:{hw:PG_HW,xc:PG_XC,g:PG_G,lift:PG_LIFT,net0:PG_NET0,tilt:PG_TILT,e:PG_E,hit:PG_HIT,sliders:PG_V,training:true},v:'1.58g'}:null,tune:ARC.T?{field:+ARC.T.field.toFixed(2),asym:Tune.ASYM,shifts:ARC.shifts}:null,margin:ARC_M,
     fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:(typeof linkPar==='function'?linkPar():'all'),channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
     cal:DSP2.info().cal||PHYS_CAL,marks:ARC.marks,log:ARC.log,score:ARC.score,summary:arcSummary(),samples:n,gaps:ARC.gaps,peak:pk,
     orientation:{angle:(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0),w:window.innerWidth,h:window.innerHeight},
@@ -2281,11 +2307,11 @@ el('acGo').addEventListener('click',function(){ arcPlay(); });
 /* 1.58e: пауза для жонглёра и понга — большая кнопка справа вверху; переключатели и «Стоп» — крупно, в паузе */
 function pzGame(){ return arcGame==='juggle'||arcGame==='pong'; }
 function pzShow(open){ var g=pzGame(); el('arcPauseB').classList.toggle('hidden',!g||open||ARC.phase!=='play'); el('arcPause').classList.toggle('hidden',!open); el('acStop').classList.toggle('hidden',g&&ARC.phase==='play');
-  ['jgBowl','jgKick','jgWall','jgDamp'].forEach(function(id){ el(id).classList.toggle('hidden',arcGame!=='juggle'); }); ['jgTilt','jgNet'].forEach(function(id){ el(id).classList.toggle('hidden',arcGame!=='pong'); }); }
+  ['jgBowl','jgKick','jgWall','jgDamp'].forEach(function(id){ el(id).classList.toggle('hidden',arcGame!=='juggle'); }); el('jgTilt').classList.add('hidden'); el('jgNet').classList.toggle('hidden',arcGame!=='pong'); el('pgSliders').classList.toggle('hidden',arcGame!=='pong'); if(open&&arcGame==='pong') pgBuild(); }
 el('arcPauseB').addEventListener('click',function(){ if(ARC.phase!=='play') return; ARC.paused=true; arcEv('pause'); pzShow(true); });
 el('pzGo').addEventListener('click',function(){ ARC.paused=false; arcEv('resume'); pzShow(false); });
 el('pzStop').addEventListener('click',function(){ ARC.paused=false; pzShow(false); el('arcPauseB').classList.add('hidden'); ARC.over=true; });
-['jgSens','jgBowl','jgKick','jgWall','jgDamp','jgTilt','jgNet'].forEach(function(id){ el(id).addEventListener('click',function(){ if(id==='jgTilt') JG_SET.tilt=(JG_SET.tilt+1)%PG_TILTS.length; if(id==='jgNet') JG_SET.net=(JG_SET.net+1)%3; if(id==='jgSens') JG_SET.sens=(JG_SET.sens+1)%JG_SENS.length; if(id==='jgBowl') JG_SET.bowl=(JG_SET.bowl+1)%JG_BOWLS.length; if(id==='jgKick') JG_SET.kick=(JG_SET.kick+1)%JG_KICKS.length; if(id==='jgWall') JG_SET.wall=JG_SET.wall?0:1; if(id==='jgDamp') JG_SET.damp=(JG_SET.damp+1)%JG_DAMPS.length; jgSetSave(); }); });
+['jgSens','jgBowl','jgKick','jgWall','jgDamp','jgTilt','jgNet'].forEach(function(id){ el(id).addEventListener('click',function(){ if(id==='jgTilt') JG_SET.tilt=(JG_SET.tilt+1)%PG_TILTS.length; if(id==='jgNet') JG_SET.net=(JG_SET.net+1)%4; if(id==='jgSens') JG_SET.sens=(JG_SET.sens+1)%JG_SENS.length; if(id==='jgBowl') JG_SET.bowl=(JG_SET.bowl+1)%JG_BOWLS.length; if(id==='jgKick') JG_SET.kick=(JG_SET.kick+1)%JG_KICKS.length; if(id==='jgWall') JG_SET.wall=JG_SET.wall?0:1; if(id==='jgDamp') JG_SET.damp=(JG_SET.damp+1)%JG_DAMPS.length; jgSetSave(); }); });
 jgCtlLabels();
 el('acBack').addEventListener('click',function(){ show('home'); });
 el('acAgain').addEventListener('click',function(){ arcPlay(); });

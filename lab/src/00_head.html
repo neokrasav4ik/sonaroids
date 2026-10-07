@@ -91,6 +91,8 @@
   #acTop{position:absolute;left:0;right:0;top:30%;text-align:center;pointer-events:none;padding:0 1rem}
   #acSay{font-size:2rem;font-weight:600} #acSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
   #acBtns{position:absolute;left:calc(max(1rem,env(safe-area-inset-left)) + 1rem);top:50%;transform:translateY(-50%);width:15rem;display:flex;flex-direction:column;gap:.5rem}
+  #jgCtl{position:absolute;right:calc(max(.7rem,env(safe-area-inset-right)) + .3rem);top:calc(max(.5rem,env(safe-area-inset-top)) + .3rem);display:flex;flex-direction:column;gap:.3rem;width:auto}
+  #jgCtl button{width:auto;min-height:0;margin:0;padding:.4em .8em;font-size:.8rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
   #acStop{position:absolute;left:calc(max(.7rem,env(safe-area-inset-left)) + .3rem);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + 3.4rem);width:auto;min-height:0;padding:.6em 1em;font-size:.9rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
   #rightPlay{padding:0;background:#04070A} #rpC{position:absolute;inset:0;width:100%;height:100%;display:block}
   #rpTop{position:absolute;left:0;right:0;top:calc(max(.8rem,env(safe-area-inset-top)) + 5.4rem);text-align:center;pointer-events:none;padding:0 1rem}
@@ -460,6 +462,7 @@
   <canvas id="acC"></canvas>
   <div id="acTop"><div id="acSay"></div><div id="acSub"></div></div>
   <button id="acStop" class="gbtn">Стоп</button>
+  <div id="jgCtl" class="hidden"><button id="jgBowl" class="ghost">Чаша</button><button id="jgWall" class="ghost">Бортики</button><button id="jgDamp" class="ghost">Тормоз вбок</button></div>
   <div id="acBtns" class="hidden">
     <button id="acAgain" class="big">Ещё раз</button>
     <button id="acSave" class="ghost">Сохранить запись</button>

@@ -1,0 +1,28 @@
+# The full lab and game checks (~20 min) — by hand only (Actions → Checks → Run workflow).
+# Until 7 Oct they ran before every site publish; the zips are checked before they are made, so the site no longer waits for them.
+name: Checks
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Lab checks
+        run: |
+          cd lab
+          python3 build.py --check
+          sh tools/run_all.sh
+
+      - name: Game checks
+        run: sh tests/run.sh

@@ -63,7 +63,7 @@ let pgS=null;
 function ponger(t,A){ const dt=N/SR, base=60, T=0.16;
   if(!pgS) pgS={st:'wait'};
   if(pgS.st==='up'){ const u=(t-pgS.t0)/T; if(u>=1) pgS.st='down'; else dPrev+=pgS.v*Math.sin(Math.PI*u)*dt; }
-  else { if(dPrev>base) dPrev=Math.max(base,dPrev-200*dt); const ar=A.ar||2, b=(A.balls||[]).find(b=>{ if(!(b.vy>0)) return false; const i=b.x<ar/2?0:1, xc=ar*(i?0.78:0.22); if(Math.abs(b.x-xc)>ar*0.12) return false; return A.py-0.1-b.y<+(process.env.PG_H||0.10); }); if(b) pgS={st:'up',t0:t,v:+(process.env.PG_V||200)}; }
+  else { if(dPrev>base) dPrev=Math.max(base,dPrev-200*dt); const ar=A.ar||2, b=(A.balls||[]).find(b=>{ if(!(b.vy>0)) return false; return A.py-0.1-b.y<+(process.env.PG_H||0.10); }); if(b) pgS={st:'up',t0:t,v:+(process.env.PG_V||200)}; }
   dPrev=Math.max(45,Math.min(175,dPrev)); return dPrev; }
 function feed(){ const due=Math.floor(now/1000*SR/N); while(fed<due){ H.onFrame({data:{s:seq++,f:S.synthFrame(palm(fed*N/SR),fed*7+1)}}); fed++; } }
 async function tick(dt){ const t1=now+dt*1000; while(now<t1){ now+=1000/60; feed();

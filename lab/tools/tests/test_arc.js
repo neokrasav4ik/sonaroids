@@ -41,15 +41,28 @@ function palm(t){ const A=H.ARC(); if(!A||A.phase==='prep'||A.phase==='empty'||A
     const car=(A.cars||[]).filter(k=>k.x>px-0.05&&k.x<px+0.8&&Math.abs((k.y||0)-ty)<0.1).sort((a,b)=>a.x-b.x)[0];
     if(car&&r){ const up=car.y-0.13, dn=car.y+0.13; ty=Math.abs(up-r.c)<Math.abs(dn-r.c)?up:dn; } }
   if(A.game==='cave'){ const c=(A.cols||[]).find(c=>c.x>=0.32+0.25); if(c) ty=c.c; }
+  if(A.game==='juggle') return juggler(t,A);
   const want=(1-ty-0.06)/0.88, e=want-A.frac, step=400*N/SR;
   dPrev=Math.max(45,Math.min(175,dPrev+Math.max(-step,Math.min(step,0.25*e*A.T.field)))); return dPrev; }
+/* жонглёр (1.57a): рука ждёт внизу (60 мм); мяч на ладони и уже чуть нагрелся — взмах вверх: скорость растёт и спадает по синусу
+   за 0,16 с (как у живой руки — не скачком), пик — какой нужен до звезды мяча (не больше JG_V мм/с); мяч отрывается сам, когда ладонь
+   тормозит; потом рука не спеша (25 см/с) возвращается вниз */
+let jgS=null;
+function juggler(t,A){ const dt=N/SR, base=60, T=0.16;
+  if(!jgS) jgS={st:'wait'};
+  if(jgS.st==='up'){ const u=(t-jgS.t0)/T; if(u>=1){ jgS.st='down'; } else dPrev+=jgS.v*Math.sin(Math.PI*u)*dt; }
+  else { if(dPrev>base) dPrev=Math.max(base,dPrev-250*dt);
+    const b=(A.balls||[]).find(b=>b.on&&b.heat>0.15);
+    if(b){ const s=(A.stars||[]).find(s=>s.slot===b.slot), top=A.py-0.032, h=s?Math.max(0.08,top-s.y):0.25;
+      const v=Math.sqrt(2*2.2*h)*0.97; jgS={st:'up',t0:t,v:Math.min(+(process.env.JG_V||900),v/0.40*A.T.field)}; } }
+  dPrev=Math.max(45,Math.min(175,dPrev)); return dPrev; }
 function feed(){ const due=Math.floor(now/1000*SR/N); while(fed<due){ H.onFrame({data:{s:seq++,f:S.synthFrame(palm(fed*N/SR),fed*7+1)}}); fed++; } }
 async function tick(dt){ const t1=now+dt*1000; while(now<t1){ now+=1000/60; feed();
   for(let i=timers.length-1;i>=0;i--) if(timers[i].t<=now){ const f=timers[i].f; timers.splice(i,1); f(); }
   const rs=rafs; rafs=[]; rs.forEach(f=>f(now)); await null; await null; } }
 (async()=>{
   let bad=0; const need=(ok,msg)=>{ console.log((ok?'ok  ':'FAIL')+'  '+msg); if(!ok) bad++; };
-  for(const g of ['slalom','bombs','cave','race']){
+  for(const g of ['slalom','bombs','cave','race','juggle']){
     H.game(g); H.goFlow('arcIntro'); need(!els.arcIntro.classList.contains('hidden')&&/прототип/.test(els.acTitle.textContent),`${g}: экран-подсказка — ${els.acTitle.textContent}`);
     tWave=null; dPrev=100; H.arcPlay(); const seen=[];
     for(let i=0;i<1600;i++){ await tick(0.1); const A=H.ARC(); if(seen[seen.length-1]!==A.phase) seen.push(A.phase); if(A.phase==='over') break; }
@@ -58,7 +71,7 @@ async function tick(dt){ const t1=now+dt*1000; while(now<t1){ now+=1000/60; feed
     H.arcSave(); const f=path.join(C.OUT,'arc_'+g+'_test.wav'); fs.mkdirSync(C.OUT,{recursive:true}); fs.writeFileSync(f,Buffer.from(await A.blob.arrayBuffer()));
     const w=C.loadWav(f); need(w.meta.kind==='arc-play'&&w.meta.game===g&&new RegExp('^sonararc_'+g+'_').test(A.fname)&&w.meta.log.length>300,`${g}: запись ${A.fname}, журнал ${w.meta.log.length} строк`);
     const R=E.report('arc_'+g+'_test.wav (через страницу)',w.meta,w.x);
-    const good=g==='slalom'?(R.gate>=20&&R.finish===1):g==='bombs'?(R.caught>=10&&R.wave>=1):g==='race'?(A.score>300&&R.fuel>=1):(R.hit<=3&&R.gate===0&&A.score>100);
-    need(good&&R.vis>95&&R.match<0.005&&R.moving>25,`${g}: игра идёт (${w.meta.summary}), сверка ${(R.match*100).toFixed(2)}%, ладонь в движении ${R.moving.toFixed(0)}%`); }
+    const good=g==='slalom'?(R.gate>=20&&R.finish===1):g==='bombs'?(R.caught>=10&&R.wave>=1):g==='race'?(A.score>300&&R.fuel>=1):g==='juggle'?(R.jg&&R.jg.star>=6&&R.jg.tosses>=6&&A.nb>=2&&R.jg.visFlick>95):(R.hit<=3&&R.gate===0&&A.score>100);
+    need(good&&R.vis>95&&R.match<0.005&&R.moving>(g==='juggle'?10:25),`${g}: игра идёт (${w.meta.summary}), сверка ${(R.match*100).toFixed(2)}%, ладонь в движении ${R.moving.toFixed(0)}%`); }
   console.log(bad?'ИТОГ: ПРОВАЛ':'ИТОГ: ok'); process.exitCode=bad?1:0;
 })();

@@ -2,7 +2,14 @@
 var DSP2=(function(){
   var fzF=[],fzA=[],fzN=0,fzHold=0,frozen=false,frozenN=0,N=512,C=343,fs,kLo,kHi,kc,ks,M,Pr,Pi,lam,mm,T,gA,gB,G,cosT,sinT,BAND_LO=null;   // BAND_LO — нижний край полосы зонда, если не 18,3 кГц (широкий зонд, с 0.39u; задаётся set('flo') до init)
   var d0,dref,boot,bootN=30,prevH,hist,L=4,prom,noProbe,bgAcc,bgN,bgR,bgI,BG_N=40;
-  var ldP=null,ldS=null,ldQ=[];   // 1.56q: ближнее сильное эхо (lead)
+  var ldP=null,ldS=null,ldQ=[];
+  /* 1.57a (лаба, «Жонглёр»): быстрая часть — поворот фазы за кадр, однозначный только до λ/4 за кадр (~4,5 мм за 10,7 мс, ≈ 40 см/с);
+     рывок быстрее «перекручивается» и уходит в обратную сторону (так «уплывало» и 24.09 при быстрых взмахах). С 'unwrap' — доворот на
+     оборот — к прогнозу из двух прошлых кадров (поворот + половина его прироста), только когда прошлый кадр уже быстрый (> λ/12),
+     разгон ровный (прирост < 0,6π) и эхо сильное. Рука не останавливается за один кадр (10,7 мс), поэтому ближайший к прогнозу поворот
+     и есть настоящий. Всплеск при появлении ладони не годится (первая проба доворачивала по одному кадру и раскручивала высоту на метры).
+     Читается до ~3 λ/4 за кадр (≈ 1,2 м/с), пока разгон ровный. По умолчанию выключено — игра как была */
+  var UNWRAP=false,vPrev=null,vPrev2=null,unwN=0;   // 1.56q: ближнее сильное эхо (lead)
   var holdFloor=false, Es,hold,present,refr,Q_FLOOR=-28,T_ON=-16,T_INT=-30,HOLD_S=1.5,tauE=0.15,REFR_S=0.35,TAU_BG=2.0,TAU=1.5;
   var eqW=null,eqDb=0,EQ_ON=16,ACC_N=24,FINE_N=188,EQ_MAX=10,gN=null,drops=0,sinceDrop=1e9,covered=false,lastPeak=null,d0B=0,fineN=-1,fR=null,fI=null,refR=null,refI=null,acR=null,acI=null,acN=0,moveN=0,scanWait=0,relocks=0,eAvg=0,TE=3,E_FAST=12,ePres=0,why='',rngBuf=[],xBuf=[],centered=false,autoC=false,presN=0,x,fast,cal={k:0.75,o:1,s:0.8},eHold=null,lowN=0,resS=-99,resFloor=null,upN=0,warm=0,absBuf=[],ABS_MED=15,DEADB=5,DEADB_UP=15,dirS=null,lostN=0,lost=false;
   /* v1.08, the live mode (an experiment, off unless set('live',1)): see liveNoise and the background learnt round the palm below */
@@ -17,7 +24,7 @@ var DSP2=(function(){
     cosT=new Float64Array(M*N); sinT=new Float64Array(M*N);
     for(q=0;q<M;q++){ var w=-2*Math.PI*ks[q]/N; for(var n=0;n<N;n++){ cosT[q*N+n]=Math.cos(w*n); sinT[q*N+n]=Math.sin(w*n); } }
     d0=null; dref=null; eqW=null; eqDb=0; gN=null; drops=0; sinceDrop=1e9; covered=false; lastPeak=null; d0B=0; fineN=-1; fR=null; fI=null; refR=null; refI=null; acR=null; acI=null; acN=0; moveN=0; scanWait=0; relocks=0; boot=[]; prevH=null; hist=[]; prom=null; noProbe=false;
-    ldP=null; ldQ=[]; bgAcc=null; bgN=0; bgR=null; bgI=null; Es=-80; hold=0; present=false; refr=0; x=null; fast=0; eHold=null; ePres=0; why=""; rngBuf=[]; xBuf=[]; centered=false; presN=0; lowN=0; resS=-99; resFloor=null; upN=0; warm=0; absBuf=[]; dirS=null; lostN=0; lost=false; fzF=[]; fzA=[]; fzN=0; fzHold=0; frozen=false; frozenN=0; nD=0; nS=0; nBase=null; nX=0; burst=0; nMin=null; nzK=null; nzC=null; nzS=null; nzP=null; nzN=0; lagB=[]; lagD=null; lagR=null; gStill=0; postB=0; fresh=0; EsR=-80; zc=null;
+    ldP=null; ldQ=[]; UNWRAP=false; vPrev=null; vPrev2=null; unwN=0; bgAcc=null; bgN=0; bgR=null; bgI=null; Es=-80; hold=0; present=false; refr=0; x=null; fast=0; eHold=null; ePres=0; why=""; rngBuf=[]; xBuf=[]; centered=false; presN=0; lowN=0; resS=-99; resFloor=null; upN=0; warm=0; absBuf=[]; dirS=null; lostN=0; lost=false; fzF=[]; fzA=[]; fzN=0; fzHold=0; frozen=false; frozenN=0; nD=0; nS=0; nBase=null; nX=0; burst=0; nMin=null; nzK=null; nzC=null; nzS=null; nzP=null; nzN=0; lagB=[]; lagD=null; lagR=null; gStill=0; postB=0; fresh=0; EsR=-80; zc=null;
   }
   function bandSpec(fr){
     var Hr=new Float64Array(M),Hi=new Float64Array(M),q,n;
@@ -144,7 +151,11 @@ var DSP2=(function(){
     for(i=0;i<G;i++){ var g1r=a1[0][i]-b1[0][i],g1i=a1[1][i]-b1[1][i],g0r=a0[0][i]-b0[0][i],g0i=a0[1][i]-b0[1][i];
       rr+=g1r*g0r+g1i*g0i; ri+=g1i*g0r-g1r*g0i; var em=g1r*g1r+g1i*g1i; e+=em; if(live){ var ex0=em-nD; if(ex0>0){ mz+=ex0*i; mzw+=ex0; } } }
     var eR=e; if(live) e=Math.max(e-G*nXg,e*1e-4);
-    var E=10*Math.log10(e/dref+1e-30), vel=-Math.atan2(ri,rr)*lam/(4*Math.PI);
+    var E=10*Math.log10(e/dref+1e-30), phR=Math.atan2(ri,rr);
+    if(UNWRAP&&vPrev!==null&&vPrev2!==null&&E>T_INT+10){ var phP=-vPrev*4*Math.PI/lam, phQ=-vPrev2*4*Math.PI/lam, phF=2*phP-phQ, PI2=2*Math.PI;
+      phF=phP+0.5*(phP-phQ);
+      if(Math.abs(phP)>Math.PI/3&&Math.abs(phP-phQ)<0.6*Math.PI){ var kW=Math.max(-1,Math.min(1,Math.round((phF-phR)/PI2))); if(kW){ phR+=kW*PI2; unwN++; } } }
+    var vel=-phR*lam/(4*Math.PI); vPrev2=E>T_INT?vPrev:null; vPrev=E>T_INT?vel:null;
     // live: where the palm moves — the centre of the motion (still things have none); kept while the palm holds still
     if(live&&mzw>0&&E>T_INT){ var zn=mz/mzw; zc=zc===null?zn:zc+0.3*(zn-zc); }
     // live: how much each tap changed over the last second, and how much stands over the room there (both smoothed, τ 0.15 s)
@@ -261,7 +272,7 @@ var DSP2=(function(){
   function shift(d){ var i; cal.o+=d; for(i=0;i<absBuf.length;i++) absBuf[i]+=d; if(x!==null) x+=d; for(i=0;i<xBuf.length;i++) xBuf[i]+=d; centered=true; }
   return {init:init,frame:frame,recenter:recenter,shift:shift,
     setCal:function(c){ cal.k=c.k; cal.o=c.o; cal.s=c.s; },
-    set:function(k,v){ if(k==='flo') BAND_LO=v||null; if(k==='tint') T_INT=v; if(k==='tau') TAU=v; if(k==='absmed') ABS_MED=Math.max(1,Math.round(v)); if(k==='deadband') DEADB=Math.max(0,v); if(k==='autocenter') autoC=!!v; if(k==='holdfloor') holdFloor=!!v; if(k==='live') live=!!v; if(k==='tausw') TAU_SW=v; if(k==='taust') TAU_ST=v; if(k==='still') STILL=v; if(k==='tauall') TAU_ALL=v; if(k==='movw') MOVW=v; if(k==='burst') BURST=v; if(k==='nxt') NXT=v; if(k==='nxk') NXK=v; if(k==='burstk') BURSTK=v; if(k==='bend') BEND=v; if(k==='bmax') BMAX=v; if(k==='nzh'){ NZH=v; nzC=null; } if(k==='nzg'){ NZG=v; nzC=null; } },
-    info:function(){ return {covered:covered,eq_db:eqDb,eq:!!eqW,relocks:relocks,drops:drops,d0:d0,prom:prom,noProbe:noProbe,lost:lost,ready:bgR!==null,mm:mm,centered:centered,band:[kLo,kHi],frozen:frozenN,cal:{k:cal.k,o:cal.o,s:cal.s},live:live,noise:live?+(10*Math.log10(nD/dref+1e-30)).toFixed(1):null,zone:zc===null?null:+((gA+zc)*mm).toFixed(0)}; }};
+    set:function(k,v){ if(k==='flo') BAND_LO=v||null; if(k==='tint') T_INT=v; if(k==='tau') TAU=v; if(k==='absmed') ABS_MED=Math.max(1,Math.round(v)); if(k==='deadband') DEADB=Math.max(0,v); if(k==='autocenter') autoC=!!v; if(k==='unwrap') UNWRAP=!!v; if(k==='holdfloor') holdFloor=!!v; if(k==='live') live=!!v; if(k==='tausw') TAU_SW=v; if(k==='taust') TAU_ST=v; if(k==='still') STILL=v; if(k==='tauall') TAU_ALL=v; if(k==='movw') MOVW=v; if(k==='burst') BURST=v; if(k==='nxt') NXT=v; if(k==='nxk') NXK=v; if(k==='burstk') BURSTK=v; if(k==='bend') BEND=v; if(k==='bmax') BMAX=v; if(k==='nzh'){ NZH=v; nzC=null; } if(k==='nzg'){ NZG=v; nzC=null; } },
+    info:function(){ return {covered:covered,eq_db:eqDb,eq:!!eqW,relocks:relocks,drops:drops,d0:d0,prom:prom,noProbe:noProbe,lost:lost,ready:bgR!==null,mm:mm,centered:centered,band:[kLo,kHi],frozen:frozenN,unw:unwN,cal:{k:cal.k,o:cal.o,s:cal.s},live:live,noise:live?+(10*Math.log10(nD/dref+1e-30)).toFixed(1):null,zone:zc===null?null:+((gA+zc)*mm).toFixed(0)}; }};
 })();
 if(typeof module!=='undefined') module.exports=DSP2;

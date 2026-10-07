@@ -197,7 +197,7 @@ function sfxBus(){
   var len=Math.floor(ctx.sampleRate*0.8); sfxNoise=ctx.createBuffer(1,len,ctx.sampleRate);
   var d=sfxNoise.getChannelData(0); for(var i=0;i<len;i++) d[i]=Math.random()*2-1;
 }
-function sfx(kind){
+function sfx(kind,x){
   if(!gSfxOn||!ctx) return;
   sfxBus();
   var t=ctx.currentTime;
@@ -212,6 +212,12 @@ function sfx(kind){
   if(kind==='start'){ tone(880,null,0.09,'square',0.5); tone(1320,null,0.14,'square',0.5,0.1); }
   else if(kind==='hit'){ crash(0.4,1800,0.9); tone(900,160,0.32,'square',0.5); }
   else if(kind==='level'){ [1047,1319,1568].forEach(function(f,i){ tone(f,null,0.08,'square',0.45,i*0.08); }); }
+  /* жонглёр (1.57b): мягкие «тук» — бросок выше чем сильнее, приземление ниже; звезда — тем выше, чем длиннее серия */
+  else if(kind==='jtoss'){ var f=360+160*Math.min(2.4,x||1); tone(f,f*0.7,0.07,'triangle',0.55); }
+  else if(kind==='jland'){ tone(240,150,0.06,'triangle',0.5); crash(0.04,700,0.25); }
+  else if(kind==='jstar'){ var f0=880*Math.pow(1.122,Math.min(8,(x||1)-1)); tone(f0,null,0.06,'square',0.35); tone(f0*1.5,null,0.1,'square',0.3,0.05); }
+  else if(kind==='jceil'){ tone(200,90,0.18,'square',0.45); crash(0.12,900,0.5); }
+  else if(kind==='jburn'){ crash(0.45,2600,0.7); tone(600,90,0.45,'sawtooth',0.35); }
   else if(kind==='over'){ tone(880,110,0.9,'square',0.5); crash(0.7,1200,0.6); }
   else if(kind==='pause'){ tone(1000,700,0.12,'square',0.35); }
   else if(kind==='resume'){ tone(700,1000,0.12,'square',0.35); }

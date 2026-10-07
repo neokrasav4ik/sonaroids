@@ -53,8 +53,8 @@ function juggler(t,A){ const dt=N/SR, base=60, T=0.16;
   if(jgS.st==='up'){ const u=(t-jgS.t0)/T; if(u>=1){ jgS.st='down'; } else dPrev+=jgS.v*Math.sin(Math.PI*u)*dt; }
   else { if(dPrev>base) dPrev=Math.max(base,dPrev-250*dt);
     const b=(A.balls||[]).find(b=>b.on&&b.heat>0.15);
-    if(b){ const s=(A.stars||[]).find(s=>s.slot===b.slot), top=A.py-0.032, h=s?Math.max(0.08,top-s.y):0.25;
-      const v=Math.sqrt(2*2.2*h)*0.97; jgS={st:'up',t0:t,v:Math.min(+(process.env.JG_V||900),v/0.40*A.T.field)}; } }
+    if(b){ const s=(A.stars||[]).find(s=>s.slot===b.slot), top=A.py-b.r, h=s?Math.max(0.08,top-s.y):0.25;
+      const v=Math.sqrt(2*b.g*h)*0.97; jgS={st:'up',t0:t,v:Math.min(+(process.env.JG_V||900),v/0.40*A.T.field)}; } }
   dPrev=Math.max(45,Math.min(175,dPrev)); return dPrev; }
 function feed(){ const due=Math.floor(now/1000*SR/N); while(fed<due){ H.onFrame({data:{s:seq++,f:S.synthFrame(palm(fed*N/SR),fed*7+1)}}); fed++; } }
 async function tick(dt){ const t1=now+dt*1000; while(now<t1){ now+=1000/60; feed();
@@ -65,13 +65,13 @@ async function tick(dt){ const t1=now+dt*1000; while(now<t1){ now+=1000/60; feed
   for(const g of ['slalom','bombs','cave','race','juggle']){
     H.game(g); H.goFlow('arcIntro'); need(!els.arcIntro.classList.contains('hidden')&&/прототип/.test(els.acTitle.textContent),`${g}: экран-подсказка — ${els.acTitle.textContent}`);
     tWave=null; dPrev=100; H.arcPlay(); const seen=[];
-    for(let i=0;i<1600;i++){ await tick(0.1); const A=H.ARC(); if(seen[seen.length-1]!==A.phase) seen.push(A.phase); if(A.phase==='over') break; }
+    for(let i=0;i<1600;i++){ await tick(0.1); const A=H.ARC(); if(g==='juggle'&&A.phase==='play'&&A.t>75) A.over=true;   /* жонглёр без потолка-смерти может играть долго — 75 с хватит */ if(seen[seen.length-1]!==A.phase) seen.push(A.phase); if(A.phase==='over') break; }
     const A=H.ARC(); need(seen.join(' → ').indexOf('empty → wave → count → play → over')>=0&&A.T&&A.T.ok&&A.T.field>=50&&A.T.field<=120,`${g}: фазы ${seen.join(' → ')}, ход пойман: весь путь ${A.T&&A.T.field.toFixed(0)} мм`);
     need(!els.acBtns.classList.contains('hidden'),`${g}: конец — ${els.acSay.textContent}: ${els.acSub.textContent}`);
     H.arcSave(); const f=path.join(C.OUT,'arc_'+g+'_test.wav'); fs.mkdirSync(C.OUT,{recursive:true}); fs.writeFileSync(f,Buffer.from(await A.blob.arrayBuffer()));
     const w=C.loadWav(f); need(w.meta.kind==='arc-play'&&w.meta.game===g&&new RegExp('^sonararc_'+g+'_').test(A.fname)&&w.meta.log.length>300,`${g}: запись ${A.fname}, журнал ${w.meta.log.length} строк`);
     const R=E.report('arc_'+g+'_test.wav (через страницу)',w.meta,w.x);
-    const good=g==='slalom'?(R.gate>=20&&R.finish===1):g==='bombs'?(R.caught>=10&&R.wave>=1):g==='race'?(A.score>300&&R.fuel>=1):g==='juggle'?(R.jg&&R.jg.star>=6&&R.jg.tosses>=6&&A.nb>=2&&R.jg.visFlick>95):(R.hit<=3&&R.gate===0&&A.score>100);
+    const good=g==='slalom'?(R.gate>=20&&R.finish===1):g==='bombs'?(R.caught>=10&&R.wave>=1):g==='race'?(A.score>300&&R.fuel>=1):g==='juggle'?(R.jg&&R.jg.star>=15&&R.jg.tosses>=10&&A.nb>=2&&R.jg.visFlick>95&&A.score>=R.jg.star):(R.hit<=3&&R.gate===0&&A.score>100);
     need(good&&R.vis>95&&R.match<0.005&&R.moving>(g==='juggle'?10:25),`${g}: игра идёт (${w.meta.summary}), сверка ${(R.match*100).toFixed(2)}%, ладонь в движении ${R.moving.toFixed(0)}%`); }
   console.log(bad?'ИТОГ: ПРОВАЛ':'ИТОГ: ok'); process.exitCode=bad?1:0;
 })();

@@ -1671,7 +1671,10 @@ var Tune=(function(){
   var ASYM=1.7, WIN=6, STEP=0.25, A=0.35, B=0.06, TP=0.90, F_MIN=50, F_MAX=120;
   var WAVE_DUR=5;        // s: waving must go on this long before the range counts as caught (v0.10: was 1.5 s — too quick to get oriented)
   var WAVE_MIN=50;       // mm: a range counts as waved from 5 cm (was 3 cm; 24 Sep a small wiggle after a game shrank the field to 66 mm and the ship got twitchy)
-  function create(field,auto){ return {buf:[],t:0,acc:0,span:null,ok:false,field:field||100,auto:auto!==false,last:null}; }
+  /* opt.soft (lab, 8 Oct, Den: «после настройки и на старте платформы немного смещаются и перестраиваются»): while waving, the middle and
+     the field already follow the waved range (lowest point on 6%) in 35% steps once it spans 5 cm — not the median — so the step that
+     catches the range is small instead of a ~3 cm jump. The game does not pass it: unchanged. */
+  function create(field,auto,opt){ return {buf:[],t:0,acc:0,span:null,ok:false,field:field||100,auto:auto!==false,last:null,soft:!!(opt&&opt.soft)}; }
   /* screen fraction from the bottom (0…1) for a palm height in mm; 100 mm is the middle */
   function fracOf(T,h){ var FL=2*T.field/(1+ASYM), FU=2*ASYM*T.field/(1+ASYM); return Math.max(0,Math.min(1,h<100?0.5+(h-100)/FL:0.5+(h-100)/FU)); }
   function pick(buf){
@@ -1688,9 +1691,9 @@ var Tune=(function(){
     while(T.buf.length&&T.buf[0].t<T.t-WIN) T.buf.shift();
     T.acc+=dt; if(T.acc<STEP) return null; T.acc=0;
     var r=pick(T.buf); if(!r){ T.ok=false; return null; }
-    var f0=T.field, k=(r.wave&&!T.ok)?1:A;              // v0.21: the step that catches the range lands fully — tuning stops right after it
-    if(r.wave&&T.auto){ var F=r.span/((0.5-B)*2/(1+ASYM)+(TP-0.5)*2*ASYM/(1+ASYM)); F=Math.max(F_MIN,Math.min(F_MAX,F)); T.field+=(F-T.field)*k; }
-    var cen=r.wave?r.lo+(0.5-B)*2*T.field/(1+ASYM):r.med, d=(cen-100)*-k;
+    var f0=T.field, k=(r.wave&&!T.ok)?1:A, pre=T.soft&&!r.wave&&r.span>=WAVE_MIN;              // v0.21: the step that catches the range lands fully — tuning stops right after it
+    if((r.wave||pre)&&T.auto){ var F=r.span/((0.5-B)*2/(1+ASYM)+(TP-0.5)*2*ASYM/(1+ASYM)); F=Math.max(F_MIN,Math.min(F_MAX,F)); T.field+=(F-T.field)*k; }
+    var cen=(r.wave||pre)?r.lo+(0.5-B)*2*T.field/(1+ASYM):r.med, d=(cen-100)*-k;
     if(Math.abs(d)>0.2){ shift(d); T.buf.forEach(function(q){ q.h+=d; }); }
     T.ok=r.wave; T.span=r.span; T.last=r;
     if(Math.abs(d)>0.2||Math.abs(T.field-f0)>0.2) return {d:+d.toFixed(1),field:+T.field.toFixed(1),span:+r.span.toFixed(0),wave:r.wave};
@@ -1935,7 +1938,7 @@ function arcPlay(){
     arcText('Убери руку','Слушаю пустую комнату.'); return rpWait(DSP2); }).then(function(st){
     if(!st) return;
     if(st==='noprobe'){ setProbe('off'); mode=null; ARC.on=false; arcText('Зонда не слышно',NOPROBE); arcButtons(true); return; }
-    return sleep(600).then(function(){ arcMark('wave'); ARC.phase='wave'; ARC.T=Tune.create(100,true);
+    return sleep(600).then(function(){ arcMark('wave'); ARC.phase='wave'; ARC.T=Tune.create(100,true,{soft:arcGame==='juggle'||arcGame==='pong'||arcGame==='follow'});
       arcText('Помаши ладонью','К разъёму и от него, 5–15 см — '+(arcGame==='slalom'?'лыжник':arcGame==='bombs'?'вёдра':arcGame==='race'?'машина':arcGame==='juggle'||arcGame==='pong'?'платформы':arcGame==='follow'?'метка':'корабль')+' ходит за ней. Секунд пять.');
       ARC.last=performance.now(); ARC.raf=requestAnimationFrame(arcLive); return new Promise(function(r){ ARC.onCaught=r; }); }).then(function(){
       arcMark('count'); ARC.phase='count'; arcText('Поймал','Ладонь дальше от разъёма — выше.');

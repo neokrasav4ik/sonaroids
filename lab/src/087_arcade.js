@@ -63,7 +63,7 @@ function arcPlay(){
     arcText('Убери руку','Слушаю пустую комнату.'); return rpWait(DSP2); }).then(function(st){
     if(!st) return;
     if(st==='noprobe'){ setProbe('off'); mode=null; ARC.on=false; arcText('Зонда не слышно',NOPROBE); arcButtons(true); return; }
-    return sleep(600).then(function(){ arcMark('wave'); ARC.phase='wave'; ARC.T=Tune.create(100,true);
+    return sleep(600).then(function(){ arcMark('wave'); ARC.phase='wave'; ARC.T=Tune.create(100,true,{soft:arcGame==='juggle'||arcGame==='pong'||arcGame==='follow'});
       arcText('Помаши ладонью','К разъёму и от него, 5–15 см — '+(arcGame==='slalom'?'лыжник':arcGame==='bombs'?'вёдра':arcGame==='race'?'машина':arcGame==='juggle'||arcGame==='pong'?'платформы':arcGame==='follow'?'метка':'корабль')+' ходит за ней. Секунд пять.');
       ARC.last=performance.now(); ARC.raf=requestAnimationFrame(arcLive); return new Promise(function(r){ ARC.onCaught=r; }); }).then(function(){
       arcMark('count'); ARC.phase='count'; arcText('Поймал','Ладонь дальше от разъёма — выше.');

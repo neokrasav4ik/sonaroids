@@ -1,9 +1,9 @@
 // SonaPong balance model (1.58l): same racket physics as lab/src/087_arcade.js, a hitter with hand-speed error σ; run: SIG=0.3 GRIP=1 node lab/tools/sim/pong_balance.js
 // Monte Carlo of SonaPong tilt physics with a human-like hitter (hand speed noise σ)
 const AR=2.16, TOP=0.03, R=0.032, LIFT=0.1, STICK=0.25, PY=0.64, dt=1/60, FIELD=111;
-function setup(P){ if(P.fw){ P={...P,hw:P.hwr*P.fw/4}; } const hw=P.fw?Math.max(0.03,Math.min(AR*P.hw,AR*P.fw/4-0.09)):AR*P.hw, XC=P.fw?(1-P.fw)/2+P.fw/4:Math.max(P.hw+0.01,0.5-P.gap/2-P.hw); return {...P,hwA:hw,Av:Math.tan((P.tiltv===undefined?P.tilt:P.tiltv)*Math.PI/180)*hw,A:Math.tan(P.tilt*Math.PI/180)*hw,xc:[AR*XC,AR*(1-XC)]}; }
-function surf(S,i,x){ const s=i?-1:1,u=(x-S.xc[i])/S.hwA; return {u,s,y:PY-LIFT+s*S.Av*u}; }
-function bounce(S,b,i,vpb){ const sl=(i?-1:1)*S.A/S.hwA,nl=Math.hypot(sl,1),nx=sl/nl,ny=-1/nl; let rx=b.vx,ry=b.vy-vpb; const vn=rx*nx+ry*ny;
+function setup(P){ if(P.fw){ P={...P,hw:P.hwr*P.fw/4}; } const hw=P.fw?Math.max(0.03,Math.min(AR*P.hw,AR*P.fw/4-0.09)):AR*P.hw, XC=P.fw?(1-P.fw)/2+P.fw/4:Math.max(P.hw+0.01,0.5-P.gap/2-P.hw); return {...P,K:P.curve?hw/(AR*(P.fw||0)/2):0,hwA:hw,Av:Math.tan((P.tiltv===undefined?P.tilt:P.tiltv)*Math.PI/180)*hw,A:Math.tan(P.tilt*Math.PI/180)*hw,xc:[AR*XC,AR*(1-XC)]}; }
+function surf(S,i,x){ const s=i?-1:1,u=(x-S.xc[i])/S.hwA; const ui=s*u, k=S.K||0; return {u,s,y:PY-LIFT+S.Av*(ui-k*ui*ui/2)}; }
+function bounce(S,b,i,vpb){ const ui=(i?-1:1)*(b.x-S.xc[i])/S.hwA, sl=(i?-1:1)*S.A/S.hwA*(1-(S.K||0)*ui),nl=Math.hypot(sl,1),nx=sl/nl,ny=-1/nl; let rx=b.vx,ry=b.vy-vpb; const vn=rx*nx+ry*ny;
   if(vn<0){ if(-vn>STICK){ rx-=(1+S.e)*vn*nx; ry-=(1+S.e)*vn*ny; } else { rx-=vn*nx; ry-=vn*ny; } const vt=rx*(-ny)+ry*nx, gr=S.grip||0; rx-=gr*vt*(-ny); ry-=gr*vt*nx; } return {x:b.x,y:b.y,vx:rx,vy:ry+vpb}; }
 // fly until next contact; returns {kind, i, ball, apex}
 function fly(S,b0,from){ let b={...b0}, apex=b.y, ceil=false; const xn=AR/2,nw=0.012, nt=PY-LIFT+(S.tiltv!==undefined?S.Av:0)-S.net;

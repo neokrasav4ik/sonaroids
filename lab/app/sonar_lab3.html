@@ -116,7 +116,7 @@
   .pgsave{grid-column:span 2;display:flex;gap:.5rem} .pgsave button{width:auto;flex:none;padding:.5em 1.1em}
   .pgname{flex:1;min-width:0;font:inherit;font-size:1.05rem;padding:.5em .8em;border-radius:3px;border:1px solid var(--hair);background:#0b0f14;color:var(--ink);-webkit-user-select:text;user-select:text}
   #pgSliders .pgtog.on{border-color:#ffd166;color:#ffd166}
-  @media (max-width:700px){ #pgSliders{grid-template-columns:repeat(4,minmax(0,1fr))} } @media (max-width:560px){ #arcPause .pzw,#pgSliders{grid-template-columns:repeat(2,minmax(0,1fr))} }
+  @media (max-width:700px){ #pgSliders{grid-template-columns:repeat(5,minmax(0,1fr))} .pgrow{font-size:.85rem} } @media (max-width:560px){ #arcPause .pzw,#pgSliders{grid-template-columns:repeat(2,minmax(0,1fr))} }
   #acStop{position:absolute;left:calc(max(.7rem,env(safe-area-inset-left)) + .3rem);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + 3.4rem);width:auto;min-height:0;padding:.75em 1.4em;font-size:1.15rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
   #rightPlay{padding:0;background:#04070A} #rpC{position:absolute;inset:0;width:100%;height:100%;display:block}
   #rpTop{position:absolute;left:0;right:0;top:calc(max(.8rem,env(safe-area-inset-top)) + 5.4rem);text-align:center;pointer-events:none;padding:0 1rem}
@@ -2041,7 +2041,7 @@ var PG_HIT=0.75, PG_HW=0.15, PG_XC=0.22, PG_G=2.4, PG_LIFT=0.10, PG_NET0=0.72, P
 PG_SL=[{k:'g',t:'Тяжесть',min:0.8,max:4.5,st:0.1,d:2},{k:'hit',t:'Сила удара',min:0.2,max:1.6,st:0.05,d:0.4},{k:'e',t:'Прыгучесть',min:0.1,max:0.95,st:0.05,d:0.65},
   {k:'hwr',t:'Ширина ракеток',min:0.1,max:1,st:0.05,d:0.95},{k:'fw',t:'Ширина поля',min:0.3,max:1,st:0.05,d:0.7},
   {k:'net',t:'Высота сетки',min:0,max:0.3,st:0.01,d:0.03},{k:'tilt',t:'Наклон для отскока, °',min:0,max:60,st:1,d:43},{k:'tiltv',t:'Наклон на экране, °',min:0,max:60,st:1,d:20},
-  {k:'grip',t:'Цепкие ракетки',min:0,max:1,st:1,d:1},{k:'wall',t:'Боковые стенки',min:0,max:1,st:1,d:0},{k:'vx',t:'Скорость вбок',min:0,max:3,st:0.05,d:0}],
+  {k:'grip',t:'Цепкие ракетки',min:0,max:1,st:1,d:1},{k:'curve',t:'Изогнутая ракетка',min:0,max:1,st:1,d:0},{k:'wall',t:'Боковые стенки',min:0,max:1,st:1,d:0},{k:'vx',t:'Скорость вбок',min:0,max:3,st:0.05,d:0}],
 /* 1.58l (Ден 20:49: «просто найти сбалансированные настройки ползунков!! и убери счётчик пасов… чтобы было не сложно, но и не легко
    перепасовываться мячом по воздуху.. не перекатывать туда-сюда, не ловить отскоки от кучи стенок и потолков»). Подбор — моделью
    (scratchpad pgsim.js: та же физика, игрок бьёт с ошибкой силы σ): с гладкими наклонными ракетками пас удаётся ~20% бросков при
@@ -2098,12 +2098,12 @@ function pgApply(){ PG_TILTV=PG_V.tiltv; PG_G=PG_V.g; PG_HIT=PG_V.hit; PG_E=PG_V
 function pgLoad(){ var o=null; try{ o=JSON.parse(localStorage.getItem('sonar_pg_sl7')||'null'); }catch(e){} PG_SL.forEach(function(q){ PG_V[q.k]=o&&typeof o[q.k]==='number'?Math.max(q.min,Math.min(q.max,o[q.k])):q.d; }); pgApply(); }
 function pgSave(){ try{ localStorage.setItem('sonar_pg_sl7',JSON.stringify(PG_V)); }catch(e){} pgApply(); if(ARC&&ARC.log) arcEv('pg:'+JSON.stringify(PG_V)); }
 function pgAngles(ar){ ar=ar||((typeof innerWidth!=='undefined'&&innerHeight)?innerWidth/innerHeight:2.16);
-  var D=ar*PG_V.fw/2, hw=Math.max(0.03,Math.min(ar*PG_V.hwr*PG_V.fw/4,ar*PG_V.fw/4-0.09)), Av=Math.tan(PG_V.tiltv*Math.PI/180)*hw, room=Math.max(0.05,(JG_PAD_LO-0.5*jgPadH()-PG_LIFT)-JG_TOP-JG_R-Av), dmax=D+2*hw;
+  var D=ar*PG_V.fw/2, hw=Math.max(0.03,Math.min(ar*PG_V.hwr*PG_V.fw/4,ar*PG_V.fw/4-0.09)), Av=PG_V.curve>=0.5?0:Math.tan(PG_V.tiltv*Math.PI/180)*hw, room=Math.max(0.05,(JG_PAD_LO-0.5*jgPadH()-PG_LIFT)-JG_TOP-JG_R-Av), dmax=D+2*hw;
   var lo=Math.atan(dmax/(4*room))*180/Math.PI, s0=D/2-hw, ne=PG_V.net+JG_R+0.01, hi=s0>0.01?Math.atan(2*s0/(4*ne))*180/Math.PI:0;
   return {lo:Math.ceil(lo),hi:Math.floor(hi),ok:Math.floor(hi)>=Math.ceil(lo)}; }
 function pgNamed(){ try{ var o=JSON.parse(localStorage.getItem('sonar_pg_named')||'{}'); return o&&typeof o==='object'?o:{}; }catch(e){ return {}; } }
 function pgNamedSave(m){ try{ localStorage.setItem('sonar_pg_named',JSON.stringify(m)); }catch(e){} }
-function pgFmt(q,v){ if(q.k==='wall'||q.k==='grip') return v>=0.5?'есть':'нет'; return q.k==='tilt'||q.k==='tiltv'?String(Math.round(v)):(Math.round(v*100)/100).toFixed(2).replace('.',','); }
+function pgFmt(q,v){ if(q.k==='wall'||q.k==='grip'||q.k==='curve') return v>=0.5?'есть':'нет'; return q.k==='tilt'||q.k==='tiltv'?String(Math.round(v)):(Math.round(v*100)/100).toFixed(2).replace('.',','); }
 function pgBuild(){ var box=el('pgSliders'); if(!box) return; box.innerHTML='';
   /* 1.58m (Ден 21:16: «сделай все ползунки и настройки в 3–4 колонки и покрупнее.. неудобно нажимать»): наборы — сверху, крупно,
      выбранный подсвечен; ползунки — 4 в ряд, крупные; включатели (цепкие ракетки, стенки) — кнопками, а не ползунками 0/1 */
@@ -2129,6 +2129,8 @@ function pgBuild(){ var box=el('pgSliders'); if(!box) return; box.innerHTML='';
     :'Ракетки у самой сетки — от её края коротко не перебросить, это нормально. Чтобы дальние пасы не били в потолок, угол для отскока — от <b>'+an.lo+'°</b>, сейчас <b class="'+(inw?'good':'bad')+'">'+cur+'°</b>';
   var ab=document.createElement('button'); ab.className='ghost'; ab.textContent='Подобрать угол';
   ab.addEventListener('click',function(){ var a=pgAngles(ARC&&ARC.ar); PG_V.tilt=a.ok?Math.round((a.lo+a.hi)/2):Math.min(60,a.lo+3); pgSave(); pgBuild(); arcEv('pg-angle:'+PG_V.tilt); });
+  if(PG_V.curve>=0.5){ var kk=pgCurveK(ARC&&ARC.ar||((typeof innerWidth!=='undefined'&&innerHeight)?innerWidth/innerHeight:2.16)), t0=Math.tan(PG_V.tilt*Math.PI/180), dg=function(f){ return Math.round(Math.atan(t0*f)*180/Math.PI); };
+    tx.innerHTML='Изогнутая ракетка: отскок у края поля <b>'+dg(1+kk)+'°</b>, в центре <b>'+dg(1)+'°</b>, у сетки <b>'+dg(1-kk)+'°</b>. Одинаковый удар из любой точки — одна и та же дуга в центр чужой. Жёлтые чёрточки — куда отскочит.'; }
   ah.appendChild(tx); ah.appendChild(ab); box.appendChild(ah);
   var tog=[];
   PG_SL.forEach(function(q){ if(q.max===1&&q.st===1){ tog.push(q); return; }
@@ -2142,7 +2144,13 @@ pgLoad();
 /* 1.58r: у сетки всегда щель, куда проваливается мяч (0,09 высоты экрана — шире мяча): при ракетках во всю половину мяч скатывался
    в угол к сетке и застревал там навсегда — оттуда его не перебросить (бот: 4353 «в сетку» за партию без единой потери) */
 function pgHw(ar){ return Math.max(0.03,Math.min(ar*PG_HW,ar*PG_V.fw/4-0.09)); }
-function pgSurf(i,x,py,ar,A){ var s=i?-1:1, xc=ar*(i?1-PG_XC:PG_XC), u=(x-xc)/pgHw(ar); return {u:u,s:s,xc:xc,y:py-PG_LIFT+s*A*u}; }
+/* 1.58v (Ден 14:44–14:46: «послать мяч по самой высокой дуге в любую часть чужой ракетки, но ракетки широкие?» → «добавь переключатель
+   „изогнутая ракетка“»): ракетка — дуга, как бок чаши. Угол отскока меняется вдоль неё: у края поля — положе (мяч летит дальше), к сетке —
+   круче (ближе). Подобрано так, что при одной и той же высоте дуги мяч из любой точки своей ракетки летит в центр чужой: тангенс угла
+   пропорционален расстоянию до центра чужой ракетки (D − ui·hw), в центре — «Наклон для отскока». Рисуется так же изогнутой (наклон на
+   экране меняется в той же пропорции). ui — доля полуширины к сетке (−1 у края поля, +1 у сетки) */
+function pgCurveK(ar){ return PG_V.curve>=0.5?pgHw(ar)/(ar*PG_V.fw/2):0; }
+function pgSurf(i,x,py,ar,A){ var s=i?-1:1, xc=ar*(i?1-PG_XC:PG_XC), u=(x-xc)/pgHw(ar), ui=s*u, k=pgCurveK(ar); return {u:u,s:s,ui:ui,f:1-k*ui,xc:xc,y:py-PG_LIFT+A*(ui-k*ui*ui/2)}; }
 function pgSpawn(){ var ar=ARC.ar, i=ARC.serve, b=jgBall(0,0,false);
   b.x=ar*(i?1-PG_XC:PG_XC)-(i?-1:1)*0.3*pgHw(ar); b.y=0.3; b.vy=0; b.vx=(i?-1:1)*(PG_V.vx||0); b.from=i; b.rest=0; ARC.balls.push(b); arcEv('serve:'+i); }
 /* ── жонглёр (7.10, 1.57a; Ден выбрал из идей «для одного»: «жонглёр эскизы варианты» → «да, давай посмотрим») ──
@@ -2285,7 +2293,7 @@ var ARC_STEP={
   pong:function(dt){ var pad=ARC.py, vr=ARC.padPrev===null?0:(pad-ARC.padPrev)/Math.max(dt,1e-3); ARC.padPrev=pad;
     ARC.vpS=(ARC.vpS||0)+(Math.max(-4,Math.min(4,vr))-(ARC.vpS||0))*0.45; var vp=ARC.vpS, vk=0.6/jgPadH(), vpb=vp*vk*PG_HIT;
     if(ARC.flash>0) ARC.flash-=dt; if(ARC.say>0){ ARC.say-=dt; if(ARC.say<=0) arcText('',''); }
-    var ar=ARC.ar, hw=pgHw(ar), A=Math.tan(PG_TILTV*Math.PI/180)*hw, Ap=Math.tan(PG_TILT*Math.PI/180)*hw, xn=ar/2, nw=0.012;   /* A — как ракетка нарисована (о неё мяч ударяется), Ap — куда отскакивает */
+    var ar=ARC.ar, hw=pgHw(ar), A=PG_V.curve>=0.5?0:Math.tan(PG_TILTV*Math.PI/180)*hw, Ap=Math.tan(PG_TILT*Math.PI/180)*hw, xn=ar/2, nw=0.012;   /* A — как ракетка нарисована (о неё мяч ударяется), Ap — куда отскакивает */
     var nb=pad-PG_LIFT+Math.tan(PG_TILTV*Math.PI/180)*hw-PG_V.net, nt=JG_SET.net===0?2:JG_SET.net===2?nb+0.05*Math.sin(2*Math.PI*ARC.t/7):JG_SET.net===3?nb-(ARC.netY||0):nb; ARC.netTop=nt;
     if(!ARC.balls.length&&!ARC.over){ ARC.respawn-=dt; if(ARC.respawn<=0) pgSpawn(); }
     ARC.balls.slice().forEach(function(b){ var was=b.on, py0=b.y; b.vy+=PG_G*dt; b.x+=b.vx*dt; b.y+=b.vy*dt; b.on=false;
@@ -2294,7 +2302,7 @@ var ARC_STEP={
       if(Math.abs(b.x-xn)<b.r+nw&&b.y+b.r>nt){ if(py0+b.r<=nt+0.005&&b.vy>0){ b.y=nt-b.r; b.vy=-Math.abs(b.vy)*0.5; } else { b.x=xn+(b.x<xn?-1:1)*(b.r+nw); b.vx=-b.vx*(PG_V.vx>0?1:0.4); ARC.nets++; arcEv('net'); sfx('jland'); } }
       for(var i=0;i<2;i++){ var S=pgSurf(i,b.x,pad,ar,A);
         if(Math.abs(S.u)<=1){ var top=S.y-b.r;
-          if(b.y>top&&b.y<top+0.12&&py0<=top-vr*dt+0.01){ var sl=S.s*Ap/hw, nl=Math.sqrt(sl*sl+1), nx=sl/nl, ny=-1/nl, rx=b.vx, ry=b.vy-vpb, vn=rx*nx+ry*ny; b.y=top;
+          if(b.y>top&&b.y<top+0.12&&py0<=top-vr*dt+0.01){ var sl=S.s*Ap/hw*S.f, nl=Math.sqrt(sl*sl+1), nx=sl/nl, ny=-1/nl, rx=b.vx, ry=b.vy-vpb, vn=rx*nx+ry*ny; b.y=top;
             if(vn<0){ if(-vn>JG_STICK){ rx-=(1+PG_E)*vn*nx; ry-=(1+PG_E)*vn*ny; if(PG_V.grip>=0.5){ var vt=-rx*ny+ry*nx; rx+=vt*ny; ry-=vt*nx; } if(-vn>0.5) sfx('jland'); } else { rx-=vn*nx; ry-=vn*ny; } }
             b.vx=rx; b.vy=ry+vpb; b.on=true; b.onI=i;
             if(b.from!==i){ if(b.from!==null&&b.from!==undefined){ ARC.passes++; ARC.streak++; ARC.score=Math.max(ARC.score,ARC.streak); if(ARC.streak>ARC.pbest) ARC.pbest=ARC.streak; arcEv('pass:'+ARC.streak); sfx('jstar',Math.min(8,ARC.streak));
@@ -2389,12 +2397,17 @@ function arcDraw(){ var cv=el('acC'); if(!cv||!cv.getContext) return; var dpr=Ma
     if(ARC.fwCm!==null){ var gy=cmY(ARC.fwCm||5); c.strokeStyle='#ffd166'; c.lineWidth=3*dpr; c.beginPath(); c.arc(rx-0.12*H,gy,0.04*H,0,6.283); c.stroke(); }
     var fm=ARC.mix!==undefined&&ARC.mix!==null&&ARC.T?Tune.fracOf(ARC.T,ARC.mix):ARC.frac;
     if(fm!==null&&fm!==undefined){ var my=cmY(5+10*fm); c.fillStyle='#ff8a3d'; c.fillRect(rx-0.32*H,my-0.012*H,0.16*H,0.024*H); } }
-  if(g==='pong'){ var ar3=W/H, hw3=pgHw(ar3), A3=Math.tan(PG_TILTV*Math.PI/180)*hw3, py3=ARC.py;
+  if(g==='pong'){ var ar3=W/H, hw3=pgHw(ar3), A3=PG_V.curve>=0.5?0:Math.tan(PG_TILTV*Math.PI/180)*hw3, py3=ARC.py;
     c.fillStyle='#0f1530'; c.fillRect(0,0,W,H); c.fillStyle='#3a4373'; c.fillRect(0,0,W,Y(JG_TOP));
     var nt3=ARC.netTop===undefined?PG_NET0:ARC.netTop; if(nt3<1.5){ c.fillStyle='#8f9cc0'; c.fillRect(X(ar3/2)-0.012*H,Y(nt3),0.024*H,H); c.fillStyle='#e8eefc'; c.fillRect(X(ar3/2)-0.02*H,Y(nt3)-0.008*H,0.04*H,0.016*H); }
     var fl3=ar3*(1-PG_V.fw)/2, fr3=ar3*(1+PG_V.fw)/2; if(PG_V.wall>=0.5){ c.fillStyle='#8f9cc0'; c.fillRect(X(fl3),Y(JG_TOP),X(0.012)-X(0),H); c.fillRect(X(fr3-0.012),Y(JG_TOP),X(0.012)-X(0),H); } else if(PG_V.fw<0.99){ c.fillStyle='rgba(143,156,192,0.18)'; c.fillRect(X(fl3)-1,Y(JG_TOP),2,H); c.fillRect(X(fr3)-1,Y(JG_TOP),2,H); }   /* края поля */
-    for(var pi3=0;pi3<2;pi3++){ var s3=pi3?-1:1, xc3=ar3*(pi3?1-PG_XC:PG_XC), ya=py3-PG_LIFT-s3*A3, yb=py3-PG_LIFT+s3*A3;
-      c.fillStyle='#ff8a3d'; c.beginPath(); c.moveTo(X(xc3-hw3),Y(ya)); c.lineTo(X(xc3+hw3),Y(yb)); c.lineTo(X(xc3+hw3),Y(yb)+0.03*H); c.lineTo(X(xc3-hw3),Y(ya)+0.03*H); c.closePath(); c.fill();
+    for(var pi3=0;pi3<2;pi3++){ var xc3=ar3*(pi3?1-PG_XC:PG_XC), top3=[];
+      for(var j3=0;j3<=16;j3++){ var x3=xc3-hw3+2*hw3*j3/16; top3.push([x3,pgSurf(pi3,x3,py3,ar3,A3).y]); }
+      c.fillStyle='#ff8a3d'; c.beginPath(); c.moveTo(X(top3[0][0]),Y(top3[0][1])); for(var j4=1;j4<top3.length;j4++) c.lineTo(X(top3[j4][0]),Y(top3[j4][1]));
+      for(var j5=top3.length-1;j5>=0;j5--) c.lineTo(X(top3[j5][0]),Y(top3[j5][1])+0.03*H); c.closePath(); c.fill();
+      if(PG_V.curve>=0.5){ c.strokeStyle='rgba(255,209,102,0.55)'; c.lineWidth=Math.max(1,0.004*H); c.beginPath();   /* чёрточки: куда отскочит мяч из этого места */
+        for(var j6=0;j6<=4;j6++){ var x6=xc3-hw3*0.9+1.8*hw3*j6/4, S6=pgSurf(pi3,x6,py3,ar3,A3), th6=Math.atan(Math.tan(PG_TILT*Math.PI/180)*S6.f), L6=0.07;
+          c.moveTo(X(x6),Y(S6.y)); c.lineTo(X(x6+S6.s*Math.sin(th6)*L6),Y(S6.y-Math.cos(th6)*L6)); } c.stroke(); }
     }
     (ARC.balls||[]).forEach(function(b){ c.fillStyle=JG_KIND[0].col; c.beginPath(); c.arc(X(b.x),Y(b.y),Y(b.r),0,6.283); c.fill(); });
     (ARC.pf||[]).forEach(function(p){ c.globalAlpha=Math.min(1,p.t/0.4); c.fillStyle='#fff3c4'; c.font=Math.round(0.08*H)+'px "IBM Plex Mono",monospace'; c.textAlign='center'; c.fillText(String(p.pts),X(p.x),Y(p.y-0.1*(0.8-p.t))); c.globalAlpha=1; });

@@ -277,8 +277,11 @@ function pgHw(ar){ return Math.max(0.03,Math.min(ar*PG_HW*pgNarrow(),ar*PG_V.fw/
 function pgClean(b){ if(b.touched){ ARC.clean=0; return; } ARC.clean=(ARC.clean||0)+1; if(PG_V.grow<0.5||ARC.clean<10) return;
   if((ARC.narrowK||1)>0.41){ ARC.clean=0; ARC.narrowK=Math.max(0.4,(ARC.narrowK||1)-0.1); arcEv('narrow:'+ARC.narrowK.toFixed(1)); sfx('level'); } else ARC.clean=10; }
 function pgPoints(b,pad){ if(b.touched||b.peakY===undefined||b.peakY===null) return; var lvl=pad-PG_LIFT-b.r, room=lvl-(JG_TOP+b.r), h=lvl-b.peakY;
-  var f=Math.max(0,Math.min(1,h/room)), pts=Math.round(100*f*f); if(pts<1) return; ARC.score=(ARC.score||0)+pts; if(!(ARC.bestPts>=pts)) ARC.bestPts=pts;
-  ARC.pf.push({x:b.peakX,y:b.peakY,t:1.0,pts:pts}); arcEv('pts:'+pts); }
+  /* 1.58z (Ден 16:15: «всплывающие очки убери в угол — отвлекает.. на коротких ракетках очков должно быть больше — коэффициент»):
+     множитель — во сколько раз ракетка уже своей половины поля (×1 во всю, ×2,5 при 40%); очки и множитель — в левом верхнем углу */
+  var f=Math.max(0,Math.min(1,h/room)), mult=pgMult(), pts=Math.round(100*f*f*mult); if(pts<1) return; ARC.score=(ARC.score||0)+pts; if(!(ARC.bestPts>=pts)) ARC.bestPts=pts;
+  ARC.lastPts=pts; ARC.lastT=1.5; arcEv('pts:'+pts+':x'+mult.toFixed(2)); }
+function pgMult(){ var ar=ARC.ar||2.16, w=pgHw(ar)/(ar*PG_V.fw/4); return 1/Math.max(0.2,Math.min(1,w)); }
 /* 1.58v (Ден 14:44–14:46: «послать мяч по самой высокой дуге в любую часть чужой ракетки, но ракетки широкие?» → «добавь переключатель
    „изогнутая ракетка“»): ракетка — дуга, как бок чаши. Угол отскока меняется вдоль неё: у края поля — положе (мяч летит дальше), к сетке —
    круче (ближе). Подобрано так, что при одной и той же высоте дуги мяч из любой точки своей ракетки летит в центр чужой: тангенс угла
@@ -296,7 +299,10 @@ function pgSurf(i,x,py,ar,A){ var s=i?-1:1, xc=ar*(i?1-PG_XC:PG_XC), hw=pgHw(ar)
   if(cv>=1){ var D=ar*PG_V.fw/2, tc=Math.tan(PG_TILT*Math.PI/180), hc=D/(4*tc), H0=Math.max(0.02,hc+yr), H1=hc; f=((D-ui*hw)/(2*H0+2*Math.sqrt(H0*H1)))/tc; }
   return {u:u,s:s,ui:ui,f:f,xc:xc,y:py-PG_LIFT+yr}; }
 function pgSpawn(){ var ar=ARC.ar, i=ARC.serve, b=jgBall(0,0,false);
-  b.x=ar*(i?1-PG_XC:PG_XC)-(i?-1:1)*0.3*pgHw(ar); b.y=0.3; b.vy=0; b.vx=(i?-1:1)*(PG_V.vx||0); b.from=i; b.rest=0; ARC.balls.push(b); arcEv('serve:'+i); }
+  /* 1.58z (Ден 16:15: «первый мяч должен падать в центр ракетки, и он какой-то валкий — очень сложно начать игру»; запись: из 13 подач 10
+     без единого паса, чаще с первого удара): подача — мяч лежит в центре своей ракетки и ездит с ней, пока ладонь не пойдёт вверх; тогда
+     удар как по лежащему мячу: по наклону ракетки в этой точке, сила — от скорости ракетки */
+  b.x=ar*(i?1-PG_XC:PG_XC); b.y=0.5; b.vy=0; b.vx=0; b.from=i; b.rest=0; b.hold=true; ARC.balls.push(b); arcEv('serve:'+i); }
 /* ── жонглёр (7.10, 1.57a; Ден выбрал из идей «для одного»: «жонглёр эскизы варианты» → «да, давай посмотрим») ──
    Ладонь — полоса внизу экрана (доля хода ладони → 0,94…0,54 высоты), мяч отскакивает от неё как от ракетки бесконечной массы:
    при ударе относительная скорость отражается с коэффициентом JG_E, медленное касание — мяч лежит и едет вместе с ладонью; когда
@@ -440,7 +446,16 @@ var ARC_STEP={
     var ar=ARC.ar, hw=pgHw(ar), A=PG_V.curve>=0.5?pgCupA():Math.tan(PG_TILTV*Math.PI/180)*hw, Ap=Math.tan(PG_TILT*Math.PI/180)*hw, xn=ar/2, nw=0.012;   /* A — как ракетка нарисована (о неё мяч ударяется), Ap — куда отскакивает */
     var nb=pad-PG_LIFT+Math.tan(PG_TILTV*Math.PI/180)*hw-PG_V.net, nt=JG_SET.net===0?2:JG_SET.net===2?nb+0.05*Math.sin(2*Math.PI*ARC.t/7):JG_SET.net===3?nb-(ARC.netY||0):nb; ARC.netTop=nt;
     if(!ARC.balls.length&&!ARC.over){ ARC.respawn-=dt; if(ARC.respawn<=0) pgSpawn(); }
-    ARC.balls.slice().forEach(function(b){ var was=b.on, py0=b.y; b.vy+=PG_G*dt; b.x+=b.vx*dt; b.y+=b.vy*dt; b.on=false; if(b.peakY!==undefined&&b.peakY!==null&&b.y<b.peakY){ b.peakY=b.y; b.peakX=b.x; }
+    ARC.balls.slice().forEach(function(b){
+      if(b.hold){ var SH=pgSurf(b.from,b.x,pad,ar,A); b.y=SH.y-b.r; b.vx=0; b.vy=0; b.on=true;
+        var up=-vpb; if(up>0.25) b.rideMax=Math.max(b.rideMax||0,up);   /* мяч едет на ракетке, пока она разгоняется вверх; слетает, когда она тормозит */
+        if(b.rideMax&&up<0.85*b.rideMax){ var slH=SH.s*Ap/hw*SH.f, nlH=Math.sqrt(slH*slH+1), nxH=slH/nlH, nyH=-1/nlH;
+          /* с места мяч не разогнать до паса обычным взмахом (нет прилетевшего мяча, который отскакивает сам) — подача с подмогой:
+             обычный взмах (скорость ракетки 0,5) даёт высокий пас в центр чужой, слабее — ближе, сильнее — в потолок */
+          var tc=Math.tan(PG_TILT*Math.PI/180), hcS=(ar*PG_V.fw/2)/(4*tc), vcc=Math.sqrt(2*PG_G*hcS)*Math.sqrt(1+tc*tc), vS=vcc*Math.max(0.5,Math.min(1.35,b.rideMax/0.5));
+          b.vx=vS*nxH; b.vy=vS*nyH; arcEv('serve-hit:'+b.rideMax.toFixed(2)); b.hold=false; b.on=false; b.touched=false; b.peakY=b.y; b.peakX=b.x; ARC.tosses++; arcEv('toss:'+(-b.vy).toFixed(2)+':'+b.vx.toFixed(2)+':serve'); sfx('jtoss',-b.vy); }
+        return; }
+      var was=b.on, py0=b.y; b.vy+=PG_G*dt; b.x+=b.vx*dt; b.y+=b.vy*dt; b.on=false; if(b.peakY!==undefined&&b.peakY!==null&&b.y<b.peakY){ b.peakY=b.y; b.peakX=b.x; }
       if(b.y-b.r<JG_TOP&&b.vy<0){ b.y=JG_TOP+b.r; b.vy=-b.vy*0.35; b.touched=true; ARC.ceils=(ARC.ceils||0)+1; arcEv('ceil'); sfx('jceil'); }
       if(PG_V.wall>=0.5){ var ww=0.012, wl=ar*(1-PG_V.fw)/2+ww, wr=ar*(1+PG_V.fw)/2-ww; if(b.x-b.r<wl&&b.vx<0){ b.x=wl+b.r; b.vx=-b.vx*(PG_V.vx>0?1:0.6); arcEv('wall'); sfx('jland'); } else if(b.x+b.r>wr&&b.vx>0){ b.x=wr-b.r; b.vx=-b.vx*(PG_V.vx>0?1:0.6); arcEv('wall'); sfx('jland'); } }
       if(Math.abs(b.x-xn)<b.r+nw&&b.y+b.r>nt){ if(py0+b.r<=nt+0.005&&b.vy>0){ b.y=nt-b.r; b.vy=-Math.abs(b.vy)*0.5; } else { b.x=xn+(b.x<xn?-1:1)*(b.r+nw); b.vx=-b.vx*(PG_V.vx>0?1:0.4); ARC.nets++; arcEv('net'); sfx('jland'); } }
@@ -455,7 +470,7 @@ var ARC_STEP={
       b.rest=b.on?(b.rest||0)+dt:0;
       if(b.y>1.1||b.x<-0.15||b.x>ar+0.15){ ARC.falls++; arcEv('lost:'+b.x.toFixed(2)); ARC.streak=0; ARC.clean=0; ARC.flash=0.25; sfx('jburn'); ARC.balls.splice(ARC.balls.indexOf(b),1);
         ARC.serve=1-ARC.serve; ARC.respawn=0.6; } });   // тренировка: мячей сколько угодно
-    ARC.pf=ARC.pf.filter(function(p){ p.t-=dt; return p.t>0; }); },
+    ARC.pf=ARC.pf.filter(function(p){ p.t-=dt; return p.t>0; }); if(ARC.lastT>0) ARC.lastT-=dt; },
   juggle:function(dt){ var pad=ARC.py, vr=ARC.padPrev===null?0:(pad-ARC.padPrev)/Math.max(dt,1e-3); ARC.padPrev=pad;
     /* скорость платформы — сглаженная (кадры сонара 94 в секунду, экрана 60: положение идёт ступеньками, и сырая скорость давала броски
        до 9 высот экрана в секунду) и не больше 4 */
@@ -554,7 +569,9 @@ function arcDraw(){ var cv=el('acC'); if(!cv||!cv.getContext) return; var dpr=Ma
           c.moveTo(X(x6),Y(S6.y)); c.lineTo(X(x6+S6.s*Math.sin(th6)*L6),Y(S6.y-Math.cos(th6)*L6)); } c.stroke(); }
     }
     (ARC.balls||[]).forEach(function(b){ c.fillStyle=JG_KIND[0].col; c.beginPath(); c.arc(X(b.x),Y(b.y),Y(b.r),0,6.283); c.fill(); });
-    if(ARC.phase==='play'){ c.fillStyle='rgba(255,243,196,0.9)'; c.font=Math.round(0.07*H)+'px "IBM Plex Mono",monospace'; c.textAlign='center'; c.fillText(String(ARC.score||0),W/2,0.13*H); }
+    if(ARC.phase==='play'){ var lx=0.04*H+Math.max(0,(W-H*2.4)/2)*0; c.textAlign='left'; c.fillStyle='rgba(255,243,196,0.9)'; c.font=Math.round(0.07*H)+'px "IBM Plex Mono",monospace'; c.fillText(String(ARC.score||0),0.05*H,0.13*H);
+      var mu=pgMult(); c.font=Math.round(0.045*H)+'px "IBM Plex Mono",monospace'; if(mu>1.05){ c.fillStyle='rgba(255,209,102,0.85)'; c.fillText('×'+mu.toFixed(1).replace('.',','),0.05*H,0.2*H); }
+      if(ARC.lastT>0){ c.globalAlpha=Math.min(1,ARC.lastT/0.5); c.fillStyle='#fff3c4'; c.fillText('+'+ARC.lastPts,0.05*H+c.measureText('×0,0 ').width,0.2*H); c.globalAlpha=1; } }
     if(PG_V.grow>=0.5&&ARC.phase==='play'){ var nd=Math.min(10,ARC.clean||0); for(var d9=0;d9<10;d9++){ c.fillStyle=d9<nd?'#ffd166':'rgba(255,255,255,0.18)'; c.beginPath(); c.arc(W/2+(d9-4.5)*0.035*H,0.18*H,0.009*H,0,6.283); c.fill(); } }
     (ARC.pf||[]).forEach(function(p){ c.globalAlpha=Math.min(1,p.t/0.4); c.fillStyle='#fff3c4'; c.font=Math.round(0.08*H)+'px "IBM Plex Mono",monospace'; c.textAlign='center'; c.fillText('+'+p.pts,X(p.x),Y(p.y+0.06-0.05*(1-p.t))); c.globalAlpha=1; });
     if(ARC.flash>0){ c.fillStyle='rgba(255,90,110,'+(ARC.flash)+')'; c.fillRect(0,0,W,H); } }

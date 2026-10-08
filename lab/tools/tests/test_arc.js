@@ -30,6 +30,7 @@ let seed=12345; Math.random=()=>((seed=(seed*1664525+1013904223)>>>0)/4294967296
 new Function(js)(); const H=globalThis.__h; H.setFs();
 const SR=48000, N=512; let fed=0, seq=0, tWave=null, dPrev=100;
 function palm(t){ const A=H.ARC(); if(!A||A.phase==='prep'||A.phase==='empty'||A.phase===''){ return null; }
+  if((A.game==='juggle'||A.game==='pong')&&A.phase==='wave'&&!(A.T&&A.T.ok)){ const want=A.c2&&A.c2.step===2?130:60; dPrev+=Math.max(-2,Math.min(2,want-dPrev)); return dPrev; }   /* 1.58z2: подстройка — два удержания: низ, потом верх */
   if(A.phase==='wave'){ if(tWave===null) tWave=t; return (dPrev=100+35*Math.sin(2*Math.PI*(t-tWave)/2)); }
   if(A.phase!=='play'||A.frac===null) return dPrev;
   // цель по высоте экрана (0 — верх) → доля высоты по подстройке
@@ -72,7 +73,9 @@ async function tick(dt){ const t1=now+dt*1000; while(now<t1){ now+=1000/60; feed
 (async()=>{
   let bad=0; const need=(ok,msg)=>{ console.log((ok?'ok  ':'FAIL')+'  '+msg); if(!ok) bad++; };
   for(const g of ['slalom','bombs','cave','race','juggle','follow','pong']){
-    H.game(g); H.goFlow('arcIntro'); need(!els.arcIntro.classList.contains('hidden')&&/прототип/.test(els.acTitle.textContent),`${g}: экран-подсказка — ${els.acTitle.textContent}`);
+    H.game(g); H.goFlow('arcIntro');
+    if(g==='juggle'||g==='pong') need(!els.arcPlay.classList.contains('hidden')&&!els.arcPause.classList.contains('hidden')&&els.pzGo.textContent==='Играть'&&els.pzTitle.textContent.length>0,`${g}: меню перед игрой — ${els.pzTitle.textContent}, «${els.pzGo.textContent}»`);   // 1.58z4
+    else need(!els.arcIntro.classList.contains('hidden')&&/прототип/.test(els.acTitle.textContent),`${g}: экран-подсказка — ${els.acTitle.textContent}`);
     tWave=null; dPrev=100; H.arcPlay(); const seen=[];
     for(let i=0;i<1600;i++){ await tick(0.1); const A=H.ARC(); if((g==='juggle'||g==='pong')&&A.phase==='play'&&A.t>75) A.over=true;   /* жонглёр без потолка-смерти может играть долго — 75 с хватит */ if(seen[seen.length-1]!==A.phase) seen.push(A.phase); if(A.phase==='over') break; }
     const A=H.ARC(); need(seen.join(' → ').indexOf('empty → wave → count → play → over')>=0&&A.T&&A.T.ok&&A.T.field>=50&&A.T.field<=120,`${g}: фазы ${seen.join(' → ')}, ход пойман: весь путь ${A.T&&A.T.field.toFixed(0)} мм`);

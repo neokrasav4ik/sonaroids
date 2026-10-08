@@ -17,7 +17,7 @@ function analyse(meta,x){ const rows=replay(meta,x), TU=tuneMod(), T={field:meta
   const h=fl.filter(r=>r.present).map(r=>r.height), sm=[]; for(let i=0;i<h.length;i++){ let s=0,n=0; for(let j=Math.max(0,i-4);j<=Math.min(h.length-1,i+4);j++){ s+=h[j]; n++; } sm.push(s/n); }
   let mv=0; for(let i=1;i<sm.length;i++) if(Math.abs(sm[i]-sm[i-1])*SR/N>20) mv++; const moving=sm.length>1?100*mv/(sm.length-1):NaN;
   const log=meta.log||[], ev=log.filter(e=>typeof e[1]==='string'), st=log.filter(e=>typeof e[1]!=='string');
-  const byK=new Map(rows.map(r=>[r.k,r])), dd=[]; st.forEach(s=>{ if(s[1]===null||!s[3]) return; const r=byK.get(s[0]); if(!r||!r.present) return; dd.push(Math.abs(TU.fracOf(T,r.height)-s[1])); }); dd.sort((a,b)=>a-b);
+  const byK=new Map(rows.map(r=>[r.k,r])), dd=[]; st.forEach(s=>{ if(s[1]===null||!s[3]) return; const r=byK.get(s[0]); if(!r||!r.present) return; const L=meta.tune&&meta.tune.lin, fr=L?Math.max(0,Math.min(1,L.fb+(L.ft-L.fb)*(r.height-L.b)/Math.max(30,L.t-L.b))):TU.fracOf(T,r.height); dd.push(Math.abs(fr-s[1]));   /* 1.58z2: ход по двум удержаниям */ }); dd.sort((a,b)=>a-b);
   const cnt=k=>ev.filter(e=>e[1]===k||e[1].startsWith(k+':')).length;
   /* жонглёр (1.57a): броски — сила (скорость мяча при отрыве, высот экрана в секунду) и что делала рука на взмахе: самая большая скорость
      ладони за 0,2 с до отрыва (по высоте через 3 кадра, мм/с) и видна ли ладонь вокруг броска — главный вопрос: успевает ли сонар за рывком */

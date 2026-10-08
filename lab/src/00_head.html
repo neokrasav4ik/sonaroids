@@ -94,29 +94,45 @@
   #arcPauseB{position:absolute;right:calc(max(.7rem,env(safe-area-inset-right)) + .3rem);top:calc(max(.5rem,env(safe-area-inset-top)) + .3rem);width:auto;min-height:0;padding:.75em 1.4em;font-size:1.15rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
   #arcPause{position:absolute;inset:0;z-index:5;background:#04070a;display:flex;align-items:center;justify-content:center;padding:calc(max(.6rem,env(safe-area-inset-top))) calc(max(1rem,env(safe-area-inset-right)))}
   #arcPause.hidden{display:none}
-  #arcPause .pzw{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem .7rem;width:min(100%,64rem)}
-  #arcPause button{width:100%;margin:0;min-height:3.1rem;padding:.55em .7em;font-size:1.12rem}
+  #arcPause button{width:100%;margin:0;min-height:2.6rem;padding:.4em .6em;font-size:1.05rem}
+  #arcPause .pzw{width:min(100%,60rem)}
+  /* 1.58z4 (Ден 18:13: «скомпонуй пункты меню паузы — невозможно никуда попасть.. сделай подменю.. и это меню — перед игрой и в паузе»):
+     главная страница — 3–4 крупных действия и 5–6 разделов; раздел открывается отдельной страницей с «← Меню» */
+  .pzhead{display:flex;align-items:center;gap:1rem;margin-bottom:.7rem;font-size:1.2rem} .pzhead span{color:var(--soft);font-size:.95rem}
+  #pzSub .pzhead button{width:auto;flex:none;padding:.5em 1.2em}
+  .pzact{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:.7rem;margin-bottom:.9rem}
+  #arcPause .pzact button{min-height:4rem;font-size:1.2rem}
+  #arcPause.pre .pzsecs button{min-height:3.3rem} #arcPause.pre .pzsecs button small{display:none} #arcPause.pre .pzact button{min-height:3.4rem} #arcPause.pre .pzhead{margin-bottom:.4rem}
+  .pzstart{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.7rem;margin-bottom:.9rem;padding:.6rem;border-radius:.7rem;background:rgba(255,209,102,.06)}
+  #arcPause .pzstart>button{min-height:3.6rem;font-size:1.1rem} .pzstart .pgrow{min-height:3.6rem}
+  .pzstart:has(> :nth-child(3):last-child){grid-template-columns:repeat(3,minmax(0,1fr))}
+  .pzsecs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem}
+  #arcPause .pzsecs button{min-height:4.6rem;font-size:1.2rem;line-height:1.2;text-align:left;padding:.5em 1em}
+  .pzsecs button small{display:block;font-size:.85rem;color:var(--soft);font-weight:400;margin-top:.15em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #pzSubBody{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem}
+  #arcPause #pzSubBody>button{min-height:3.4rem;font-size:1.1rem}
+  #pzSubBody .pgrow{min-height:4.2rem}
+  #pzSubBody .wide{grid-column:1/-1}
+  #pzSubBody p{grid-column:1/-1;margin:0;font-size:1rem;line-height:1.4;color:var(--ink)}
   #arcPause{overflow-y:auto;align-items:flex-start}
   #arcPause .pzw{margin:auto 0}
-  #pgSliders{grid-column:1/-1;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:.4rem .6rem}
-  #pgSliders.hidden{display:none}
   .pgrow{display:flex;flex-direction:column;justify-content:space-between;gap:.1rem;font-size:.95rem;line-height:1.2;color:var(--ink);background:rgba(255,255,255,.05);border-radius:.6rem;padding:.35rem .55rem .05rem}
   .pgrow b{color:#ffd166;font-weight:600}
-  .pgrow input{width:100%;height:2.4rem;margin:0;accent-color:#ffd166}
+  .pgrow input{width:100%;height:2.1rem;margin:0;accent-color:#ffd166}
   .pgrow input::-webkit-slider-thumb{width:1.9rem;height:1.9rem}
   .pgrow input::-moz-range-thumb{width:1.9rem;height:1.9rem}
-  .pgpre{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem .7rem}
-  .pgpre button{font-size:1rem;padding-left:.3em;padding-right:.3em} .pgpre button.on{background:#ffd166;color:#14181f;border-color:#ffd166}
-  .pgang{grid-column:1/-1;display:flex;align-items:center;gap:.8rem;font-size:.95rem;color:var(--soft)} .pgang span{flex:1} .pgang b{color:var(--ink)} .pgang b.good{color:var(--ok)} .pgang b.bad{color:#ff8a3d}
+  .pgpre{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem}
+  #arcPause .pgpre button{font-size:1.1rem;min-height:3.4rem} .pgpre button.on{background:#ffd166;color:#14181f;border-color:#ffd166}
+  .pgang{grid-column:1/-1;display:flex;align-items:center;gap:.8rem;font-size:.88rem;line-height:1.25;color:var(--soft)} .pgang span{flex:1} .pgang b{color:var(--ink)} .pgang b.good{color:var(--ok)} .pgang b.bad{color:#ff8a3d}
   #arcPause .pgang button{width:auto;flex:none;min-height:2.4rem;padding:.4em 1em}
-  .pgmine{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem .7rem}
-  #arcPause .pgm button{width:auto} #arcPause .pgsave button{width:auto} #pgSliders .pgtog{font-size:.95rem;padding:.4em .5em}
+  .pgmine{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem}
+  #arcPause .pgm button{width:auto} #arcPause .pgsave button{width:auto}
   .pgm{display:flex;gap:.3rem} .pgm button:first-child{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .pgm .pgx{flex:none;width:auto;padding:.5em .8em}
   .pgm button.on{border-color:#ffd166;color:#ffd166}
-  .pgsave{grid-column:span 2;display:flex;gap:.5rem} .pgsave button{width:auto;flex:none;padding:.5em 1.1em}
+  .pgsave{grid-column:1/-1;display:flex;gap:.5rem;min-width:0} .pgsave button{width:auto;flex:none;padding:.5em 1.1em}
   .pgname{flex:1;min-width:0;font:inherit;font-size:1.05rem;padding:.5em .8em;border-radius:3px;border:1px solid var(--hair);background:#0b0f14;color:var(--ink);-webkit-user-select:text;user-select:text}
-  #pgSliders .pgtog.on{border-color:#ffd166;color:#ffd166}
-  @media (max-width:700px){ #pgSliders{grid-template-columns:repeat(5,minmax(0,1fr))} .pgrow{font-size:.85rem} } @media (max-width:560px){ #arcPause .pzw,#pgSliders{grid-template-columns:repeat(2,minmax(0,1fr))} }
+  #pzSubBody .pgtog.on{border-color:#ffd166;color:#ffd166}
+  @media (max-width:700px){ #arcPause .pzact button,#arcPause .pzsecs button,#arcPause #pzSubBody>button,#arcPause .pgpre button{font-size:1rem;min-height:3rem} .pgang{font-size:.85rem} } @media (max-width:560px){ .pzsecs,#pzSubBody,.pgpre,.pgmine{grid-template-columns:repeat(2,minmax(0,1fr))} }
   #acStop{position:absolute;left:calc(max(.7rem,env(safe-area-inset-left)) + .3rem);bottom:calc(max(.6rem,env(safe-area-inset-bottom)) + 3.4rem);width:auto;min-height:0;padding:.75em 1.4em;font-size:1.15rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
   #rightPlay{padding:0;background:#04070A} #rpC{position:absolute;inset:0;width:100%;height:100%;display:block}
   #rpTop{position:absolute;left:0;right:0;top:calc(max(.8rem,env(safe-area-inset-top)) + 5.4rem);text-align:center;pointer-events:none;padding:0 1rem}
@@ -508,9 +524,17 @@
   <button id="acStop" class="gbtn">Стоп</button>
   <button id="arcPauseB" class="gbtn hidden">Пауза</button>
   <div id="arcPause" class="hidden"><div class="pzw">
-    <button id="pzGo" class="big">Продолжить</button><button id="pzStop" class="ghost">Стоп</button>
-    <button id="jgSens" class="ghost">Чувствительность</button><button id="jgBowl" class="ghost">Чаша</button><button id="jgKick" class="ghost">Толчок вбок</button><button id="jgWall" class="ghost">Бортики</button><button id="jgDamp" class="ghost">Тормоз вбок</button><button id="jgTilt" class="ghost">Наклон</button><button id="jgNet" class="ghost">Сетка</button>
-    <div id="pgSliders" class="hidden"></div>
+    <div id="pzMain">
+      <div class="pzhead"><b id="pzTitle">Пауза</b><span id="pzBest"></span></div>
+      <div class="pzact"><button id="pzGo" class="big">Продолжить</button><button id="pzRecal" class="ghost">Подстроить ладонь заново</button><button id="pzStop" class="ghost">Стоп</button><button id="pzBack" class="ghost">Назад</button></div>
+      <div class="pzstart" id="pzStart"></div>
+      <div class="pzsecs" id="pzSecs"></div>
+    </div>
+    <div id="pzSub" class="hidden">
+      <div class="pzhead"><button id="pzUp" class="ghost">← Меню</button><b id="pzSubT"></b></div>
+      <div id="pzSubBody"></div>
+    </div>
+    <div id="pzStore" class="hidden"><button id="jgSens" class="ghost">Чувствительность</button><button id="jgBowl" class="ghost">Чаша</button><button id="jgKick" class="ghost">Толчок вбок</button><button id="jgWall" class="ghost">Бортики</button><button id="jgDamp" class="ghost">Тормоз вбок</button><button id="jgTilt" class="ghost">Наклон</button><button id="jgNet" class="ghost">Сетка</button><button id="jgLives" class="ghost">Мячей</button></div>
   </div></div>
   <div id="acBtns" class="hidden">
     <button id="acAgain" class="big">Ещё раз</button>

@@ -107,6 +107,8 @@
   .pgrow input::-moz-range-thumb{width:1.9rem;height:1.9rem}
   .pgpre{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem .7rem}
   .pgpre button{font-size:1rem;padding-left:.3em;padding-right:.3em} .pgpre button.on{background:#ffd166;color:#14181f;border-color:#ffd166}
+  .pgang{grid-column:1/-1;display:flex;align-items:center;gap:.8rem;font-size:.95rem;color:var(--soft)} .pgang span{flex:1} .pgang b{color:var(--ink)} .pgang b.good{color:var(--ok)} .pgang b.bad{color:#ff8a3d}
+  #arcPause .pgang button{width:auto;flex:none;min-height:2.4rem;padding:.4em 1em}
   .pgmine{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem .7rem}
   #arcPause .pgm button{width:auto} #arcPause .pgsave button{width:auto} #pgSliders .pgtog{font-size:.95rem;padding:.4em .5em}
   .pgm{display:flex;gap:.3rem} .pgm button:first-child{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .pgm .pgx{flex:none;width:auto;padding:.5em .8em}
@@ -2030,8 +2032,8 @@ var PG_HIT=0.75, PG_HW=0.15, PG_XC=0.22, PG_G=2.4, PG_LIFT=0.10, PG_NET0=0.72, P
 /* 1.58g (Ден 19:13: «и добавь ему всяких ползунков в паузу чтоб я настроил под себя и поиграл с условиями»): ползунки в паузе понга —
    тяжесть, сила удара, прыгучесть, ширина платформ, расстояние между ними, высота сетки, наклон; запоминаются; «Сбросить» — как было */
 PG_SL=[{k:'g',t:'Тяжесть',min:0.8,max:4.5,st:0.1,d:2},{k:'hit',t:'Сила удара',min:0.2,max:1.6,st:0.05,d:0.4},{k:'e',t:'Прыгучесть',min:0.1,max:0.95,st:0.05,d:0.65},
-  {k:'hwr',t:'Ширина ракеток',min:0.1,max:1,st:0.05,d:0.6},{k:'fw',t:'Ширина поля',min:0.3,max:1,st:0.05,d:0.7},
-  {k:'net',t:'Высота сетки',min:0,max:0.3,st:0.01,d:0.07},{k:'tilt',t:'Наклон для отскока, °',min:0,max:60,st:1,d:45},{k:'tiltv',t:'Наклон на экране, °',min:0,max:60,st:1,d:20},
+  {k:'hwr',t:'Ширина ракеток',min:0.1,max:1,st:0.05,d:0.95},{k:'fw',t:'Ширина поля',min:0.3,max:1,st:0.05,d:0.7},
+  {k:'net',t:'Высота сетки',min:0,max:0.3,st:0.01,d:0.03},{k:'tilt',t:'Наклон для отскока, °',min:0,max:60,st:1,d:43},{k:'tiltv',t:'Наклон на экране, °',min:0,max:60,st:1,d:20},
   {k:'grip',t:'Цепкие ракетки',min:0,max:1,st:1,d:1},{k:'wall',t:'Боковые стенки',min:0,max:1,st:1,d:0},{k:'vx',t:'Скорость вбок',min:0,max:3,st:0.05,d:0}],
 /* 1.58l (Ден 20:49: «просто найти сбалансированные настройки ползунков!! и убери счётчик пасов… чтобы было не сложно, но и не легко
    перепасовываться мячом по воздуху.. не перекатывать туда-сюда, не ловить отскоки от кучи стенок и потолков»). Подбор — моделью
@@ -2063,9 +2065,17 @@ PG_SL=[{k:'g',t:'Тяжесть',min:0.8,max:4.5,st:0.1,d:2},{k:'hit',t:'Сил�
 /* 1.58h (Ден 19:33: «добавь боковые стенки, невероятно сложно играть. не пойму какие настройки брать»): стенки по краям (мяч отскакивает
    с потерей 40%, теряется только вниз); готовые наборы «Легко / Средне / Трудно»; «Легко» — по умолчанию: тяжесть 1,6 (мяч дольше
    в воздухе), удар 0,6, прыгучесть 0,35 (мяч меньше скачет), платформы шире 0,2 и ближе 0,12, сетка низкая, наклон 22° */
-PG_PRE={'Легче':{g:2,hit:0.4,e:0.65,hwr:0.7,fw:0.6,net:0.07,tilt:45,tiltv:20,grip:1,wall:0,vx:0},
-  'Сбалансированный':{g:2,hit:0.4,e:0.65,hwr:0.6,fw:0.7,net:0.07,tilt:45,tiltv:20,grip:1,wall:0,vx:0},
-  'Труднее':{g:2,hit:0.4,e:0.65,hwr:0.5,fw:0.8,net:0.07,tilt:45,tiltv:20,grip:1,wall:0,vx:0}},
+PG_PRE={'Легче':{g:2,hit:0.4,e:0.65,hwr:1,fw:0.6,net:0,tilt:39,tiltv:20,grip:1,wall:0,vx:0},
+  'Сбалансированный':{g:2,hit:0.4,e:0.65,hwr:0.95,fw:0.7,net:0.03,tilt:43,tiltv:20,grip:1,wall:0,vx:0},
+  'Труднее':{g:2,hit:0.4,e:0.65,hwr:0.9,fw:0.8,net:0.05,tilt:47,tiltv:20,grip:1,wall:0,vx:0}},
+/* 1.58r (Ден 12:49–12:52: «какой должен быть угол, чтобы с любой точки удара послать мяч в любую точку другой платформы — просто силой
+   удара?.. сделай показ угла.. и начинаться игра должна с платформ 90–100%, иначе вообще сложно»). Мяч с цепкой ракетки уходит всегда
+   под одним углом, дальность — от силы; мешают два края: самый дальний пас (внешний край → внешний край) не должен задеть потолок —
+   угол не меньше atan(дальность/(4·запас до потолка)); самый короткий (край у сетки → ближний край чужой) должен перелететь сетку —
+   угол не больше atan(дальность/(4·сетка)). pgAngles считает это окно для текущих ползунков (ладонь в середине хода), пауза его
+   показывает, «Подобрать» ставит середину окна (или чуть выше нижней границы, если окна нет). Наборы: ракетки 1 / 0,95 / 0,9, сетка
+   0 / 0,03 / 0,05 — теперь от края ракеток у сетки (было от их середины: при ширине 1 сетка торчала над стыком на 0,14 экрана),
+   угол — нижняя граница окна + 3° */
 /* 1.58p (Ден 22:10: «когда платформа меньше широкой — она должна быть по центру своего поля, а не прижата к сетке.. широкая — во всё
    своё поле, а чем меньше — тем уже, но в центре»): поле — середина экрана шириной «Ширина поля»; у каждой ракетки — своя половина,
    ракетка в её середине, «Ширина ракеток» — доля этой половины (1 — во всю). Стенки — по краям поля, края поля видны. Центры ракеток
@@ -2078,8 +2088,12 @@ PG_PRE={'Легче':{g:2,hit:0.4,e:0.65,hwr:0.7,fw:0.6,net:0.07,tilt:45,tiltv:2
    «Труднее» (0,13) — 84 / 62 / 48%. Рука ~170 мм/с, мяч на ~0,3 экрана */
 PG_V={};
 function pgApply(){ PG_TILTV=PG_V.tiltv; PG_G=PG_V.g; PG_HIT=PG_V.hit; PG_E=PG_V.e; PG_HW=PG_V.hwr*PG_V.fw/4; PG_XC=(1-PG_V.fw)/2+PG_V.fw/4; PG_NET0=1-PG_V.net; PG_TILT=PG_V.tilt; }
-function pgLoad(){ var o=null; try{ o=JSON.parse(localStorage.getItem('sonar_pg_sl6')||'null'); }catch(e){} PG_SL.forEach(function(q){ PG_V[q.k]=o&&typeof o[q.k]==='number'?Math.max(q.min,Math.min(q.max,o[q.k])):q.d; }); pgApply(); }
-function pgSave(){ try{ localStorage.setItem('sonar_pg_sl6',JSON.stringify(PG_V)); }catch(e){} pgApply(); if(ARC&&ARC.log) arcEv('pg:'+JSON.stringify(PG_V)); }
+function pgLoad(){ var o=null; try{ o=JSON.parse(localStorage.getItem('sonar_pg_sl7')||'null'); }catch(e){} PG_SL.forEach(function(q){ PG_V[q.k]=o&&typeof o[q.k]==='number'?Math.max(q.min,Math.min(q.max,o[q.k])):q.d; }); pgApply(); }
+function pgSave(){ try{ localStorage.setItem('sonar_pg_sl7',JSON.stringify(PG_V)); }catch(e){} pgApply(); if(ARC&&ARC.log) arcEv('pg:'+JSON.stringify(PG_V)); }
+function pgAngles(ar){ ar=ar||((typeof innerWidth!=='undefined'&&innerHeight)?innerWidth/innerHeight:2.16);
+  var D=ar*PG_V.fw/2, hw=Math.max(0.03,Math.min(ar*PG_V.hwr*PG_V.fw/4,ar*PG_V.fw/4-0.09)), Av=Math.tan(PG_V.tiltv*Math.PI/180)*hw, room=Math.max(0.05,(JG_PAD_LO-0.5*jgPadH()-PG_LIFT)-JG_TOP-JG_R-Av), dmax=D+2*hw;
+  var lo=Math.atan(dmax/(4*room))*180/Math.PI, s0=D/2-hw, ne=PG_V.net+JG_R+0.01, hi=s0>0.01?Math.atan(2*s0/(4*ne))*180/Math.PI:0;
+  return {lo:Math.ceil(lo),hi:Math.floor(hi),ok:Math.floor(hi)>=Math.ceil(lo)}; }
 function pgNamed(){ try{ var o=JSON.parse(localStorage.getItem('sonar_pg_named')||'{}'); return o&&typeof o==='object'?o:{}; }catch(e){ return {}; } }
 function pgNamedSave(m){ try{ localStorage.setItem('sonar_pg_named',JSON.stringify(m)); }catch(e){} }
 function pgFmt(q,v){ if(q.k==='wall'||q.k==='grip') return v>=0.5?'есть':'нет'; return q.k==='tilt'||q.k==='tiltv'?String(Math.round(v)):(Math.round(v*100)/100).toFixed(2).replace('.',','); }
@@ -2103,6 +2117,12 @@ function pgBuild(){ var box=el('pgSliders'); if(!box) return; box.innerHTML='';
   sv.addEventListener('click',function(){ var nm=(nmIn.value||'').trim(); if(!nm){ nmIn.focus(); return; } var m=pgNamed(), o={}; PG_SL.forEach(function(q){ o[q.k]=PG_V[q.k]; }); m[nm]=o; pgNamedSave(m); arcEv('pg-save:'+nm); pgBuild(); });
   var row=document.createElement('div'); row.className='pgsave'; row.appendChild(nmIn); row.appendChild(sv); mine.appendChild(row);
   box.appendChild(mine);
+  var an=pgAngles(ARC&&ARC.ar), ah=document.createElement('div'); ah.className='pgang'; var cur=Math.round(PG_V.tilt), inw=an.ok?(cur>=an.lo&&cur<=an.hi):cur>=an.lo;
+  var tx=document.createElement('span'); tx.innerHTML=an.ok?'Угол для отскока, чтобы с любой точки в любую: <b>'+an.lo+'–'+an.hi+'°</b>, сейчас <b class="'+(inw?'good':'bad')+'">'+cur+'°</b>'
+    :'Ракетки у самой сетки — от её края коротко не перебросить, это нормально. Чтобы дальние пасы не били в потолок, угол для отскока — от <b>'+an.lo+'°</b>, сейчас <b class="'+(inw?'good':'bad')+'">'+cur+'°</b>';
+  var ab=document.createElement('button'); ab.className='ghost'; ab.textContent='Подобрать угол';
+  ab.addEventListener('click',function(){ var a=pgAngles(ARC&&ARC.ar); PG_V.tilt=a.ok?Math.round((a.lo+a.hi)/2):Math.min(60,a.lo+3); pgSave(); pgBuild(); arcEv('pg-angle:'+PG_V.tilt); });
+  ah.appendChild(tx); ah.appendChild(ab); box.appendChild(ah);
   var tog=[];
   PG_SL.forEach(function(q){ if(q.max===1&&q.st===1){ tog.push(q); return; }
     var row=document.createElement('label'); row.className='pgrow'; var t=document.createElement('span'); var inp=document.createElement('input'); inp.type='range'; inp.min=q.min; inp.max=q.max; inp.step=q.st; inp.value=PG_V[q.k];
@@ -2112,9 +2132,12 @@ function pgBuild(){ var box=el('pgSliders'); if(!box) return; box.innerHTML='';
   var rs=document.createElement('button'); rs.className='ghost'; rs.textContent='Сбросить'; rs.addEventListener('click',function(){ PG_SL.forEach(function(q){ PG_V[q.k]=q.d; }); pgSave(); pgBuild(); }); pr.appendChild(rs); }
 var PG_TILTS=[20,30,40], PG_STOP=0.05, PG_TILTV=25;
 pgLoad();
-function pgSurf(i,x,py,ar,A){ var s=i?-1:1, xc=ar*(i?1-PG_XC:PG_XC), u=(x-xc)/(ar*PG_HW); return {u:u,s:s,xc:xc,y:py-PG_LIFT+s*A*u}; }
+/* 1.58r: у сетки всегда щель, куда проваливается мяч (0,09 высоты экрана — шире мяча): при ракетках во всю половину мяч скатывался
+   в угол к сетке и застревал там навсегда — оттуда его не перебросить (бот: 4353 «в сетку» за партию без единой потери) */
+function pgHw(ar){ return Math.max(0.03,Math.min(ar*PG_HW,ar*PG_V.fw/4-0.09)); }
+function pgSurf(i,x,py,ar,A){ var s=i?-1:1, xc=ar*(i?1-PG_XC:PG_XC), u=(x-xc)/pgHw(ar); return {u:u,s:s,xc:xc,y:py-PG_LIFT+s*A*u}; }
 function pgSpawn(){ var ar=ARC.ar, i=ARC.serve, b=jgBall(0,0,false);
-  b.x=ar*(i?1-PG_XC:PG_XC)-(i?-1:1)*0.3*ar*PG_HW; b.y=0.3; b.vy=0; b.vx=(i?-1:1)*(PG_V.vx||0); b.from=i; b.rest=0; ARC.balls.push(b); arcEv('serve:'+i); }
+  b.x=ar*(i?1-PG_XC:PG_XC)-(i?-1:1)*0.3*pgHw(ar); b.y=0.3; b.vy=0; b.vx=(i?-1:1)*(PG_V.vx||0); b.from=i; b.rest=0; ARC.balls.push(b); arcEv('serve:'+i); }
 /* ── жонглёр (7.10, 1.57a; Ден выбрал из идей «для одного»: «жонглёр эскизы варианты» → «да, давай посмотрим») ──
    Ладонь — полоса внизу экрана (доля хода ладони → 0,94…0,54 высоты), мяч отскакивает от неё как от ракетки бесконечной массы:
    при ударе относительная скорость отражается с коэффициентом JG_E, медленное касание — мяч лежит и едет вместе с ладонью; когда
@@ -2252,8 +2275,8 @@ var ARC_STEP={
   pong:function(dt){ var pad=ARC.py, vr=ARC.padPrev===null?0:(pad-ARC.padPrev)/Math.max(dt,1e-3); ARC.padPrev=pad;
     ARC.vpS=(ARC.vpS||0)+(Math.max(-4,Math.min(4,vr))-(ARC.vpS||0))*0.45; var vp=ARC.vpS, vk=0.6/jgPadH(), vpb=vp*vk*PG_HIT;
     if(ARC.flash>0) ARC.flash-=dt; if(ARC.say>0){ ARC.say-=dt; if(ARC.say<=0) arcText('',''); }
-    var ar=ARC.ar, hw=ar*PG_HW, A=Math.tan(PG_TILTV*Math.PI/180)*hw, Ap=Math.tan(PG_TILT*Math.PI/180)*hw, xn=ar/2, nw=0.012;   /* A — как ракетка нарисована (о неё мяч ударяется), Ap — куда отскакивает */
-    var nb=pad-PG_LIFT-PG_V.net, nt=JG_SET.net===0?2:JG_SET.net===2?nb+0.05*Math.sin(2*Math.PI*ARC.t/7):JG_SET.net===3?nb-(ARC.netY||0):nb; ARC.netTop=nt;
+    var ar=ARC.ar, hw=pgHw(ar), A=Math.tan(PG_TILTV*Math.PI/180)*hw, Ap=Math.tan(PG_TILT*Math.PI/180)*hw, xn=ar/2, nw=0.012;   /* A — как ракетка нарисована (о неё мяч ударяется), Ap — куда отскакивает */
+    var nb=pad-PG_LIFT+Math.tan(PG_TILTV*Math.PI/180)*hw-PG_V.net, nt=JG_SET.net===0?2:JG_SET.net===2?nb+0.05*Math.sin(2*Math.PI*ARC.t/7):JG_SET.net===3?nb-(ARC.netY||0):nb; ARC.netTop=nt;
     if(!ARC.balls.length&&!ARC.over){ ARC.respawn-=dt; if(ARC.respawn<=0) pgSpawn(); }
     ARC.balls.slice().forEach(function(b){ var was=b.on, py0=b.y; b.vy+=PG_G*dt; b.x+=b.vx*dt; b.y+=b.vy*dt; b.on=false;
       if(b.y-b.r<JG_TOP&&b.vy<0){ b.y=JG_TOP+b.r; b.vy=-b.vy*0.35; arcEv('ceil'); sfx('jceil'); }
@@ -2356,7 +2379,7 @@ function arcDraw(){ var cv=el('acC'); if(!cv||!cv.getContext) return; var dpr=Ma
     if(ARC.fwCm!==null){ var gy=cmY(ARC.fwCm||5); c.strokeStyle='#ffd166'; c.lineWidth=3*dpr; c.beginPath(); c.arc(rx-0.12*H,gy,0.04*H,0,6.283); c.stroke(); }
     var fm=ARC.mix!==undefined&&ARC.mix!==null&&ARC.T?Tune.fracOf(ARC.T,ARC.mix):ARC.frac;
     if(fm!==null&&fm!==undefined){ var my=cmY(5+10*fm); c.fillStyle='#ff8a3d'; c.fillRect(rx-0.32*H,my-0.012*H,0.16*H,0.024*H); } }
-  if(g==='pong'){ var ar3=W/H, hw3=ar3*PG_HW, A3=Math.tan(PG_TILTV*Math.PI/180)*hw3, py3=ARC.py;
+  if(g==='pong'){ var ar3=W/H, hw3=pgHw(ar3), A3=Math.tan(PG_TILTV*Math.PI/180)*hw3, py3=ARC.py;
     c.fillStyle='#0f1530'; c.fillRect(0,0,W,H); c.fillStyle='#3a4373'; c.fillRect(0,0,W,Y(JG_TOP));
     var nt3=ARC.netTop===undefined?PG_NET0:ARC.netTop; if(nt3<1.5){ c.fillStyle='#8f9cc0'; c.fillRect(X(ar3/2)-0.012*H,Y(nt3),0.024*H,H); c.fillStyle='#e8eefc'; c.fillRect(X(ar3/2)-0.02*H,Y(nt3)-0.008*H,0.04*H,0.016*H); }
     var fl3=ar3*(1-PG_V.fw)/2, fr3=ar3*(1+PG_V.fw)/2; if(PG_V.wall>=0.5){ c.fillStyle='#8f9cc0'; c.fillRect(X(fl3),Y(JG_TOP),X(0.012)-X(0),H); c.fillRect(X(fr3-0.012),Y(JG_TOP),X(0.012)-X(0),H); } else if(PG_V.fw<0.99){ c.fillStyle='rgba(143,156,192,0.18)'; c.fillRect(X(fl3)-1,Y(JG_TOP),2,H); c.fillRect(X(fr3)-1,Y(JG_TOP),2,H); }   /* края поля */

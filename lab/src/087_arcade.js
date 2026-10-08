@@ -71,7 +71,7 @@ function arcPlay(){
     if(!st) return;
     if(st==='noprobe'){ setProbe('off'); mode=null; ARC.on=false; arcText('Зонда не слышно',NOPROBE); arcButtons(true); return; }
     return sleep(600).then(function(){ arcMark('wave'); ARC.phase='wave'; ARC.T=Tune.create(100,true,{soft:arcGame==='juggle'||arcGame==='pong'||arcGame==='follow'});
-      arcText('Помаши ладонью','К разъёму и от него, 5–15 см — '+(arcGame==='slalom'?'лыжник':arcGame==='bombs'?'вёдра':arcGame==='race'?'машина':arcGame==='juggle'||arcGame==='pong'?'платформы':arcGame==='follow'?'метка':'корабль')+' ходит за ней. Секунд пять.');
+      arcText('Помаши ладонью',(arcGame==='juggle'||arcGame==='pong')?'От самого низа, где будешь играть (почти у стола), и вверх на 10 см — платформы ходят за ней. Секунд пять.':'К разъёму и от него, 5–15 см — '+(arcGame==='slalom'?'лыжник':arcGame==='bombs'?'вёдра':arcGame==='race'?'машина':arcGame==='juggle'||arcGame==='pong'?'платформы':arcGame==='follow'?'метка':'корабль')+' ходит за ней. Секунд пять.');
       ARC.last=performance.now(); ARC.raf=requestAnimationFrame(arcLive); return new Promise(function(r){ ARC.onCaught=r; }); }).then(function(){
       arcMark('count'); ARC.phase='count'; arcText('Поймал','Ладонь дальше от разъёма — выше.');
       return sleep(1500).then(function(){ arcText('3',''); return sleep(1000); }).then(function(){ arcText('2',''); return sleep(1000); }).then(function(){ arcText('1',''); return sleep(1000); }); }).then(function(){
@@ -308,6 +308,9 @@ function pgSpawn(){ var ar=ARC.ar, i=ARC.serve, b=jgBall(0,0,false);
 var JG_HP=0.8, JG_HPG=0.55, JG_LEAD=0.03, JG_PRACTICE=true, JG_OE={mc:1.0,beta:8,dc:1.0}, JG_W={lo:0.6,hi:2.0};
 function jgRawFrac(T,h){ var FL=2*T.field/(1+Tune.ASYM), FU=2*Tune.ASYM*T.field/(1+Tune.ASYM); return h<100?0.5+(h-100)/FL:0.5+(h-100)/FU; }
 function jgPad(dt){ var hh=ARC.mix!==undefined&&ARC.mix!==null?ARC.mix:ARC.dist; if(!ARC.T||hh===null||hh===undefined) return;   // 1.57f: без добавок — весь ход ладони = 0,6 экрана
+  /* 1.58u: мягкий низ 1.58t убран (Ден 13:34: «автодокалибровка по ходу игры лишняя.. игрок сдвигает диапазон — игра подстраивается —
+     управление сместилось — игрок снова сдвигает.. рабочее расстояние уходит в неизвестность»). Это та самая петля «игрок ↔ корабль»
+     (HANDOVER, Грабли): правило по высотам ладони в игре гонится за самим игроком. Ход задаёт только подстройка перед стартом. */
   ARC.py=Math.max(0.3,Math.min(0.97,JG_PAD_LO-jgRawFrac(ARC.T,hh)*jgPadH())); }
 var JG_PAD_LO=0.94, JG_PAD_H=0.60, JG_R=0.032, JG_G=4.2, JG_E=0.5, JG_STICK=0.25, JG_HOT=1.2, JG_SLOTS=[0.5,0.36,0.64], JG_N2=15, JG_N3=40, JG_TOP=0.03;
 var JG_KIND=[{g:1,r:1,col:'#ffd166'},{g:0.72,r:1.15,col:'#5ad1c0'},{g:1.35,r:0.85,col:'#ff8fa8'}];   // обычный, лёгкий, тяжёлый

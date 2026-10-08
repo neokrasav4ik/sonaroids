@@ -8,12 +8,12 @@ const SR=48000, N=512, fps=SR/N;
 const md=a=>{ if(!a.length) return NaN; const s=[...a].sort((x,y)=>x-y); return s[s.length>>1]; };
 const f1=x=>Number.isFinite(x)?x.toFixed(1):'—', f2=x=>Number.isFinite(x)?x.toFixed(2):'—';
 function replay(meta,x,opt){ const D=C.makeDSP(C.bandOf(meta)); D.init(SR,meta.probe&&(meta.probe.bins===0||meta.probe.bins===1)?meta.probe.bins:'all'); D.setCal(meta.cal); if(meta.autocenter) D.set('autocenter',1);
-  const mix=(opt||[]).indexOf('mix')>=0; (opt||[]).filter(o=>o!=='mix').forEach(o=>D.set(o,1)); const sh=(meta.tune&&meta.tune.shifts)||[], h=new Float64Array(Math.floor(x.length/N)).fill(NaN); let j=0;
+  const mix=(opt||[]).indexOf('mix')>=0, mabs=(opt||[]).indexOf('mixabs')>=0, kp=meta.marks&&meta.marks.play!==undefined?Math.round(meta.marks.play/N):0; let off=null; (opt||[]).filter(o=>o!=='mix'&&o!=='mixabs').forEach(o=>D.set(o,1)); const sh=(meta.tune&&meta.tune.shifts)||[], h=new Float64Array(Math.floor(x.length/N)).fill(NaN); let j=0;
   /* 'mix' (1.57f): медленное — от высоты как в игре (сглаженной за MIX_TAU с), быстрое — от одной фазы (её отклонение от своей такой же
      сглаженной): абсолютная часть сонара плавает на 2–3 см и дёргает высоту, фаза ходит точно, но копит уход */
   const a=1-Math.exp(-1/(MIX_TAU*fps)); let lh=null, lf=null;
   for(let k=0;k<h.length;k++){ while(j<sh.length&&sh[j][0]<=k){ D.shift(sh[j][1]); j++; } const r=D.frame(x.subarray(k*N,(k+1)*N));
-    if(r&&r.present&&r.height!==null){ if(!mix){ h[k]=r.height; continue; } const F=r.fast*meta.cal.s; if(lh===null){ lh=r.height; lf=F; } lh+=a*(r.height-lh); lf+=a*(F-lf); h[k]=lh+(F-lf); } }
+    if(r&&r.present&&r.height!==null){ if(!mix){ h[k]=r.height; continue; } const F=r.fast*meta.cal.s; if(lh===null){ lh=r.height; lf=F; } let base=r.height; if(mabs&&r.abs!==null&&r.abs!==undefined){ const d=r.height-r.abs; if(k<kp) off=off===null?d:off+(1-Math.exp(-1/(1.5*fps)))*(d-off); else if(off!==null) base=r.abs+off; } lh+=a*(base-lh); lf+=a*(F-lf); h[k]=lh+(F-lf); } }
   return h; }
 const MIX_TAU=+(process.env.MIX_TAU||3);
 function steps(meta){ const ev=(meta.log||[]).filter(e=>typeof e[1]==='string'), st=[], beats=[];
@@ -50,7 +50,7 @@ function analyse(meta,x,opt){ const h=replay(meta,x,opt), {st,beats}=steps(meta)
 function report(file){ const {meta,x}=C.loadWav(file); if(!meta||meta.game!=='follow'){ console.log(path.basename(file)+': не запись «Ладонь по линейке»'); return; }
   console.log(`\n== ${path.basename(file)} == ${meta.ua&&/iPhone/.test(meta.ua)?'iPhone':meta.ua&&/Android/.test(meta.ua)?'Android':''} | зонд: запас ${meta.probe&&meta.probe.snr_db?meta.probe.snr_db.toFixed(1):'—'} дБ, тоны ${meta.probe&&meta.probe.bins!==undefined?meta.probe.bins:'все'} | ход подстройки ${meta.tune?meta.tune.field.toFixed(0):'—'} мм`);
   const out={};
-  for(const [name,opt] of [['как в игре',[]],['фаза по четвертям',['quarter']],['смесь: медленное от высоты, быстрое от фазы по четвертям',['quarter','mix']]]){ const R=analyse(meta,x,opt); out[name]=R;
+  for(const [name,opt] of [['как в игре',[]],['фаза по четвертям',['quarter']],['смесь: медленное от высоты, быстрое от фазы по четвертям',['quarter','mix']],['смесь, медленное от дальности эха (1.58s)',['quarter','mix','mixabs']]]){ const R=analyse(meta,x,opt); out[name]=R;
     console.log(`  — ${name}: прямая по удержаниям ${R.fit.pts.map(p=>p[0]+' см').join(', ')}: 1 мм сонара = ${(10*R.fit.k).toFixed(2)} мм ладони (отклонение от прямой до ${f1(R.fit.lin)} см); дрожь в покое ${Object.keys(R.jit).map(c=>c+' см: '+f2(R.jit[c])).join(', ')} см`);
     R.moves.forEach(m=>console.log(`      ход ${m.per} с: концы ${f1(m.bot)} и ${f1(m.top)} см (надо 5 и 15) → ход ${f1(m.travel)} из 10 см; конец позже стука на ${(m.lag*1000).toFixed(0)} мс; мелкая дрожь на ходу ${f2(m.fine)} см; ладонь видна ${f1(m.seen)}%`));
     if(R.flick) console.log(`      рывки: вверх до ${f1(R.flick.peak)} см (надо 15) от ${f1(R.flick.base)}; ladonь видна ${f1(R.flick.seen)}%`.replace('ladonь','ладонь'));

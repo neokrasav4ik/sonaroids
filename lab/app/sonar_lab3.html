@@ -1922,8 +1922,15 @@ function arcFrame(f,gap,r){ if(!ARC.on) return; if(ARC.frames.length<ARC_MAX){ i
    сглаженной). Никаких добавок, упреждений и фильтров сверх этого — платформа там, куда сонар видит ладонь. */
 var MIX_TAU=3;
 function mixFrame(r){ if(!r.present||r.height===null||!(ARC.phase==='play'||ARC.phase==='count')){ return; } var F=r.fast*(DSP2.info().cal.s||1), a=1-Math.exp(-N/(MIX_TAU*fs));
-  if(ARC.mxH===undefined||ARC.mxH===null){ ARC.mxH=r.height; ARC.mxF=F; }
-  ARC.mxH+=a*(r.height-ARC.mxH); ARC.mxF+=a*(F-ARC.mxF); ARC.mix=ARC.mxH+(F-ARC.mxF); }
+  if(ARC.mxH===undefined||ARC.mxH===null){ ARC.mxH=r.height; ARC.mxF=F; ARC.mxOff=null; }
+  /* 1.58s (Ден 13:10: «во время игры платформы поднимаются, к концу партии упираю ладонь буквально в стол — а платформы всё равно высоко»):
+     «высота» DSP при резких движениях уплывает от дальности эха на 20–40 мм за полминуты (запись 13:10: высота−эхо −11 → +12 мм, низ
+     ракеток 42 → 82 мм при ладони у стола). Медленная часть теперь держится за дальность эха (abs) со сдвигом, выученным за отсчёт
+     (среднее высота−эхо за ~1,5 с), — как стояло на старте, так и стоит; быстрая — по-прежнему от фазы. На 13:10 низ ракеток 43 → 53–65 мм */
+  var base=r.height; if(r.abs!==null&&r.abs!==undefined){ var dd=r.height-r.abs;
+    if(ARC.phase==='count') ARC.mxOff=ARC.mxOff===null?dd:ARC.mxOff+(1-Math.exp(-N/(1.5*fs)))*(dd-ARC.mxOff);
+    else if(ARC.mxOff!==null) base=r.abs+ARC.mxOff; }
+  ARC.mxH+=a*(base-ARC.mxH); ARC.mxF+=a*(F-ARC.mxF); ARC.mix=ARC.mxH+(F-ARC.mxF); }
 function arcOpen(g){ arcGame=g; var G=ARC_GAMES[g]; el('acTitle').textContent=G.title+' — прототип'; el('acIntro').textContent=G.intro;
   var b=ARC.best[g]; el('acBest').textContent=b===undefined?'':'Лучший результат: '+arcFmt(g,b); show('arcIntro'); }
 function arcFmt(g,v){ return g==='slalom'?v.toFixed(1).replace('.',',')+' с':(g==='cave'||g==='race')?Math.round(v)+' м':String(v); }
@@ -2421,7 +2428,7 @@ function arcDraw(){ var cv=el('acC'); if(!cv||!cv.getContext) return; var dpr=Ma
   c.fillText(ARC.dist===null||ARC.dist===undefined?'ладони не слышно':(ARC.present?'':'(нет ладони) ')+'ладонь '+(ARC.dist/10).toFixed(1).replace('.',',')+' см',W/2,H-6*dpr); }
 function arcSave(){ if(!ARC.frames.length) return; var n=ARC.frames.length*N, all=new Float32Array(n); ARC.frames.forEach(function(f,j){ all.set(f,j*N); });
   var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
-  var meta={v:1,kind:'arc-play',game:ARC.game,port:ARC.port,autocenter:true,unwrap:false,half:false,quarter:ARC.game==='juggle'||ARC.game==='follow'||ARC.game==='pong',mix_tau:MIX_TAU,unw:DSP2.info().unw,halfN:DSP2.info().half,jg:ARC.game==='juggle'||ARC.game==='pong'?{pad_lo:JG_PAD_LO,pad_h:JG_PAD_H,hp_s:JG_HP,hp_g:JG_HPG,lead_s:JG_LEAD,g:JG_G,practice:JG_PRACTICE,set:JG_SET,bowls:JG_BOWLS,kicks:JG_KICKS,sens:JG_SENS,damps:JG_DAMPS,hw:JG_HW,lives:JG_LIVES,pong:{hw:PG_HW,xc:PG_XC,g:PG_G,lift:PG_LIFT,net0:PG_NET0,tilt:PG_TILT,e:PG_E,hit:PG_HIT,sliders:PG_V,training:true},v:'1.58g'}:null,tune:ARC.T?{field:+ARC.T.field.toFixed(2),asym:Tune.ASYM,shifts:ARC.shifts}:null,margin:ARC_M,
+  var meta={v:1,kind:'arc-play',game:ARC.game,port:ARC.port,autocenter:true,unwrap:false,half:false,quarter:ARC.game==='juggle'||ARC.game==='follow'||ARC.game==='pong',mix_tau:MIX_TAU,mix_anchor:'abs',mix_off:ARC.mxOff===undefined||ARC.mxOff===null?null:+ARC.mxOff.toFixed(1),unw:DSP2.info().unw,halfN:DSP2.info().half,jg:ARC.game==='juggle'||ARC.game==='pong'?{pad_lo:JG_PAD_LO,pad_h:JG_PAD_H,hp_s:JG_HP,hp_g:JG_HPG,lead_s:JG_LEAD,g:JG_G,practice:JG_PRACTICE,set:JG_SET,bowls:JG_BOWLS,kicks:JG_KICKS,sens:JG_SENS,damps:JG_DAMPS,hw:JG_HW,lives:JG_LIVES,pong:{hw:PG_HW,xc:PG_XC,g:PG_G,lift:PG_LIFT,net0:PG_NET0,tilt:PG_TILT,e:PG_E,hit:PG_HIT,sliders:PG_V,training:true},v:'1.58g'}:null,tune:ARC.T?{field:+ARC.T.field.toFixed(2),asym:Tune.ASYM,shifts:ARC.shifts}:null,margin:ARC_M,
     fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:(typeof linkPar==='function'?linkPar():'all'),channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
     cal:DSP2.info().cal||PHYS_CAL,marks:ARC.marks,log:ARC.log,score:ARC.score,summary:arcSummary(),samples:n,gaps:ARC.gaps,peak:pk,
     orientation:{angle:(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0),w:window.innerWidth,h:window.innerHeight},

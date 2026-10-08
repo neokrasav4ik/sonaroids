@@ -452,7 +452,7 @@ var ARC_STEP={
         if(b.rideMax&&up<0.85*b.rideMax){ var slH=SH.s*Ap/hw*SH.f, nlH=Math.sqrt(slH*slH+1), nxH=slH/nlH, nyH=-1/nlH;
           /* с места мяч не разогнать до паса обычным взмахом (нет прилетевшего мяча, который отскакивает сам) — подача с подмогой:
              обычный взмах (скорость ракетки 0,5) даёт высокий пас в центр чужой, слабее — ближе, сильнее — в потолок */
-          var tc=Math.tan(PG_TILT*Math.PI/180), hcS=(ar*PG_V.fw/2)/(4*tc), vcc=Math.sqrt(2*PG_G*hcS)*Math.sqrt(1+tc*tc), vS=vcc*Math.max(0.5,Math.min(1.35,b.rideMax/0.5));
+          var tc=Math.tan(PG_TILT*Math.PI/180), hcS=(ar*PG_V.fw/2)/(4*tc), vcc=Math.sqrt(2*PG_G*hcS)*Math.sqrt(1+tc*tc), vS=vcc*Math.max(0.6,Math.min(1,b.rideMax/0.8));   /* 1.58z+ (Ден 17:50: «первая подача слишком сильная»): обычный взмах 0,53 давал полную силу — теперь полный пас со взмаха 0,8, сильнее не бывает (подача в потолок не уходит), слабее — ближе */
           b.vx=vS*nxH; b.vy=vS*nyH; arcEv('serve-hit:'+b.rideMax.toFixed(2)); b.hold=false; b.on=false; b.touched=false; b.peakY=b.y; b.peakX=b.x; ARC.tosses++; arcEv('toss:'+(-b.vy).toFixed(2)+':'+b.vx.toFixed(2)+':serve'); sfx('jtoss',-b.vy); }
         return; }
       var was=b.on, py0=b.y; b.vy+=PG_G*dt; b.x+=b.vx*dt; b.y+=b.vy*dt; b.on=false; if(b.peakY!==undefined&&b.peakY!==null&&b.y<b.peakY){ b.peakY=b.y; b.peakX=b.x; }

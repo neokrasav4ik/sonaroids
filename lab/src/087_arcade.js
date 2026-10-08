@@ -167,9 +167,12 @@ var PG_HIT=0.75, PG_HW=0.15, PG_XC=0.22, PG_G=2.4, PG_LIFT=0.10, PG_NET0=0.72, P
 PG_SL=[{k:'g',t:'Тяжесть',min:0.8,max:4.5,st:0.1,d:2},{k:'hit',t:'Сила удара',min:0.2,max:1.6,st:0.05,d:0.4},{k:'e',t:'Прыгучесть',min:0.1,max:0.95,st:0.05,d:0.65},
   {k:'hwr',t:'Ширина ракеток',min:0.1,max:1,st:0.05,d:0.95},{k:'fw',t:'Ширина поля',min:0.3,max:1,st:0.05,d:0.7},
   {k:'net',t:'Высота сетки',min:0,max:0.3,st:0.01,d:0.03},{k:'tilt',t:'Наклон для отскока, °',min:0,max:60,st:1,d:43},{k:'tiltv',t:'Наклон на экране, °',min:0,max:60,st:1,d:20},
-  {k:'grip',t:'Цепкие ракетки',min:0,max:1,st:1,d:1},{k:'spr',t:'Пружины',min:0,max:2,st:0.1,d:1},{k:'curve',t:'Изогнутая ракетка',min:0,max:2,st:1,d:0},{k:'grow',t:'Сужение ракеток',min:0,max:2,st:1,d:0,opts:[0,1,2]},{k:'wall',t:'Боковые стенки',min:0,max:1,st:1,d:0},{k:'vx',t:'Скорость вбок',min:0,max:3,st:0.05,d:0},
-  {k:'lives',t:'Мячей',min:0,max:10,st:1,d:5,opts:[3,5,10,0]},{k:'time',t:'Время',min:0,max:10,st:1,d:0,opts:[0,3,5,10]},
-  {k:'pts',t:'Очки',min:0,max:1,st:1,d:0,opts:[0,1]},{k:'mult',t:'Множитель за узкие ракетки',min:0,max:1,st:1,d:1,opts:[1,0]},{k:'combo',t:'Серия',min:0,max:1,st:1,d:0,opts:[0,1]},{k:'ceil',t:'Потолок',min:0,max:1,st:1,d:0,opts:[0,1]}],
+  {k:'grip',t:'Цепкие ракетки',min:0,max:1,st:1,d:1},{k:'spr',t:'Пружины',min:0,max:2,st:0.1,d:1},{k:'curve',t:'Изогнутая ракетка',min:0,max:2,st:1,d:0},{k:'grow',t:'Сужение ракеток',min:0,max:2,st:1,d:0,opts:[0,1,2],help:'«Каждую минуту» — честно для всех. «За 10 чистых пасов» наказывает за ровную игру, и его обходят, нарочно задевая потолок.',rec:2},{k:'wall',t:'Боковые стенки',min:0,max:1,st:1,d:0},{k:'vx',t:'Скорость вбок',min:0,max:3,st:0.05,d:0},
+  {k:'lives',t:'Мячей',min:0,max:10,st:1,d:5,opts:[3,5,10,0],help:'Сколько мячей можно уронить за игру.',rec:3},{k:'time',t:'Время',min:0,max:10,st:1,d:0,opts:[0,3,5,10],help:'Длина партии. С ограничением все играют в равных условиях.',rec:5},
+  {k:'pts',t:'Очки',min:0,max:2,st:1,d:0,opts:[0,2,1],help:'«Круче» — высокая дуга заметно ценнее, рискнуть становится осознанным выбором. «За пас» — высота не важна.',rec:2},{k:'mult',t:'Множитель за узкие ракетки',min:0,max:1,st:1,d:1,opts:[1,0],help:'Чем уже ракетки, тем больше очков за пас.',rec:1},{k:'combo',t:'Серия',min:0,max:1,st:1,d:0,opts:[0,1],help:'Каждый чистый пас подряд даёт +10% (до ×2). Награда за ровную игру без касаний потолка.',rec:1},{k:'ceil',t:'Потолок',min:0,max:1,st:1,d:0,opts:[0,1],help:'«Мяч потерян» — очень жёстко: каждый лишний сантиметр силы стоит мяча.',rec:0}],
+/* 1.58z10 (Ден 20:20–20:21: «очки растут ещё круче с высотой — добавь опцией.. это важнее; не сбрасывать серию — было бы странным»):
+   «Очки: за высоту, круче» — 100·доля³ вместо 100·доля² (дуга вполовину — 1/8 очков, а не 1/4). Модель (сужение каждую минуту 80→40%, серия,
+   3 мяча, 5 мин): пас в центр на 65% высоты ~17 700, 72% ~17 500, 80% ~13 700 (с долей² было 25 000 / 22 800 / 17 000) */
 /* 1.58z5 (Ден 18:40: «добавь мне регулировку правил в подменю»): правила — раздел «Правила»: мячей, время, сужение (нет / за 10 чистых
    пасов подряд / каждую минуту), очки (за высоту дуги / за пас — 10), множитель за узкие ракетки (есть / нет), серия (каждый чистый пас
    подряд +10%, до ×2; сбрасывают потолок и упавший мяч), потолок (пас без очков / мяч потерян) */   /* 1.58z4: стартовые условия — мячей на игру (0 — без счёта) и время (0 — без ограничения), мин */
@@ -234,15 +237,16 @@ function pgAngles(ar){ ar=ar||((typeof innerWidth!=='undefined'&&innerHeight)?in
   return {lo:Math.ceil(lo),hi:Math.floor(hi),ok:Math.floor(hi)>=Math.ceil(lo)}; }
 function pgNamed(){ try{ var o=JSON.parse(localStorage.getItem('sonar_pg_named')||'{}'); return o&&typeof o==='object'?o:{}; }catch(e){ return {}; } }
 function pgNamedSave(m){ try{ localStorage.setItem('sonar_pg_named',JSON.stringify(m)); }catch(e){} }
-function pgFmt(q,v){ if(q.k==='grow') return ['нет','за 10 чистых пасов','каждую минуту'][Math.round(v)]||'нет'; if(q.k==='pts') return v>=0.5?'за пас':'за высоту дуги'; if(q.k==='mult'||q.k==='combo') return v>=0.5?'есть':'нет'; if(q.k==='ceil') return v>=0.5?'мяч потерян':'пас без очков'; if(q.k==='lives') return v>0?String(Math.round(v)):'без счёта'; if(q.k==='time') return v>0?Math.round(v)+' мин':'без ограничения'; if(q.k==='curve') return ['нет','ровная','чаша'][Math.round(v)]||'нет'; if(q.k==='grow') return v>=0.5?'есть':'нет'; if(q.k==='wall'||q.k==='grip') return v>=0.5?'есть':'нет'; return q.k==='tilt'||q.k==='tiltv'?String(Math.round(v)):(Math.round(v*100)/100).toFixed(2).replace('.',','); }
+function pgFmt(q,v){ if(q.k==='grow') return ['нет','за 10 чистых пасов','каждую минуту'][Math.round(v)]||'нет'; if(q.k==='pts') return ['за высоту дуги','за пас','за высоту, круче'][Math.round(v)]||'за высоту дуги'; if(q.k==='mult'||q.k==='combo') return v>=0.5?'есть':'нет'; if(q.k==='ceil') return v>=0.5?'мяч потерян':'пас без очков'; if(q.k==='lives') return v>0?String(Math.round(v)):'без счёта'; if(q.k==='time') return v>0?Math.round(v)+' мин':'без ограничения'; if(q.k==='curve') return ['нет','ровная','чаша'][Math.round(v)]||'нет'; if(q.k==='grow') return v>=0.5?'есть':'нет'; if(q.k==='wall'||q.k==='grip') return v>=0.5?'есть':'нет'; return q.k==='tilt'||q.k==='tiltv'?String(Math.round(v)):(Math.round(v*100)/100).toFixed(2).replace('.',','); }
 /* 1.58z4 (Ден 18:13: «скомпонуй пункты меню паузы — невозможно никуда попасть.. сделай подменю.. и это меню — перед игрой и в паузе»):
    настройки СонаПонга разложены по разделам: Наборы, Мяч, Ракетки, Поле, Игра и ладонь, Как играть. На главной странице меню — крупные
    действия и кнопки разделов с текущими значениями мелко; раздел — отдельная страница, 3 в ряд, крупно */
 var PG_SECS={ball:['g','hit','e','vx'],rack:['hwr','tilt','tiltv','curve','grip','spr'],field:['fw','net','wall'],rules:['lives','time','grow','pts','mult','combo','ceil']};
 function pgQ(k){ for(var i=0;i<PG_SL.length;i++) if(PG_SL[i].k===k) return PG_SL[i]; return null; }
 function pgIsTog(q){ return q.st===1&&q.min===0&&(q.max===1||q.k==='curve'||q.k==='grow'); }
-function pgCtl(q,box){
-  if(q.opts){ var bo=document.createElement('button'); bo.className='ghost'; bo.textContent=q.t+': '+pgFmt(q,PG_V[q.k]);
+function pgCtl(q,box,help){
+  if(q.opts){ var bo=document.createElement('button'); bo.className='ghost'+(help?' pgrule':''); var ok=q.rec!==undefined&&Math.round(PG_V[q.k])===q.rec;
+    if(help&&q.help) bo.innerHTML=q.t+': <b>'+pgFmt(q,PG_V[q.k])+'</b><small>'+q.help+' <i class="'+(ok?'ok':'')+'">Для баланса: '+pgFmt(q,q.rec)+(ok?' ✓':'')+'</i></small>'; else bo.textContent=q.t+': '+pgFmt(q,PG_V[q.k]);
     bo.addEventListener('click',function(){ var i=q.opts.indexOf(Math.round(PG_V[q.k])); PG_V[q.k]=q.opts[(i+1)%q.opts.length]; pgSave(); pzRender(); }); box.appendChild(bo); return; }
   if(pgIsTog(q)){ var b=document.createElement('button'); b.className='ghost pgtog'+(PG_V[q.k]>=0.5?' on':''); b.textContent=q.t+': '+pgFmt(q,PG_V[q.k]);
     b.addEventListener('click',function(){ PG_V[q.k]=q.max===1?(PG_V[q.k]>=0.5?0:1):(Math.round(PG_V[q.k])+1)%(q.max+1); pgSave(); pzRender(); }); box.appendChild(b); return; }
@@ -297,7 +301,7 @@ function pgClean(b){ if(b.touched){ ARC.clean=0; ARC.series=0; return; } ARC.ser
 function pgPoints(b,pad){ if(b.touched||b.peakY===undefined||b.peakY===null) return; var lvl0=JG_PAD_LO-PG_CB*jgPadH()-PG_LIFT-b.r, room=lvl0-(JG_TOP+b.r), h=(b.y0===undefined?pad-PG_LIFT-b.r:b.y0)-b.peakY;
   /* 1.58z (Ден 16:15: «всплывающие очки убери в угол — отвлекает.. на коротких ракетках очков должно быть больше — коэффициент»):
      множитель — во сколько раз ракетка уже своей половины поля (×1 во всю, ×2,5 при 40%); очки и множитель — в левом верхнем углу */
-  var f=Math.max(0,Math.min(1,h/room)), mult=pgMultAll(), pts=Math.round((PG_V.pts>=0.5?10:100*f*f)*mult); if(pts<1) return; ARC.score=(ARC.score||0)+pts; if(!(ARC.bestPts>=pts)) ARC.bestPts=pts;
+  var f=Math.max(0,Math.min(1,h/room)), mult=pgMultAll(), pts=Math.round((Math.round(PG_V.pts)===1?10:100*Math.pow(f,Math.round(PG_V.pts)===2?3:2))*mult); if(pts<1) return; ARC.score=(ARC.score||0)+pts; if(!(ARC.bestPts>=pts)) ARC.bestPts=pts;
   ARC.lastPts=pts; ARC.lastT=1.5; arcEv('pts:'+pts+':x'+mult.toFixed(2)); }
 /* 1.58z6: толчок пружин — быстро вверх (0,07 с), потом затухающие качания (~0,35 с на качание) */
 function pgKickEnv(t){ if(!(t>=0)||t>1.2) return 0; if(t<0.07) return Math.sin(Math.PI/2*t/0.07); return Math.exp(-(t-0.07)/0.15)*Math.cos(2*Math.PI*(t-0.07)/0.35); }
@@ -485,7 +489,7 @@ var ARC_STEP={
     if(s.k==='move'||s.k==='flick'){ var per=s.k==='move'?s.per:s.gap, nb=Math.floor(u/per); if(nb>=ARC.fwBeat&&nb<s.n){ ARC.fwBeat=nb+1; arcEv('beat:'+(s.k==='move'?(nb%2?5:15):15)); sfx('jtoss',1); } }
     ARC.fwCm=fwCmAt(S,t); var left=Math.max(0,s.t1-t); el('acSub').textContent=left>0.5?Math.ceil(left)+' с':''; },
   pong:function(dt){ if(PG_V.time>0&&ARC.t>=PG_V.time*60&&!ARC.over){ ARC.over=true; arcEv('time-up'); return; }
-    if(Math.round(PG_V.grow)===2){ var tk=Math.max(0.4,1-0.1*Math.floor(ARC.t/60)); if((ARC.narrowK||1)>tk+1e-6){ ARC.narrowK=tk; arcEv('narrow:'+tk.toFixed(1)); sfx('level'); } }
+    if(Math.round(PG_V.grow)===2){ var tk=1-0.125*Math.min(4,Math.floor(ARC.t/60)); if((ARC.narrowK||1)>tk+1e-6){ ARC.narrowK=tk; arcEv('narrow:'+tk.toFixed(1)); sfx('level'); } }
     var pad=ARC.py, vr=ARC.padPrev===null?0:(pad-ARC.padPrev)/Math.max(dt,1e-3); ARC.padPrev=pad;
     ARC.vpS=(ARC.vpS||0)+(Math.max(-4,Math.min(4,vr))-(ARC.vpS||0))*0.45; var vp=ARC.vpS, vk=0.6/jgPadH(), vpb=vp*vk*PG_HIT;
     if(ARC.flash>0) ARC.flash-=dt; if(ARC.say>0){ ARC.say-=dt; if(ARC.say<=0) arcText('',''); }
@@ -691,9 +695,9 @@ el('acGo').addEventListener('click',function(){ arcPlay(); });
 function pzGame(){ return arcGame==='juggle'||arcGame==='pong'; }
 function pgRulesText(){ var g=Math.round(PG_V.grow);
   return 'Две ракетки ходят за одной ладонью. Мяч ложится на середину ракетки — взмахни ладонью вверх, и он полетит через сетку на другую; там поймай и отправь обратно. '+pgRulesOnly(); }
-function pgRulesOnly(){ var g=Math.round(PG_V.grow); return (PG_V.pts>=0.5?'Очки — 10 за каждый пас. ':'Очки — за высоту дуги от места удара: 100 — дуга от нижней точки калибровки почти до потолка; держишь ракетку выше — дуга короче и очков меньше. ')+(PG_V.ceil>=0.5?'Задел потолок — мяч потерян. ':'Задел потолок — пас без очков. ')+
+function pgRulesOnly(){ var g=Math.round(PG_V.grow); return (Math.round(PG_V.pts)===1?'Очки — 10 за каждый пас. ':'Очки — за высоту дуги от места удара'+(Math.round(PG_V.pts)===2?', круче: дуга вполовину — восьмая часть очков':'')+': 100 — дуга от нижней точки калибровки почти до потолка; держишь ракетку выше — дуга короче и очков меньше. ')+(PG_V.ceil>=0.5?'Задел потолок — мяч потерян. ':'Задел потолок — пас без очков. ')+
     (PG_V.mult>=0.5?'Чем уже ракетки, тем больше множитель. ':'')+(PG_V.combo>=0.5?'Серия: каждый чистый пас подряд добавляет 10% (до ×2), потолок и упавший мяч начинают её сначала. ':'')+
-    (g===1?'Каждые 10 чистых пасов подряд ракетки сужаются на 10% (до 40%), обратно не расширяются. ':g===2?'Каждую минуту ракетки сужаются на 10% (до 40%). ':'')+
+    (g===1?'Каждые 10 чистых пасов подряд ракетки сужаются на 10% (до 40%), обратно не расширяются. ':g===2?'Каждую минуту ракетки сужаются на восьмую часть начальной ширины, с 4-й минуты — вдвое уже, чем в начале. ':'')+
     (PG_V.lives>0?'Мячей на игру: '+Math.round(PG_V.lives)+'. ':'Мячей сколько угодно. ')+(PG_V.time>0?'Время: '+Math.round(PG_V.time)+' мин.':'Время не ограничено.'); }
 var PZ={pre:false,sec:null}, PZ_JG=['jgSens','jgBowl','jgKick','jgWall','jgDamp','jgTilt','jgNet','jgLives'];
 function pzShow(open,pre){ var g=pzGame(); if(open){ PZ.pre=!!pre; PZ.sec=null; }
@@ -721,10 +725,15 @@ function pzRender(){ var sub=PZ.sec, store=el('pzStore'); PZ_JG.forEach(function
     var p2=document.createElement('p'); p2.textContent='Телефон горизонтально, разъёмом к ладони. Перед игрой: убери руку, потом подержи ладонь внизу, потом вверху — так платформа узнает твой ход ладони. Сбилось — «Подстроить ладонь заново» в паузе.'; bd.appendChild(p2); return; }
   if(sub==='sets'){ pgSets(bd); return; }
   if(sub==='jset'){ ['jgLives','jgSens','jgBowl','jgKick','jgWall','jgDamp'].forEach(function(id){ bd.appendChild(el(id)); }); return; }
-  (PG_SECS[sub]||[]).forEach(function(k){ var q=pgQ(k); if(q) pgCtl(q,bd); });
+  if(sub==='rules'){ /* 1.58z10 (Ден 20:25: «добавь, с пояснениями.. а то я уже путаюсь, что надо, а что не надо для баланса»): у каждого правила —
+       что оно делает и какое значение — для баланса (по модели 20:02–20:20); кнопка ставит все сразу и ракетки 80% */
+    var bb=document.createElement('button'); bb.className='ghost pgrule pgbal'; var all=['lives','time','grow','pts','mult','combo','ceil'].every(function(k){ return Math.round(PG_V[k])===pgQ(k).rec; })&&Math.abs(PG_V.hwr-0.8)<1e-6;
+    bb.innerHTML='Правила для баланса'+(all?' ✓':'')+'<small>3 мяча, 5 минут, ракетки с 80% и каждую минуту уже — к 4-й вдвое, очки за высоту круче, серия</small>';
+    bb.addEventListener('click',function(){ ['lives','time','grow','pts','mult','combo','ceil'].forEach(function(k){ PG_V[k]=pgQ(k).rec; }); PG_V.hwr=0.8; pgSave(); pzRender(); arcEv('pg-rules-balance'); }); bd.appendChild(bb); }
+  (PG_SECS[sub]||[]).forEach(function(k){ var q=pgQ(k); if(q) pgCtl(q,bd,sub==='rules'); });
   if(sub==='field') bd.appendChild(el('jgNet'));
   if(sub==='rack'){ bd.appendChild(el('jgSens')); pgAngle(bd); }
-  if(sub==='rules'){ var p3=document.createElement('p'); p3.className='pgnow'; p3.textContent='Сейчас: '+pgRulesOnly(); bd.appendChild(p3); } }
+  }
 el('pzUp').addEventListener('click',function(){ PZ.sec=null; pzRender(); });
 el('pzBack').addEventListener('click',function(){ el('arcPause').classList.add('hidden'); show('home'); });
 el('arcPauseB').addEventListener('click',function(){ if(ARC.phase!=='play') return; ARC.paused=true; arcEv('pause'); pzShow(true); });

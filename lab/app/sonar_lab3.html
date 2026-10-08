@@ -2194,7 +2194,8 @@ function pgClean(b){ if(b.touched){ ARC.clean=0; ARC.series=0; return; } ARC.ser
    считать по-новому»): высота дуги — от места, где мяч оторвался от ракетки, до верхней точки, а делится на весь путь от самого нижнего
    положения ракетки до потолка — один для всех. Раньше делилось на путь от ракетки в момент приёма: ракетка у верха хода давала те же
    очки за пас при пасах в 1,5 раза чаще (модель: 80% высоты — 39 пасов в минуту снизу, 57 у верха) */
-function pgPoints(b,pad){ if(b.touched||b.peakY===undefined||b.peakY===null) return; var lvl0=JG_PAD_LO-PG_LIFT-b.r, room=lvl0-(JG_TOP+b.r), h=(b.y0===undefined?pad-PG_LIFT-b.r:b.y0)-b.peakY;
+/* 1.58z8: «самый низ» для очков — нижняя точка калибровки (удобный низ), а не дно: удар оттуда почти до потолка — полные 100, ниже — не больше */
+function pgPoints(b,pad){ if(b.touched||b.peakY===undefined||b.peakY===null) return; var lvl0=JG_PAD_LO-PG_CB*jgPadH()-PG_LIFT-b.r, room=lvl0-(JG_TOP+b.r), h=(b.y0===undefined?pad-PG_LIFT-b.r:b.y0)-b.peakY;
   /* 1.58z (Ден 16:15: «всплывающие очки убери в угол — отвлекает.. на коротких ракетках очков должно быть больше — коэффициент»):
      множитель — во сколько раз ракетка уже своей половины поля (×1 во всю, ×2,5 при 40%); очки и множитель — в левом верхнем углу */
   var f=Math.max(0,Math.min(1,h/room)), mult=pgMultAll(), pts=Math.round((PG_V.pts>=0.5?10:100*f*f)*mult); if(pts<1) return; ARC.score=(ARC.score||0)+pts; if(!(ARC.bestPts>=pts)) ARC.bestPts=pts;
@@ -2269,7 +2270,12 @@ var JG_HP=0.8, JG_HPG=0.55, JG_LEAD=0.03, JG_PRACTICE=true, JG_OE={mc:1.0,beta:8
    удержания: «опусти ладонь туда, где будешь отбивать снизу, — держи», «подними на удобную высоту — держи». Ладонь стоит 1,2 с в пределах
    1 см — точка взята (звук). Низ → ракетки у низа экрана (доля 0,08), верх → 0,75; между ними — прямо пропорционально. Без взмахов и без
    подгонки шкалы сонара: что показал рукой, то и ход. В паузе — «Подстроить заново» (только эти два шага, игра продолжается). */
-var PG_CB=0.08, PG_CT=0.75;
+/* 1.58z8 (Ден 19:41–19:44: «с самого низа бить сложно — надо ловить ход ракетки вслепую» → «давай попробуем»; запись 19:31: треть партии
+   ракетка лежала на дне, а ладонь — ещё на 1–1,5 см ниже порога): мягкое дно. Нижняя точка калибровки — теперь 14% хода (было 8%), ниже неё
+   ракетка не встаёт, а продолжает опускаться всё медленнее (доля = 0,14·e^((x−0,14)/0,14), x — прямая шкала по двум удержаниям; в точке
+   0,14 наклон тот же, что выше) — до самого низа экрана не доходит никогда, мёртвой зоны нет. Правило постоянное, от игры не зависит. */
+var PG_CB=0.14, PG_CT=0.75;
+function pgSoftLo(x){ return x<PG_CB?PG_CB*Math.exp((x-PG_CB)/PG_CB):x; }
 function pgCalStart(){ ARC.c2={step:1,buf:[]}; ARC.T=ARC.T&&ARC.T.lin?ARC.T:Tune.create(100,true); ARC.T.ok=false;
   arcText('Опусти ладонь','Туда, где будешь отбивать снизу (почти у стола), — и держи.'); }
 function pgCalStep(now){ var c=ARC.c2; if(!c) return;
@@ -2281,7 +2287,7 @@ function pgCalStep(now){ var c=ARC.c2; if(!c) return;
     arcText('Теперь подними','На удобную высоту — где будешь бить сверху, — и держи.'); return; }
   if(c.step===2&&med>c.hb+35){ var top=Math.min(c.hb+160,med); ARC.T={field:top-c.hb,ok:true,lin:{b:c.hb,t:top}}; ARC.c2=null; sfx('level'); arcEv('cal:верх:'+top.toFixed(0));
     if(ARC.onCaught){ var f=ARC.onCaught; ARC.onCaught=null; f(); } } }
-function jgRawFrac(T,h){ if(T.lin) return PG_CB+(PG_CT-PG_CB)*(h-T.lin.b)/Math.max(30,T.lin.t-T.lin.b); var FL=2*T.field/(1+Tune.ASYM), FU=2*Tune.ASYM*T.field/(1+Tune.ASYM); return h<100?0.5+(h-100)/FL:0.5+(h-100)/FU; }
+function jgRawFrac(T,h){ if(T.lin) return pgSoftLo(PG_CB+(PG_CT-PG_CB)*(h-T.lin.b)/Math.max(30,T.lin.t-T.lin.b)); var FL=2*T.field/(1+Tune.ASYM), FU=2*Tune.ASYM*T.field/(1+Tune.ASYM); return h<100?0.5+(h-100)/FL:0.5+(h-100)/FU; }
 function jgPad(dt){ var hh=ARC.mix!==undefined&&ARC.mix!==null?ARC.mix:ARC.dist; if(!ARC.T||hh===null||hh===undefined) return;   // 1.57f: без добавок — весь ход ладони = 0,6 экрана
   /* 1.58u: мягкий низ 1.58t убран (Ден 13:34: «автодокалибровка по ходу игры лишняя.. игрок сдвигает диапазон — игра подстраивается —
      управление сместилось — игрок снова сдвигает.. рабочее расстояние уходит в неизвестность»). Это та самая петля «игрок ↔ корабль»
@@ -2570,7 +2576,7 @@ function arcDraw(){ var cv=el('acC'); if(!cv||!cv.getContext) return; var dpr=Ma
   c.fillText(ARC.dist===null||ARC.dist===undefined?'ладони не слышно':(ARC.present?'':'(нет ладони) ')+'ладонь '+(ARC.dist/10).toFixed(1).replace('.',',')+' см',W/2,H-6*dpr); }
 function arcSave(){ if(!ARC.frames.length) return; var n=ARC.frames.length*N, all=new Float32Array(n); ARC.frames.forEach(function(f,j){ all.set(f,j*N); });
   var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
-  var meta={v:1,kind:'arc-play',game:ARC.game,port:ARC.port,autocenter:true,unwrap:false,half:false,quarter:ARC.game==='juggle'||ARC.game==='follow'||ARC.game==='pong',mix_tau:MIX_TAU,mix_anchor:'abs',mix_off:ARC.mxOff===undefined||ARC.mxOff===null?null:+ARC.mxOff.toFixed(1),unw:DSP2.info().unw,halfN:DSP2.info().half,jg:ARC.game==='juggle'||ARC.game==='pong'?{pad_lo:JG_PAD_LO,pad_h:JG_PAD_H,hp_s:JG_HP,hp_g:JG_HPG,lead_s:JG_LEAD,g:JG_G,practice:JG_PRACTICE,set:JG_SET,bowls:JG_BOWLS,kicks:JG_KICKS,sens:JG_SENS,damps:JG_DAMPS,hw:JG_HW,lives:JG_LIVES,pong:{hw:PG_HW,xc:PG_XC,g:PG_G,lift:PG_LIFT,net0:PG_NET0,tilt:PG_TILT,e:PG_E,hit:PG_HIT,sliders:PG_V,training:true},v:'1.58g'}:null,tune:ARC.T?{field:+ARC.T.field.toFixed(2),asym:Tune.ASYM,shifts:ARC.shifts,lin:ARC.T.lin?{b:+ARC.T.lin.b.toFixed(1),t:+ARC.T.lin.t.toFixed(1),fb:PG_CB,ft:PG_CT}:null}:null,margin:ARC_M,
+  var meta={v:1,kind:'arc-play',game:ARC.game,port:ARC.port,autocenter:true,unwrap:false,half:false,quarter:ARC.game==='juggle'||ARC.game==='follow'||ARC.game==='pong',mix_tau:MIX_TAU,mix_anchor:'abs',mix_off:ARC.mxOff===undefined||ARC.mxOff===null?null:+ARC.mxOff.toFixed(1),unw:DSP2.info().unw,halfN:DSP2.info().half,jg:ARC.game==='juggle'||ARC.game==='pong'?{pad_lo:JG_PAD_LO,pad_h:JG_PAD_H,hp_s:JG_HP,hp_g:JG_HPG,lead_s:JG_LEAD,g:JG_G,practice:JG_PRACTICE,set:JG_SET,bowls:JG_BOWLS,kicks:JG_KICKS,sens:JG_SENS,damps:JG_DAMPS,hw:JG_HW,lives:JG_LIVES,pong:{hw:PG_HW,xc:PG_XC,g:PG_G,lift:PG_LIFT,net0:PG_NET0,tilt:PG_TILT,e:PG_E,hit:PG_HIT,sliders:PG_V,training:true},v:'1.58g'}:null,tune:ARC.T?{field:+ARC.T.field.toFixed(2),asym:Tune.ASYM,shifts:ARC.shifts,lin:ARC.T.lin?{b:+ARC.T.lin.b.toFixed(1),t:+ARC.T.lin.t.toFixed(1),fb:PG_CB,ft:PG_CT,soft:true}:null}:null,margin:ARC_M,
     fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:(typeof linkPar==='function'?linkPar():'all'),channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
     cal:DSP2.info().cal||PHYS_CAL,marks:ARC.marks,log:ARC.log,score:ARC.score,summary:arcSummary(),samples:n,gaps:ARC.gaps,peak:pk,
     orientation:{angle:(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0),w:window.innerWidth,h:window.innerHeight},
@@ -2588,7 +2594,7 @@ el('acGo').addEventListener('click',function(){ arcPlay(); });
 function pzGame(){ return arcGame==='juggle'||arcGame==='pong'; }
 function pgRulesText(){ var g=Math.round(PG_V.grow);
   return 'Две ракетки ходят за одной ладонью. Мяч ложится на середину ракетки — взмахни ладонью вверх, и он полетит через сетку на другую; там поймай и отправь обратно. '+pgRulesOnly(); }
-function pgRulesOnly(){ var g=Math.round(PG_V.grow); return (PG_V.pts>=0.5?'Очки — 10 за каждый пас. ':'Очки — за высоту дуги от места удара: 100 — дуга от самого низа почти до потолка; держишь ракетку выше — дуга короче и очков меньше. ')+(PG_V.ceil>=0.5?'Задел потолок — мяч потерян. ':'Задел потолок — пас без очков. ')+
+function pgRulesOnly(){ var g=Math.round(PG_V.grow); return (PG_V.pts>=0.5?'Очки — 10 за каждый пас. ':'Очки — за высоту дуги от места удара: 100 — дуга от нижней точки калибровки почти до потолка; держишь ракетку выше — дуга короче и очков меньше. ')+(PG_V.ceil>=0.5?'Задел потолок — мяч потерян. ':'Задел потолок — пас без очков. ')+
     (PG_V.mult>=0.5?'Чем уже ракетки, тем больше множитель. ':'')+(PG_V.combo>=0.5?'Серия: каждый чистый пас подряд добавляет 10% (до ×2), потолок и упавший мяч начинают её сначала. ':'')+
     (g===1?'Каждые 10 чистых пасов подряд ракетки сужаются на 10% (до 40%), обратно не расширяются. ':g===2?'Каждую минуту ракетки сужаются на 10% (до 40%). ':'')+
     (PG_V.lives>0?'Мячей на игру: '+Math.round(PG_V.lives)+'. ':'Мячей сколько угодно. ')+(PG_V.time>0?'Время: '+Math.round(PG_V.time)+' мин.':'Время не ограничено.'); }

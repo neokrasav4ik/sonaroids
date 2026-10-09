@@ -13,7 +13,7 @@ var PalmClock=(function(){
   /* a frame's height (mm) that arrived at «now» (ms); N, fs — the frame's size and the rate */
   function push(c,k,h,now,N,fs){ var T=1000*N/fs; c.T=T; c.tl.push({k:k,a:now,l:now-k*T,h:h});
     while(c.tl.length>2&&c.tl[0].a<now-1000) c.tl.shift();
-    var ls=c.tl.map(function(q){ return q.l; }).sort(function(p,q){ return p-q; }); c.lag=ls[Math.min(ls.length-1,Math.floor(ls.length*0.9))]; }
+    if(c.lag===null||k%8===0){ var ls=c.tl.map(function(q){ return q.l; }).sort(function(p,q){ return p-q; }); c.lag=ls[Math.min(ls.length-1,Math.floor(ls.length*0.9))]; } }   // 1.59n: the lateness every 8th frame (~12 a second) — enough, and less work
   /* the height at «now» (ms) on the screen's clock; null when none is kept */
   function at(c,now){ var tl=c.tl, n=tl.length, i; if(!n||c.lag===null||c.T===null) return null;
     var kf=(now-c.lag)/c.T;

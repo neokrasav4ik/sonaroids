@@ -114,7 +114,8 @@ function mouseReady(){ prep={res:{ok:true},doneT:-9}; if(!T||!T.ok){ T=Tune.crea
 /* 1.59l: t (ms, the screen's clock) — the palm at that moment, between two sonar frames (src/17_palmclock.js: the Mi 9 Lite hands the
    frames over two at once, and the ship stood still on 28% of the steps); without t — the latest height, as before */
 var PCK=PalmClock.create();
-Sonar.listen(function(f,r){ var k=PalmClock.tick(PCK); if(r&&r.present&&r.height!==null&&r.height!==undefined) PalmClock.push(PCK,k,r.height,performance.now(),512,Sonar.info().fs||48000); });
+var PCK_FS=0;   /* 1.59n: only for SonaFly and SonaRace (SonaPong has its own), the rate looked up once */
+Sonar.listen(function(f,r){ var k=PalmClock.tick(PCK); if(mode==='pong') return; if(!PCK_FS) PCK_FS=Sonar.info().fs||48000; if(r&&r.present&&r.height!==null&&r.height!==undefined) PalmClock.push(PCK,k,r.height,performance.now(),512,PCK_FS); });
 function handFrac(t){ if(mouseOn()) return MOUSE.y===null?null:Math.max(0,Math.min(1,(Core.FH-Core.MARGIN-MOUSE.y/K)/(Core.FH-2*Core.MARGIN)));
   var st=Sonar.state(); if(!(st&&st.present&&T)) return null; var hh=t===undefined?null:PalmClock.at(PCK,t); return Tune.fracOf(T,hh===null?st.height:hh); }
 

@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='1.59m';
+var VERSION='1.59n';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -904,7 +904,7 @@ var PalmClock=(function(){
   /* a frame's height (mm) that arrived at «now» (ms); N, fs — the frame's size and the rate */
   function push(c,k,h,now,N,fs){ var T=1000*N/fs; c.T=T; c.tl.push({k:k,a:now,l:now-k*T,h:h});
     while(c.tl.length>2&&c.tl[0].a<now-1000) c.tl.shift();
-    var ls=c.tl.map(function(q){ return q.l; }).sort(function(p,q){ return p-q; }); c.lag=ls[Math.min(ls.length-1,Math.floor(ls.length*0.9))]; }
+    if(c.lag===null||k%8===0){ var ls=c.tl.map(function(q){ return q.l; }).sort(function(p,q){ return p-q; }); c.lag=ls[Math.min(ls.length-1,Math.floor(ls.length*0.9))]; } }   // 1.59n: the lateness every 8th frame (~12 a second) — enough, and less work
   /* the height at «now» (ms) on the screen's clock; null when none is kept */
   function at(c,now){ var tl=c.tl, n=tl.length, i; if(!n||c.lag===null||c.T===null) return null;
     var kf=(now-c.lag)/c.T;
@@ -6162,7 +6162,8 @@ function mouseReady(){ prep={res:{ok:true},doneT:-9}; if(!T||!T.ok){ T=Tune.crea
 /* 1.59l: t (ms, the screen's clock) — the palm at that moment, between two sonar frames (src/17_palmclock.js: the Mi 9 Lite hands the
    frames over two at once, and the ship stood still on 28% of the steps); without t — the latest height, as before */
 var PCK=PalmClock.create();
-Sonar.listen(function(f,r){ var k=PalmClock.tick(PCK); if(r&&r.present&&r.height!==null&&r.height!==undefined) PalmClock.push(PCK,k,r.height,performance.now(),512,Sonar.info().fs||48000); });
+var PCK_FS=0;   /* 1.59n: only for SonaFly and SonaRace (SonaPong has its own), the rate looked up once */
+Sonar.listen(function(f,r){ var k=PalmClock.tick(PCK); if(mode==='pong') return; if(!PCK_FS) PCK_FS=Sonar.info().fs||48000; if(r&&r.present&&r.height!==null&&r.height!==undefined) PalmClock.push(PCK,k,r.height,performance.now(),512,PCK_FS); });
 function handFrac(t){ if(mouseOn()) return MOUSE.y===null?null:Math.max(0,Math.min(1,(Core.FH-Core.MARGIN-MOUSE.y/K)/(Core.FH-2*Core.MARGIN)));
   var st=Sonar.state(); if(!(st&&st.present&&T)) return null; var hh=t===undefined?null:PalmClock.at(PCK,t); return Tune.fracOf(T,hh===null?st.height:hh); }
 

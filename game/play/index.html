@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='1.59h';
+var VERSION='1.59i';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -826,7 +826,7 @@ if(typeof module!=='undefined') module.exports=Pong;
 var PongCtl=(function(){
   var TAU=3, TAU_OFF=1.5, CB=0.08, CT=0.75, TOL=14, WIN=1.2, NEED=1.1, MINR=35, MAXR=160;
   function create(){ return {mxH:null,mxF:null,mxOff:null,mxCal:null,mix:null,height:null,abs:null,present:false,
-    lin:null,hold:null,k:0,tl:[],lag:null}; }
+    lin:null,hold:null,k:0,tl:[],lag:null,mxMap:null}; }
   /* one DSP2 frame (r: its result; N, fs: the frame's size and rate; calS: DSP2's scale cal.s; counting: the countdown before play — the
      offset is learnt there only if the holds gave none). Returns the mix, or null while no palm is seen */
   function frame(c,r,N,fs,calS,counting,now){
@@ -835,7 +835,8 @@ var PongCtl=(function(){
     if(now!==undefined&&now!==null) tlPush(c,k,now,N,fs);
     var F=r.fast*(calS||1), a=1-Math.exp(-N/(TAU*fs));
     var base=r.height; if(r.abs!==null&&r.abs!==undefined){ var dd=r.height-r.abs;
-      if(c.mxCal!==null){ c.mxOff=c.mxCal; base=r.abs+c.mxOff; }
+      if(c.mxMap){ base=c.mxMap.h0+(r.abs-c.mxMap.a0)*c.mxMap.g; }
+      else if(c.mxCal!==null){ c.mxOff=c.mxCal; base=r.abs+c.mxOff; }
       else if(counting) c.mxOff=c.mxOff===null?dd:c.mxOff+(1-Math.exp(-N/(TAU_OFF*fs)))*(dd-c.mxOff);
       else if(c.mxOff!==null) base=r.abs+c.mxOff; }
     /* the mix = the phase + a slow correction (the echo's place − the phase), smoothed over 3 s. 1.59c: the correction follows a steady
@@ -861,7 +862,7 @@ var PongCtl=(function(){
     var p=tl[i-1], q=tl[i]; if(p.m===null||q.m===null) return q.m!==null?q.m:palm(c);
     return p.m+(q.m-p.m)*(kf-p.k)/(q.k-p.k); }
   /* the calibration: start, then hold() every frame (t — seconds). Returns {step:1|2, k:0…5 dots, caught:'low'|'top'|null, done} */
-  function start(c){ c.hold={step:1,buf:[],k:-1,hb:null,dd:[]}; }
+  function start(c){ c.hold={step:1,buf:[],k:-1,hb:null,dd:[],lo:null}; c.mxMap=null; }
   function hold(c,t){ var H=c.hold; if(!H) return {done:true,step:0,k:0,caught:null};
     var h=c.height, res={step:H.step,k:0,caught:null,done:false};
     if(c.present&&h!==null&&h!==undefined) H.buf.push({t:t,h:h,a:(c.abs===undefined?null:c.abs)});
@@ -871,12 +872,20 @@ var PongCtl=(function(){
     if(H.buf.length<20||H.buf[H.buf.length-1].t-H.buf[0].t<NEED) return res;
     var hs=H.buf.map(function(q){ return q.h; }).sort(function(p,q){ return p-q; }), lo=hs[Math.floor(hs.length*0.1)], hi=hs[Math.floor(hs.length*0.9)], med=hs[hs.length>>1];
     if(hi-lo>TOL) return res;
-    var dds=H.buf.filter(function(q){ return q.a!==null&&q.a!==undefined; }).map(function(q){ return q.h-q.a; });
-    if(H.step===1){ H.dd=dds; H.hb=med; H.step=2; H.buf=[]; c.lin={b:med,t:med+100}; res.caught='low'; res.step=2; res.k=0; return res; }
+    var wa=H.buf.filter(function(q){ return q.a!==null&&q.a!==undefined; }), dds=wa.map(function(q){ return q.h-q.a; }),
+      ma=wa.length>=10?medOf(wa.map(function(q){ return q.a; })):null, mh=wa.length>=10?medOf(wa.map(function(q){ return q.h; })):null;
+    if(H.step===1){ H.dd=dds; H.hb=med; H.lo=ma===null?null:{a:ma,h:mh}; H.step=2; H.buf=[]; c.lin={b:med,t:med+100}; res.caught='low'; res.step=2; res.k=0; return res; }
     if(med>H.hb+MINR){ var top=Math.min(H.hb+MAXR,med); c.lin={b:H.hb,t:top}; H.dd=H.dd.concat(dds);
       if(H.dd.length>=20){ var sd=H.dd.slice().sort(function(p,q){ return p-q; }); c.mxCal=sd[sd.length>>1]; c.mxOff=c.mxCal; c.mxH=null; }
+      /* 1.59i: the echo's scale too, from the two holds — the echo's place is turned into the phase's millimetres by a line through both:
+         at each hold the slow part then sits exactly where the phase put the palm. Den's Mi 9 Lite: its echo moves 1.8–2.4 mm per mm of
+         the phase (six games 20:28–22:20; the iPhone 1.0–1.3); with an offset only, a palm that moved and stayed was followed at once by
+         the phase and then, over ~3 s, carried on as far again by the echo — the rackets slid off («поначалу калибровка опять уводила
+         ладонь вниз»). Taken only when the holds are far enough apart on the echo too (15 mm) and the scale is sane (0.3–2) */
+      c.mxMap=null; if(H.lo&&ma!==null&&Math.abs(ma-H.lo.a)>=15){ var g=(mh-H.lo.h)/(ma-H.lo.a); if(g>=0.3&&g<=2) c.mxMap={a0:H.lo.a,h0:H.lo.h,g:g}; }
       c.hold=null; res.caught='top'; res.done=true; }
     return res; }
+  function medOf(v){ v=v.slice().sort(function(p,q){ return p-q; }); return v[v.length>>1]; }
   function holding(c){ return !!c.hold; }
   function lowStep(c){ return !!c.hold&&c.hold.step===1; }
   /* the palm (a height in mm, the mix) → the share of the calibrated travel that the rules take (0.08 at the low hold, 0.75 at the top) */
@@ -4457,7 +4466,7 @@ function pgCount(){ countT-=DT; var v=pgView(PG.view?PG.view.py:Pong.TUNE.PAD_LO
 function pgCountStart(){ countT=3; try{ DSP2.set('quarter',1); }catch(e){} go('count'); }
 function pgStart(){ PG.fps=null; var seed=newSeed(); var lin=PG.c&&PG.c.lin; g=Pong.create(seed,pgAr(),pgSens(),lin?Math.max(30,lin.t-lin.b):null); var f=PG.c?PongCtl.frac(PG.c,PongCtl.palm(PG.c)):null; if(f!==null) g.py=Pong.padOf(g,f);
   acc=0; parts=[]; PG.pts=[]; PG.newBest=false; nickAsked=false; var I=Sonar.info(), c=PG.c||{};
-  Logs.gameStart({core:Pong.TAG,game:'pong',seed:seed,ar:+g.ar.toFixed(4),sens:pgSens(),span:g.span,cal:DSP2.info().cal,lin:c.lin?{b:+c.lin.b.toFixed(1),t:+c.lin.t.toFixed(1)}:null,mix_off:c.mxCal===null||c.mxCal===undefined?null:+c.mxCal.toFixed(1),
+  Logs.gameStart({core:Pong.TAG,game:'pong',seed:seed,ar:+g.ar.toFixed(4),sens:pgSens(),span:g.span,cal:DSP2.info().cal,lin:c.lin?{b:+c.lin.b.toFixed(1),t:+c.lin.t.toFixed(1)}:null,mix_off:c.mxCal===null||c.mxCal===undefined?null:+c.mxCal.toFixed(1),mix_map:c.mxMap?{a0:+c.mxMap.a0.toFixed(1),h0:+c.mxMap.h0.toFixed(1),g:+c.mxMap.g.toFixed(3)}:null,
     chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids'});
   Sfx.play('start'); go('play'); }
 /* ── the game ── */

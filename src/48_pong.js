@@ -34,19 +34,23 @@ function pgRacket(q,i){ var n=18, xc=q.ar*(i?1-Pong.TUNE.XC:Pong.TUNE.XC), hw=q.
   for(k=n;k>=0;k--) lx.lineTo(pts[k][0],pts[k][1]+4+2*Math.sin(k/n*Math.PI)); lx.closePath(); lx.fill();
   lx.strokeStyle=PG_COL.rack; lx.lineWidth=2.2; lx.lineJoin='round'; lx.lineCap='round'; lx.beginPath(); pts.forEach(function(p,j){ if(j) lx.lineTo(p[0],p[1]); else lx.moveTo(p[0],p[1]); }); lx.stroke(); }
 function pgHeart(x,y,c){ R(c,x,y,2,1); R(c,x+3,y,2,1); R(c,x-1,y+1,7,2); R(c,x,y+3,5,1); R(c,x+1,y+4,3,1); R(c,x+2,y+5,1,1); }
-/* the HUD (Den's lab layout): the score, the multiplier, the balls and the series in the top right corner; the time till the rackets
-   narrow again — a bar along the bottom, burning down to its middle (1.59c; was along the right edge); the pause in the bottom corner on the free side */
-function pgHud(){ var x=LW-SAFE.r-8, y=topY(), m=Pong.mult(g)*(1+Pong.TUNE.SERIES*Math.min(Pong.TUNE.SERIES_N,g.series));
-  text(String(g.score),x,y,P.text,'right',2); y+=PF.CAP*2+5;
-  text('×'+m.toFixed(2),x,y,P.band,'right'); y+=PF.CAP+5;
-  for(var i=0;i<g.lives;i++) pgHeart(x-6-i*9,y,'#ff7a8a'); y+=9;
-  for(var d=0;d<Pong.TUNE.SERIES_N;d++){ var on=d<Math.min(Pong.TUNE.SERIES_N,g.series); R(on?P.band:P.line,x-4-(Pong.TUNE.SERIES_N-1-d)*6,y,4,4); }
+/* the HUD (Den's lab layout): the score and the multiplier in the top corner on the hand's side, the balls and the series under them in the bottom one (1.59d); the time till the
+   rackets narrow again — a bar along the bottom, burning down to its middle (1.59c; was along the right edge). 1.59d (Den 20:23): the pause
+   as in the other games — in the top corner on the free side; the site's name (sonaroids.app) — in the bottom corner on the free side */
+function pgHud(){ var hr=freeSide()==='left', al=hr?'right':'left', sg=hr?-1:1, x=hr?LW-SAFE.r-8:SAFE.l+8, y=topY(), m=Pong.mult(g)*(1+Pong.TUNE.SERIES*Math.min(Pong.TUNE.SERIES_N,g.series));
+  text(String(g.score),x,y,P.text,al,2); y+=PF.CAP*2+5;
+  text('×'+m.toFixed(2),x,y,P.band,al);
+  /* 1.59d (Den 20:31): the balls and the series — one row in the bottom corner on the same side: ♥♥♥♥♥  ■■■■■ (the series nearer the edge) */
+  var N=Pong.TUNE.SERIES_N, by=LH-SAFE.b-12, sw=N*6-2, hw=Math.max(0,g.lives*9-2), sx=hr?x-sw:x+hw+8, hx=hr?sx-8-hw:x;
+  for(var d=0;d<N;d++) R(d<Math.min(N,g.series)?P.band:P.line,sx+d*6,by+1,4,4);
+  for(var i=0;i<g.lives;i++) pgHeart(hx+1+i*9,by,'#ff7a8a');
+  text(SITE,hr?SAFE.l+14:LW-SAFE.r-14,LH-SAFE.b-12,P.soft,hr?'left':'right');
   // the time till the rackets narrow: a thin bar along the bottom, in the middle (1.59c, Den 19:43: «полосу убрать вниз и сделать горизонтальной»)
   var fr=Pong.nextNarrow(g)/Pong.TUNE.NARROW_T, x0=Math.round(LW*0.3), x1=Math.round(LW*0.7), by=LH-SAFE.b-6, bw=Math.round((x1-x0)*fr);
   R(P.line,x0,by,x1-x0,2); R(fr<0.2?P.hit:P.band,Math.round((x0+x1-bw)/2),by,bw,2);
   (PG.pts||[]).forEach(function(p){ p.t-=DT; if(p.t>0){ lx.globalAlpha=Math.min(1,p.t*2); text('+'+p.n,pgX(p.x),pgY(p.y)-14-(1.2-p.t)*12,P.text,'center'); lx.globalAlpha=1; } });
   PG.pts=(PG.pts||[]).filter(function(p){ return p.t>0; }); }
-function pgPauseBtn(){ var s=BH-3, x=freeSide()==='left'?SAFE.l+8:LW-SAFE.r-8-s; iconButton('pause',x,LH-SAFE.b-s-6); }
+function pgPauseBtn(){ iconButton('pause',freeSide()==='left'?Math.round(SAFE.l*0.5)+10:LW-Math.round(SAFE.r*0.5)-10-(BH-3),SAFE.t+7); }   // as SonaFly's and SonaRace's
 /* ── the menu's own rally: the rules played by a bot ── */
 function pgDemoBot(){ var s=12345, rnd=function(){ s=(s*1664525+1013904223)>>>0; return s/4294967296-0.5; }, REST=0.12, T=0.16, st='rest', t0=0, amp=0, h0=REST, hand=REST, trig=0.08, base=0.24;
   return function(q){ var b=q.ball, t=q.t;

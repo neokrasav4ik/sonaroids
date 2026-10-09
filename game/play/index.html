@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='1.59c';
+var VERSION='1.59d';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -726,6 +726,7 @@ var Pong=(function(){
     LIFT:0.10, PAD_LO:0.94, PAD_MIN:0.3, PAD_MAX:0.97, CB:0.08, CT:0.75, R:0.032, TOP:0.03, CEIL_BACK:0.35,
     SENS:[0.3,0.4,0.5,0.6],        // the racket's travel, screen heights: «low», «below middle», «middle», «high» sensitivity
     SPAN_REF:70,                   // 1.59b: the calibrated palm travel (mm) the swing's strength was found with — the lab's usual (Den's holds)
+    SERVE_Y:0.32,                  // 1.59d (pong-3): the serve appears below the pause button and the score (at 0.13 they hid it)
     NARROW_T:30, NARROW_K:0.875, MULT_CAP:2, SERIES:0.1, SERIES_N:5, LIVES:5,
     WAIT:0.8, RESPAWN0:0.3, RESPAWN:0.6, HILL:0.7, HILL_W:0.3, HILL_PTS:200};   // the hill: from 70% of the height, over the last 0.3
   function rng(seed){ var a=seed>>>0; return function(){ a=(a+0x6D2B79F5)>>>0; var t=a; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
@@ -751,7 +752,7 @@ var Pong=(function(){
   function mult(g){ var w=g.hw/(g.ar/4); return 1/Math.max(1/TUNE.MULT_CAP,Math.min(1,w)); }
   function ptsOf(f){ var v=100*(f*f*f); if(f>TUNE.HILL){ var x=(f-TUNE.HILL)/TUNE.HILL_W; v+=TUNE.HILL_PTS*x; } return v; }
   function spawn(g){ var s=g.rand()<0.5?0:1, b={x:0,y:0,vx:0,vy:0,r:TUNE.R,on:false,onI:-1,from:null,to:s?0:1,wait:TUNE.WAIT,peakY:null,y0:null,touched:false,sk:0};
-    b.x=s?g.ar-b.r-0.03:b.r+0.03; b.y=TUNE.TOP+b.r+0.07; g.ball=b; g.events.push('serve'); g.fx.push({serve:s?'right':'left'}); }
+    b.x=s?g.ar-b.r-0.03:b.r+0.03; b.y=TUNE.SERVE_Y; g.ball=b; g.events.push('serve'); g.fx.push({serve:s?'right':'left'}); }
   function serveGo(g,b){ var tx=g.ar*(b.to?1-TUNE.XC:TUNE.XC), ty=surf(g,b.to,tx).y-b.r, ya=TUNE.TOP+b.r+0.012, y0=b.y;
     var vy0=-Math.sqrt(2*TUNE.G*Math.max(0.001,y0-ya)), tu=-vy0/TUNE.G, td=Math.sqrt(2*Math.max(0.01,ty-ya)/TUNE.G); b.vy=vy0; b.vx=(tx-b.x)/(tu+td);
     var hcS=(g.ar/2)/(4*TUNE.T_MID); b.sk=Math.sqrt(Math.min(1,hcS/Math.max(0.01,ty-ya))); g.events.push('go'); }
@@ -801,7 +802,7 @@ var Pong=(function(){
      the middle, far from both edges, so a jitter can't flip it back. More than 5 steps behind (a pause, a hitch) — the rest is dropped.
      Not part of the rules: only the drawing's rhythm */
   function frameSteps(acc){ var n=1; acc-=DT; while(acc>0.75*DT&&n<5){ n++; acc-=DT; } if(acc>0.75*DT) acc=0; if(acc<-0.75*DT){ n--; acc+=DT; } return {n:n,acc:acc}; }
-  var TAG='pong-2';
+  var TAG='pong-3';
   return {NONE:NONE,TAG:TAG,frameSteps:frameSteps,TUNE:TUNE,DT:DT,create:create,step:step,replay:replay,surf:surf,padOf:padOf,hwOf:hwOf,mult:mult,ptsOf:ptsOf,width:width,nextNarrow:nextNarrow};
 })();
 if(typeof module!=='undefined') module.exports=Pong;
@@ -1594,8 +1595,11 @@ function resize(){
   var w=Math.max(200,window.innerWidth), h=Math.max(150,window.innerHeight);
   W=Math.round(w*DPR); H=Math.round(h*DPR);
   S=Math.max(1,Math.round(Math.min(W,H)/PIXH)); LH=Math.ceil(H/S); LW=Math.ceil(W/S); K=LH/180;
-  uiPong=typeof mode!=='undefined'&&mode==='pong';   // 1.59c: SonaPong is drawn at the screen's resolution whatever the graphics switch (a ball on game pixels jumped a whole pixel at a time)
-  uiS=((typeof gfxMode!=='undefined'&&gfxMode==='hd')||uiPong)?S*Math.min(2,DPR)/DPR:1;
+  /* 1.59c: SonaPong is drawn finer than the game pixels whatever the graphics switch (a ball on game pixels jumped a whole pixel at a
+     time); 1.59d: at most twice as fine — at the screen's own resolution the Mi 9 Lite fell to ~45 frames a second (Den 20:28: «лаг в
+     управлении»; in Chromium with the processor slowed 6×: busy 80% → 58%, the same as on game pixels) */
+  uiPong=typeof mode!=='undefined'&&mode==='pong';
+  var uiFull=S*Math.min(2,DPR)/DPR; uiS=uiPong?Math.min(2,uiFull):(typeof gfxMode!=='undefined'&&gfxMode==='hd')?uiFull:1;
   lc.width=Math.round(LW*uiS); lc.height=Math.round(LH*uiS); pc.width=lc.width; pc.height=lc.height;
   lx.setTransform(uiS,0,0,uiS,0,0); lx.imageSmoothingEnabled=false; var pcx0=pc.getContext('2d'); pcx0.setTransform(uiS,0,0,uiS,0,0); pcx0.imageSmoothingEnabled=false;
   var css=function(el){ el.style.width=(LW*S/DPR)+'px'; el.style.height=(LH*S/DPR)+'px'; };
@@ -4322,19 +4326,23 @@ function pgRacket(q,i){ var n=18, xc=q.ar*(i?1-Pong.TUNE.XC:Pong.TUNE.XC), hw=q.
   for(k=n;k>=0;k--) lx.lineTo(pts[k][0],pts[k][1]+4+2*Math.sin(k/n*Math.PI)); lx.closePath(); lx.fill();
   lx.strokeStyle=PG_COL.rack; lx.lineWidth=2.2; lx.lineJoin='round'; lx.lineCap='round'; lx.beginPath(); pts.forEach(function(p,j){ if(j) lx.lineTo(p[0],p[1]); else lx.moveTo(p[0],p[1]); }); lx.stroke(); }
 function pgHeart(x,y,c){ R(c,x,y,2,1); R(c,x+3,y,2,1); R(c,x-1,y+1,7,2); R(c,x,y+3,5,1); R(c,x+1,y+4,3,1); R(c,x+2,y+5,1,1); }
-/* the HUD (Den's lab layout): the score, the multiplier, the balls and the series in the top right corner; the time till the rackets
-   narrow again — a bar along the bottom, burning down to its middle (1.59c; was along the right edge); the pause in the bottom corner on the free side */
-function pgHud(){ var x=LW-SAFE.r-8, y=topY(), m=Pong.mult(g)*(1+Pong.TUNE.SERIES*Math.min(Pong.TUNE.SERIES_N,g.series));
-  text(String(g.score),x,y,P.text,'right',2); y+=PF.CAP*2+5;
-  text('×'+m.toFixed(2),x,y,P.band,'right'); y+=PF.CAP+5;
-  for(var i=0;i<g.lives;i++) pgHeart(x-6-i*9,y,'#ff7a8a'); y+=9;
-  for(var d=0;d<Pong.TUNE.SERIES_N;d++){ var on=d<Math.min(Pong.TUNE.SERIES_N,g.series); R(on?P.band:P.line,x-4-(Pong.TUNE.SERIES_N-1-d)*6,y,4,4); }
+/* the HUD (Den's lab layout): the score and the multiplier in the top corner on the hand's side, the balls and the series under them in the bottom one (1.59d); the time till the
+   rackets narrow again — a bar along the bottom, burning down to its middle (1.59c; was along the right edge). 1.59d (Den 20:23): the pause
+   as in the other games — in the top corner on the free side; the site's name (sonaroids.app) — in the bottom corner on the free side */
+function pgHud(){ var hr=freeSide()==='left', al=hr?'right':'left', sg=hr?-1:1, x=hr?LW-SAFE.r-8:SAFE.l+8, y=topY(), m=Pong.mult(g)*(1+Pong.TUNE.SERIES*Math.min(Pong.TUNE.SERIES_N,g.series));
+  text(String(g.score),x,y,P.text,al,2); y+=PF.CAP*2+5;
+  text('×'+m.toFixed(2),x,y,P.band,al);
+  /* 1.59d (Den 20:31): the balls and the series — one row in the bottom corner on the same side: ♥♥♥♥♥  ■■■■■ (the series nearer the edge) */
+  var N=Pong.TUNE.SERIES_N, by=LH-SAFE.b-12, sw=N*6-2, hw=Math.max(0,g.lives*9-2), sx=hr?x-sw:x+hw+8, hx=hr?sx-8-hw:x;
+  for(var d=0;d<N;d++) R(d<Math.min(N,g.series)?P.band:P.line,sx+d*6,by+1,4,4);
+  for(var i=0;i<g.lives;i++) pgHeart(hx+1+i*9,by,'#ff7a8a');
+  text(SITE,hr?SAFE.l+14:LW-SAFE.r-14,LH-SAFE.b-12,P.soft,hr?'left':'right');
   // the time till the rackets narrow: a thin bar along the bottom, in the middle (1.59c, Den 19:43: «полосу убрать вниз и сделать горизонтальной»)
   var fr=Pong.nextNarrow(g)/Pong.TUNE.NARROW_T, x0=Math.round(LW*0.3), x1=Math.round(LW*0.7), by=LH-SAFE.b-6, bw=Math.round((x1-x0)*fr);
   R(P.line,x0,by,x1-x0,2); R(fr<0.2?P.hit:P.band,Math.round((x0+x1-bw)/2),by,bw,2);
   (PG.pts||[]).forEach(function(p){ p.t-=DT; if(p.t>0){ lx.globalAlpha=Math.min(1,p.t*2); text('+'+p.n,pgX(p.x),pgY(p.y)-14-(1.2-p.t)*12,P.text,'center'); lx.globalAlpha=1; } });
   PG.pts=(PG.pts||[]).filter(function(p){ return p.t>0; }); }
-function pgPauseBtn(){ var s=BH-3, x=freeSide()==='left'?SAFE.l+8:LW-SAFE.r-8-s; iconButton('pause',x,LH-SAFE.b-s-6); }
+function pgPauseBtn(){ iconButton('pause',freeSide()==='left'?Math.round(SAFE.l*0.5)+10:LW-Math.round(SAFE.r*0.5)-10-(BH-3),SAFE.t+7); }   // as SonaFly's and SonaRace's
 /* ── the menu's own rally: the rules played by a bot ── */
 function pgDemoBot(){ var s=12345, rnd=function(){ s=(s*1664525+1013904223)>>>0; return s/4294967296-0.5; }, REST=0.12, T=0.16, st='rest', t0=0, amp=0, h0=REST, hand=REST, trig=0.08, base=0.24;
   return function(q){ var b=q.ball, t=q.t;

@@ -33,6 +33,7 @@ var Pong=(function(){
     LIFT:0.10, PAD_LO:0.94, PAD_MIN:0.3, PAD_MAX:0.97, CB:0.08, CT:0.75, R:0.032, TOP:0.03, CEIL_BACK:0.35,
     SENS:[0.3,0.4,0.5,0.6],        // the racket's travel, screen heights: «low», «below middle», «middle», «high» sensitivity
     SPAN_REF:70,                   // 1.59b: the calibrated palm travel (mm) the swing's strength was found with — the lab's usual (Den's holds)
+    SERVE_Y:0.32,                  // 1.59d (pong-3): the serve appears below the pause button and the score (at 0.13 they hid it)
     NARROW_T:30, NARROW_K:0.875, MULT_CAP:2, SERIES:0.1, SERIES_N:5, LIVES:5,
     WAIT:0.8, RESPAWN0:0.3, RESPAWN:0.6, HILL:0.7, HILL_W:0.3, HILL_PTS:200};   // the hill: from 70% of the height, over the last 0.3
   function rng(seed){ var a=seed>>>0; return function(){ a=(a+0x6D2B79F5)>>>0; var t=a; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
@@ -58,7 +59,7 @@ var Pong=(function(){
   function mult(g){ var w=g.hw/(g.ar/4); return 1/Math.max(1/TUNE.MULT_CAP,Math.min(1,w)); }
   function ptsOf(f){ var v=100*(f*f*f); if(f>TUNE.HILL){ var x=(f-TUNE.HILL)/TUNE.HILL_W; v+=TUNE.HILL_PTS*x; } return v; }
   function spawn(g){ var s=g.rand()<0.5?0:1, b={x:0,y:0,vx:0,vy:0,r:TUNE.R,on:false,onI:-1,from:null,to:s?0:1,wait:TUNE.WAIT,peakY:null,y0:null,touched:false,sk:0};
-    b.x=s?g.ar-b.r-0.03:b.r+0.03; b.y=TUNE.TOP+b.r+0.07; g.ball=b; g.events.push('serve'); g.fx.push({serve:s?'right':'left'}); }
+    b.x=s?g.ar-b.r-0.03:b.r+0.03; b.y=TUNE.SERVE_Y; g.ball=b; g.events.push('serve'); g.fx.push({serve:s?'right':'left'}); }
   function serveGo(g,b){ var tx=g.ar*(b.to?1-TUNE.XC:TUNE.XC), ty=surf(g,b.to,tx).y-b.r, ya=TUNE.TOP+b.r+0.012, y0=b.y;
     var vy0=-Math.sqrt(2*TUNE.G*Math.max(0.001,y0-ya)), tu=-vy0/TUNE.G, td=Math.sqrt(2*Math.max(0.01,ty-ya)/TUNE.G); b.vy=vy0; b.vx=(tx-b.x)/(tu+td);
     var hcS=(g.ar/2)/(4*TUNE.T_MID); b.sk=Math.sqrt(Math.min(1,hcS/Math.max(0.01,ty-ya))); g.events.push('go'); }
@@ -108,7 +109,7 @@ var Pong=(function(){
      the middle, far from both edges, so a jitter can't flip it back. More than 5 steps behind (a pause, a hitch) — the rest is dropped.
      Not part of the rules: only the drawing's rhythm */
   function frameSteps(acc){ var n=1; acc-=DT; while(acc>0.75*DT&&n<5){ n++; acc-=DT; } if(acc>0.75*DT) acc=0; if(acc<-0.75*DT){ n--; acc+=DT; } return {n:n,acc:acc}; }
-  var TAG='pong-2';
+  var TAG='pong-3';
   return {NONE:NONE,TAG:TAG,frameSteps:frameSteps,TUNE:TUNE,DT:DT,create:create,step:step,replay:replay,surf:surf,padOf:padOf,hwOf:hwOf,mult:mult,ptsOf:ptsOf,width:width,nextNarrow:nextNarrow};
 })();
 if(typeof module!=='undefined') module.exports=Pong;

@@ -30,6 +30,7 @@ const SCEN=`function(t){ if(t<8) return null; if(t<12) return 70; if(t<13) retur
     if(s.scr==='phold'&&s.c&&s.c.low&&!shots.hold){ shots.hold=1; await p.waitForTimeout(400); await shot('02_hold'); }
     if(s.scr==='phold'&&s.c&&s.c.done&&!startAt){ hold=s.c; await shot('03_try'); startAt=T(); await p.evaluate(()=>__sonaroids.act.start()); }
     if(s.scr==='play'&&s.py!==null&&s.c&&s.c.frac!==null) follow.push([s.c.frac,s.py,s.H]);
+    if(s.scr==='play'&&!shots.serve){ shots.serve=1; await p.waitForTimeout(500); await shot('04a_serve'); }
     if(s.scr==='play'&&T()-startAt>14&&!shots.play){ shots.play=1; await shot('04_play'); }
     if(s.scr==='play'&&!shots.field){ shots.field=await p.evaluate(()=>Object.assign(__sonaroids.pongField(),{gar:__sonaroids.state().g.ar})); }
     if(s.scr==='play'&&T()-startAt>8&&!shots.steps){ shots.steps=await p.evaluate(()=>new Promise(r=>{ const d=[]; let last=null, k=0; (function f(){ const n=__sonaroids.state().g.n; if(last!==null) d.push(n-last); last=n; if(++k<120) requestAnimationFrame(f); else r(d); })(); })); }

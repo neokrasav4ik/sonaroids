@@ -33,8 +33,11 @@ function resize(){
   var w=Math.max(200,window.innerWidth), h=Math.max(150,window.innerHeight);
   W=Math.round(w*DPR); H=Math.round(h*DPR);
   S=Math.max(1,Math.round(Math.min(W,H)/PIXH)); LH=Math.ceil(H/S); LW=Math.ceil(W/S); K=LH/180;
-  uiPong=typeof mode!=='undefined'&&mode==='pong';   // 1.59c: SonaPong is drawn at the screen's resolution whatever the graphics switch (a ball on game pixels jumped a whole pixel at a time)
-  uiS=((typeof gfxMode!=='undefined'&&gfxMode==='hd')||uiPong)?S*Math.min(2,DPR)/DPR:1;
+  /* 1.59c: SonaPong is drawn finer than the game pixels whatever the graphics switch (a ball on game pixels jumped a whole pixel at a
+     time); 1.59d: at most twice as fine — at the screen's own resolution the Mi 9 Lite fell to ~45 frames a second (Den 20:28: «лаг в
+     управлении»; in Chromium with the processor slowed 6×: busy 80% → 58%, the same as on game pixels) */
+  uiPong=typeof mode!=='undefined'&&mode==='pong';
+  var uiFull=S*Math.min(2,DPR)/DPR; uiS=uiPong?Math.min(2,uiFull):(typeof gfxMode!=='undefined'&&gfxMode==='hd')?uiFull:1;
   lc.width=Math.round(LW*uiS); lc.height=Math.round(LH*uiS); pc.width=lc.width; pc.height=lc.height;
   lx.setTransform(uiS,0,0,uiS,0,0); lx.imageSmoothingEnabled=false; var pcx0=pc.getContext('2d'); pcx0.setTransform(uiS,0,0,uiS,0,0); pcx0.imageSmoothingEnabled=false;
   var css=function(el){ el.style.width=(LW*S/DPR)+'px'; el.style.height=(LH*S/DPR)+'px'; };

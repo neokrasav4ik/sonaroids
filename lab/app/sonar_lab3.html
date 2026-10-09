@@ -2326,7 +2326,7 @@ function pgSurf(i,x,py,ar,A){ var s=i?-1:1, xc=ar*(i?1-PG_XC:PG_XC), hw=pgHw(ar)
    случайно), мигает 0,8 с и вылетает по дуге с верхушкой под самым потолком в центр ракетки на той стороне. Подача пасом не считается
    и очков не даёт; первый удар — уже игра. Прежняя подача (мяч лежит в центре ракетки, 1.58z) — убрана */
 function pgSpawn(){ var ar=ARC.ar, s=Math.random()<0.5?0:1, b=jgBall(0,0,false), fl=ar*(1-PG_V.fw)/2, fr=ar*(1+PG_V.fw)/2;
-  b.x=s?fr-b.r-0.03:fl+b.r+0.03; b.y=JG_TOP+b.r+0.07; b.vx=0; b.vy=0; b.from=null; b.to=s?0:1; b.wait=0.8; b.rest=0; b.peakY=null; b.touched=false;
+  b.x=s?fr-b.r-0.03:fl+b.r+0.03; b.y=0.32;   /* 1.59d: ниже — под кнопкой паузы и счётом игры (было JG_TOP+r+0.07 ≈ 0,13) */ b.vx=0; b.vy=0; b.from=null; b.to=s?0:1; b.wait=0.8; b.rest=0; b.peakY=null; b.touched=false;
   ARC.balls.push(b); arcEv('serve:'+(s?'right':'left')); }
 function pgServeGo(b,pad,ar,A){ var tx=ar*(b.to?1-PG_XC:PG_XC), ty=pgSurf(b.to,tx,pad,ar,A).y-b.r, ya=JG_TOP+b.r+0.012, y0=b.y;
   var vy0=-Math.sqrt(2*PG_G*Math.max(0.001,y0-ya)), tu=-vy0/PG_G, td=Math.sqrt(2*Math.max(0.01,ty-ya)/PG_G); b.vy=vy0; b.vx=(tx-b.x)/(tu+td);

@@ -2078,7 +2078,7 @@ var PG_HIT=0.75, PG_HW=0.15, PG_XC=0.22, PG_G=2.4, PG_LIFT=0.10, PG_NET0=0.72, P
    тяжесть, сила удара, прыгучесть, ширина платформ, расстояние между ними, высота сетки, наклон; запоминаются; «Сбросить» — как было */
 PG_SL=[{k:'g',t:'Тяжесть',min:0.8,max:4.5,st:0.1,d:2},{k:'hit',t:'Сила удара',min:0.2,max:1.6,st:0.05,d:0.4},{k:'e',t:'Прыгучесть',min:0.1,max:0.95,st:0.05,d:0.65},
   {k:'hwr',t:'Ширина ракеток',min:0.1,max:1,st:0.05,d:0.95},{k:'fw',t:'Ширина поля',min:0.3,max:1,st:0.05,d:0.7},
-  {k:'net',t:'Высота сетки',min:0,max:0.3,st:0.01,d:0.03},{k:'tilt',t:'Наклон для отскока, °',min:0,max:60,st:1,d:43},{k:'tilti',t:'Наклон у сетки, °',min:0,max:60,st:1,d:0},{k:'tiltv',t:'Наклон на экране, °',min:0,max:60,st:1,d:20},
+  {k:'net',t:'Высота сетки',min:0,max:0.3,st:0.01,d:0.03},{k:'tilt',t:'Наклон в середине, °',min:0,max:60,st:1,d:43},{k:'tilto',t:'Наклон у края поля, °',min:0,max:65,st:1,d:0},{k:'tilti',t:'Наклон у сетки, °',min:0,max:60,st:1,d:0},{k:'tiltv',t:'Наклон на экране, °',min:0,max:60,st:1,d:20},
   {k:'grip',t:'Цепкие ракетки',min:0,max:1,st:1,d:1},{k:'spr',t:'Пружины',min:0,max:2,st:0.1,d:1},{k:'curve',t:'Изогнутая ракетка',min:0,max:3,st:1,d:0},{k:'look',t:'Вид изогнутой',min:0,max:2,st:1,d:0,opts:[0,1,2]},{k:'grow',t:'Сужение ракеток',min:0,max:2,st:1,d:0,opts:[0,1,2],help:'«По времени» — честно для всех: четыре шага за партию. «За 10 чистых пасов» наказывает за ровную игру, и его обходят, нарочно задевая потолок.',rec:2},{k:'wall',t:'Боковые стенки',min:0,max:1,st:1,d:0},{k:'vx',t:'Скорость вбок',min:0,max:3,st:0.05,d:0},
   {k:'lives',t:'Мячей',min:0,max:10,st:1,d:5,opts:[3,5,10,0],help:'Сколько мячей можно уронить за игру.',rec:3},{k:'tsec',t:'Время',min:110,max:500,st:10,d:110,rec:300},
   {k:'pts',t:'Очки',min:0,max:2,st:1,d:0,opts:[0,2,1],help:'«Круче» — высокая дуга заметно ценнее, рискнуть становится осознанным выбором. «За пас» — высота не важна.',rec:2},{k:'mult',t:'Множитель за узкие ракетки',min:0,max:1,st:1,d:1,opts:[1,0],help:'Чем уже ракетки, тем больше очков за пас.',rec:1},{k:'combo',t:'Серия',min:0,max:2,st:1,d:0,opts:[0,2,1],help:'Каждый чистый пас подряд даёт +10%. Длинная (до ×2) — играй осторожно; короткая (до ×1,5 за 5 пасов) — рискнуть высотой уже не так дорого; без серии — риск почти окупается.',rec:2},{k:'svis',t:'Серия на экране',min:0,max:2,st:1,d:0,opts:[0,1,2],help:'Как видно, сколько чистых пасов подряд: точки у счёта, полоска у счёта или свечение вокруг мяча — туда, куда и так смотришь.'},{k:'ceil',t:'Потолок',min:0,max:1,st:1,d:0,opts:[0,1],help:'«Мяч потерян» — очень жёстко: каждый лишний сантиметр силы стоит мяча.',rec:0}],
@@ -2149,11 +2149,11 @@ function pgAngles(ar){ ar=ar||((typeof innerWidth!=='undefined'&&innerHeight)?in
   return {lo:Math.ceil(lo),hi:Math.floor(hi),ok:Math.floor(hi)>=Math.ceil(lo)}; }
 function pgNamed(){ try{ var o=JSON.parse(localStorage.getItem('sonar_pg_named')||'{}'); return o&&typeof o==='object'?o:{}; }catch(e){ return {}; } }
 function pgNamedSave(m){ try{ localStorage.setItem('sonar_pg_named',JSON.stringify(m)); }catch(e){} }
-function pgFmt(q,v){ if(q.k==='grow') return ['нет','за 10 чистых пасов','по времени'][Math.round(v)]||'нет'; if(q.k==='pts') return ['за высоту дуги','за пас','за высоту, круче'][Math.round(v)]||'за высоту дуги'; if(q.k==='combo') return ['нет','длинная, до ×2','короткая, до ×1,5'][Math.round(v)]||'нет'; if(q.k==='mult') return v>=0.5?'есть':'нет'; if(q.k==='ceil') return v>=0.5?'мяч потерян':'пас без очков'; if(q.k==='lives') return v>0?String(Math.round(v)):'без счёта'; if(q.k==='tsec') return v>110?Math.round(v)+' с':'без ограничения'; if(q.k==='svis') return ['точки','полоска','свечение мяча'][Math.round(v)]||'точки'; if(q.k==='look') return ['волны','гладкая','на пружинах'][Math.round(v)]||'волны'; if(q.k==='curve') return ['нет','ровная','чаша','настоящая дуга'][Math.round(v)]||'нет'; if(q.k==='grow') return v>=0.5?'есть':'нет'; if(q.k==='wall'||q.k==='grip') return v>=0.5?'есть':'нет'; if(q.k==='tilti') return v>0.5?String(Math.round(v)):'по закону'; return q.k==='tilt'||q.k==='tiltv'?String(Math.round(v)):(Math.round(v*100)/100).toFixed(2).replace('.',','); }
+function pgFmt(q,v){ if(q.k==='grow') return ['нет','за 10 чистых пасов','по времени'][Math.round(v)]||'нет'; if(q.k==='pts') return ['за высоту дуги','за пас','за высоту, круче'][Math.round(v)]||'за высоту дуги'; if(q.k==='combo') return ['нет','длинная, до ×2','короткая, до ×1,5'][Math.round(v)]||'нет'; if(q.k==='mult') return v>=0.5?'есть':'нет'; if(q.k==='ceil') return v>=0.5?'мяч потерян':'пас без очков'; if(q.k==='lives') return v>0?String(Math.round(v)):'без счёта'; if(q.k==='tsec') return v>110?Math.round(v)+' с':'без ограничения'; if(q.k==='svis') return ['точки','полоска','свечение мяча'][Math.round(v)]||'точки'; if(q.k==='look') return ['волны','гладкая','на пружинах'][Math.round(v)]||'волны'; if(q.k==='curve') return ['нет','ровная','чаша','настоящая дуга'][Math.round(v)]||'нет'; if(q.k==='grow') return v>=0.5?'есть':'нет'; if(q.k==='wall'||q.k==='grip') return v>=0.5?'есть':'нет'; if(q.k==='tilti'||q.k==='tilto') return v>0.5?String(Math.round(v)):'по закону'; return q.k==='tilt'||q.k==='tiltv'?String(Math.round(v)):(Math.round(v*100)/100).toFixed(2).replace('.',','); }
 /* 1.58z4 (Ден 18:13: «скомпонуй пункты меню паузы — невозможно никуда попасть.. сделай подменю.. и это меню — перед игрой и в паузе»):
    настройки СонаПонга разложены по разделам: Наборы, Мяч, Ракетки, Поле, Игра и ладонь, Как играть. На главной странице меню — крупные
    действия и кнопки разделов с текущими значениями мелко; раздел — отдельная страница, 3 в ряд, крупно */
-var PG_SECS={ball:['g','hit','e','vx'],rack:['hwr','tilt','tilti','tiltv','curve','look','grip','spr'],field:['fw','wall'],rules:['lives','tsec','grow','pts','mult','combo','svis','ceil']};
+var PG_SECS={ball:['g','hit','e','vx'],rack:['hwr','tilto','tilt','tilti','tiltv','curve','look','grip','spr'],field:['fw','wall'],rules:['lives','tsec','grow','pts','mult','combo','svis','ceil']};
 /* 1.58z13 (Ден 09.10 11:25, п. 6: «в установке времени игры сделай ползунок в секундах 120–500»): время — ползунок 120–500 с, крайнее левое
    положение — «без ограничения» (для тренировки) */
 function pgTime(){ return PG_V.tsec>110.5?PG_V.tsec:0; }
@@ -2193,8 +2193,12 @@ function pgAngle(box){ var an=pgAngles(ARC&&ARC.ar), ah=document.createElement('
   ab.addEventListener('click',function(){ var a=pgAngles(ARC&&ARC.ar); PG_V.tilt=a.ok?Math.round((a.lo+a.hi)/2):Math.min(60,a.lo+3); pgSave(); pzRender(); arcEv('pg-angle:'+PG_V.tilt); });
   if(PG_V.curve>=0.5){ var ar0=ARC&&ARC.ar||((typeof innerWidth!=='undefined'&&innerHeight)?innerWidth/innerHeight:2.16), hw0=pgHw(ar0), xc0=ar0*PG_XC, t0=Math.tan(PG_V.tilt*Math.PI/180),
       dg=function(ui){ return Math.round(Math.atan(t0*pgSurf(0,xc0+ui*hw0,0.64,ar0,pgCupA()).f)*180/Math.PI); };
-    tx.innerHTML=(Math.round(PG_V.curve)===3?'Настоящая дуга (ракетка изогнута ровно так, как отскакивает мяч)':(Math.round(PG_V.curve)===2?'Чаша':'Ровная')+', вид: '+pgFmt(pgQ('look'),PG_V.look))+': отскок у края <b>'+dg(-1)+'°</b>, в центре <b>'+dg(0)+'°</b>, у сетки <b>'+dg(1)+'°</b>. Дуга одной высоты из любой точки приходит в центр чужой (у края бей чуть сильнее). '; }
-  ah.appendChild(tx); ah.appendChild(ab); box.appendChild(ah); }
+    tx.innerHTML=(Math.round(PG_V.curve)===3?'Настоящая дуга (ракетка изогнута ровно так, как отскакивает мяч)':(Math.round(PG_V.curve)===2?'Чаша':'Ровная')+', вид: '+pgFmt(pgQ('look'),PG_V.look))+': отскок у края <b>'+dg(-1)+'°</b>, в центре <b>'+dg(0)+'°</b>, у сетки <b>'+dg(1)+'°</b>. '+(PG_V.tilto>0.5||PG_V.tilti>0.5?'Своя часть ракетки — свой удар: чем круче угол, тем выше дуга; сильнее бьёшь — дальше летит. ':'Дуга одной высоты из любой точки приходит в центр чужой (у края бей чуть сильнее). '); }
+  /* 1.58z14: «Разные удары» — по расчёту для поля во всю ширину и ракеток 80% (ладонь посередине хода): у края поля 43° — свеча (пас в центр
+     чужой на ~76% высоты), в середине 37° — обычный (~67%), у сетки 33° — плоский (~47%); из любой части дальний край достаётся без потолка */
+  var vb=document.createElement('button'); vb.className='ghost'; vb.textContent='Разные удары';
+  vb.addEventListener('click',function(){ PG_V.tilto=43; PG_V.tilt=37; PG_V.tilti=33; pgSave(); pzRender(); arcEv('pg-angles3'); });
+  ah.appendChild(tx); ah.appendChild(ab); ah.appendChild(vb); box.appendChild(ah); }
 var PG_TILTS=[20,30,40], PG_STOP=0.05, PG_TILTV=25;
 pgLoad();
 /* 1.58r: у сетки всегда щель, куда проваливается мяч (0,09 высоты экрана — шире мяча): при ракетках во всю половину мяч скатывался
@@ -2248,15 +2252,22 @@ function pgCurveK(ar){ return PG_V.curve>=0.5?pgHw(ar)/(ar*PG_V.fw/2):0; }
    круче, и край уходит вертикально за верх экрана (проверено на снимке). Внешний край всё равно поднимается высоко — это и надо было увидеть. Для «ровной» и «чаши» — вид:
    волны (как в 1.58z3) / гладкая / на пружинах (1.58z6) */
 var PG_TRUE={key:'',y:null};
-function pgTrueTab(ar){ var hw=pgHw(ar), D=ar*PG_V.fw/2, tc=Math.tan(PG_TILT*Math.PI/180), hc=D/(4*tc), key=hw.toFixed(4)+'|'+D.toFixed(4)+'|'+tc.toFixed(4)+'|'+(PG_V.tilti||0);
-  if(PG_TRUE.key===key) return PG_TRUE; var N=40, y=new Array(2*N+1), tn=function(ui,yy){ var t0=(D-ui*hw)/(4*hc); return ui>0&&PG_V.tilti>0.5?t0+ui*(Math.tan(PG_V.tilti*Math.PI/180)-(D-hw)/(4*hc)):t0; };
+function pgTrueTab(ar){ var hw=pgHw(ar), D=ar*PG_V.fw/2, tc=Math.tan(PG_TILT*Math.PI/180), hc=D/(4*tc), key=hw.toFixed(4)+'|'+D.toFixed(4)+'|'+tc.toFixed(4)+'|'+(PG_V.tilti||0)+'|'+(PG_V.tilto||0);
+  if(PG_TRUE.key===key) return PG_TRUE; var N=40, y=new Array(2*N+1), tn=function(ui,yy){ var t0=(D-ui*hw)/(4*hc); if(ui>0&&PG_V.tilti>0.5) return t0+ui*(Math.tan(PG_V.tilti*Math.PI/180)-(D-hw)/(4*hc)); if(ui<0&&PG_V.tilto>0.5) return t0+(-ui)*(Math.tan(PG_V.tilto*Math.PI/180)-(D+hw)/(4*hc)); return t0; };
   y[N]=0; for(var d=-1;d<=1;d+=2){ var yy=0; for(var k=0;k<N;k++){ var u0=d*k/N, h=d/N, m=yy+tn(u0,yy)*hw*h/2; yy+=tn(u0+h/2,m)*hw*h; y[N+d*(k+1)]=yy; } }
   PG_TRUE={key:key,y:y,N:N}; return PG_TRUE; }
 function pgTrueY(ar,ui){ var T=pgTrueTab(ar), p=(Math.max(-1,Math.min(1,ui))+1)*T.N, i=Math.min(2*T.N-1,Math.floor(p)), f=p-i; return T.y[i]*(1-f)+T.y[i+1]*f; }
 function pgTrueLift(ar){ return -Math.min(0,pgTrueY(ar,-1)); }
 function pgCupA(){ return Math.round(PG_V.curve)===2?PG_CUP/(1+PG_KV/2):0; }
 function pgSurf(i,x,py,ar,A){ var s=i?-1:1, xc=ar*(i?1-PG_XC:PG_XC), hw=pgHw(ar), u=(x-xc)/hw, ui=s*u, cv=Math.round(PG_V.curve), kv=cv===2?PG_KV:0, yr=cv===3?pgTrueY(ar,ui):A*(ui-kv*ui*ui/2), f=1;
-  if(cv>=1){ var D=ar*PG_V.fw/2, tc=Math.tan(PG_TILT*Math.PI/180), hc=D/(4*tc), H0=cv===3?hc:Math.max(0.02,hc+yr), H1=hc; f=((D-ui*hw)/(2*H0+2*Math.sqrt(H0*H1)))/tc;
+  var D=ar*PG_V.fw/2, tc=Math.tan(PG_TILT*Math.PI/180), hc=D/(4*tc), H1=hc, lawF=function(u,y){ if(cv<1) return 1; var H0=cv===3?hc:Math.max(0.02,hc+y); return ((D-u*hw)/(2*H0+2*Math.sqrt(H0*H1)))/tc; };
+  /* 1.58z14 (Ден 09.10 11:58: «разные углы отскока в левой, средней и правой частях — вот этих трёх ползунков мне не хватает»): «Наклон у края
+     поля» и «Наклон у сетки» — угол отскока на краях ракетки, «Наклон для отскока» — в середине; между ними тангенс меняется по прямой.
+     0 на краю — по закону ракетки. Работает при любой «Изогнутой ракетке», в том числе «нет» */
+  if(ui<0&&PG_V.tilto>0.5){ var ym=cv===3?pgTrueY(ar,-1):A*(-1-kv/2); f=lawF(ui,yr)+(-ui)*(Math.tan(PG_V.tilto*Math.PI/180)/tc-lawF(-1,ym)); }
+  else if(ui>0&&PG_V.tilti>0.5&&cv<1){ f=1+ui*(Math.tan(PG_V.tilti*Math.PI/180)/tc-1); }
+  else if(cv<1) f=1;
+  if(cv>=1){ var H0=cv===3?hc:Math.max(0.02,hc+yr); if(!(ui<0&&PG_V.tilto>0.5)) f=((D-ui*hw)/(2*H0+2*Math.sqrt(H0*H1)))/tc;
     /* 1.58z13 (Ден 09.10 11:30: «не хватает угла отскока у ракеток ближе к внутренним краям — чтобы оттуда, ударив посильнее, отправить мяч
        не повыше, а подальше»): «Наклон у сетки» — какой угол отскока у внутреннего края; от середины ракетки к нему угол меняется плавно
        (тангенс по прямой), внешняя половина — как была. 0 — по закону ракетки (у сетки круче всего — сильный удар уходил больше вверх) */

@@ -56,6 +56,7 @@ LANE_B = [  # phase 2, beside lane A: the rest
     ('obsidian (graphics chip): objects the size the game counts (Chromium)', f'{H} tests/obsidian_sizes.js'),
     ('game rules and difficulty (bot)', f'{H} tests/test_rules.js'),
     ('race core: deterministic, rules and length (bot)', f'{H} tests/test_race.js'),
+    ("pong core: the lab's SonaPong bit for bit, deterministic, rules (bot)", f'{H} tests/test_pong.js'),
 ]
 # the time limit of a check, s — about three times its run on 5 Oct (2 cores, no other load); the rest 180
 LIMIT = {'flow': 300, 'race_flow': 200, 'native_audio': 150, 'silent': 120, 'volume': 90, 'side': 60, 'live_flow': 260, 'screens': 1200,
@@ -72,10 +73,11 @@ def key(cmd):   # the check's script name: «flow», «screens», «build», «f
 ALWAYS = ['build', 'font']
 MAP = [
     ('src/10_worklet.js src/11_dsp.js lab/src/01_worklet.js lab/src/02_dsp.js', 'test_same_dsp test_live test_quiet test_eq flow live_flow silent'),
-    ('lab/src/*', 'test_same_dsp'),   # v1.56c: the lab's own screens do not touch the game (the lab has its own checks, lab/tools/run_all.sh)
+    ('lab/src/*', 'test_same_dsp test_pong'),   # v1.59: the pong core must stay the lab's game bit for bit   # v1.56c: the lab's own screens do not touch the game (the lab has its own checks, lab/tools/run_all.sh)
     ('src/12_tune.js', 'test_tune flow live_flow'),
     ('src/13_core.js', 'test_core test_rules test_server flow'),
     ('src/14_race.js', 'test_race race_flow test_server'),
+    ('src/15_pong.js', 'test_pong'),
     ('src/20_sonar.js', 'flow native_audio silent volume side live_flow test_eq'),
     ('src/21_log.js', 'flow'),
     ('src/22_sfx.js', 'flow native_audio'),

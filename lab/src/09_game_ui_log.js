@@ -216,6 +216,11 @@ function sfx(kind,x){
   else if(kind==='jtoss'){ var f=360+160*Math.min(2.4,x||1); tone(f,f*0.7,0.07,'triangle',0.55); }
   else if(kind==='jland'){ tone(240,150,0.06,'triangle',0.5); crash(0.04,700,0.25); }
   else if(kind==='jstar'){ var f0=880*Math.pow(1.122,Math.min(8,(x||1)-1)); tone(f0,null,0.06,'square',0.35); tone(f0*1.5,null,0.1,'square',0.3,0.05); }
+  /* 1.58z16 (Ден 09.10 12:27: «серия доходит до писка, а после сброса звук не возвращается на низкий — наладь звуки по логике»): пас
+     в СонаПонге — мягкий двойной тон; высота = насколько полна серия (0 — до, 1 — на кварту выше ля, без писка), сброс серии — снова низко;
+     серия полная — третий тон сверху. Пас с касанием потолка — глухой «тук» без тона серии */
+  else if(kind==='pgpass'){ var lv=Math.max(0,Math.min(1,x||0)), f1=392*Math.pow(2,lv*0.9); tone(f1,null,0.07,'triangle',0.42); tone(f1*1.5,null,0.11,'triangle',0.3,0.05); if(lv>=1) tone(f1*2,null,0.14,'sine',0.22,0.1); }
+  else if(kind==='pgdull'){ tone(180,120,0.08,'triangle',0.5); }
   else if(kind==='jceil'){ tone(200,90,0.18,'square',0.45); crash(0.12,900,0.5); }
   else if(kind==='jburn'){ crash(0.45,2600,0.7); tone(600,90,0.45,'sawtooth',0.35); }
   else if(kind==='over'){ tone(880,110,0.9,'square',0.5); crash(0.7,1200,0.6); }

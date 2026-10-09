@@ -231,9 +231,49 @@ var Sonar=(function(){
     var m=e.data, gap=(lastSeq>=0&&m.s!==lastSeq+1); lastSeq=m.s; if(gap) gaps++; lastFrameAt=performance.now();
     var pk=0; for(var j=0;j<m.f.length;j++){ var av=m.f[j]<0?-m.f[j]:m.f[j]; if(av>pk) pk=av; } peak=Math.max(pk,peak*0.99);   // loudness of the microphone, ~1 s memory
     if(collector){ collector.arr.push(m.f); if(collector.arr.length>=collector.n){ var c=collector; collector=null; c.done(c.arr); } }
+    if(active&&DW){ DWq.push({f:m.f,gap:gap,dsp:true}); var cp=m.f.slice(); DW.postMessage({c:'f',f:cp},[cp.buffer]); return; }
+    if(DWq.length){ DWq.push({f:m.f,gap:gap,dsp:false}); return; }   // behind frames still in the worker: in turn
     var r=null; if(active){ r=DSP2.frame(m.f); if(r) last=r; if(DSP2.info().lost) lost=true; }
     for(var i=0;i<listeners.length;i++) listeners[i](m.f,r,gap);
   }
+  /* ── 1.59h: the echo processing in a worker of its own (another core) — the drawing no longer waits for it. Den's Mi 9 Lite, 20:55–21:44:
+     two sonar frames come at once every 21 ms and their processing held the page (SonaPong's quarter frames the most) — 5–6 frames a second
+     came 25–50 ms late. The worker runs the very same DSP2 code (its text is taken from this page), frame by frame in the same order;
+     what the page asks of it (init, set, setCal, shift) goes in the same queue, so it applies between the same frames. Its answer (the
+     result and DSP2.info()) comes back a moment later and goes to the listeners as before, with the frame it belongs to, in order.
+     The page's DSP2 is then a stand-in that forwards the calls and answers info() from the latest answer (with the calibration as the
+     page last set it until the worker has caught up). If no worker can be made, or it fails, everything stays on the page as before
+     ('sonaroids_dspw' = '0' keeps it there). ── */
+  var DW=null, DWfail=false, DWq=[], DWreal=DSP2, DWseq=0, DWinitSeq=0, DWcalSeq=0, DWcal=null, DWinfo=null, DWlog=[];
+  var DW_TAIL="\n;var SEQ=0;onmessage=function(e){var m=e.data;if(m.c==='f'){var r=DSP2.frame(m.f);postMessage({r:r,i:DSP2.info(),q:SEQ});return;}"+
+    "SEQ=m.q;if(m.c==='init')DSP2.init(m.fs,m.p);else if(m.c==='set')DSP2.set(m.k,m.v);else if(m.c==='cal')DSP2.setCal(m.v);else if(m.c==='shift')DSP2.shift(m.d);};";
+  function dwOk(){ return typeof Worker!=='undefined'&&typeof Blob!=='undefined'&&typeof document!=='undefined'&&lsGet('sonaroids_dspw','1')!=='0'; }
+  function dwSource(){ var all=[].map.call(document.scripts,function(x){ return x.textContent||''; }).join('\n'), a=all.indexOf('var DSP2=(function(){'), b=a<0?-1:all.indexOf("if(typeof module!=='undefined') module.exports=DSP2;",a);
+    return a<0||b<0?null:all.slice(a,b); }
+  function dwPost(m){ m.q=++DWseq; DWlog.push(m); try{ DW.postMessage(m); }catch(e){ dwFail(); } }
+  var DWproxy={
+    init:function(sr,par){ DWlog=[]; DWinfo=null; dwPost({c:'init',fs:sr,p:par}); DWinitSeq=DWseq; },
+    set:function(k,v){ dwPost({c:'set',k:k,v:v}); },
+    setCal:function(c){ DWcal={k:c.k,o:c.o,s:c.s}; dwPost({c:'cal',v:DWcal}); DWcalSeq=DWseq; },
+    shift:function(d){ if(DWcal) DWcal={k:DWcal.k,o:DWcal.o+d,s:DWcal.s}; dwPost({c:'shift',d:d}); DWcalSeq=DWseq; },
+    recenter:function(){ return null; },
+    frame:function(f){ return DWreal.frame(f); },
+    info:function(){ var i=DWinfo||{covered:false,lost:false,noProbe:false,ready:false,cal:DWcal,prom:null,live:false}; return i; } };
+  function dwStart(){ var src=dwSource(); if(!src){ DWfail=true; return; }
+    try{ DW=new Worker(URL.createObjectURL(new Blob([src+DW_TAIL],{type:'application/javascript'}))); }catch(e){ DW=null; DWfail=true; return; }
+    DW.onmessage=dwMsg; DW.onerror=function(){ dwFail(); };
+    DWcal=null; DSP2=DWproxy; DWlog=[]; }   // started by prepare(), before it sets up the processing: everything after goes to the worker
+  function dwMsg(e){ var d=e.data, h=DWq.shift(); if(!h) return;
+    if(d.q>=DWinitSeq){ var inf=d.i; if(d.q<DWcalSeq&&DWcal) inf.cal=DWcal; else if(inf.cal) DWcal=inf.cal; DWinfo=inf; }
+    var r=d.r; if(r) last=r; if(DWinfo&&DWinfo.lost) lost=true;
+    var i; for(i=0;i<listeners.length;i++) listeners[i](h.f,r,h.gap);
+    while(DWq.length&&!DWq[0].dsp){ var n=DWq.shift(); for(i=0;i<listeners.length;i++) listeners[i](n.f,null,n.gap); } }
+  /* the worker failed: back to the page — its DSP2 is told again what the worker was told since init (the room is learnt anew), the
+     frames waiting go on without a result, and the sound is marked lost so the game asks for a tap and gets ready again */
+  function dwFail(){ var w=DW; DW=null; DWfail=true; try{ if(w) w.terminate(); }catch(e){} DSP2=DWreal;
+    DWlog.forEach(function(m){ if(m.c==='init') DWreal.init(m.fs,m.p); else if(m.c==='set') DWreal.set(m.k,m.v); else if(m.c==='cal') DWreal.setCal(m.v); else if(m.c==='shift') DWreal.shift(m.d); });
+    var q=DWq; DWq=[]; q.forEach(function(n){ for(var i=0;i<listeners.length;i++) listeners[i](n.f,null,n.gap); }); lost=true; }
+
   /* signal-to-noise in the probe band: 8 periods in a row put the probe exactly on every 8th spectral line, noise on all of them */
   function probeStats(frames,fs,fLo,fHi){
     var N8=frames.length*512, x=new Float64Array(N8), i, j;
@@ -318,6 +358,7 @@ var Sonar=(function(){
   // v1.16: an experiment, off unless switched on in the settings (the maintainer: «автокалибровка — это экспериментальный режим, и по умолчанию включена ручная»)
   function liveOn(){ try{ return localStorage.getItem('sonaroids_live')==='1'; }catch(e){ return false; } }
   function prepare(onStage,vol){
+    if(!DW&&!DWfail&&dwOk()) dwStart();
     active=false; last=null; lost=false; PROBE_G=0.25; volLog=[]; reasserts=0; refLv=null; jumpN=0;
     onStage&&onStage('side');
     var adj0=function(){ return 10*Math.log10((Math.floor(F_HI*N/fs)-Math.ceil(BANDS.normal*N/fs)+1)/(kHi-kLo+1)); };
@@ -376,6 +417,7 @@ var Sonar=(function(){
     try{ if(ctx) ctx.close(); }catch(e){}
     if(natOn||natPort){ try{ NATA.audioStop(); }catch(e){} try{ natPort.onmessage=null; natPort.close(); }catch(e){} natPort=null; natOn=false; }
     if(simIv){ clearInterval(simIv); simIv=null; } simStalled=false;     // in simulation a re-opened microphone works again
+    DWq=[];   // 1.59h: answers still on their way belong to the old sound
     ctx=null; stream=null; node=null; an=null; booted=false; active=false; collector=null; lastSeq=-1; last=null; lost=false; lastFrameAt=0; wasHidden=false;
   }
   return {live:liveOn,room:roomOn,savedMid:savedMid,boot:boot,prepare:prepare,setBand:setBand,band:function(){ return band; },simulate:simulate,healthy:healthy,restart:restart,simStall:function(v){ simStalled=!!v; },setProbe:setProbe,pause:pause,resume:resume,probeSNR:probeSNR,
@@ -386,7 +428,7 @@ var Sonar=(function(){
     /* what the browser really gave for the microphone: on Android the echo/noise/gain processing may stay on despite our request */
     micSettings:function(){ if(natOn){ try{ var st=JSON.parse(NATA.audioStatus()); return {audio:'app',probe_end:lsGet('sonaroids_probe_end','auto'),src:st.src,usage:st.usage,fx:st.fx,mic_wanted:st.mic_wanted,out_wanted:st.out_wanted,in:st.in,out:st.out,active:st.active}; }catch(e){ return {audio:'app'}; } }
       try{ var t=stream&&stream.getAudioTracks()[0]; if(!t) return null; var s=t.getSettings(), o={}; ['autoGainControl','echoCancellation','noiseSuppression','sampleRate','channelCount','latency','deviceId'].forEach(function(k){ if(s[k]!==undefined) o[k]=k==='deviceId'?String(s[k]).slice(0,8):s[k]; }); o.label=t.label; return o; }catch(e){ return null; } },
-    info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,probe_level:PROBE_LVL,vol_fit:volLog.slice(),f_lo:F_LO,band:band,cal:curCal(),gaps:gaps,booted:booted,audio:natOn?'app':'browser',auto_audio:autoLog,routes:routeLog.slice(),route:routeKey,settle:settleLog}; },
+    info:function(){ return {dsp_worker:!!DW,fs:fs,N:N,kLo:kLo,kHi:kHi,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,probe_level:PROBE_LVL,vol_fit:volLog.slice(),f_lo:F_LO,band:band,cal:curCal(),gaps:gaps,booted:booted,audio:natOn?'app':'browser',auto_audio:autoLog,routes:routeLog.slice(),route:routeKey,settle:settleLog}; },
     audioRetest:function(){ autoRetest=true; try{ localStorage.removeItem('sonaroids_autoaudio'); }catch(e){} },
     native:function(){ return natOn; }, nativeAvail:natAvail,
     chan:function(){ return chan; }, ctx:function(){ return ctx; }};

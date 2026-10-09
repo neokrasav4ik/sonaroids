@@ -30,6 +30,14 @@ function rngOf(seed){ let a=seed>>>0; return function(){ a=(a+0x6D2B79F5)>>>0; l
   check('points: the cube and the hill near the ceiling',v.join()==='13,34,161,300',`half the height ${v[0]}, 70% ${v[1]}, 85% ${v[2]}, the ceiling ${v[3]}`); }
 { const g=Pong.create(1,2.16,1), T=Pong.TUNE, lo=Pong.padOf(g,T.CB), hi=Pong.padOf(g,T.CT);
   check('the palm moves the rackets in proportion: the low hold at 8% of the travel, the top one at 75%',Math.abs(lo-(T.PAD_LO-0.08*0.4))<1e-12&&Math.abs(hi-(T.PAD_LO-0.75*0.4))<1e-12&&Pong.padOf(g,-5)===T.PAD_MAX&&Pong.padOf(g,9)===T.PAD_MIN,`low ${lo.toFixed(3)}, top ${hi.toFixed(3)} of the screen`); }
+{ const swing=(span,sens)=>{ const g=Pong.create(1,2.16,sens,span); g.respawn=1e9; for(let i=0;i<20;i++) Pong.step(g,0.1+0.67*(250*i/60)/span); return g.vpb; };   // the palm up at 250 mm/s
+  const v=[[43,0],[70,1],[120,3]].map(([s,k])=>swing(s,k)), d=Math.max(...v)-Math.min(...v);
+  check('the same palm swing hits the same, whatever the calibration and the sensitivity (1.59b)',d<1e-9*Math.abs(v[1])&&v[1]<0,`holds 43 / 70 / 120 mm apart, low / below middle / high sensitivity: ${v.map(x=>x.toFixed(4)).join(' / ')}`); }
+{ const run=hz=>{ let a0=0, a1=0, s=5, t0=0; const rnd=()=>{ s=(s*1664525+1013904223)>>>0; return s/4294967296; }, old=[], now=[];   // a phone's screen: a hair off 60 Hz, each frame's time up to ±0.5 ms off
+    for(let i=1;i<=3600;i++){ const t=i/hz+(rnd()-0.5)*0.001, dt=t-t0; t0=t; a0+=dt; let n=0; while(a0>=Pong.DT&&n<5){ a0-=Pong.DT; n++; } old.push(n); const f=Pong.frameSteps(a1+dt); a1=f.acc; now.push(f.n); }
+    const odd=x=>x.filter(n=>n!==1).length; return {o:odd(old),n:odd(now),sum:now.reduce((p,q)=>p+q,0)}; };
+  const r=[60,60.09,59.94].map(run), want=[0,6,4];
+  check('one rules step a frame — a second one (or none) only to catch up with the clock (1.59c)',r.every((x,i)=>x.n<=want[i]&&Math.abs(x.sum-3600*60/[60,60.09,59.94][i])<=1.5),`a minute at 60 / 60.09 / 59.94 frames a second, ±0.5 ms: frames with 0 or 2 steps — ${r.map(x=>x.n).join(' / ')} (before: ${r.map(x=>x.o).join(' / ')})`); }
 { const g=Pong.create(9,2.16,1); let n=0; while(g.state!=='over'&&n<60*600){ Pong.step(g,null); n++; }
   check('without a palm the balls are lost and the game ends after five',g.state==='over'&&g.falls===5&&g.passes===0,`${g.t.toFixed(0)} s`); }
 // 4. a bot plays real rallies; the rackets narrow while it plays

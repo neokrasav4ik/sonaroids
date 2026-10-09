@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='1.59a';
+var VERSION='1.59c';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -708,7 +708,11 @@ if(typeof module!=='undefined') module.exports=Race;
      100·f³, and above 70% a «hill» up to +200 (300 at the ceiling); a pass that touched the ceiling scores nothing and restarts the series;
    - the series: +10% for every clean pass in a row, up to ×1.5;
    - the rackets narrow every 30 s by 1/8 of their width, without end; the multiplier for narrow rackets — up to ×2;
-   - 5 balls; the game is over when they are all lost.
+   - 5 balls; the game is over when they are all lost;
+   - the swing's strength is the palm's own speed (1.59b, pong-2): the racket's speed on the screen, brought back to the palm's mm/s by the
+     calibrated travel (span, mm; 70 — the lab's usual). Before, it was the speed in shares of the calibrated travel: a narrow calibration
+     (Den's 18:59 game: the holds 4 cm apart) made every swing 1.6 times stronger, and half the passes hit the ceiling. The sensitivity
+     still changes only how far the rackets go (1.58d: «from the same swing the ball flies the same»).
    Units: the screen's height is 1, its width is ar (the aspect ratio); y grows downwards (0 — the top). ── */
 var Pong=(function(){
   var DT=1/60;
@@ -721,6 +725,7 @@ var Pong=(function(){
     CUP:0.06, KV:0.9,              // the bowl: the field's edge 0.06 higher than the middle, the gap side a little lower
     LIFT:0.10, PAD_LO:0.94, PAD_MIN:0.3, PAD_MAX:0.97, CB:0.08, CT:0.75, R:0.032, TOP:0.03, CEIL_BACK:0.35,
     SENS:[0.3,0.4,0.5,0.6],        // the racket's travel, screen heights: «low», «below middle», «middle», «high» sensitivity
+    SPAN_REF:70,                   // 1.59b: the calibrated palm travel (mm) the swing's strength was found with — the lab's usual (Den's holds)
     NARROW_T:30, NARROW_K:0.875, MULT_CAP:2, SERIES:0.1, SERIES_N:5, LIVES:5,
     WAIT:0.8, RESPAWN0:0.3, RESPAWN:0.6, HILL:0.7, HILL_W:0.3, HILL_PTS:200};   // the hill: from 70% of the height, over the last 0.3
   function rng(seed){ var a=seed>>>0; return function(){ a=(a+0x6D2B79F5)>>>0; var t=a; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
@@ -738,9 +743,9 @@ var Pong=(function(){
     return {u:u,s:s,ui:ui,f:f,xc:xc,y:g.py-TUNE.LIFT+yr}; }
   /* the palm → the rackets' place: hand is the palm as a share of the calibrated travel (0.08 at the low hold, 0.75 at the top one) */
   function padOf(g,hand){ return Math.max(TUNE.PAD_MIN,Math.min(TUNE.PAD_MAX,TUNE.PAD_LO-hand*g.H)); }
-  function create(seed,ar,sens){
+  function create(seed,ar,sens,span){
     var H=TUNE.SENS[sens===undefined||sens===null?1:sens]||TUNE.SENS[1];
-    var g={seed:seed>>>0,ar:ar||2.16,H:H,rand:rng(seed),n:0,t:0,state:'play',score:0,lives:TUNE.LIVES,falls:0,passes:0,tosses:0,ceils:0,
+    var g={seed:seed>>>0,ar:ar||2.16,H:H,span:span>0?span:TUNE.SPAN_REF,rand:rng(seed),n:0,t:0,state:'play',score:0,lives:TUNE.LIVES,falls:0,passes:0,tosses:0,ceils:0,
       series:0,streak:0,best:0,bestPts:0,k:1,step:0,py:TUNE.PAD_LO-0.5*H,padPrev:null,vpS:0,vr:0,vpb:0,ball:null,respawn:TUNE.RESPAWN0,events:[],fx:[]};
     g.hw=hwOf(g); return g; }
   function mult(g){ var w=g.hw/(g.ar/4); return 1/Math.max(1/TUNE.MULT_CAP,Math.min(1,w)); }
@@ -763,7 +768,7 @@ var Pong=(function(){
     var st=Math.floor(g.t/TUNE.NARROW_T); while(g.step<st){ g.step++; g.k*=TUNE.NARROW_K; g.events.push('narrow'); }
     g.hw=hwOf(g);
     var pad=g.py, vr=g.padPrev===null?0:(pad-g.padPrev)/DT; g.padPrev=pad; g.vr=vr;
-    g.vpS+=(clamp(vr,-4,4)-g.vpS)*0.45; var vpb=g.vpS*(0.6/g.H)*TUNE.HIT; g.vpb=vpb;
+    g.vpS+=(clamp(vr,-4,4)-g.vpS)*0.45; var vpb=g.vpS*(0.6/g.H)*TUNE.HIT*(g.span/TUNE.SPAN_REF); g.vpb=vpb;
     if(!g.ball){ g.respawn-=DT; if(g.respawn<=0) spawn(g); }
     var b=g.ball; if(!b) return g;
     if(b.wait>0){ b.wait-=DT; if(b.wait<=0) serveGo(g,b); return g; }
@@ -787,15 +792,24 @@ var Pong=(function(){
   function nextNarrow(g){ return (g.step+1)*TUNE.NARROW_T-g.t; }
   /* a whole game from a palm trajectory (one value per step; NONE or less — no palm; the palm itself may go a little below 0): what a server would run */
   var NONE=-9;
-  function replay(seed,ar,sens,hands){ var g=create(seed,ar,sens); for(var i=0;i<hands.length&&g.state!=='over';i++) step(g,hands[i]===null||hands[i]<=NONE?null:hands[i]); return g; }
-  var TAG='pong-1';
-  return {NONE:NONE,TAG:TAG,TUNE:TUNE,DT:DT,create:create,step:step,replay:replay,surf:surf,padOf:padOf,hwOf:hwOf,mult:mult,ptsOf:ptsOf,width:width,nextNarrow:nextNarrow};
+  function replay(seed,ar,sens,hands,span){ var g=create(seed,ar,sens,span); for(var i=0;i<hands.length&&g.state!=='over';i++) step(g,hands[i]===null||hands[i]<=NONE?null:hands[i]); return g; }
+  /* how many steps this frame, from the time gathered (s, with this frame's time already added) and the time left over. 1.59c: «while a
+     whole step has gathered» gave, at 60 frames a second, a frame with no step and the next with two whenever the gathered time sat at a
+     step's edge — and a phone's screen runs a hair off 60 Hz, so it drifts onto that edge every few seconds and stays there jittering for
+     most of a second (Den's 19:41 and 18:59 logs: bursts of such frames every ~11 s; «мяч дёргается в полёте»). Now: one step a frame, and
+     a second one (or none) only when the time is ahead (behind) by three quarters of a step — the left-over then sits a quarter step off
+     the middle, far from both edges, so a jitter can't flip it back. More than 5 steps behind (a pause, a hitch) — the rest is dropped.
+     Not part of the rules: only the drawing's rhythm */
+  function frameSteps(acc){ var n=1; acc-=DT; while(acc>0.75*DT&&n<5){ n++; acc-=DT; } if(acc>0.75*DT) acc=0; if(acc<-0.75*DT){ n--; acc+=DT; } return {n:n,acc:acc}; }
+  var TAG='pong-2';
+  return {NONE:NONE,TAG:TAG,frameSteps:frameSteps,TUNE:TUNE,DT:DT,create:create,step:step,replay:replay,surf:surf,padOf:padOf,hwOf:hwOf,mult:mult,ptsOf:ptsOf,width:width,nextNarrow:nextNarrow};
 })();
 if(typeof module!=='undefined') module.exports=Pong;
 /* ── PONG CONTROL (SonaPong, v1.59): the palm → the rackets, moved from the lab (lab/src/087_arcade.js 1.57f–1.58z24) as it is.
    Not part of the rules (src/15_pong.js gets only the result — the palm as a share of the calibrated travel), so it may use exp.
    - The «mix» — what the rackets follow: the slow part from the echo's distance (DSP2 abs) plus an offset, smoothed over 3 s; the fast part
-     from the phase only (DSP2 fast, by quarter frames — DSP2 'quarter' on), its deviation from its own 3-s smoothing. No leads or filters
+     from the phase only (DSP2 fast, by quarter frames — DSP2 'quarter' on), its deviation from its own 3-s smoothing. 1.59c: the smoothing
+     follows a steady creep of the phase (see frame). No leads or filters
      beyond that: the racket is where the sonar sees the palm. (The lab's 14:49 «ruler» record: as the flight's height — a 1 s sweep 83%,
      jerks 36%; the mix — 90%, jerks 79%, drifts half as much.)
    - The calibration — two holds (1.58z2): «lower the palm to where you start hitting from below — hold», «raise it to a comfortable
@@ -815,12 +829,16 @@ var PongCtl=(function(){
     if(!r) return c.mix; c.present=!!r.present; if(r.present){ c.height=r.height; c.abs=r.abs; }
     if(!r.present||r.height===null) return c.mix;
     var F=r.fast*(calS||1), a=1-Math.exp(-N/(TAU*fs));
-    if(c.mxH===null){ c.mxH=r.height; c.mxF=F; c.mxOff=c.mxCal!==null?c.mxCal:null; }
     var base=r.height; if(r.abs!==null&&r.abs!==undefined){ var dd=r.height-r.abs;
       if(c.mxCal!==null){ c.mxOff=c.mxCal; base=r.abs+c.mxOff; }
       else if(counting) c.mxOff=c.mxOff===null?dd:c.mxOff+(1-Math.exp(-N/(TAU_OFF*fs)))*(dd-c.mxOff);
       else if(c.mxOff!==null) base=r.abs+c.mxOff; }
-    c.mxH+=a*(base-c.mxH); c.mxF+=a*(F-c.mxF); c.mix=c.mxH+(F-c.mxF); return c.mix; }
+    /* the mix = the phase + a slow correction (the echo's place − the phase), smoothed over 3 s. 1.59c: the correction follows a steady
+       drift too (a level and its trend — a double exponential), it no longer lags behind it: the phase can creep a few mm a second, and
+       at Den's 19:41 game 23 mm/s — a plain 3-s smoothing lagged 3 s × the creep behind = the rackets 7 cm above the palm («опять тянет
+       ладонь вниз»). In the lab the creep was 2–4 mm/s downwards — the rackets sat 1–1.5 cm low. With no creep it is the 1.59 mix */
+    var d=base-F; if(c.mxH===null){ c.mxH=d; c.mxF=d; c.mxOff=c.mxCal!==null?c.mxCal:c.mxOff; }
+    c.mxH+=a*(d-c.mxH); c.mxF+=a*(c.mxH-c.mxF); c.mix=F+2*c.mxH-c.mxF; return c.mix; }
   /* the calibration: start, then hold() every frame (t — seconds). Returns {step:1|2, k:0…5 dots, caught:'low'|'top'|null, done} */
   function start(c){ c.hold={step:1,buf:[],k:-1,hb:null,dd:[]}; }
   function hold(c,t){ var H=c.hold; if(!H) return {done:true,step:0,k:0,caught:null};
@@ -1558,7 +1576,7 @@ var PIXH=215;
    at the screen's resolution (uiS device pixels per game pixel) and keeps working in game pixels through its transform; texts are set in
    a smooth typeface fitted to the pixel font's own widths (so every layout stays as it is), frames, buttons, rings and the pictures'
    shapes are drawn smooth. With «pixels» uiS is 1 — the game as it was */
-var uiS=1, UIFONT='system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+var uiS=1, uiPong=false, UIFONT='system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 var cv=document.getElementById('cv'), lc=cv, lx=cv.getContext('2d');                          // the visible canvas is the low-resolution one
 var gl=document.getElementById('glow'), gx=gl.getContext('2d'), glowDirty=false, glowSpr={};
 var pc=document.createElement('canvas');                         // pictures that can be mirrored for a left-handed player
@@ -1576,7 +1594,8 @@ function resize(){
   var w=Math.max(200,window.innerWidth), h=Math.max(150,window.innerHeight);
   W=Math.round(w*DPR); H=Math.round(h*DPR);
   S=Math.max(1,Math.round(Math.min(W,H)/PIXH)); LH=Math.ceil(H/S); LW=Math.ceil(W/S); K=LH/180;
-  uiS=(typeof gfxMode!=='undefined'&&gfxMode==='hd')?S*Math.min(2,DPR)/DPR:1;
+  uiPong=typeof mode!=='undefined'&&mode==='pong';   // 1.59c: SonaPong is drawn at the screen's resolution whatever the graphics switch (a ball on game pixels jumped a whole pixel at a time)
+  uiS=((typeof gfxMode!=='undefined'&&gfxMode==='hd')||uiPong)?S*Math.min(2,DPR)/DPR:1;
   lc.width=Math.round(LW*uiS); lc.height=Math.round(LH*uiS); pc.width=lc.width; pc.height=lc.height;
   lx.setTransform(uiS,0,0,uiS,0,0); lx.imageSmoothingEnabled=false; var pcx0=pc.getContext('2d'); pcx0.setTransform(uiS,0,0,uiS,0,0); pcx0.imageSmoothingEnabled=false;
   var css=function(el){ el.style.width=(LW*S/DPR)+'px'; el.style.height=(LH*S/DPR)+'px'; };
@@ -1644,8 +1663,18 @@ function text(s,x,y,col,align,sc,noRim){ sc=sc||1; var w=PF.width(s,sc); x=Math.
   if(uiS>1){ lx.save(); lx.font='700 '+(10*sc)+'px '+UIFONT; lx.textBaseline='alphabetic'; var nat=lx.measureText(s).width, fx=nat>0?Math.min(1.35,Math.max(0.45,w/nat)):1;
     lx.translate(x+(w-nat*fx)/2,y+7*sc); lx.scale(fx,1); if(!noRim){ lx.lineJoin='round'; lx.strokeStyle=P.bg; lx.lineWidth=2.2*sc; lx.strokeText(s,0,0); }
     lx.fillStyle=col; lx.fillText(s,0,0); lx.restore(); return w; }
+  if(lx.globalAlpha===1&&lx.globalCompositeOperation==='source-over'&&typeof col==='string'){ var c=textImg(s,col,sc,noRim); lx.drawImage(c,x-1,y-sc-1); return w; }
   if(!noRim){ lx.fillStyle=P.bg; for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++) if(dx||dy) PF.draw(lx,s,x+dx,y+dy,sc); }
   PF.draw(lx,s,x,y,sc,col); return w; }
+/* 1.59b: a pixel line of text drawn once and kept as a picture (the font draws every lit pixel as its own square, nine times with the
+   rim: a menu's few lines were ~10 000 squares a frame — SonaPong's menu took three times SonaFly's time). Same pixels; only at full
+   opacity (with a see-through text the rim and the letters blend differently). At most 400 kept; then the store starts anew */
+var TXC={}, TXN=0;
+function textImg(s,col,sc,noRim){ var k=s+'|'+col+'|'+sc+'|'+(noRim?0:P.bg), c=TXC[k]; if(c) return c;
+  if(TXN>=400){ TXC={}; TXN=0; }
+  c=document.createElement('canvas'); c.width=PF.width(s,sc)+2; c.height=10*sc+2; var x=c.getContext('2d');
+  if(!noRim){ x.fillStyle=P.bg; for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++) if(dx||dy) PF.draw(x,s,1+dx,sc+1+dy,sc); }
+  PF.draw(x,s,1,sc+1,sc,col); TXC[k]=c; TXN++; return c; }
 /* a block of lines wrapped to maxW, centred on cx; returns the y after the block */
 function para(s,cx0,y,maxW,col){ PF.wrap(s,maxW,1).forEach(function(l){ text(l,cx0,y,col,'center'); y+=10; }); return y; }
 var BTN=[];                                                         // buttons of the current frame: hit areas in game pixels
@@ -4294,14 +4323,15 @@ function pgRacket(q,i){ var n=18, xc=q.ar*(i?1-Pong.TUNE.XC:Pong.TUNE.XC), hw=q.
   lx.strokeStyle=PG_COL.rack; lx.lineWidth=2.2; lx.lineJoin='round'; lx.lineCap='round'; lx.beginPath(); pts.forEach(function(p,j){ if(j) lx.lineTo(p[0],p[1]); else lx.moveTo(p[0],p[1]); }); lx.stroke(); }
 function pgHeart(x,y,c){ R(c,x,y,2,1); R(c,x+3,y,2,1); R(c,x-1,y+1,7,2); R(c,x,y+3,5,1); R(c,x+1,y+4,3,1); R(c,x+2,y+5,1,1); }
 /* the HUD (Den's lab layout): the score, the multiplier, the balls and the series in the top right corner; the time till the rackets
-   narrow again — a bar burning down along the right edge; the pause in the bottom corner on the free side */
+   narrow again — a bar along the bottom, burning down to its middle (1.59c; was along the right edge); the pause in the bottom corner on the free side */
 function pgHud(){ var x=LW-SAFE.r-8, y=topY(), m=Pong.mult(g)*(1+Pong.TUNE.SERIES*Math.min(Pong.TUNE.SERIES_N,g.series));
   text(String(g.score),x,y,P.text,'right',2); y+=PF.CAP*2+5;
   text('×'+m.toFixed(2),x,y,P.band,'right'); y+=PF.CAP+5;
   for(var i=0;i<g.lives;i++) pgHeart(x-6-i*9,y,'#ff7a8a'); y+=9;
   for(var d=0;d<Pong.TUNE.SERIES_N;d++){ var on=d<Math.min(Pong.TUNE.SERIES_N,g.series); R(on?P.band:P.line,x-4-(Pong.TUNE.SERIES_N-1-d)*6,y,4,4); }
-  var fr=Pong.nextNarrow(g)/Pong.TUNE.NARROW_T, bx=LW-SAFE.r-4, y0=Math.round(LH*0.4), y1=Math.round(LH*0.92);
-  R(P.line,bx,y0,2,y1-y0); R(fr<0.2?P.hit:P.band,bx,y1-(y1-y0)*fr,2,(y1-y0)*fr);
+  // the time till the rackets narrow: a thin bar along the bottom, in the middle (1.59c, Den 19:43: «полосу убрать вниз и сделать горизонтальной»)
+  var fr=Pong.nextNarrow(g)/Pong.TUNE.NARROW_T, x0=Math.round(LW*0.3), x1=Math.round(LW*0.7), by=LH-SAFE.b-6, bw=Math.round((x1-x0)*fr);
+  R(P.line,x0,by,x1-x0,2); R(fr<0.2?P.hit:P.band,Math.round((x0+x1-bw)/2),by,bw,2);
   (PG.pts||[]).forEach(function(p){ p.t-=DT; if(p.t>0){ lx.globalAlpha=Math.min(1,p.t*2); text('+'+p.n,pgX(p.x),pgY(p.y)-14-(1.2-p.t)*12,P.text,'center'); lx.globalAlpha=1; } });
   PG.pts=(PG.pts||[]).filter(function(p){ return p.t>0; }); }
 function pgPauseBtn(){ var s=BH-3, x=freeSide()==='left'?SAFE.l+8:LW-SAFE.r-8-s; iconButton('pause',x,LH-SAFE.b-s-6); }
@@ -4355,9 +4385,9 @@ function pgCount(){ countT-=DT; var v=pgView(PG.view?PG.view.py:Pong.TUNE.PAD_LO
   if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.play('tick');
   if(countT<=0) startGame(); }
 function pgCountStart(){ countT=3; try{ DSP2.set('quarter',1); }catch(e){} go('count'); }
-function pgStart(){ var seed=newSeed(); g=Pong.create(seed,pgAr(),pgSens()); var f=PG.c?PongCtl.frac(PG.c,PongCtl.palm(PG.c)):null; if(f!==null) g.py=Pong.padOf(g,f);
+function pgStart(){ var seed=newSeed(); var lin=PG.c&&PG.c.lin; g=Pong.create(seed,pgAr(),pgSens(),lin?Math.max(30,lin.t-lin.b):null); var f=PG.c?PongCtl.frac(PG.c,PongCtl.palm(PG.c)):null; if(f!==null) g.py=Pong.padOf(g,f);
   acc=0; parts=[]; PG.pts=[]; PG.newBest=false; nickAsked=false; var I=Sonar.info(), c=PG.c||{};
-  Logs.gameStart({core:Pong.TAG,game:'pong',seed:seed,ar:+g.ar.toFixed(4),sens:pgSens(),cal:DSP2.info().cal,lin:c.lin?{b:+c.lin.b.toFixed(1),t:+c.lin.t.toFixed(1)}:null,mix_off:c.mxCal===null||c.mxCal===undefined?null:+c.mxCal.toFixed(1),
+  Logs.gameStart({core:Pong.TAG,game:'pong',seed:seed,ar:+g.ar.toFixed(4),sens:pgSens(),span:g.span,cal:DSP2.info().cal,lin:c.lin?{b:+c.lin.b.toFixed(1),t:+c.lin.t.toFixed(1)}:null,mix_off:c.mxCal===null||c.mxCal===undefined?null:+c.mxCal.toFixed(1),
     chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids'});
   Sfx.play('start'); go('play'); }
 /* ── the game ── */
@@ -4365,10 +4395,12 @@ var PG_SND={go:'tap',land:'tap',ceil:'rub',pass:'coin',dull:'syrup',lost:'crash'
 function pgReact(){ g.events.forEach(function(k){ if(PG_SND[k]) Sfx.play(PG_SND[k]); });
   (g.fx||[]).forEach(function(f){ if(f.pts) PG.pts.push({n:f.pts,x:f.x,y:f.y,t:1.2}); if(f.lost!==undefined){ flash=0.25; burst(pgX(Math.max(0,Math.min(g.ar,f.lost))),Math.min(LH,pgY(1))-6,20,[PG_COL.ball,'#ffffff',P.hit],60*K); } }); }
 function pgPlay(){
-  acc+=DT; var n=0;
-  while(acc>=Pong.DT&&n<5){ acc-=Pong.DT; n++; var c=PG.c, f=c?PongCtl.frac(c,c.present?PongCtl.palm(c):null):null; f=f===null?null:Math.round(f*4000)/4000;   // the palm rounded as the other games' (a replay takes these exact numbers)
+  /* 1.59c: the steps a frame — the nearest whole number, not «while a whole step has gathered»: at 60 frames a second the gathered time
+     hovers right at one step, and a hair's difference either way gave a frame with no step and the next with two — the ball jerked
+     (Den 19:26: «мяч дёргается в полёте»). Now it is one step a frame; the time left over (under half a step either way) carries on */
+  var fs=Pong.frameSteps(acc+DT), n=0, want=fs.n; acc=fs.acc;
+  while(n<want){ n++; var c=PG.c, f=c?PongCtl.frac(c,c.present?PongCtl.palm(c):null):null; f=f===null?null:Math.round(f*4000)/4000;   // the palm rounded as the other games' (a replay takes these exact numbers)
     Pong.step(g,f); Logs.step({n:g.n,FH:1,ship:{y:g.py},lives:g.lives,score:g.score,events:g.events},f); pgReact(); if(g.state==='over') break; }
-  if(n===5) acc=0;
   flash=Math.max(0,flash-DT); duckT-=DT; if(duckT<=0&&Sonar.peak()>DUCK_PEAK){ duckT=0.4; if(Sfx.duck()) Logs.gameEv('sounds down',+Sfx.level().toFixed(2)); }
   pgField(g,DT); pgHud(); coveredLine(topY()+40); pgPauseBtn(); say(L('menu_a'));
   if(flash>0){ lx.globalAlpha=Math.min(0.3,flash); R(P.hit,0,0,LW,LH); lx.globalAlpha=1; }
@@ -6955,6 +6987,7 @@ function loop(now){
   requestAnimationFrame(loop);
   var fast=scr==='play'||scr==='count'||scr==='count-resume'; if(now-lastNow<(fast?15:31)) return;
   DT=Math.min(0.05,Math.max(0,(now-lastNow)/1000)); lastNow=now; clock+=DT; scrT+=DT; BTN=[]; SLD=[];
+  if((mode==='pong')!==uiPong) resize();   // 1.59c: SonaPong's screens at the screen's resolution (src/40_gfx.js resize)
   if(LH>LW){ pauseGame(); sRotate(); present(0); return; }
   if(booted&&Sonar.lost()&&(scr==='wave'||scr==='phold'||scr==='count'||scr==='play'||scr==='over')){ if(g&&g.state==='play') Logs.gameStop(); Board.setup('lost'); go('lost'); }
   var RS=mode==='race'&&(scr==='rtitle'||scr==='skins'||scr==='rset'||scr==='scores'||scr==='count'||scr==='count-resume'||scr==='play'||scr==='over'||scr==='paused'||scr==='restart'||(scr==='wave'&&caught&&scrT-caughtT>=CAUGHT_SHOW));

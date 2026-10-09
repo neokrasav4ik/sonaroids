@@ -35,14 +35,15 @@ function pgRacket(q,i){ var n=18, xc=q.ar*(i?1-Pong.TUNE.XC:Pong.TUNE.XC), hw=q.
   lx.strokeStyle=PG_COL.rack; lx.lineWidth=2.2; lx.lineJoin='round'; lx.lineCap='round'; lx.beginPath(); pts.forEach(function(p,j){ if(j) lx.lineTo(p[0],p[1]); else lx.moveTo(p[0],p[1]); }); lx.stroke(); }
 function pgHeart(x,y,c){ R(c,x,y,2,1); R(c,x+3,y,2,1); R(c,x-1,y+1,7,2); R(c,x,y+3,5,1); R(c,x+1,y+4,3,1); R(c,x+2,y+5,1,1); }
 /* the HUD (Den's lab layout): the score, the multiplier, the balls and the series in the top right corner; the time till the rackets
-   narrow again — a bar burning down along the right edge; the pause in the bottom corner on the free side */
+   narrow again — a bar along the bottom, burning down to its middle (1.59c; was along the right edge); the pause in the bottom corner on the free side */
 function pgHud(){ var x=LW-SAFE.r-8, y=topY(), m=Pong.mult(g)*(1+Pong.TUNE.SERIES*Math.min(Pong.TUNE.SERIES_N,g.series));
   text(String(g.score),x,y,P.text,'right',2); y+=PF.CAP*2+5;
   text('×'+m.toFixed(2),x,y,P.band,'right'); y+=PF.CAP+5;
   for(var i=0;i<g.lives;i++) pgHeart(x-6-i*9,y,'#ff7a8a'); y+=9;
   for(var d=0;d<Pong.TUNE.SERIES_N;d++){ var on=d<Math.min(Pong.TUNE.SERIES_N,g.series); R(on?P.band:P.line,x-4-(Pong.TUNE.SERIES_N-1-d)*6,y,4,4); }
-  var fr=Pong.nextNarrow(g)/Pong.TUNE.NARROW_T, bx=LW-SAFE.r-4, y0=Math.round(LH*0.4), y1=Math.round(LH*0.92);
-  R(P.line,bx,y0,2,y1-y0); R(fr<0.2?P.hit:P.band,bx,y1-(y1-y0)*fr,2,(y1-y0)*fr);
+  // the time till the rackets narrow: a thin bar along the bottom, in the middle (1.59c, Den 19:43: «полосу убрать вниз и сделать горизонтальной»)
+  var fr=Pong.nextNarrow(g)/Pong.TUNE.NARROW_T, x0=Math.round(LW*0.3), x1=Math.round(LW*0.7), by=LH-SAFE.b-6, bw=Math.round((x1-x0)*fr);
+  R(P.line,x0,by,x1-x0,2); R(fr<0.2?P.hit:P.band,Math.round((x0+x1-bw)/2),by,bw,2);
   (PG.pts||[]).forEach(function(p){ p.t-=DT; if(p.t>0){ lx.globalAlpha=Math.min(1,p.t*2); text('+'+p.n,pgX(p.x),pgY(p.y)-14-(1.2-p.t)*12,P.text,'center'); lx.globalAlpha=1; } });
   PG.pts=(PG.pts||[]).filter(function(p){ return p.t>0; }); }
 function pgPauseBtn(){ var s=BH-3, x=freeSide()==='left'?SAFE.l+8:LW-SAFE.r-8-s; iconButton('pause',x,LH-SAFE.b-s-6); }
@@ -96,9 +97,9 @@ function pgCount(){ countT-=DT; var v=pgView(PG.view?PG.view.py:Pong.TUNE.PAD_LO
   if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.play('tick');
   if(countT<=0) startGame(); }
 function pgCountStart(){ countT=3; try{ DSP2.set('quarter',1); }catch(e){} go('count'); }
-function pgStart(){ var seed=newSeed(); g=Pong.create(seed,pgAr(),pgSens()); var f=PG.c?PongCtl.frac(PG.c,PongCtl.palm(PG.c)):null; if(f!==null) g.py=Pong.padOf(g,f);
+function pgStart(){ var seed=newSeed(); var lin=PG.c&&PG.c.lin; g=Pong.create(seed,pgAr(),pgSens(),lin?Math.max(30,lin.t-lin.b):null); var f=PG.c?PongCtl.frac(PG.c,PongCtl.palm(PG.c)):null; if(f!==null) g.py=Pong.padOf(g,f);
   acc=0; parts=[]; PG.pts=[]; PG.newBest=false; nickAsked=false; var I=Sonar.info(), c=PG.c||{};
-  Logs.gameStart({core:Pong.TAG,game:'pong',seed:seed,ar:+g.ar.toFixed(4),sens:pgSens(),cal:DSP2.info().cal,lin:c.lin?{b:+c.lin.b.toFixed(1),t:+c.lin.t.toFixed(1)}:null,mix_off:c.mxCal===null||c.mxCal===undefined?null:+c.mxCal.toFixed(1),
+  Logs.gameStart({core:Pong.TAG,game:'pong',seed:seed,ar:+g.ar.toFixed(4),sens:pgSens(),span:g.span,cal:DSP2.info().cal,lin:c.lin?{b:+c.lin.b.toFixed(1),t:+c.lin.t.toFixed(1)}:null,mix_off:c.mxCal===null||c.mxCal===undefined?null:+c.mxCal.toFixed(1),
     chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids'});
   Sfx.play('start'); go('play'); }
 /* ── the game ── */
@@ -106,10 +107,12 @@ var PG_SND={go:'tap',land:'tap',ceil:'rub',pass:'coin',dull:'syrup',lost:'crash'
 function pgReact(){ g.events.forEach(function(k){ if(PG_SND[k]) Sfx.play(PG_SND[k]); });
   (g.fx||[]).forEach(function(f){ if(f.pts) PG.pts.push({n:f.pts,x:f.x,y:f.y,t:1.2}); if(f.lost!==undefined){ flash=0.25; burst(pgX(Math.max(0,Math.min(g.ar,f.lost))),Math.min(LH,pgY(1))-6,20,[PG_COL.ball,'#ffffff',P.hit],60*K); } }); }
 function pgPlay(){
-  acc+=DT; var n=0;
-  while(acc>=Pong.DT&&n<5){ acc-=Pong.DT; n++; var c=PG.c, f=c?PongCtl.frac(c,c.present?PongCtl.palm(c):null):null; f=f===null?null:Math.round(f*4000)/4000;   // the palm rounded as the other games' (a replay takes these exact numbers)
+  /* 1.59c: the steps a frame — the nearest whole number, not «while a whole step has gathered»: at 60 frames a second the gathered time
+     hovers right at one step, and a hair's difference either way gave a frame with no step and the next with two — the ball jerked
+     (Den 19:26: «мяч дёргается в полёте»). Now it is one step a frame; the time left over (under half a step either way) carries on */
+  var fs=Pong.frameSteps(acc+DT), n=0, want=fs.n; acc=fs.acc;
+  while(n<want){ n++; var c=PG.c, f=c?PongCtl.frac(c,c.present?PongCtl.palm(c):null):null; f=f===null?null:Math.round(f*4000)/4000;   // the palm rounded as the other games' (a replay takes these exact numbers)
     Pong.step(g,f); Logs.step({n:g.n,FH:1,ship:{y:g.py},lives:g.lives,score:g.score,events:g.events},f); pgReact(); if(g.state==='over') break; }
-  if(n===5) acc=0;
   flash=Math.max(0,flash-DT); duckT-=DT; if(duckT<=0&&Sonar.peak()>DUCK_PEAK){ duckT=0.4; if(Sfx.duck()) Logs.gameEv('sounds down',+Sfx.level().toFixed(2)); }
   pgField(g,DT); pgHud(); coveredLine(topY()+40); pgPauseBtn(); say(L('menu_a'));
   if(flash>0){ lx.globalAlpha=Math.min(0.3,flash); R(P.hit,0,0,LW,LH); lx.globalAlpha=1; }

@@ -15,7 +15,11 @@
      100·f³, and above 70% a «hill» up to +200 (300 at the ceiling); a pass that touched the ceiling scores nothing and restarts the series;
    - the series: +10% for every clean pass in a row, up to ×1.5;
    - the rackets narrow every 30 s by 1/8 of their width, without end; the multiplier for narrow rackets — up to ×2;
-   - 5 balls; the game is over when they are all lost.
+   - 5 balls; the game is over when they are all lost;
+   - the swing's strength is the palm's own speed (1.59b, pong-2): the racket's speed on the screen, brought back to the palm's mm/s by the
+     calibrated travel (span, mm; 70 — the lab's usual). Before, it was the speed in shares of the calibrated travel: a narrow calibration
+     (Den's 18:59 game: the holds 4 cm apart) made every swing 1.6 times stronger, and half the passes hit the ceiling. The sensitivity
+     still changes only how far the rackets go (1.58d: «from the same swing the ball flies the same»).
    Units: the screen's height is 1, its width is ar (the aspect ratio); y grows downwards (0 — the top). ── */
 var Pong=(function(){
   var DT=1/60;
@@ -28,6 +32,7 @@ var Pong=(function(){
     CUP:0.06, KV:0.9,              // the bowl: the field's edge 0.06 higher than the middle, the gap side a little lower
     LIFT:0.10, PAD_LO:0.94, PAD_MIN:0.3, PAD_MAX:0.97, CB:0.08, CT:0.75, R:0.032, TOP:0.03, CEIL_BACK:0.35,
     SENS:[0.3,0.4,0.5,0.6],        // the racket's travel, screen heights: «low», «below middle», «middle», «high» sensitivity
+    SPAN_REF:70,                   // 1.59b: the calibrated palm travel (mm) the swing's strength was found with — the lab's usual (Den's holds)
     NARROW_T:30, NARROW_K:0.875, MULT_CAP:2, SERIES:0.1, SERIES_N:5, LIVES:5,
     WAIT:0.8, RESPAWN0:0.3, RESPAWN:0.6, HILL:0.7, HILL_W:0.3, HILL_PTS:200};   // the hill: from 70% of the height, over the last 0.3
   function rng(seed){ var a=seed>>>0; return function(){ a=(a+0x6D2B79F5)>>>0; var t=a; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
@@ -45,9 +50,9 @@ var Pong=(function(){
     return {u:u,s:s,ui:ui,f:f,xc:xc,y:g.py-TUNE.LIFT+yr}; }
   /* the palm → the rackets' place: hand is the palm as a share of the calibrated travel (0.08 at the low hold, 0.75 at the top one) */
   function padOf(g,hand){ return Math.max(TUNE.PAD_MIN,Math.min(TUNE.PAD_MAX,TUNE.PAD_LO-hand*g.H)); }
-  function create(seed,ar,sens){
+  function create(seed,ar,sens,span){
     var H=TUNE.SENS[sens===undefined||sens===null?1:sens]||TUNE.SENS[1];
-    var g={seed:seed>>>0,ar:ar||2.16,H:H,rand:rng(seed),n:0,t:0,state:'play',score:0,lives:TUNE.LIVES,falls:0,passes:0,tosses:0,ceils:0,
+    var g={seed:seed>>>0,ar:ar||2.16,H:H,span:span>0?span:TUNE.SPAN_REF,rand:rng(seed),n:0,t:0,state:'play',score:0,lives:TUNE.LIVES,falls:0,passes:0,tosses:0,ceils:0,
       series:0,streak:0,best:0,bestPts:0,k:1,step:0,py:TUNE.PAD_LO-0.5*H,padPrev:null,vpS:0,vr:0,vpb:0,ball:null,respawn:TUNE.RESPAWN0,events:[],fx:[]};
     g.hw=hwOf(g); return g; }
   function mult(g){ var w=g.hw/(g.ar/4); return 1/Math.max(1/TUNE.MULT_CAP,Math.min(1,w)); }
@@ -70,7 +75,7 @@ var Pong=(function(){
     var st=Math.floor(g.t/TUNE.NARROW_T); while(g.step<st){ g.step++; g.k*=TUNE.NARROW_K; g.events.push('narrow'); }
     g.hw=hwOf(g);
     var pad=g.py, vr=g.padPrev===null?0:(pad-g.padPrev)/DT; g.padPrev=pad; g.vr=vr;
-    g.vpS+=(clamp(vr,-4,4)-g.vpS)*0.45; var vpb=g.vpS*(0.6/g.H)*TUNE.HIT; g.vpb=vpb;
+    g.vpS+=(clamp(vr,-4,4)-g.vpS)*0.45; var vpb=g.vpS*(0.6/g.H)*TUNE.HIT*(g.span/TUNE.SPAN_REF); g.vpb=vpb;
     if(!g.ball){ g.respawn-=DT; if(g.respawn<=0) spawn(g); }
     var b=g.ball; if(!b) return g;
     if(b.wait>0){ b.wait-=DT; if(b.wait<=0) serveGo(g,b); return g; }
@@ -94,8 +99,16 @@ var Pong=(function(){
   function nextNarrow(g){ return (g.step+1)*TUNE.NARROW_T-g.t; }
   /* a whole game from a palm trajectory (one value per step; NONE or less — no palm; the palm itself may go a little below 0): what a server would run */
   var NONE=-9;
-  function replay(seed,ar,sens,hands){ var g=create(seed,ar,sens); for(var i=0;i<hands.length&&g.state!=='over';i++) step(g,hands[i]===null||hands[i]<=NONE?null:hands[i]); return g; }
-  var TAG='pong-1';
-  return {NONE:NONE,TAG:TAG,TUNE:TUNE,DT:DT,create:create,step:step,replay:replay,surf:surf,padOf:padOf,hwOf:hwOf,mult:mult,ptsOf:ptsOf,width:width,nextNarrow:nextNarrow};
+  function replay(seed,ar,sens,hands,span){ var g=create(seed,ar,sens,span); for(var i=0;i<hands.length&&g.state!=='over';i++) step(g,hands[i]===null||hands[i]<=NONE?null:hands[i]); return g; }
+  /* how many steps this frame, from the time gathered (s, with this frame's time already added) and the time left over. 1.59c: «while a
+     whole step has gathered» gave, at 60 frames a second, a frame with no step and the next with two whenever the gathered time sat at a
+     step's edge — and a phone's screen runs a hair off 60 Hz, so it drifts onto that edge every few seconds and stays there jittering for
+     most of a second (Den's 19:41 and 18:59 logs: bursts of such frames every ~11 s; «мяч дёргается в полёте»). Now: one step a frame, and
+     a second one (or none) only when the time is ahead (behind) by three quarters of a step — the left-over then sits a quarter step off
+     the middle, far from both edges, so a jitter can't flip it back. More than 5 steps behind (a pause, a hitch) — the rest is dropped.
+     Not part of the rules: only the drawing's rhythm */
+  function frameSteps(acc){ var n=1; acc-=DT; while(acc>0.75*DT&&n<5){ n++; acc-=DT; } if(acc>0.75*DT) acc=0; if(acc<-0.75*DT){ n--; acc+=DT; } return {n:n,acc:acc}; }
+  var TAG='pong-2';
+  return {NONE:NONE,TAG:TAG,frameSteps:frameSteps,TUNE:TUNE,DT:DT,create:create,step:step,replay:replay,surf:surf,padOf:padOf,hwOf:hwOf,mult:mult,ptsOf:ptsOf,width:width,nextNarrow:nextNarrow};
 })();
 if(typeof module!=='undefined') module.exports=Pong;

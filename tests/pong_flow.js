@@ -32,6 +32,7 @@ const SCEN=`function(t){ if(t<8) return null; if(t<12) return 70; if(t<13) retur
     if(s.scr==='play'&&s.py!==null&&s.c&&s.c.frac!==null) follow.push([s.c.frac,s.py,s.H]);
     if(s.scr==='play'&&T()-startAt>14&&!shots.play){ shots.play=1; await shot('04_play'); }
     if(s.scr==='play'&&!shots.field){ shots.field=await p.evaluate(()=>Object.assign(__sonaroids.pongField(),{gar:__sonaroids.state().g.ar})); }
+    if(s.scr==='play'&&T()-startAt>8&&!shots.steps){ shots.steps=await p.evaluate(()=>new Promise(r=>{ const d=[]; let last=null, k=0; (function f(){ const n=__sonaroids.state().g.n; if(last!==null) d.push(n-last); last=n; if(++k<120) requestAnimationFrame(f); else r(d); })(); })); }
     if(s.scr==='play'&&T()-startAt>20&&!paused){ const bp=await p.evaluate(()=>{ const b=__sonaroids.btn().find(q=>q.id==='pause'), m=__sonaroids.S(); return b?{x:(b.x+b.w/2)*m.S/m.DPR,y:(b.y+b.h/2)*m.S/m.DPR}:null; });
       if(bp) await p.mouse.click(bp.x,bp.y); await p.waitForTimeout(300); await shot('05_paused');
       paused=await p.evaluate(()=>({scr:__sonaroids.scr(),btn:__sonaroids.btn().map(b=>b.id)}));
@@ -49,6 +50,8 @@ const SCEN=`function(t){ if(t<8) return null; if(t<12) return 70; if(t<13) retur
   check('the mix\'s offset learnt on the holds',!!hold&&hold.mxCal!==null&&Math.abs(hold.mxCal)<40,hold?`${hold.mxCal===null?'—':hold.mxCal.toFixed(1)} mm`:'');
   const fit=follow.length>50?(()=>{ let e=0; follow.forEach(([f,py,H])=>{ const want=Math.max(0.3,Math.min(0.97,0.94-Math.round(f*4000)/4000*H)); e=Math.max(e,Math.abs(want-py)); }); const lo=Math.min(...follow.map(q=>q[1])), hi=Math.max(...follow.map(q=>q[1])); return {e,lo,hi}; })():null;
   check('the rackets follow the palm in proportion',!!fit&&fit.e<0.05&&fit.hi-fit.lo>0.15,fit?`the largest difference ${fit.e.toFixed(3)} of the screen (the palm read a frame apart); the rackets went ${fit.lo.toFixed(2)}…${fit.hi.toFixed(2)}`:'no game');
+  { const d=shots.steps||[], one=d.filter(x=>x===1).length;
+    check('one rules step a frame (the ball moves evenly)',d.length>100&&one>=d.length*0.95,`${one} of ${d.length} frames; others: ${d.filter(x=>x!==1).join(' ')||'—'}`); }
   { const f=shots.field; check('the field is the lab\'s shape (2.16 screen heights) across the whole screen, not the safe area',!!f&&f.gar===2.16&&f.ar===2.16&&Math.abs(f.x0)<=2&&Math.abs(f.x1-f.LW)<=2&&Math.abs(f.y1-f.y0-f.LH)<=1,f?`ar ${f.gar}; the field ${f.x0.toFixed(1)}…${f.x1.toFixed(1)} of ${f.LW} px`:'no game'); }
   check('pause: resume, hold again, start over, end, menu; then the countdown and the game',!!paused&&paused.scr==='paused'&&['resume','pg_recal','restart','quit','exit'].every(id=>paused.btn.includes(id))&&paused.cr==='count-resume'&&paused.back==='play',paused?`${paused.scr} → ${paused.cr} → ${paused.back}`:'');
   check('the game over keeps the best',!!over&&over.scr==='over'&&over.best===over.score&&['again','over_cal','menu'].every(id=>over.btn.includes(id)),over?`score ${over.score}, best kept ${over.best}`:'');

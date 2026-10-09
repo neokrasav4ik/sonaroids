@@ -15,7 +15,7 @@ var PIXH=215;
    at the screen's resolution (uiS device pixels per game pixel) and keeps working in game pixels through its transform; texts are set in
    a smooth typeface fitted to the pixel font's own widths (so every layout stays as it is), frames, buttons, rings and the pictures'
    shapes are drawn smooth. With «pixels» uiS is 1 — the game as it was */
-var uiS=1, UIFONT='system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+var uiS=1, uiPong=false, UIFONT='system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 var cv=document.getElementById('cv'), lc=cv, lx=cv.getContext('2d');                          // the visible canvas is the low-resolution one
 var gl=document.getElementById('glow'), gx=gl.getContext('2d'), glowDirty=false, glowSpr={};
 var pc=document.createElement('canvas');                         // pictures that can be mirrored for a left-handed player
@@ -33,7 +33,8 @@ function resize(){
   var w=Math.max(200,window.innerWidth), h=Math.max(150,window.innerHeight);
   W=Math.round(w*DPR); H=Math.round(h*DPR);
   S=Math.max(1,Math.round(Math.min(W,H)/PIXH)); LH=Math.ceil(H/S); LW=Math.ceil(W/S); K=LH/180;
-  uiS=(typeof gfxMode!=='undefined'&&gfxMode==='hd')?S*Math.min(2,DPR)/DPR:1;
+  uiPong=typeof mode!=='undefined'&&mode==='pong';   // 1.59c: SonaPong is drawn at the screen's resolution whatever the graphics switch (a ball on game pixels jumped a whole pixel at a time)
+  uiS=((typeof gfxMode!=='undefined'&&gfxMode==='hd')||uiPong)?S*Math.min(2,DPR)/DPR:1;
   lc.width=Math.round(LW*uiS); lc.height=Math.round(LH*uiS); pc.width=lc.width; pc.height=lc.height;
   lx.setTransform(uiS,0,0,uiS,0,0); lx.imageSmoothingEnabled=false; var pcx0=pc.getContext('2d'); pcx0.setTransform(uiS,0,0,uiS,0,0); pcx0.imageSmoothingEnabled=false;
   var css=function(el){ el.style.width=(LW*S/DPR)+'px'; el.style.height=(LH*S/DPR)+'px'; };
@@ -101,8 +102,18 @@ function text(s,x,y,col,align,sc,noRim){ sc=sc||1; var w=PF.width(s,sc); x=Math.
   if(uiS>1){ lx.save(); lx.font='700 '+(10*sc)+'px '+UIFONT; lx.textBaseline='alphabetic'; var nat=lx.measureText(s).width, fx=nat>0?Math.min(1.35,Math.max(0.45,w/nat)):1;
     lx.translate(x+(w-nat*fx)/2,y+7*sc); lx.scale(fx,1); if(!noRim){ lx.lineJoin='round'; lx.strokeStyle=P.bg; lx.lineWidth=2.2*sc; lx.strokeText(s,0,0); }
     lx.fillStyle=col; lx.fillText(s,0,0); lx.restore(); return w; }
+  if(lx.globalAlpha===1&&lx.globalCompositeOperation==='source-over'&&typeof col==='string'){ var c=textImg(s,col,sc,noRim); lx.drawImage(c,x-1,y-sc-1); return w; }
   if(!noRim){ lx.fillStyle=P.bg; for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++) if(dx||dy) PF.draw(lx,s,x+dx,y+dy,sc); }
   PF.draw(lx,s,x,y,sc,col); return w; }
+/* 1.59b: a pixel line of text drawn once and kept as a picture (the font draws every lit pixel as its own square, nine times with the
+   rim: a menu's few lines were ~10 000 squares a frame — SonaPong's menu took three times SonaFly's time). Same pixels; only at full
+   opacity (with a see-through text the rim and the letters blend differently). At most 400 kept; then the store starts anew */
+var TXC={}, TXN=0;
+function textImg(s,col,sc,noRim){ var k=s+'|'+col+'|'+sc+'|'+(noRim?0:P.bg), c=TXC[k]; if(c) return c;
+  if(TXN>=400){ TXC={}; TXN=0; }
+  c=document.createElement('canvas'); c.width=PF.width(s,sc)+2; c.height=10*sc+2; var x=c.getContext('2d');
+  if(!noRim){ x.fillStyle=P.bg; for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++) if(dx||dy) PF.draw(x,s,1+dx,sc+1+dy,sc); }
+  PF.draw(x,s,1,sc+1,sc,col); TXC[k]=c; TXN++; return c; }
 /* a block of lines wrapped to maxW, centred on cx; returns the y after the block */
 function para(s,cx0,y,maxW,col){ PF.wrap(s,maxW,1).forEach(function(l){ text(l,cx0,y,col,'center'); y+=10; }); return y; }
 var BTN=[];                                                         // buttons of the current frame: hit areas in game pixels

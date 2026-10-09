@@ -1,5 +1,5 @@
-/* The pong control (src/16_pong_ctl.js, v1.59): the mix the rackets follow is the lab's mix number for number (lab/src/087_arcade.js
-   mixFrame, run side by side on the same frames), and the calibration's two holds catch the palm where it was held, learn the mix's offset
+/* The pong control (src/16_pong_ctl.js, v1.59): the mix the rackets follow sits on the palm as the lab's did (lab/src/087_arcade.js
+   mixFrame, run side by side on the same frames) and, since 1.59c, also when the phase creeps, and the calibration's two holds catch the palm where it was held, learn the mix's offset
    while it is still, ignore a shaky palm and a top too close to the low. On synthetic sonar frames. Run: node tests/test_pong_ctl.js */
 const Ctl=require('../src/16_pong_ctl.js'), L=require('./pong_lab.js');
 let ok=true; const out=[]; const check=(name,good,info)=>{ ok=ok&&good; out.push(`${name}: ${info||''} ${good?'ok':'FAIL'}`); };
@@ -12,15 +12,19 @@ function frames(path,off,jit,gaps){ const fr=[]; let t=0, k=0;
     for(;t<t1;t+=DTF,k++){ const u=(t-t0)/Math.max(1e-9,t1-t0), h=h0+(h1-h0)*u, seen=!(gaps&&k%300<6);
       fr.push({t,r:{present:seen,height:seen?h+rnd()*jit:null,abs:seen?h-off+rnd()*jit*3:null,fast:h*0.9+rnd()*jit*0.5}}); } }
   return fr; }
-// 1. the mix: the same numbers as the lab's, through the holds, the countdown and the play, with and without the offset from the holds
-{ L.P.setFs(); const D=L.P.DSP(), A=L.P.ARC(); D.info=()=>({cal:{s:0.9}}); let worst=0, n=0;
-  for(const learnt of [true,false]){ const fr=frames([[0,120],[2,70],[3.5,70],[4.5,150],[6,150],[8,90],[30,140],[60,80]],18,4,true);
-    const c=Ctl.create(); A.game='pong'; A.mxH=null; A.mxF=null; A.mxOff=null; A.mxCal=null; A.mix=null; A.c2={step:1}; A.phase='wave';
-    fr.forEach((f,i)=>{ const ph=f.t<6?'wave':f.t<9?'count':'play'; A.phase=ph; if(ph!=='wave') A.c2=null;
-      if(learnt&&i===Math.floor(6/DTF)){ A.mxCal=-17.5; A.mxOff=A.mxCal; A.mxH=null; c.mxCal=-17.5; c.mxOff=c.mxCal; c.mxH=null; }
-      L.P.mix(f.r); Ctl.frame(c,f.r,N,FS,0.9,ph==='count');
-      if(A.mix!==null&&A.mix!==undefined){ n++; worst=Math.max(worst,Math.abs(A.mix-c.mix)); } }); }
-  check('the mix is the lab\'s, number for number',n>5000&&worst===0,`${n} frames, the largest difference ${worst}`); }
+// 1. the mix: as the lab's (lab/src/087_arcade.js mixFrame, run side by side on the same frames) while the phase doesn't creep; and, since
+//    1.59c, it doesn't fall behind a phase that creeps (the lab's lagged 3 s × the creep: at 23 mm/s — 7 cm, Den's 19:41 game)
+const mixRun=(creep)=>{ L.P.setFs(); const D=L.P.DSP(), A=L.P.ARC(); D.info=()=>({cal:{s:1}}); const res={lab:[],now:[],palm:[]};
+  const fr=frames([[0,120],[2,70],[3.5,70],[4.5,150],[6,150],[8,90],[30,140],[60,80]],18,4,true);
+  const c=Ctl.create(); A.game='pong'; A.mxH=null; A.mxF=null; A.mxOff=null; A.mxCal=null; A.mix=null; A.c2=null; A.phase='play';
+  A.mxCal=18; A.mxOff=A.mxCal; c.mxCal=18; c.mxOff=c.mxCal;   // the echo reads 18 mm low (see frames)
+  fr.forEach((f,i)=>{ const r=Object.assign({},f.r); if(r.present) r.fast=r.fast/0.9*1+creep*f.t; const palm=f.r.present?(f.r.fast/0.9):null;   // the phase: the palm's own height (+ a creep)
+    if(r.present) r.height=palm+rnd()*2; L.P.mix(r); Ctl.frame(c,r,N,FS,1,false);
+    if(f.t>12&&A.mix!==null&&A.mix!==undefined&&palm!==null){ res.lab.push(A.mix-palm); res.now.push(c.mix-palm); } });
+  const md=v=>{ v=v.slice().sort((p,q)=>p-q); return v[v.length>>1]; }; return {lab:md(res.lab),now:md(res.now),n:res.now.length}; };
+{ const a=mixRun(0), b=mixRun(23), c=mixRun(-3);
+  check('the mix sits on the palm as the lab\'s did while the phase holds still',a.n>4000&&Math.abs(a.now)<3&&Math.abs(a.now-a.lab)<2,`off the palm by ${a.now.toFixed(1)} mm (the lab's ${a.lab.toFixed(1)})`);
+  check('a creeping phase doesn\'t lift or lower the rackets (1.59c)',Math.abs(b.now)<5&&Math.abs(c.now)<3,`creep +23 mm/s: ${b.now.toFixed(1)} mm (the lab's mix ${b.lab.toFixed(0)}); −3 mm/s: ${c.now.toFixed(1)} mm (the lab's ${c.lab.toFixed(0)})`); }
 // 2. the holds
 const run=(path,off,jit)=>{ const c=Ctl.create(); Ctl.start(c); const got=[]; let low=null, top=null, dots=new Set();
   for(const f of frames(path,off,jit)){ Ctl.frame(c,f.r,N,FS,1,false); const r=Ctl.hold(c,f.t); dots.add(r.k); if(r.caught==='low') low=c.lin.b; if(r.caught==='top'){ top=c.lin.t; got.push(f.t); break; } }

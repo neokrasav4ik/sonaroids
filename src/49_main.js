@@ -1000,6 +1000,7 @@ function loop(now){
   requestAnimationFrame(loop);
   var fast=scr==='play'||scr==='count'||scr==='count-resume'; if(now-lastNow<(fast?15:31)) return;
   DT=Math.min(0.05,Math.max(0,(now-lastNow)/1000)); lastNow=now; clock+=DT; scrT+=DT; BTN=[]; SLD=[];
+  if((mode==='pong')!==uiPong) resize();   // 1.59c: SonaPong's screens at the screen's resolution (src/40_gfx.js resize)
   if(LH>LW){ pauseGame(); sRotate(); present(0); return; }
   if(booted&&Sonar.lost()&&(scr==='wave'||scr==='phold'||scr==='count'||scr==='play'||scr==='over')){ if(g&&g.state==='play') Logs.gameStop(); Board.setup('lost'); go('lost'); }
   var RS=mode==='race'&&(scr==='rtitle'||scr==='skins'||scr==='rset'||scr==='scores'||scr==='count'||scr==='count-resume'||scr==='play'||scr==='over'||scr==='paused'||scr==='restart'||(scr==='wave'&&caught&&scrT-caughtT>=CAUGHT_SHOW));

@@ -1,7 +1,8 @@
 /* ── PONG CONTROL (SonaPong, v1.59): the palm → the rackets, moved from the lab (lab/src/087_arcade.js 1.57f–1.58z24) as it is.
    Not part of the rules (src/15_pong.js gets only the result — the palm as a share of the calibrated travel), so it may use exp.
    - The «mix» — what the rackets follow: the slow part from the echo's distance (DSP2 abs) plus an offset, smoothed over 3 s; the fast part
-     from the phase only (DSP2 fast, by quarter frames — DSP2 'quarter' on), its deviation from its own 3-s smoothing. No leads or filters
+     from the phase only (DSP2 fast, by quarter frames — DSP2 'quarter' on), its deviation from its own 3-s smoothing. 1.59c: the smoothing
+     follows a steady creep of the phase (see frame). No leads or filters
      beyond that: the racket is where the sonar sees the palm. (The lab's 14:49 «ruler» record: as the flight's height — a 1 s sweep 83%,
      jerks 36%; the mix — 90%, jerks 79%, drifts half as much.)
    - The calibration — two holds (1.58z2): «lower the palm to where you start hitting from below — hold», «raise it to a comfortable
@@ -21,12 +22,16 @@ var PongCtl=(function(){
     if(!r) return c.mix; c.present=!!r.present; if(r.present){ c.height=r.height; c.abs=r.abs; }
     if(!r.present||r.height===null) return c.mix;
     var F=r.fast*(calS||1), a=1-Math.exp(-N/(TAU*fs));
-    if(c.mxH===null){ c.mxH=r.height; c.mxF=F; c.mxOff=c.mxCal!==null?c.mxCal:null; }
     var base=r.height; if(r.abs!==null&&r.abs!==undefined){ var dd=r.height-r.abs;
       if(c.mxCal!==null){ c.mxOff=c.mxCal; base=r.abs+c.mxOff; }
       else if(counting) c.mxOff=c.mxOff===null?dd:c.mxOff+(1-Math.exp(-N/(TAU_OFF*fs)))*(dd-c.mxOff);
       else if(c.mxOff!==null) base=r.abs+c.mxOff; }
-    c.mxH+=a*(base-c.mxH); c.mxF+=a*(F-c.mxF); c.mix=c.mxH+(F-c.mxF); return c.mix; }
+    /* the mix = the phase + a slow correction (the echo's place − the phase), smoothed over 3 s. 1.59c: the correction follows a steady
+       drift too (a level and its trend — a double exponential), it no longer lags behind it: the phase can creep a few mm a second, and
+       at Den's 19:41 game 23 mm/s — a plain 3-s smoothing lagged 3 s × the creep behind = the rackets 7 cm above the palm («опять тянет
+       ладонь вниз»). In the lab the creep was 2–4 mm/s downwards — the rackets sat 1–1.5 cm low. With no creep it is the 1.59 mix */
+    var d=base-F; if(c.mxH===null){ c.mxH=d; c.mxF=d; c.mxOff=c.mxCal!==null?c.mxCal:c.mxOff; }
+    c.mxH+=a*(d-c.mxH); c.mxF+=a*(c.mxH-c.mxF); c.mix=F+2*c.mxH-c.mxF; return c.mix; }
   /* the calibration: start, then hold() every frame (t — seconds). Returns {step:1|2, k:0…5 dots, caught:'low'|'top'|null, done} */
   function start(c){ c.hold={step:1,buf:[],k:-1,hb:null,dd:[]}; }
   function hold(c,t){ var H=c.hold; if(!H) return {done:true,step:0,k:0,caught:null};

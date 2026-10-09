@@ -3,13 +3,18 @@
    src/16_pong_ctl.js; the getting ready before the holds (the probe, the empty room) is SonaFly's. The look is a plain stand-in until
    the skins (step 5: «paper» and «neon/vector»); the sounds — the game's existing ones until step 6. No tables yet: the best game is
    kept on the phone ('sonaroids_pong_best').
-   The field: the screen's height is the rules' 1; across — from the safe area's left edge to its right one (ar = that width / LH). ════ */
+   The field (1.59a): one shape for every phone — PG_AR = 2.16 screen heights across, the lab's own (Den's iPhone, 852×393, the whole
+   screen); fitted into the whole screen (the field may go under the notch, as in the lab), only the HUD and the buttons keep to the safe
+   area. 1.59 took the safe area's width instead — on the iPhone ar 1.87, the rackets 14% closer together with the same bounce angles, and
+   a high arc flew past the other racket's middle (Den: «высокая дуга всегда уходит в даль»). One shape also keeps the records fair. ════ */
 var PG={c:null,best:null,bestW:null,sens:null,demo:null,dbot:null,view:null,fs:48000,resume:false,done:false,doneT:0,seenT:0,flips:0,last:null,pts:[],newBest:false};
 function pgBest(){ if(PG.best===null) PG.best=+store.get('sonaroids_pong_best','0')||0; return PG.best; }
 function pgSens(){ if(PG.sens===null){ var v=parseInt(store.get('sonaroids_pong_sens','1'),10); PG.sens=v>=0&&v<=3?v:1; } return PG.sens; }
-function pgAr(){ return Math.max(1.2,(LW-SAFE.l-SAFE.r)/LH); }
-function pgX(x){ return SAFE.l+x*LH; }
-function pgY(y){ return y*LH; }
+var PG_AR=2.16;
+function pgAr(){ return PG_AR; }
+function pgU(){ return Math.min(LH,LW/PG_AR); }                       // game pixels per the rules' unit
+function pgX(x){ var u=pgU(); return (LW-PG_AR*u)/2+x*u; }
+function pgY(y){ var u=pgU(); return (LH-u)/2+y*u; }
 /* the palm's frames → the control (the mix, the holds' readings) — only in SonaPong */
 Sonar.listen(function(f,r){ if(mode!=='pong'||!PG.c||!r) return; PongCtl.frame(PG.c,r,512,PG.fs,(DSP2.info().cal||{}).s,scr==='count'&&PG.c.mxCal===null); });
 /* a view of the rules' field for drawing outside a game (the menu, the holds, the countdown): the rackets at a place, no ball */
@@ -19,9 +24,9 @@ function pgPalmPad(v){ var c=PG.c, f=c?PongCtl.frac(c,PongCtl.palm(c)):null; ret
 /* ── drawing (a stand-in look) ── */
 var PG_COL={bg:'#0d1024',ceil:'#3a4370',rack:'#7ee0ff',rack2:'#3b8fb0',ball:'#ffd166',gap:'#1a2040'};
 function pgField(q,dt){ R(PG_COL.bg,0,0,LW,LH);
-  R(PG_COL.ceil,SAFE.l,pgY(Pong.TUNE.TOP)-1,LW-SAFE.l-SAFE.r,2);                                  // the ceiling
+  R(PG_COL.ceil,Math.max(SAFE.l,pgX(0)),pgY(Pong.TUNE.TOP)-1,Math.min(LW-SAFE.r,pgX(PG_AR))-Math.max(SAFE.l,pgX(0)),2);                                  // the ceiling
   for(var i=0;i<2;i++) pgRacket(q,i);
-  var b=q.ball; if(b&&!(b.wait>0&&Math.floor(clock*6)%2)){ lx.fillStyle=PG_COL.ball; lx.beginPath(); lx.arc(pgX(b.x),pgY(b.y),Math.max(2,b.r*LH),0,6.2832); lx.fill(); }
+  var b=q.ball; if(b&&!(b.wait>0&&Math.floor(clock*6)%2)){ lx.fillStyle=PG_COL.ball; lx.beginPath(); lx.arc(pgX(b.x),pgY(b.y),Math.max(2,b.r*pgU()),0,6.2832); lx.fill(); }
   drawParts(dt||0); }
 function pgRacket(q,i){ var n=18, xc=q.ar*(i?1-Pong.TUNE.XC:Pong.TUNE.XC), hw=q.hw, pts=[], k, x, s;
   for(k=0;k<=n;k++){ x=xc+(-1+2*k/n)*hw; s=Pong.surf(q,i,x); pts.push([pgX(x),pgY(s.y)]); }
@@ -99,7 +104,7 @@ function pgStart(){ var seed=newSeed(); g=Pong.create(seed,pgAr(),pgSens()); var
 /* ── the game ── */
 var PG_SND={go:'tap',land:'tap',ceil:'rub',pass:'coin',dull:'syrup',lost:'crash',narrow:'level'};
 function pgReact(){ g.events.forEach(function(k){ if(PG_SND[k]) Sfx.play(PG_SND[k]); });
-  (g.fx||[]).forEach(function(f){ if(f.pts) PG.pts.push({n:f.pts,x:f.x,y:f.y,t:1.2}); if(f.lost!==undefined){ flash=0.25; burst(pgX(Math.max(0,Math.min(g.ar,f.lost))),LH-6,20,[PG_COL.ball,'#ffffff',P.hit],60*K); } }); }
+  (g.fx||[]).forEach(function(f){ if(f.pts) PG.pts.push({n:f.pts,x:f.x,y:f.y,t:1.2}); if(f.lost!==undefined){ flash=0.25; burst(pgX(Math.max(0,Math.min(g.ar,f.lost))),Math.min(LH,pgY(1))-6,20,[PG_COL.ball,'#ffffff',P.hit],60*K); } }); }
 function pgPlay(){
   acc+=DT; var n=0;
   while(acc>=Pong.DT&&n<5){ acc-=Pong.DT; n++; var c=PG.c, f=c?PongCtl.frac(c,c.present?PongCtl.palm(c):null):null; f=f===null?null:Math.round(f*4000)/4000;   // the palm rounded as the other games' (a replay takes these exact numbers)

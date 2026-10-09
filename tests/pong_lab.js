@@ -7,7 +7,7 @@ js=js.replace("function pickChannel(){","function pickChannel(){ if(globalThis._
 js=js.replace("function autoLevel(){","function autoLevel(){ if(globalThis.__fakeLevel) return globalThis.__fakeLevel();");
 js=js.replace("function setProbe(w){","function setProbe(w){ globalThis.__probe=w; if(globalThis.__noAudio) return;");
 js=js.replace("function sfx(kind,x){","function sfx(kind,x){ if(globalThis.__noSfx) return;");
-js=js.replace("el('gMenu').addEventListener","globalThis.__pg={ARC:function(){return ARC;},STEP:function(){return ARC_STEP;},PGV:function(){return PG_V;},apply:pgApply,JGS:function(){return JG_SET;},init:arcInit,BALW:PG_BALW,H:function(){return jgPadH();}};\nel('gMenu').addEventListener");
+js=js.replace("el('gMenu').addEventListener","globalThis.__pg={ARC:function(){return ARC;},STEP:function(){return ARC_STEP;},PGV:function(){return PG_V;},apply:pgApply,JGS:function(){return JG_SET;},init:arcInit,BALW:PG_BALW,H:function(){return jgPadH();},mix:mixFrame,DSP:function(){return DSP2;},setFs:function(){ fs=48000; }};\nel('gMenu').addEventListener");
 let now=0; const timers=[]; let rafs=[];
 global.setTimeout=(f,ms)=>{ timers.push({t:now+(ms||0),f}); return timers.length; };
 global.requestAnimationFrame=f=>{ rafs.push(f); return rafs.length; }; global.cancelAnimationFrame=()=>{};

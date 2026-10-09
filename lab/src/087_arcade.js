@@ -171,12 +171,12 @@ function fwCmAt(S,t){ for(var i=0;i<S.length;i++){ var s=S[i]; if(t<s.t1){ var u
 var PG_HIT=0.75, PG_HW=0.15, PG_XC=0.22, PG_G=2.4, PG_LIFT=0.10, PG_NET0=0.72, PG_E=0.5, PG_TILT=30,
 /* 1.58g (Ден 19:13: «и добавь ему всяких ползунков в паузу чтоб я настроил под себя и поиграл с условиями»): ползунки в паузе понга —
    тяжесть, сила удара, прыгучесть, ширина платформ, расстояние между ними, высота сетки, наклон; запоминаются; «Сбросить» — как было */
-PG_SL=[{k:'g',t:'Тяжесть',min:0.8,max:4.5,st:0.1,d:2},{k:'hit',t:'Сила удара',min:0.2,max:1.6,st:0.05,d:0.4},{k:'e',t:'Прыгучесть',min:0.1,max:0.95,st:0.05,d:0.65},
-  {k:'hwr',t:'Ширина ракеток',min:0.1,max:1,st:0.05,d:0.95},{k:'fw',t:'Ширина поля',min:0.3,max:1,st:0.05,d:0.7},
-  {k:'net',t:'Высота сетки',min:0,max:0.3,st:0.01,d:0.03},{k:'tilt',t:'Наклон в середине, °',min:0,max:60,st:1,d:43},{k:'tilto',t:'Наклон у края поля, °',min:0,max:65,st:1,d:0},{k:'tilti',t:'Наклон у сетки, °',min:0,max:60,st:1,d:0},{k:'tiltv',t:'Наклон на экране, °',min:0,max:60,st:1,d:20},
-  {k:'grip',t:'Цепкие ракетки',min:0,max:1,st:1,d:1},{k:'spr',t:'Пружины',min:0,max:2,st:0.1,d:1},{k:'curve',t:'Изогнутая ракетка',min:0,max:3,st:1,d:0},{k:'look',t:'Вид изогнутой',min:0,max:2,st:1,d:0,opts:[0,1,2]},{k:'grow',t:'Сужение ракеток',min:0,max:2,st:1,d:0,opts:[0,1,2],help:'«По времени» — честно для всех; «за 10 пасов» обходят нарочным касанием потолка.',rec:2},{k:'wall',t:'Боковые стенки',min:0,max:1,st:1,d:0},{k:'vx',t:'Скорость вбок',min:0,max:3,st:0.05,d:0},
-  {k:'lives',t:'Мячей',min:0,max:10,st:1,d:5,opts:[3,5,10,0],help:'Сколько мячей можно уронить.',rec:3},{k:'tsec',t:'Время',min:110,max:500,st:10,d:110,rec:300},
-  {k:'pts',t:'Очки',min:0,max:1,st:1,d:0,opts:[0,1],help:'«За пас» — высота не важна.',rec:0},{k:'pexp',t:'Крутизна очков',min:1,max:5,st:0.5,d:2,rec:3},{k:'mult',t:'Множитель за узкие ракетки',min:0,max:1,st:1,d:1,opts:[1,0],help:'Узкие ракетки — больше очков.',rec:1},{k:'combo',t:'Серия',min:0,max:2,st:1,d:0,opts:[0,2,1],help:'+10% за каждый чистый пас подряд. Длинная — осторожная игра, короткая — компромисс, без серии — смелая.',rec:2},{k:'svis',t:'Серия на экране',min:0,max:2,st:1,d:0,opts:[0,1,2],help:'Точки, полоска у счёта или свечение вокруг мяча.'},{k:'ceil',t:'Потолок',min:0,max:1,st:1,d:0,opts:[0,1],help:'«Мяч потерян» — очень жёстко.',rec:0}],
+PG_SL=[{k:'g',t:'Тяжесть',min:0.8,max:4.5,st:0.1,d:1.8,rec:1.8},{k:'hit',t:'Сила удара',min:0.2,max:1.6,st:0.05,d:0.6,rec:0.6},{k:'e',t:'Прыгучесть',min:0.1,max:0.95,st:0.05,d:0.6,rec:0.6},
+  {k:'hwr',t:'Ширина ракеток',min:0.1,max:1,st:0.05,d:0.8,rec:0.8},{k:'fw',t:'Ширина поля',min:0.3,max:1,st:0.05,d:1,rec:1},
+  {k:'net',t:'Высота сетки',min:0,max:0.3,st:0.01,d:0.03},{k:'tilt',t:'Наклон в середине, °',min:0,max:60,st:1,d:27,rec:27},{k:'tilto',t:'Наклон у края поля, °',min:0,max:65,st:1,d:36,rec:36},{k:'tilti',t:'Наклон у сетки, °',min:0,max:60,st:1,d:23,rec:23},{k:'tiltv',t:'Наклон на экране, °',min:0,max:60,st:1,d:10},
+  {k:'grip',t:'Цепкие ракетки',min:0,max:1,st:1,d:1,rec:1},{k:'spr',t:'Пружины',min:0,max:2,st:0.1,d:1},{k:'curve',t:'Изогнутая ракетка',min:0,max:3,st:1,d:2,rec:2},{k:'look',t:'Вид изогнутой',min:0,max:2,st:1,d:0,opts:[0,1,2]},{k:'grow',t:'Сужение ракеток',min:0,max:2,st:1,d:2,opts:[0,1,2],help:'«По времени» — честно для всех; «за 10 пасов» обходят нарочным касанием потолка.',rec:2},{k:'wall',t:'Боковые стенки',min:0,max:1,st:1,d:0},{k:'vx',t:'Скорость вбок',min:0,max:3,st:0.05,d:0},
+  {k:'lives',t:'Мячей',min:0,max:10,st:1,d:5,opts:[3,5,10,0],help:'Сколько мячей можно уронить.',rec:5},{k:'tsec',t:'Время',min:110,max:500,st:10,d:250,rec:250},
+  {k:'pts',t:'Очки',min:0,max:1,st:1,d:0,opts:[0,1],help:'«За пас» — высота не важна.',rec:0},{k:'pexp',t:'Крутизна очков',min:1,max:5,st:0.5,d:3,rec:3},{k:'mult',t:'Множитель за узкие ракетки',min:0,max:1,st:1,d:1,opts:[1,0],help:'Узкие ракетки — больше очков.',rec:1},{k:'combo',t:'Серия',min:0,max:2,st:1,d:2,opts:[0,2,1],help:'+10% за каждый чистый пас подряд. Длинная — осторожная игра, короткая — компромисс, без серии — смелая.',rec:2},{k:'svis',t:'Серия на экране',min:0,max:2,st:1,d:0,opts:[0,1,2],help:'Точки, полоска у счёта или свечение вокруг мяча.'},{k:'ceil',t:'Потолок',min:0,max:1,st:1,d:0,opts:[0,1],help:'«Мяч потерян» — очень жёстко.',rec:0}],
 /* 1.58z10 (Ден 20:20–20:21: «очки растут ещё круче с высотой — добавь опцией.. это важнее; не сбрасывать серию — было бы странным»):
    «Очки: за высоту, круче» — 100·доля³ вместо 100·доля² (дуга вполовину — 1/8 очков, а не 1/4). Модель (сужение каждую минуту 80→40%, серия,
    3 мяча, 5 мин): пас в центр на 65% высоты ~17 700, 72% ~17 500, 80% ~13 700 (с долей² было 25 000 / 22 800 / 17 000) */
@@ -236,6 +236,7 @@ PG_PRE={'Легче':{g:2,hit:0.4,e:0.65,hwr:1,fw:0.6,net:0,tilt:39,tiltv:20,gri
    «Труднее» (0,13) — 84 / 62 / 48%. Рука ~170 мм/с, мяч на ~0,3 экрана */
 PG_V={};
 function pgApply(){ PG_TILTV=PG_V.tiltv; PG_G=PG_V.g; PG_HIT=PG_V.hit; PG_E=PG_V.e; PG_HW=PG_V.hwr*PG_V.fw/4; PG_XC=(1-PG_V.fw)/2+PG_V.fw/4; PG_NET0=1-PG_V.net; PG_TILT=PG_V.tilt; }
+var PG_BAL=['lives','tsec','grow','pts','pexp','mult','combo','ceil','hwr','g','hit','e','fw','tilt','tilto','tilti','curve','grip'];
 function pgLoad(){ var o=null; try{ o=JSON.parse(localStorage.getItem('sonar_pg_sl7')||'null'); }catch(e){} if(o&&o.pts===2){ o.pts=0; if(typeof o.pexp!=='number') o.pexp=3; } PG_SL.forEach(function(q){ PG_V[q.k]=o&&typeof o[q.k]==='number'?Math.max(q.min,Math.min(q.max,o[q.k])):q.d; }); pgApply(); }
 function pgSave(){ try{ localStorage.setItem('sonar_pg_sl7',JSON.stringify(PG_V)); }catch(e){} pgApply(); if(ARC&&ARC.log) arcEv('pg:'+JSON.stringify(PG_V)); }
 function pgAngles(ar){ ar=ar||((typeof innerWidth!=='undefined'&&innerHeight)?innerWidth/innerHeight:2.16);
@@ -304,8 +305,10 @@ function pgAngle(box){ var an=pgAngles(ARC&&ARC.ar), ah=document.createElement('
     tx.innerHTML=(Math.round(PG_V.curve)===3?'Настоящая дуга (ракетка изогнута ровно так, как отскакивает мяч)':(Math.round(PG_V.curve)===2?'Чаша':'Ровная')+', вид: '+pgFmt(pgQ('look'),PG_V.look))+': отскок у края <b>'+dg(-1)+'°</b>, в центре <b>'+dg(0)+'°</b>, у сетки <b>'+dg(1)+'°</b>. '+(PG_V.tilto>0.5||PG_V.tilti>0.5?'Своя часть ракетки — свой удар: чем круче угол, тем выше дуга; сильнее бьёшь — дальше летит. ':'Дуга одной высоты из любой точки приходит в центр чужой (у края бей чуть сильнее). '); }
   /* 1.58z14: «Разные удары» — по расчёту для поля во всю ширину и ракеток 80% (ладонь посередине хода): у края поля 43° — свеча (пас в центр
      чужой на ~76% высоты), в середине 37° — обычный (~67%), у сетки 33° — плоский (~47%); из любой части дальний край достаётся без потолка */
-  var vb=document.createElement('button'); vb.className='ghost'; vb.textContent='Разные удары';
-  vb.addEventListener('click',function(){ PG_V.tilto=43; PG_V.tilt=37; PG_V.tilti=33; pgSave(); pzRender(); arcEv('pg-angles3'); });
+  /* 1.58z19: кнопка ставит наклоны «мира для баланса» — 36 / 27 / 23 (записи 13:18–13:46 и модель 13:58–14:05: при 43/37/33 и 37/31/27 высокая
+     дуга уходила за центр чужой ракетки, а с края у сетки — на дальний край) */
+  var vb=document.createElement('button'); vb.className='ghost'; vb.textContent='Наклоны для баланса';
+  vb.addEventListener('click',function(){ PG_V.tilto=36; PG_V.tilt=27; PG_V.tilti=23; pgSave(); pzRender(); arcEv('pg-angles3'); });
   ah.appendChild(tx); ah.appendChild(ab); ah.appendChild(vb); box.appendChild(ah); }
 var PG_TILTS=[20,30,40], PG_STOP=0.05, PG_TILTV=25;
 pgLoad();
@@ -843,9 +846,12 @@ function pzRender(){ var sub=PZ.sec, store=el('pzStore'); PZ_JG.forEach(function
   if(sub==='jset'){ ['jgLives','jgSens','jgBowl','jgKick','jgWall','jgDamp'].forEach(function(id){ bd.appendChild(el(id)); }); return; }
   if(sub==='rules'){ /* 1.58z10 (Ден 20:25: «добавь, с пояснениями.. а то я уже путаюсь, что надо, а что не надо для баланса»): у каждого правила —
        что оно делает и какое значение — для баланса (по модели 20:02–20:20); кнопка ставит все сразу и ракетки 80% */
-    var bb=document.createElement('button'); bb.className='ghost pgrule pgbal'; var all=['lives','tsec','grow','pts','pexp','mult','combo','ceil'].every(function(k){ return Math.round(PG_V[k])===pgQ(k).rec; })&&Math.abs(PG_V.hwr-0.8)<1e-6;
-    bb.innerHTML='Правила для баланса'+(all?' ✓':'')+'<small>3 мяча, 300 с, ракетки 80% → к концу вдвое уже, крутизна 3, короткая серия</small>';
-    bb.addEventListener('click',function(){ ['lives','tsec','grow','pts','pexp','mult','combo','ceil'].forEach(function(k){ PG_V[k]=pgQ(k).rec; }); PG_V.hwr=0.8; pgSave(); pzRender(); arcEv('pg-rules-balance'); }); bd.appendChild(bb); }
+    /* 1.58z19 (Ден 09.10 13:46–14:08, модель world.py: 6 приёмов × 3 уровня руки): «мир для баланса» — наклоны 36/27/23 (обычный пас в центр —
+       дуга ~¾ высоты; у сетки — надёжнее, серединой — выше, перекос ≤10%), тяжесть 1,8 (высота дуги та же, на ответ больше времени),
+       крутизна очков 3 (новичку выгодно играть надёжно, обычному — почти всё равно, точной руке риск даёт +10%), 250 с, 5 мячей. */
+    var bb=document.createElement('button'); bb.className='ghost pgrule pgbal'; var all=PG_BAL.every(function(k){ return Math.abs(PG_V[k]-pgQ(k).rec)<1e-6; });
+    bb.innerHTML='Мир для баланса'+(all?' ✓':'')+'<small>5 мячей, 250 с, ракетки 80% → к концу вдвое уже, крутизна 3, короткая серия; наклоны 36 / 27 / 23, тяжесть 1,8</small>';
+    bb.addEventListener('click',function(){ PG_BAL.forEach(function(k){ PG_V[k]=pgQ(k).rec; }); pgSave(); pzRender(); arcEv('pg-rules-balance'); }); bd.appendChild(bb); }
   (PG_SECS[sub]||[]).forEach(function(k){ var q=pgQ(k); if(q) pgCtl(q,bd,sub==='rules'); });
   if(sub==='rack'){ bd.appendChild(el('jgSens')); pgAngle(bd); }
   }

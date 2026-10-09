@@ -2344,19 +2344,33 @@ var JG_HP=0.8, JG_HPG=0.55, JG_LEAD=0.03, JG_PRACTICE=true, JG_OE={mc:1.0,beta:8
    мягкое дно 1.58z8 убрано — ход снова прямо пропорционален ладони, низ калибровки — 8% хода. (Ниже низа ракетка замедлялась,
    и начало взмаха снизу двигало её слабее, чем рука ждёт, — подача и удар снизу выходили слабее.) Очки за высоту по-прежнему от низа калибровки. */
 var PG_CB=0.08, PG_CT=0.75;
-function pgCalStart(){ ARC.c2={step:1,buf:[]}; ARC.T=ARC.T&&ARC.T.lin?ARC.T:Tune.create(100,true); ARC.T.ok=false;
-  arcText('Опусти ладонь','Туда, где будешь отбивать снизу (почти у стола), — и держи.'); }
-function pgCalStep(now){ var c=ARC.c2; if(!c) return;
-  if(ARC.present&&ARC.dist!==null) c.buf.push({t:now,h:ARC.dist}); while(c.buf.length&&c.buf[0].t<now-1.2) c.buf.shift();
+/* 1.58z17 (Ден 13:01, запись 12:59: «калибруюсь только с 5-го раза.. он постоянно тянет мою ладонь к столу и не опускает ракеты»;
+   «ракетки стали ватные, но мяч стал улетать сильнее»). Разбор: при «Опусти ладонь» ракетки шли за ладонью по СТАРОЙ подстройке (или по
+   случайной шкале на первом старте) — внизу экрана они оказывались только у самого стола, и рука тянулась туда; низ ловился там, где ладонь
+   на секунду замерла. В 12:59 подстройка заново поймала низ на 153 мм, а замахи начинались со 122–148 мм: 15% игры ракетка лежала на дне и
+   не шла за рукой («ватные»), а ход 69 мм вместо 106 разгонял ракетку сильнее — дуги на 40% выше, 3 потолка подряд, 2 мяча за дальний край.
+   Теперь: (1) пока ловится низ, ракетки стоят внизу — там, где будут при ладони в нижней точке, и рука не гонится за ними; (2) видно, как
+   набирается удержание (кружки); (3) допуск дрожи 1 → 1,4 см; (4) ловится то же, по чему ходят ракетки (в «Подстроить заново» — смесь). */
+var PG_CAL_TOL=14;
+function pgCalH(){ return ARC.mix!==undefined&&ARC.mix!==null?ARC.mix:ARC.dist; }
+function pgCalStart(){ ARC.c2={step:1,buf:[],k:-1}; ARC.T=ARC.T&&ARC.T.lin?ARC.T:Tune.create(100,true); ARC.T.ok=false;
+  arcText('Опусти ладонь','В нижнюю точку удара — откуда начинаешь бить снизу. Ракетки уже внизу. Держи.'); }
+function pgCalStep(now){ var c=ARC.c2; if(!c) return; var h=pgCalH();
+  if(ARC.present&&h!==null&&h!==undefined) c.buf.push({t:now,h:h}); while(c.buf.length&&c.buf[0].t<now-1.2) c.buf.shift();
+  var mn=1e9, mx=-1e9, held=0; for(var i=c.buf.length-1;i>=0;i--){ mn=Math.min(mn,c.buf[i].h); mx=Math.max(mx,c.buf[i].h); if(mx-mn>PG_CAL_TOL) break; held=c.buf[c.buf.length-1].t-c.buf[i].t; }
+  var k=Math.max(0,Math.min(5,Math.floor(held/1.1*5+0.0001))), say=c.step===1?'В нижнюю точку удара — откуда начинаешь бить снизу. Ракетки уже внизу. ':'На удобную высоту — где будешь бить сверху. ';
+  if(c.step===2&&h!==null&&h!==undefined&&h<=c.hb+35) k=0;
+  if(k!==c.k){ c.k=k; el('acSub').textContent=say+(k?'Держи '+'●'.repeat(k)+'○'.repeat(5-k):'Держи.'); }
   if(c.buf.length<20||c.buf[c.buf.length-1].t-c.buf[0].t<1.1) return;
   var hs=c.buf.map(function(q){ return q.h; }).sort(function(a,b){ return a-b; }), lo=hs[Math.floor(hs.length*0.1)], hi=hs[Math.floor(hs.length*0.9)], med=hs[hs.length>>1];
-  if(hi-lo>10) return;
-  if(c.step===1){ c.hb=med; c.step=2; c.buf=[]; ARC.T={field:100,ok:false,lin:{b:med,t:med+100}}; sfx('level'); arcEv('cal:низ:'+med.toFixed(0));
-    arcText('Теперь подними','На удобную высоту — где будешь бить сверху, — и держи.'); return; }
+  if(hi-lo>PG_CAL_TOL) return;
+  if(c.step===1){ c.hb=med; c.step=2; c.buf=[]; c.k=-1; ARC.T={field:100,ok:false,lin:{b:med,t:med+100}}; sfx('level'); arcEv('cal:низ:'+med.toFixed(0));
+    arcText('Теперь подними','На удобную высоту — где будешь бить сверху. Держи.'); return; }
   if(c.step===2&&med>c.hb+35){ var top=Math.min(c.hb+160,med); ARC.T={field:top-c.hb,ok:true,lin:{b:c.hb,t:top}}; ARC.c2=null; sfx('level'); arcEv('cal:верх:'+top.toFixed(0));
     if(ARC.onCaught){ var f=ARC.onCaught; ARC.onCaught=null; f(); } } }
 function jgRawFrac(T,h){ if(T.lin) return PG_CB+(PG_CT-PG_CB)*(h-T.lin.b)/Math.max(30,T.lin.t-T.lin.b); var FL=2*T.field/(1+Tune.ASYM), FU=2*Tune.ASYM*T.field/(1+Tune.ASYM); return h<100?0.5+(h-100)/FL:0.5+(h-100)/FU; }
-function jgPad(dt){ var hh=ARC.mix!==undefined&&ARC.mix!==null?ARC.mix:ARC.dist; if(!ARC.T||hh===null||hh===undefined) return;   // 1.57f: без добавок — весь ход ладони = 0,6 экрана
+function jgPad(dt){ if(ARC.c2&&ARC.c2.step===1){ ARC.py=JG_PAD_LO-PG_CB*jgPadH(); return; }   // 1.58z17: пока ловится низ — ракетки внизу, рука за ними не гонится
+  var hh=ARC.mix!==undefined&&ARC.mix!==null?ARC.mix:ARC.dist; if(!ARC.T||hh===null||hh===undefined) return;   // 1.57f: без добавок — весь ход ладони = 0,6 экрана
   /* 1.58u: мягкий низ 1.58t убран (Ден 13:34: «автодокалибровка по ходу игры лишняя.. игрок сдвигает диапазон — игра подстраивается —
      управление сместилось — игрок снова сдвигает.. рабочее расстояние уходит в неизвестность»). Это та самая петля «игрок ↔ корабль»
      (HANDOVER, Грабли): правило по высотам ладони в игре гонится за самим игроком. Ход задаёт только подстройка перед стартом. */

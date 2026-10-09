@@ -37,21 +37,27 @@ function arcButtons(v){ el('acBtns').classList.toggle('hidden',!v); }
 function arcMark(k){ ARC.marks[k]=ARC.frames.length*N; }
 function arcEv(k){ if(ARC.log&&ARC.frames) ARC.log.push([ARC.frames.length,k]); }
 function arcFrame(f,gap,r){ if(!ARC.on) return; if(ARC.frames.length<ARC_MAX){ if(gap) ARC.gaps++; ARC.frames.push(f); }
-  if(r){ ARC.present=r.present; if(r.present) ARC.dist=r.height; if(ARC.game==='juggle'||ARC.game==='follow'||ARC.game==='pong') mixFrame(r); } }
+  if(r){ ARC.present=r.present; if(r.present){ ARC.dist=r.height; ARC.absH=r.abs; } if(ARC.game==='juggle'||ARC.game==='follow'||ARC.game==='pong') mixFrame(r); } }
 /* 1.57f — «смесь» для платформы (жонглёр и «по линейке»). Запись Дена «по линейке» 14:49 (iPhone), разбор eval_follow.js, ход 5↔15 см,
    медленный = 100%:   как в игре — 1 с за ход 83%, 0,5 с — 71%, рывки 36%, в покое высота плывёт ~18 мм/с (абсолютная часть сонара
    ходит на 2–3 см и тянет за собой);   фаза по четвертям кадра — 87/85%, рывки 74%;   смесь — 90/86%, рывки 79%, плывёт вдвое меньше.
    Смесь: медленное — от высоты как в игре, сглаженной за MIX_TAU с; быстрое — только от фазы (её отклонение от своей такой же
    сглаженной). Никаких добавок, упреждений и фильтров сверх этого — платформа там, куда сонар видит ладонь. */
 var MIX_TAU=3;
-function mixFrame(r){ if(!r.present||r.height===null||!(ARC.phase==='play'||ARC.phase==='count'||(ARC.phase==='wave'&&ARC.mxH!==undefined&&ARC.mxH!==null))){ return; } var F=r.fast*(DSP2.info().cal.s||1), a=1-Math.exp(-N/(MIX_TAU*fs));
-  if(ARC.mxH===undefined||ARC.mxH===null){ ARC.mxH=r.height; ARC.mxF=F; ARC.mxOff=null; }
+function mixFrame(r){ if(!r.present||r.height===null||!(ARC.phase==='play'||ARC.phase==='count'||(ARC.phase==='wave'&&((ARC.mxH!==undefined&&ARC.mxH!==null)||ARC.c2)))){ return; } var F=r.fast*(DSP2.info().cal.s||1), a=1-Math.exp(-N/(MIX_TAU*fs));
+  if(ARC.mxH===undefined||ARC.mxH===null){ ARC.mxH=r.height; ARC.mxF=F; ARC.mxOff=(ARC.mxCal!==undefined&&ARC.mxCal!==null)?ARC.mxCal:null; }
   /* 1.58s (Ден 13:10: «во время игры платформы поднимаются, к концу партии упираю ладонь буквально в стол — а платформы всё равно высоко»):
      «высота» DSP при резких движениях уплывает от дальности эха на 20–40 мм за полминуты (запись 13:10: высота−эхо −11 → +12 мм, низ
      ракеток 42 → 82 мм при ладони у стола). Медленная часть теперь держится за дальность эха (abs) со сдвигом, выученным за отсчёт
      (среднее высота−эхо за ~1,5 с), — как стояло на старте, так и стоит; быстрая — по-прежнему от фазы. На 13:10 низ ракеток 43 → 53–65 мм */
   var base=r.height; if(r.abs!==null&&r.abs!==undefined){ var dd=r.height-r.abs;
-    if(ARC.phase==='count') ARC.mxOff=ARC.mxOff===null?dd:ARC.mxOff+(1-Math.exp(-N/(1.5*fs)))*(dd-ARC.mxOff);
+    /* 1.58z24 (Ден 16:10: «по-прежнему кажется, что игра тянет ладонь к столу.. приходится держать низ в 10 см, верх в 15–20»). Записи
+       14:23–15:34, звук заново через DSP2: калибровка мерила ладонь «высотой», а ракетки ходят по «смеси» (эхо + сдвиг, выученный за отсчёт,
+       когда рука уже двигается). В 15:34 на удержаниях высота−эхо было −25…−30 мм, за отсчёт выучилось +17 — смесь показывала ладонь на
+       1,5–4 см выше, чем при калибровке, и чтобы опустить ракетки на дно, руку приходилось вести на 3–4 см ниже. Теперь сдвиг учится на самих
+       удержаниях (ладонь неподвижна, медиана высота−эхо за низ и верх) — смесь в точности совпадает с калибровкой; отсчёт его не трогает. */
+    if(ARC.mxCal!==undefined&&ARC.mxCal!==null){ ARC.mxOff=ARC.mxCal; base=r.abs+ARC.mxOff; }
+    else if(ARC.phase==='count') ARC.mxOff=ARC.mxOff===null?dd:ARC.mxOff+(1-Math.exp(-N/(1.5*fs)))*(dd-ARC.mxOff);
     else if(ARC.mxOff!==null) base=r.abs+ARC.mxOff; }
   ARC.mxH+=a*(base-ARC.mxH); ARC.mxF+=a*(F-ARC.mxF); ARC.mix=ARC.mxH+(F-ARC.mxF); }
 function arcOpen(g){ arcGame=g; var G=ARC_GAMES[g]; el('acTitle').textContent=G.title+' — прототип'; el('acIntro').textContent=G.intro;
@@ -245,11 +251,14 @@ var PG_BAL=['lives','tsec','grow','pts','pexp','mult','combo','ceil','hwr','g','
    множителя за сужение: удар серединой против удара у сетки — новичок −15%, опытный +2%, точная рука +8% (было −34 / −21 / −11%).
    Темп сужения на это не влияет, только на длину: каждые 30 с — новичок ~2 мин, опытный ~4, точная рука ~5. На время прежний набор и так
    даёт эту лестницу (−41% / ≈0 / +11%), горка там щедрее («ровно» +19/+43%, «круто» +9/+24%) — не ставится. */
+/* 1.58z23 (Ден 15:41, после партии 15:34 и пересчёта): в «без конца» наклон в середине 26° — лестница чётче (удар серединой против удара
+   у сетки: новичок −26%, опытный −5%, точная рука +6%; ближе к сетке +8% у точной), «перебор» дальше центра наказывается сильнее; 25° — уже
+   слишком (середина проигрывает всем). «На время» — 27°. */
 /* 1.58z22 (Ден 15:19, после партии 15:17 «без конца»: очки по ширине 735 / 1 094 / 2 168 / 1 157 / 788 / 525 / 33 — без множителя конец партии
    почти ничего не приносил): в «без конца» множитель за узкие ракетки до ×2. Модель: риск серединой против удара у сетки — новичок −22%,
    опытный −4%, точная рука +3% (без множителя −15 / +2 / +8%), конец партии вдвое дороже. */
 var PG_BALW={common:{lives:5,pts:0,pexp:3,combo:2,ceil:0,hwr:0.8,g:1.8,hit:0.6,e:0.6,fw:1,tilt:27,tilto:36,tilti:23,curve:2,grip:1},
-  time:{grow:2,tsec:250,mult:1,phill:0},endless:{grow:3,gsec:30,mult:2,phill:1}};
+  time:{grow:2,tsec:250,mult:1,phill:0},endless:{grow:3,gsec:30,mult:2,phill:1,tilt:26}};
 function pgBalMode(){ return Math.round(PG_V.grow)===3?'endless':'time'; }
 function pgRec(k,m){ var W=PG_BALW[m||pgBalMode()]; return W[k]!==undefined?W[k]:PG_BALW.common[k]; }
 function pgBalOk(m){ return PG_BAL.every(function(k){ var r=pgRec(k,m); return r===undefined||Math.abs(PG_V[k]-r)<1e-6; }); }
@@ -476,11 +485,11 @@ var PG_CB=0.08, PG_CT=0.75;
    Теперь: (1) пока ловится низ, ракетки стоят внизу — там, где будут при ладони в нижней точке, и рука не гонится за ними; (2) видно, как
    набирается удержание (кружки); (3) допуск дрожи 1 → 1,4 см; (4) ловится то же, по чему ходят ракетки (в «Подстроить заново» — смесь). */
 var PG_CAL_TOL=14;
-function pgCalH(){ return ARC.mix!==undefined&&ARC.mix!==null?ARC.mix:ARC.dist; }
+function pgCalH(){ return ARC.dist; }   // 1.58z24: удержания — по высоте; смесь подгоняется к ним сдвигом (см. mixFrame)
 function pgCalStart(){ ARC.c2={step:1,buf:[],k:-1}; ARC.T=ARC.T&&ARC.T.lin?ARC.T:Tune.create(100,true); ARC.T.ok=false;
   arcText('Опусти ладонь','В нижнюю точку удара — откуда начинаешь бить снизу. Ракетки уже внизу. Держи.'); }
 function pgCalStep(now){ var c=ARC.c2; if(!c) return; var h=pgCalH();
-  if(ARC.present&&h!==null&&h!==undefined) c.buf.push({t:now,h:h}); while(c.buf.length&&c.buf[0].t<now-1.2) c.buf.shift();
+  if(ARC.present&&h!==null&&h!==undefined) c.buf.push({t:now,h:h,a:(ARC.absH===undefined?null:ARC.absH)}); while(c.buf.length&&c.buf[0].t<now-1.2) c.buf.shift();
   var mn=1e9, mx=-1e9, held=0; for(var i=c.buf.length-1;i>=0;i--){ mn=Math.min(mn,c.buf[i].h); mx=Math.max(mx,c.buf[i].h); if(mx-mn>PG_CAL_TOL) break; held=c.buf[c.buf.length-1].t-c.buf[i].t; }
   var k=Math.max(0,Math.min(5,Math.floor(held/1.1*5+0.0001))), say=c.step===1?'В нижнюю точку удара — откуда начинаешь бить снизу. Ракетки уже внизу. ':'На удобную высоту — где будешь бить сверху. ';
   if(c.step===2&&h!==null&&h!==undefined&&h<=c.hb+35) k=0;
@@ -488,9 +497,11 @@ function pgCalStep(now){ var c=ARC.c2; if(!c) return; var h=pgCalH();
   if(c.buf.length<20||c.buf[c.buf.length-1].t-c.buf[0].t<1.1) return;
   var hs=c.buf.map(function(q){ return q.h; }).sort(function(a,b){ return a-b; }), lo=hs[Math.floor(hs.length*0.1)], hi=hs[Math.floor(hs.length*0.9)], med=hs[hs.length>>1];
   if(hi-lo>PG_CAL_TOL) return;
-  if(c.step===1){ c.hb=med; c.step=2; c.buf=[]; c.k=-1; ARC.T={field:100,ok:false,lin:{b:med,t:med+100}}; sfx('level'); arcEv('cal:низ:'+med.toFixed(0));
+  var dds=c.buf.filter(function(q){ return q.a!==null&&q.a!==undefined; }).map(function(q){ return q.h-q.a; });
+  if(c.step===1){ c.dd=dds; c.hb=med; c.step=2; c.buf=[]; c.k=-1; ARC.T={field:100,ok:false,lin:{b:med,t:med+100}}; sfx('level'); arcEv('cal:низ:'+med.toFixed(0));
     arcText('Теперь подними','На удобную высоту — где будешь бить сверху. Держи.'); return; }
-  if(c.step===2&&med>c.hb+35){ var top=Math.min(c.hb+160,med); ARC.T={field:top-c.hb,ok:true,lin:{b:c.hb,t:top}}; ARC.c2=null; sfx('level'); arcEv('cal:верх:'+top.toFixed(0));
+  if(c.step===2&&med>c.hb+35){ var top=Math.min(c.hb+160,med); ARC.T={field:top-c.hb,ok:true,lin:{b:c.hb,t:top}}; ARC.c2=null; c.dd=(c.dd||[]).concat(dds);
+    if(c.dd.length>=20){ var sd=c.dd.slice().sort(function(p,q){ return p-q; }); ARC.mxCal=sd[sd.length>>1]; ARC.mxOff=ARC.mxCal; ARC.mxH=null; arcEv('cal:сдвиг:'+ARC.mxCal.toFixed(0)); } sfx('level'); arcEv('cal:верх:'+top.toFixed(0));
     if(ARC.onCaught){ var f=ARC.onCaught; ARC.onCaught=null; f(); } } }
 function jgRawFrac(T,h){ if(T.lin) return PG_CB+(PG_CT-PG_CB)*(h-T.lin.b)/Math.max(30,T.lin.t-T.lin.b); var FL=2*T.field/(1+Tune.ASYM), FU=2*Tune.ASYM*T.field/(1+Tune.ASYM); return h<100?0.5+(h-100)/FL:0.5+(h-100)/FU; }
 function jgPad(dt){ if(ARC.c2&&ARC.c2.step===1){ ARC.py=JG_PAD_LO-PG_CB*jgPadH(); return; }   // 1.58z17: пока ловится низ — ракетки внизу, рука за ними не гонится
@@ -871,7 +882,7 @@ function pzRender(){ var sub=PZ.sec, store=el('pzStore'); PZ_JG.forEach(function
     /* 1.58z19 (Ден 09.10 13:46–14:08, модель world.py: 6 приёмов × 3 уровня руки): «мир для баланса» — наклоны 36/27/23 (обычный пас в центр —
        дуга ~¾ высоты; у сетки — надёжнее, серединой — выше, перекос ≤10%), тяжесть 1,8 (высота дуги та же, на ответ больше времени),
        крутизна очков 3 (новичку выгодно играть надёжно, обычному — почти всё равно, точной руке риск даёт +10%), 250 с, 5 мячей. */
-    var bw=document.createElement('div'); bw.className='pgbalw'; var bh=document.createElement('b'); bh.innerHTML='Мир для баланса<small>5 мячей, наклоны 36/27/23, тяжесть 1,8, крутизна 3</small>'; bw.appendChild(bh);
+    var bw=document.createElement('div'); bw.className='pgbalw'; var bh=document.createElement('b'); bh.innerHTML='Мир для баланса<small>5 мячей, наклоны 36/27(26)/23, тяжесть 1,8, крутизна 3</small>'; bw.appendChild(bh);
     var brow=document.createElement('div'); [['time','На время','250 с, сужение по времени'],['endless','Без конца','сужение 30 с, горка, ×2']].forEach(function(M){
       var b=document.createElement('button'); b.className='ghost'+(pgBalOk(M[0])?' on':''); b.innerHTML=M[1]+(pgBalOk(M[0])?' ✓':'')+'<small>'+M[2]+'</small>';
       b.addEventListener('click',function(){ PG_BAL.forEach(function(k){ var r=pgRec(k,M[0]); if(r!==undefined) PG_V[k]=r; }); pgSave(); pzRender(); arcEv('pg-rules-balance:'+M[0]); }); brow.appendChild(b); });

@@ -91,7 +91,10 @@
   #acTop{position:absolute;left:0;right:0;top:30%;text-align:center;pointer-events:none;padding:0 1rem}
   #acSay{font-size:2rem;font-weight:600} #acSub{color:var(--soft);font-size:1rem;margin-top:.4rem}
   #acBtns{position:absolute;left:calc(max(1rem,env(safe-area-inset-left)) + 1rem);top:50%;transform:translateY(-50%);width:15rem;display:flex;flex-direction:column;gap:.5rem}
-  #arcPauseB{position:absolute;right:calc(max(.7rem,env(safe-area-inset-right)) + .3rem);top:calc(max(.5rem,env(safe-area-inset-top)) + .3rem);width:auto;min-height:0;padding:.75em 1.4em;font-size:1.15rem;background:rgba(4,7,10,.6);color:var(--ink);border:1px solid #3A4A52}
+  #arcPauseB{position:absolute;left:calc(max(.4rem,env(safe-area-inset-left)) + .2rem);bottom:calc(max(.3rem,env(safe-area-inset-bottom)) + .2rem);width:2.9rem;height:2.9rem;min-height:0;padding:0;display:flex;align-items:center;justify-content:center;background:rgba(4,7,10,.35);border:1px solid rgba(58,74,82,.7);border-radius:.6rem}
+  #arcPauseB i{display:block;width:.3rem;height:1.05rem;margin:0 .13rem;background:var(--ink);border-radius:1px}
+  /* 1.58z13 (Ден 09.10: «пауза — в нижний левый угол.. не сужай поле, отдавай пространство ходу»): маленькая кнопка с двумя чертами в самом углу,
+     ниже самого нижнего положения ракеток — ход ракеток и мяч она не закрывает */
   #arcPause{position:absolute;inset:0;z-index:5;background:#04070a;display:flex;align-items:center;justify-content:center;padding:calc(max(.6rem,env(safe-area-inset-top))) calc(max(1rem,env(safe-area-inset-right)))}
   #arcPause.hidden{display:none}
   #arcPause button{width:100%;margin:0;min-height:2.6rem;padding:.4em .6em;font-size:1.05rem}
@@ -523,7 +526,7 @@
   <canvas id="acC"></canvas>
   <div id="acTop"><div id="acSay"></div><div id="acSub"></div></div>
   <button id="acStop" class="gbtn">Стоп</button>
-  <button id="arcPauseB" class="gbtn hidden">Пауза</button>
+  <button id="arcPauseB" class="gbtn hidden" aria-label="Пауза"><i></i><i></i></button>
   <div id="arcPause" class="hidden"><div class="pzw">
     <div id="pzMain">
       <div class="pzhead"><b id="pzTitle">Пауза</b><span id="pzBest"></span></div>

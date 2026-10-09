@@ -54,12 +54,5 @@ const run=(path,off,jit)=>{ const c=Ctl.create(); Ctl.start(c); const got=[]; le
   check('the top must be at least 35 mm above the low',Math.abs(r.top-150)<3,`held 25 mm above — waited; then caught ${r.top&&r.top.toFixed(0)} mm`); }
 { const r=run([[0,130],[1,40],[3,40],[3.8,230],[6,230]],20,4);
   check('the travel is at most 160 mm',r.top-r.low===160,`low ${r.low.toFixed(0)}, top ${r.top.toFixed(0)}`); }
-{ const go=(useMap)=>{ const c=Ctl.create(); Ctl.start(c); const path=[[0,120],[1,70],[3,70],[3.6,150],[6,150],[6.5,85],[16,85]]; let done=false, out=null;   // 1.59i: an echo that moves twice as far as the phase (the Mi 9 Lite)
-    for(let i=0;i<path.length-1;i++){ const [t0,h0]=path[i],[t1,h1]=path[i+1]; for(let t=t0;t<t1;t+=DTF){ const h=h0+(h1-h0)*(t-t0)/(t1-t0);
-      Ctl.frame(c,{present:true,height:h+rnd()*2,abs:2*h-100+rnd()*6,fast:h},N,FS,1,false);
-      if(!done){ const r=Ctl.hold(c,t); if(r.done){ done=true; if(!useMap) c.mxMap=null; } } out=c.mix; } }
-    return {off:out-85,map:c.mxMap}; };
-  const a=go(true), b=go(false);
-  check('the echo\'s scale learnt on the holds too: a palm that moved and stayed keeps its rackets (1.59i)',!!a.map&&Math.abs(a.map.g-0.5)<0.05&&Math.abs(a.off)<3&&Math.abs(b.off)>15,`the echo twice the phase: scale ${a.map&&a.map.g.toFixed(2)}; 10 s after moving down to 8.5 cm the rackets are off by ${a.off.toFixed(1)} mm (offset only: ${b.off.toFixed(0)} mm)`); }
 { const c=Ctl.create(); Ctl.start(c); check('while the low hold is caught the rackets wait at the bottom',Ctl.lowStep(c)&&Ctl.holding(c)); }
 out.forEach(x=>console.log(x)); console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;

@@ -24,6 +24,7 @@ H = 'node --no-warnings'
 REALTIME = [  # phase 1: real time with the synthetic microphone — alone on the machine, one at a time (beside other checks the calibration came out worse)
     ('the whole game, synthetic microphone (Chromium)', f'{H} tests/flow.js'),
     ('SonaRace, synthetic microphone (Chromium)', f'{H} tests/race_flow.js'),
+    ('SonaPong, synthetic microphone: the holds, the game (Chromium)', f'{H} tests/pong_flow.js'),
     ("the app's own sound: frames through the app, the service screen (Chromium)", f'{H} tests/native_audio.js'),
     ('a phone that does not hear its own probe (Chromium)', f'{H} tests/silent.js'),
     ('the media volume before getting ready (Chromium)', f'{H} tests/volume.js'),
@@ -60,7 +61,7 @@ LANE_B = [  # phase 2, beside lane A: the rest
     ("pong control: the lab's mix, the two calibration holds", f'{H} tests/test_pong_ctl.js'),
 ]
 # the time limit of a check, s — about three times its run on 5 Oct (2 cores, no other load); the rest 180
-LIMIT = {'flow': 300, 'race_flow': 200, 'native_audio': 150, 'silent': 120, 'volume': 90, 'side': 60, 'live_flow': 260, 'screens': 1200,
+LIMIT = {'flow': 300, 'race_flow': 200, 'pong_flow': 200, 'native_audio': 150, 'silent': 120, 'volume': 90, 'side': 60, 'live_flow': 260, 'screens': 1200,
          'test_live': 120, 'mix': 200, 'skin_audit': 120, 'obsidian_sizes': 180, 'test_race': 120}
 
 def key(cmd):   # the check's script name: «flow», «screens», «build», «font»; HD=1 skin_audit is «skin_audit_hd»
@@ -78,8 +79,9 @@ MAP = [
     ('src/12_tune.js', 'test_tune flow live_flow'),
     ('src/13_core.js', 'test_core test_rules test_server flow'),
     ('src/14_race.js', 'test_race race_flow test_server'),
-    ('src/15_pong.js', 'test_pong'),
-    ('src/16_pong_ctl.js', 'test_pong_ctl'),
+    ('src/15_pong.js', 'test_pong pong_flow'),
+    ('src/16_pong_ctl.js', 'test_pong_ctl pong_flow'),
+    ('src/48_pong.js', 'pong_flow screens'),
     ('src/20_sonar.js', 'flow native_audio silent volume side live_flow test_eq'),
     ('src/21_log.js', 'flow'),
     ('src/22_sfx.js', 'flow native_audio'),
@@ -91,7 +93,7 @@ MAP = [
     ('src/48_mix.js', 'mix screens'),
     ('src/48_obsidian.js', 'obsidian_sizes'),
     ('src/48_race*.js', 'race_flow mix skin_audit screens'),
-    ('src/49_main.js', 'screens first_open press settings flow mix'),
+    ('src/49_main.js', 'screens first_open press settings flow mix race_flow pong_flow'),
     ('VERSION game/play/*', ''),   # the build check covers them
 ]
 WATCHED = ('src/', 'server/', 'lab/src/', 'font/')

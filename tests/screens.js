@@ -5,9 +5,10 @@ let chromium; try{ ({chromium}=require('playwright')); }catch(e){ console.log('p
 const fs=require('fs'), path=require('path'); const ROOT=path.join(__dirname,'..'), OUT=path.join(__dirname,'out','screens'); fs.mkdirSync(OUT,{recursive:true});
 const SIZES=process.env.SCREENS_QUICK?[[568,320],[1024,768]]:[[568,320],[667,375],[740,360],[844,390],[932,430],[1024,768],[1366,1024]];   // v1.51: SCREENS_QUICK=1 (run_par.py --changed) — the smallest phone and the iPad only
 const SCREENS=['lang','hub','settings','title','skins','sound','phone','mic','probe','wave','wave-try','count','play','pause-play','restart','over','over-here','scores','nick','link','linkshow','linkin','linkdone','lost','nomic',
-  'race-menu','race-skins','race-set','race-try','race-count','race-play','race-pause','race-over'];   // v0.84: SonaRace's own screens (its menu, the try-out with the car, the race, its pause and finish)
+  'race-menu','race-skins','race-set','race-try','race-count','race-play','race-pause','race-over',
+  'pong-menu','pong-hold','pong-try','pong-count','pong-play','pong-pause','pong-over'];   // v1.59: SonaPong's own screens (its menu, the two holds, the try-out, the game, its pause and game over)   // v0.84: SonaRace's own screens (its menu, the try-out with the car, the race, its pause and finish)
 // v1.07: the buttons each screen must show (checked below) — waited for before the checks, so a slow frame is not a failure
-const WANT={'scores':['ver','p_day'],'skins':['skins_prev','skins_next','sk_in','sk_time_next','sk_order','sk_all','sk_back'],'race-skins':['skins_prev','skins_next','sk_in','sk_all','sk_back'],'wave-try':['start','again'],'race-try':['start','again'],'race-menu':['play','howto','hub'],'race-set':['rs_*'],'race-play':['pause'],'race-pause':['resume','restart','quit','exit'],
+const WANT={'pong-menu':['play','howto','pg_sens','hub'],'pong-try':['start','pg_rehold'],'pong-play':['pause'],'pong-pause':['resume','pg_recal','restart','quit','exit'],'pong-over':['again','menu','ver'],'scores':['ver','p_day'],'skins':['skins_prev','skins_next','sk_in','sk_time_next','sk_order','sk_all','sk_back'],'race-skins':['skins_prev','skins_next','sk_in','sk_all','sk_back'],'wave-try':['start','again'],'race-try':['start','again'],'race-menu':['play','howto','hub'],'race-set':['rs_*'],'race-play':['pause'],'race-pause':['resume','restart','quit','exit'],
   'race-over':['again','menu','ver'],'play':['pause'],'restart':['rs_go','rs_cal','rs_back'],'pause-play':['resume','restart','quit','exit'],'over':['ver'],'settings':['vol_dn','set_gfx_prev','set_band_next','set_live_next','set_expert','set_back']};   // v1.12: the settings
 (async()=>{
   const b=await chromium.launch(); const bad=[]; const errors=[]; let n=0;
@@ -45,9 +46,16 @@ const WANT={'scores':['ver','p_day'],'skins':['skins_prev','skins_next','sk_in',
         else if(s==='race-play'){ const r=__sonaroids.state().g; r.state='play'; r.car.inv=99; __sonaroids.go('play'); }
         else if(s==='race-pause'){ __sonaroids.act.pause(); }
         else if(s==='race-over'){ const r=__sonaroids.state().g; r.state='over'; __sonaroids.go('over'); }
+        else if(s==='pong-menu'){ __sonaroids.act.hub_pong(); __sonaroids.pong(); }
+        else if(s==='pong-hold'){ __sonaroids.go('phold'); __sonaroids.act.pg_rehold(); }
+        else if(s==='pong-try'){ __sonaroids.pongDone(); }
+        else if(s==='pong-count'){ __sonaroids.go('count'); }
+        else if(s==='pong-play'){ const q=__sonaroids.state().g; q.state='play'; __sonaroids.go('play'); }
+        else if(s==='pong-pause'){ __sonaroids.act.pause(); }
+        else if(s==='pong-over'){ const q=__sonaroids.state().g; q.state='over'; __sonaroids.go('over'); }
         else if(s==='linkdone'){ document.querySelector('input').value='k7m 4qx'; __sonaroids.act.code_ok(); }
         else { if(s==='over'){ g.state='over'; g.score=12480; } __sonaroids.go(s); } },s);
-      await p.waitForTimeout(s==='over'||s==='over-here'||s==='race-over'?1000:s==='phone'||s==='wave-try'||s==='race-try'?1300:150); n++;
+      await p.waitForTimeout(s==='over'||s==='over-here'||s==='race-over'?1000:s==='phone'||s==='wave-try'||s==='race-try'?1300:s==='pong-over'?1000:150); n++;
       // v0.78: the game starts in HD — a big screen draws slowly here without a GPU (1366×1024: ~12 frames/s), so wait for the calibrated screen's buttons
       // v1.07: and so for every screen whose buttons are checked below: a few frames drawn, then until they are there (up to 8 s) — with other checks
       // running beside this one (tests/run_par.py) a fixed wait was sometimes too short; what is checked is the same

@@ -143,6 +143,7 @@ python3 tests/run_par.py --changed   # only what the changes since the last comm
 | `40_gfx.js`, `41_sprites.js`, `42_guide.js` | drawing, pixel sprites, the drawn phones of getting ready and the instructions |
 | `42_hands.js` | the hands of those pictures in HD, as pictures — made by `hands/make_hands.py` |
 | `43_skins.js`, `45_hd.js`, `46_vecskins.js`, `47_pixskins.js`, `48_sizes.js`, `48_flight.js` | SonaFly's skins: pixels, HD, shape skins; things drawn the size the game counts them |
+| `48_pong.js` | SonaPong's screens: the card, the menu, the two holds, the game, its HUD, the game over (a stand-in look until its skins); `tests/pong_flow.js` |
 | `48_racehd.js`, `48_racecandy.js`, `48_racenote.js`, `48_racepirate.js` | SonaRace's candy land, notebook and pirate world, in HD and in pixels |
 | `48_obsidian.js` | obsidian: its own WebGL2 canvas under the main one, the ink, rings, wakes and every object in shaders; lowers its own quality when frames run late |
 | `48_mix.js` | the skins' list: which are on, how often and in what order they change in a game |

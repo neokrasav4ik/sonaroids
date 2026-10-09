@@ -14,8 +14,8 @@ var prep=null, T=null, caught=false, g=null, acc=0, countT=0, overT=0, shake=0, 
 /* own sounds louder than this in the microphone are turned down (v0.19: 0.05, was 0.3). iPhone: peaks 0.007–0.013 with sounds on — never ducks */
 var DUCK_PEAK=0.05;
 var lastHand=null, shipY=null, sayLast='', pausedFrom=null, livesT=0, duckT=0;
-var mode='fly';   // v0.84: which game — 'fly' (SonaFly) or 'race' (SonaRace); the getting ready is the same, «menu» is the game's own
-function go(s){ if(mode==='race'&&s==='title') s='rtitle';
+var mode='fly';   // v0.84: which game — 'fly' (SonaFly) or 'race' (SonaRace); the getting ready is the same, «menu» is the game's own; v1.59: 'pong' (SonaPong, src/48_pong.js)
+function go(s){ if(mode==='race'&&s==='title') s='rtitle'; if(mode==='pong'&&s==='title') s='ptitle';   // v1.59: SonaPong's menu
   if(scr==='wave'&&s!=='wave'&&!caught&&T&&typeof Board!=='undefined') Board.setup('nocatch',{t:scrT,flips:flips});   // left the wave step without a caught range
   if(s!==scr&&typeof mixPrep==='function') mixPrep(scr,s);
   if(s!==scr) scrPrev=scr; scr=s; scrT=0; BTN=[]; if(s!=='nick'&&s!=='linkin'&&typeof nickField==='function'&&nickEl) nickField(false); }
@@ -106,7 +106,7 @@ function stepSquares(id){ if(!onboarding) return; var n=STEPS.length, q=6, gap=6
    И на компе в браузере (управление корабля — мышкой)»): the ship follows the pointer's height; no microphone, no getting ready; the games
    are tests (not for the tables). On in the test panel («МЫШЬ ВМЕСТО СОНАРА», shown with a mouse) or by ?mouse=1; Esc pauses */
 var MOUSE={y:null};
-function mouseOn(){ return mode!=='race'&&(store.get('sonaroids_mouse','0')==='1'||/[?&]mouse=1(&|$)/.test(location.search)); }
+function mouseOn(){ return mode==='fly'&&(store.get('sonaroids_mouse','0')==='1'||/[?&]mouse=1(&|$)/.test(location.search)); }
 function mouseFine(){ try{ return matchMedia('(pointer:fine)').matches; }catch(e){ return false; } }
 window.addEventListener('pointermove',function(e){ if(e.pointerType==='mouse') MOUSE.y=e.clientY*DPR/S; },{passive:true});
 window.addEventListener('keydown',function(e){ if(!mouseOn()||e.key!=='Escape') return; if(scr==='play') pauseGame(); else if(scr==='paused') ACT.resume(); });
@@ -190,10 +190,11 @@ function sHub(){ var fr, rimg, fid=SKIN_IDS[hubSkin], rsk=RACE_SKINS[hubRace]; h
   // one row under the cards, or two on a narrow screen (the sounds above «how to play» and the language)
   var bw=btnW([L('howto'),L('lang'),L('settings')]), sw=bw, narrow=bw*3+16>LW-SAFE.l-SAFE.r-16;   // v1.12: «settings» in place of the sounds (they moved there)
   var vy=LH-SAFE.b-12, rowY=vy-8-BH-(diag?16:0), playY=narrow?rowY-8-BH:rowY, top=y+(sub?31:20), lab=24;
-  var ih=Math.max(24,playY-8-lab-top), cw=Math.min(Math.round(ih*LW/LH),Math.round((LW-SAFE.l-SAFE.r-40)/2)), gap=16;
-  ih=Math.round(cw*LH/LW); var cx=Math.round(cx0-cw-gap/2), ty=Math.round(top+(playY-8-lab-top-ih)/2);
+  var gap=12, NC=3, ih=Math.max(24,playY-8-lab-top), cw=Math.min(Math.round(ih*LW/LH),Math.round((LW-SAFE.l-SAFE.r-24-(NC-1)*gap)/NC));   // v1.59: three cards — SonaPong joins
+  ih=Math.round(cw*LH/LW); var cx=Math.round(cx0-(NC*cw+(NC-1)*gap)/2), ty=Math.round(top+(playY-8-lab-top-ih)/2);
   hubCard('hub_rocks',cx,ty,cw,ih,fr,'SonaFly','',true);
-  hubCard('hub_race',cx+cw+gap,ty,cw,ih,rimg||withRaceSkin(rsk,function(){ return raceCardHD(cw-4,ih); }),'SonaRace','',true);   // v0.84: the race is open; v0.92: «тестовая пока версия»; v1.00: no longer («после добавления тетрадки надпись можно убирать»)
+  hubCard('hub_race',cx+cw+gap,ty,cw,ih,rimg||withRaceSkin(rsk,function(){ return raceCardHD(cw-4,ih); }),'SonaRace','',true);
+  hubCard('hub_pong',cx+2*(cw+gap),ty,cw,ih,pgCard(),'SonaPong',L('r_test'),true);   // v1.59: a test version until its skins and sounds   // v0.84: the race is open; v0.92: «тестовая пока версия»; v1.00: no longer («после добавления тетрадки надпись можно убирать»)
   if(narrow){ button('settings',L('settings'),Math.round(cx0-sw/2),playY,sw,BH,'');
     var x2=Math.round(cx0-bw-4); button('howto',L('howto'),x2,rowY,bw,BH,''); button('lang',L('lang'),x2+bw+8,rowY,bw,BH,''); }
   else { var tw=bw*2+sw+16, bx=Math.round(cx0-tw/2); button('howto',L('howto'),bx,rowY,bw,BH,''); button('lang',L('lang'),bx+bw+8,rowY,bw,BH,''); button('settings',L('settings'),bx+2*bw+16,rowY,sw,BH,''); }
@@ -418,7 +419,7 @@ function poolFill(budget){ if(pool.K!==K||pool.skin!==SK||(SK.hd&&pool.hs!==hs))
   pool.list[sz].push(makeSkinRock(SK,sz,Core.R_SIZE[sz],pool.list[sz].length*17+sz)); } }   // v0.70: the skin's rocks
 function rockFromPool(r){ poolFill(0); var l=pool.list[r.sz]; if(!l||!l.length) return makeSkinRock(SK,r.sz,r.r,r.id);
   var b=l[r.id%l.length], o={}; for(var k in b) o[k]=b[k]; o.ox=b.ox||0; o.rot=(r.id*5)%16; o.vr=b.vr===0?0:((r.id*7)%11-5); return o; }
-function field(dt,speed){ if(mode==='race'&&g&&g.car){ raceScene(g,g.d,g.car.y,dt); raceParts(dt); return; }
+function field(dt,speed){ if(mode==='race'&&g&&g.car){ raceScene(g,g.d,g.car.y,dt); raceParts(dt); return; } if(mode==='pong'){ if(g&&g.ball!==undefined) pgField(g,dt); else pgDemoDraw(); return; }
   var GK=SK.glBegin?SK:null; if(GK) GK.glBegin(true); try{ fieldIn(dt,speed); } finally { if(GK) GK.glEnd(); } }   /* v1.42: the heavy skin draws the field on the graphics chip */
 function fieldIn(dt,speed){
   poolFill(0); SK.sky(dt,speed);
@@ -441,7 +442,7 @@ function fieldIn(dt,speed){
     if(livesT>0){ for(var i=0;i<g.lives;i++) blit(MINI,SK.mini(),sx-2+i*7,sy-14); } }   // lives: shown only for a moment after a hit
   drawParts(dt);
 }
-function sCount(){ if(mode==='race'){ raceCount(); return; } countT-=DT; poolFill(2); followShip();
+function sCount(){ if(mode==='race'){ raceCount(); return; } if(mode==='pong'){ pgCount(); return; } countT-=DT; poolFill(2); followShip();
   var GK=SK.glBegin?SK:null; if(GK) GK.glBegin(true); try{ SK.sky(DT,0.6); flyShip(fx(Core.SHIP_X),shipY,clock,false,DT,null); } finally { if(GK) GK.glEnd(); }   // v1.40: the countdown's ship flies too
   var n=Math.max(1,Math.ceil(countT)), cx0=Math.round(LW/2), cy0=Math.round(LH/2);
   var fr=countT-Math.floor(countT), cs=3,   /* v1.55 (the review's п.18): the number three times larger, a beat on each second */ pu=cs>1?1+0.18*Math.max(0,fr-0.75)/0.25:1;
@@ -453,7 +454,7 @@ var SITE='sonaroids.app';
    is still loud in the microphone. The sonar no longer takes it for a shifted input; the player gets a line under the score after 0.7 s */
 var covT=0;
 function coveredLine(y){ covT=(typeof DSP2!=='undefined'&&DSP2.info().covered)?covT+DT:0; if(covT>0.7) text(L('covered'),Math.round(LW/2),y,P.hit,'center'); }
-function sPlay(){ if(mode==='race'){ racePlay(); return; }
+function sPlay(){ if(mode==='race'){ racePlay(); return; } if(mode==='pong'){ pgPlay(); return; }
   acc+=DT; var n=0;
   while(acc>=Core.DT&&n<5){ acc-=Core.DT; n++; var h=Board.q(handFrac()); Core.step(g,h); Board.step(h); Logs.step(g,h); react(); if(g.state!=='play') break; }   // v0.25: the palm rounded to 1/4000 — the server replays these exact numbers
   if(n===5) acc=0;
@@ -480,7 +481,7 @@ function devInfo(){ var ua=navigator.userAgent||'', ios=/iPhone|iPad|iPod/.test(
     eq:!!D.eq,eq_db:r(D.eq_db,10),relocks:D.relocks,drops:D.drops,side:handRel||undefined,ec:m.echoCancellation,ns:m.noiseSuppression,agc:m.autoGainControl,
     app:!!APP,audio:I.audio,src:m.src,vol:APP?(function(){ try{ return r(APP.getVolume(),100); }catch(e){ return undefined; } })():undefined,band:I.band}; }   // v0.55
 Board.devInfo(devInfo);
-function endGame(){ if(mode==='race'&&g&&g.car){ raceEnd(); return; } g.state='over'; overT=0; Logs.gameStop(); Board.finish(g.score); Board.flush(); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } go('over'); }
+function endGame(){ if(mode==='race'&&g&&g.car){ raceEnd(); return; } if(mode==='pong'&&g&&g.ball!==undefined){ pgEnd(); return; } g.state='over'; overT=0; Logs.gameStop(); Board.finish(g.score); Board.flush(); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } go('over'); }
 function react(){ g.events.forEach(function(k){
   if(k==='fire'){ if(Math.random()<0.5) Sfx.play('fire'); } else if(k!=='crash') Sfx.play(k); });
   var BU=SK.bursts(); (g.gone||[]).forEach(function(r){ if(SK.gone) SK.gone(r,rockSpr[r.id]); else burst(fx(r.x),r.y*K,8+Math.round(r.r*K),BU.rock,50*K); delete rockSpr[r.id]; shake=Math.max(shake,0.08+r.r*0.004); });
@@ -490,7 +491,7 @@ function react(){ g.events.forEach(function(k){
   if((g.fx||[]).some(function(f){ return f.pick==='life'; })) livesT=1.8;                  // a life taken: the lives show for a moment
   if(g.events.indexOf('hit')>=0||g.events.indexOf('over')>=0){ flash=0.25; shake=0.4; livesT=1.8; burst(fx(g.ship.x)+6,g.ship.y*K,26,BU.ship,70*K); }
 }
-function sOver(){ if(mode==='race'&&g&&g.car){ raceOver(); return; } overT+=DT;                       // no tuning here: it is done on the wave screen before every game (24 Sep)
+function sOver(){ if(mode==='race'&&g&&g.car){ raceOver(); return; } if(mode==='pong'&&g&&g.ball!==undefined){ pgOver(); return; } overT+=DT;                       // no tuning here: it is done on the wave screen before every game (24 Sep)
   field(DT,0.3); var cx0=freeSide()==='left'?Math.round(LW*0.6):Math.round(LW*0.4), y=Math.round(LH*0.3);
   text(L('over'),cx0,y,P.text,'center'); text(String(g.score),cx0,y+13,P.band,'center',2);   // the score, big (25 Sep)
   // v0.27: the version is also a switch — a tap shows the "logs" button (for this launch); the logs are always being written
@@ -573,13 +574,14 @@ function pauseVeil(){ lights=[]; lx.globalAlpha=0.68; R(P.bg,0,0,LW,LH); lx.glob
     lx.save(); lx.globalCompositeOperation='destination-out'; lx.fillStyle=gr; lx.fillRect(sx-r,sy-r,2*r,2*r); lx.restore(); } }
 function sPaused(){ field(DT,0); pauseVeil(); titles(L('paused'));
   var act=[['resume',L('resume'),'primary']].concat(pausedFrom==='play'?[['restart',L('restart')],['quit',L('quit')]]:[]).concat([['exit',L('exit')]]),
-      look=(mode==='race'?[['rskin',raceSkinLabel(),'rskin']]:[['skin','','skin']]).concat([['smooth',L('smooth')+': '+(noSmooth?L('s_off'):L('s_on'))]]).concat(gfxFree()?[['gfx',mode==='race'?L('gfx')+': '+(gfxMode==='hd'?'HD':L('gfx_pixel')):gfxLabel()]]:[]).concat([['sfx','','sound']]), top=topY()+12, bot=LH-SAFE.b-4;
+      look=mode==='pong'?[['pg_sens',pgSensLabel()],['sfx','','sound']]:(mode==='race'?[['rskin',raceSkinLabel(),'rskin']]:[['skin','','skin']]).concat([['smooth',L('smooth')+': '+(noSmooth?L('s_off'):L('s_on'))]]).concat(gfxFree()?[['gfx',mode==='race'?L('gfx')+': '+(gfxMode==='hd'?'HD':L('gfx_pixel')):gfxLabel()]]:[]).concat([['sfx','','sound']]), top=topY()+12, bot=LH-SAFE.b-4;   // v1.59: SonaPong's look — the sensitivity and the sounds (its skins come with step 5)
+  if(mode==='pong'&&pausedFrom==='play') act.splice(1,0,['pg_recal',L('pg_recal')]);   // v1.59: the palm held again (the lab's «подстроить заново»), the game waits
   // v1.03: SonaRace's pause as SonaFly's — the skin and the graphics beside the actions (Den: «во флае можно скин и графику менять прямо во время игры в меню паузы, в гонках надо сделать аналогичное»)
-  var w1=colW(act), w2=colW(look), g=10, left=freeSide()==='left', x1=mode!=='race'&&left?Math.max(sideX(w1),Math.min(Math.round(fx(Core.SHIP_X))+34,LW-SAFE.r-Math.max(8,Math.round(LW*0.04))-w1-10-w2)):sideX(w1),   /* off the ship's lane, but both columns on screen */ x2=left?x1+w1+g:x1-g-w2, cy=Math.min(Math.round(LH*0.55),Math.round((top+bot)/2));
+  var w1=colW(act), w2=colW(look), g=10, left=freeSide()==='left', x1=mode==='fly'&&left?Math.max(sideX(w1),Math.min(Math.round(fx(Core.SHIP_X))+34,LW-SAFE.r-Math.max(8,Math.round(LW*0.04))-w1-10-w2)):sideX(w1),   /* off the ship's lane, but both columns on screen */ x2=left?x1+w1+g:x1-g-w2, cy=Math.min(Math.round(LH*0.55),Math.round((top+bot)/2));
   if(w1+g+w2>LW-SAFE.l-SAFE.r-2*Math.max(8,Math.round(LW*0.04))){                                        // too narrow for two (a tablet in Russian): one tight column
     var it=act.concat(look), gap=Math.max(2,Math.min(8,Math.floor((bot-top+2-it.length*BH)/(it.length-1))));
     column(it,Math.round((top+bot)/2),undefined,gap); return; }
-  column(act,cy,x1,8); var ob=mode!=='race'&&pausedFrom==='play'&&obsOn(); if(ob) diagCorner('V'+VERSION,true,SAFE.t+8,true);   /* v1.48: the test sliders hidden — a long press on the version shows them */
+  column(act,cy,x1,8); var ob=mode==='fly'&&pausedFrom==='play'&&obsOn(); if(ob) diagCorner('V'+VERSION,true,SAFE.t+8,true);   /* v1.48: the test sliders hidden — a long press on the version shows them */
   var cyL=Math.round(cy-(act.length*(BH+8)-8)/2+(look.length*(BH+8)-8)/2);   /* v1.56 (the review's п.23): the two columns' tops level */
   if(ob&&diag) obsPanel(left?x2:SAFE.l+6,left?LW-SAFE.r-6-x2:x2+w2-SAFE.l-6,cy);   /* v1.47: all the room beside the actions */ else column(look,cyL,x2,8); }
 /* v1.44: the heavy skin's sliders in the pause (the maintainer, of each: «ползунок? :)»), in place of the look column (the skin is fixed while it is on);
@@ -600,9 +602,9 @@ function obsPanel(px,pw,cy){ var pad=5, gap=2, cg=8, rh=PF.CAP+gap+10+5, vw=PF.w
 /* v0.24 "start over" from the pause menu: straight into a countdown with the same calibration, or through calibration again */
 function sRestart(){ field(DT,0); pauseVeil(); titles(L('restart'),L('restart_s'));
   var it=[['rs_go',L('rs_go'),'primary'],['rs_cal',L('recal')],['rs_back',L('back')]], bw=btnW(it.map(function(q){ return q[1]; }));
-  column(it,Math.round(LH*0.58),mode!=='race'&&freeSide()==='left'?Math.max(sideX(bw),Math.round(fx(Core.SHIP_X))+34):undefined); }
+  column(it,Math.round(LH*0.58),mode==='fly'&&freeSide()==='left'?Math.max(sideX(bw),Math.round(fx(Core.SHIP_X))+34):undefined); }
 /* the running game is dropped without the game-over screen; its score still counts for the best */
-function dropGame(){ if(mode==='race'&&g&&g.car){ if(g.state!=='over'){ Logs.gameEv('restarted by the player'); g.state='over'; Logs.gameStop(); if(g.score>raceBest){ raceBest=g.score; store.set('sonaroids_race_best',raceBest); } } return; }
+function dropGame(){ if(mode==='pong'){ pgDrop(); return; } if(mode==='race'&&g&&g.car){ if(g.state!=='over'){ Logs.gameEv('restarted by the player'); g.state='over'; Logs.gameStop(); if(g.score>raceBest){ raceBest=g.score; store.set('sonaroids_race_best',raceBest); } } return; }
   if(g&&g.state==='play'){ Logs.gameEv('restarted by the player'); g.state='over'; Logs.gameStop(); Board.finish(g.score); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } } }
 function errSign(kind){ var cx=Math.round((SAFE.l+LW-SAFE.r)/2), cy=Math.round(LH*0.5), c=lx; c.save(); c.strokeStyle=P.soft; c.lineWidth=2; c.lineCap='round';
   if(kind==='mic'){ c.beginPath(); c.roundRect(cx-5,cy-16,10,20,5); c.stroke(); c.beginPath(); c.arc(cx,cy-2,10,0.15,Math.PI-0.15); c.stroke(); c.beginPath(); c.moveTo(cx,cy+8); c.lineTo(cx,cy+13); c.moveTo(cx-6,cy+13); c.lineTo(cx+6,cy+13); c.stroke(); }
@@ -845,22 +847,24 @@ function liveOn(){ return Sonar.live(); }
 function awayPause(){ return liveOn()?2.5:PAUSE; }   // v1.10: 1.2 s was too short to take the hand away (the OnePlus 18:17)
 var roomAgain=false;
 function liveReady(){ return liveOn()&&booted&&Sonar.healthy()&&acoustic&&T!==null; }
-function afterRoom(){ if(!liveOn()||forceWave){ toWave(); return; }
+function afterRoom(){ if(mode==='pong'){ pgToHold(); return; }   // v1.59: SonaPong — the two holds instead of the waving
+  if(!liveOn()||forceWave){ toWave(); return; }
   /* v1.19: the try-out first — the ship follows the palm with the copied calibration, «play» or «recalibrate» (the maintainer's pick «В») */
   T=Tune.create(+store.get('sonaroids_field','100')||100,true); T.ok=true; T.copied=true; caught=true; caughtT=-9; autoTry=true; var cL=DSP2.info().cal; Logs.ev('живой режим: без взмахов',{field:T.field,mid_mm:+((100-cL.o)/cL.k).toFixed(1),saved_mm:Sonar.savedMid()}); go('wave'); caughtT=-9; }
 /* v1.19: «again» after a game straight to the countdown with the same calibration, in the hand calibration too (the maintainer: «переносим в ручную»; within one launch the readings don't drift); «recalibrate» beside it */
 function readyNow(){ return booted&&Sonar.healthy()&&acoustic&&T!==null&&T.ok; }
 var forceWave=false, autoTry=false;
-function quickOr(full,any){ if(any?readyNow():liveReady()){ Logs.ev('живой режим: сразу отсчёт'); dropGame(); resumeAfterPrep=false; startCount(); } else full(); }
+function quickOr(full,any){ if(mode==='pong'?pgReady():any?readyNow():liveReady()){ Logs.ev('живой режим: сразу отсчёт'); dropGame(); resumeAfterPrep=false; startCount(); } else full(); }
 function toRoom(b){ roomAgain=false; Sonar.setBand(b); prep=null; silentRetry=false; go('away'); }
-function toWave(){ forceWave=false; autoTry=false; T=Tune.create(+store.get('sonaroids_field','100')||100,true); caught=false; flips=0; flipT=-9; seenT=0; go('wave'); }
+function toWave(){ forceWave=false; autoTry=false; try{ DSP2.set('quarter',0); }catch(e){}   // v1.59: the quarter-frame phase only for SonaPong's rackets
+  T=Tune.create(+store.get('sonaroids_field','100')||100,true); caught=false; flips=0; flipT=-9; seenT=0; go('wave'); }
 function pauseGame(){ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; go('paused'); } }
 function startCount(){ flyReset(); if(resumeAfterPrep&&g&&g.state!=='over'){ resumeAfterPrep=false; countT=3; go('count-resume'); return; }
-  resumeAfterPrep=false; countT=3; mixStart(); if(scr!=='wave') shipY=null; lastHand=handFrac()===null?lastHand:handFrac(); /* from the try-out the ship goes on where it is */ Logs.ev('отсчёт',{field:+T.field.toFixed(1),auto:T.auto}); store.set('sonaroids_field',Math.round(T.field));
+  resumeAfterPrep=false; if(mode==='pong'){ pgCountStart(); return; } countT=3; mixStart(); if(scr!=='wave') shipY=null; lastHand=handFrac()===null?lastHand:handFrac(); /* from the try-out the ship goes on where it is */ Logs.ev('отсчёт',{field:+T.field.toFixed(1),auto:T.auto}); store.set('sonaroids_field',Math.round(T.field));
   // v1.14: a hand calibration's middle (the echo's range) — the auto-calibration plays with it (20_sonar liveMid)
   if(T.ok&&!T.copied){ var cI=DSP2.info().cal, rMid=(100-cI.o)/cI.k; if(rMid>=55&&rMid<=140){ store.set('sonaroids_mid_r_'+Sonar.band(),rMid.toFixed(1)); store.set('sonaroids_mid_t',String(Date.now()));   /* v1.19: per band (А), with the time (Г) */ Logs.ev('середина запомнена',{range_mm:+rMid.toFixed(1),field:Math.round(T.field)}); } }
   if(mode==='race'){ g=Race.create(newSeed(),raceFW(),shipY===null?null:shipY/K,raceSteer,raceRules()); rTry=null; } go('count'); }
-function startGame(){ if(mode==='race'){ raceStart(); return; }
+function startGame(){ if(mode==='race'){ raceStart(); return; } if(mode==='pong'){ pgStart(); return; }
   var seed=0; try{ var a=new Uint32Array(1); crypto.getRandomValues(a); seed=a[0]; }catch(e){ seed=Math.floor(Math.random()*4294967296); }
   var y0=shipY===null?null:+(shipY/K).toFixed(3);
   Core.TUNE.SHOT_TILT=shotTilt(); Core.TUNE.SHOT_BOUNCE=shotBounce(); g=Core.create(seed,Core.FH*(LW-SAFE.l)/LH,y0); Board.start(seed,g.FW,y0,Core.TUNE.SHOT_TILT||Core.TUNE.SHOT_BOUNCE||mouseOn()||noSmooth?{test:true}:null); nickAsked=false; acc=0; rockSpr={}; parts=[]; livesT=0; var I=Sonar.info();
@@ -886,7 +890,8 @@ var ACT={
   set_gfx_prev:function(){ SET_ROWS[0][2](-1); }, set_gfx_next:function(){ SET_ROWS[0][2](1); }, set_band_prev:function(){ SET_ROWS[1][2](-1); }, set_band_next:function(){ SET_ROWS[1][2](1); },
   set_live_prev:function(){ SET_ROWS[2][2](-1); }, set_live_next:function(){ SET_ROWS[2][2](1); }, set_room_prev:function(){ SET_ROOM[2](-1); }, set_room_next:function(){ SET_ROOM[2](1); },
   rset:function(){ go('rset'); },
-  hub_rocks:function(){ mode='fly'; go('title'); }, rskin:function(){ raceSkinStep(1); }, rskin_next:function(){ raceSkinStep(1); }, rskin_prev:function(){ raceSkinStep(-1); }, hub_play:function(){ mode='fly'; go('title'); }, hub_race:function(){ mode='race'; go('rtitle'); },
+  hub_rocks:function(){ mode='fly'; go('title'); }, rskin:function(){ raceSkinStep(1); }, rskin_next:function(){ raceSkinStep(1); }, rskin_prev:function(){ raceSkinStep(-1); }, hub_play:function(){ mode='fly'; go('title'); }, hub_race:function(){ mode='race'; go('rtitle'); }, hub_pong:function(){ mode='pong'; go('ptitle'); },   // v1.59
+  pg_sens:function(){ PG.sens=(pgSens()+1)%4; store.set('sonaroids_pong_sens',String(PG.sens)); if(g&&g.ball!==undefined&&g.state==='play'){ g.H=Pong.TUNE.SENS[PG.sens]; } }, pg_rehold:function(){ pgHoldStart(); }, pg_recal:function(){ PG.resume=true; go('phold'); pgHoldStart(); },
   /* v1.58 (Ден, 7.10, после «Жонглёра» в лабе — «лучшее управление, что я вообще пробовал»: «да, сделай переключатель в меню паузы —
      чтоб я сравнил управляемость»): корабль / машина без сглаживания (там, куда показывает ладонь, без догоняния 25 мс). Проба: такая
      партия не идёт в таблицы — переключил посреди партии, и она тоже уже не идёт */
@@ -976,7 +981,7 @@ cv.addEventListener('touchend',function(){ verDown=false; });   // the hold ends
 ['gesturestart','gesturechange','gestureend','dblclick'].forEach(function(n){ document.addEventListener(n,function(e){ e.preventDefault(); },{passive:false}); });
 document.addEventListener('touchmove',function(e){ e.preventDefault(); },{passive:false});
 document.addEventListener('visibilitychange',function(){
-  if(document.hidden){ Sonar.pause(); pauseGame(); if(scr==='away'||scr==='wave'||scr==='probe') go('title'); }   // getting ready starts over after a break
+  if(document.hidden){ Sonar.pause(); pauseGame(); if(scr==='away'||scr==='wave'||scr==='probe'||(scr==='phold'&&!PG.resume)) go('title'); }   // getting ready starts over after a break
   else Sonar.resume(); });
 window.addEventListener('resize',function(){ setTimeout(resize,60); });
 window.addEventListener('orientationchange',function(){ setTimeout(resize,250); });
@@ -996,15 +1001,15 @@ function loop(now){
   var fast=scr==='play'||scr==='count'||scr==='count-resume'; if(now-lastNow<(fast?15:31)) return;
   DT=Math.min(0.05,Math.max(0,(now-lastNow)/1000)); lastNow=now; clock+=DT; scrT+=DT; BTN=[]; SLD=[];
   if(LH>LW){ pauseGame(); sRotate(); present(0); return; }
-  if(booted&&Sonar.lost()&&(scr==='wave'||scr==='count'||scr==='play'||scr==='over')){ if(g&&g.state==='play') Logs.gameStop(); Board.setup('lost'); go('lost'); }
+  if(booted&&Sonar.lost()&&(scr==='wave'||scr==='phold'||scr==='count'||scr==='play'||scr==='over')){ if(g&&g.state==='play') Logs.gameStop(); Board.setup('lost'); go('lost'); }
   var RS=mode==='race'&&(scr==='rtitle'||scr==='skins'||scr==='rset'||scr==='scores'||scr==='count'||scr==='count-resume'||scr==='play'||scr==='over'||scr==='paused'||scr==='restart'||(scr==='wave'&&caught&&scrT-caughtT>=CAUGHT_SHOW));
-  hdFrame(RS||!!MX.tr||(scr==='hub'?hubBg==='race'||hdWanted(SKIN_IDS[hubSkin]):!!SK.hd),false);   // v0.84: SonaRace's screens smooth; v0.99: or in candy pixels, as the graphics switch says
+  hdFrame(mode==='pong'&&scr!=='hub'?false:RS||!!MX.tr||(scr==='hub'?hubBg==='race'||hdWanted(SKIN_IDS[hubSkin]):!!SK.hd),false);   // v0.84: SonaRace's screens smooth; v0.99: or in candy pixels, as the graphics switch says
   // v0.91: while a game runs (and in its pause) the sonar keeps the empty room's level as the getting ready left it (see src/11_dsp.js)
   var gameOn=!!(g&&g.state!=='over'&&(scr==='play'||scr==='count-resume'||scr==='paused'||scr==='restart')); if(gameOn!==floorHeld){ floorHeld=gameOn; try{ DSP2.set('holdfloor',gameOn); }catch(e){} }
   // v0.74: a shapes-only skin with «pixels» — the same canvas at 1 px per game pixel   // v0.72: the HD world canvas under the pixel one
   uiColours(scr!=='hub'); obsTick();   // v1.42: the heavy skin's canvas hidden on a frame that drew no field
   switch(scr){
-    case 'lang': sLang(); break; case 'title': sTitle(); break; case 'rtitle': sRTitle(); break; case 'skins': sSkins(); break; case 'rset': sRSet(); break; case 'hub': sHub(); break;
+    case 'lang': sLang(); break; case 'title': sTitle(); break; case 'rtitle': sRTitle(); break; case 'ptitle': sPTitle(); break; case 'phold': sPHold(); break; case 'skins': sSkins(); break; case 'rset': sRSet(); break; case 'hub': sHub(); break;
     case 'sound': sSound(); break;
     case 'phone': sPhone(); break; case 'mic': sMic(); break; case 'probe': sProbe(); break; case 'away': sAway(); break; case 'wave': sWave(); break;
     case 'count': sCount(); break; case 'count-resume': sCountResume(); break; case 'play': sPlay(); break; case 'over': sOver(); break;
@@ -1074,7 +1079,7 @@ function audAct(id){ var p=id.split(':'), k=p[1], v=p.slice(2).join(':');
   else if(k==='retest') Sonar.audioRetest();
   else if(k==='lab'){ location.href='../lab/sonar_lab3.html'; return; }
   Sonar.restart(); booted=false; acoustic=false; audDev=null; }
-var NO_MENU={hub:1,title:1,rtitle:1,lang:1,paused:1,restart:1,play:1,over:1},   /* v1.55 (the review's п.14): the game over has its «menu» button */ NO_VER={skins:1,rset:1,hub:1,over:1,play:1,count:1,'count-resume':1,paused:1,restart:1};
+var NO_MENU={hub:1,title:1,rtitle:1,ptitle:1,lang:1,paused:1,restart:1,play:1,over:1},   /* v1.55 (the review's п.14): the game over has its «menu» button */ NO_VER={skins:1,rset:1,hub:1,over:1,play:1,count:1,'count-resume':1,paused:1,restart:1};
 function chrome(){ if(LH>LW) return;
   var s=BH-3, vr=freeSide()!=='left', x=vr?LW-Math.round(SAFE.r*0.5)-10-s:Math.round(SAFE.l*0.5)+10, y=SAFE.t+7;
   if(!NO_MENU[scr]) iconButton(scr==='count'||scr==='count-resume'?'pause':scr==='scores'?'sc_back':scr==='settings'?'set_back':scr==='skins'?'sk_back':scr==='audio'&&audFrom==='settings'?'settings':'menu',x,y);
@@ -1082,7 +1087,7 @@ function chrome(){ if(LH>LW) return;
   // the try-out ship flies up the left edge: there the version goes to the top right corner; on the scores screen the buttons' column
   // starts right under the menu button — the version stands beside it
   if(NO_VER[scr]) return;
-  if((scr==='wave'&&!vr)||scr==='title'||scr==='rtitle') diagCorner('V'+VERSION,true,SAFE.t+8,scr==='title'||scr==='rtitle'?vr===(freeSide()!=='left'):true);   // the game's screen: the corner away from its buttons
+  if((scr==='wave'&&!vr)||scr==='title'||scr==='rtitle'||scr==='ptitle') diagCorner('V'+VERSION,true,SAFE.t+8,scr==='title'||scr==='rtitle'||scr==='ptitle'?vr===(freeSide()!=='left'):true);   // the game's screen: the corner away from its buttons
   else if(scr==='scores') diagCorner('V'+VERSION,true,y+Math.round((s-PF.CAP)/2),false,vr?x-16:x+s+16);
   else diagCorner('V'+VERSION,true,y+s+14); }
 gfxLockApply(); SK=obsWrap(skinView(skinId)); resize(); Board.flush();
@@ -1098,6 +1103,8 @@ window.__sonaroids={mixStart:function(){ mixStart(); },setSkin:function(id){ set
     g=Core.create(1,Core.FH*(LW-SAFE.l)/LH); for(var i=0;i<300;i++) Core.step(g,0.5); g.state='over'; },state:function(){ return {scr:scr,g:g,T:T,caught:caught,prep:prep,lang:lang,linkCode:linkCode,gfx:gfxMode,mode:mode}; },aud:function(id){ audAct(id); },
   race:function(){ mode='race'; booted=true; prep={res:{ok:true},doneT:-9}; T=Tune.create(100,true); T.ok=true; caught=true;   // a stand-in race for layout checks
     g=Race.create(1,raceFW(),90); for(var i=0;i<60*20;i++) raceDemoStep(g); g.fuel=40; },
+  pong:function(){ mode='pong'; booted=true; prep={res:{ok:true},doneT:-9}; PG.c=PongCtl.create(); PG.c.lin={b:80,t:160}; PG.c.mix=120; PG.c.present=true; PG.c.height=120;   // v1.59: a stand-in SonaPong game for layout checks
+    g=Pong.create(3,pgAr(),pgSens()); var bot=pgDemoBot(); for(var i=0;i<60*40&&g.state==='play';i++) Pong.step(g,bot(g)); g.state='play'; return g; }, pongCtl:function(){ var c=PG.c; return c?{lin:c.lin,mxCal:c.mxCal,mix:c.mix,height:c.height,present:c.present,holding:PongCtl.holding(c),low:PongCtl.lowStep(c),done:PG.done,frac:PongCtl.frac(c,PongCtl.palm(c))}:null; }, pongDone:function(){ if(PG.c){ PG.c.hold=null; PG.c.lin=PG.c.lin||{b:80,t:160}; } PG.done=true; },
   phoneK:function(k){ PHONE_SHIPK=k; }, press:function(id,look){ var b=BTN.filter(function(q){ return q.id===id; })[0]; if(look) PRESS_LOOK=look; if(b){ press.id=id; press.x=b.x+b.w/2; press.y=b.y+b.h/2; press.until=clock+99; } return !!b; }, prepBg:function(v){ PREP_BG=v; },
   raceChunkMs:function(n){ var rg=Race.create(5,raceFW(),90), t0=performance.now(); rReset(5); RC.ch={}; for(var i=0;i<n;i++) rChunk(rg,i); var ms=(performance.now()-t0)/n; RC.ch={}; return ms; } };
 })();

@@ -26,7 +26,7 @@ var DSP2=(function(){
   var live=false,nD=0,nS=0,NXT=0.07,NXK=2,BURSTK=100,BEND=0,BMAX=0.4,NZH=1,NZG=4,nBase=null,nX=0,burst=0,nMin=null,nzK=null,nzC=null,nzS=null,nzP=null,nzN=0,zc=null,lagB=[],lagD=null,lagR=null,gStill=0,postB=0,fresh=0,EsR=-80,STILL=0.003,TAU_SW=10,TAU_ST=2,TAU_ALL=0.2,MOVW=0.3,BURST=1;
   function init(sampleRate,parity){
     fs=sampleRate; var df=fs/N; kLo=Math.ceil(18300/df); if(BAND_LO) kLo=Math.ceil(BAND_LO/df); kHi=Math.floor(20500/df); kc=Math.floor((kLo+kHi)/2);
-    ks=[]; for(var k=kLo;k<=kHi;k++) if(parity===undefined||parity==='all'||k%2===parity) ks.push(k);
+    ks=[]; for(var k=kLo;k<=kHi;k++) if(parity===undefined||parity==='all'||k%2===parity) ks.push(k); twC=[]; twS=[];
     M=ks.length; T=(parity===0||parity===1)?N/2:N;
     lam=C/(kc*df)*1000; mm=C/fs/2*1000; gA=Math.round(30/mm); gB=Math.round(300/mm); G=gB-gA;
     Pr=new Float64Array(M); Pi=new Float64Array(M);
@@ -42,8 +42,11 @@ var DSP2=(function(){
       Hr[q]=sr*Pr[q]+si*Pi[q]; Hi[q]=si*Pr[q]-sr*Pi[q]; }
     return [Hr,Hi];
   }
-  function tap(H,n){ var sr=0,si=0; for(var q=0;q<M;q++){ var a=2*Math.PI*(ks[q]-kc)*n/N, c=Math.cos(a), s=Math.sin(a);
-    sr+=H[0][q]*c-H[1][q]*s; si+=H[0][q]*s+H[1][q]*c; } return [sr/N,si/N]; }
+  /* 1.59g: the turn of each tone for a delay tap is worked out once per tap, not on every call (the same numbers, bit for bit): in the
+     quarter-frame mode the taps were most of the work — 3.7× the plain mode, two frames at once on the Mi 9 Lite held the page ~10 ms */
+  var twC=[],twS=[];
+  function tap(H,n){ var c=twC[n],s=twS[n],q; if(!c){ c=twC[n]=new Float64Array(M); s=twS[n]=new Float64Array(M); for(q=0;q<M;q++){ var a=2*Math.PI*(ks[q]-kc)*n/N; c[q]=Math.cos(a); s[q]=Math.sin(a); } }
+    var sr=0,si=0,h0=H[0],h1=H[1]; for(q=0;q<M;q++){ sr+=h0[q]*c[q]-h1[q]*s[q]; si+=h0[q]*s[q]+h1[q]*c[q]; } return [sr/N,si/N]; }
   function frame(fr){
     /* провал входа: Android вставляет тишину (ровные нули). Такой кадр — не звук комнаты: пропускаю и начинаю разности заново,
        иначе скачок на его краях выглядит как движение руки */

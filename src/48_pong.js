@@ -101,7 +101,7 @@ function pgCount(){ countT-=DT; var v=pgView(PG.view?PG.view.py:Pong.TUNE.PAD_LO
   if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.play('tick');
   if(countT<=0) startGame(); }
 function pgCountStart(){ countT=3; try{ DSP2.set('quarter',1); }catch(e){} go('count'); }
-function pgStart(){ var seed=newSeed(); var lin=PG.c&&PG.c.lin; g=Pong.create(seed,pgAr(),pgSens(),lin?Math.max(30,lin.t-lin.b):null); var f=PG.c?PongCtl.frac(PG.c,PongCtl.palm(PG.c)):null; if(f!==null) g.py=Pong.padOf(g,f);
+function pgStart(){ PG.fps=null; var seed=newSeed(); var lin=PG.c&&PG.c.lin; g=Pong.create(seed,pgAr(),pgSens(),lin?Math.max(30,lin.t-lin.b):null); var f=PG.c?PongCtl.frac(PG.c,PongCtl.palm(PG.c)):null; if(f!==null) g.py=Pong.padOf(g,f);
   acc=0; parts=[]; PG.pts=[]; PG.newBest=false; nickAsked=false; var I=Sonar.info(), c=PG.c||{};
   Logs.gameStart({core:Pong.TAG,game:'pong',seed:seed,ar:+g.ar.toFixed(4),sens:pgSens(),span:g.span,cal:DSP2.info().cal,lin:c.lin?{b:+c.lin.b.toFixed(1),t:+c.lin.t.toFixed(1)}:null,mix_off:c.mxCal===null||c.mxCal===undefined?null:+c.mxCal.toFixed(1),
     chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids'});
@@ -116,6 +116,9 @@ function pgPlay(){
      (Den 19:26: «мяч дёргается в полёте»). Now it is one step a frame; the time left over (under half a step either way) carries on */
   var fs=Pong.frameSteps(acc+DT), n=0, want=fs.n; acc=fs.acc;
   var now=performance.now();
+  /* 1.59f: how the phone keeps up — every 5 s into the game's log: frames drawn, the longest one (ms), frames over 25 ms */
+  var fp=PG.fps||(PG.fps={t:now,n:0,mx:0,slow:0,last:null}); if(fp.last!==null&&now-fp.last<1000){ var fd=now-fp.last; fp.n++; if(fd>fp.mx) fp.mx=fd; if(fd>25) fp.slow++; } fp.last=now;
+  if(now-fp.t>=5000){ Logs.gameEv('кадры',{n:fp.n,s:+((now-fp.t)/1000).toFixed(2),max:Math.round(fp.mx),slow:fp.slow}); fp.t=now; fp.n=0; fp.mx=0; fp.slow=0; }
   while(n<want){ n++; var c=PG.c, f=c?PongCtl.frac(c,c.present?PongCtl.palmAt(c,now-(want-n)*1000*Pong.DT):null):null;   // 1.59e: the palm at each step's own time (src/16_pong_ctl.js palmAt) f=f===null?null:Math.round(f*4000)/4000;   // the palm rounded as the other games' (a replay takes these exact numbers)
     Pong.step(g,f); Logs.step({n:g.n,FH:1,ship:{y:g.py},lives:g.lives,score:g.score,events:g.events},f); pgReact(); if(g.state==='over') break; }
   flash=Math.max(0,flash-DT); duckT-=DT; if(duckT<=0&&Sonar.peak()>DUCK_PEAK){ duckT=0.4; if(Sfx.duck()) Logs.gameEv('sounds down',+Sfx.level().toFixed(2)); }

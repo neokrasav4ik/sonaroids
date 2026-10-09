@@ -59,6 +59,7 @@ LANE_B = [  # phase 2, beside lane A: the rest
     ('race core: deterministic, rules and length (bot)', f'{H} tests/test_race.js'),
     ("pong core: the lab's SonaPong bit for bit, deterministic, rules (bot)", f'{H} tests/test_pong.js'),
     ("pong control: the lab's mix, the two calibration holds", f'{H} tests/test_pong_ctl.js'),
+    ('palm clock: the palm in time, not in bunches (SonaFly, SonaRace)', f'{H} tests/test_palmclock.js'),
 ]
 # the time limit of a check, s — about three times its run on 5 Oct (2 cores, no other load); the rest 180
 LIMIT = {'flow': 300, 'race_flow': 200, 'pong_flow': 200, 'native_audio': 150, 'silent': 120, 'volume': 90, 'side': 60, 'live_flow': 260, 'screens': 1200,
@@ -81,6 +82,7 @@ MAP = [
     ('src/14_race.js', 'test_race race_flow test_server'),
     ('src/15_pong.js', 'test_pong pong_flow'),
     ('src/16_pong_ctl.js', 'test_pong_ctl pong_flow'),
+    ('src/17_palmclock.js', 'test_palmclock flow race_flow'),
     ('src/48_pong.js', 'pong_flow screens'),
     ('src/20_sonar.js', 'flow native_audio silent volume side live_flow test_eq'),
     ('src/21_log.js', 'flow'),

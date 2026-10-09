@@ -135,6 +135,7 @@ python3 tests/run_par.py --changed   # only what the changes since the last comm
 | `14_race.js` | SonaRace: the road, the cars, the gifts and the rules; deterministic, with its own rules tag |
 | `15_pong.js` | SonaPong (being moved from the lab, not on screen yet): two rackets on one palm, the ball, the serve, the points and the narrowing; deterministic, with its own rules tag; `tests/test_pong.js` checks it plays the lab's game bit for bit |
 | `16_pong_ctl.js` | SonaPong's control (from the lab): the «mix» the rackets follow (the echo's distance + an offset, the phase for quick moves) and the calibration's two holds; `tests/test_pong_ctl.js` |
+| `17_palmclock.js` | The palm's height in time for SonaFly and SonaRace: where a phone hands the sonar's frames over in bunches (the Mi 9 Lite: two at once every 21 ms), each game step takes the height at its own moment, between two frames; `tests/test_palmclock.js` |
 | `20_sonar.js` | speaker and microphone: the probe, side check, levels and volume, getting ready; the Android app's own sound |
 | `21_log.js` | setup and game logs (WAV + JSON) for the lab's tools |
 | `22_sfx.js` | the game's sounds — all below 6 kHz, out of the probe's way |

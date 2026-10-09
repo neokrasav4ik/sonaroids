@@ -111,8 +111,12 @@ function mouseFine(){ try{ return matchMedia('(pointer:fine)').matches; }catch(e
 window.addEventListener('pointermove',function(e){ if(e.pointerType==='mouse') MOUSE.y=e.clientY*DPR/S; },{passive:true});
 window.addEventListener('keydown',function(e){ if(!mouseOn()||e.key!=='Escape') return; if(scr==='play') pauseGame(); else if(scr==='paused') ACT.resume(); });
 function mouseReady(){ prep={res:{ok:true},doneT:-9}; if(!T||!T.ok){ T=Tune.create(100,true); T.ok=true; } T.copied=true; caught=true; }
-function handFrac(){ if(mouseOn()) return MOUSE.y===null?null:Math.max(0,Math.min(1,(Core.FH-Core.MARGIN-MOUSE.y/K)/(Core.FH-2*Core.MARGIN)));
-  var st=Sonar.state(); return (st&&st.present&&T)?Tune.fracOf(T,st.height):null; }
+/* 1.59l: t (ms, the screen's clock) — the palm at that moment, between two sonar frames (src/17_palmclock.js: the Mi 9 Lite hands the
+   frames over two at once, and the ship stood still on 28% of the steps); without t — the latest height, as before */
+var PCK=PalmClock.create();
+Sonar.listen(function(f,r){ var k=PalmClock.tick(PCK); if(r&&r.present&&r.height!==null&&r.height!==undefined) PalmClock.push(PCK,k,r.height,performance.now(),512,Sonar.info().fs||48000); });
+function handFrac(t){ if(mouseOn()) return MOUSE.y===null?null:Math.max(0,Math.min(1,(Core.FH-Core.MARGIN-MOUSE.y/K)/(Core.FH-2*Core.MARGIN)));
+  var st=Sonar.state(); if(!(st&&st.present&&T)) return null; var hh=t===undefined?null:PalmClock.at(PCK,t); return Tune.fracOf(T,hh===null?st.height:hh); }
 
 /* ── screens ── */
 function sLang(){ sky(DT,0.3); var y=Math.round(LH*0.3); text('SONAROIDS',LW/2,y,P.band,'center',2);
@@ -456,7 +460,7 @@ var covT=0;
 function coveredLine(y){ covT=(typeof DSP2!=='undefined'&&DSP2.info().covered)?covT+DT:0; if(covT>0.7) text(L('covered'),Math.round(LW/2),y,P.hit,'center'); }
 function sPlay(){ if(mode==='race'){ racePlay(); return; } if(mode==='pong'){ pgPlay(); return; }
   acc+=DT; var n=0;
-  while(acc>=Core.DT&&n<5){ acc-=Core.DT; n++; var h=Board.q(handFrac()); Core.step(g,h); Board.step(h); Logs.step(g,h); react(); if(g.state!=='play') break; }   // v0.25: the palm rounded to 1/4000 — the server replays these exact numbers
+  while(acc>=Core.DT&&n<5){ acc-=Core.DT; n++; var h=Board.q(handFrac(lastNow-acc*1000));   /* 1.59l: the palm at this step's own time */ Core.step(g,h); Board.step(h); Logs.step(g,h); react(); if(g.state!=='play') break; }   // v0.25: the palm rounded to 1/4000 — the server replays these exact numbers
   if(n===5) acc=0;
   shake=Math.max(0,shake-DT); flash=Math.max(0,flash-DT); livesT=Math.max(0,livesT-DT);
   duckT-=DT; if(duckT<=0&&Sonar.peak()>DUCK_PEAK){ duckT=0.4; if(Sfx.duck()) Logs.gameEv('sounds down',+Sfx.level().toFixed(2)); }   // own sounds too loud in the microphone
@@ -785,7 +789,7 @@ function raceHud(){ var cx0=Math.round(LW/2), y=topY(), f=g.fuel/Race.TUNE.FUEL,
   if(g.state==='coast'&&Math.floor(clock*3)%2===0) text(L('r_out'),cx0,Math.round(LH*0.3),P.hit,'center'); }
 function racePlay(){
   acc+=DT; var n=0;
-  while(acc>=Race.DT&&n<5){ acc-=Race.DT; n++; var h=Board.q(handFrac()); Race.step(g,h); Board.step(h); Logs.step({n:g.n,FH:g.FH,ship:{y:g.car.y},lives:Math.round(g.fuel),score:g.score,events:g.events},h); raceReact(); if(g.state==='over') break; }
+  while(acc>=Race.DT&&n<5){ acc-=Race.DT; n++; var h=Board.q(handFrac(lastNow-acc*1000));   /* 1.59l: the palm at this step's own time */ Race.step(g,h); Board.step(h); Logs.step({n:g.n,FH:g.FH,ship:{y:g.car.y},lives:Math.round(g.fuel),score:g.score,events:g.events},h); raceReact(); if(g.state==='over') break; }
   if(n===5) acc=0;
   shake=Math.max(0,shake-DT); flash=Math.max(0,flash-DT);
   duckT-=DT; if(duckT<=0&&Sonar.peak()>DUCK_PEAK){ duckT=0.4; if(Sfx.duck()) Logs.gameEv('sounds down',+Sfx.level().toFixed(2)); }

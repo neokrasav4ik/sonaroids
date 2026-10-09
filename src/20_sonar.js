@@ -243,11 +243,11 @@ var Sonar=(function(){
      result and DSP2.info()) comes back a moment later and goes to the listeners as before, with the frame it belongs to, in order.
      The page's DSP2 is then a stand-in that forwards the calls and answers info() from the latest answer (with the calibration as the
      page last set it until the worker has caught up). If no worker can be made, or it fails, everything stays on the page as before
-     ('sonaroids_dspw' = '0' keeps it there). ── */
+     ('sonaroids_dspw' = '0' keeps it there). 1.59j: off by default — 'sonaroids_dspw' = '1' turns it on. ── */
   var DW=null, DWfail=false, DWq=[], DWreal=DSP2, DWseq=0, DWinitSeq=0, DWcalSeq=0, DWcal=null, DWinfo=null, DWlog=[];
   var DW_TAIL="\n;var SEQ=0;onmessage=function(e){var m=e.data;if(m.c==='f'){var r=DSP2.frame(m.f);postMessage({r:r,i:DSP2.info(),q:SEQ});return;}"+
     "SEQ=m.q;if(m.c==='init')DSP2.init(m.fs,m.p);else if(m.c==='set')DSP2.set(m.k,m.v);else if(m.c==='cal')DSP2.setCal(m.v);else if(m.c==='shift')DSP2.shift(m.d);};";
-  function dwOk(){ return typeof Worker!=='undefined'&&typeof Blob!=='undefined'&&typeof document!=='undefined'&&lsGet('sonaroids_dspw','1')!=='0'; }
+  function dwOk(){ return typeof Worker!=='undefined'&&typeof Blob!=='undefined'&&typeof document!=='undefined'&&lsGet('sonaroids_dspw','0')==='1'; }   // 1.59j: off unless switched on — on the iPhone (Den 22:28, 1.59h) SonaFly steered and calibrated worse with it
   function dwSource(){ var all=[].map.call(document.scripts,function(x){ return x.textContent||''; }).join('\n'), a=all.indexOf('var DSP2=(function(){'), b=a<0?-1:all.indexOf("if(typeof module!=='undefined') module.exports=DSP2;",a);
     return a<0||b<0?null:all.slice(a,b); }
   function dwPost(m){ m.q=++DWseq; DWlog.push(m); try{ DW.postMessage(m); }catch(e){ dwFail(); } }

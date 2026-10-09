@@ -389,7 +389,12 @@ function pgSpawn(){ var ar=ARC.ar, s=Math.random()<0.5?0:1, b=jgBall(0,0,false),
   b.x=s?fr-b.r-0.03:fl+b.r+0.03; b.y=JG_TOP+b.r+0.07; b.vx=0; b.vy=0; b.from=null; b.to=s?0:1; b.wait=0.8; b.rest=0; b.peakY=null; b.touched=false;
   ARC.balls.push(b); arcEv('serve:'+(s?'right':'left')); }
 function pgServeGo(b,pad,ar,A){ var tx=ar*(b.to?1-PG_XC:PG_XC), ty=pgSurf(b.to,tx,pad,ar,A).y-b.r, ya=JG_TOP+b.r+0.012, y0=b.y;
-  var vy0=-Math.sqrt(2*PG_G*Math.max(0.001,y0-ya)), tu=-vy0/PG_G, td=Math.sqrt(2*Math.max(0.01,ty-ya)/PG_G); b.vy=vy0; b.vx=(tx-b.x)/(tu+td); arcEv('serve-go'); sfx('jtoss',1); }
+  var vy0=-Math.sqrt(2*PG_G*Math.max(0.001,y0-ya)), tu=-vy0/PG_G, td=Math.sqrt(2*Math.max(0.01,ty-ya)/PG_G); b.vy=vy0; b.vx=(tx-b.x)/(tu+td);
+  /* 1.58z18 (записи 09.10 12:17–13:18: ответ на подачу уходил на ~15% сильнее обычного паса — мяч падает из-под потолка, а пас — с высоты
+     своей дуги; после подачи терялся каждый пятый мяч против одного из пятнадцати; Ден 13:26: «сделай конечно»). Подача выглядит как была,
+     но ракетка встречает её так, будто мяч упал с вершины обычного паса в центр: тот же взмах — та же сила, что и в игре. */
+  var hcS=(ar*PG_V.fw/2)/(4*Math.tan(PG_TILT*Math.PI/180)); b.sk=Math.sqrt(Math.min(1,hcS/Math.max(0.01,ty-ya)));
+  arcEv('serve-go'); sfx('jtoss',1); }
 /* ── жонглёр (7.10, 1.57a; Ден выбрал из идей «для одного»: «жонглёр эскизы варианты» → «да, давай посмотрим») ──
    Ладонь — полоса внизу экрана (доля хода ладони → 0,94…0,54 высоты), мяч отскакивает от неё как от ракетки бесконечной массы:
    при ударе относительная скорость отражается с коэффициентом JG_E, медленное касание — мяч лежит и едет вместе с ладонью; когда
@@ -587,7 +592,7 @@ var ARC_STEP={
       if(Math.abs(b.x-xn)<b.r+nw&&b.y+b.r>nt){ if(py0+b.r<=nt+0.005&&b.vy>0){ b.y=nt-b.r; b.vy=-Math.abs(b.vy)*0.5; } else { b.x=xn+(b.x<xn?-1:1)*(b.r+nw); b.vx=-b.vx*(PG_V.vx>0?1:0.4); ARC.nets++; arcEv('net'); sfx('jland'); } }
       for(var i=0;i<2;i++){ var S=pgSurf(i,b.x,pad,ar,A);
         if(Math.abs(S.u)<=1){ var top=S.y-b.r;
-          if(b.y>top&&b.y<top+0.12&&py0<=top-vr*dt+0.01){ var sl=S.s*Ap/hw*S.f, nl=Math.sqrt(sl*sl+1), nx=sl/nl, ny=-1/nl, rx=b.vx, ry=b.vy-vpb, vn=rx*nx+ry*ny; b.y=top;
+          if(b.y>top&&b.y<top+0.12&&py0<=top-vr*dt+0.01){ var sl=S.s*Ap/hw*S.f, nl=Math.sqrt(sl*sl+1), nx=sl/nl, ny=-1/nl, sk=b.sk||1, rx=b.vx*sk, ry=b.vy*sk-vpb, vn=rx*nx+ry*ny; b.y=top; b.sk=0;   // 1.58z18: подача встречается как обычный пас
             /* 1.58z15 (запись Дена 09.10 12:17: при наклонах 43/37/33° мяч уходил под 25–30° от вертикали — на 8–15° круче, чем ракетка):
                ракетка ходит только вверх-вниз, и её скорость прибавлялась мячу целиком вверх — сильный взмах делал дугу выше, а не дальше
                (Ден, 11:30: «чтобы ударив посильнее, отправить мяч не повыше, а подальше»). Теперь у цепкой ракетки мяч уходит строго по

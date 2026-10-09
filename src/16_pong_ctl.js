@@ -15,12 +15,13 @@
 var PongCtl=(function(){
   var TAU=3, TAU_OFF=1.5, CB=0.08, CT=0.75, TOL=14, WIN=1.2, NEED=1.1, MINR=35, MAXR=160;
   function create(){ return {mxH:null,mxF:null,mxOff:null,mxCal:null,mix:null,height:null,abs:null,present:false,
-    lin:null,hold:null}; }
+    lin:null,hold:null,k:0,tl:[],lag:null}; }
   /* one DSP2 frame (r: its result; N, fs: the frame's size and rate; calS: DSP2's scale cal.s; counting: the countdown before play — the
      offset is learnt there only if the holds gave none). Returns the mix, or null while no palm is seen */
-  function frame(c,r,N,fs,calS,counting){
-    if(!r) return c.mix; c.present=!!r.present; if(r.present){ c.height=r.height; c.abs=r.abs; }
+  function frame(c,r,N,fs,calS,counting,now){
+    var k=c.k++; if(!r) return c.mix; c.present=!!r.present; if(r.present){ c.height=r.height; c.abs=r.abs; }
     if(!r.present||r.height===null) return c.mix;
+    if(now!==undefined&&now!==null) tlPush(c,k,now,N,fs);
     var F=r.fast*(calS||1), a=1-Math.exp(-N/(TAU*fs));
     var base=r.height; if(r.abs!==null&&r.abs!==undefined){ var dd=r.height-r.abs;
       if(c.mxCal!==null){ c.mxOff=c.mxCal; base=r.abs+c.mxOff; }
@@ -31,7 +32,23 @@ var PongCtl=(function(){
        at Den's 19:41 game 23 mm/s — a plain 3-s smoothing lagged 3 s × the creep behind = the rackets 7 cm above the palm («опять тянет
        ладонь вниз»). In the lab the creep was 2–4 mm/s downwards — the rackets sat 1–1.5 cm low. With no creep it is the 1.59 mix */
     var d=base-F; if(c.mxH===null){ c.mxH=d; c.mxF=d; c.mxOff=c.mxCal!==null?c.mxCal:c.mxOff; }
-    c.mxH+=a*(d-c.mxH); c.mxF+=a*(c.mxH-c.mxF); c.mix=F+2*c.mxH-c.mxF; return c.mix; }
+    c.mxH+=a*(d-c.mxH); c.mxF+=a*(c.mxH-c.mxF); c.mix=F+2*c.mxH-c.mxF; if(c.tl.length) c.tl[c.tl.length-1].m=c.mix; return c.mix; }
+  /* 1.59e — the palm in time, not in bursts. The sonar's frames are 10.7 ms apart, but a phone may hand them over in bunches: the
+     Mi 9 Lite gives two at once every 21 ms (Den 20:55: «ракетки ходят не плавно, а иногда рывками» — in his log the palm stood still
+     on 22% of the frames and jumped twice as far on the next). Each frame's mix is kept with its place on the sonar's own clock (its
+     number × 10.7 ms); the sonar's clock is tied to the screen's by how late the frames arrive (the 90th of the last second's lateness),
+     and the rackets take the palm at «now» on that clock — between two frames, in proportion. That costs the bunch's spread (~10 ms on
+     the Mi 9 Lite, next to nothing where the frames come evenly) and nothing else: no smoothing, the palm's path is the same */
+  function tlPush(c,k,now,N,fs){ var T=1000*N/fs; c.tl.push({k:k,a:now,l:now-k*T,m:null});
+    while(c.tl.length>2&&c.tl[0].a<now-1000) c.tl.shift();
+    var ls=c.tl.map(function(q){ return q.l; }).sort(function(p,q){ return p-q; }); c.lag=ls[Math.min(ls.length-1,Math.floor(ls.length*0.9))]; c.T=T; }
+  function palmAt(c,now){ var tl=c.tl, n=tl.length; if(!n||c.lag===null||now===undefined||now===null) return palm(c);
+    var kf=(now-c.lag)/c.T, i;
+    if(tl[n-1].m===null) n--; if(n<=0) return palm(c);
+    if(kf>=tl[n-1].k) return tl[n-1].m; if(kf<=tl[0].k) return tl[0].m;
+    for(i=n-1;i>0&&tl[i-1].k>kf;i--);
+    var p=tl[i-1], q=tl[i]; if(p.m===null||q.m===null) return q.m!==null?q.m:palm(c);
+    return p.m+(q.m-p.m)*(kf-p.k)/(q.k-p.k); }
   /* the calibration: start, then hold() every frame (t — seconds). Returns {step:1|2, k:0…5 dots, caught:'low'|'top'|null, done} */
   function start(c){ c.hold={step:1,buf:[],k:-1,hb:null,dd:[]}; }
   function hold(c,t){ var H=c.hold; if(!H) return {done:true,step:0,k:0,caught:null};
@@ -55,6 +72,6 @@ var PongCtl=(function(){
   function frac(c,h){ if(!c.lin||h===null||h===undefined) return null; return CB+(CT-CB)*(h-c.lin.b)/Math.max(30,c.lin.t-c.lin.b); }
   /* what the rackets follow now: the mix, or the height before the mix has started */
   function palm(c){ return c.mix!==null?c.mix:c.height; }
-  return {create:create,frame:frame,start:start,hold:hold,holding:holding,lowStep:lowStep,frac:frac,palm:palm,CB:CB,CT:CT,TOL:TOL};
+  return {create:create,frame:frame,palmAt:palmAt,start:start,hold:hold,holding:holding,lowStep:lowStep,frac:frac,palm:palm,CB:CB,CT:CT,TOL:TOL};
 })();
 if(typeof module!=='undefined') module.exports=PongCtl;

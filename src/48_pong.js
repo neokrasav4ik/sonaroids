@@ -16,11 +16,11 @@ function pgU(){ return Math.min(LH,LW/PG_AR); }                       // game pi
 function pgX(x){ var u=pgU(); return (LW-PG_AR*u)/2+x*u; }
 function pgY(y){ var u=pgU(); return (LH-u)/2+y*u; }
 /* the palm's frames → the control (the mix, the holds' readings) — only in SonaPong */
-Sonar.listen(function(f,r){ if(mode!=='pong'||!PG.c||!r) return; PongCtl.frame(PG.c,r,512,PG.fs,(DSP2.info().cal||{}).s,scr==='count'&&PG.c.mxCal===null); });
+Sonar.listen(function(f,r){ if(mode!=='pong'||!PG.c||!r) return; PongCtl.frame(PG.c,r,512,PG.fs,(DSP2.info().cal||{}).s,scr==='count'&&PG.c.mxCal===null,performance.now()); });
 /* a view of the rules' field for drawing outside a game (the menu, the holds, the countdown): the rackets at a place, no ball */
 function pgView(py){ var v=PG.view; if(!v||v.ar!==pgAr()||v.H!==Pong.TUNE.SENS[pgSens()]){ v=PG.view=Pong.create(1,pgAr(),pgSens()); }
   v.py=py; v.k=1; v.hw=Pong.hwOf(v); return v; }
-function pgPalmPad(v){ var c=PG.c, f=c?PongCtl.frac(c,PongCtl.palm(c)):null; return f===null?v.py:Pong.padOf(v,f); }
+function pgPalmPad(v){ var c=PG.c, f=c?PongCtl.frac(c,PongCtl.palmAt(c,performance.now())):null; return f===null?v.py:Pong.padOf(v,f); }
 /* ── drawing (a stand-in look) ── */
 var PG_COL={bg:'#0d1024',ceil:'#3a4370',rack:'#7ee0ff',rack2:'#3b8fb0',ball:'#ffd166',gap:'#1a2040'};
 function pgField(q,dt){ R(PG_COL.bg,0,0,LW,LH);
@@ -115,7 +115,8 @@ function pgPlay(){
      hovers right at one step, and a hair's difference either way gave a frame with no step and the next with two — the ball jerked
      (Den 19:26: «мяч дёргается в полёте»). Now it is one step a frame; the time left over (under half a step either way) carries on */
   var fs=Pong.frameSteps(acc+DT), n=0, want=fs.n; acc=fs.acc;
-  while(n<want){ n++; var c=PG.c, f=c?PongCtl.frac(c,c.present?PongCtl.palm(c):null):null; f=f===null?null:Math.round(f*4000)/4000;   // the palm rounded as the other games' (a replay takes these exact numbers)
+  var now=performance.now();
+  while(n<want){ n++; var c=PG.c, f=c?PongCtl.frac(c,c.present?PongCtl.palmAt(c,now-(want-n)*1000*Pong.DT):null):null;   // 1.59e: the palm at each step's own time (src/16_pong_ctl.js palmAt) f=f===null?null:Math.round(f*4000)/4000;   // the palm rounded as the other games' (a replay takes these exact numbers)
     Pong.step(g,f); Logs.step({n:g.n,FH:1,ship:{y:g.py},lives:g.lives,score:g.score,events:g.events},f); pgReact(); if(g.state==='over') break; }
   flash=Math.max(0,flash-DT); duckT-=DT; if(duckT<=0&&Sonar.peak()>DUCK_PEAK){ duckT=0.4; if(Sfx.duck()) Logs.gameEv('sounds down',+Sfx.level().toFixed(2)); }
   pgField(g,DT); pgHud(); coveredLine(topY()+40); pgPauseBtn(); say(L('menu_a'));

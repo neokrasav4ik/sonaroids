@@ -25,6 +25,20 @@ const mixRun=(creep)=>{ L.P.setFs(); const D=L.P.DSP(), A=L.P.ARC(); D.info=()=>
 { const a=mixRun(0), b=mixRun(23), c=mixRun(-3);
   check('the mix sits on the palm as the lab\'s did while the phase holds still',a.n>4000&&Math.abs(a.now)<3&&Math.abs(a.now-a.lab)<2,`off the palm by ${a.now.toFixed(1)} mm (the lab's ${a.lab.toFixed(1)})`);
   check('a creeping phase doesn\'t lift or lower the rackets (1.59c)',Math.abs(b.now)<5&&Math.abs(c.now)<3,`creep +23 mm/s: ${b.now.toFixed(1)} mm (the lab's mix ${b.lab.toFixed(0)}); −3 mm/s: ${c.now.toFixed(1)} mm (the lab's ${c.lab.toFixed(0)})`); }
+// 1b. 1.59e: frames handed over in bunches (the Mi 9 Lite: two at once every 21 ms) — the rackets take the palm at each screen frame's
+//     own time: no frames where they stand while the palm moves, and only a few ms late
+{ const T=1000*N/FS, h=t=>100+40*Math.sin(2*Math.PI*t/800); let js=3; const jr=()=>{ js=(js*1664525+1013904223)>>>0; return js/4294967296; };
+  const run=bunch=>{ const c=Ctl.create(); let k=0; const raw=[], now=[]; let lastRaw=null, lastNow=null, still0=0, still1=0, moving=0;
+    for(let i=0;i<60*10;i++){ const tr=i*1000/60+0.3;
+      while(true){ const ka=Math.ceil((k+1)/bunch)*bunch*T+2+jr()*2; if(ka>tr) break; const t=k*T; Ctl.frame(c,{present:true,height:h(t),abs:h(t),fast:h(t)},N,FS,1,false,ka); k++; }
+      if(i<60) continue; const p0=Ctl.palm(c), p1=Ctl.palmAt(c,tr);
+      if(lastRaw!==null&&Math.abs(h(tr)-h(tr-16.7))>0.5){ moving++; if(p0===lastRaw) still0++; if(Math.abs(p1-lastNow)<1e-9) still1++; }
+      lastRaw=p0; lastNow=p1; now.push([tr,p1]); raw.push([tr,p0]); }
+    const fit=v=>{ let best=1e9, bd=0; for(let d=0;d<=50;d++){ let e=0; v.forEach(([t,p])=>{ e+=(p-h(t-d))**2; }); if(e<best){ best=e; bd=d; } } return [bd,Math.sqrt(best/v.length)]; };
+    const [late,rms]=fit(now), [late0]=fit(raw); return {still0:100*still0/moving, still1:100*still1/moving, late, late0, rms}; };
+  const m=run(2), e=run(1);
+  check('a bunch of frames at once: the rackets still move every screen frame (1.59e)',m.still0>15&&m.still1<1&&m.late-m.late0<=11&&m.rms<1.5,`two frames every 21 ms: the racket stood on ${m.still0.toFixed(0)}% of frames → ${m.still1.toFixed(0)}%; behind the palm ${m.late0} → ${m.late} ms, off its path by ${m.rms.toFixed(2)} mm`);
+  check('frames one by one: next to no delay added',e.late-e.late0<=4&&e.rms<1.5,`behind the palm ${e.late0} → ${e.late} ms, off its path by ${e.rms.toFixed(2)} mm`); }
 // 2. the holds
 const run=(path,off,jit)=>{ const c=Ctl.create(); Ctl.start(c); const got=[]; let low=null, top=null, dots=new Set();
   for(const f of frames(path,off,jit)){ Ctl.frame(c,f.r,N,FS,1,false); const r=Ctl.hold(c,f.t); dots.add(r.k); if(r.caught==='low') low=c.lin.b; if(r.caught==='top'){ top=c.lin.t; got.push(f.t); break; } }

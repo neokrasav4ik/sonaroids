@@ -135,7 +135,7 @@ function arcInit(){ var g=ARC.game; ARC.py=0.5; ARC.score=0; ARC.lives=3; ARC.t=
     ARC.cans=0; ARC.crashes=0; ARC.grassT=0; ARC.onGrass=false; ARC.inv=0; ARC.flash=0; ARC.dash=0; }
   if(g==='cave'){ ARC.cols=[]; ARC.cx=0; ARC.cc=0.5; ARC.cg=0.62; ARC.ctg=0.5; ARC.v=0.45; ARC.hits=0; ARC.inv=0; ARC.flash=0; }
   if(g==='follow'){ ARC.fw=fwScript(); ARC.fwI=-1; ARC.fwBeat=0; ARC.fwCm=5; }
-  if(g==='pong'){ ARC.py=JG_PAD_LO-0.5*jgPadH(); ARC.padPrev=null; ARC.balls=[]; ARC.respawn=0.3; ARC.serve=0; ARC.streak=0; ARC.pbest=0; ARC.passes=0; ARC.series=0; ARC.nets=0; ARC.falls=0; ARC.tosses=0; ARC.netY=0; ARC.clean=0; ARC.narrowK=1; ARC.score=0; ARC.bestPts=0; ARC.ceils=0; ARC.say=0; ARC.flash=0; ARC.pf=[]; ARC.paused=false; }
+  if(g==='pong'){ ARC.meat=pgMeatNew(); ARC.py=JG_PAD_LO-0.5*jgPadH(); ARC.padPrev=null; ARC.balls=[]; ARC.respawn=0.3; ARC.serve=0; ARC.streak=0; ARC.pbest=0; ARC.passes=0; ARC.series=0; ARC.nets=0; ARC.falls=0; ARC.tosses=0; ARC.netY=0; ARC.clean=0; ARC.narrowK=1; ARC.score=0; ARC.bestPts=0; ARC.ceils=0; ARC.say=0; ARC.flash=0; ARC.pf=[]; ARC.paused=false; }
   if(g==='juggle'){ ARC.py=JG_PAD_LO-0.5*jgPadH(); ARC.padPrev=null; ARC.balls=[jgBall(0,ARC.py-JG_R,true)]; ARC.nb=1; ARC.stars=[]; ARC.nst=0; ARC.combo=0; ARC.comboMax=0;
     ARC.tosses=0; ARC.burns=0; ARC.ceils=0; ARC.falls=0; ARC.bestH=0; ARC.lastH=null; ARC.lastTouch=false; ARC.bestPts=0; ARC.lastPts=null; ARC.vmax=0; ARC.vlast=0; ARC.respawn=0; ARC.say=0; ARC.flash=0; ARC.pf=[]; ARC.recFull=false; ARC.paused=false; }
 }
@@ -181,6 +181,9 @@ PG_SL=[{k:'g',t:'Тяжесть',min:0.8,max:4.5,st:0.1,d:1.8,rec:1.8},{k:'hit',
   {k:'hwr',t:'Ширина ракеток',min:0.1,max:1,st:0.05,d:0.8,rec:0.8},{k:'fw',t:'Ширина поля',min:0.3,max:1,st:0.05,d:1,rec:1},
   {k:'net',t:'Высота сетки',min:0,max:0.3,st:0.01,d:0.03},{k:'tilt',t:'Наклон в середине, °',min:0,max:60,st:1,d:27,rec:27},{k:'tilto',t:'Наклон у края поля, °',min:0,max:65,st:1,d:36,rec:36},{k:'tilti',t:'Наклон у сетки, °',min:0,max:60,st:1,d:23,rec:23},{k:'tiltv',t:'Наклон на экране, °',min:0,max:60,st:1,d:10},
   {k:'grip',t:'Цепкие ракетки',min:0,max:1,st:1,d:1,rec:1},{k:'spr',t:'Пружины',min:0,max:2,st:0.1,d:1},{k:'curve',t:'Изогнутая ракетка',min:0,max:3,st:1,d:2,rec:2},{k:'look',t:'Вид изогнутой',min:0,max:2,st:1,d:0,opts:[0,1,2]},{k:'grow',t:'Сужение ракеток',min:0,max:3,st:1,d:2,opts:[0,1,2,3],help:'«По времени» — честно для всех; «каждые N с» — пока есть мячи.',rec:2},{k:'gsec',t:'Сужение каждые, с',min:10,max:120,st:5,d:30},{k:'wall',t:'Боковые стенки',min:0,max:1,st:1,d:0},{k:'vx',t:'Скорость вбок',min:0,max:3,st:0.05,d:0},
+  {k:'rings',t:'Кольца',min:0,max:1,st:1,d:0,opts:[0,1],help:'В воздухе висит кольцо на разной высоте и в разных местах. Провёл мяч сквозь него — +80; кольца подряд дороже: ×1,25, ×1,5 … до ×2. Кольцо живёт 10 с, ушло — цепочка сначала.'},
+  {k:'stars',t:'Звёзды',min:0,max:1,st:1,d:0,opts:[0,1],help:'Две звезды над полем — мяч собирает их на лету, по +20. Собранная появляется в новом месте.'},
+  {k:'bricks',t:'Кирпичи',min:0,max:1,st:1,d:0,opts:[0,1],help:'Ряд кирпичей под самым потолком: очень высокая дуга разбивает кирпич (+25) и летит дальше. Весь ряд — +150 и новый ряд. Потолок по-прежнему штрафует.'},
   {k:'lives',t:'Мячей',min:0,max:10,st:1,d:5,opts:[3,5,10,0],help:'Сколько мячей можно уронить.',rec:5},{k:'tsec',t:'Время',min:110,max:500,st:10,d:250,rec:250},
   {k:'pts',t:'Очки',min:0,max:1,st:1,d:0,opts:[0,1],help:'«За пас» — высота не важна.',rec:0},{k:'pexp',t:'Крутизна очков',min:1,max:5,st:0.5,d:3,rec:3},{k:'phill',t:'Горка у потолка',min:0,max:2,st:1,d:0,opts:[0,1,2]},{k:'mult',t:'Множитель за узкие ракетки',min:0,max:2,st:1,d:1,opts:[1,2,0],help:'Узкие ракетки — больше очков.',rec:1},{k:'combo',t:'Серия',min:0,max:2,st:1,d:2,opts:[0,2,1],help:'+10% за чистый пас подряд. Длинная — осторожно, короткая — компромисс, без серии — смело.',rec:2},{k:'svis',t:'Серия на экране',min:0,max:2,st:1,d:0,opts:[0,1,2],help:'Точки, полоска у счёта или свечение вокруг мяча.'},{k:'ceil',t:'Потолок',min:0,max:1,st:1,d:0,opts:[0,1],help:'«Мяч потерян» — очень жёстко.',rec:0}],
 /* 1.58z10 (Ден 20:20–20:21: «очки растут ещё круче с высотой — добавь опцией.. это важнее; не сбрасывать серию — было бы странным»):
@@ -271,11 +274,11 @@ function pgAngles(ar){ ar=ar||((typeof innerWidth!=='undefined'&&innerHeight)?in
   return {lo:Math.ceil(lo),hi:Math.floor(hi),ok:Math.floor(hi)>=Math.ceil(lo)}; }
 function pgNamed(){ try{ var o=JSON.parse(localStorage.getItem('sonar_pg_named')||'{}'); return o&&typeof o==='object'?o:{}; }catch(e){ return {}; } }
 function pgNamedSave(m){ try{ localStorage.setItem('sonar_pg_named',JSON.stringify(m)); }catch(e){} }
-function pgFmt(q,v){ if(q.k==='gsec') return Math.round(v)+' с'; if(q.k==='phill') return ['нет','ровно','круто'][Math.round(v)]||'нет'; if(q.k==='grow') return ['нет','за 10 чистых пасов','по времени','каждые '+Math.round(PG_V.gsec||30)+' с'][Math.round(v)]||'нет'; if(q.k==='pts') return ['за высоту дуги','за пас'][Math.round(v)]||'за высоту дуги'; if(q.k==='pexp') return (Math.round(v*10)/10).toFixed(1).replace('.',','); if(q.k==='combo') return ['нет','длинная, до ×2','короткая, до ×1,5'][Math.round(v)]||'нет'; if(q.k==='mult') return ['нет','до ×5','до ×2'][Math.round(v)]||'нет'; if(q.k==='ceil') return v>=0.5?'мяч потерян':'пас без очков'; if(q.k==='lives') return v>0?String(Math.round(v)):'без счёта'; if(q.k==='tsec') return Math.round(PG_V.grow)===3?'нет (сужение без конца)':v>110?Math.round(v)+' с':'без ограничения'; if(q.k==='svis') return ['точки','полоска','свечение мяча'][Math.round(v)]||'точки'; if(q.k==='look') return ['волны','гладкая','на пружинах'][Math.round(v)]||'волны'; if(q.k==='curve') return ['нет','ровная','чаша','настоящая дуга'][Math.round(v)]||'нет'; if(q.k==='grow') return v>=0.5?'есть':'нет'; if(q.k==='wall'||q.k==='grip') return v>=0.5?'есть':'нет'; if(q.k==='tilti'||q.k==='tilto') return v>0.5?String(Math.round(v)):'по закону'; return q.k==='tilt'||q.k==='tiltv'?String(Math.round(v)):(Math.round(v*100)/100).toFixed(2).replace('.',','); }
+function pgFmt(q,v){ if(q.k==='rings'||q.k==='stars'||q.k==='bricks') return Math.round(v)?'есть':'нет'; if(q.k==='gsec') return Math.round(v)+' с'; if(q.k==='phill') return ['нет','ровно','круто'][Math.round(v)]||'нет'; if(q.k==='grow') return ['нет','за 10 чистых пасов','по времени','каждые '+Math.round(PG_V.gsec||30)+' с'][Math.round(v)]||'нет'; if(q.k==='pts') return ['за высоту дуги','за пас'][Math.round(v)]||'за высоту дуги'; if(q.k==='pexp') return (Math.round(v*10)/10).toFixed(1).replace('.',','); if(q.k==='combo') return ['нет','длинная, до ×2','короткая, до ×1,5'][Math.round(v)]||'нет'; if(q.k==='mult') return ['нет','до ×5','до ×2'][Math.round(v)]||'нет'; if(q.k==='ceil') return v>=0.5?'мяч потерян':'пас без очков'; if(q.k==='lives') return v>0?String(Math.round(v)):'без счёта'; if(q.k==='tsec') return Math.round(PG_V.grow)===3?'нет (сужение без конца)':v>110?Math.round(v)+' с':'без ограничения'; if(q.k==='svis') return ['точки','полоска','свечение мяча'][Math.round(v)]||'точки'; if(q.k==='look') return ['волны','гладкая','на пружинах'][Math.round(v)]||'волны'; if(q.k==='curve') return ['нет','ровная','чаша','настоящая дуга'][Math.round(v)]||'нет'; if(q.k==='grow') return v>=0.5?'есть':'нет'; if(q.k==='wall'||q.k==='grip') return v>=0.5?'есть':'нет'; if(q.k==='tilti'||q.k==='tilto') return v>0.5?String(Math.round(v)):'по закону'; return q.k==='tilt'||q.k==='tiltv'?String(Math.round(v)):(Math.round(v*100)/100).toFixed(2).replace('.',','); }
 /* 1.58z4 (Ден 18:13: «скомпонуй пункты меню паузы — невозможно никуда попасть.. сделай подменю.. и это меню — перед игрой и в паузе»):
    настройки СонаПонга разложены по разделам: Наборы, Мяч, Ракетки, Поле, Игра и ладонь, Как играть. На главной странице меню — крупные
    действия и кнопки разделов с текущими значениями мелко; раздел — отдельная страница, 3 в ряд, крупно */
-var PG_SECS={ball:['g','hit','e','vx'],rack:['hwr','tilto','tilt','tilti','tiltv','curve','look','grip','spr'],field:['fw','wall'],rules:['lives','tsec','grow','gsec','pts','pexp','mult','combo','svis','ceil']};
+var PG_SECS={ball:['g','hit','e','vx'],rack:['hwr','tilto','tilt','tilti','tiltv','curve','look','grip','spr'],field:['fw','wall'],rules:['lives','tsec','grow','gsec','pts','pexp','mult','combo','svis','ceil'],meat:['rings','stars','bricks']};
 /* 1.58z13 (Ден 09.10 11:25, п. 6: «в установке времени игры сделай ползунок в секундах 120–500»): время — ползунок 120–500 с, крайнее левое
    положение — «без ограничения» (для тренировки) */
 /* 1.58z20 (Ден 09.10 14:30: «добавь вариант, чтобы ракетка сужалась каждые N секунд, без ограничений по времени и без ограничения минимум 40%»):
@@ -419,6 +422,48 @@ function pgSurf(i,x,py,ar,A){ var s=i?-1:1, xc=ar*(i?1-PG_XC:PG_XC), hw=pgHw(ar)
    сверху — слева сверху или справа сверху — по высокой дуге в центр противоположной ракетки»): мяч появляется у верхнего угла (сторона —
    случайно), мигает 0,8 с и вылетает по дуге с верхушкой под самым потолком в центр ракетки на той стороне. Подача пасом не считается
    и очков не даёт; первый удар — уже игра. Прежняя подача (мяч лежит в центре ракетки, 1.58z) — убрана */
+/* 1.59o (Ден 10.10 00:41–00:49: «сонапонг сейчас — кости.. не хватает мяса.. надо что-то, что сохранит время сессии для опытного
+   игрока на уровне 5 минут» → «давай потестируем в лабе кольца, звёзды и кирпичи»): цели за очки — партию не удлиняют (ракетки
+   сужаются и мячи теряются как раньше), а дают каждому удару «куда бить». Каждая — отдельный переключатель в «Цели» (по умолчанию нет).
+   Всё умножается на множитель (узкие ракетки × серия), как обычные очки.
+   - Кольца: одно кольцо в воздухе (x 25–75% поля, высота 0,12–0,50 экрана), просвет 0,05; мяч прошёл сквозь — 80 × цепочка
+     (кольца подряд ×1, ×1,25 … до ×2; кольцо, ушедшее через 10 с, сбрасывает цепочку); следующее — через 1,2 с в другом месте.
+   - Звёзды: две над полем (x 28–72%, высота 0,12–0,55); мяч касается — +20; новая — через 1,5 с в другом месте.
+   - Кирпичи: ряд из 8 под потолком (x 30–70%, 0,065–0,10 — выше вершины обычного паса, ниже потолка): мяч, чья верхушка дошла до
+     кирпича, разбивает его и летит дальше (не отскакивает) — +25; ряд целиком — +150 и через 2 с новый ряд.
+   Подбор: бот-игрок, который в цели не целится (16 партий × 3 уровня руки): за минуту ~4 кольца, ~10 звёзд, ~14 кирпичей — с прежними
+   цифрами (кольцо 150 и цепочка до ×3, три звезды по 40, кирпич 120 и ряд 600) цели давали ему 80% очков, теперь ~50% на всё вместе
+   (кольца одни ~25%, звёзды ~15%, кирпичи ~30%): прицельная игра даёт больше. Длина партии не меняется (1,5 мин у бота — как без целей) */
+var PG_RING_R=0.05, PG_STAR_R=0.022, PG_BR_N=8, PG_BR_Y0=0.065, PG_BR_Y1=0.1, PG_MEAT={ring:80,chain:0.25,chainMax:4,star:20,brick:25,row:150};
+function pgMeatNew(){ return {ring:null,rT:2,chain:0,stars:[],sT:[0.5,1,1.5],br:null,bT:0.5}; }
+function pgMeatAdd(pts,x,y,kind){ var m=pgMultAll(), p=Math.round(pts*m); if(p<1) return; ARC.score=(ARC.score||0)+p; ARC.pf.push({pts:p,x:x,y:y,t:1}); arcEv(kind+':'+p); }
+function pgMeat(dt,ar){ var M=ARC.meat||(ARC.meat=pgMeatNew()), fl=ar*(1-PG_V.fw)/2, fw=ar*PG_V.fw, R=Math.random;
+  var fly=(ARC.balls||[]).filter(function(b){ return !(b.wait>0)&&!b.hold&&!b.on; });
+  if(PG_V.rings>=0.5){
+    if(!M.ring){ M.rT-=dt; if(M.rT<=0) M.ring={x:fl+fw*(0.25+0.5*R()),y:0.12+0.38*R(),life:10}; }
+    else { M.ring.life-=dt; var rg=M.ring, got=fly.some(function(b){ return Math.hypot(b.x-rg.x,b.y-rg.y)<PG_RING_R-0.3*b.r; });
+      if(got){ M.chain=Math.min(PG_MEAT.chainMax+1,M.chain+1); pgMeatAdd(PG_MEAT.ring*(1+PG_MEAT.chain*(M.chain-1)),rg.x,rg.y,'ring'); sfx('level'); M.ring=null; M.rT=1.2; }
+      else if(rg.life<=0){ M.ring=null; M.rT=1.2; if(M.chain) arcEv('ring-chain-lost:'+M.chain); M.chain=0; } } }
+  else { M.ring=null; M.chain=0; }
+  if(PG_V.stars>=0.5){
+    for(var i=0;i<2;i++){ if(!M.stars[i]){ M.sT[i]-=dt; if(M.sT[i]<=0) M.stars[i]={x:fl+fw*(0.28+0.44*R()),y:0.12+0.43*R(),ph:R()*6.28}; continue; }
+      var st=M.stars[i]; st.ph+=dt*3; if(fly.some(function(b){ return Math.hypot(b.x-st.x,b.y-st.y)<b.r+PG_STAR_R; })){ pgMeatAdd(PG_MEAT.star,st.x,st.y,'star'); sfx('jtoss',0.3); M.stars[i]=null; M.sT[i]=1.5; } } }
+  else { M.stars=[]; M.sT=[0.5,1,1.5]; }
+  if(PG_V.bricks>=0.5){
+    if(!M.br){ M.bT-=dt; if(M.bT<=0) M.br=[1,1,1,1,1,1,1,1]; }
+    else { var bx0=fl+fw*0.3, bw=fw*0.4/PG_BR_N;
+      fly.forEach(function(b){ if(b.y-b.r>PG_BR_Y1) return; var j=Math.floor((b.x-bx0)/bw); if(j<0||j>=PG_BR_N||!M.br[j]) return;
+        M.br[j]=0; pgMeatAdd(PG_MEAT.brick,bx0+(j+0.5)*bw,(PG_BR_Y0+PG_BR_Y1)/2,'brick'); sfx('jland');
+        if(M.br.every(function(v){ return !v; })){ pgMeatAdd(PG_MEAT.row,ar/2,0.25,'bricks-row'); sfx('level'); M.br=null; M.bT=2; } }); } }
+  else { M.br=null; M.bT=0.5; } }
+function pgMeatDraw(c,X,Y,H,ar){ var M=ARC.meat; if(!M) return; var fl=ar*(1-PG_V.fw)/2, fw=ar*PG_V.fw;
+  if(M.br){ var bx0=fl+fw*0.3, bw=fw*0.4/PG_BR_N, cols=['#ff6b6b','#ffa94d','#ffd43b','#69db7c','#4dabf7','#9775fa','#f783ac','#ff8787'];
+    for(var j=0;j<PG_BR_N;j++){ if(!M.br[j]) continue; c.fillStyle=cols[j%cols.length]; c.fillRect(X(bx0+j*bw)+1,Y(PG_BR_Y0),X(bx0+(j+1)*bw)-X(bx0+j*bw)-2,Y(PG_BR_Y1)-Y(PG_BR_Y0)); } }
+  if(M.ring){ var rg=M.ring, al=Math.min(1,rg.life/2); c.globalAlpha=al; c.strokeStyle='#ffd166'; c.lineWidth=Math.max(3,0.014*H); c.beginPath(); c.arc(X(rg.x),Y(rg.y),PG_RING_R*H,0,6.2832); c.stroke();
+    if(M.chain>0){ c.fillStyle='#ffd166'; c.font=Math.round(0.045*H)+'px "IBM Plex Mono",monospace'; c.textAlign='center'; c.fillText('×'+(1+PG_MEAT.chain*M.chain).toFixed(2).replace('.',','),X(rg.x),Y(rg.y-PG_RING_R-0.02)); }
+    c.globalAlpha=1; }
+  (M.stars||[]).forEach(function(st){ if(!st) return; var r0=PG_STAR_R*H*(1+0.12*Math.sin(st.ph)), cx=X(st.x), cy=Y(st.y); c.fillStyle='#fff3a0'; c.beginPath();
+    for(var k=0;k<10;k++){ var rr=k%2?r0*0.45:r0, an=-Math.PI/2+k*Math.PI/5; if(k) c.lineTo(cx+rr*Math.cos(an),cy+rr*Math.sin(an)); else c.moveTo(cx+rr*Math.cos(an),cy+rr*Math.sin(an)); } c.closePath(); c.fill(); }); }
 function pgSpawn(){ var ar=ARC.ar, s=Math.random()<0.5?0:1, b=jgBall(0,0,false), fl=ar*(1-PG_V.fw)/2, fr=ar*(1+PG_V.fw)/2;
   b.x=s?fr-b.r-0.03:fl+b.r+0.03; b.y=0.32;   /* 1.59d: ниже — под кнопкой паузы и счётом игры (было JG_TOP+r+0.07 ≈ 0,13) */ b.vx=0; b.vy=0; b.from=null; b.to=s?0:1; b.wait=0.8; b.rest=0; b.peakY=null; b.touched=false;
   ARC.balls.push(b); arcEv('serve:'+(s?'right':'left')); }
@@ -643,6 +688,7 @@ var ARC_STEP={
       b.rest=b.on?(b.rest||0)+dt:0;
       if(b.dead||b.y>1.1||b.x<-0.15||b.x>ar+0.15){ ARC.falls++; arcEv('lost:'+b.x.toFixed(2)); ARC.streak=0; ARC.clean=0; ARC.series=0; ARC.flash=0.25; sfx('jburn'); ARC.balls.splice(ARC.balls.indexOf(b),1);
         ARC.serve=1-ARC.serve; ARC.respawn=0.6; if(PG_V.lives>0&&ARC.falls>=PG_V.lives){ ARC.over=true; arcEv('out-of-balls'); } } });   // 1.58z4: мячей — сколько выбрано (0 — без счёта)
+    pgMeat(dt,ar);
     ARC.pf=ARC.pf.filter(function(p){ p.t-=dt; return p.t>0; }); if(ARC.lastT>0) ARC.lastT-=dt; },
   juggle:function(dt){ var pad=ARC.py, vr=ARC.padPrev===null?0:(pad-ARC.padPrev)/Math.max(dt,1e-3); ARC.padPrev=pad;
     /* скорость платформы — сглаженная (кадры сонара 94 в секунду, экрана 60: положение идёт ступеньками, и сырая скорость давала броски
@@ -773,6 +819,7 @@ function arcDraw(){ var cv=el('acC'); if(!cv||!cv.getContext) return; var dpr=Ma
         c.beginPath(); c.moveTo(X(rk[0][0]),Y(rk[0][1])); rk.forEach(function(q){ c.lineTo(X(q[0]),Y(q[1])); }); for(var j7=rk.length-1;j7>=0;j7--) c.lineTo(X(rk[j7][0]),Y(rk[j7][1]+TH3)); c.closePath(); c.fill();
         c.strokeStyle='rgba(255,226,194,0.9)'; c.lineWidth=Math.max(1.5,0.006*H); c.beginPath(); c.moveTo(X(rk[0][0]),Y(rk[0][1])); rk.forEach(function(q){ c.lineTo(X(q[0]),Y(q[1])); }); c.stroke(); }
     }
+    pgMeatDraw(c,X,Y,H,ar3);
     (ARC.balls||[]).forEach(function(b){ var cbB=Math.round(PG_V.combo), capB=cbB===2?5:10, frB=cbB&&Math.round(PG_V.svis||0)===2?Math.min(1,(ARC.series||0)/capB):0;
       if(frB>0){ var gB=c.createRadialGradient(X(b.x),Y(b.y),Y(b.r)*0.8,X(b.x),Y(b.y),Y(b.r)*(1.6+1.6*frB)); gB.addColorStop(0,'rgba(255,200,90,'+(0.25+0.45*frB)+')'); gB.addColorStop(1,'rgba(255,170,60,0)'); c.fillStyle=gB; c.beginPath(); c.arc(X(b.x),Y(b.y),Y(b.r)*(1.6+1.6*frB),0,6.283); c.fill(); }
       if(b.wait>0&&Math.floor(b.wait*6)%2) return;   /* подача: мяч мигает в углу перед вылетом */
@@ -857,7 +904,7 @@ function pzShow(open,pre){ var g=pzGame(); if(open){ PZ.pre=!!pre; PZ.sec=null; 
   if(open) pzRender(); }
 function pzSecs(){ var f=function(k){ return pgFmt(pgQ(k),PG_V[k]); }, sens=['низкая','ниже средней','средняя','высокая'][JG_SET.sens]||'';
   if(arcGame==='pong') return [['sets','Наборы',pgSetName()],['rules','Правила','мячей '+f('lives')+' · очки '+f('pts')+' · сужение: '+f('grow')],['ball','Мяч','тяжесть '+f('g')+' · удар '+f('hit')],
-    ['rack','Ракетки и ладонь','ширина '+f('hwr')+' · '+(PG_V.curve>=0.5?'изогнутая: '+f('curve'):'наклон '+f('tilt')+'°')],['field','Поле','ширина '+f('fw')+(PG_V.wall>=0.5?' · стенки':' · без стенок')],['how','Как играть','что сейчас за правила']];
+    ['rack','Ракетки и ладонь','ширина '+f('hwr')+' · '+(PG_V.curve>=0.5?'изогнутая: '+f('curve'):'наклон '+f('tilt')+'°')],['field','Поле','ширина '+f('fw')+(PG_V.wall>=0.5?' · стенки':' · без стенок')],['meat','Цели','кольца: '+f('rings')+' · звёзды: '+f('stars')+' · кирпичи: '+f('bricks')],['how','Как играть','что сейчас за правила']];
   return [['jset','Настройки','мячей: '+(JG_SET.lives>0?JG_SET.lives:'без счёта')+' · чаша: '+(JG_SET.bowl?JG_SET.bowl+' из 5':'нет')],['how','Как играть','правила и очки']]; }
 function pzRender(){ var sub=PZ.sec, store=el('pzStore'); PZ_JG.forEach(function(id){ store.appendChild(el(id)); });
   el('pzMain').classList.toggle('hidden',!!sub); el('pzSub').classList.toggle('hidden',!sub);
@@ -871,7 +918,7 @@ function pzRender(){ var sub=PZ.sec, store=el('pzStore'); PZ_JG.forEach(function
     var box=el('pzSecs'); box.innerHTML='';
     pzSecs().forEach(function(z){ var b=document.createElement('button'); b.className='ghost'; b.innerHTML=z[1]+'<small>'+z[2]+'</small>'; b.addEventListener('click',function(){ PZ.sec=z[0]; pzRender(); }); box.appendChild(b); });
     return; }
-  var nm={sets:'Наборы',rules:'Правила',ball:'Мяч',rack:'Ракетки и ладонь',field:'Поле',how:'Как играть',jset:'Настройки'}; el('pzSubT').textContent=nm[sub]||'';
+  var nm={sets:'Наборы',rules:'Правила',ball:'Мяч',rack:'Ракетки и ладонь',field:'Поле',meat:'Цели',how:'Как играть',jset:'Настройки'}; el('pzSubT').textContent=nm[sub]||'';
   var bd=el('pzSubBody'); bd.innerHTML=''; bd.classList.toggle('rules4',sub==='rules');
   if(sub==='how'){ var p1=document.createElement('p'); p1.textContent=arcGame==='pong'?pgRulesText():(ARC_GAMES[arcGame]||{}).intro||''; bd.appendChild(p1);
     var p2=document.createElement('p'); p2.textContent='Телефон горизонтально, разъёмом к ладони. Перед игрой: убери руку, потом подержи ладонь внизу, потом вверху — так платформа узнает твой ход ладони. Сбилось — «Подстроить ладонь заново» в паузе.'; bd.appendChild(p2); return; }
@@ -887,7 +934,7 @@ function pzRender(){ var sub=PZ.sec, store=el('pzStore'); PZ_JG.forEach(function
       var b=document.createElement('button'); b.className='ghost'+(pgBalOk(M[0])?' on':''); b.innerHTML=M[1]+(pgBalOk(M[0])?' ✓':'')+'<small>'+M[2]+'</small>';
       b.addEventListener('click',function(){ PG_BAL.forEach(function(k){ var r=pgRec(k,M[0]); if(r!==undefined) PG_V[k]=r; }); pgSave(); pzRender(); arcEv('pg-rules-balance:'+M[0]); }); brow.appendChild(b); });
     bw.appendChild(brow); bd.appendChild(bw); }
-  (PG_SECS[sub]||[]).forEach(function(k){ var q=pgQ(k); if(sub==='rules'&&((k==='tsec'&&Math.round(PG_V.grow)===3)||(k==='gsec'&&Math.round(PG_V.grow)!==3))) return; if(q) pgCtl(q,bd,sub==='rules'); });   // 1.58z21: время или темп сужения — что нужно режиму
+  (PG_SECS[sub]||[]).forEach(function(k){ var q=pgQ(k); if(sub==='rules'&&((k==='tsec'&&Math.round(PG_V.grow)===3)||(k==='gsec'&&Math.round(PG_V.grow)!==3))) return; if(q) pgCtl(q,bd,sub==='rules'||sub==='meat'); });   // 1.58z21: время или темп сужения — что нужно режиму
   if(sub==='rack'){ bd.appendChild(el('jgSens')); pgAngle(bd); }
   }
 el('pzUp').addEventListener('click',function(){ PZ.sec=null; pzRender(); });

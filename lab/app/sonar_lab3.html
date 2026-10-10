@@ -3119,6 +3119,31 @@ function pgsTent(c,i,tp,xc,hw,ar,A,hand,t){ var F=function(v){ return v*390; }, 
     var sx=fx-s*0.5, sy=deck+jy-35; pf.draw([[sx,sy],[(sx+hx)/2-s*2,(sy+hy)/2+2],[hx,hy]],{w:pf.w*0.95}); pf.draw([[sx,sy],[(sx+hx)/2+s*3,(sy+hy)/2+5],[hx+s*3,hy+3]],{w:pf.w*0.9});
     var hb=deck+jy-47; pf.draw([[fx+s*8,hb-1],[fx+s*6,hb-9],[fx-s*3,hb-11],[fx-s*8,hb-5],[fx-s*13,hb-3]],{w:pf.w*1.05});   /* the helmet */
   }); }
+/* 1.59u (Ден 00:43–00:47: «берём «для вида» и дорабатываем.. на доске должна быть жизнь»; раскадровка 1–4): удар человечка читается
+   как удар. Позы — суставы в долях роста (смотрит вправо): подход — присел, ракетка внизу сзади; касание — ракетка плашмя на доске прямо
+   под воланом (доска и ракетка бьют в одной точке и в одно время); после удара — взмах по силе: слабый — кистью до пояса, сильный —
+   снизу через голову, на носках, с дугами. Отскок по-прежнему от доски — это только рисунок */
+var PGS_POSE={
+ ready:{head:[0,-47],neck:[0.5,-39],hip:[1,-19],kneeL:[-5,-11],footL:[-6,-1],kneeR:[7,-11],footR:[7,-1],elbowL:[-6,-28],handL:[-8,-22],elbowR:[8,-30],handR:[13,-34],rk:-1.0},
+ crouch:{head:[2,-41],neck:[2,-33],hip:[-2,-15],kneeL:[6,-9],footL:[4,-1],kneeR:[-8,-8],footR:[-10,-1],elbowL:[9,-27],handL:[14,-30],elbowR:[-4,-24],handR:[-12,-16],rk:2.98},
+ contact:{head:[4,-38],neck:[4,-30],hip:[-2,-14],kneeL:[7,-8],footL:[5,-1],kneeR:[-8,-7],footR:[-10,-1],elbowL:[-6,-24],handL:[-12,-18],elbowR:[14,-17],handR:[24,-8],rk:-0.06},
+ flick:{head:[2,-46],neck:[2,-38],hip:[1,-19],kneeL:[-5,-11],footL:[-6,-1],kneeR:[7,-11],footR:[7,-1],elbowL:[-6,-28],handL:[-10,-22],elbowR:[12,-26],handR:[20,-26],rk:-0.5},
+ big:{head:[3,-52],neck:[3,-44],hip:[2,-24],kneeL:[-3,-14],footL:[-5,-2],kneeR:[8,-14],footR:[9,-3],elbowL:[-8,-36],handL:[-14,-44],elbowR:[9,-58],handR:[6,-70],rk:-2.0},
+ runA:{head:[6,-46],neck:[5,-38],hip:[1,-19],kneeL:[9,-12],footL:[15,-6],kneeR:[-6,-9],footR:[-12,-1],elbowL:[-6,-32],handL:[-12,-26],elbowR:[12,-28],handR:[18,-34],rk:-0.9},
+ runB:{head:[6,-46],neck:[5,-38],hip:[1,-19],kneeL:[-6,-9],footL:[-12,-1],kneeR:[9,-12],footR:[15,-6],elbowL:[-6,-32],handL:[-12,-26],elbowR:[12,-28],handR:[18,-34],rk:-0.9}};
+var PGS_REACH=49;   /* from the feet to the racket's head in the «contact» pose, in figure units */
+function pgsMix(a,b,u){ u=Math.max(0,Math.min(1,u)); var o={}; for(var k in a){ if(k==='rk') o.rk=a.rk+(b.rk-a.rk)*u; else o[k]=[a[k][0]+(b[k][0]-a[k][0])*u,a[k][1]+(b[k][1]-a[k][1])*u]; } return o; }
+function pgsFig(p,x,y,d,J,o){ o=o||{}; var k=o.k||1.15, P=function(q){ return [x+d*q[0]*k,y+q[1]*k]; }, h=P(J.head);
+  p.loop(h[0],h[1],7*k,7.5*k,{w:p.w*1.05});
+  if(o.hair) p.draw([[h[0]-d*6,h[1]-3],[h[0]-d*3,h[1]-8],[h[0]+d*2,h[1]-8.5],[h[0]+d*6,h[1]-4]],{w:p.w*0.9});
+  if(o.cap) p.draw([[h[0]-d*6.5,h[1]-2],[h[0]-d*2,h[1]-7.5],[h[0]+d*5,h[1]-6],[h[0]+d*12,h[1]-4]],{w:p.w*1.1});
+  p.draw([P(J.neck),P(J.hip)]); p.draw([P(J.hip),P(J.kneeL),P(J.footL)]); p.draw([P(J.hip),P(J.kneeR),P(J.footR)]);
+  p.draw([P(J.neck),P(J.elbowL),P(J.handL)]); p.draw([P(J.neck),P(J.elbowR),P(J.handR)]);
+  var fl=P(J.footL), fr=P(J.footR); if(fl[1]>y-4*k) p.line(fl[0]-d*3,fl[1],fl[0]+d*5,fl[1],{over:1,w:p.w*0.9}); if(fr[1]>y-4*k) p.line(fr[0]-d*3,fr[1],fr[0]+d*5,fr[1],{over:1,w:p.w*0.9});
+  var a=d>0?J.rk:Math.PI-J.rk, ca=Math.cos(a), sa=Math.sin(a), hd=P(J.handR), he=[hd[0]+ca*12*k,hd[1]+sa*12*k], hc=[hd[0]+ca*21.5*k,hd[1]+sa*21.5*k];
+  p.line(hd[0],hd[1],he[0],he[1],{over:1}); p.loop(hc[0],hc[1],9.5*k,5.5*k,{rot:a,w:p.w});
+  if(o.arcs){ var sh=P(J.neck), r=40*k; [0,1].forEach(function(j){ var pts=[], a0=d>0?0.7:Math.PI-0.7, a1=d>0?-1.8:Math.PI+1.8; for(var m=0;m<=14;m++){ var aa=a0+(a1-a0)*m/14; pts.push([sh[0]+Math.cos(aa)*(r+j*9),sh[1]+Math.sin(aa)*(r+j*9)]); } p.stroke(pts,{w:p.w*(j?0.35:0.5),a:0.75}); }); }
+  return hc; }
 function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ return v*390; }, I=PGS_ST;
   /* the page: paper and the ceiling, kept until the screen changes size */
   var key=W+'x'+H; if(PGS.key!==key){ PGS.key=key; var bg=document.createElement('canvas'); bg.width=W; bg.height=H; var bc=bg.getContext('2d'); bc.scale(dpr,dpr); Sk.paper(bc,W/dpr,H/dpr,dpr,{seed:7});
@@ -3156,15 +3181,22 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
   if(tk!==PGS.tKey){ PGS.tKey=tk; PGS.tgt=[null,null]; }
   if(b0&&b0.vy>0&&!(b0.wait>0)&&!b0.hold&&!b0.on){ var Pt=pgMeatPath(b0,py,ar); if(Pt){ PGS.tgt[Pt.i]=Pt.P[0]; PGS.tgt[1-Pt.i]=null; } }
   var REACH=26/390, Ap=Math.tan(PG_TILT*Math.PI/180)*hw;
-  if(!noRun) [0,1].forEach(function(i){ var P=PGS.pl[i], d=i?-1:1, xc=tops[i].xc, lo=xc-hw+0.02, hi=xc+hw-0.02, off=who?REACH:24*1.15/390;
+  if(!noRun) [0,1].forEach(function(i){ var P=PGS.pl[i], d=i?-1:1, xc=tops[i].xc, lo=xc-hw+0.02, hi=xc+hw-0.02, off=who?REACH:PGS_REACH*1.15/390;
     /* where to stand: just behind where the shuttle lands; if that is off the plank (it lands near the far edge) — just in front, the racket
        on the other side (backhand) */
-    if(P.side===undefined) P.side=d; var want=xc-P.side*(who?REACH:0);
-    if(PGS.tgt[i]!==null){ var L=PGS.tgt[i], sb=L-d*off; P.side=(sb>=lo&&sb<=hi)||!who?d:-d; want=L-P.side*off; }
+    if(P.side===undefined) P.side=d; var want=xc-P.side*(who?REACH:0); if(!who&&PGS.tgt[i]===null) P.side=d;
+    if(PGS.tgt[i]!==null){ var L=PGS.tgt[i], sb=L-d*off; P.side=(sb>=lo&&sb<=hi)?d:-d; want=L-P.side*off; }
     var tx=Math.max(lo,Math.min(hi,want));
     P.x=Math.max(lo,Math.min(hi,P.x)); var dx=tx-P.x, far=Math.abs(dx)>0.08, v=Math.sign(dx)*Math.min(Math.abs(dx),Math.max(2*dt,Math.abs(dx)*(1-Math.exp(-dt/0.06)))); P.x+=v; var moving=Math.abs(dx)>0.004;
     var kk=ARC.kick&&ARC.kick[i], hit=kk&&t-kk.t0<0.3, fy=F(pgSurf(i,P.x,plat,ar,A).y);
-    if(!who){ pgsPlayer(pgsPen(c,301+10*i),F(P.x),fy,d,hit?'swing':moving?'run':PGS.tgt[i]!==null?'low':'ready',{hair:!i,cap:!!i,step:Math.floor(t*9)%2}); return; }
+    if(!who){ var fc=P.side, R0=PGS_REACH*1.15/390, bb=b0&&!(b0.wait>0)?b0:null, riding=bb&&bb.on&&bb.onI===i, tc=null;
+      if(riding){ P.x=Math.max(lo,Math.min(hi,bb.x-fc*R0)); fy=F(pgSurf(i,P.x,plat,ar,A).y); }
+      if(bb&&PGS.tgt[i]!==null&&bb.vy>0){ var sY=pgSurf(i,Math.max(xc-hw,Math.min(xc+hw,bb.x)),py,ar,A).y; tc=Math.max(0,(sY-bb.r-bb.y)/Math.max(0.05,bb.vy)); }
+      var PP=PGS_POSE, J=moving?(Math.floor(t*9)%2?PP.runA:PP.runB):PP.ready, arcs=false;
+      if(kk&&t-kk.t0<0.45){ var u=t-kk.t0, fol=pgsMix(PP.flick,PP.big,(kk.a-0.45)/0.45); J=u<0.12?pgsMix(PP.contact,fol,u/0.12):u<0.3?fol:pgsMix(fol,PP.ready,(u-0.3)/0.15); arcs=kk.a>0.6&&u<0.3; }
+      else if(riding||(tc!==null&&tc<0.1)) J=riding?PP.contact:pgsMix(PP.crouch,PP.contact,(0.1-tc)/0.1);
+      else if(tc!==null&&tc<0.5) J=pgsMix(J,PP.crouch,(0.5-tc)/0.4);
+      pgsFig(pgsPen(c,301+10*i),F(P.x),fy,fc,J,{hair:!i,cap:!!i,arcs:arcs}); return; }
     var xr=Math.max(xc-hw,Math.min(xc+hw,P.x+P.side*REACH));
     /* the last moment: the shuttle close above this plank (or riding it) — the racket reaches for it, so they always meet */
     var bm=b0&&!(b0.wait>0)?b0:null; if(bm&&(PGS.tgt[i]!==null||(bm.on&&bm.onI===i))&&Math.abs(bm.x-xc)<=hw+0.05){ var gap=pgSurf(i,Math.max(xc-hw,Math.min(xc+hw,bm.x)),py,ar,A).y-bm.y, wv=Math.max(0,Math.min(1,1-gap/0.14)); xr=Math.max(xc-hw,Math.min(xc+hw,xr+(bm.x-xr)*wv)); }

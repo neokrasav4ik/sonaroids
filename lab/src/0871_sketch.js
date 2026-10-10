@@ -308,10 +308,11 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
     var ca=Math.cos(a), sa=Math.sin(a), bx=F(b.x)+jx, by=F(b.y)+jy;
     if(nearC){ var pb=pgsPen(c,431); pb.stroke([[bx-16,by-10],[bx-21,by-15]],{w:I.w*0.4}); pb.stroke([[bx-16,by+10],[bx-21,by+15]],{w:I.w*0.4}); pb.stroke([[bx+16,by-10],[bx+21,by-15]],{w:I.w*0.4}); pb.stroke([[bx+16,by+10],[bx+21,by+15]],{w:I.w*0.4}); }
     if(bi===0&&t-LFb.hang<0.45&&Math.abs(b.vy||0)<0.5){ var ph2=pgsPen(c,433), rr=24+4*Math.sin(t*14); [[-2.6,-2.0],[-1.1,-0.5]].forEach(function(r2){ var pts2=[]; for(var m=0;m<=8;m++){ var aa=r2[0]+(r2[1]-r2[0])*m/8; pts2.push([bx+Math.cos(aa)*rr,by+Math.sin(aa)*rr]); } ph2.stroke(pts2,{w:I.w*0.35,a:0.8}); }); }
-    if(bi===0&&LFb.hitA>0.75&&PGS.hist.length>6&&!(b.wait>0)){ var pw=pgsPen(c,435), hh=PGS.hist, nn=hh.length, m0=Math.max(0,nn-16); [-6,0,6].forEach(function(o,j){ var pts3=[]; for(var m=m0;m<nn-2;m++){ var q0=hh[m], q1=hh[m+1], dx=F(q1[0]-q0[0]), dy=F(q1[1]-q0[1]), dl=Math.hypot(dx,dy)||1; pts3.push([F(q0[0])-dy/dl*o,F(q0[1])+dx/dl*o]); } if(pts3.length>2) pw.stroke(pts3,{w:I.w*(j===1?0.4:0.28),a:0.75}); }); }
-    if(bi===0&&PGS.hist.length>2){ var tp=pgsPen(c,5000+PGS.hid), pts=PGS.hist.slice(LFb.hitA<0.55?Math.max(0,PGS.hist.length-28):0).map(function(q){ return [F(q[0]),F(q[1])]; }), acc=0, on=false, seg=[], n=pts.length, end=0, rem=0;
-      for(end=n-1;end>0&&rem<F(b.r)*1.6;end--) rem+=Math.hypot(pts[end][0]-pts[end-1][0],pts[end][1]-pts[end-1][1]);
-      for(var q=1;q<=end;q++){ acc+=Math.hypot(pts[q][0]-pts[q-1][0],pts[q][1]-pts[q-1][1]); if(acc>(on?6:8)){ acc=0; if(on&&seg.length>1) tp.stroke(seg,{w:I.w*0.45*(0.5+0.5*q/n),a:0.3+0.6*q/n,wob:0.3}); on=!on; seg=[]; } if(on) seg.push(pts[q]); } }
+    /* 1.59w (Ден 01:33–01:38: «полосы, которые оставляет волан, отвлекают.. уменьшить, и пусть исчезают, когда он летит вниз» → вариант С3,
+       «по точкам»): тающий пунктир — несколько точек сразу за юбкой, дальше — мельче; к вершине бледнеет, на спуске исчезает */
+    if(bi===0&&PGS.hist.length>2&&!(b.wait>0)){ var fade=(b.vy||0)<=0?1:Math.max(0,1-(b.vy||0)/0.7); if(fade>0.02){ var hh=PGS.hist, acc=0, px0=bx, py0=by, tp=pgsPen(c,5000+PGS.hid), dots=[], d0=26*k/1.47, d1=95*k/1.47;
+        for(var m=hh.length-1;m>=0&&acc<d1;m--){ var qx=F(hh[m][0]), qy=F(hh[m][1]); acc+=Math.hypot(qx-px0,qy-py0); px0=qx; py0=qy; if(acc>=d0) dots.push([qx,qy,acc]); }
+        var step=Math.max(1,Math.round(dots.length/6)); for(var di=0;di<dots.length;di+=step){ var g=(dots[di][2]-d0)/(d1-d0), rr=Math.max(0.6,2.6-g*2.0); tp.loop(dots[di][0],dots[di][1],rr,rr,{w:I.w*0.45,a:0.9*fade*(1-g*0.8)}); } } }
     pgsShuttle(pgsPen(c,401+bi),bx+ca*8*k,by+sa*8*k,a,{cork:I.accent,k:k}); });
   /* the numbers, written by the same pen: score, multiplier, balls left, the series, the bar to the next narrowing */
   if(ARC.phase==='play'){ var rx=FW-F(0.05), ph=pgsPen(c,701); ph.text(String(ARC.score||0),rx,F(0.13),27,{align:'right',w:I.w*0.75});

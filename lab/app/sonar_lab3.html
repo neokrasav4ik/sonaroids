@@ -2093,9 +2093,9 @@ PG_SL=[{k:'g',t:'Тяжесть',min:0.8,max:4.5,st:0.1,d:1.8,rec:1.8},{k:'hit',
   {k:'hwr',t:'Ширина ракеток',min:0.1,max:1,st:0.05,d:0.8,rec:0.8},{k:'fw',t:'Ширина поля',min:0.3,max:1,st:0.05,d:1,rec:1},
   {k:'net',t:'Высота сетки',min:0,max:0.3,st:0.01,d:0.03},{k:'tilt',t:'Наклон в середине, °',min:0,max:60,st:1,d:27,rec:27},{k:'tilto',t:'Наклон у края поля, °',min:0,max:65,st:1,d:36,rec:36},{k:'tilti',t:'Наклон у сетки, °',min:0,max:60,st:1,d:23,rec:23},{k:'tiltv',t:'Наклон на экране, °',min:0,max:60,st:1,d:10},
   {k:'grip',t:'Цепкие ракетки',min:0,max:1,st:1,d:1,rec:1},{k:'spr',t:'Пружины',min:0,max:2,st:0.1,d:1},{k:'curve',t:'Изогнутая ракетка',min:0,max:3,st:1,d:2,rec:2},{k:'look',t:'Вид изогнутой',min:0,max:2,st:1,d:0,opts:[0,1,2]},{k:'grow',t:'Сужение ракеток',min:0,max:3,st:1,d:2,opts:[0,1,2,3],help:'«По времени» — честно для всех; «каждые N с» — пока есть мячи.',rec:2},{k:'gsec',t:'Сужение каждые, с',min:10,max:120,st:5,d:30},{k:'wall',t:'Боковые стенки',min:0,max:1,st:1,d:0},{k:'vx',t:'Скорость вбок',min:0,max:3,st:0.05,d:0},
-  {k:'rings',t:'Кольца',min:0,max:1,st:1,d:0,opts:[0,1],help:'В воздухе висит кольцо на разной высоте и в разных местах. Провёл мяч сквозь него — +80; кольца подряд дороже: ×1,25, ×1,5 … до ×2. Кольцо живёт 10 с, ушло — цепочка сначала.'},
-  {k:'stars',t:'Звёзды',min:0,max:1,st:1,d:0,opts:[0,1],help:'Две звезды над полем — мяч собирает их на лету, по +20. Собранная появляется в новом месте.'},
-  {k:'bricks',t:'Кирпичи',min:0,max:1,st:1,d:0,opts:[0,1],help:'Ряд кирпичей под самым потолком: очень высокая дуга разбивает кирпич (+25) и летит дальше. Весь ряд — +150 и новый ряд. Потолок по-прежнему штрафует.'},
+  {k:'rings',t:'Кольца',min:0,max:1,st:1,d:0,opts:[0,1],help:'Задача на следующий удар: когда мяч летит к ракетке, в вершине одной из дуг, достижимых с того места, куда он упадёт, появляется кольцо — ударь ровно с такой силой. Сквозь кольцо — +60; кольца подряд ×1,25 … до ×2; промах — цепочка сначала.'},
+  {k:'stars',t:'Звёзды',min:0,max:1,st:1,d:0,opts:[0,1],help:'Две звезды на одной из дуг, достижимых со следующего удара (как кольцо, но на другой дуге): по +15 за каждую.'},
+  {k:'bricks',t:'Кирпичи',min:0,max:1,st:1,d:0,opts:[0,1],help:'Ряд кирпичей под самым потолком — ровно там, куда могут долететь вершины самых высоких пасов при нынешней ширине ракеток. Высокая дуга разбивает кирпич (+12) и летит дальше; весь ряд — +80 и новый. Потолок по-прежнему штрафует.'},
   {k:'lives',t:'Мячей',min:0,max:10,st:1,d:5,opts:[3,5,10,0],help:'Сколько мячей можно уронить.',rec:5},{k:'tsec',t:'Время',min:110,max:500,st:10,d:250,rec:250},
   {k:'pts',t:'Очки',min:0,max:1,st:1,d:0,opts:[0,1],help:'«За пас» — высота не важна.',rec:0},{k:'pexp',t:'Крутизна очков',min:1,max:5,st:0.5,d:3,rec:3},{k:'phill',t:'Горка у потолка',min:0,max:2,st:1,d:0,opts:[0,1,2]},{k:'mult',t:'Множитель за узкие ракетки',min:0,max:2,st:1,d:1,opts:[1,2,0],help:'Узкие ракетки — больше очков.',rec:1},{k:'combo',t:'Серия',min:0,max:2,st:1,d:2,opts:[0,2,1],help:'+10% за чистый пас подряд. Длинная — осторожно, короткая — компромисс, без серии — смело.',rec:2},{k:'svis',t:'Серия на экране',min:0,max:2,st:1,d:0,opts:[0,1,2],help:'Точки, полоска у счёта или свечение вокруг мяча.'},{k:'ceil',t:'Потолок',min:0,max:1,st:1,d:0,opts:[0,1],help:'«Мяч потерян» — очень жёстко.',rec:0}],
 /* 1.58z10 (Ден 20:20–20:21: «очки растут ещё круче с высотой — добавь опцией.. это важнее; не сбрасывать серию — было бы странным»):
@@ -2346,30 +2346,65 @@ function pgSurf(i,x,py,ar,A){ var s=i?-1:1, xc=ar*(i?1-PG_XC:PG_XC), hw=pgHw(ar)
    Подбор: бот-игрок, который в цели не целится (16 партий × 3 уровня руки): за минуту ~4 кольца, ~10 звёзд, ~14 кирпичей — с прежними
    цифрами (кольцо 150 и цепочка до ×3, три звезды по 40, кирпич 120 и ряд 600) цели давали ему 80% очков, теперь ~50% на всё вместе
    (кольца одни ~25%, звёзды ~15%, кирпичи ~30%): прицельная игра даёт больше. Длина партии не меняется (1,5 мин у бота — как без целей) */
-var PG_RING_R=0.05, PG_STAR_R=0.022, PG_BR_N=8, PG_BR_Y0=0.065, PG_BR_Y1=0.1, PG_MEAT={ring:80,chain:0.25,chainMax:4,star:20,brick:25,row:150};
-function pgMeatNew(){ return {ring:null,rT:2,chain:0,stars:[],sT:[0.5,1,1.5],br:null,bT:0.5}; }
+var PG_RING_R=0.045, PG_STAR_R=0.022, PG_BR_N=8, PG_BR_Y0=0.065, PG_BR_Y1=0.1, PG_MEAT={ring:60,chain:0.25,chainMax:4,star:15,brick:12,row:80};
+function pgMeatNew(){ return {ring:null,chain:0,stars:[],task:null,br:null,bT:0.5}; }
 function pgMeatAdd(pts,x,y,kind){ var m=pgMultAll(), p=Math.round(pts*m); if(p<1) return; ARC.score=(ARC.score||0)+p; ARC.pf.push({pts:p,x:x,y:y,t:1}); arcEv(kind+':'+p); }
-function pgMeat(dt,ar){ var M=ARC.meat||(ARC.meat=pgMeatNew()), fl=ar*(1-PG_V.fw)/2, fw=ar*PG_V.fw, R=Math.random;
-  var fly=(ARC.balls||[]).filter(function(b){ return !(b.wait>0)&&!b.hold&&!b.on; });
-  if(PG_V.rings>=0.5){
-    if(!M.ring){ M.rT-=dt; if(M.rT<=0) M.ring={x:fl+fw*(0.25+0.5*R()),y:0.12+0.38*R(),life:10}; }
-    else { M.ring.life-=dt; var rg=M.ring, got=fly.some(function(b){ return Math.hypot(b.x-rg.x,b.y-rg.y)<PG_RING_R-0.3*b.r; });
-      if(got){ M.chain=Math.min(PG_MEAT.chainMax+1,M.chain+1); pgMeatAdd(PG_MEAT.ring*(1+PG_MEAT.chain*(M.chain-1)),rg.x,rg.y,'ring'); sfx('level'); M.ring=null; M.rT=1.2; }
-      else if(rg.life<=0){ M.ring=null; M.rT=1.2; if(M.chain) arcEv('ring-chain-lost:'+M.chain); M.chain=0; } } }
-  else { M.ring=null; M.chain=0; }
-  if(PG_V.stars>=0.5){
-    for(var i=0;i<2;i++){ if(!M.stars[i]){ M.sT[i]-=dt; if(M.sT[i]<=0) M.stars[i]={x:fl+fw*(0.28+0.44*R()),y:0.12+0.43*R(),ph:R()*6.28}; continue; }
-      var st=M.stars[i]; st.ph+=dt*3; if(fly.some(function(b){ return Math.hypot(b.x-st.x,b.y-st.y)<b.r+PG_STAR_R; })){ pgMeatAdd(PG_MEAT.star,st.x,st.y,'star'); sfx('jtoss',0.3); M.stars[i]=null; M.sT[i]=1.5; } } }
-  else { M.stars=[]; M.sT=[0.5,1,1.5]; }
+/* 1.59p (Ден 10.10 18:50: «какой смысл в этих кольцах в разных местах, если у нас в принципе ограниченный набор траекторий у каждой
+   платформы.. ты это вообще учитывал??» — нет: кольца и звёзды 1.59o висели где попало, а игрок выбирает одно — с какой силой ударить:
+   мяч уходит строго по наклону ракетки в точке, куда упал, и сила решает, как высоко и как далеко). Теперь кольцо — задача на следующий
+   удар: когда мяч пошёл вниз к ракетке, игра предсказывает, куда он упадёт, и ставит кольцо в вершину одной из дуг, которые оттуда
+   достижимы и приводят мяч на другую ракетку (место приземления — случайное, ±70% её половины): «ударь ровно так». Звёзды — так же:
+   две на другой достижимой дуге. Пас от этой ракетки закончился (мяч упал на другую или потерян) — кольцо и звёзды уходят, цепочка колец
+   сбрасывается, если кольцо не взято. Кирпичи — см. pgBrickSpan ниже */
+function pgMeatPath(b,pad,ar){ var hw=pgHw(ar), A=PG_V.curve>=0.5?pgCupA():Math.tan(PG_TILTV*Math.PI/180)*hw, Ap=Math.tan(PG_TILT*Math.PI/180)*hw;
+  var i=b.from===null||b.from===undefined?b.to:1-b.from; if(i!==0&&i!==1) return null;
+  var x=b.x, y=b.y, vx=b.vx, vy=b.vy, h=1/240, S=null, k;   /* куда мяч упадёт на ракетку i */
+  for(k=0;k<1200;k++){ vy+=PG_G*h; x+=vx*h; y+=vy*h; if(vy>0){ S=pgSurf(i,x,pad,ar,A); if(Math.abs(S.u)<=1&&y>=S.y-b.r) break; S=null; } if(y>1.1) return null; }
+  if(!S) return null; var Px=x, Py=S.y-b.r, sl=S.s*Ap/hw*S.f, nl=Math.sqrt(sl*sl+1), nx=sl/nl, ny=-1/nl, jj=1-i, xc=ar*(jj?1-PG_XC:PG_XC);
+  return {i:i,P:[Px,Py],n:[nx,ny],make:function(){ for(var tr=0;tr<8;tr++){ var xt=xc+(Math.random()-0.5)*1.4*hw, yt=pgSurf(jj,xt,pad,ar,A).y-b.r, dx=xt-Px, den=nx*nx*(yt-Py-(ny/nx)*dx);
+      if(!(den>0)) continue; var v=Math.sqrt(0.5*PG_G*dx*dx/den), T=dx/(v*nx), ta=-v*ny/PG_G, ya=Py+v*ny*ta+0.5*PG_G*ta*ta;
+      if(ya<JG_TOP+b.r+0.02||!(T>0)) continue;
+      return {at:function(t){ return [Px+v*nx*t,Py+v*ny*t+0.5*PG_G*t*t]; },ta:ta,T:T}; } return null; }}; }
+/* 1.59p: where the tops of real passes are. Every pass leaves the racket strictly along its slope at the hit point, so the only free
+   choice is how far it lands on the other racket — every pass is one of «hit point × landing point» (both across the whole racket):
+   for each pair, the arc's speed is what lands it there, and its top is computed. Bricks hang only over the stretch where the tops of
+   the highest passes can be (Den 18:55: «с кирпичами чуть получше, но крайние разбивать сложнее») — laid anew for every row, as the
+   rackets narrow. The stretch is the middle two thirds of those tops (17th–83rd percentile): with 10–90% the bot (not aiming) broke the
+   edge bricks ~70% as often as the middle ones, now ~80%. Bricks are hit by most passes then (~30 a minute), so the points went down:
+   brick 25 → 12, row 150 → 80, ring 80 → 60, star 20 → 15 — targets give the bot ~55% of its points with all three on (rings alone
+   ~35%, stars ~25%, bricks ~35%); the game's length is unchanged */
+function pgApexes(ar,pad){ var hw=pgHw(ar), A=PG_V.curve>=0.5?pgCupA():Math.tan(PG_TILTV*Math.PI/180)*hw, Ap=Math.tan(PG_TILT*Math.PI/180)*hw, r=JG_R, out=[];
+  for(var i=0;i<2;i++){ var j=1-i, xi=ar*(i?1-PG_XC:PG_XC), xj=ar*(j?1-PG_XC:PG_XC);
+    for(var a=0;a<=12;a++){ var Px=xi-hw+2*hw*a/12, S=pgSurf(i,Px,pad,ar,A), Py=S.y-r, sl=S.s*Ap/hw*S.f, nl=Math.sqrt(sl*sl+1), nx=sl/nl, ny=-1/nl;
+      for(var q=0;q<=12;q++){ var xt=xj-hw+2*hw*q/12, yt=pgSurf(j,xt,pad,ar,A).y-r, dx=xt-Px, den=nx*nx*(yt-Py-(ny/nx)*dx); if(!(den>0)) continue;
+        var v=Math.sqrt(0.5*PG_G*dx*dx/den), ta=-v*ny/PG_G; out.push({x:Px+v*nx*ta,y:Py+v*ny*ta+0.5*PG_G*ta*ta}); } } }
+  return out; }
+function pgBrickSpan(ar,pad){ var top=JG_TOP+JG_R, lo=PG_BR_Y1+JG_R, xs=pgApexes(ar,pad).filter(function(p){ return p.y>=top+0.005&&p.y<=lo; }).map(function(p){ return p.x; }).sort(function(p,q){ return p-q; });
+  if(xs.length<4) return [ar*0.45,ar*0.55]; return [xs[Math.floor(xs.length*0.17)],xs[Math.floor(xs.length*0.83)]]; }
+function pgMeat(dt,ar){ var M=ARC.meat||(ARC.meat=pgMeatNew()), fl=ar*(1-PG_V.fw)/2, fw=ar*PG_V.fw;
+  var fly=(ARC.balls||[]).filter(function(b){ return !(b.wait>0)&&!b.hold&&!b.on; }), b0=(ARC.balls||[])[0];
+  if(!b0){ if(M.ring){ if(M.chain) arcEv('ring-chain-lost:'+M.chain); M.chain=0; } M.ring=null; M.stars=[]; M.task=null; }
+  /* a task for the next shot: made when the ball heads down to a racket; over when the pass from that racket ends */
+  if(M.task&&b0){ if(M.task.stage===0&&b0.from===M.task.i) M.task.stage=1; else if(M.task.stage===1&&b0.from===1-M.task.i){ if(M.ring){ if(M.chain) arcEv('ring-chain-lost:'+M.chain); M.chain=0; } M.ring=null; M.stars=[]; M.task=null; } }
+  if(!M.task&&b0&&!(b0.wait>0)&&!b0.hold&&!b0.on&&b0.vy>0&&(PG_V.rings>=0.5||PG_V.stars>=0.5)){ var Pt=pgMeatPath(b0,ARC.py,ar);
+    if(Pt){ M.task={i:Pt.i,stage:0};
+      if(PG_V.rings>=0.5){ var tr=Pt.make(); if(tr){ var a=tr.at(tr.ta); M.ring={x:a[0],y:a[1],life:2}; } }
+      if(PG_V.stars>=0.5){ var ts=Pt.make(); if(ts){ M.stars=[0.32,0.68].map(function(f){ var q=ts.at(f*ts.T); return {x:q[0],y:q[1],ph:Math.random()*6.28}; }); } } } }
+  if(PG_V.rings>=0.5&&M.ring){ var rg=M.ring, got=fly.some(function(b){ return Math.hypot(b.x-rg.x,b.y-rg.y)<PG_RING_R-0.3*b.r; });
+    if(got){ M.chain=Math.min(PG_MEAT.chainMax+1,M.chain+1); pgMeatAdd(PG_MEAT.ring*(1+PG_MEAT.chain*(M.chain-1)),rg.x,rg.y,'ring'); sfx('level'); M.ring=null; } }
+  if(PG_V.rings<0.5){ M.ring=null; M.chain=0; }
+  if(PG_V.stars>=0.5){ for(var si=0;si<M.stars.length;si++){ var st=M.stars[si]; if(!st) continue; st.ph+=dt*3;
+      if(fly.some(function(b){ return Math.hypot(b.x-st.x,b.y-st.y)<b.r+PG_STAR_R; })){ pgMeatAdd(PG_MEAT.star,st.x,st.y,'star'); sfx('jtoss',0.3); M.stars[si]=null; } } }
+  else M.stars=[];
   if(PG_V.bricks>=0.5){
-    if(!M.br){ M.bT-=dt; if(M.bT<=0) M.br=[1,1,1,1,1,1,1,1]; }
-    else { var bx0=fl+fw*0.3, bw=fw*0.4/PG_BR_N;
+    if(!M.br){ M.bT-=dt; if(M.bT<=0){ M.br=[1,1,1,1,1,1,1,1]; M.bSpan=pgBrickSpan(ar,ARC.py); } }
+    else { var bx0=M.bSpan[0], bw=(M.bSpan[1]-M.bSpan[0])/PG_BR_N;
       fly.forEach(function(b){ if(b.y-b.r>PG_BR_Y1) return; var j=Math.floor((b.x-bx0)/bw); if(j<0||j>=PG_BR_N||!M.br[j]) return;
         M.br[j]=0; pgMeatAdd(PG_MEAT.brick,bx0+(j+0.5)*bw,(PG_BR_Y0+PG_BR_Y1)/2,'brick'); sfx('jland');
         if(M.br.every(function(v){ return !v; })){ pgMeatAdd(PG_MEAT.row,ar/2,0.25,'bricks-row'); sfx('level'); M.br=null; M.bT=2; } }); } }
   else { M.br=null; M.bT=0.5; } }
 function pgMeatDraw(c,X,Y,H,ar){ var M=ARC.meat; if(!M) return; var fl=ar*(1-PG_V.fw)/2, fw=ar*PG_V.fw;
-  if(M.br){ var bx0=fl+fw*0.3, bw=fw*0.4/PG_BR_N, cols=['#ff6b6b','#ffa94d','#ffd43b','#69db7c','#4dabf7','#9775fa','#f783ac','#ff8787'];
+  if(M.br&&M.bSpan){ var bx0=M.bSpan[0], bw=(M.bSpan[1]-M.bSpan[0])/PG_BR_N, cols=['#ff6b6b','#ffa94d','#ffd43b','#69db7c','#4dabf7','#9775fa','#f783ac','#ff8787'];
     for(var j=0;j<PG_BR_N;j++){ if(!M.br[j]) continue; c.fillStyle=cols[j%cols.length]; c.fillRect(X(bx0+j*bw)+1,Y(PG_BR_Y0),X(bx0+(j+1)*bw)-X(bx0+j*bw)-2,Y(PG_BR_Y1)-Y(PG_BR_Y0)); } }
   if(M.ring){ var rg=M.ring, al=Math.min(1,rg.life/2); c.globalAlpha=al; c.strokeStyle='#ffd166'; c.lineWidth=Math.max(3,0.014*H); c.beginPath(); c.arc(X(rg.x),Y(rg.y),PG_RING_R*H,0,6.2832); c.stroke();
     if(M.chain>0){ c.fillStyle='#ffd166'; c.font=Math.round(0.045*H)+'px "IBM Plex Mono",monospace'; c.textAlign='center'; c.fillText('×'+(1+PG_MEAT.chain*M.chain).toFixed(2).replace('.',','),X(rg.x),Y(rg.y-PG_RING_R-0.02)); }

@@ -3,29 +3,54 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&display=swap">
 <style>
-/* one look on purpose: a sketchbook page. The field fills the screen, a thin strip of pen-written switches under it */
-:root{ --paper:#f6f1e6; --ink:#1f1d24; --soft:#6d665c; --line:#cfc6b4; --accent:#c8452c;
+/* one look on purpose: a sketchbook page. The field fills the screen; a thin strip of pen-written switches under it;
+   the sliders slide in over the right side of the field */
+:root{ --paper:#f6f1e6; --sheet:rgba(248,244,235,0.94); --ink:#1f1d24; --soft:#6d665c; --line:#b9ae98; --accent:#c8452c;
   --hand:'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; color-scheme:light; }
 html,body{ height:100%; }
 body{ margin:0; background:var(--paper); color:var(--ink); font-family:var(--hand); overflow:hidden; display:flex; flex-direction:column; }
 #stage{ flex:1; min-height:0; }
 canvas{ position:fixed; inset:0; width:100%; height:100%; display:block; z-index:0; }
-.bar{ position:relative; z-index:1; display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:4px 14px; padding:4px 16px 6px; padding-bottom:calc(6px + env(safe-area-inset-bottom,0px)); }
-.seg{ display:flex; gap:2px; }
-button{ font:inherit; font-size:21px; line-height:1; color:var(--soft); background:none; border:0; padding:4px 8px 6px; cursor:pointer; border-radius:40% 55% 45% 60% / 60% 45% 55% 40%; }
+.bar{ position:relative; z-index:2; display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:2px 12px; padding:2px 16px 4px; padding-bottom:calc(4px + env(safe-area-inset-bottom,0px)); }
+.seg{ display:flex; gap:0; flex-wrap:wrap; justify-content:center; }
+button{ font:inherit; font-size:20px; line-height:1; color:var(--soft); background:none; border:0; padding:4px 7px 6px; cursor:pointer; border-radius:40% 55% 45% 60% / 60% 45% 55% 40%; }
 button[aria-pressed="true"]{ color:var(--ink); box-shadow:inset 0 0 0 1.6px var(--ink); }
 button:focus-visible{ outline:2px dashed var(--accent); outline-offset:2px; }
-.hint{ font-size:19px; color:var(--soft); }
+.sep{ color:var(--line); font-size:20px; }
+#panel{ position:fixed; z-index:3; top:calc(8px + env(safe-area-inset-top,0px)); right:12px; bottom:calc(46px + env(safe-area-inset-bottom,0px)); width:min(300px,calc(100vw - 24px)); overflow-y:auto;
+  background:var(--sheet); border:1.5px solid var(--ink); border-radius:14px 22px 16px 26px / 22px 14px 26px 16px; padding:6px 14px 12px; display:flex; flex-direction:column; gap:2px; box-shadow:2px 3px 0 rgba(30,25,20,0.12); }
+#panel h2{ margin:0; font-size:23px; font-weight:700; display:flex; justify-content:space-between; align-items:center; }
+#panel[hidden]{ display:none; }
+.row{ display:grid; grid-template-columns:1fr auto; align-items:center; gap:0 8px; }
+.row label{ font-size:19px; }
+.row output{ font-size:18px; color:var(--soft); font-variant-numeric:tabular-nums; min-width:2.6em; text-align:right; }
+.row input{ grid-column:1 / -1; width:100%; accent-color:var(--ink); margin:0 0 4px; }
+.chk{ display:flex; align-items:center; gap:8px; font-size:19px; margin:2px 0 4px; }
+.chk input{ accent-color:var(--ink); width:18px; height:18px; }
+.code{ font-size:16px; color:var(--soft); line-height:1.15; margin-top:6px; word-break:break-word; }
+.code b{ color:var(--ink); font-weight:700; }
 </style>
 <div id="stage"><canvas id="cv" aria-label="Набросок SonaPong: два человечка играют в бадминтон на платформах"></canvas></div>
 <div class="bar">
   <div class="seg" role="group" aria-label="Чем нарисовано">
     <button id="ink-liner" data-ink="liner" aria-pressed="true">линер</button>
-    <button id="ink-pen" data-ink="pen" aria-pressed="false">шариковая ручка</button>
-    <button id="ink-wash" data-ink="wash" aria-pressed="false">тушь и акварель</button>
+    <button id="ink-pen" data-ink="pen" aria-pressed="false">ручка</button>
   </div>
-  <button id="boil" aria-pressed="true">линии дрожат</button>
-  <span class="hint" id="hint">телефон лучше повернуть</span>
+  <span class="sep" aria-hidden="true">·</span>
+  <div class="seg" role="group" aria-label="Как нарисовано">
+    <button id="st-neat" data-style="neat" aria-pressed="false">аккуратно</button>
+    <button id="st-quick" data-style="quick" aria-pressed="true">быстро</button>
+    <button id="st-rough" data-style="rough" aria-pressed="false">грубо</button>
+    <button id="st-careful" data-style="careful" aria-pressed="false">старательно</button>
+  </div>
+  <span class="sep" aria-hidden="true">·</span>
+  <button id="more" aria-pressed="false" aria-controls="panel">ползунки</button>
+</div>
+<div id="panel" hidden>
+  <h2>Ползунки <button id="close" aria-label="Закрыть">✕</button></h2>
+  <div id="sliders"></div>
+  <label class="chk"><input type="checkbox" id="cross"> штриховка крест-накрест</label>
+  <div class="code" id="code"></div>
 </div>
 <script>
 /* Hand-drawn pen on sketchbook paper — a canvas 2D toolkit (prototype for SonaPong's look).
@@ -37,39 +62,44 @@ function hash(i){ i=(i|0)*374761393; i=(i^(i>>>13))*1274126177; i=i^(i>>>16); re
 function noise(x){ const i=Math.floor(x), f=x-i, u=f*f*(3-2*f); return hash(i)*(1-u)+hash(i+1)*u; }
 function resample(pts,step){ const out=[pts[0]]; let acc=0; for(let i=1;i<pts.length;i++){ let [x0,y0]=pts[i-1]; const [x1,y1]=pts[i]; let d=Math.hypot(x1-x0,y1-y0); while(acc+d>=step){ const k=(step-acc)/d; x0=x0+(x1-x0)*k; y0=y0+(y1-y0)*k; out.push([x0,y0]); d=Math.hypot(x1-x0,y1-y0); acc=0; } acc+=d; } const l=pts[pts.length-1]; out.push(l); return out; }
 
-function Pen(ctx,opt){ this.c=ctx; this.r=mulberry(opt.seed||1); this.ink=opt.ink||'#1b1b1f'; this.w=opt.w||1.6; this.wob=opt.wob===undefined?1.3:opt.wob; this.passes=opt.passes||1; this.jit=opt.jit===undefined?1:opt.jit; }
-Pen.prototype.rnd=function(a,b){ return a+(b-a)*this.r(); };
+/* A pen. opt: seed (the drawing), tick + amt (the «boil»: each tick the drawing is redrawn a little differently — amt 0 the same,
+   1 a wholly new one), w thickness, wob hand wobble, overK overshoot, open (loops left open), passes + jit (lines gone over again),
+   hs hatching spacing, cross (cross-hatching). Every random choice is a blend of the drawing's own and the tick's. */
+function Pen(ctx,opt){ this.c=ctx; this.rb=mulberry(opt.seed||1); this.rt=mulberry(((opt.seed||1)*7919+(opt.tick||0)*104729+13)>>>0); this.amt=opt.tick?(opt.amt||0):0;
+  this.ink=opt.ink||'#1b1b1f'; this.w=opt.w||1.6; this.wob=opt.wob===undefined?1.3:opt.wob; this.passes=opt.passes||1; this.jit=opt.jit===undefined?1:opt.jit;
+  this.overK=opt.overK===undefined?1:opt.overK; this.open=opt.open||0; this.hs=opt.hs||1; this.cross=!!opt.cross; }
+Pen.prototype.rnd=function(a,b){ const x=this.rb(), y=this.rt(); return a+(b-a)*(x+this.amt*(y-x)); };
+Pen.prototype.sd=function(){ return [this.rb()*9999,this.rt()*9999]; };
+Pen.prototype.nz=function(s,x){ const a=this.amt; if(!a) return noise(s[0]+x); return 0.5+((1-a)*(noise(s[0]+x)-0.5)+a*(noise(s[1]+x)-0.5))/Math.sqrt((1-a)*(1-a)+a*a); };
 /* one stroke along points: o.w width, o.ink, o.taper (0..1), o.wob */
 Pen.prototype.stroke=function(pts,o={}){ const c=this.c, P=resample(pts,1.2), n=P.length; if(n<2) return;
-  const w0=o.w||this.w, wob=(o.wob===undefined?this.wob:o.wob), s0=this.rnd(0,9999), s1=this.rnd(0,9999), tp=o.taper===undefined?1:o.taper;
+  const w0=o.w||this.w, wob=(o.wob===undefined?this.wob:o.wob*Math.min(2,this.wob/1.3)), s0=this.sd(), s1=this.sd(), tp=o.taper===undefined?1:o.taper;
   let dist=0; const L=[], R=[]; const tot=(n-1)*1.2;
   for(let i=0;i<n;i++){ if(i) dist+=Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]);
     const a=P[Math.max(i-1,0)], b=P[Math.min(i+1,n-1)]; let tx=b[0]-a[0], ty=b[1]-a[1]; const tl=Math.hypot(tx,ty)||1; tx/=tl; ty/=tl; const nx=-ty, ny=tx;
-    const wv=wob*((noise(s0+dist/55)-0.5)*2+0.35*(noise(s0+500+dist/9)-0.5));
+    const wv=wob*((this.nz(s0,dist/55)-0.5)*2+0.35*(this.nz(s0,500+dist/9)-0.5));
     const u=dist/Math.max(tot,1), head=Math.min(1,u*tot/6), tail=Math.min(1,(1-u)*tot/9);
     const press=(1-tp)+tp*(0.25+0.75*Math.min(head,1))*(0.35+0.65*Math.min(tail,1));
-    const w=w0*press*(0.8+0.4*noise(s1+dist/14));
+    const w=w0*press*(0.8+0.4*this.nz(s1,dist/14));
     const x=P[i][0]+nx*wv, y=P[i][1]+ny*wv; L.push([x+nx*w/2,y+ny*w/2]); R.push([x-nx*w/2,y-ny*w/2]); }
   c.beginPath(); c.moveTo(L[0][0],L[0][1]); for(let i=1;i<n;i++) c.lineTo(L[i][0],L[i][1]); for(let i=n-1;i>=0;i--) c.lineTo(R[i][0],R[i][1]); c.closePath();
   c.fillStyle=o.ink||this.ink; c.globalAlpha=o.a===undefined?1:o.a; c.fill(); c.globalAlpha=1; };
-/* a stroke drawn (passes) times, each a bit off — the sketchy double line */
-Pen.prototype.draw=function(pts,o={}){ const k=o.passes||this.passes; for(let p=0;p<k;p++){ const j=p?this.jit*1.2:0, dx=this.rnd(-j,j), dy=this.rnd(-j,j); this.stroke(pts.map(q=>[q[0]+dx,q[1]+dy]),Object.assign({},o,{a:p?(o.a||1)*0.55:o.a, w:(o.w||this.w)*(p?0.75:1)})); } };
+/* a stroke gone over (passes) times, each a bit off */
+Pen.prototype.draw=function(pts,o={}){ const k=o.passes||this.passes; for(let p=0;p<k;p++){ const j=p?this.jit*1.2:0, dx=this.rnd(-j,j), dy=this.rnd(-j,j); this.stroke(pts.map(q=>[q[0]+dx,q[1]+dy]),Object.assign({},o,{a:p?(o.a===undefined?1:o.a)*0.7:o.a, w:(o.w||this.w)*(p?0.8:1)})); } };
 /* a straight-ish line with overshoot and a slight bow */
-Pen.prototype.line=function(x0,y0,x1,y1,o={}){ const d=Math.hypot(x1-x0,y1-y0)||1, ux=(x1-x0)/d, uy=(y1-y0)/d, e0=this.rnd(0,o.over===undefined?3:o.over), e1=this.rnd(0,o.over===undefined?4:o.over), bow=this.rnd(-1,1)*d*0.015;
+Pen.prototype.line=function(x0,y0,x1,y1,o={}){ const d=Math.hypot(x1-x0,y1-y0)||1, ux=(x1-x0)/d, uy=(y1-y0)/d, K=this.overK, e0=this.rnd(0,(o.over===undefined?3:o.over)*K), e1=this.rnd(0,(o.over===undefined?4:o.over)*K), bow=this.rnd(-1,1)*d*(0.012+0.006*K);
   const a=[x0-ux*e0,y0-uy*e0], b=[x1+ux*e1,y1+uy*e1], m=[(a[0]+b[0])/2-uy*bow,(a[1]+b[1])/2+ux*bow], pts=[]; for(let i=0;i<=24;i++){ const t=i/24; pts.push([(1-t)*(1-t)*a[0]+2*(1-t)*t*m[0]+t*t*b[0],(1-t)*(1-t)*a[1]+2*(1-t)*t*m[1]+t*t*b[1]]); } this.draw(pts,o); };
-/* a loop that does not quite close */
-Pen.prototype.loop=function(cx,cy,rx,ry,o={}){ const a0=o.a0===undefined?this.rnd(-2.6,-1.6):o.a0, sw=o.sweep||Math.PI*2+this.rnd(0.25,0.6), rot=o.rot||0, s=this.rnd(0,999), pts=[];
-  for(let i=0;i<=60;i++){ const t=a0+sw*i/60, k=1+0.07*(noise(s+i/9)-0.5)*2+0.04*i/60, x=Math.cos(t)*rx*k, y=Math.sin(t)*ry*k; pts.push([cx+x*Math.cos(rot)-y*Math.sin(rot),cy+x*Math.sin(rot)+y*Math.cos(rot)]); } this.draw(pts,o); };
-/* quick hatching inside a clip path: lines at angle, spacing sp */
-Pen.prototype.hatch=function(clip,ang,sp,o={}){ const c=this.c; c.save(); c.beginPath(); clip(c); c.clip(); const [x0,y0,x1,y1]=o.box, ca=Math.cos(ang), sa=Math.sin(ang), L=Math.hypot(x1-x0,y1-y0);
-  for(let s=-L;s<L;s+=sp*this.rnd(0.8,1.2)){ const mx=(x0+x1)/2-sa*s, my=(y0+y1)/2+ca*s, h=L*0.6; this.stroke([[mx-ca*h,my-sa*h],[mx+ca*h,my+sa*h]],{w:o.w||0.7,a:o.a===undefined?0.75:o.a,wob:0.6}); } c.restore(); };
-
-/* loose hand hatching between a top and a bottom polyline (same length): quick flicks, irregular spacing, ends not kept exactly */
-Pen.prototype.band=function(top,bot,o={}){ const n=top.length, sp=o.sp||4.5, sh=o.shift||4; let acc=0;
+/* a loop: with «open» it is left open or runs past its start as a spiral */
+Pen.prototype.loop=function(cx,cy,rx,ry,o={}){ const op=this.open, a0=o.a0===undefined?this.rnd(-2.6,-1.6):o.a0, sw=o.sweep||Math.PI*2+this.rnd(0.25-1.3*op,0.6-0.7*op), rot=o.rot||0, s=this.sd(), pts=[];
+  for(let i=0;i<=60;i++){ const t=a0+sw*i/60, k=1+0.07*(this.nz(s,i/9)-0.5)*2+(0.04+0.1*op)*i/60, x=Math.cos(t)*rx*k, y=Math.sin(t)*ry*k; pts.push([cx+x*Math.cos(rot)-y*Math.sin(rot),cy+x*Math.sin(rot)+y*Math.cos(rot)]); } this.draw(pts,o); };
+/* loose hand hatching between a top and a bottom polyline (same length): quick flicks, irregular spacing, ends not kept exactly;
+   with cross — a second, sparser layer the other way */
+Pen.prototype.band=function(top,bot,o={}){ const n=top.length, layers=this.cross&&!o.single?2:1;
+  for(let Lr=0;Lr<layers;Lr++){ const sp=(o.sp||4.5)*this.hs*(Lr?1.4:1), sh=(o.shift||4)*(Lr?-1:1); let acc=0;
   for(let i=1;i<n;i++){ acc+=Math.hypot(top[i][0]-top[i-1][0],top[i][1]-top[i-1][1]); if(acc<sp*this.rnd(0.7,1.3)) continue; acc=0;
-    const j=Math.min(n-1,Math.max(0,i+Math.round(sh*this.rnd(0.7,1.3)))), a=top[i], b=bot[j], k0=this.rnd(-0.08,0.12), k1=this.rnd(0.78,1.12);
+    const j=Math.min(n-1,Math.max(0,i+Math.round(sh*this.rnd(0.7,1.3)))), a=top[i], b=bot[j], k0=this.rnd(-0.08,0.12)*this.overK, k1=1-this.rnd(-0.12,0.22)*this.overK;
     const A=[a[0]+(b[0]-a[0])*k0,a[1]+(b[1]-a[1])*k0], B=[a[0]+(b[0]-a[0])*k1,a[1]+(b[1]-a[1])*k1];
-    this.stroke([A,[(A[0]+B[0])/2+this.rnd(-0.4,0.4),(A[1]+B[1])/2],B],{w:(o.w||this.w*0.55)*this.rnd(0.8,1.25),a:(o.a||0.8)*this.rnd(0.75,1),wob:0.25,ink:o.ink}); } };
+    this.stroke([A,[(A[0]+B[0])/2+this.rnd(-0.4,0.4),(A[1]+B[1])/2],B],{w:(o.w||this.w*0.55)*this.rnd(0.8,1.25),a:(o.a||0.8)*this.rnd(0.75,1)*(Lr?0.75:1),wob:0.25,ink:o.ink}); } } };
 /* ── single-stroke handwriting: glyphs in a box 1 tall (baseline at 1), polylines ── */
 function arc(cx,cy,rx,ry,a0,a1,n=18){ const p=[]; for(let i=0;i<=n;i++){ const t=(a0+(a1-a0)*i/n)*Math.PI/180; p.push([cx+rx*Math.cos(t),cy+ry*Math.sin(t)]); } return p; }
 const GL={
@@ -128,11 +158,26 @@ G.Sk={Pen,paper,lay,wash,washPoly,mulberry,noise};
 <script>
 (function(){
 const W=844,H=390, CEIL=22, G=900;
-const INKS={ liner:{ink:'#1c1b22',accent:'#d2432f',w:1.5,wob:1.2,passes:1,jit:1,dry:0},
-  pen:{ink:'#23379a',accent:'#b8322a',w:1.15,wob:1.5,passes:2,jit:0.9,dry:1},
-  wash:{ink:'#2a2622',accent:'#c8452c',w:1.35,wob:1.3,passes:1,jit:1,dry:0,wash:true} };
-let inkKey='liner', boilOn=true;
-try{ const k=localStorage.getItem('sk-ink'); if(INKS[k]) inkKey=k; boilOn=localStorage.getItem('sk-boil')!=='0'; }catch(e){}
+const INKS={ liner:{ink:'#121116',accent:'#d2432f',dry:0}, pen:{ink:'#152163',accent:'#b8322a',dry:1} };
+/* the knobs: one drawing style is a set of these */
+const KN=[
+ {k:'w',    t:'толщина линий',            min:0.6,max:2.6,st:0.1, f:v=>v.toFixed(1)},
+ {k:'wob',  t:'дрожь руки',               min:0,  max:3,  st:0.1, f:v=>v.toFixed(1)},
+ {k:'over', t:'вылет линий за концы',     min:0,  max:10, st:0.5, f:v=>v.toFixed(1)},
+ {k:'open', t:'кружки не смыкаются',      min:0,  max:1,  st:0.05,f:v=>Math.round(v*100)+'%'},
+ {k:'passes',t:'сколько раз обвести',     min:1,  max:3,  st:1,   f:v=>String(v)},
+ {k:'jit',  t:'разброс обводки',          min:0,  max:3,  st:0.1, f:v=>v.toFixed(1)},
+ {k:'hs',   t:'штриховка гуще',           min:0.4,max:2.2,st:0.1, f:v=>v.toFixed(1)+'×'},
+ {k:'hz',   t:'перерисовок в секунду',    min:0,  max:24, st:1,   f:v=>v?String(v):'стоп'},
+ {k:'amt',  t:'насколько меняется рисунок',min:0, max:1,  st:0.05,f:v=>Math.round(v*100)+'%'},
+ {k:'sha',  t:'волан и след дрожат',      min:0,  max:1,  st:0.05,f:v=>Math.round(v*100)+'%'} ];
+const STYLES={ neat:{w:1.1,wob:0.5,over:1,open:0,passes:1,jit:0.4,hs:1.3,cross:0,hz:8,amt:0.2,sha:0},
+  quick:{w:1.6,wob:1.6,over:6,open:0.6,passes:1,jit:1,hs:0.85,cross:0,hz:10,amt:0.35,sha:0},
+  rough:{w:2.3,wob:2.2,over:5,open:0.5,passes:2,jit:1.8,hs:0.6,cross:0,hz:6,amt:0.6,sha:0.1},
+  careful:{w:1.3,wob:0.9,over:3,open:0.2,passes:3,jit:0.8,hs:1.4,cross:1,hz:12,amt:0.25,sha:0} };
+let inkKey='liner', styleKey='quick', K=Object.assign({},STYLES.quick);
+try{ const s=JSON.parse(localStorage.getItem('sk3')||'null'); if(s){ if(INKS[s.ink]) inkKey=s.ink; if(s.style) styleKey=s.style; if(s.K) Object.assign(K,s.K); } }catch(e){}
+const save=()=>{ try{ localStorage.setItem('sk3',JSON.stringify({ink:inkKey,style:styleKey,K})); }catch(e){} };
 
 /* ── geometry: the two rackets as in the game (curves), narrowed from their outer edges ── */
 const q=(P,t)=>[(1-t)*(1-t)*P.p0[0]+2*(1-t)*t*P.c[0]+t*t*P.p1[0],(1-t)*(1-t)*P.p0[1]+2*(1-t)*t*P.c[1]+t*t*P.p1[1]];
@@ -142,6 +187,9 @@ const yAt=(i,x)=>{ const T=i?LR:LL; let lo=0,hi=400; while(hi-lo>1){ const m=(lo
 const curve=(P,t0,t1,n)=>{ const a=[]; for(let i=0;i<=n;i++) a.push(q(P,t0+(t1-t0)*i/n)); return a; };
 const span=(i,wk)=>i?[0,wk]:[1-wk,1];
 const xRange=(i,wk)=>{ const [t0,t1]=span(i,wk), P=i?PR:PL; return [q(P,t0)[0],q(P,t1)[0]]; };
+
+/* a pen for one object: its own seed, so the other objects changing does not change it */
+function pen(c,seed,tick,amtK){ const I=INKS[inkKey]; return new Sk.Pen(c,{seed,tick,amt:K.amt*(amtK===undefined?1:amtK),ink:I.ink,w:K.w,wob:K.wob,overK:K.over/3,open:K.open,passes:K.passes,jit:K.jit,hs:1/K.hs,cross:K.cross}); }
 
 /* ── drawing pieces (field coordinates) ── */
 function player(p,x,y,d,pose,o={}){ const X=v=>x+d*v, k=o.k||1.15, st=o.step||0;
@@ -161,44 +209,38 @@ function shuttle(p,x,y,a,o={}){ const c=Math.cos(a), s=Math.sin(a), R=(u,v)=>[x+
   p.line(...R(-3*k,-2.4*k),...R(-15*k,-7*k),{over:1}); p.line(...R(-3*k,2.4*k),...R(-15*k,7*k),{over:1});
   p.draw([R(-15*k,-7*k),R(-16.5*k,-2*k),R(-16.5*k,3*k),R(-15*k,7*k)]); p.line(...R(-3.5*k,0),...R(-15.5*k,0.5*k),{over:0.5,w:p.w*0.6,a:0.7}); }
 function platform(p,i,wk){ const P=i?PR:PL, [t0,t1]=span(i,wk), m=p.rnd(0.42,0.58), top=curve(P,t0,t1,80);
-  p.draw(curve(P,t0,t0+(t1-t0)*(m+0.04),40),{w:p.w*1.35}); p.draw(curve(P,t0+(t1-t0)*(m-0.04),t1,40),{w:p.w*1.35});
+  p.draw(curve(P,t0,t0+(t1-t0)*(m+0.04),40),{w:p.w*1.4}); p.draw(curve(P,t0+(t1-t0)*(m-0.04),t1,40),{w:p.w*1.4});
   const bot=top.map(([x,y],j)=>[x,y+13*(0.6+0.4*Math.sin(Math.PI*j/(top.length-1)))]);
-  p.draw(bot.filter((v,j)=>j%2===0),{w:p.w*0.7,a:0.75}); p.band(top,bot,{sp:4.2,shift:-3,w:p.w*0.55});
-  p.line(top[0][0],top[0][1],bot[0][0],bot[0][1],{over:2,w:p.w*0.8}); const e=top.length-1; p.line(top[e][0],top[e][1],bot[e][0],bot[e][1],{over:2,w:p.w*0.8}); }
-function ceiling(p){ p.line(12,CEIL+1,440,CEIL-1,{w:p.w*1.2,over:6}); p.line(410,CEIL-1.5,834,CEIL+1.5,{w:p.w*1.2,over:6});
-  const top=[], bot=[]; for(let x=0;x<=W;x+=2){ top.push([x,CEIL-0.5]); bot.push([x,CEIL-8-6*Sk.noise(x/40)-p.rnd(0,3)]); } p.band(top,bot,{sp:6,shift:4,w:p.w*0.5,a:0.65}); }
-function hudStatic(p){ p.line(16,13,46,12,{over:2,w:p.w*0.8}); p.line(46,12,47,42,{over:2,w:p.w*0.8}); p.line(47,42,15,43,{over:2,w:p.w*0.8}); p.line(15,43,16,12,{over:2,w:p.w*0.8});
+  p.draw(bot.filter((v,j)=>j%2===0),{w:p.w*0.75,a:0.85}); p.band(top,bot,{sp:4.2,shift:-3,w:p.w*0.55});
+  p.line(top[0][0],top[0][1],bot[0][0],bot[0][1],{over:2,w:p.w*0.85}); const e=top.length-1; p.line(top[e][0],top[e][1],bot[e][0],bot[e][1],{over:2,w:p.w*0.85}); }
+function ceiling(p){ p.line(12,CEIL+1,440,CEIL-1,{w:p.w*1.25,over:6}); p.line(410,CEIL-1.5,834,CEIL+1.5,{w:p.w*1.25,over:6});
+  const top=[], bot=[]; for(let x=0;x<=W;x+=2){ top.push([x,CEIL-0.5]); bot.push([x,CEIL-8-6*Sk.noise(x/40)-p.rnd(0,3)]); } p.band(top,bot,{sp:6,shift:4,w:p.w*0.5,a:0.7}); }
+function hudStatic(c,tick){ let p=pen(c,401,tick); p.line(16,13,46,12,{over:2,w:p.w*0.85}); p.line(46,12,47,42,{over:2,w:p.w*0.85}); p.line(47,42,15,43,{over:2,w:p.w*0.85}); p.line(15,43,16,12,{over:2,w:p.w*0.85});
   p.line(26,20,26,35,{w:p.w*1.4,over:1}); p.line(36,20,36,35,{w:p.w*1.4,over:1});
-  p.text('sonaroids.app',16,378,13,{w:p.w*0.7,a:0.75});
-  p.line(352,366,492,365,{over:2,w:p.w*0.8}); p.line(352,376,492,376,{over:2,w:p.w*0.8}); p.line(352,366,351,376,{over:1,w:p.w*0.8}); p.line(492,365,493,376,{over:1,w:p.w*0.8}); }
-function hudDyn(p,S,ac){ p.text(String(S.score).replace(/\B(?=(\d{3})+(?!\d))/g,' '),828,46,26,{align:'right',w:p.w*1.25});
-  p.text('×'+S.mult.toFixed(1).replace('.',','),828,70,14,{align:'right',w:p.w*0.9,ink:ac});
-  let x=822; for(let i=0;i<5;i++){ p.loop(x,371,3.6,3.6,{w:p.w*0.8}); if(i<S.series) p.draw([[x-2.5,373],[x+2,368],[x-1.5,372],[x+2.5,370]],{w:p.w*1.4,ink:ac}); x-=13; } x-=12;
-  for(let i=0;i<S.lives;i++){ shuttle(p,x,371,-Math.PI/2,{k:0.62,cork:ac}); x-=16; }
-  const bw=Math.max(4,140*S.wk), t2=[], b2=[]; for(let xx=422-bw/2+1;xx<=422+bw/2-1;xx+=1){ t2.push([xx,375]); b2.push([xx,367]); } p.band(t2,b2,{sp:2.6,shift:3,w:p.w*0.7,a:0.9,ink:ac}); }
+  p=pen(c,402,tick); p.text('sonaroids.app',16,378,13,{w:p.w*0.7,a:0.8});
+  p=pen(c,403,tick); p.line(352,366,492,365,{over:2,w:p.w*0.85}); p.line(352,376,492,376,{over:2,w:p.w*0.85}); p.line(352,366,351,376,{over:1,w:p.w*0.85}); p.line(492,365,493,376,{over:1,w:p.w*0.85}); }
+function hudDyn(c,S,tick,ac){ let p=pen(c,501,tick); p.text(String(S.score).replace(/\B(?=(\d{3})+(?!\d))/g,' '),828,46,26,{align:'right',w:p.w*1.25});
+  p=pen(c,502,tick); p.text('×'+S.mult.toFixed(1).replace('.',','),828,70,14,{align:'right',w:p.w*0.9,ink:ac});
+  let x=822; for(let i=0;i<5;i++){ p=pen(c,510+i,tick); p.loop(x,371,3.6,3.6,{w:p.w*0.8}); if(i<S.series) p.draw([[x-2.5,373],[x+2,368],[x-1.5,372],[x+2.5,370]],{w:p.w*1.4,ink:ac}); x-=13; } x-=12;
+  for(let i=0;i<S.lives;i++){ p=pen(c,520+i,tick); shuttle(p,x,371,-Math.PI/2,{k:0.62,cork:ac}); x-=16; }
+  p=pen(c,530,tick); const bw=Math.max(4,140*S.wk), t2=[], b2=[]; for(let xx=422-bw/2+1;xx<=422+bw/2-1;xx+=1){ t2.push([xx,375]); b2.push([xx,367]); } p.band(t2,b2,{sp:2.6,shift:3,w:p.w*0.7,a:0.9,ink:ac,single:true}); }
 
-/* ── canvas, paper and the cached still parts (three «boil» copies each) ── */
-const cv=document.getElementById('cv'), ctx=cv.getContext('2d'); let dpr=1, cw=0, ch=0, sc=1, ox=0, oy=0, paperCv=null, stat=[], statKey='', sprites=null;
+/* ── canvas, paper and the cached still parts (four «boil» copies) ── */
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d'); let dpr=1, cw=0, ch=0, sc=1, ox=0, oy=0, paperCv=null, stat=[], statKey='';
 function mk(w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; return c; }
 function resize(){ dpr=Math.min(2,window.devicePixelRatio||1); const r=cv.getBoundingClientRect(), st=document.getElementById('stage').getBoundingClientRect(); cw=Math.max(200,r.width); ch=Math.max(120,r.height); cv.width=Math.round(cw*dpr); cv.height=Math.round(ch*dpr);
-  const fh=Math.max(100,st.bottom-st.top), ft=st.top; sc=Math.min(cw/W,fh/H); ox=(cw-W*sc)/2; oy=ft+(fh-H*sc)/2;
-  paperCv=mk(cv.width,cv.height); const pc=paperCv.getContext('2d'); pc.scale(dpr,dpr); Sk.paper(pc,cw,ch,dpr,{seed:7});
-  statKey=''; document.getElementById('hint').hidden=cw>ch; }
+  const fh=Math.max(100,st.bottom-st.top); sc=Math.min(cw/W,fh/H); ox=(cw-W*sc)/2; oy=st.top+(fh-H*sc)/2;
+  paperCv=mk(cv.width,cv.height); const pc=paperCv.getContext('2d'); pc.scale(dpr,dpr); Sk.paper(pc,cw,ch,dpr,{seed:7}); statKey=''; }
 const field=c=>c.setTransform(dpr*sc,0,0,dpr*sc,dpr*ox,dpr*oy);
-function washBand(c,i,wk){ const P=i?PR:PL, [t0,t1]=span(i,wk), t=curve(P,t0+0.01,t1-0.01,60).map(([x,y])=>[x+4,y-3]), b=curve(P,t0+0.01,t1-0.01,60).reverse().map(([x,y],j)=>[x+4,y+17*(0.6+0.4*Math.sin(Math.PI*j/60))]); Sk.washPoly(c,t.concat(b),'rgba(95,150,80,A)',{a:0.16,amp:3,seed:7+i}); }
-function buildStatic(wk){ const I=INKS[inkKey]; stat=[];
-  for(let v=0;v<3;v++){ const c=mk(cv.width,cv.height), x=c.getContext('2d'); x.drawImage(paperCv,0,0);
-    if(I.wash){ field(x); washBand(x,0,wk); washBand(x,1,wk); Sk.wash(x,420,14,420,12,'rgba(120,120,135,A)',{a:0.08,amp:3,grain:600,seed:3}); x.setTransform(1,0,0,1,0,0); }
-    const L=mk(cv.width,cv.height), lc=L.getContext('2d'); field(lc); const p=new Sk.Pen(lc,{seed:101+v*37,ink:I.ink,w:I.w,wob:I.wob,passes:I.passes,jit:I.jit});
-    ceiling(p); platform(p,0,wk); platform(p,1,wk); hudStatic(p);
-    Sk.lay(x,L,0,0,{dry:I.dry?Math.round(L.width*L.height/45):0,alpha:0.95}); stat.push(c); }
-  sprites=null; if(I.wash){ sprites=[0,1,2].map(v=>{ const mkw=(rx,ry,col,a)=>{ const s=Math.ceil((Math.max(rx,ry)*2+12)*dpr*sc), c=mk(s,s), x=c.getContext('2d'); x.setTransform(dpr*sc,0,0,dpr*sc,s/2,s/2); Sk.wash(x,0,0,rx,ry,col,{a,seed:11+v*5}); return c; };
-    return {red:mkw(8,10,'rgba(215,75,55,A)',0.28),blue:mkw(8,10,'rgba(55,105,195,A)',0.26),glow:mkw(13,10,'rgba(245,190,40,A)',0.22)}; }); } }
-function sprite(img,x,y){ ctx.save(); ctx.globalCompositeOperation='multiply'; ctx.setTransform(1,0,0,1,0,0); ctx.drawImage(img,dpr*(ox+x*sc)-img.width/2,dpr*(oy+y*sc)-img.height/2); ctx.restore(); }
+function buildStatic(wk){ const I=INKS[inkKey]; stat=[]; const nv=(K.hz>0&&K.amt>0)?4:1;
+  for(let v=0;v<nv;v++){ const c=mk(cv.width,cv.height), x=c.getContext('2d'); x.drawImage(paperCv,0,0);
+    const L=mk(cv.width,cv.height), lc=L.getContext('2d'); field(lc); const tk=v+1;
+    ceiling(pen(lc,101,tk)); platform(pen(lc,201,tk),0,wk); platform(pen(lc,301,tk),1,wk); hudStatic(lc,tk);
+    Sk.lay(x,L,0,0,{dry:I.dry?Math.round(L.width*L.height/60):0,alpha:1}); stat.push(c); } }
 
 /* ── a rally that plays itself ── */
-const S={score:0,mult:1,lives:5,series:0,wk:1,pass:0,t:0,nextNarrow:14,pops:[],crumbs:[]};
-const pl=[{x:150,tx:150,d:1,pose:'ready',sw:0,cap:false,hair:true},{x:690,tx:690,d:-1,pose:'ready',sw:0,cap:true}];
+const S={score:0,mult:1,lives:5,series:0,wk:1,pass:0,t:0,nextNarrow:14,pops:[],crumbs:[],nl:0};
+const pl=[{x:150,tx:150,d:1,pose:'ready',sw:0,hair:true},{x:690,tx:690,d:-1,pose:'ready',sw:0,cap:true}];
 let sh=null, wait=0.8, server=0;
 function contact(i,x){ return [x+pl[i].d*16,yAt(i,x)-62]; }
 function launch(from){ const to=1-from, [lo,hi]=xRange(to,S.wk), miss=S.pass>3&&Math.random()<0.1;
@@ -206,11 +248,11 @@ function launch(from){ const to=1-from, [lo,hi]=xRange(to,S.wk), miss=S.pass>3&&
   const [x0,y0]=contact(from,pl[from].x), yt=miss?y0:contact(to,Math.max(lo+10,Math.min(hi-10,xr)))[1], xt=xr+pl[to].d*16;
   const r=Math.random(), lowY=Math.min(y0,yt)-55, ya=r<0.18?CEIL+7+Math.random()*6:CEIL+20+Math.random()*(lowY-CEIL-20)*Math.pow(Math.random(),0.7);
   const vy=-Math.sqrt(2*G*(y0-ya)), tu=-vy/G, td=Math.sqrt(2*(yt-ya)/G), T=tu+td;
-  sh={x0,y0,vx:(xt-x0)/T,vy,t:0,T,to,miss,ya,popped:false,fall:false};
+  sh={x0,y0,vx:(xt-x0)/T,vy,t:0,T,to,miss,ya,popped:false,id:Math.floor(Math.random()*1e6)};
   pl[to].tx=Math.max(lo+10,Math.min(hi-10,xr)); pl[from].pose='swing'; pl[from].sw=0.28; }
 function shPos(t){ return [sh.x0+sh.vx*t,sh.y0+sh.vy*t+0.5*G*t*t]; }
 function step(dt){ S.t+=dt;
-  if(S.t>S.nextNarrow&&S.wk>0.52){ const old=S.wk; S.wk*=0.875; S.nextNarrow=S.t+14; S.mult=Math.min(2,1+(1-S.wk)*2); statKey='';
+  if(S.t>S.nextNarrow&&S.wk>0.52){ const old=S.wk; S.wk*=0.875; S.nextNarrow=S.t+14; S.mult=Math.min(2,1+(1-S.wk)*2);
     [0,1].forEach(i=>{ const P=i?PR:PL; for(let k=0;k<7;k++){ const t=i?S.wk+(old-S.wk)*Math.random():(1-old)+(old-S.wk)*Math.random(), p=q(P,t); S.crumbs.push({x:p[0],y:p[1]+4,vx:(i?1:-1)*(10+Math.random()*30),vy:-20-Math.random()*40,r:Math.random()*6,vr:(Math.random()-0.5)*6,s:3+Math.random()*4,seed:Math.floor(Math.random()*1e6)}); } });
     pl.forEach((P,i)=>{ const [lo,hi]=xRange(i,S.wk); P.x=Math.max(lo+10,Math.min(hi-10,P.x)); P.tx=Math.max(lo+10,Math.min(hi-10,P.tx)); }); }
   S.crumbs.forEach(c=>{ c.vy+=G*0.6*dt; c.x+=c.vx*dt; c.y+=c.vy*dt; c.r+=c.vr*dt; }); S.crumbs=S.crumbs.filter(c=>c.y<H+20);
@@ -221,30 +263,40 @@ function step(dt){ S.t+=dt;
   if(!sh.popped&&sh.vy+G*sh.t>=0){ sh.popped=true; const fr=Math.max(0,Math.min(1,(270-sh.ya)/(270-CEIL))), pts=Math.round((fr<0.7?40*fr*fr*fr/0.343:40+260*Math.pow((fr-0.7)/0.3,2))*S.mult); S.score+=pts; S.pops.push({x,y:sh.ya-10,pts,t:0,near:sh.ya<CEIL+14}); }
   if(!sh.miss&&sh.t>=sh.T){ S.pass++; S.series=Math.min(5,S.series+1); const from=sh.to; pl[from].x=pl[from].tx; launch(from); return; }
   if(sh.miss&&y>H+30){ S.lives--; S.series=0; server=sh.to; sh=null; wait=1.1;
-    if(S.lives<=0){ S.lives=5; S.score=0; S.wk=1; S.mult=1; S.pass=0; S.nextNarrow=S.t+14; statKey=''; pl[0].x=pl[0].tx=150; pl[1].x=pl[1].tx=690; wait=1.6; } } }
+    if(S.lives<=0){ S.lives=5; S.score=0; S.wk=1; S.mult=1; S.pass=0; S.nextNarrow=S.t+14; pl[0].x=pl[0].tx=150; pl[1].x=pl[1].tx=690; wait=1.6; } } }
 
+const reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 function frame(now){ const dt=Math.min(0.05,(now-(frame.l||now))/1000); frame.l=now; if(!reduce) step(dt);
-  const I=INKS[inkKey], key=inkKey+':'+S.wk.toFixed(4)+':'+cw+'x'+ch; if(statKey!==key){ buildStatic(S.wk); statKey=key; }
-  const tick=boilOn&&!reduce?Math.floor(now/125):0, v=tick%3;
-  ctx.setTransform(1,0,0,1,0,0); ctx.globalCompositeOperation='source-over'; ctx.drawImage(stat[v],0,0);
-  if(sprites){ const sp=sprites[v]; sprite(sp.red,pl[0].x+pl[0].d*3,yAt(0,pl[0].x)-36); sprite(sp.blue,pl[1].x+pl[1].d*3,yAt(1,pl[1].x)-36); if(sh){ const [x,y]=shPos(sh.t); sprite(sp.glow,x+3,y); } }
+  const I=INKS[inkKey], key=inkKey+JSON.stringify(K)+S.wk.toFixed(4)+cw+'x'+ch; if(statKey!==key){ buildStatic(S.wk); statKey=key; }
+  const tick=K.hz>0&&!reduce?1+Math.floor(now*K.hz/1000):0;
+  ctx.setTransform(1,0,0,1,0,0); ctx.globalCompositeOperation='source-over'; ctx.drawImage(stat[tick%stat.length],0,0);
   field(ctx); ctx.globalCompositeOperation='multiply';
-  const p=new Sk.Pen(ctx,{seed:1+tick*13,ink:I.ink,w:I.w,wob:I.wob,passes:I.passes,jit:I.jit});
-  pl.forEach((P,i)=>player(p,P.x,yAt(i,P.x),P.d,P.pose,{hair:P.hair,cap:P.cap,step:Math.floor(now/110)%2}));
-  if(sh){ const [x,y]=shPos(sh.t), vy=sh.vy+G*sh.t, a=Math.atan2(vy,sh.vx);
+  pl.forEach((P,i)=>player(pen(ctx,601+i*10,tick),P.x,yAt(i,P.x),P.d,P.pose,{hair:P.hair,cap:P.cap,step:Math.floor(now/110)%2}));
+  if(sh){ const [x,y]=shPos(sh.t), vy=sh.vy+G*sh.t, a=Math.atan2(vy,sh.vx), tp=pen(ctx,sh.id,tick,K.sha);
     const pts=[]; for(let t=0;t<=sh.t;t+=1/400) pts.push(shPos(t)); let acc=0, on=false, seg=[]; const n=pts.length;
-    for(let k=1;k<n-12;k++){ acc+=Math.hypot(pts[k][0]-pts[k-1][0],pts[k][1]-pts[k-1][1]); if(acc>(on?5:7)){ acc=0; if(on&&seg.length>1) p.stroke(seg,{w:p.w*(0.45+0.5*k/n),a:0.3+0.6*k/n,wob:0.3}); on=!on; seg=[]; } if(on) seg.push(pts[k]); }
-    shuttle(p,x,y,a,{cork:I.accent,k:1.3}); }
-  S.crumbs.forEach(c=>{ const cp=new Sk.Pen(ctx,{seed:c.seed+tick,ink:I.ink,w:I.w*0.8,wob:0.4}); const s=c.s, cs=Math.cos(c.r), sn=Math.sin(c.r), R=(u,w)=>[c.x+u*cs-w*sn,c.y+u*sn+w*cs]; cp.draw([R(-s,-s),R(s,-s),R(s,s),R(-s,s),R(-s,-s*0.8)]); cp.stroke([R(-s*0.6,s*0.6),R(s*0.6,-s*0.6)],{w:I.w*0.5}); });
-  S.pops.forEach(o=>{ const pp=new Sk.Pen(ctx,{seed:o.pts+tick,ink:I.accent,w:I.w*1.05,wob:0.6}); pp.text('+'+o.pts,o.x,o.y-o.t*18+(o.near?0:0),o.near?20:15,{align:'center',a:Math.max(0,1-o.t/1.2)}); });
-  hudDyn(p,S,I.accent);
+    for(let k=1;k<n-12;k++){ acc+=Math.hypot(pts[k][0]-pts[k-1][0],pts[k][1]-pts[k-1][1]); if(acc>(on?5:7)){ acc=0; if(on&&seg.length>1) tp.stroke(seg,{w:tp.w*(0.45+0.5*k/n),a:0.3+0.6*k/n,wob:0.3}); on=!on; seg=[]; } if(on) seg.push(pts[k]); }
+    shuttle(pen(ctx,701,tick,K.sha),x,y,a,{cork:I.accent,k:1.3}); }
+  S.crumbs.forEach(c=>{ const cp=pen(ctx,c.seed,tick); const s=c.s, cs=Math.cos(c.r), sn=Math.sin(c.r), R=(u,w)=>[c.x+u*cs-w*sn,c.y+u*sn+w*cs]; cp.draw([R(-s,-s),R(s,-s),R(s,s),R(-s,s),R(-s,-s*0.8)],{w:cp.w*0.8}); cp.stroke([R(-s*0.6,s*0.6),R(s*0.6,-s*0.6)],{w:cp.w*0.5}); });
+  S.pops.forEach(o=>{ const pp=pen(ctx,9000+o.pts,tick); pp.text('+'+o.pts,o.x,o.y-o.t*18,o.near?20:15,{align:'center',a:Math.max(0,1-o.t/1.2),ink:I.accent,w:pp.w*1.05}); });
+  hudDyn(ctx,S,tick,I.accent);
   ctx.globalCompositeOperation='source-over'; requestAnimationFrame(frame); }
 
-/* ── switches ── */
-const reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-function sync(){ document.querySelectorAll('[data-ink]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.ink===inkKey))); const bb=document.getElementById('boil'); bb.setAttribute('aria-pressed',String(boilOn)); bb.textContent=boilOn?'линии дрожат':'линии замерли'; }
-document.querySelectorAll('[data-ink]').forEach(b=>b.addEventListener('click',()=>{ inkKey=b.dataset.ink; statKey=''; try{ localStorage.setItem('sk-ink',inkKey); }catch(e){} sync(); }));
-document.getElementById('boil').addEventListener('click',()=>{ boilOn=!boilOn; try{ localStorage.setItem('sk-boil',boilOn?'1':'0'); }catch(e){} sync(); });
+/* ── switches and sliders ── */
+const box=document.getElementById('sliders');
+KN.forEach(n=>{ const d=document.createElement('div'); d.className='row'; const v=n.inv?(n.max+n.min-K[n.k]):K[n.k];
+  d.innerHTML=`<label for="k-${n.k}">${n.t}</label><output id="o-${n.k}"></output><input type="range" id="k-${n.k}" min="${n.min}" max="${n.max}" step="${n.st}" value="${v}">`; box.appendChild(d);
+  d.querySelector('input').addEventListener('input',e=>{ const x=+e.target.value; K[n.k]=n.inv?+(n.max+n.min-x).toFixed(2):x; styleKey=''; sync(); save(); }); });
+document.getElementById('cross').addEventListener('change',e=>{ K.cross=e.target.checked?1:0; styleKey=''; sync(); save(); });
+function sync(){ document.querySelectorAll('[data-ink]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.ink===inkKey)));
+  document.querySelectorAll('[data-style]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.style===styleKey)));
+  KN.forEach(n=>{ const i=document.getElementById('k-'+n.k); i.value=n.inv?(n.max+n.min-K[n.k]):K[n.k]; document.getElementById('o-'+n.k).textContent=n.f(K[n.k]); });
+  document.getElementById('cross').checked=!!K.cross;
+  document.getElementById('code').innerHTML='Набор: <b>'+(inkKey==='pen'?'ручка':'линер')+'</b>, '+KN.map(n=>n.t.split(':')[0].split(' ')[0]+' '+n.f(K[n.k])).join(', ')+(K.cross?', крест-накрест':''); }
+document.querySelectorAll('[data-ink]').forEach(b=>b.addEventListener('click',()=>{ inkKey=b.dataset.ink; sync(); save(); }));
+document.querySelectorAll('[data-style]').forEach(b=>b.addEventListener('click',()=>{ styleKey=b.dataset.style; K=Object.assign({},STYLES[styleKey]); sync(); save(); }));
+const panel=document.getElementById('panel'), more=document.getElementById('more');
+const showPanel=v=>{ panel.hidden=!v; more.setAttribute('aria-pressed',String(v)); };
+more.addEventListener('click',()=>showPanel(panel.hidden)); document.getElementById('close').addEventListener('click',()=>showPanel(false));
 window.addEventListener('resize',()=>{ clearTimeout(resize.t); resize.t=setTimeout(resize,120); });
 const start=()=>{ resize(); sync(); requestAnimationFrame(frame); };
 if(document.fonts&&document.fonts.ready) document.fonts.ready.then(start,start); else start();

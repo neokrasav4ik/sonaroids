@@ -135,6 +135,26 @@ function pgsPlatform(p,top){ var n=top.length, m=Math.floor(n*p.rnd(0.42,0.58));
   var bot=top.map(function(q,j){ return [q[0],q[1]+13*(0.6+0.4*Math.sin(Math.PI*j/(n-1)))]; });
   p.draw(bot.filter(function(v,j){ return j%2===0; }),{w:p.w*0.75,a:0.85}); p.band(top,bot,{sp:4.2,shift:-3,w:p.w*0.55});
   p.line(top[0][0],top[0][1],bot[0][0],bot[0][1],{over:2,w:p.w*0.85}); p.line(top[n-1][0],top[n-1][1],bot[n-1][0],bot[n-1][1],{over:2,w:p.w*0.85}); }
+/* 1.59r: a doodled player whose racket meets a given point: feet at (fx,fy), facing d, the racket's face centred at (cx,cy) and tilted by
+   ang (the bounce's slope). Higher than he can reach — he jumps; a racket low — he crouches */
+function pgsReach(p,fx,fy,d,cx,cy,ang,o){ o=o||{}; var k=1.15, dh=fy-cy, jump=Math.max(0,dh-80), crouch=Math.max(0,Math.min(10,22-dh)), y=fy-jump+crouch*0.6, X=function(v){ return fx+d*v; };
+  var hy=y-47*k, sx=X(1), sy=y-35*k;
+  p.loop(X(0),hy,7*k,7.5*k,{w:p.w*1.05});
+  if(o.hair) p.draw([[X(-6),hy-3],[X(-3),hy-8],[X(2),hy-8.5],[X(6),hy-4]],{w:p.w*0.9});
+  if(o.cap) p.draw([[X(-6.5),hy-2],[X(-2),hy-7.5],[X(5),hy-6],[X(12),hy-4]],{w:p.w*1.1});
+  p.draw([[X(0.5),y-39*k],[X(1.5),y-29*k],[X(1),y-19*k]]);
+  var legs=jump>0?[[-6,-12,-3,-4],[6,-12,9,-6]]:o.moving?(o.step?[[-6,-9,-12,-2],[5,-10,7,-1]]:[[-2,-10,-3,-1],[7,-8,12,-3]]):crouch>4?[[-6,-8,-9,-1],[8,-8,9,-1]]:[[-5,-11,-6,-1],[7,-11,7,-1]];
+  legs.forEach(function(l){ p.draw([[X(1),y-19*k],[X(l[0]),y+l[1]*k],[X(l[2]),y+l[3]*k]]); });
+  if(!jump&&!o.moving){ p.line(X(legs[0][2]-3),y-1*k,X(legs[0][2]+3),y-1*k,{over:1,w:p.w*0.9}); p.line(X(legs[1][2]),y-1*k,X(legs[1][2]+6),y-1*k,{over:1,w:p.w*0.9}); }
+  if(o.far&&o.moving){ p.stroke([[X(-14),y-30],[X(-26),y-31]],{w:p.w*0.5}); p.stroke([[X(-12),y-20],[X(-22),y-20]],{w:p.w*0.5}); }
+  /* the racket: an oval whose far end is at the point, along the line to the shoulder; the handle on to the hand, the arm to the handle */
+  var ux=sx-cx, uy=sy-cy, ul=Math.hypot(ux,uy)||1; ux/=ul; uy/=ul;
+  var hc=[cx+ux*8.5,cy+uy*8.5], rot=Math.atan2(uy,ux)+Math.PI/2; p.loop(hc[0],hc[1],5.5,8.5,{rot:rot,w:p.w*0.95});
+  var he=[cx+ux*17,cy+uy*17], arm=26*k, hd=[he[0]+ux*9,he[1]+uy*9], ad=Math.hypot(hd[0]-sx,hd[1]-sy);
+  if(ad>arm){ hd=[sx-ux*arm,sy-uy*arm]; } p.line(he[0],he[1],hd[0],hd[1],{over:1,w:p.w*0.9});
+  var mx=(sx+hd[0])/2, my=(sy+hd[1])/2, bend=Math.min(6,Math.max(0,(arm-Math.hypot(hd[0]-sx,hd[1]-sy))*0.4)); p.draw([[sx,sy],[mx-uy*bend*d,my+ux*bend*d],hd]);
+  p.draw([[X(0.5),sy],[X(-7),sy+(jump?-8:7)],[X(-10),sy+(jump?-14:13)]]);
+  if(o.hit){ p.stroke([[cx-d*4,cy-12],[cx+d*8,cy-16]],{w:p.w*0.5}); p.stroke([[cx-d*2,cy-7],[cx+d*12,cy-9]],{w:p.w*0.5}); } }
 function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ return v*390; }, I=PGS_ST;
   /* the page: paper and the ceiling, kept until the screen changes size */
   var key=W+'x'+H; if(PGS.key!==key){ PGS.key=key; var bg=document.createElement('canvas'); bg.width=W; bg.height=H; var bc=bg.getContext('2d'); bc.scale(dpr,dpr); Sk.paper(bc,W/dpr,H/dpr,dpr,{seed:7});
@@ -148,16 +168,42 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
   var fl=ar*(1-PG_V.fw)/2, fr=ar*(1+PG_V.fw)/2, pe=pgsPen(c,151);
   if(PG_V.wall>=0.5){ pe.line(F(fl),F(JG_TOP)+4,F(fl)+1,386); pe.line(F(fr),F(JG_TOP)+4,F(fr)-1,386); }
   var nt=ARC.netTop===undefined?PG_NET0:ARC.netTop; if(nt<0.97){ pe.line(F(ar/2),F(nt),F(ar/2)+1,392,{w:pe.w*1.2}); pe.line(F(ar/2)-6,F(nt),F(ar/2)+6,F(nt)-1); }
-  /* the rackets */
-  var tops=[0,1].map(function(i){ var xc=ar*(i?1-PG_XC:PG_XC), tp=[]; for(var j=0;j<=48;j++){ var x=xc-hw+2*hw*j/48; tp.push([F(x),F(pgSurf(i,x,py,ar,A).y)]); } pgsPlatform(pgsPen(c,201+100*i),tp); return {xc:xc,tp:tp}; });
-  /* the players: the one the ball is coming to runs to where it will land (stands just behind it, racket low); a hit — a swing */
+  /* 1.59r (Ден 22:00: «половина движения ладони — на платформу, половина — на ракетку в руках человечка, и чтобы волан отскакивал от
+     ракетки»; 22:02: «посмотрел бы на все три варианта»). Под ладонью не меняется ничего: точка, о которую бьётся волан, ходит ровно как
+     ракетка до сих пор (pgSurf при ARC.py). Меняется только рисунок — где стоит платформа и сколько добирает рука:
+     А — платформа идёт за ладонью на часть хода (ползунок «доля руки»), остальное — рука; Б — плавное движение ладони ведёт платформу
+     (сглаживание — ползунок), резкое уходит в замах; В — платформа стоит внизу, человечек тянется и прыгает. Ракетка в руке встаёт ровно
+     в точку удара и наклонена так, как уходит отскок */
+  var who=Math.round(PG_V.who||0), REST=0.92, OFF0=30/390, plat=py;
+  if(who===1) plat=REST+(1-(PG_V.share===undefined?0.5:PG_V.share))*(py-REST)+OFF0;
+  else if(who===2){ var tau=PG_V.stau===undefined?0.3:PG_V.stau; PGS.slow=(PGS.slow===undefined||PGS.slow===null)?py:PGS.slow+(py-PGS.slow)*(1-Math.exp(-dt/Math.max(0.02,tau))); plat=PGS.slow+OFF0; }
+  else if(who===3) plat=REST+OFF0;
+  if(who) plat=Math.max(py+5/390,Math.min(who===3?9:py+105/390,plat));
+  var tops=[0,1].map(function(i){ var xc=ar*(i?1-PG_XC:PG_XC), tp=[]; for(var j=0;j<=48;j++){ var x=xc-hw+2*hw*j/48; tp.push([F(x),F(pgSurf(i,x,plat,ar,A).y)]); } pgsPlatform(pgsPen(c,201+100*i),tp); return {xc:xc,tp:tp}; });
+  /* the players: the one the ball is coming to runs to where it will land; «как был» — stands just behind it, racket low, a hit — a swing;
+     А/Б/В — stands so that his racket meets the shuttle there */
   if(!PGS.pl) PGS.pl=[{x:ar*PG_XC},{x:ar*(1-PG_XC)}];
   var b0=(ARC.balls||[])[0], tk=b0?(b0.from===null||b0.from===undefined?'s':b0.from)+':'+(b0.vy>0?1:0)+':'+PGS.hid:'none';
-  if(tk!==PGS.tKey){ PGS.tKey=tk; PGS.tgt=[null,null]; if(b0&&b0.vy>0&&!(b0.wait>0)&&!b0.hold&&!b0.on){ var Pt=pgMeatPath(b0,py,ar); if(Pt) PGS.tgt[Pt.i]=Pt.P[0]; } }
-  [0,1].forEach(function(i){ var P=PGS.pl[i], d=i?-1:1, xc=tops[i].xc, lo=xc-hw+0.02, hi=xc+hw-0.02, want=PGS.tgt[i]!==null?PGS.tgt[i]-d*24*1.15/390:xc, tx=Math.max(lo,Math.min(hi,want));
-    P.x=Math.max(lo,Math.min(hi,P.x)); var dx=tx-P.x, v=Math.sign(dx)*Math.min(Math.abs(dx),0.95*dt); P.x+=v; var moving=Math.abs(dx)>0.004;
-    var kk=ARC.kick&&ARC.kick[i], pose=kk&&t-kk.t0<0.3?'swing':moving?'run':PGS.tgt[i]!==null?'low':'ready';
-    pgsPlayer(pgsPen(c,301+10*i),F(P.x),F(pgSurf(i,P.x,py,ar,A).y),d,pose,{hair:!i,cap:!!i,step:Math.floor(t*9)%2}); });
+  /* 1.59r (Ден 22:12: «когда ускоряется темп — человечки часто не успевают добежать.. поднимаешь платформу, чтобы войти в траекторию, —
+     и отбиваешь платформой»): куда упадёт волан — пересчёт каждый кадр, пока он летит вниз (ракетка-то ходит за ладонью), и бег — не с
+     постоянной скоростью, а догоняя: чем дальше, тем быстрее (выпад) */
+  if(tk!==PGS.tKey){ PGS.tKey=tk; PGS.tgt=[null,null]; }
+  if(b0&&b0.vy>0&&!(b0.wait>0)&&!b0.hold&&!b0.on){ var Pt=pgMeatPath(b0,py,ar); if(Pt){ PGS.tgt[Pt.i]=Pt.P[0]; PGS.tgt[1-Pt.i]=null; } }
+  var REACH=26/390, Ap=Math.tan(PG_TILT*Math.PI/180)*hw;
+  [0,1].forEach(function(i){ var P=PGS.pl[i], d=i?-1:1, xc=tops[i].xc, lo=xc-hw+0.02, hi=xc+hw-0.02, off=who?REACH:24*1.15/390;
+    /* where to stand: just behind where the shuttle lands; if that is off the plank (it lands near the far edge) — just in front, the racket
+       on the other side (backhand) */
+    if(P.side===undefined) P.side=d; var want=xc-P.side*(who?REACH:0);
+    if(PGS.tgt[i]!==null){ var L=PGS.tgt[i], sb=L-d*off; P.side=(sb>=lo&&sb<=hi)||!who?d:-d; want=L-P.side*off; }
+    var tx=Math.max(lo,Math.min(hi,want));
+    P.x=Math.max(lo,Math.min(hi,P.x)); var dx=tx-P.x, far=Math.abs(dx)>0.08, v=Math.sign(dx)*Math.min(Math.abs(dx),Math.max(2*dt,Math.abs(dx)*(1-Math.exp(-dt/0.06)))); P.x+=v; var moving=Math.abs(dx)>0.004;
+    var kk=ARC.kick&&ARC.kick[i], hit=kk&&t-kk.t0<0.3, fy=F(pgSurf(i,P.x,plat,ar,A).y);
+    if(!who){ pgsPlayer(pgsPen(c,301+10*i),F(P.x),fy,d,hit?'swing':moving?'run':PGS.tgt[i]!==null?'low':'ready',{hair:!i,cap:!!i,step:Math.floor(t*9)%2}); return; }
+    var xr=Math.max(xc-hw,Math.min(xc+hw,P.x+P.side*REACH));
+    /* the last moment: the shuttle close above this plank (or riding it) — the racket reaches for it, so they always meet */
+    var bm=b0&&!(b0.wait>0)?b0:null; if(bm&&(PGS.tgt[i]!==null||(bm.on&&bm.onI===i))&&Math.abs(bm.x-xc)<=hw+0.05){ var gap=pgSurf(i,Math.max(xc-hw,Math.min(xc+hw,bm.x)),py,ar,A).y-bm.y, wv=Math.max(0,Math.min(1,1-gap/0.14)); xr=Math.max(xc-hw,Math.min(xc+hw,xr+(bm.x-xr)*wv)); }
+    var S=pgSurf(i,xr,py,ar,A), sl=S.s*Ap/hw*S.f;
+    pgsReach(pgsPen(c,301+10*i),F(P.x),fy,d,F(xr),F(S.y),Math.atan(sl),{hair:!i,cap:!!i,moving:moving,far:far,hit:hit,step:Math.floor(t*9)%2}); });
   /* the shuttle and its dashed trail (since the last hit) */
   (ARC.balls||[]).forEach(function(b,bi){ if(bi===0){ var hk=(b.from===null||b.from===undefined?'s':b.from)+':'+(b.wait>0?'w':'f'); if(hk!==PGS.hb){ PGS.hb=hk; PGS.hid++; PGS.hist=[]; }
       var last=PGS.hist[PGS.hist.length-1]; if(!(b.wait>0)&&(!last||Math.hypot(b.x-last[0],b.y-last[1])>0.002)) PGS.hist.push([b.x,b.y]); }

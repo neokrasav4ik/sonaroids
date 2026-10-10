@@ -569,6 +569,13 @@ var PG_CB=0.08, PG_CT=0.75;
    Теперь: (1) пока ловится низ, ракетки стоят внизу — там, где будут при ладони в нижней точке, и рука не гонится за ними; (2) видно, как
    набирается удержание (кружки); (3) допуск дрожи 1 → 1,4 см; (4) ловится то же, по чему ходят ракетки (в «Подстроить заново» — смесь). */
 var PG_CAL_TOL=14;
+/* 1.59s (Ден 22:44, запись 22:42: «сыграл одну игру норм.. а потом что-то сломалось в калибровке»; 22:48 — «да, можно»): ладонь
+   привязалась к шкале в неудачный миг (грубая дальность в ту секунду прыгала) — вся высота съехала на ~6 см, низ поймался на 3,3 см
+   вместо обычных 9–10, а расхождение точной и грубой высоты на удержаниях вышло −65 мм (обычно 0…−17). С таким сдвигом смесь тянула
+   ракетки мимо ладони; помогла только перезагрузка. Теперь: расхождение больше 4 см — калибровка не принимается, второй заход, и в нём,
+   когда пойман низ, шкала привязывается заново — по нижней точке (так, как стояла во всех нормальных записях: низ около 9–11 см).
+   На записи 22:42 это даёт расхождение на удержаниях около −20 мм вместо −65. Во второй раз — принимается как есть (без петли) */
+var PG_CAL_BAD=40;
 function pgCalH(){ return ARC.dist; }   // 1.58z24: удержания — по высоте; смесь подгоняется к ним сдвигом (см. mixFrame)
 function pgCalStart(){ ARC.c2={step:1,buf:[],k:-1}; ARC.T=ARC.T&&ARC.T.lin?ARC.T:Tune.create(100,true); ARC.T.ok=false;
   arcText('Опусти ладонь','В нижнюю точку удара — откуда начинаешь бить снизу. Ракетки уже внизу. Держи.'); }
@@ -582,10 +589,22 @@ function pgCalStep(now){ var c=ARC.c2; if(!c) return; var h=pgCalH();
   var hs=c.buf.map(function(q){ return q.h; }).sort(function(a,b){ return a-b; }), lo=hs[Math.floor(hs.length*0.1)], hi=hs[Math.floor(hs.length*0.9)], med=hs[hs.length>>1];
   if(hi-lo>PG_CAL_TOL) return;
   var dds=c.buf.filter(function(q){ return q.a!==null&&q.a!==undefined; }).map(function(q){ return q.h-q.a; });
+  if(c.step===1&&c.redo){ var rc=DSP2.recenter(); if(rc){ med+=rc.shift; dds=[]; arcEv('cal:привязка:'+rc.shift.toFixed(0)); } }   // 1.59s: второй заход — привязка заново, по нижней точке
+  /* 1.59s (Ден 22:44–22:51, записи 22:42 и 22:50: «что-то сломалось в калибровке.. постоянно сбивается.. то слишком чувствительно, то
+     наоборот»). Шкала высот привязывается (центровка звука) через 0,8 с после того, как ладонь появилась, — там, где она в тот миг. Вчера
+     ладонь приходила сразу вниз, и низ удара стоял около 90–110 мм; сегодня она появлялась выше (на 13–17 см), привязка вставала туда, и вся
+     игра шла ниже середины шкалы — а там грубая дальность нарочно подтягивает точную слабо (у стола она врёт вверх). Точная высота уплывала
+     вниз (в 22:50 к −30 мм), поймался ход в 37 мм вместо обычных 70–80 — отсюда «то слишком чувствительно, то наоборот». Теперь, когда
+     пойман низ, шкала привязывается заново — по нижней точке удара (низ = 100 мм, как во всех нормальных записях). На записи 22:50 ход
+     вышел 59 мм, точная высота за игру больше не уплывает (медиана 112 → 108 мм вместо 9 → 1), на вчерашних записях почти ничего не меняется */
+  if(c.step===1){ var rc=DSP2.recenter(); if(rc){ med+=rc.shift; dds=[]; ARC.mxH=null; arcEv('cal:привязка:'+rc.shift.toFixed(0)); } }
   if(c.step===1){ c.dd=dds; c.hb=med; c.step=2; c.buf=[]; c.k=-1; ARC.T={field:100,ok:false,lin:{b:med,t:med+100}}; sfx('level'); arcEv('cal:низ:'+med.toFixed(0));
     arcText('Теперь подними','На удобную высоту — где будешь бить сверху. Держи.'); return; }
   if(c.step===2&&med>c.hb+35){ var top=Math.min(c.hb+160,med); ARC.T={field:top-c.hb,ok:true,lin:{b:c.hb,t:top}}; ARC.c2=null; c.dd=(c.dd||[]).concat(dds);
-    if(c.dd.length>=20){ var sd=c.dd.slice().sort(function(p,q){ return p-q; }); ARC.mxCal=sd[sd.length>>1]; ARC.mxOff=ARC.mxCal; ARC.mxH=null; arcEv('cal:сдвиг:'+ARC.mxCal.toFixed(0)); } sfx('level'); arcEv('cal:верх:'+top.toFixed(0));
+    if(c.dd.length>=20){ var sd=c.dd.slice().sort(function(p,q){ return p-q; }), mc=sd[sd.length>>1];
+      if(Math.abs(mc)>PG_CAL_BAD&&!c.redo){ arcEv('cal:сбилась:'+mc.toFixed(0)); ARC.c2={step:1,buf:[],k:-1,redo:true}; ARC.T.ok=false; sfx('jland');
+        arcText('Ещё раз','Привязка сбилась — поймаю заново. Опусти ладонь в нижнюю точку удара и держи.'); return; }
+      ARC.mxCal=mc; ARC.mxOff=ARC.mxCal; ARC.mxH=null; arcEv('cal:сдвиг:'+ARC.mxCal.toFixed(0)); } sfx('level'); arcEv('cal:верх:'+top.toFixed(0));
     if(ARC.onCaught){ var f=ARC.onCaught; ARC.onCaught=null; f(); } } }
 function jgRawFrac(T,h){ if(T.lin) return PG_CB+(PG_CT-PG_CB)*(h-T.lin.b)/Math.max(30,T.lin.t-T.lin.b); var FL=2*T.field/(1+Tune.ASYM), FU=2*Tune.ASYM*T.field/(1+Tune.ASYM); return h<100?0.5+(h-100)/FL:0.5+(h-100)/FU; }
 function jgPad(dt){ if(ARC.c2&&ARC.c2.step===1){ ARC.py=JG_PAD_LO-PG_CB*jgPadH(); return; }   // 1.58z17: пока ловится низ — ракетки внизу, рука за ними не гонится

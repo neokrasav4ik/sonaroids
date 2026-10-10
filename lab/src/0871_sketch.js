@@ -121,7 +121,7 @@ function pgsPlayer(p,x,y,d,pose,o){ o=o||{}; var X=function(v){ return x+d*v; },
     p.line(X(11),y-52*k,X(14),y-60*k,{over:1}); p.loop(X(16.5),y-68*k,5*k,8*k,{rot:d*0.3}); }
   else if(pose==='low'){ p.draw([[X(0.5),y-35*k],[X(9),y-25*k],[X(14),y-16*k]]); p.draw([[X(0.5),y-35*k],[X(-7),y-29*k],[X(-10),y-23*k]]);
     p.line(X(14),y-16*k,X(19),y-11*k,{over:1}); p.loop(X(24),y-6*k,5*k,8*k,{rot:d*1.0}); }
-  else { p.draw([[X(0.5),y-35*k],[X(8),y-30*k],[X(13),y-34*k]]); p.draw([[X(0.5),y-35*k],[X(-6),y-28*k],[X(-8),y-22*k]]);
+  else if(pose!=='hold'){ p.draw([[X(0.5),y-35*k],[X(8),y-30*k],[X(13),y-34*k]]); p.draw([[X(0.5),y-35*k],[X(-6),y-28*k],[X(-8),y-22*k]]);
     p.line(X(13),y-34*k,X(17),y-41*k,{over:1}); p.loop(X(19.5),y-48.5*k,5*k,8*k,{rot:d*0.5}); }
   if(pose!=='run'){ p.line(X(legs[0][2]-3),y-1*k,X(legs[0][2]+3),y-1*k,{over:1,w:p.w*0.9}); p.line(X(legs[1][2]),y-1*k,X(legs[1][2]+6),y-1*k,{over:1,w:p.w*0.9}); } }
 /* the shuttlecock, cork first along angle a */
@@ -155,6 +155,26 @@ function pgsReach(p,fx,fy,d,cx,cy,ang,o){ o=o||{}; var k=1.15, dh=fy-cy, jump=Ma
   var mx=(sx+hd[0])/2, my=(sy+hd[1])/2, bend=Math.min(6,Math.max(0,(arm-Math.hypot(hd[0]-sx,hd[1]-sy))*0.4)); p.draw([[sx,sy],[mx-uy*bend*d,my+ux*bend*d],hd]);
   p.draw([[X(0.5),sy],[X(-7),sy+(jump?-8:7)],[X(-10),sy+(jump?-14:13)]]);
   if(o.hit){ p.stroke([[cx-d*4,cy-12],[cx+d*8,cy-16]],{w:p.w*0.5}); p.stroke([[cx-d*2,cy-7],[cx+d*12,cy-9]],{w:p.w*0.5}); } }
+/* 1.59t: «пожарные с тентом» (Ден 23:37–23:42: тент — Л1, подъёмники-«ножницы»). Двое на подъёмниках держат тент за концы, руки — там,
+   где ладонь (ARC.py); полотно — там, где оно по физике (с мягкостью отстаёт от рук, видно по натянутым лямкам). Подъёмники стоят на земле
+   и раздвигаются, при сужении подъезжают друг к другу */
+function pgsLift(p,x,top,gy,w){ var n=Math.max(1,Math.round((gy-12-top)/26)), h=(gy-12-top)/n, i;
+  p.draw([[x-w/2-4,gy],[x+w/2+4,gy]],{w:p.w*1.1}); p.draw([[x-w/2,gy],[x-w/2,gy-12],[x+w/2,gy-12],[x+w/2,gy]]); p.loop(x-w/2+6,gy+1,3,3,{w:p.w*0.8}); p.loop(x+w/2-6,gy+1,3,3,{w:p.w*0.8});
+  for(i=0;i<n;i++){ var y0=gy-12-i*h, y1=y0-h; p.line(x-w/2,y0,x+w/2,y1,{over:1,w:p.w*0.75}); p.line(x+w/2,y0,x-w/2,y1,{over:1,w:p.w*0.75}); }
+  p.draw([[x-w/2-3,top],[x+w/2+3,top]],{w:p.w*1.2}); p.draw([[x-w/2-3,top],[x-w/2-3,top-11],[x+w/2+3,top-11],[x+w/2+3,top]],{w:p.w*0.55,a:0.8}); }
+function pgsTent(c,i,tp,xc,hw,ar,A,hand,t){ var F=function(v){ return v*390; }, d=i?-1:1, n=tp.length, p=pgsPen(c,231+100*i), GY=Math.min(386,F(1)-4);
+  p.draw(tp,{w:p.w*1.3}); var low=tp.map(function(q,j){ return [q[0],q[1]+5+5*Math.sin(Math.PI*j/(n-1))]; }); p.draw(low,{w:p.w*0.65,a:0.8});
+  for(var j=6;j<n-5;j+=7) p.stroke([tp[j],[tp[j][0]+d*3,low[j][1]+3]],{w:p.w*0.33});
+  [0,n-1].forEach(function(e,k){ var x=xc+(e?1:-1)*hw, hy=F(pgSurf(i,x,hand,ar,A).y), hx=tp[e][0], s=k?1:-1;   /* s: −1 the left end, +1 the right */
+    var fx=hx+s*9, deck=hy+60, pf=pgsPen(c,241+100*i+10*k); pgsLift(pgsPen(c,251+100*i+10*k),fx,deck,GY,30);
+    if(Math.abs(hy-tp[e][1])>1.5) pf.line(hx,hy,tp[e][0],tp[e][1],{over:0.5,w:pf.w*0.6});   /* a strap: the cloth lags behind the hands */
+    pf.loop(hx,tp[e][1],2.5,2.5,{w:pf.w*0.7});
+    var kk=ARC.kick&&ARC.kick[i], hit=kk&&t-kk.t0<0.25, jy=hit?-3:0;
+    pgsPlayer(pf,fx,deck+jy,-s,'hold',{k:1.0});
+    /* his arms go up to the corner: redraw them over the doodle's ready arms */
+    var sx=fx-s*0.5, sy=deck+jy-35; pf.draw([[sx,sy],[(sx+hx)/2-s*2,(sy+hy)/2+2],[hx,hy]],{w:pf.w*0.95}); pf.draw([[sx,sy],[(sx+hx)/2+s*3,(sy+hy)/2+5],[hx+s*3,hy+3]],{w:pf.w*0.9});
+    var hb=deck+jy-47; pf.draw([[fx+s*8,hb-1],[fx+s*6,hb-9],[fx-s*3,hb-11],[fx-s*8,hb-5],[fx-s*13,hb-3]],{w:pf.w*1.05});   /* the helmet */
+  }); }
 function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ return v*390; }, I=PGS_ST;
   /* the page: paper and the ceiling, kept until the screen changes size */
   var key=W+'x'+H; if(PGS.key!==key){ PGS.key=key; var bg=document.createElement('canvas'); bg.width=W; bg.height=H; var bc=bg.getContext('2d'); bc.scale(dpr,dpr); Sk.paper(bc,W/dpr,H/dpr,dpr,{seed:7});
@@ -163,7 +183,7 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
     var tp=[], bt=[]; for(var x=0;x<=FW;x+=2){ tp.push([x,CE-0.5]); bt.push([x,CE-8-6*Sk.noise(x/40)-p0.rnd(0,3)]); } p0.band(tp,bt,{sp:6,shift:4,w:p0.w*0.5,a:0.7});
     Sk.lay(bc,L,0,0,{alpha:1}); PGS.bg=bg; }
   c.setTransform(1,0,0,1,0,0); c.drawImage(PGS.bg,0,0); c.setTransform(U,0,0,U,0,0); c.globalCompositeOperation='multiply';
-  var hw=pgHw(ar), A=PG_V.curve>=0.5?pgCupA():Math.tan(PG_TILTV*Math.PI/180)*hw, py=ARC.py, t=ARC.t||0, dt=PGS.tLast===null?0:Math.max(0,Math.min(0.1,t-PGS.tLast)); PGS.tLast=t;
+  var hw=pgHw(ar), A=PG_V.curve>=0.5?pgCupA():Math.tan(PG_TILTV*Math.PI/180)*hw, hand=ARC.py, py=ARC.padSoft!==null&&ARC.padSoft!==undefined?ARC.padSoft:ARC.py, t=ARC.t||0, dt=PGS.tLast===null?0:Math.max(0,Math.min(0.1,t-PGS.tLast)); PGS.tLast=t;
   /* the field's edges and the net, if the rules have them */
   var fl=ar*(1-PG_V.fw)/2, fr=ar*(1+PG_V.fw)/2, pe=pgsPen(c,151);
   if(PG_V.wall>=0.5){ pe.line(F(fl),F(JG_TOP)+4,F(fl)+1,386); pe.line(F(fr),F(JG_TOP)+4,F(fr)-1,386); }
@@ -179,10 +199,12 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
   else if(who===2){ var tau=PG_V.stau===undefined?0.3:PG_V.stau; PGS.slow=(PGS.slow===undefined||PGS.slow===null)?py:PGS.slow+(py-PGS.slow)*(1-Math.exp(-dt/Math.max(0.02,tau))); plat=PGS.slow+OFF0; }
   else if(who===3) plat=REST+OFF0;
   if(who) plat=Math.max(py+5/390,Math.min(who===3?9:py+105/390,plat));
-  var tops=[0,1].map(function(i){ var xc=ar*(i?1-PG_XC:PG_XC), tp=[]; for(var j=0;j<=48;j++){ var x=xc-hw+2*hw*j/48; tp.push([F(x),F(pgSurf(i,x,plat,ar,A).y)]); } pgsPlatform(pgsPen(c,201+100*i),tp); return {xc:xc,tp:tp}; });
+  if(who===4) plat=py;
+  var tops=[0,1].map(function(i){ var xc=ar*(i?1-PG_XC:PG_XC), tp=[]; for(var j=0;j<=48;j++){ var x=xc-hw+2*hw*j/48; tp.push([F(x),F(pgSurf(i,x,plat,ar,A).y)]); } if(who===4) pgsTent(c,i,tp,xc,hw,ar,A,hand,t); else pgsPlatform(pgsPen(c,201+100*i),tp); return {xc:xc,tp:tp}; });
   /* the players: the one the ball is coming to runs to where it will land; «как был» — stands just behind it, racket low, a hit — a swing;
      А/Б/В — stands so that his racket meets the shuttle there */
   if(!PGS.pl) PGS.pl=[{x:ar*PG_XC},{x:ar*(1-PG_XC)}];
+  var noRun=who===4;
   var b0=(ARC.balls||[])[0], tk=b0?(b0.from===null||b0.from===undefined?'s':b0.from)+':'+(b0.vy>0?1:0)+':'+PGS.hid:'none';
   /* 1.59r (Ден 22:12: «когда ускоряется темп — человечки часто не успевают добежать.. поднимаешь платформу, чтобы войти в траекторию, —
      и отбиваешь платформой»): куда упадёт волан — пересчёт каждый кадр, пока он летит вниз (ракетка-то ходит за ладонью), и бег — не с
@@ -190,7 +212,7 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
   if(tk!==PGS.tKey){ PGS.tKey=tk; PGS.tgt=[null,null]; }
   if(b0&&b0.vy>0&&!(b0.wait>0)&&!b0.hold&&!b0.on){ var Pt=pgMeatPath(b0,py,ar); if(Pt){ PGS.tgt[Pt.i]=Pt.P[0]; PGS.tgt[1-Pt.i]=null; } }
   var REACH=26/390, Ap=Math.tan(PG_TILT*Math.PI/180)*hw;
-  [0,1].forEach(function(i){ var P=PGS.pl[i], d=i?-1:1, xc=tops[i].xc, lo=xc-hw+0.02, hi=xc+hw-0.02, off=who?REACH:24*1.15/390;
+  if(!noRun) [0,1].forEach(function(i){ var P=PGS.pl[i], d=i?-1:1, xc=tops[i].xc, lo=xc-hw+0.02, hi=xc+hw-0.02, off=who?REACH:24*1.15/390;
     /* where to stand: just behind where the shuttle lands; if that is off the plank (it lands near the far edge) — just in front, the racket
        on the other side (backhand) */
     if(P.side===undefined) P.side=d; var want=xc-P.side*(who?REACH:0);

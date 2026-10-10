@@ -2047,7 +2047,7 @@ function arcInit(){ var g=ARC.game; ARC.py=0.5; ARC.score=0; ARC.lives=3; ARC.t=
     ARC.cans=0; ARC.crashes=0; ARC.grassT=0; ARC.onGrass=false; ARC.inv=0; ARC.flash=0; ARC.dash=0; }
   if(g==='cave'){ ARC.cols=[]; ARC.cx=0; ARC.cc=0.5; ARC.cg=0.62; ARC.ctg=0.5; ARC.v=0.45; ARC.hits=0; ARC.inv=0; ARC.flash=0; }
   if(g==='follow'){ ARC.fw=fwScript(); ARC.fwI=-1; ARC.fwBeat=0; ARC.fwCm=5; }
-  if(g==='pong'){ ARC.meat=pgMeatNew(); ARC.py=JG_PAD_LO-0.5*jgPadH(); ARC.padPrev=null; ARC.balls=[]; ARC.respawn=0.3; ARC.serve=0; ARC.streak=0; ARC.pbest=0; ARC.passes=0; ARC.series=0; ARC.nets=0; ARC.falls=0; ARC.tosses=0; ARC.netY=0; ARC.clean=0; ARC.narrowK=1; ARC.score=0; ARC.bestPts=0; ARC.ceils=0; ARC.say=0; ARC.flash=0; ARC.pf=[]; ARC.paused=false; }
+  if(g==='pong'){ ARC.soft=null; ARC.padSoft=null; ARC.meat=pgMeatNew(); ARC.py=JG_PAD_LO-0.5*jgPadH(); ARC.padPrev=null; ARC.balls=[]; ARC.respawn=0.3; ARC.serve=0; ARC.streak=0; ARC.pbest=0; ARC.passes=0; ARC.series=0; ARC.nets=0; ARC.falls=0; ARC.tosses=0; ARC.netY=0; ARC.clean=0; ARC.narrowK=1; ARC.score=0; ARC.bestPts=0; ARC.ceils=0; ARC.say=0; ARC.flash=0; ARC.pf=[]; ARC.paused=false; }
   if(g==='juggle'){ ARC.py=JG_PAD_LO-0.5*jgPadH(); ARC.padPrev=null; ARC.balls=[jgBall(0,ARC.py-JG_R,true)]; ARC.nb=1; ARC.stars=[]; ARC.nst=0; ARC.combo=0; ARC.comboMax=0;
     ARC.tosses=0; ARC.burns=0; ARC.ceils=0; ARC.falls=0; ARC.bestH=0; ARC.lastH=null; ARC.lastTouch=false; ARC.bestPts=0; ARC.lastPts=null; ARC.vmax=0; ARC.vlast=0; ARC.respawn=0; ARC.say=0; ARC.flash=0; ARC.pf=[]; ARC.recFull=false; ARC.paused=false; }
 }
@@ -2097,9 +2097,10 @@ PG_SL=[{k:'g',t:'Тяжесть',min:0.8,max:4.5,st:0.1,d:1.8,rec:1.8},{k:'hit',
   {k:'stars',t:'Звёзды',min:0,max:1,st:1,d:0,opts:[0,1],help:'Две звезды на одной из дуг, достижимых со следующего удара (как кольцо, но на другой дуге): по +15 за каждую.'},
   {k:'bricks',t:'Кирпичи',min:0,max:1,st:1,d:0,opts:[0,1],help:'Ряд кирпичей под самым потолком — ровно там, куда могут долететь вершины самых высоких пасов при нынешней ширине ракеток. Высокая дуга разбивает кирпич (+12) и летит дальше; весь ряд — +80 и новый. Потолок по-прежнему штрафует.'},
   {k:'skin',t:'Рисунок',min:0,max:1,st:1,d:0,opts:[0,1],help:'«Набросок» — всё нарисовано от руки чёрным линером на бумаге из блокнота: ракетки — дощечки со штриховкой, на них человечки с ракетками, мяч — волан. Тот, к кому летит волан, бежит туда, где он упадёт; при ударе — замах. Только картинка: физика и правила те же.'},
-  {k:'who',t:'Человечек',min:0,max:3,st:1,d:0,opts:[0,1,2,3],help:'Только для «наброска». Под ладонью ничего не меняется — волан бьётся о ту же точку, что и раньше; меняется, как это нарисовано. «Для вида» — волан отскакивает от платформы, человечек рядом. А — платформа идёт за ладонью на часть хода, остальное добирает рука с ракеткой. Б — плавное движение ладони ведёт платформу, резкое уходит в замах ракеткой. В — платформа стоит внизу, человечек тянется и прыгает. В А, Б и В волан отбивает ракетка в руке.'},
+  {k:'who',t:'Человечек',min:0,max:4,st:1,d:0,opts:[0,1,2,3,4],help:'Только для «наброска». Под ладонью ничего не меняется — волан бьётся о ту же точку, что и раньше; меняется, как это нарисовано. «Для вида» — волан отскакивает от платформы, человечек рядом. А — платформа идёт за ладонью на часть хода, остальное добирает рука с ракеткой. Б — плавное движение ладони ведёт платформу, резкое уходит в замах ракеткой. В — платформа стоит внизу, человечек тянется и прыгает. В А, Б и В волан отбивает ракетка в руке. «Пожарные» — двое на подъёмниках держат тент за концы, волан отскакивает от тента.'},
   {k:'share',t:'Доля руки (А)',min:0.2,max:0.7,st:0.05,d:0.5,help:'Сколько хода ладони уходит в руку с ракеткой, остальное — в платформу.'},
   {k:'stau',t:'Плавность платформы (Б)',min:0.1,max:0.8,st:0.05,d:0.3,help:'Как быстро платформа догоняет ладонь: меньше — платформа почти как ладонь, больше — плывёт, а взмахи уходят в руку.'},
+  {k:'soft',t:'Мягкость тента',min:0,max:1,st:0.05,d:0,help:'Меняет игру, не только картинку. 0 — как было. Больше — то, обо что бьётся мяч, догоняет ладонь на пружине: на резком взмахе сначала проседает, потом отдаёт. Лучше всего видно с «пожарными с тентом».'},
   {k:'lives',t:'Мячей',min:0,max:10,st:1,d:5,opts:[3,5,10,0],help:'Сколько мячей можно уронить.',rec:5},{k:'tsec',t:'Время',min:110,max:500,st:10,d:250,rec:250},
   {k:'pts',t:'Очки',min:0,max:1,st:1,d:0,opts:[0,1],help:'«За пас» — высота не важна.',rec:0},{k:'pexp',t:'Крутизна очков',min:1,max:5,st:0.5,d:3,rec:3},{k:'phill',t:'Горка у потолка',min:0,max:2,st:1,d:0,opts:[0,1,2]},{k:'mult',t:'Множитель за узкие ракетки',min:0,max:2,st:1,d:1,opts:[1,2,0],help:'Узкие ракетки — больше очков.',rec:1},{k:'combo',t:'Серия',min:0,max:2,st:1,d:2,opts:[0,2,1],help:'+10% за чистый пас подряд. Длинная — осторожно, короткая — компромисс, без серии — смело.',rec:2},{k:'svis',t:'Серия на экране',min:0,max:2,st:1,d:0,opts:[0,1,2],help:'Точки, полоска у счёта или свечение вокруг мяча.'},{k:'ceil',t:'Потолок',min:0,max:1,st:1,d:0,opts:[0,1],help:'«Мяч потерян» — очень жёстко.',rec:0}],
 /* 1.58z10 (Ден 20:20–20:21: «очки растут ещё круче с высотой — добавь опцией.. это важнее; не сбрасывать серию — было бы странным»):
@@ -2190,11 +2191,11 @@ function pgAngles(ar){ ar=ar||((typeof innerWidth!=='undefined'&&innerHeight)?in
   return {lo:Math.ceil(lo),hi:Math.floor(hi),ok:Math.floor(hi)>=Math.ceil(lo)}; }
 function pgNamed(){ try{ var o=JSON.parse(localStorage.getItem('sonar_pg_named')||'{}'); return o&&typeof o==='object'?o:{}; }catch(e){ return {}; } }
 function pgNamedSave(m){ try{ localStorage.setItem('sonar_pg_named',JSON.stringify(m)); }catch(e){} }
-function pgFmt(q,v){ if(q.k==='who') return ['для вида','А: пополам по высоте','Б: резкое — в замах','В: он прыгает'][Math.round(v)]||'для вида'; if(q.k==='share') return Math.round(v*100)+'%'; if(q.k==='stau') return v.toFixed(2).replace('.',',')+' с'; if(q.k==='skin') return Math.round(v)?'набросок ручкой':'как был'; if(q.k==='rings'||q.k==='stars'||q.k==='bricks') return Math.round(v)?'есть':'нет'; if(q.k==='gsec') return Math.round(v)+' с'; if(q.k==='phill') return ['нет','ровно','круто'][Math.round(v)]||'нет'; if(q.k==='grow') return ['нет','за 10 чистых пасов','по времени','каждые '+Math.round(PG_V.gsec||30)+' с'][Math.round(v)]||'нет'; if(q.k==='pts') return ['за высоту дуги','за пас'][Math.round(v)]||'за высоту дуги'; if(q.k==='pexp') return (Math.round(v*10)/10).toFixed(1).replace('.',','); if(q.k==='combo') return ['нет','длинная, до ×2','короткая, до ×1,5'][Math.round(v)]||'нет'; if(q.k==='mult') return ['нет','до ×5','до ×2'][Math.round(v)]||'нет'; if(q.k==='ceil') return v>=0.5?'мяч потерян':'пас без очков'; if(q.k==='lives') return v>0?String(Math.round(v)):'без счёта'; if(q.k==='tsec') return Math.round(PG_V.grow)===3?'нет (сужение без конца)':v>110?Math.round(v)+' с':'без ограничения'; if(q.k==='svis') return ['точки','полоска','свечение мяча'][Math.round(v)]||'точки'; if(q.k==='look') return ['волны','гладкая','на пружинах'][Math.round(v)]||'волны'; if(q.k==='curve') return ['нет','ровная','чаша','настоящая дуга'][Math.round(v)]||'нет'; if(q.k==='grow') return v>=0.5?'есть':'нет'; if(q.k==='wall'||q.k==='grip') return v>=0.5?'есть':'нет'; if(q.k==='tilti'||q.k==='tilto') return v>0.5?String(Math.round(v)):'по закону'; return q.k==='tilt'||q.k==='tiltv'?String(Math.round(v)):(Math.round(v*100)/100).toFixed(2).replace('.',','); }
+function pgFmt(q,v){ if(q.k==='who') return ['для вида','А: пополам по высоте','Б: резкое — в замах','В: он прыгает','пожарные с тентом'][Math.round(v)]||'для вида'; if(q.k==='soft') return v>0.001?Math.round(v*100)+'%':'нет'; if(q.k==='share') return Math.round(v*100)+'%'; if(q.k==='stau') return v.toFixed(2).replace('.',',')+' с'; if(q.k==='skin') return Math.round(v)?'набросок ручкой':'как был'; if(q.k==='rings'||q.k==='stars'||q.k==='bricks') return Math.round(v)?'есть':'нет'; if(q.k==='gsec') return Math.round(v)+' с'; if(q.k==='phill') return ['нет','ровно','круто'][Math.round(v)]||'нет'; if(q.k==='grow') return ['нет','за 10 чистых пасов','по времени','каждые '+Math.round(PG_V.gsec||30)+' с'][Math.round(v)]||'нет'; if(q.k==='pts') return ['за высоту дуги','за пас'][Math.round(v)]||'за высоту дуги'; if(q.k==='pexp') return (Math.round(v*10)/10).toFixed(1).replace('.',','); if(q.k==='combo') return ['нет','длинная, до ×2','короткая, до ×1,5'][Math.round(v)]||'нет'; if(q.k==='mult') return ['нет','до ×5','до ×2'][Math.round(v)]||'нет'; if(q.k==='ceil') return v>=0.5?'мяч потерян':'пас без очков'; if(q.k==='lives') return v>0?String(Math.round(v)):'без счёта'; if(q.k==='tsec') return Math.round(PG_V.grow)===3?'нет (сужение без конца)':v>110?Math.round(v)+' с':'без ограничения'; if(q.k==='svis') return ['точки','полоска','свечение мяча'][Math.round(v)]||'точки'; if(q.k==='look') return ['волны','гладкая','на пружинах'][Math.round(v)]||'волны'; if(q.k==='curve') return ['нет','ровная','чаша','настоящая дуга'][Math.round(v)]||'нет'; if(q.k==='grow') return v>=0.5?'есть':'нет'; if(q.k==='wall'||q.k==='grip') return v>=0.5?'есть':'нет'; if(q.k==='tilti'||q.k==='tilto') return v>0.5?String(Math.round(v)):'по закону'; return q.k==='tilt'||q.k==='tiltv'?String(Math.round(v)):(Math.round(v*100)/100).toFixed(2).replace('.',','); }
 /* 1.58z4 (Ден 18:13: «скомпонуй пункты меню паузы — невозможно никуда попасть.. сделай подменю.. и это меню — перед игрой и в паузе»):
    настройки СонаПонга разложены по разделам: Наборы, Мяч, Ракетки, Поле, Игра и ладонь, Как играть. На главной странице меню — крупные
    действия и кнопки разделов с текущими значениями мелко; раздел — отдельная страница, 3 в ряд, крупно */
-var PG_SECS={ball:['g','hit','e','vx'],rack:['hwr','tilto','tilt','tilti','tiltv','curve','look','grip','spr'],field:['fw','wall'],rules:['lives','tsec','grow','gsec','pts','pexp','mult','combo','svis','ceil'],meat:['rings','stars','bricks'],look:['skin','who','share','stau']};
+var PG_SECS={ball:['g','hit','e','vx'],rack:['hwr','tilto','tilt','tilti','tiltv','curve','look','grip','spr'],field:['fw','wall'],rules:['lives','tsec','grow','gsec','pts','pexp','mult','combo','svis','ceil'],meat:['rings','stars','bricks'],look:['skin','who','share','stau','soft']};
 /* 1.58z13 (Ден 09.10 11:25, п. 6: «в установке времени игры сделай ползунок в секундах 120–500»): время — ползунок 120–500 с, крайнее левое
    положение — «без ограничения» (для тренировки) */
 /* 1.58z20 (Ден 09.10 14:30: «добавь вариант, чтобы ракетка сужалась каждые N секунд, без ограничений по времени и без ограничения минимум 40%»):
@@ -2622,6 +2623,12 @@ var ARC_STEP={
   pong:function(dt){ if(pgTime()>0&&ARC.t>=pgTime()&&!ARC.over){ ARC.over=true; arcEv('time-up'); return; }
     var gmS=Math.round(PG_V.grow); if(gmS===2||gmS===3){ var tk=gmS===3?Math.pow(0.875,Math.floor(ARC.t/pgNarrowP())):1-0.125*Math.min(4,Math.floor(ARC.t/pgNarrowP())); if((ARC.narrowK||1)>tk+1e-6){ ARC.narrowK=tk; arcEv('narrow:'+tk.toFixed(gmS===3?3:1)); sfx('level'); } }
     var pad=ARC.py, vr=ARC.padPrev===null?0:(pad-ARC.padPrev)/Math.max(dt,1e-3); ARC.padPrev=pad;
+    /* 1.59t (Ден 23:37–23:39: «тент же мягкий — он должен пружинить, прогибаться.. часть взмаха должна передаваться на его прогибы и
+       отдачи.. мягкость надо щупать вживую, возможно с физикой будет интереснее»): ползунок «Мягкость тента». Края (руки пожарных) идут за
+       ладонью как раньше, а то, обо что бьётся мяч, — полотно — догоняет их на пружине: на резком взмахе сначала проседает, потом
+       отдаёт. 0 — как было (этот кусок не работает вовсе), 1 — самое мягкое (пружина 3 раза в секунду, затухание 0,35) */
+    if(PG_V.soft>0.001){ var SK=ARC.soft||(ARC.soft={y:pad,v:0,pp:pad}), vpad=(pad-SK.pp)/Math.max(dt,1e-3); SK.pp=pad; var wS=2*Math.PI*(12-9*PG_V.soft), zS=0.35, nS=4, hS=dt/nS;
+      for(var iS=0;iS<nS;iS++){ var aS=wS*wS*(pad-SK.y)+2*zS*wS*(vpad-SK.v); SK.v+=aS*hS; SK.y+=SK.v*hS; } pad=SK.y; vr=SK.v; ARC.padSoft=pad; } else { ARC.soft=null; ARC.padSoft=null; }
     ARC.vpS=(ARC.vpS||0)+(Math.max(-4,Math.min(4,vr))-(ARC.vpS||0))*0.45; var vp=ARC.vpS, vk=0.6/jgPadH(), vpb=vp*vk*PG_HIT;
     if(ARC.flash>0) ARC.flash-=dt; if(ARC.say>0){ ARC.say-=dt; if(ARC.say<=0) arcText('',''); }
     var ar=ARC.ar, hw=pgHw(ar), A=PG_V.curve>=0.5?pgCupA():Math.tan(PG_TILTV*Math.PI/180)*hw, Ap=Math.tan(PG_TILT*Math.PI/180)*hw, xn=ar/2, nw=0.012;   /* A — как ракетка нарисована (о неё мяч ударяется), Ap — куда отскакивает */
@@ -2747,7 +2754,7 @@ function arcDraw(){ var cv=el('acC'); if(!cv||!cv.getContext) return; var dpr=Ma
     if(fm!==null&&fm!==undefined){ var my=cmY(5+10*fm); c.fillStyle='#ff8a3d'; c.fillRect(rx-0.32*H,my-0.012*H,0.16*H,0.024*H); } }
   var skS=g==='pong'&&PG_V.skin>=0.5;   /* 1.59q: «набросок» — свой рисунок (0871_sketch.js) */
   if(skS) pgSketch(c,W,H,dpr);
-  else if(g==='pong'){ var ar3=W/H, hw3=pgHw(ar3), A3=PG_V.curve>=0.5?pgCupA():Math.tan(PG_TILTV*Math.PI/180)*hw3, py3=ARC.py;
+  else if(g==='pong'){ var ar3=W/H, hw3=pgHw(ar3), A3=PG_V.curve>=0.5?pgCupA():Math.tan(PG_TILTV*Math.PI/180)*hw3, py3=ARC.padSoft!==null&&ARC.padSoft!==undefined?ARC.padSoft:ARC.py;
     c.fillStyle='#0f1530'; c.fillRect(0,0,W,H); c.fillStyle='#3a4373'; c.fillRect(0,0,W,Y(JG_TOP));
     var nt3=ARC.netTop===undefined?PG_NET0:ARC.netTop; if(nt3<1.5){ c.fillStyle='#8f9cc0'; c.fillRect(X(ar3/2)-0.012*H,Y(nt3),0.024*H,H); c.fillStyle='#e8eefc'; c.fillRect(X(ar3/2)-0.02*H,Y(nt3)-0.008*H,0.04*H,0.016*H); }
     var fl3=ar3*(1-PG_V.fw)/2, fr3=ar3*(1+PG_V.fw)/2; if(PG_V.wall>=0.5){ c.fillStyle='#8f9cc0'; c.fillRect(X(fl3),Y(JG_TOP),X(0.012)-X(0),H); c.fillRect(X(fr3-0.012),Y(JG_TOP),X(0.012)-X(0),H); } else if(PG_V.fw<0.99){ c.fillStyle='rgba(143,156,192,0.18)'; c.fillRect(X(fl3)-1,Y(JG_TOP),2,H); c.fillRect(X(fr3)-1,Y(JG_TOP),2,H); }   /* края поля */
@@ -2876,7 +2883,7 @@ function pzShow(open,pre){ var g=pzGame(); if(open){ PZ.pre=!!pre; PZ.sec=null; 
   if(open) pzRender(); }
 function pzSecs(){ var f=function(k){ return pgFmt(pgQ(k),PG_V[k]); }, sens=['низкая','ниже средней','средняя','высокая'][JG_SET.sens]||'';
   if(arcGame==='pong') return [['sets','Наборы',pgSetName()],['rules','Правила','мячей '+f('lives')+' · очки '+f('pts')+' · сужение: '+f('grow')],['ball','Мяч','тяжесть '+f('g')+' · удар '+f('hit')],
-    ['rack','Ракетки и ладонь','ширина '+f('hwr')+' · '+(PG_V.curve>=0.5?'изогнутая: '+f('curve'):'наклон '+f('tilt')+'°')],['field','Поле','ширина '+f('fw')+(PG_V.wall>=0.5?' · стенки':' · без стенок')],['meat','Цели','кольца: '+f('rings')+' · звёзды: '+f('stars')+' · кирпичи: '+f('bricks')],['look','Рисунок',f('skin')+(PG_V.skin>=0.5?' · человечек: '+f('who'):'')],['how','Как играть','что сейчас за правила']];
+    ['rack','Ракетки и ладонь','ширина '+f('hwr')+' · '+(PG_V.curve>=0.5?'изогнутая: '+f('curve'):'наклон '+f('tilt')+'°')],['field','Поле','ширина '+f('fw')+(PG_V.wall>=0.5?' · стенки':' · без стенок')],['meat','Цели','кольца: '+f('rings')+' · звёзды: '+f('stars')+' · кирпичи: '+f('bricks')],['look','Рисунок',f('skin')+(PG_V.skin>=0.5?' · человечек: '+f('who'):'')+(PG_V.soft>0.001?' · мягкость '+f('soft'):'')],['how','Как играть','что сейчас за правила']];
   return [['jset','Настройки','мячей: '+(JG_SET.lives>0?JG_SET.lives:'без счёта')+' · чаша: '+(JG_SET.bowl?JG_SET.bowl+' из 5':'нет')],['how','Как играть','правила и очки']]; }
 function pzRender(){ var sub=PZ.sec, store=el('pzStore'); PZ_JG.forEach(function(id){ store.appendChild(el(id)); });
   el('pzMain').classList.toggle('hidden',!!sub); el('pzSub').classList.toggle('hidden',!sub);
@@ -3058,7 +3065,7 @@ function pgsPlayer(p,x,y,d,pose,o){ o=o||{}; var X=function(v){ return x+d*v; },
     p.line(X(11),y-52*k,X(14),y-60*k,{over:1}); p.loop(X(16.5),y-68*k,5*k,8*k,{rot:d*0.3}); }
   else if(pose==='low'){ p.draw([[X(0.5),y-35*k],[X(9),y-25*k],[X(14),y-16*k]]); p.draw([[X(0.5),y-35*k],[X(-7),y-29*k],[X(-10),y-23*k]]);
     p.line(X(14),y-16*k,X(19),y-11*k,{over:1}); p.loop(X(24),y-6*k,5*k,8*k,{rot:d*1.0}); }
-  else { p.draw([[X(0.5),y-35*k],[X(8),y-30*k],[X(13),y-34*k]]); p.draw([[X(0.5),y-35*k],[X(-6),y-28*k],[X(-8),y-22*k]]);
+  else if(pose!=='hold'){ p.draw([[X(0.5),y-35*k],[X(8),y-30*k],[X(13),y-34*k]]); p.draw([[X(0.5),y-35*k],[X(-6),y-28*k],[X(-8),y-22*k]]);
     p.line(X(13),y-34*k,X(17),y-41*k,{over:1}); p.loop(X(19.5),y-48.5*k,5*k,8*k,{rot:d*0.5}); }
   if(pose!=='run'){ p.line(X(legs[0][2]-3),y-1*k,X(legs[0][2]+3),y-1*k,{over:1,w:p.w*0.9}); p.line(X(legs[1][2]),y-1*k,X(legs[1][2]+6),y-1*k,{over:1,w:p.w*0.9}); } }
 /* the shuttlecock, cork first along angle a */
@@ -3092,6 +3099,26 @@ function pgsReach(p,fx,fy,d,cx,cy,ang,o){ o=o||{}; var k=1.15, dh=fy-cy, jump=Ma
   var mx=(sx+hd[0])/2, my=(sy+hd[1])/2, bend=Math.min(6,Math.max(0,(arm-Math.hypot(hd[0]-sx,hd[1]-sy))*0.4)); p.draw([[sx,sy],[mx-uy*bend*d,my+ux*bend*d],hd]);
   p.draw([[X(0.5),sy],[X(-7),sy+(jump?-8:7)],[X(-10),sy+(jump?-14:13)]]);
   if(o.hit){ p.stroke([[cx-d*4,cy-12],[cx+d*8,cy-16]],{w:p.w*0.5}); p.stroke([[cx-d*2,cy-7],[cx+d*12,cy-9]],{w:p.w*0.5}); } }
+/* 1.59t: «пожарные с тентом» (Ден 23:37–23:42: тент — Л1, подъёмники-«ножницы»). Двое на подъёмниках держат тент за концы, руки — там,
+   где ладонь (ARC.py); полотно — там, где оно по физике (с мягкостью отстаёт от рук, видно по натянутым лямкам). Подъёмники стоят на земле
+   и раздвигаются, при сужении подъезжают друг к другу */
+function pgsLift(p,x,top,gy,w){ var n=Math.max(1,Math.round((gy-12-top)/26)), h=(gy-12-top)/n, i;
+  p.draw([[x-w/2-4,gy],[x+w/2+4,gy]],{w:p.w*1.1}); p.draw([[x-w/2,gy],[x-w/2,gy-12],[x+w/2,gy-12],[x+w/2,gy]]); p.loop(x-w/2+6,gy+1,3,3,{w:p.w*0.8}); p.loop(x+w/2-6,gy+1,3,3,{w:p.w*0.8});
+  for(i=0;i<n;i++){ var y0=gy-12-i*h, y1=y0-h; p.line(x-w/2,y0,x+w/2,y1,{over:1,w:p.w*0.75}); p.line(x+w/2,y0,x-w/2,y1,{over:1,w:p.w*0.75}); }
+  p.draw([[x-w/2-3,top],[x+w/2+3,top]],{w:p.w*1.2}); p.draw([[x-w/2-3,top],[x-w/2-3,top-11],[x+w/2+3,top-11],[x+w/2+3,top]],{w:p.w*0.55,a:0.8}); }
+function pgsTent(c,i,tp,xc,hw,ar,A,hand,t){ var F=function(v){ return v*390; }, d=i?-1:1, n=tp.length, p=pgsPen(c,231+100*i), GY=Math.min(386,F(1)-4);
+  p.draw(tp,{w:p.w*1.3}); var low=tp.map(function(q,j){ return [q[0],q[1]+5+5*Math.sin(Math.PI*j/(n-1))]; }); p.draw(low,{w:p.w*0.65,a:0.8});
+  for(var j=6;j<n-5;j+=7) p.stroke([tp[j],[tp[j][0]+d*3,low[j][1]+3]],{w:p.w*0.33});
+  [0,n-1].forEach(function(e,k){ var x=xc+(e?1:-1)*hw, hy=F(pgSurf(i,x,hand,ar,A).y), hx=tp[e][0], s=k?1:-1;   /* s: −1 the left end, +1 the right */
+    var fx=hx+s*9, deck=hy+60, pf=pgsPen(c,241+100*i+10*k); pgsLift(pgsPen(c,251+100*i+10*k),fx,deck,GY,30);
+    if(Math.abs(hy-tp[e][1])>1.5) pf.line(hx,hy,tp[e][0],tp[e][1],{over:0.5,w:pf.w*0.6});   /* a strap: the cloth lags behind the hands */
+    pf.loop(hx,tp[e][1],2.5,2.5,{w:pf.w*0.7});
+    var kk=ARC.kick&&ARC.kick[i], hit=kk&&t-kk.t0<0.25, jy=hit?-3:0;
+    pgsPlayer(pf,fx,deck+jy,-s,'hold',{k:1.0});
+    /* his arms go up to the corner: redraw them over the doodle's ready arms */
+    var sx=fx-s*0.5, sy=deck+jy-35; pf.draw([[sx,sy],[(sx+hx)/2-s*2,(sy+hy)/2+2],[hx,hy]],{w:pf.w*0.95}); pf.draw([[sx,sy],[(sx+hx)/2+s*3,(sy+hy)/2+5],[hx+s*3,hy+3]],{w:pf.w*0.9});
+    var hb=deck+jy-47; pf.draw([[fx+s*8,hb-1],[fx+s*6,hb-9],[fx-s*3,hb-11],[fx-s*8,hb-5],[fx-s*13,hb-3]],{w:pf.w*1.05});   /* the helmet */
+  }); }
 function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ return v*390; }, I=PGS_ST;
   /* the page: paper and the ceiling, kept until the screen changes size */
   var key=W+'x'+H; if(PGS.key!==key){ PGS.key=key; var bg=document.createElement('canvas'); bg.width=W; bg.height=H; var bc=bg.getContext('2d'); bc.scale(dpr,dpr); Sk.paper(bc,W/dpr,H/dpr,dpr,{seed:7});
@@ -3100,7 +3127,7 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
     var tp=[], bt=[]; for(var x=0;x<=FW;x+=2){ tp.push([x,CE-0.5]); bt.push([x,CE-8-6*Sk.noise(x/40)-p0.rnd(0,3)]); } p0.band(tp,bt,{sp:6,shift:4,w:p0.w*0.5,a:0.7});
     Sk.lay(bc,L,0,0,{alpha:1}); PGS.bg=bg; }
   c.setTransform(1,0,0,1,0,0); c.drawImage(PGS.bg,0,0); c.setTransform(U,0,0,U,0,0); c.globalCompositeOperation='multiply';
-  var hw=pgHw(ar), A=PG_V.curve>=0.5?pgCupA():Math.tan(PG_TILTV*Math.PI/180)*hw, py=ARC.py, t=ARC.t||0, dt=PGS.tLast===null?0:Math.max(0,Math.min(0.1,t-PGS.tLast)); PGS.tLast=t;
+  var hw=pgHw(ar), A=PG_V.curve>=0.5?pgCupA():Math.tan(PG_TILTV*Math.PI/180)*hw, hand=ARC.py, py=ARC.padSoft!==null&&ARC.padSoft!==undefined?ARC.padSoft:ARC.py, t=ARC.t||0, dt=PGS.tLast===null?0:Math.max(0,Math.min(0.1,t-PGS.tLast)); PGS.tLast=t;
   /* the field's edges and the net, if the rules have them */
   var fl=ar*(1-PG_V.fw)/2, fr=ar*(1+PG_V.fw)/2, pe=pgsPen(c,151);
   if(PG_V.wall>=0.5){ pe.line(F(fl),F(JG_TOP)+4,F(fl)+1,386); pe.line(F(fr),F(JG_TOP)+4,F(fr)-1,386); }
@@ -3116,10 +3143,12 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
   else if(who===2){ var tau=PG_V.stau===undefined?0.3:PG_V.stau; PGS.slow=(PGS.slow===undefined||PGS.slow===null)?py:PGS.slow+(py-PGS.slow)*(1-Math.exp(-dt/Math.max(0.02,tau))); plat=PGS.slow+OFF0; }
   else if(who===3) plat=REST+OFF0;
   if(who) plat=Math.max(py+5/390,Math.min(who===3?9:py+105/390,plat));
-  var tops=[0,1].map(function(i){ var xc=ar*(i?1-PG_XC:PG_XC), tp=[]; for(var j=0;j<=48;j++){ var x=xc-hw+2*hw*j/48; tp.push([F(x),F(pgSurf(i,x,plat,ar,A).y)]); } pgsPlatform(pgsPen(c,201+100*i),tp); return {xc:xc,tp:tp}; });
+  if(who===4) plat=py;
+  var tops=[0,1].map(function(i){ var xc=ar*(i?1-PG_XC:PG_XC), tp=[]; for(var j=0;j<=48;j++){ var x=xc-hw+2*hw*j/48; tp.push([F(x),F(pgSurf(i,x,plat,ar,A).y)]); } if(who===4) pgsTent(c,i,tp,xc,hw,ar,A,hand,t); else pgsPlatform(pgsPen(c,201+100*i),tp); return {xc:xc,tp:tp}; });
   /* the players: the one the ball is coming to runs to where it will land; «как был» — stands just behind it, racket low, a hit — a swing;
      А/Б/В — stands so that his racket meets the shuttle there */
   if(!PGS.pl) PGS.pl=[{x:ar*PG_XC},{x:ar*(1-PG_XC)}];
+  var noRun=who===4;
   var b0=(ARC.balls||[])[0], tk=b0?(b0.from===null||b0.from===undefined?'s':b0.from)+':'+(b0.vy>0?1:0)+':'+PGS.hid:'none';
   /* 1.59r (Ден 22:12: «когда ускоряется темп — человечки часто не успевают добежать.. поднимаешь платформу, чтобы войти в траекторию, —
      и отбиваешь платформой»): куда упадёт волан — пересчёт каждый кадр, пока он летит вниз (ракетка-то ходит за ладонью), и бег — не с
@@ -3127,7 +3156,7 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
   if(tk!==PGS.tKey){ PGS.tKey=tk; PGS.tgt=[null,null]; }
   if(b0&&b0.vy>0&&!(b0.wait>0)&&!b0.hold&&!b0.on){ var Pt=pgMeatPath(b0,py,ar); if(Pt){ PGS.tgt[Pt.i]=Pt.P[0]; PGS.tgt[1-Pt.i]=null; } }
   var REACH=26/390, Ap=Math.tan(PG_TILT*Math.PI/180)*hw;
-  [0,1].forEach(function(i){ var P=PGS.pl[i], d=i?-1:1, xc=tops[i].xc, lo=xc-hw+0.02, hi=xc+hw-0.02, off=who?REACH:24*1.15/390;
+  if(!noRun) [0,1].forEach(function(i){ var P=PGS.pl[i], d=i?-1:1, xc=tops[i].xc, lo=xc-hw+0.02, hi=xc+hw-0.02, off=who?REACH:24*1.15/390;
     /* where to stand: just behind where the shuttle lands; if that is off the plank (it lands near the far edge) — just in front, the racket
        on the other side (backhand) */
     if(P.side===undefined) P.side=d; var want=xc-P.side*(who?REACH:0);

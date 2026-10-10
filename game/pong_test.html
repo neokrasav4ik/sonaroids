@@ -1,0 +1,254 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>SonaPong набросок</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&display=swap">
+<style>
+/* one look on purpose: a sketchbook page. The field fills the screen, a thin strip of pen-written switches under it */
+:root{ --paper:#f6f1e6; --ink:#1f1d24; --soft:#6d665c; --line:#cfc6b4; --accent:#c8452c;
+  --hand:'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; color-scheme:light; }
+html,body{ height:100%; }
+body{ margin:0; background:var(--paper); color:var(--ink); font-family:var(--hand); overflow:hidden; display:flex; flex-direction:column; }
+#stage{ flex:1; min-height:0; }
+canvas{ position:fixed; inset:0; width:100%; height:100%; display:block; z-index:0; }
+.bar{ position:relative; z-index:1; display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:4px 14px; padding:4px 16px 6px; padding-bottom:calc(6px + env(safe-area-inset-bottom,0px)); }
+.seg{ display:flex; gap:2px; }
+button{ font:inherit; font-size:21px; line-height:1; color:var(--soft); background:none; border:0; padding:4px 8px 6px; cursor:pointer; border-radius:40% 55% 45% 60% / 60% 45% 55% 40%; }
+button[aria-pressed="true"]{ color:var(--ink); box-shadow:inset 0 0 0 1.6px var(--ink); }
+button:focus-visible{ outline:2px dashed var(--accent); outline-offset:2px; }
+.hint{ font-size:19px; color:var(--soft); }
+</style>
+<div id="stage"><canvas id="cv" aria-label="Набросок SonaPong: два человечка играют в бадминтон на платформах"></canvas></div>
+<div class="bar">
+  <div class="seg" role="group" aria-label="Чем нарисовано">
+    <button id="ink-liner" data-ink="liner" aria-pressed="true">линер</button>
+    <button id="ink-pen" data-ink="pen" aria-pressed="false">шариковая ручка</button>
+    <button id="ink-wash" data-ink="wash" aria-pressed="false">тушь и акварель</button>
+  </div>
+  <button id="boil" aria-pressed="true">линии дрожат</button>
+  <span class="hint" id="hint">телефон лучше повернуть</span>
+</div>
+<script>
+/* Hand-drawn pen on sketchbook paper — a canvas 2D toolkit (prototype for SonaPong's look).
+   Every line is a filled outline with pressure (thin at the start and end), a slow hand wobble and a little overshoot;
+   loops don't close exactly; shading is quick hatching; text is single-stroke handwriting drawn by the same pen. */
+(function(G){
+function mulberry(a){ return function(){ a=(a+0x6D2B79F5)>>>0; let t=a; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
+function hash(i){ i=(i|0)*374761393; i=(i^(i>>>13))*1274126177; i=i^(i>>>16); return ((i>>>0)%100000)/100000; }
+function noise(x){ const i=Math.floor(x), f=x-i, u=f*f*(3-2*f); return hash(i)*(1-u)+hash(i+1)*u; }
+function resample(pts,step){ const out=[pts[0]]; let acc=0; for(let i=1;i<pts.length;i++){ let [x0,y0]=pts[i-1]; const [x1,y1]=pts[i]; let d=Math.hypot(x1-x0,y1-y0); while(acc+d>=step){ const k=(step-acc)/d; x0=x0+(x1-x0)*k; y0=y0+(y1-y0)*k; out.push([x0,y0]); d=Math.hypot(x1-x0,y1-y0); acc=0; } acc+=d; } const l=pts[pts.length-1]; out.push(l); return out; }
+
+function Pen(ctx,opt){ this.c=ctx; this.r=mulberry(opt.seed||1); this.ink=opt.ink||'#1b1b1f'; this.w=opt.w||1.6; this.wob=opt.wob===undefined?1.3:opt.wob; this.passes=opt.passes||1; this.jit=opt.jit===undefined?1:opt.jit; }
+Pen.prototype.rnd=function(a,b){ return a+(b-a)*this.r(); };
+/* one stroke along points: o.w width, o.ink, o.taper (0..1), o.wob */
+Pen.prototype.stroke=function(pts,o={}){ const c=this.c, P=resample(pts,1.2), n=P.length; if(n<2) return;
+  const w0=o.w||this.w, wob=(o.wob===undefined?this.wob:o.wob), s0=this.rnd(0,9999), s1=this.rnd(0,9999), tp=o.taper===undefined?1:o.taper;
+  let dist=0; const L=[], R=[]; const tot=(n-1)*1.2;
+  for(let i=0;i<n;i++){ if(i) dist+=Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]);
+    const a=P[Math.max(i-1,0)], b=P[Math.min(i+1,n-1)]; let tx=b[0]-a[0], ty=b[1]-a[1]; const tl=Math.hypot(tx,ty)||1; tx/=tl; ty/=tl; const nx=-ty, ny=tx;
+    const wv=wob*((noise(s0+dist/55)-0.5)*2+0.35*(noise(s0+500+dist/9)-0.5));
+    const u=dist/Math.max(tot,1), head=Math.min(1,u*tot/6), tail=Math.min(1,(1-u)*tot/9);
+    const press=(1-tp)+tp*(0.25+0.75*Math.min(head,1))*(0.35+0.65*Math.min(tail,1));
+    const w=w0*press*(0.8+0.4*noise(s1+dist/14));
+    const x=P[i][0]+nx*wv, y=P[i][1]+ny*wv; L.push([x+nx*w/2,y+ny*w/2]); R.push([x-nx*w/2,y-ny*w/2]); }
+  c.beginPath(); c.moveTo(L[0][0],L[0][1]); for(let i=1;i<n;i++) c.lineTo(L[i][0],L[i][1]); for(let i=n-1;i>=0;i--) c.lineTo(R[i][0],R[i][1]); c.closePath();
+  c.fillStyle=o.ink||this.ink; c.globalAlpha=o.a===undefined?1:o.a; c.fill(); c.globalAlpha=1; };
+/* a stroke drawn (passes) times, each a bit off — the sketchy double line */
+Pen.prototype.draw=function(pts,o={}){ const k=o.passes||this.passes; for(let p=0;p<k;p++){ const j=p?this.jit*1.2:0, dx=this.rnd(-j,j), dy=this.rnd(-j,j); this.stroke(pts.map(q=>[q[0]+dx,q[1]+dy]),Object.assign({},o,{a:p?(o.a||1)*0.55:o.a, w:(o.w||this.w)*(p?0.75:1)})); } };
+/* a straight-ish line with overshoot and a slight bow */
+Pen.prototype.line=function(x0,y0,x1,y1,o={}){ const d=Math.hypot(x1-x0,y1-y0)||1, ux=(x1-x0)/d, uy=(y1-y0)/d, e0=this.rnd(0,o.over===undefined?3:o.over), e1=this.rnd(0,o.over===undefined?4:o.over), bow=this.rnd(-1,1)*d*0.015;
+  const a=[x0-ux*e0,y0-uy*e0], b=[x1+ux*e1,y1+uy*e1], m=[(a[0]+b[0])/2-uy*bow,(a[1]+b[1])/2+ux*bow], pts=[]; for(let i=0;i<=24;i++){ const t=i/24; pts.push([(1-t)*(1-t)*a[0]+2*(1-t)*t*m[0]+t*t*b[0],(1-t)*(1-t)*a[1]+2*(1-t)*t*m[1]+t*t*b[1]]); } this.draw(pts,o); };
+/* a loop that does not quite close */
+Pen.prototype.loop=function(cx,cy,rx,ry,o={}){ const a0=o.a0===undefined?this.rnd(-2.6,-1.6):o.a0, sw=o.sweep||Math.PI*2+this.rnd(0.25,0.6), rot=o.rot||0, s=this.rnd(0,999), pts=[];
+  for(let i=0;i<=60;i++){ const t=a0+sw*i/60, k=1+0.07*(noise(s+i/9)-0.5)*2+0.04*i/60, x=Math.cos(t)*rx*k, y=Math.sin(t)*ry*k; pts.push([cx+x*Math.cos(rot)-y*Math.sin(rot),cy+x*Math.sin(rot)+y*Math.cos(rot)]); } this.draw(pts,o); };
+/* quick hatching inside a clip path: lines at angle, spacing sp */
+Pen.prototype.hatch=function(clip,ang,sp,o={}){ const c=this.c; c.save(); c.beginPath(); clip(c); c.clip(); const [x0,y0,x1,y1]=o.box, ca=Math.cos(ang), sa=Math.sin(ang), L=Math.hypot(x1-x0,y1-y0);
+  for(let s=-L;s<L;s+=sp*this.rnd(0.8,1.2)){ const mx=(x0+x1)/2-sa*s, my=(y0+y1)/2+ca*s, h=L*0.6; this.stroke([[mx-ca*h,my-sa*h],[mx+ca*h,my+sa*h]],{w:o.w||0.7,a:o.a===undefined?0.75:o.a,wob:0.6}); } c.restore(); };
+
+/* loose hand hatching between a top and a bottom polyline (same length): quick flicks, irregular spacing, ends not kept exactly */
+Pen.prototype.band=function(top,bot,o={}){ const n=top.length, sp=o.sp||4.5, sh=o.shift||4; let acc=0;
+  for(let i=1;i<n;i++){ acc+=Math.hypot(top[i][0]-top[i-1][0],top[i][1]-top[i-1][1]); if(acc<sp*this.rnd(0.7,1.3)) continue; acc=0;
+    const j=Math.min(n-1,Math.max(0,i+Math.round(sh*this.rnd(0.7,1.3)))), a=top[i], b=bot[j], k0=this.rnd(-0.08,0.12), k1=this.rnd(0.78,1.12);
+    const A=[a[0]+(b[0]-a[0])*k0,a[1]+(b[1]-a[1])*k0], B=[a[0]+(b[0]-a[0])*k1,a[1]+(b[1]-a[1])*k1];
+    this.stroke([A,[(A[0]+B[0])/2+this.rnd(-0.4,0.4),(A[1]+B[1])/2],B],{w:(o.w||this.w*0.55)*this.rnd(0.8,1.25),a:(o.a||0.8)*this.rnd(0.75,1),wob:0.25,ink:o.ink}); } };
+/* ── single-stroke handwriting: glyphs in a box 1 tall (baseline at 1), polylines ── */
+function arc(cx,cy,rx,ry,a0,a1,n=18){ const p=[]; for(let i=0;i<=n;i++){ const t=(a0+(a1-a0)*i/n)*Math.PI/180; p.push([cx+rx*Math.cos(t),cy+ry*Math.sin(t)]); } return p; }
+const GL={
+ '0':{w:.6,s:[arc(.3,.5,.28,.5,-100,275,30)]},
+ '1':{w:.42,s:[[[.06,.22],[.3,0],[.31,1]]]},
+ '2':{w:.6,s:[arc(.3,.27,.27,.26,195,390,16).concat([[.03,1],[.62,.99]])]},
+ '3':{w:.58,s:[arc(.28,.25,.25,.24,205,445,16).concat(arc(.28,.73,.29,.27,-95,160,16))]},
+ '4':{w:.62,s:[[[.46,1],[.46,0],[.0,.68],[.64,.68]]]},
+ '5':{w:.6,s:[[[.55,.01],[.12,0],[.07,.44]].concat(arc(.3,.69,.28,.3,-125,150,16))]},
+ '6':{w:.6,s:[[[.5,0],[.26,.2],[.09,.48]].concat(arc(.31,.73,.26,.26,180,540,22))]},
+ '7':{w:.58,s:[[[.0,.03],[.58,0],[.2,1]]]},
+ '8':{w:.6,s:[arc(.3,.25,.22,.24,90,450,20).concat(arc(.3,.74,.28,.26,-90,270,22))]},
+ '9':{w:.6,s:[arc(.3,.28,.26,.27,0,375,22).concat([[.56,.32],[.48,1]])]},
+ '×':{w:.5,s:[[[.05,.45],[.42,.95]],[[.42,.45],[.05,.95]]]},
+ ',':{w:.22,s:[[[.1,.88],[.12,1],[.02,1.15]]]},
+ '.':{w:.2,s:[[[.08,.96],[.1,1]]]},
+ ' ':{w:.3,s:[]},
+ 'o':{w:.48,s:[arc(.23,.73,.21,.27,-80,300,20)]},
+ 'a':{w:.52,s:[arc(.24,.73,.21,.27,-20,330,20),[[.45,.47],[.48,1]]]},
+ 's':{w:.44,s:[[[.4,.5],[.2,.45],[.05,.56],[.18,.7],[.37,.8],[.35,.95],[.14,1],[.0,.92]]]},
+ 'n':{w:.5,s:[[[.05,.46],[.05,1],[.05,.64],[.15,.49],[.31,.46],[.41,.6],[.42,1]]]},
+ 'r':{w:.38,s:[[[.05,.46],[.05,1],[.05,.66],[.16,.5],[.36,.47]]]},
+ 'i':{w:.2,s:[[[.07,.49],[.08,1]],[[.08,.29],[.09,.31]]]},
+ 'd':{w:.52,s:[arc(.23,.73,.2,.26,-10,350,20),[[.45,0],[.46,1]]]},
+ 'p':{w:.5,s:[[[.05,.47],[.05,1.32]],arc(.26,.72,.21,.25,185,545,20)]},
+ 'x':{w:.44,s:[[[.0,.48],[.4,1]],[[.4,.48],[.0,1]]]},
+ '+':{w:.5,s:[[[.03,.62],[.47,.6]],[[.25,.38],[.24,.86]]]},
+};
+Pen.prototype.text=function(str,x,y,size,o={}){ let cx=x; const al=o.align||'left'; let tw=0; for(const ch of str) tw+=((GL[ch]||GL[' ']).w+0.1)*size*0.95; if(al==='right') cx=x-tw; else if(al==='center') cx=x-tw/2;
+  for(const ch of str){ const g=GL[ch]||GL[' '], dy=this.rnd(-0.03,0.03)*size, sk=this.rnd(-0.06,0.02), sz=size*this.rnd(0.94,1.05);
+    g.s.forEach(st=>{ if(st.length===2&&Math.hypot(st[1][0]-st[0][0],st[1][1]-st[0][1])<0.05){ this.stroke([[cx+st[0][0]*sz,y-sz+st[0][1]*sz+dy],[cx+st[1][0]*sz+1.2,y-sz+st[1][1]*sz+dy+1.2]],Object.assign({taper:0.3},o)); return; }
+      this.stroke(st.map(p=>[cx+p[0]*sz+(1-p[1])*sz*sk,y-sz+p[1]*sz+dy]),Object.assign({w:(o.w||this.w)},o)); });
+    cx+=(g.w+0.1)*size*0.95; } return cx; };
+
+/* ── paper: warm sketchbook, soft grain, a few fibers, darker towards the edges ── */
+function paper(ctx,W,H,dpr,o={}){ const r=mulberry(o.seed||3); ctx.fillStyle=o.base||'#f6f1e6'; ctx.fillRect(0,0,W,H);
+  for(let i=0;i<24;i++){ const x=r()*W, y=r()*H, R=60+r()*240, g=ctx.createRadialGradient(x,y,0,x,y,R), d=r()<0.5; g.addColorStop(0,d?'rgba(170,140,95,0.012)':'rgba(255,255,250,0.05)'); g.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=g; ctx.fillRect(x-R,y-R,2*R,2*R); }
+  ctx.lineCap='round'; for(let i=0;i<420;i++){ const x=r()*W, y=r()*H, a=r()*6.28, l=3+r()*12; ctx.strokeStyle=`rgba(${r()<0.5?'120,100,70':'255,255,255'},${0.05+r()*0.07})`; ctx.lineWidth=0.4+r()*0.4; ctx.beginPath(); ctx.moveTo(x,y); ctx.quadraticCurveTo(x+Math.cos(a)*l/2+r()*3,y+Math.sin(a)*l/2+r()*3,x+Math.cos(a)*l,y+Math.sin(a)*l); ctx.stroke(); }
+  const v=ctx.createRadialGradient(W/2,H/2,H*0.35,W/2,H/2,W*0.62); v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(120,92,55,0.10)'); ctx.fillStyle=v; ctx.fillRect(0,0,W,H);
+  const id=ctx.getImageData(0,0,W*dpr,H*dpr), d=id.data; for(let i=0;i<d.length;i+=4){ const n=(r()-0.5)*9+(r()<0.003?-14:0); d[i]+=n; d[i+1]+=n; d[i+2]+=n*0.9; } ctx.putImageData(id,0,0); }
+/* the ink layer laid on the paper: multiply, and (for a ballpoint) the paper's tooth showing through */
+function lay(ctx,layer,W,H,o={}){ if(o.dry){ const l=layer.getContext('2d'), r=mulberry(9); l.save(); l.setTransform(1,0,0,1,0,0); l.globalCompositeOperation='destination-out'; for(let i=0;i<o.dry;i++){ l.fillStyle=`rgba(0,0,0,${0.25+r()*0.5})`; l.fillRect(r()*layer.width,r()*layer.height,1+r()*1.5,1); } l.restore(); }
+  ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.globalCompositeOperation='multiply'; ctx.globalAlpha=o.alpha||1; ctx.drawImage(layer,0,0); ctx.restore(); }
+/* a loose watercolour wash over a polygon: smooth wobbly edge, a few thin layers, a darker rim where the water dried, a little granulation */
+function washPoly(ctx,poly,col,o={}){ const r=mulberry(o.seed||Math.floor(poly[0][0]*7+poly[0][1]*13)), a=o.a||0.14, amp=o.amp||4;
+  const P=resample(poly.concat([poly[0]]),3); ctx.save(); ctx.globalCompositeOperation='multiply';
+  for(let L=0;L<3;L++){ const s1=r()*99, s2=r()*99; ctx.beginPath(); P.forEach((p,i)=>{ const x=p[0]+amp*(noise(s1+i/14)-0.5)*2, y=p[1]+amp*(noise(s2+i/14)-0.5)*2; i?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.closePath();
+    ctx.filter='blur(0.7px)'; ctx.fillStyle=col.replace('A',String(a*(L?0.6:1))); ctx.fill(); ctx.filter='none';
+    if(L===0){ ctx.strokeStyle=col.replace('A',String(a*1.5)); ctx.lineWidth=1.3; ctx.stroke(); ctx.save(); ctx.clip(); for(let i=0;i<(o.grain||250);i++){ const q=P[Math.floor(r()*P.length)], c=[P.reduce((s,v)=>s+v[0],0)/P.length,P.reduce((s,v)=>s+v[1],0)/P.length], k=r(); ctx.fillStyle=col.replace('A',String(a*0.9)); ctx.fillRect(c[0]+(q[0]-c[0])*k+(r()-0.5)*6,c[1]+(q[1]-c[1])*k+(r()-0.5)*6,0.8,0.8); } ctx.restore(); } }
+  ctx.restore(); }
+function wash(ctx,cx,cy,rx,ry,col,o={}){ const poly=[]; for(let i=0;i<48;i++){ const t=i/48*Math.PI*2; poly.push([cx+Math.cos(t)*rx,cy+Math.sin(t)*ry]); } washPoly(ctx,poly,col,Object.assign({amp:Math.min(rx,ry)*0.18},o)); }
+G.Sk={Pen,paper,lay,wash,washPoly,mulberry,noise};
+})(typeof window!=='undefined'?window:globalThis);
+
+</script>
+<script>
+(function(){
+const W=844,H=390, CEIL=22, G=900;
+const INKS={ liner:{ink:'#1c1b22',accent:'#d2432f',w:1.5,wob:1.2,passes:1,jit:1,dry:0},
+  pen:{ink:'#23379a',accent:'#b8322a',w:1.15,wob:1.5,passes:2,jit:0.9,dry:1},
+  wash:{ink:'#2a2622',accent:'#c8452c',w:1.35,wob:1.3,passes:1,jit:1,dry:0,wash:true} };
+let inkKey='liner', boilOn=true;
+try{ const k=localStorage.getItem('sk-ink'); if(INKS[k]) inkKey=k; boilOn=localStorage.getItem('sk-boil')!=='0'; }catch(e){}
+
+/* ── geometry: the two rackets as in the game (curves), narrowed from their outer edges ── */
+const q=(P,t)=>[(1-t)*(1-t)*P.p0[0]+2*(1-t)*t*P.c[0]+t*t*P.p1[0],(1-t)*(1-t)*P.p0[1]+2*(1-t)*t*P.c[1]+t*t*P.p1[1]];
+const PL={p0:[45,228],c:[215,275],p1:[383,264]}, PR={p0:[461,264],c:[629,275],p1:[799,228]};
+const LUT=P=>{ const a=[]; for(let i=0;i<=400;i++) a.push(q(P,i/400)); return a; }; const LL=LUT(PL), LR=LUT(PR);
+const yAt=(i,x)=>{ const T=i?LR:LL; let lo=0,hi=400; while(hi-lo>1){ const m=(lo+hi)>>1; if(T[m][0]<x) lo=m; else hi=m; } const a=T[lo],b=T[hi], k=(x-a[0])/((b[0]-a[0])||1); return a[1]+(b[1]-a[1])*Math.max(0,Math.min(1,k)); };
+const curve=(P,t0,t1,n)=>{ const a=[]; for(let i=0;i<=n;i++) a.push(q(P,t0+(t1-t0)*i/n)); return a; };
+const span=(i,wk)=>i?[0,wk]:[1-wk,1];
+const xRange=(i,wk)=>{ const [t0,t1]=span(i,wk), P=i?PR:PL; return [q(P,t0)[0],q(P,t1)[0]]; };
+
+/* ── drawing pieces (field coordinates) ── */
+function player(p,x,y,d,pose,o={}){ const X=v=>x+d*v, k=o.k||1.15, st=o.step||0;
+  const hx=X(0), hy=y-47*k; p.loop(hx,hy,7*k,7.5*k,{w:p.w*1.05});
+  if(o.hair) p.draw([[X(-6),hy-3],[X(-3),hy-8],[X(2),hy-8.5],[X(6),hy-4]],{w:p.w*0.9});
+  if(o.cap) p.draw([[X(-6.5),hy-2],[X(-2),hy-7.5],[X(5),hy-6],[X(12),hy-4]],{w:p.w*1.1});
+  p.draw([[X(0.5),y-39*k],[X(1.5),y-29*k],[X(1),y-19*k]]);
+  const legs=pose==='swing'?[[-4,-10,-8,-1],[6,-9,10,-1]]:pose==='run'?(st?[[-6,-9,-12,-2],[5,-10,7,-1]]:[[-2,-10,-3,-1],[7,-8,12,-3]]):[[-5,-11,-6,-1],[7,-11,7,-1]];
+  legs.forEach(l=>p.draw([[X(1),y-19*k],[X(l[0]),y+l[1]*k],[X(l[2]),y+l[3]*k]]));
+  if(pose==='swing'){ p.draw([[X(0.5),y-35*k],[X(8),y-42*k],[X(11),y-52*k]]); p.draw([[X(0.5),y-35*k],[X(-7),y-31*k],[X(-11),y-35*k]]);
+    p.line(X(11),y-52*k,X(14),y-60*k,{over:1}); p.loop(X(16.5),y-68*k,5*k,8*k,{rot:d*0.3}); }
+  else { p.draw([[X(0.5),y-35*k],[X(8),y-30*k],[X(13),y-34*k]]); p.draw([[X(0.5),y-35*k],[X(-6),y-28*k],[X(-8),y-22*k]]);
+    p.line(X(13),y-34*k,X(17),y-41*k,{over:1}); p.loop(X(19.5),y-48.5*k,5*k,8*k,{rot:d*0.5}); }
+  if(pose!=='run'){ p.line(X(legs[0][2]-3),y-1*k,X(legs[0][2]+3),y-1*k,{over:1,w:p.w*0.9}); p.line(X(legs[1][2]),y-1*k,X(legs[1][2]+6),y-1*k,{over:1,w:p.w*0.9}); } }
+function shuttle(p,x,y,a,o={}){ const c=Math.cos(a), s=Math.sin(a), R=(u,v)=>[x+u*c-v*s,y+u*s+v*c], k=o.k||1;
+  p.loop(...R(0,0),3.3*k,3.3*k,{ink:o.cork,w:p.w*1.1});
+  p.line(...R(-3*k,-2.4*k),...R(-15*k,-7*k),{over:1}); p.line(...R(-3*k,2.4*k),...R(-15*k,7*k),{over:1});
+  p.draw([R(-15*k,-7*k),R(-16.5*k,-2*k),R(-16.5*k,3*k),R(-15*k,7*k)]); p.line(...R(-3.5*k,0),...R(-15.5*k,0.5*k),{over:0.5,w:p.w*0.6,a:0.7}); }
+function platform(p,i,wk){ const P=i?PR:PL, [t0,t1]=span(i,wk), m=p.rnd(0.42,0.58), top=curve(P,t0,t1,80);
+  p.draw(curve(P,t0,t0+(t1-t0)*(m+0.04),40),{w:p.w*1.35}); p.draw(curve(P,t0+(t1-t0)*(m-0.04),t1,40),{w:p.w*1.35});
+  const bot=top.map(([x,y],j)=>[x,y+13*(0.6+0.4*Math.sin(Math.PI*j/(top.length-1)))]);
+  p.draw(bot.filter((v,j)=>j%2===0),{w:p.w*0.7,a:0.75}); p.band(top,bot,{sp:4.2,shift:-3,w:p.w*0.55});
+  p.line(top[0][0],top[0][1],bot[0][0],bot[0][1],{over:2,w:p.w*0.8}); const e=top.length-1; p.line(top[e][0],top[e][1],bot[e][0],bot[e][1],{over:2,w:p.w*0.8}); }
+function ceiling(p){ p.line(12,CEIL+1,440,CEIL-1,{w:p.w*1.2,over:6}); p.line(410,CEIL-1.5,834,CEIL+1.5,{w:p.w*1.2,over:6});
+  const top=[], bot=[]; for(let x=0;x<=W;x+=2){ top.push([x,CEIL-0.5]); bot.push([x,CEIL-8-6*Sk.noise(x/40)-p.rnd(0,3)]); } p.band(top,bot,{sp:6,shift:4,w:p.w*0.5,a:0.65}); }
+function hudStatic(p){ p.line(16,13,46,12,{over:2,w:p.w*0.8}); p.line(46,12,47,42,{over:2,w:p.w*0.8}); p.line(47,42,15,43,{over:2,w:p.w*0.8}); p.line(15,43,16,12,{over:2,w:p.w*0.8});
+  p.line(26,20,26,35,{w:p.w*1.4,over:1}); p.line(36,20,36,35,{w:p.w*1.4,over:1});
+  p.text('sonaroids.app',16,378,13,{w:p.w*0.7,a:0.75});
+  p.line(352,366,492,365,{over:2,w:p.w*0.8}); p.line(352,376,492,376,{over:2,w:p.w*0.8}); p.line(352,366,351,376,{over:1,w:p.w*0.8}); p.line(492,365,493,376,{over:1,w:p.w*0.8}); }
+function hudDyn(p,S,ac){ p.text(String(S.score).replace(/\B(?=(\d{3})+(?!\d))/g,' '),828,46,26,{align:'right',w:p.w*1.25});
+  p.text('×'+S.mult.toFixed(1).replace('.',','),828,70,14,{align:'right',w:p.w*0.9,ink:ac});
+  let x=822; for(let i=0;i<5;i++){ p.loop(x,371,3.6,3.6,{w:p.w*0.8}); if(i<S.series) p.draw([[x-2.5,373],[x+2,368],[x-1.5,372],[x+2.5,370]],{w:p.w*1.4,ink:ac}); x-=13; } x-=12;
+  for(let i=0;i<S.lives;i++){ shuttle(p,x,371,-Math.PI/2,{k:0.62,cork:ac}); x-=16; }
+  const bw=Math.max(4,140*S.wk), t2=[], b2=[]; for(let xx=422-bw/2+1;xx<=422+bw/2-1;xx+=1){ t2.push([xx,375]); b2.push([xx,367]); } p.band(t2,b2,{sp:2.6,shift:3,w:p.w*0.7,a:0.9,ink:ac}); }
+
+/* ── canvas, paper and the cached still parts (three «boil» copies each) ── */
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d'); let dpr=1, cw=0, ch=0, sc=1, ox=0, oy=0, paperCv=null, stat=[], statKey='', sprites=null;
+function mk(w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; return c; }
+function resize(){ dpr=Math.min(2,window.devicePixelRatio||1); const r=cv.getBoundingClientRect(), st=document.getElementById('stage').getBoundingClientRect(); cw=Math.max(200,r.width); ch=Math.max(120,r.height); cv.width=Math.round(cw*dpr); cv.height=Math.round(ch*dpr);
+  const fh=Math.max(100,st.bottom-st.top), ft=st.top; sc=Math.min(cw/W,fh/H); ox=(cw-W*sc)/2; oy=ft+(fh-H*sc)/2;
+  paperCv=mk(cv.width,cv.height); const pc=paperCv.getContext('2d'); pc.scale(dpr,dpr); Sk.paper(pc,cw,ch,dpr,{seed:7});
+  statKey=''; document.getElementById('hint').hidden=cw>ch; }
+const field=c=>c.setTransform(dpr*sc,0,0,dpr*sc,dpr*ox,dpr*oy);
+function washBand(c,i,wk){ const P=i?PR:PL, [t0,t1]=span(i,wk), t=curve(P,t0+0.01,t1-0.01,60).map(([x,y])=>[x+4,y-3]), b=curve(P,t0+0.01,t1-0.01,60).reverse().map(([x,y],j)=>[x+4,y+17*(0.6+0.4*Math.sin(Math.PI*j/60))]); Sk.washPoly(c,t.concat(b),'rgba(95,150,80,A)',{a:0.16,amp:3,seed:7+i}); }
+function buildStatic(wk){ const I=INKS[inkKey]; stat=[];
+  for(let v=0;v<3;v++){ const c=mk(cv.width,cv.height), x=c.getContext('2d'); x.drawImage(paperCv,0,0);
+    if(I.wash){ field(x); washBand(x,0,wk); washBand(x,1,wk); Sk.wash(x,420,14,420,12,'rgba(120,120,135,A)',{a:0.08,amp:3,grain:600,seed:3}); x.setTransform(1,0,0,1,0,0); }
+    const L=mk(cv.width,cv.height), lc=L.getContext('2d'); field(lc); const p=new Sk.Pen(lc,{seed:101+v*37,ink:I.ink,w:I.w,wob:I.wob,passes:I.passes,jit:I.jit});
+    ceiling(p); platform(p,0,wk); platform(p,1,wk); hudStatic(p);
+    Sk.lay(x,L,0,0,{dry:I.dry?Math.round(L.width*L.height/45):0,alpha:0.95}); stat.push(c); }
+  sprites=null; if(I.wash){ sprites=[0,1,2].map(v=>{ const mkw=(rx,ry,col,a)=>{ const s=Math.ceil((Math.max(rx,ry)*2+12)*dpr*sc), c=mk(s,s), x=c.getContext('2d'); x.setTransform(dpr*sc,0,0,dpr*sc,s/2,s/2); Sk.wash(x,0,0,rx,ry,col,{a,seed:11+v*5}); return c; };
+    return {red:mkw(8,10,'rgba(215,75,55,A)',0.28),blue:mkw(8,10,'rgba(55,105,195,A)',0.26),glow:mkw(13,10,'rgba(245,190,40,A)',0.22)}; }); } }
+function sprite(img,x,y){ ctx.save(); ctx.globalCompositeOperation='multiply'; ctx.setTransform(1,0,0,1,0,0); ctx.drawImage(img,dpr*(ox+x*sc)-img.width/2,dpr*(oy+y*sc)-img.height/2); ctx.restore(); }
+
+/* ── a rally that plays itself ── */
+const S={score:0,mult:1,lives:5,series:0,wk:1,pass:0,t:0,nextNarrow:14,pops:[],crumbs:[]};
+const pl=[{x:150,tx:150,d:1,pose:'ready',sw:0,cap:false,hair:true},{x:690,tx:690,d:-1,pose:'ready',sw:0,cap:true}];
+let sh=null, wait=0.8, server=0;
+function contact(i,x){ return [x+pl[i].d*16,yAt(i,x)-62]; }
+function launch(from){ const to=1-from, [lo,hi]=xRange(to,S.wk), miss=S.pass>3&&Math.random()<0.1;
+  let xr=miss?(to?lo-38-Math.random()*20:hi+38+Math.random()*20):lo+22+Math.random()*(hi-lo-44);
+  const [x0,y0]=contact(from,pl[from].x), yt=miss?y0:contact(to,Math.max(lo+10,Math.min(hi-10,xr)))[1], xt=xr+pl[to].d*16;
+  const r=Math.random(), lowY=Math.min(y0,yt)-55, ya=r<0.18?CEIL+7+Math.random()*6:CEIL+20+Math.random()*(lowY-CEIL-20)*Math.pow(Math.random(),0.7);
+  const vy=-Math.sqrt(2*G*(y0-ya)), tu=-vy/G, td=Math.sqrt(2*(yt-ya)/G), T=tu+td;
+  sh={x0,y0,vx:(xt-x0)/T,vy,t:0,T,to,miss,ya,popped:false,fall:false};
+  pl[to].tx=Math.max(lo+10,Math.min(hi-10,xr)); pl[from].pose='swing'; pl[from].sw=0.28; }
+function shPos(t){ return [sh.x0+sh.vx*t,sh.y0+sh.vy*t+0.5*G*t*t]; }
+function step(dt){ S.t+=dt;
+  if(S.t>S.nextNarrow&&S.wk>0.52){ const old=S.wk; S.wk*=0.875; S.nextNarrow=S.t+14; S.mult=Math.min(2,1+(1-S.wk)*2); statKey='';
+    [0,1].forEach(i=>{ const P=i?PR:PL; for(let k=0;k<7;k++){ const t=i?S.wk+(old-S.wk)*Math.random():(1-old)+(old-S.wk)*Math.random(), p=q(P,t); S.crumbs.push({x:p[0],y:p[1]+4,vx:(i?1:-1)*(10+Math.random()*30),vy:-20-Math.random()*40,r:Math.random()*6,vr:(Math.random()-0.5)*6,s:3+Math.random()*4,seed:Math.floor(Math.random()*1e6)}); } });
+    pl.forEach((P,i)=>{ const [lo,hi]=xRange(i,S.wk); P.x=Math.max(lo+10,Math.min(hi-10,P.x)); P.tx=Math.max(lo+10,Math.min(hi-10,P.tx)); }); }
+  S.crumbs.forEach(c=>{ c.vy+=G*0.6*dt; c.x+=c.vx*dt; c.y+=c.vy*dt; c.r+=c.vr*dt; }); S.crumbs=S.crumbs.filter(c=>c.y<H+20);
+  S.pops.forEach(p=>p.t+=dt); S.pops=S.pops.filter(p=>p.t<1.2);
+  pl.forEach(P=>{ const dx=P.tx-P.x, v=Math.sign(dx)*Math.min(Math.abs(dx),220*dt); P.x+=v; P.moving=Math.abs(dx)>1.5; if(P.sw>0){ P.sw-=dt; P.pose='swing'; } else P.pose=P.moving?'run':'ready'; });
+  if(!sh){ wait-=dt; if(wait<=0) launch(server); return; }
+  sh.t+=dt; const [x,y]=shPos(sh.t);
+  if(!sh.popped&&sh.vy+G*sh.t>=0){ sh.popped=true; const fr=Math.max(0,Math.min(1,(270-sh.ya)/(270-CEIL))), pts=Math.round((fr<0.7?40*fr*fr*fr/0.343:40+260*Math.pow((fr-0.7)/0.3,2))*S.mult); S.score+=pts; S.pops.push({x,y:sh.ya-10,pts,t:0,near:sh.ya<CEIL+14}); }
+  if(!sh.miss&&sh.t>=sh.T){ S.pass++; S.series=Math.min(5,S.series+1); const from=sh.to; pl[from].x=pl[from].tx; launch(from); return; }
+  if(sh.miss&&y>H+30){ S.lives--; S.series=0; server=sh.to; sh=null; wait=1.1;
+    if(S.lives<=0){ S.lives=5; S.score=0; S.wk=1; S.mult=1; S.pass=0; S.nextNarrow=S.t+14; statKey=''; pl[0].x=pl[0].tx=150; pl[1].x=pl[1].tx=690; wait=1.6; } } }
+
+function frame(now){ const dt=Math.min(0.05,(now-(frame.l||now))/1000); frame.l=now; if(!reduce) step(dt);
+  const I=INKS[inkKey], key=inkKey+':'+S.wk.toFixed(4)+':'+cw+'x'+ch; if(statKey!==key){ buildStatic(S.wk); statKey=key; }
+  const tick=boilOn&&!reduce?Math.floor(now/125):0, v=tick%3;
+  ctx.setTransform(1,0,0,1,0,0); ctx.globalCompositeOperation='source-over'; ctx.drawImage(stat[v],0,0);
+  if(sprites){ const sp=sprites[v]; sprite(sp.red,pl[0].x+pl[0].d*3,yAt(0,pl[0].x)-36); sprite(sp.blue,pl[1].x+pl[1].d*3,yAt(1,pl[1].x)-36); if(sh){ const [x,y]=shPos(sh.t); sprite(sp.glow,x+3,y); } }
+  field(ctx); ctx.globalCompositeOperation='multiply';
+  const p=new Sk.Pen(ctx,{seed:1+tick*13,ink:I.ink,w:I.w,wob:I.wob,passes:I.passes,jit:I.jit});
+  pl.forEach((P,i)=>player(p,P.x,yAt(i,P.x),P.d,P.pose,{hair:P.hair,cap:P.cap,step:Math.floor(now/110)%2}));
+  if(sh){ const [x,y]=shPos(sh.t), vy=sh.vy+G*sh.t, a=Math.atan2(vy,sh.vx);
+    const pts=[]; for(let t=0;t<=sh.t;t+=1/400) pts.push(shPos(t)); let acc=0, on=false, seg=[]; const n=pts.length;
+    for(let k=1;k<n-12;k++){ acc+=Math.hypot(pts[k][0]-pts[k-1][0],pts[k][1]-pts[k-1][1]); if(acc>(on?5:7)){ acc=0; if(on&&seg.length>1) p.stroke(seg,{w:p.w*(0.45+0.5*k/n),a:0.3+0.6*k/n,wob:0.3}); on=!on; seg=[]; } if(on) seg.push(pts[k]); }
+    shuttle(p,x,y,a,{cork:I.accent,k:1.3}); }
+  S.crumbs.forEach(c=>{ const cp=new Sk.Pen(ctx,{seed:c.seed+tick,ink:I.ink,w:I.w*0.8,wob:0.4}); const s=c.s, cs=Math.cos(c.r), sn=Math.sin(c.r), R=(u,w)=>[c.x+u*cs-w*sn,c.y+u*sn+w*cs]; cp.draw([R(-s,-s),R(s,-s),R(s,s),R(-s,s),R(-s,-s*0.8)]); cp.stroke([R(-s*0.6,s*0.6),R(s*0.6,-s*0.6)],{w:I.w*0.5}); });
+  S.pops.forEach(o=>{ const pp=new Sk.Pen(ctx,{seed:o.pts+tick,ink:I.accent,w:I.w*1.05,wob:0.6}); pp.text('+'+o.pts,o.x,o.y-o.t*18+(o.near?0:0),o.near?20:15,{align:'center',a:Math.max(0,1-o.t/1.2)}); });
+  hudDyn(p,S,I.accent);
+  ctx.globalCompositeOperation='source-over'; requestAnimationFrame(frame); }
+
+/* ── switches ── */
+const reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function sync(){ document.querySelectorAll('[data-ink]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.ink===inkKey))); const bb=document.getElementById('boil'); bb.setAttribute('aria-pressed',String(boilOn)); bb.textContent=boilOn?'линии дрожат':'линии замерли'; }
+document.querySelectorAll('[data-ink]').forEach(b=>b.addEventListener('click',()=>{ inkKey=b.dataset.ink; statKey=''; try{ localStorage.setItem('sk-ink',inkKey); }catch(e){} sync(); }));
+document.getElementById('boil').addEventListener('click',()=>{ boilOn=!boilOn; try{ localStorage.setItem('sk-boil',boilOn?'1':'0'); }catch(e){} sync(); });
+window.addEventListener('resize',()=>{ clearTimeout(resize.t); resize.t=setTimeout(resize,120); });
+const start=()=>{ resize(); sync(); requestAnimationFrame(frame); };
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(start,start); else start();
+})();
+</script>
+
+</body></html>

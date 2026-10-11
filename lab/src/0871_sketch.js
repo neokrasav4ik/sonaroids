@@ -223,7 +223,7 @@ function pgsMotors(c,i,tp,M,v,t,dt){ var n=tp.length-1, up=Math.max(0,Math.min(1
   [0.2,0.8].forEach(function(fr,k){ var j=Math.round(n*fr), x=tp[j][0], y=tp[j][1]+13*(0.6+0.4*Math.sin(Math.PI*j/n)), sd=7000+i*20+k*5, p=pgsPen(c,sd);
     if(M===1){ p.draw([[x-6,y-1],[x-9,y+10],[x+9,y+10],[x+6,y-1]],{w:p.w*0.85}); p.line(x-9,y+10,x+9,y+10,{over:1,w:p.w*0.8});
       var L=4+58*up*(1+0.12*Math.sin(t*33+k*2)), w=5+6*up, tip=[x+Math.sin(t*41+k)*3*up,y+11+L];
-      if(L>5){ c.save(); c.globalAlpha=0.16+0.22*up; c.fillStyle=I.accent||'#d2432f'; c.beginPath(); c.moveTo(x-w*0.75,y+11); c.quadraticCurveTo(tip[0],y+11+L*1.05,x+w*0.75,y+11); c.fill(); c.restore();
+      if(L>5){ c.save(); c.globalAlpha=Math.min(0.9,(0.16+0.22*up)*(I.dark?2.2:1.3)); c.fillStyle=I.accent||'#d2432f'; c.beginPath(); c.moveTo(x-w*0.75,y+11); c.quadraticCurveTo(tip[0],y+11+L*1.05,x+w*0.75,y+11); c.fill(); c.restore();
         var f=pgsPen(c,sd+1); f.draw([[x-w,y+11],[x-w*0.6,y+11+L*0.45],tip,[x+w*0.6,y+11+L*0.45],[x+w,y+11]],{w:I.w*0.75,a:Math.min(1,0.4+up)});
         if(up>0.25){ var g=pgsPen(c,sd+2); g.draw([[x-w*0.4,y+12],[x,y+11+L*0.6],[x+w*0.4,y+12]],{w:I.w*0.5,a:up}); }
         if(up>0.6){ var sp=pgsPen(c,sd+3); for(var m=0;m<4;m++){ var ph=(t*2.2+m*0.25+k*0.13)%1, sx=x+(m%2?1:-1)*(8+ph*14), sy=y+18+ph*L*0.9; sp.stroke([[sx,sy],[sx+(m%2?2:-2),sy+5]],{w:I.w*0.45,a:(up-0.6)/0.4*(1-ph)}); } } }
@@ -238,25 +238,25 @@ function pgsMotors(c,i,tp,M,v,t,dt){ var n=tp.length-1, up=Math.max(0,Math.min(1
 /* 1.60l (Ден 11:14, снимок ползунков демо «набросок»: линер, толщина 2,2, дрожь 1,5, вылет 10, кружки 60%, обвести 2, разброс 1,5,
    штриховка 0,8×, перерисовок нет, крест-накрест): вид линий — из ползунков «Рисунок» (по умолчанию — этот набор); бумага и потолок
    перерисовываются, когда вид меняется */
-function pgsStyle(){ var V=PG_V; PGS_ST.w=V.skw||2.2; PGS_ST.wob=V.skwob===undefined?1.5:V.skwob; PGS_ST.overK=(V.skover===undefined?10:V.skover)/3; PGS_ST.open=V.skopen===undefined?0.6:V.skopen; PGS_ST.passes=Math.round(V.skpass||2); PGS_ST.jit=V.skjit===undefined?1.5:V.skjit; PGS_ST.hs=1/(V.skhs||0.8); PGS_ST.cross=(V.skcross===undefined?1:V.skcross)>=0.5; PGS_ST.dark=(V.dark||0)>=0.5; PGS_ST.ink=PGS_ST.dark?'#ece7dc':'#121116'; var ql=typeof PG_Q!=='undefined'?PG_Q.lvl:0; PGS_ST.step=[1.2,1.2,1.8,2.4,3][ql]||1.2; if(ql>=3) PGS_ST.passes=1;   /* 1.60r: на слабом телефоне — реже точки линий, обводка в один проход */
+function pgsStyle(){ var V=PG_V; PGS_ST.w=V.skw||2.2; PGS_ST.wob=V.skwob===undefined?1.5:V.skwob; PGS_ST.overK=(V.skover===undefined?10:V.skover)/3; PGS_ST.open=V.skopen===undefined?0.6:V.skopen; PGS_ST.passes=Math.round(V.skpass||2); PGS_ST.jit=V.skjit===undefined?1.5:V.skjit; PGS_ST.hs=1/(V.skhs||0.8); PGS_ST.cross=(V.skcross===undefined?1:V.skcross)>=0.5; PGS_ST.dark=(V.dark||0)>=0.5; PGS_ST.ink=PGS_ST.dark?'#ffffff':'#121116'; PGS_ST.accent=PGS_ST.dark?'#ff4b36':'#ec2a17'; if(PGS_ST.dark) PGS_ST.w*=1.2;   /* 1.60x (Ден 14:00): красный ярче; на тёмной бумаге белый — чисто белый и линии толще, красный — ещё ярче */ var ql=typeof PG_Q!=='undefined'?PG_Q.lvl:0; PGS_ST.step=[1.2,1.2,1.8,2.4,3][ql]||1.2; if(ql>=3) PGS_ST.passes=1;   /* 1.60r: на слабом телефоне — реже точки линий, обводка в один проход */
   return [PGS_ST.w,PGS_ST.wob,PGS_ST.overK,PGS_ST.open,PGS_ST.passes,PGS_ST.jit,PGS_ST.hs,PGS_ST.cross,PGS_ST.step,PGS_ST.dark].join(','); }
 /* 1.60t (Ден 12:31: «хинт набранных очков — сейчас в углу, и глаз туда не успевает, т.к. следит за воланом» → эскизы О1–О4 → «О1 и О2
    посмотрел бы»). «Очки у волана» (Рисунок): О1 — ярлык «+N» летит рядом с воланом и растёт с высотой (те же очки, что дадут за дугу
    этой высоты, с множителем); на вершине замирает и чуть вырастает; на приёме — улетает в общий счёт в углу. О2 — на вершине дуги ручка
    пишет число (цифра за цифрой, 0,3 с); оно висит там, пока волан падает, и гаснет после приёма. Потолок — очков нет, ярлык гаснет */
-function pgsPtsLive(b){ if(b.touched||b.peakY===undefined||b.peakY===null) return 0; var lvl0=JG_PAD_LO-PG_CB*jgPadH()-PG_LIFT-b.r, room=lvl0-(JG_TOP+b.r), h=(b.y0===undefined?b.y:b.y0)-Math.min(b.peakY,b.y);
+function pgsPtsLive(b){ if(b.touched||b.peakY===undefined||b.peakY===null) return 0; var lvl0=JG_PAD_LO-PG_CB*jgPadH()-PG_LIFT-b.r, room=lvl0-(JG_TOP+(ARC.webD||0)+b.r), h=(b.y0===undefined?b.y:b.y0)-Math.min(b.peakY,b.y);
   var f=Math.max(0,Math.min(1,h/room)); return Math.round((Math.round(PG_V.pts)===1?10:pgPtsF(f))*pgMultAll()); }
 function pgsPtsHint(c,t,F,FW,I){ var mode=Math.round(PG_V.phint||0); if(!mode||ARC.phase!=='play') return; var S=PGS.pth; if(!S||t<S.tl-0.5) S=PGS.pth={hid:-1,val:0,apex:null,old:null}; S.tl=t; var b=(ARC.balls||[])[0];   /* новая партия — с чистого листа */
   if(b&&!(b.wait>0)&&!b.hold&&b.from!==null&&b.from!==undefined){
     if(S.hid!==PGS.hid){ var got=(ARC.score||0)-(S.score0||0); if(S.hid>=0&&(S.val>0||got>0)) S.old={val:got>0?got:S.val,x:S.lx,y:S.ly,ax:S.apex?S.apex.x:undefined,ay:S.apex?S.apex.y:undefined,t:t}; S.hid=PGS.hid; S.val=0; S.apex=null; S.score0=ARC.score||0; S.zero=false; }
     var v=pgsPtsLive(b); if(b.touched){ S.zero=true; }
     if(!S.apex&&!S.zero){ if((b.vy||0)<0) S.val=v; else if(S.val>0) S.apex={x:F(b.x),y:F(b.peakY),t:t}; }
-    var bx=F(b.x), by=F(b.y); S.lx=bx+22; S.ly=by-20; }
+    var bx=F(b.x), by=F(b.y); S.lx=bx-16; S.ly=by+26; }   /* 1.60w (Ден 13:34): ярлык О1 — снизу слева от волана */
   var pen1=pgsPen(c,7200+(S.hid%40+40)%40);
-  if(mode===1){ if(S.val>0&&!S.zero){ var pop=S.apex?1+0.25*Math.max(0,1-(t-S.apex.t)/0.25):1, sz=(S.apex?18:13)*pop; pen1.text('+'+S.val,S.lx,S.ly,sz,{align:'left',w:I.w*0.6}); }
-    var O=S.old; if(O&&t-O.t<0.45){ var u=(t-O.t)/0.45, e=u*u*(3-2*u), tx=FW-F(0.08), ty=F(0.12); pgsPen(c,7250).text('+'+O.val,O.x+(tx-O.x)*e,O.y+(ty-O.y)*e,18*(1-0.5*e),{align:'left',w:I.w*0.6,a:1-0.6*e}); } }
-  else { if(S.apex&&S.val>0&&!S.zero){ var str=String(S.val), n=Math.max(1,Math.ceil(str.length*Math.min(1,(t-S.apex.t)/0.3))); pen1.text(str.slice(0,n),S.apex.x+14,Math.max(F(JG_TOP)+20,S.apex.y-4),18,{align:'left',w:I.w*0.6}); }   /* справа от вершины, не залезая на потолок */
-    var O2=S.old; if(O2&&t-O2.t<0.8&&O2.ax!==undefined){ var str2=String(O2.val); pgsPen(c,7260).text(str2,O2.ax+14,Math.max(F(JG_TOP)+20,O2.ay-4),18,{align:'left',w:I.w*0.6,a:1-(t-O2.t)/0.8}); } } }
+  if(mode===1){ if(S.val>0&&!S.zero){ var pop=S.apex?1+0.25*Math.max(0,1-(t-S.apex.t)/0.25):1, sz=(S.apex?18:13)*pop; pen1.text('+'+S.val,S.lx,S.ly,sz,{align:'right',w:I.w*0.6}); }
+    var O=S.old; if(O&&t-O.t<0.45){ var u=(t-O.t)/0.45, e=u*u*(3-2*u), tx=FW-F(0.08), ty=F(0.12); pgsPen(c,7250).text('+'+O.val,O.x+(tx-O.x)*e,O.y+(ty-O.y)*e,18*(1-0.5*e),{align:e>0.5?'left':'right',w:I.w*0.6,a:1-0.6*e}); } }
+  else { if(S.apex&&S.val>0&&!S.zero){ var str=String(S.val), n=Math.max(1,Math.ceil(str.length*Math.min(1,(t-S.apex.t)/0.3))); pen1.text(str.slice(0,n),S.apex.x+14,Math.max(F(JG_TOP+(ARC.webD||0))+30,S.apex.y-4),18,{align:'left',w:I.w*0.6}); }   /* 1.60w (Ден 13:37): у самого потолка (и паутины) — ниже, не на нём */   /* справа от вершины, не залезая на потолок */
+    var O2=S.old; if(O2&&t-O2.t<0.8&&O2.ax!==undefined){ var str2=String(O2.val); pgsPen(c,7260).text(str2,O2.ax+14,Math.max(F(JG_TOP+(ARC.webD||0))+30,O2.ay-4),18,{align:'left',w:I.w*0.6,a:1-(t-O2.t)/0.8}); } } }
 function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ return v*390; }, I=PGS_ST;
   /* the page: paper and the ceiling, kept until the screen changes size */
   var key=W+'x'+H+'|'+pgsStyle(); if(PGS.key!==key){ PGS.key=key; var bg=document.createElement('canvas'); bg.width=W; bg.height=H; var bc=bg.getContext('2d'); bc.scale(dpr,dpr); Sk.paper(bc,W/dpr,H/dpr,dpr,{seed:7});
@@ -274,6 +274,12 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
   /* 1.60n «Потолок трескается»: трещина растёт за 0,25 с из точки, куда ударил волан (ломаная вверх в штриховку и чуть вниз, с
      отколами); каждая следующая — длиннее и ветвистее; перед последней трещины подрагивают; обвал — куски потолка и пыль падают
      на месте всех трещин */
+  /* 1.60v: паутина под потолком — нити от потолка вниз и провисающая кромка на её высоте; опускается плавно вместе с физикой */
+  if((ARC.webD||0)>0.002){ var CEw=F(JG_TOP), WY=F(JG_TOP+ARC.webD), wp0=pgsPen(c,6600), na=Math.max(8,Math.round(FW/70)), anch=[];
+    for(var ai=0;ai<=na;ai++){ var ax=FW*ai/na; anch.push(ax); wp0.stroke([[ax,CEw+1],[ax+((ai%2)?3:-3),WY]],{w:I.w*0.3,a:0.7}); }
+    for(var ai2=0;ai2<na;ai2++){ var x1=anch[ai2], x2=anch[ai2+1], pts3=[]; for(var m5=0;m5<=8;m5++){ var u5=m5/8; pts3.push([x1+(x2-x1)*u5,WY+Math.sin(Math.PI*u5)*6]); } wp0.stroke(pts3,{w:I.w*0.35,a:0.8});
+      var pm=[]; for(var m6=0;m6<=8;m6++){ var u6=m6/8; pm.push([x1+(x2-x1)*u6,CEw+(WY-CEw)*0.55+Math.sin(Math.PI*u6)*4]); } wp0.stroke(pm,{w:I.w*0.25,a:0.5});
+      wp0.stroke([[x1,CEw+2],[x1+(x2-x1)*0.5,WY+5]],{w:I.w*0.22,a:0.45}); } }
   if((PG_V.crack||0)>=1){ var NC=Math.round(PG_V.crack), CE2=F(JG_TOP);
     (ARC.crk||[]).forEach(function(q,j){ var pc=pgsPen(c,6100+j*7+Math.round(q.x*97)%5), gr=Math.min(1,(t-q.t)/0.25), x0=F(q.x)+(j===NC-2?Math.sin(t*28)*0.8:0), L=(10+5*j)*gr, pts=[[x0,CE2+2]];
       for(var m=1;m<=5;m++){ var hh=((j+1)*7.31+m*3.17)%1; pts.push([x0+(m%2?1:-1)*(2+hh*5),CE2+2-L*m/5]); } pc.draw(pts,{w:I.w*0.7});
@@ -289,7 +295,7 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
       [-4,4].forEach(function(dx){ if(blink) pe2.stroke([[ex+dx-2,ey],[ex+dx+2,ey]],{w:I.w*0.5}); else { pe2.loop(ex+dx,ey,2.4,2.4,{w:I.w*0.5});
         if(crN===NC-1&&b0e){ var vx=F(b0e.x)-ex, vy=F(b0e.y)-ey, vl=Math.hypot(vx,vy)||1; c.save(); c.fillStyle=I.ink; c.beginPath(); c.arc(ex+dx+vx/vl*1.1,ey+vy/vl*1.1,1.1,0,6.283); c.fill(); c.restore(); } } });
       if(crN===NC-1){ var lw2=Math.sin(t*9)*1.5; pe2.stroke([[ex-9,CE2-1],[ex-12,CE2+4+lw2]],{w:I.w*0.45}); pe2.stroke([[ex+9,CE2-1],[ex+12,CE2+4-lw2]],{w:I.w*0.45}); } }
-    var KB=ARC.crkB; if(KB&&t-KB.t<PG_SPIDER){ var T=(t-KB.t)*2.4/PG_SPIDER, sx=F(KB.x), sy=CE2+20+30*Math.min(1,T/0.25), hy=CE2-4, ez=function(u){ u=Math.max(0,Math.min(1,u)); return u*u*(3-2*u); };
+    var KB=ARC.crkB; if(KB&&t-KB.t<PG_SPIDER){ var T=(t-KB.t)*2.4/PG_SPIDER, sx=F(KB.x), sy=F(JG_TOP+(ARC.webD||0))+20+30*Math.min(1,T/0.25), hy=CE2-4, ez=function(u){ u=Math.max(0,Math.min(1,u)); return u*u*(3-2*u); };
       var wb=pgsPen(c,6500); [[-14,-4],[0,-6],[14,-4]].forEach(function(q){ wb.stroke([[sx,sy-6],[sx+q[0],CE2+1]],{w:I.w*0.3,a:Math.min(1,T/0.15)*(T<1.7?0.8:Math.max(0,0.8-(T-1.7)*1.2))}); });
       var spY, coc=0, carry=false;
       if(T<0.25) spY=hy+8*ez(T/0.25); else if(T<0.6) spY=hy+8+(sy-14-hy-8)*ez((T-0.25)/0.35); else if(T<1.1){ spY=sy-14; coc=(T-0.6)/0.5; } else if(T<1.7){ carry=true; coc=1; spY=sy-14+(hy-(sy-14))*ez((T-1.1)/0.6); } else spY=null;

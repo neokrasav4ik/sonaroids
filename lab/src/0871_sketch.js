@@ -262,14 +262,14 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
     /* 1.60o (Ден 11:58–12:01: «почему волан теряется на 5-м касании? может, кто-то вылезает из потолка и забирает?» → эскизы А–Г →
        «Г, паук — отлично санимируется, эдакий микромультик посреди партии»). В трещинах живёт паук: за две трещины до обвала в
        последней щели появляются глаза-бусинки и моргают; за одну — смотрят на волан, из щели торчат кончики лап. Обвал — микромультик
-       ~2,4 с: волан отскакивает от потолка и повисает на паутинках, паук выползает из щели, спускается на нитке, заматывает волан в кокон (лапы
+       PG_SPIDER (3,2 с): волан отскакивает от потолка и повисает на паутинках, паук выползает из щели, спускается на нитке, заматывает волан в кокон (лапы
        мелькают, витки ложатся один за другим), утаскивает кокон наверх, а трещины затягиваются паутиной и тают */
     var crN=(ARC.crk||[]).length, b0e=(ARC.balls||[])[0];
-    if(NC>=3&&crN>=NC-2&&crN>0&&!(ARC.crkB&&t-ARC.crkB.t<2.4)){ var lq=ARC.crk[crN-1], ex=F(lq.x), ey=CE2-3, pe2=pgsPen(c,6400), blink=(t*0.7)%1>0.93;
+    if(NC>=3&&crN>=NC-2&&crN>0&&!(ARC.crkB&&t-ARC.crkB.t<PG_SPIDER)){ var lq=ARC.crk[crN-1], ex=F(lq.x), ey=CE2-3, pe2=pgsPen(c,6400), blink=(t*0.7)%1>0.93;
       [-4,4].forEach(function(dx){ if(blink) pe2.stroke([[ex+dx-2,ey],[ex+dx+2,ey]],{w:I.w*0.5}); else { pe2.loop(ex+dx,ey,2.4,2.4,{w:I.w*0.5});
         if(crN===NC-1&&b0e){ var vx=F(b0e.x)-ex, vy=F(b0e.y)-ey, vl=Math.hypot(vx,vy)||1; c.save(); c.fillStyle=I.ink; c.beginPath(); c.arc(ex+dx+vx/vl*1.1,ey+vy/vl*1.1,1.1,0,6.283); c.fill(); c.restore(); } } });
       if(crN===NC-1){ var lw2=Math.sin(t*9)*1.5; pe2.stroke([[ex-9,CE2-1],[ex-12,CE2+4+lw2]],{w:I.w*0.45}); pe2.stroke([[ex+9,CE2-1],[ex+12,CE2+4-lw2]],{w:I.w*0.45}); } }
-    var KB=ARC.crkB; if(KB&&t-KB.t<2.4){ var T=t-KB.t, sx=F(KB.x), sy=CE2+20+30*Math.min(1,T/0.25), hy=CE2-4, ez=function(u){ u=Math.max(0,Math.min(1,u)); return u*u*(3-2*u); };
+    var KB=ARC.crkB; if(KB&&t-KB.t<PG_SPIDER){ var T=(t-KB.t)*2.4/PG_SPIDER, sx=F(KB.x), sy=CE2+20+30*Math.min(1,T/0.25), hy=CE2-4, ez=function(u){ u=Math.max(0,Math.min(1,u)); return u*u*(3-2*u); };
       var wb=pgsPen(c,6500); [[-14,-4],[0,-6],[14,-4]].forEach(function(q){ wb.stroke([[sx,sy-6],[sx+q[0],CE2+1]],{w:I.w*0.3,a:Math.min(1,T/0.15)*(T<1.7?0.8:Math.max(0,0.8-(T-1.7)*1.2))}); });
       var spY, coc=0, carry=false;
       if(T<0.25) spY=hy+8*ez(T/0.25); else if(T<0.6) spY=hy+8+(sy-14-hy-8)*ez((T-0.25)/0.35); else if(T<1.1){ spY=sy-14; coc=(T-0.6)/0.5; } else if(T<1.7){ carry=true; coc=1; spY=sy-14+(hy-(sy-14))*ez((T-1.1)/0.6); } else spY=null;

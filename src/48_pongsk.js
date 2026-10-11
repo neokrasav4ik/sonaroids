@@ -48,17 +48,19 @@ function pgSkFx(q){ var K=pgSkSt(q), t=q.t; (q.fx||[]).forEach(function(f){
     if(f.lost!==undefined) K.flash=0.25; });
   var cr=q.crk||[]; K.crk=cr.map(function(x,j){ var o=K.crk[j]; return o&&o.x===x?o:{x:x,t:t}; }); }
 /* the drawing: q — a game (or a view of the field: the menu's demo, the waving, the countdown); playing — the score and the rest written in the corner */
-function pgSkDraw(q,dt,playing){ var u=pgU(), fw=Math.max(1,Math.round(PG_AR*u*uiS)), fh=Math.max(1,Math.round(u*uiS));
-  if(!PGK.cv) PGK.cv=document.createElement('canvas'); var cv0=PGK.cv; if(cv0.width!==fw||cv0.height!==fh){ cv0.width=fw; cv0.height=fh; PGS.key=''; }
+function pgSkDraw(q,dt,playing,cardH){ var u=pgU(), fw=Math.max(1,Math.round(PG_AR*u*uiS)), fh=Math.max(1,Math.round(u*uiS));
+  if(cardH){ fh=Math.max(1,Math.round(cardH)); fw=Math.round(fh*PG_AR); }   // 1.61s: the games' screen card — its own size
+  var key=cardH?'cc':'cv'; if(!PGK[key]) PGK[key]=document.createElement('canvas'); var cv0=PGK[key]; if(cv0.width!==fw||cv0.height!==fh){ cv0.width=fw; cv0.height=fh; PGS.key=''; }
   var K=pgSkSt(q), dq=Math.max(0,Math.min(0.1,q.t-K.t)); K.t=q.t;   // 1.61m: the flash and the «+N» fade by the game's own time (the menu's rally was drawn with dt 0 — its red veil never faded)
   if(PGK.src!==q){ PGK.src=q; PGS.life=null; PGS.pl=null; PGS.sh=null; PGS.hist=[]; PGS.mPl=null; PGS.mV=0; PGS.mRef=undefined; PGS.tLast=null; PGS.slow=null; PGS.pth=null; }   // another game on the screen: the players, the shuttle's turn, the motors start afresh
-  PG_V.dark=pgSkin(); PG_V.phint=pgHint(); PG_V.hudL=handSide()==='left'; PGK.v.ar=PG_AR; PGK.v.hw=q.hw; PGK.v.H=q.H; K.lastT=Math.max(0,K.lastT-dq); K.flash=Math.max(0,K.flash-dq);
+  PG_V.dark=pgSkin(); PG_V.phint=pgHint(); PG_V.hudL=handSide()==='left'; PG_V.skw=cardH?Math.min(4,Math.max(2.2,1.7*390/fh)):undefined;   /* 1.61s: on the small card the pen thicker — the lines stay at least ~1.5 dots */ PGK.v.ar=PG_AR; PGK.v.hw=q.hw; PGK.v.H=q.H; K.lastT=Math.max(0,K.lastT-dq); K.flash=Math.max(0,K.flash-dq);
   var A=window.ARC; A.ar=PG_AR; A.t=q.t; A.py=q.py; A.padSoft=null; A.balls=q.ball?[q.ball]:[]; A.webD=q.webD||0; A.crk=K.crk; A.crkB=K.crkB; A.crkM=K.crkM;
   A.ceils=q.ceils||0; A.falls=q.falls||0; A.narrowK=q.k||1; A.score=q.score||0; A.series=q.series||0; A.kick=K.kick; A.phase=playing?'play':'menu'; A.lastPts=K.lastPts; A.lastT=K.lastT; A.pf=[]; A.flash=K.flash; A.clean=0;
   var t0=performance.now(), c=cv0.getContext('2d'); c.setTransform(1,0,0,1,0,0);
   pgSketch(c,fw,fh,Math.max(1,uiS*DPR/S));
   /* 1.61m: the slow-phone steps only in the game itself (the menu and the getting ready run at 30 frames a second on purpose — they read
      as «slow» and stepped every phone down to the coarsest drawing within seconds) */
+  if(cardH) return cv0;
   if(scr==='play'&&PGK.q.prev&&t0-PGK.q.prev<100) pgSkQual(t0-PGK.q.prev); PGK.q.prev=scr==='play'?t0:0;
   lx.fillStyle=PG_V.dark?'#1d1b18':'#f6f1e6'; lx.fillRect(0,0,LW,LH); var sm=lx.imageSmoothingEnabled; lx.imageSmoothingEnabled=true;
   lx.drawImage(cv0,pgX(0),pgY(0),PG_AR*u,u); lx.imageSmoothingEnabled=sm; }

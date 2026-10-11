@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='1.61q';
+var VERSION='1.61s';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -834,12 +834,22 @@ var Pong=(function(){
     if(was&&!b.on&&b.vy<-0.5){ var sp=Math.sqrt(b.vx*b.vx+b.vy*b.vy); b.touched=false; b.peakY=b.y; b.y0=b.y; g.tosses++; g.events.push('toss'); g.fx.push({kick:b.onI,a:sp/1.2,vy:-b.vy}); }
     if(b.dead||b.y>1.1||b.x<-0.15||b.x>g.ar+0.15) lose(g,b);
     return g; }
+  /* v1.61r (pong-8): the game goes on after a pause. The swing's strength is the racket's speed from one step to the next; on a pause the
+     rules stand still, and by the end of the countdown the palm is usually elsewhere (after the pause's waving — always): the first step
+     saw the racket «jump» there in 1/60 s — a very sharp swing, fading over ~5 steps (the maintainer 11 Oct 21:48–21:49: «видимо надо
+     исправить»). Now the screen tells the rules the game goes on: the racket's last place and speed are forgotten, the first step after
+     it is no swing. The log keeps it (an event with the step), the replay does it at the same step */
+  function resume(g){ g.padPrev=null; g.vpS=0; }
   /* the share of the start width the rackets have now, and how long till they narrow again */
   function width(g){ return TUNE.HWR*g.k; }
   function nextNarrow(g){ return (g.step+1)*TUNE.NARROW_T-g.t; }
   /* a whole game from a palm trajectory (one value per step; NONE or less — no palm; the palm itself may go a little below 0): what a server would run */
   var NONE=-9;
-  function replay(seed,ar,sens,hands,span){ var g=create(seed,ar,sens,span); for(var i=0;i<hands.length&&g.state!=='over';i++) step(g,hands[i]===null||hands[i]<=NONE?null:hands[i]); return g; }
+  /* marks (v1.61r): what the screen told the rules between steps, from the log — [step, 'resume'] (the game went on after a pause),
+     [step, 'sens', 0…3] (the sensitivity changed in the pause); done when the game has made that many steps */
+  function replay(seed,ar,sens,hands,span,marks){ var g=create(seed,ar,sens,span), M=(marks||[]).slice().sort(function(a,b){ return a[0]-b[0]; }), m=0;
+    for(var i=0;i<hands.length&&g.state!=='over';i++){ while(m<M.length&&M[m][0]<=g.n){ var k=M[m][1]; if(k==='resume') resume(g); else if(k==='sens'){ var H=TUNE.SENS[M[m][2]]; if(H) g.H=H; } m++; }
+      step(g,hands[i]===null||hands[i]<=NONE?null:hands[i]); } return g; }
   /* how many steps this frame, from the time gathered (s, with this frame's time already added) and the time left over. 1.59c: «while a
      whole step has gathered» gave, at 60 frames a second, a frame with no step and the next with two whenever the gathered time sat at a
      step's edge — and a phone's screen runs a hair off 60 Hz, so it drifts onto that edge every few seconds and stays there jittering for
@@ -848,8 +858,8 @@ var Pong=(function(){
      the middle, far from both edges, so a jitter can't flip it back. More than 5 steps behind (a pause, a hitch) — the rest is dropped.
      Not part of the rules: only the drawing's rhythm */
   function frameSteps(acc){ var n=1; acc-=DT; while(acc>0.75*DT&&n<5){ n++; acc-=DT; } if(acc>0.75*DT) acc=0; if(acc<-0.75*DT){ n--; acc+=DT; } return {n:n,acc:acc}; }
-  var TAG='pong-7';   // v1.61b: «Дуги в поле» (pong-4); v1.61c: «Запас силы» 0.2 (pong-5); v1.61d: «Потолок трескается», 5 (pong-6); v1.61e: «Паутина» 0.5% from the 4th minute (pong-7)
-  return {NONE:NONE,TAG:TAG,frameSteps:frameSteps,TUNE:TUNE,DT:DT,create:create,step:step,replay:replay,surf:surf,aimDir:aimDir,softTop:softTop,expNeg:expNeg,webTarget:webTarget,padOf:padOf,hwOf:hwOf,mult:mult,ptsOf:ptsOf,width:width,nextNarrow:nextNarrow};
+  var TAG='pong-8';   // v1.61b: «Дуги в поле» (pong-4); v1.61c: «Запас силы» 0.2 (pong-5); v1.61d: «Потолок трескается», 5 (pong-6); v1.61e: «Паутина» 0.5% from the 4th minute (pong-7); v1.61r: the first step after a pause is no swing (pong-8)
+  return {NONE:NONE,TAG:TAG,frameSteps:frameSteps,TUNE:TUNE,DT:DT,create:create,step:step,resume:resume,replay:replay,surf:surf,aimDir:aimDir,softTop:softTop,expNeg:expNeg,webTarget:webTarget,padOf:padOf,hwOf:hwOf,mult:mult,ptsOf:ptsOf,width:width,nextNarrow:nextNarrow};
 })();
 if(typeof module!=='undefined') module.exports=Pong;
 /* ── PONG CONTROL (SonaPong, v1.59): the palm → the rackets, moved from the lab (lab/src/087_arcade.js 1.57f–1.58z24) as it is.
@@ -4987,8 +4997,14 @@ function pgDemoTick(){ var d=PG.demo; if(!d||d.state==='over'||Math.abs(d.ar-pgA
 function pgDemoDraw(){ var d=pgDemoTick(); pgField(d,0); }
 /* the card on the games' screen: the menu's rally drawn full size off screen */
 var pgCardC=null;
-function pgCard(){ if(!pgCardC||pgCardC.width!==LW||pgCardC.height!==LH){ pgCardC=document.createElement('canvas'); pgCardC.width=LW; pgCardC.height=LH; }
-  var keep=lx; try{ lx=pgCardC.getContext('2d'); pgDemoDraw(); } finally { lx=keep; } return pgCardC; }
+/* 1.61s (Den 21:53: «почему на главном экране скин на карточке SonaLob такого низкого качества?»): the card was the whole screen's drawing at
+   the game's pixels, squeezed ~4× into the card without smoothing — the pen's thin lines broke into steps. Now the rally is drawn for the
+   card at the card's own size (one and a half times its dots, smoothed down), the pen thicker, and laid smoothly */
+function pgCard(w,h){ var s=Math.min(3,Math.max(1,uiS)*1.5), CW=Math.max(8,Math.round((w||LW)*s)), CH=Math.max(4,Math.round((h||LH)*s));
+  if(!pgCardC||pgCardC.width!==CW||pgCardC.height!==CH){ pgCardC=document.createElement('canvas'); pgCardC.width=CW; pgCardC.height=CH; }
+  var d=pgDemoTick(), fh=Math.min(CH,CW/PG_AR), fc=pgSkDraw(d,0,false,fh), c=pgCardC.getContext('2d'); c.setTransform(1,0,0,1,0,0);
+  c.fillStyle=pgSkin()?'#1d1b18':'#f6f1e6'; c.fillRect(0,0,CW,CH); c.imageSmoothingEnabled=true; c.imageSmoothingQuality='high'; c.drawImage(fc,(CW-fc.width)/2,(CH-fc.height)/2);
+  pgCardC.smooth=true; return pgCardC; }
 /* ── the menu: play, how to play, the sensitivity (the only setting), the sounds, all the games ── */
 function pgSensLabel(){ return L('pg_sens')+': '+L('pg_sens'+pgSens()); }
 function sPTitle(){ pgDemoDraw();
@@ -5045,7 +5061,7 @@ function pgCount(){ countT-=DT; var v=pgView(PG.view?PG.view.py:Pong.TUNE.PAD_LO
   if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.play('tick');
   if(countT<=0) startGame(); }
 function pgCountStart(){ pgKeep(); countT=3; try{ DSP2.set('quarter',1); }catch(e){} go('count'); }
-function pgStart(){ PG.fps=null; PG.resume=false; var seed=newSeed(); var lin=PG.c&&PG.c.lin; g=Pong.create(seed,pgAr(),pgSens(),lin?Math.max(30,lin.t-lin.b):null); var f=PG.c?PongCtl.frac(PG.c,PongCtl.palm(PG.c)):null; if(f!==null) g.py=Pong.padOf(g,f);
+function pgStart(){ PG.fps=null; PG.resume=false; PG.resumed=false; var seed=newSeed(); var lin=PG.c&&PG.c.lin; g=Pong.create(seed,pgAr(),pgSens(),lin?Math.max(30,lin.t-lin.b):null); var f=PG.c?PongCtl.frac(PG.c,PongCtl.palm(PG.c)):null; if(f!==null) g.py=Pong.padOf(g,f);
   acc=0; parts=[]; PG.pts=[]; PG.newBest=false; nickAsked=false; var I=Sonar.info(), c=PG.c||{};
   Logs.gameStart({core:Pong.TAG,game:'pong',auto_cal:!!PG.auto,seed:seed,ar:+g.ar.toFixed(4),sens:pgSens(),span:g.span,cal:DSP2.info().cal,lin:c.lin?{b:+c.lin.b.toFixed(1),t:+c.lin.t.toFixed(1)}:null,mix_off:c.mxCal===null||c.mxCal===undefined?null:+c.mxCal.toFixed(1),
     chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids'});
@@ -5068,6 +5084,7 @@ function pgPlay(){
   if(now-fp.t>=5000){ Logs.gameEv('кадры',{n:fp.n,s:+((now-fp.t)/1000).toFixed(2),max:Math.round(fp.mx),slow:fp.slow}); fp.t=now; fp.n=0; fp.mx=0; fp.slow=0; }
   while(n<want){ n++; var c=PG.c, f=c?PongCtl.frac(c,c.present?PongCtl.palmAt(c,vs-(want-n)*1000*Pong.DT):null):null;   // 1.59e: the palm at each step's own time (src/16_pong_ctl.js palmAt)
     f=f===null?null:Math.round(f*10000)/10000;   /* 1.61p: the palm rounded to the 4 digits the log keeps, so a replay from the log is the same game (since 1.59g this line sat inside the comment above — the rules got the unrounded palm; the grid was 1/4000, which 4 digits can't hold) */
+    if(PG.resumed){ PG.resumed=false; Pong.resume(g); Logs.gameEv('resume',g.n); }   // 1.61r: the first step after a pause is no swing (pong-8)
     Pong.step(g,f); Logs.step({pong:1,n:g.n,FH:1,ship:{y:g.py},lives:g.lives,score:g.score,events:g.events},f); pgReact(); if(g.state==='over') break; }
   flash=Math.max(0,flash-DT); duckT-=DT; if(duckT<=0&&Sonar.peak()>DUCK_PEAK){ duckT=0.4; if(Sfx.duck()) Logs.gameEv('sounds down',+Sfx.level().toFixed(2)); }
   pgField(g,DT); pgHud(); coveredLine(topY()+40); pgPauseBtn(); say(L('menu_a'));
@@ -5135,17 +5152,19 @@ function pgSkFx(q){ var K=pgSkSt(q), t=q.t; (q.fx||[]).forEach(function(f){
     if(f.lost!==undefined) K.flash=0.25; });
   var cr=q.crk||[]; K.crk=cr.map(function(x,j){ var o=K.crk[j]; return o&&o.x===x?o:{x:x,t:t}; }); }
 /* the drawing: q — a game (or a view of the field: the menu's demo, the waving, the countdown); playing — the score and the rest written in the corner */
-function pgSkDraw(q,dt,playing){ var u=pgU(), fw=Math.max(1,Math.round(PG_AR*u*uiS)), fh=Math.max(1,Math.round(u*uiS));
-  if(!PGK.cv) PGK.cv=document.createElement('canvas'); var cv0=PGK.cv; if(cv0.width!==fw||cv0.height!==fh){ cv0.width=fw; cv0.height=fh; PGS.key=''; }
+function pgSkDraw(q,dt,playing,cardH){ var u=pgU(), fw=Math.max(1,Math.round(PG_AR*u*uiS)), fh=Math.max(1,Math.round(u*uiS));
+  if(cardH){ fh=Math.max(1,Math.round(cardH)); fw=Math.round(fh*PG_AR); }   // 1.61s: the games' screen card — its own size
+  var key=cardH?'cc':'cv'; if(!PGK[key]) PGK[key]=document.createElement('canvas'); var cv0=PGK[key]; if(cv0.width!==fw||cv0.height!==fh){ cv0.width=fw; cv0.height=fh; PGS.key=''; }
   var K=pgSkSt(q), dq=Math.max(0,Math.min(0.1,q.t-K.t)); K.t=q.t;   // 1.61m: the flash and the «+N» fade by the game's own time (the menu's rally was drawn with dt 0 — its red veil never faded)
   if(PGK.src!==q){ PGK.src=q; PGS.life=null; PGS.pl=null; PGS.sh=null; PGS.hist=[]; PGS.mPl=null; PGS.mV=0; PGS.mRef=undefined; PGS.tLast=null; PGS.slow=null; PGS.pth=null; }   // another game on the screen: the players, the shuttle's turn, the motors start afresh
-  PG_V.dark=pgSkin(); PG_V.phint=pgHint(); PG_V.hudL=handSide()==='left'; PGK.v.ar=PG_AR; PGK.v.hw=q.hw; PGK.v.H=q.H; K.lastT=Math.max(0,K.lastT-dq); K.flash=Math.max(0,K.flash-dq);
+  PG_V.dark=pgSkin(); PG_V.phint=pgHint(); PG_V.hudL=handSide()==='left'; PG_V.skw=cardH?Math.min(4,Math.max(2.2,1.7*390/fh)):undefined;   /* 1.61s: on the small card the pen thicker — the lines stay at least ~1.5 dots */ PGK.v.ar=PG_AR; PGK.v.hw=q.hw; PGK.v.H=q.H; K.lastT=Math.max(0,K.lastT-dq); K.flash=Math.max(0,K.flash-dq);
   var A=window.ARC; A.ar=PG_AR; A.t=q.t; A.py=q.py; A.padSoft=null; A.balls=q.ball?[q.ball]:[]; A.webD=q.webD||0; A.crk=K.crk; A.crkB=K.crkB; A.crkM=K.crkM;
   A.ceils=q.ceils||0; A.falls=q.falls||0; A.narrowK=q.k||1; A.score=q.score||0; A.series=q.series||0; A.kick=K.kick; A.phase=playing?'play':'menu'; A.lastPts=K.lastPts; A.lastT=K.lastT; A.pf=[]; A.flash=K.flash; A.clean=0;
   var t0=performance.now(), c=cv0.getContext('2d'); c.setTransform(1,0,0,1,0,0);
   pgSketch(c,fw,fh,Math.max(1,uiS*DPR/S));
   /* 1.61m: the slow-phone steps only in the game itself (the menu and the getting ready run at 30 frames a second on purpose — they read
      as «slow» and stepped every phone down to the coarsest drawing within seconds) */
+  if(cardH) return cv0;
   if(scr==='play'&&PGK.q.prev&&t0-PGK.q.prev<100) pgSkQual(t0-PGK.q.prev); PGK.q.prev=scr==='play'?t0:0;
   lx.fillStyle=PG_V.dark?'#1d1b18':'#f6f1e6'; lx.fillRect(0,0,LW,LH); var sm=lx.imageSmoothingEnabled; lx.imageSmoothingEnabled=true;
   lx.drawImage(cv0,pgX(0),pgY(0),PG_AR*u,u); lx.imageSmoothingEnabled=sm; }
@@ -6899,6 +6918,7 @@ function hubCard(id,x,y,w,ih,img,name,sub,on){
   R(P.bg,x,y,w,ih+26);
   if(img&&(img===hdCv||img===flyHC||img===hubTmp)){ var tc=img; if(img===hdCv){ tc=hubHdTmp(); tc.getContext('2d').drawImage(hdCv,0,0); } lx.clearRect(x+2,y+2,w-4,ih);   // v0.72, HD: the card cut into the pixel canvas, the
     hx.save(); hx.setTransform(1,0,0,1,0,0); if(id==='hub_rocks') hx.drawImage(tc,0,tc.height*0.18,tc.width*0.62,tc.height*0.62,Math.round((x+2)*hs),Math.round((y+2)*hs),Math.round((w-4)*hs),Math.round(ih*hs)); else hx.drawImage(tc,Math.round((x+2)*hs),Math.round((y+2)*hs),Math.round((w-4)*hs),Math.round(ih*hs)); hx.restore(); }   // world drawn sharp under it
+  else if(img&&img.smooth){ lx.save(); lx.imageSmoothingEnabled=true; lx.imageSmoothingQuality='high'; lx.drawImage(img,x+2,y+2,w-4,ih); lx.restore(); }   /* 1.61s: SonaLob's card, drawn at its own size — laid smoothly */
   else if(img) lx.drawImage(img,x+2,y+2,w-4,ih);
   if(!on){ lx.globalAlpha=0.55; R(P.bg,x+2,y+2,w-4,ih); lx.globalAlpha=1; }
   frame(x,y,w,ih+26,on?P.band:P.line); if(on) frame(x-1,y-1,w+2,ih+28,P.band);
@@ -6940,7 +6960,7 @@ function sHub(){ var fr, rimg, fid=SKIN_IDS[hubSkin], rsk=RACE_SKINS[hubRace]; h
   ih=Math.round(cw*LH/LW); var cx=Math.round(cx0-(NC*cw+(NC-1)*gap)/2), ty=Math.round(top+(playY-8-lab-top-ih)/2);
   hubCard('hub_rocks',cx,ty,cw,ih,fr,'SonaFly','',true);
   hubCard('hub_race',cx+cw+gap,ty,cw,ih,rimg||withRaceSkin(rsk,function(){ return raceCardHD(cw-4,ih); }),'SonaRace','',true);
-  hubCard('hub_pong',cx+2*(cw+gap),ty,cw,ih,pgCard(),'SonaLob',L('r_test'),true);   // v1.61k: SonaPong → SonaLob (Den 19:18)   // v1.59: a test version until its skins and sounds   // v0.84: the race is open; v0.92: «тестовая пока версия»; v1.00: no longer («после добавления тетрадки надпись можно убирать»)
+  hubCard('hub_pong',cx+2*(cw+gap),ty,cw,ih,pgCard(cw-4,ih),'SonaLob',L('r_test'),true);   // v1.61k: SonaPong → SonaLob (Den 19:18)   // v1.59: a test version until its skins and sounds   // v0.84: the race is open; v0.92: «тестовая пока версия»; v1.00: no longer («после добавления тетрадки надпись можно убирать»)
   if(narrow){ button('settings',L('settings'),Math.round(cx0-sw/2),playY,sw,BH,'');
     var x2=Math.round(cx0-bw-4); button('howto',L('howto'),x2,rowY,bw,BH,''); button('lang',L('lang'),x2+bw+8,rowY,bw,BH,''); }
   else { var tw=bw*2+sw+16, bx=Math.round(cx0-tw/2); button('howto',L('howto'),bx,rowY,bw,BH,''); button('lang',L('lang'),bx+bw+8,rowY,bw,BH,''); button('settings',L('settings'),bx+2*bw+16,rowY,sw,BH,''); }
@@ -7609,7 +7629,7 @@ function quickOr(full,any){ if(mode==='pong'?pgReady():any?readyNow():liveReady(
 function toRoom(b){ roomAgain=false; Sonar.setBand(b); prep=null; silentRetry=false; go('away'); }
 function toWave(){ forceWave=false; autoTry=false; try{ DSP2.set('quarter',0); }catch(e){}   // v1.59: the quarter-frame phase only for SonaPong's rackets
   T=Tune.create(+store.get('sonaroids_field','100')||100,true); caught=false; flips=0; flipT=-9; seenT=0; go('wave'); }
-function pauseGame(){ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; go('paused'); } }
+function pauseGame(){ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; if(mode==='pong'&&pausedFrom==='play') PG.resumed=true; go('paused'); } }   /* 1.61r: SonaLob's rules are told the game goes on (src/15_pong.js resume) */
 function startCount(){ flyReset(); if(resumeAfterPrep&&g&&g.state!=='over'){ resumeAfterPrep=false; if(mode==='pong') pgKeep(); countT=3; go('count-resume'); return; }
   resumeAfterPrep=false; if(mode==='pong'){ pgCountStart(); return; } countT=3; mixStart(); if(scr!=='wave') shipY=null; lastHand=handFrac()===null?lastHand:handFrac(); /* from the try-out the ship goes on where it is */ Logs.ev('отсчёт',{field:+T.field.toFixed(1),auto:T.auto}); store.set('sonaroids_field',Math.round(T.field));
   // v1.14: a hand calibration's middle (the echo's range) — the auto-calibration plays with it (20_sonar liveMid)
@@ -7644,7 +7664,7 @@ var ACT={
   hub_rocks:function(){ modeSet('fly'); go('title'); }, rskin:function(){ raceSkinStep(1); }, rskin_next:function(){ raceSkinStep(1); }, rskin_prev:function(){ raceSkinStep(-1); }, hub_play:function(){ modeSet('fly'); go('title'); }, hub_race:function(){ modeSet('race'); go('rtitle'); }, hub_pong:function(){ modeSet('pong'); go('ptitle'); },   // v1.59
   pg_hint:function(){ PG.hint=pgHint()===1?2:1; store.set('sonaroids_pong_hint',String(PG.hint)); },   // v1.61j: О1 ↔ О2, until Den picks
   pg_skin:function(){ PG.skin=1-pgSkin(); store.set('sonaroids_pong_skin',String(PG.skin)); },   // v1.61i: light ↔ dark «набросок»
-  pg_sens:function(){ PG.sens=(pgSens()+1)%4; store.set('sonaroids_pong_sens',String(PG.sens)); if(g&&g.ball!==undefined&&g.state==='play'){ g.H=Pong.TUNE.SENS[PG.sens]; Logs.gameEv('чувствительность',PG.sens); }   /* 1.61p: in the log — a replay needs it */ }, pg_rehold:function(){ pgWaveStart(scrT-WAVE_PAUSE+1); }, pg_recal:function(){ var c=PG.c; PG.prevCal=c?{lin:c.lin,mxCal:c.mxCal,mxOff:c.mxOff}:null; if(!(booted&&Sonar.healthy())){ resumeAfterPrep=true; PG.resume=false; ensure(null); return; } PG.resume=true; flipT=-9; go('phold'); pgWaveStart(); },
+  pg_sens:function(){ PG.sens=(pgSens()+1)%4; store.set('sonaroids_pong_sens',String(PG.sens)); if(g&&g.ball!==undefined&&g.state==='play'){ g.H=Pong.TUNE.SENS[PG.sens]; Logs.gameEv('sens',[g.n,PG.sens]); }   /* 1.61p: in the log — a replay needs it */ }, pg_rehold:function(){ pgWaveStart(scrT-WAVE_PAUSE+1); }, pg_recal:function(){ var c=PG.c; PG.prevCal=c?{lin:c.lin,mxCal:c.mxCal,mxOff:c.mxOff}:null; if(!(booted&&Sonar.healthy())){ resumeAfterPrep=true; PG.resume=false; ensure(null); return; } PG.resume=true; flipT=-9; go('phold'); pgWaveStart(); },
   /* v1.61l: the pause's «Подстроить ладонь» can be left — the corner's «back» returns to the pause with the calibration as it was (before: only «menu», with the old one already wiped and the game left hanging; the next «play» went on with it) */
   pg_back:function(){ var c=PG.c, q=PG.prevCal; if(c&&q){ c.wave=null; c.lin=q.lin; c.mxCal=q.mxCal; c.mxOff=q.mxOff; c.mxH=null; } PG.resume=false; PG.done=!!(c&&c.lin); pausedFrom='play'; go('paused'); },
   /* v1.58 (Ден, 7.10, после «Жонглёра» в лабе — «лучшее управление, что я вообще пробовал»: «да, сделай переключатель в меню паузы —

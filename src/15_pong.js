@@ -135,12 +135,22 @@ var Pong=(function(){
     if(was&&!b.on&&b.vy<-0.5){ var sp=Math.sqrt(b.vx*b.vx+b.vy*b.vy); b.touched=false; b.peakY=b.y; b.y0=b.y; g.tosses++; g.events.push('toss'); g.fx.push({kick:b.onI,a:sp/1.2,vy:-b.vy}); }
     if(b.dead||b.y>1.1||b.x<-0.15||b.x>g.ar+0.15) lose(g,b);
     return g; }
+  /* v1.61r (pong-8): the game goes on after a pause. The swing's strength is the racket's speed from one step to the next; on a pause the
+     rules stand still, and by the end of the countdown the palm is usually elsewhere (after the pause's waving — always): the first step
+     saw the racket «jump» there in 1/60 s — a very sharp swing, fading over ~5 steps (the maintainer 11 Oct 21:48–21:49: «видимо надо
+     исправить»). Now the screen tells the rules the game goes on: the racket's last place and speed are forgotten, the first step after
+     it is no swing. The log keeps it (an event with the step), the replay does it at the same step */
+  function resume(g){ g.padPrev=null; g.vpS=0; }
   /* the share of the start width the rackets have now, and how long till they narrow again */
   function width(g){ return TUNE.HWR*g.k; }
   function nextNarrow(g){ return (g.step+1)*TUNE.NARROW_T-g.t; }
   /* a whole game from a palm trajectory (one value per step; NONE or less — no palm; the palm itself may go a little below 0): what a server would run */
   var NONE=-9;
-  function replay(seed,ar,sens,hands,span){ var g=create(seed,ar,sens,span); for(var i=0;i<hands.length&&g.state!=='over';i++) step(g,hands[i]===null||hands[i]<=NONE?null:hands[i]); return g; }
+  /* marks (v1.61r): what the screen told the rules between steps, from the log — [step, 'resume'] (the game went on after a pause),
+     [step, 'sens', 0…3] (the sensitivity changed in the pause); done when the game has made that many steps */
+  function replay(seed,ar,sens,hands,span,marks){ var g=create(seed,ar,sens,span), M=(marks||[]).slice().sort(function(a,b){ return a[0]-b[0]; }), m=0;
+    for(var i=0;i<hands.length&&g.state!=='over';i++){ while(m<M.length&&M[m][0]<=g.n){ var k=M[m][1]; if(k==='resume') resume(g); else if(k==='sens'){ var H=TUNE.SENS[M[m][2]]; if(H) g.H=H; } m++; }
+      step(g,hands[i]===null||hands[i]<=NONE?null:hands[i]); } return g; }
   /* how many steps this frame, from the time gathered (s, with this frame's time already added) and the time left over. 1.59c: «while a
      whole step has gathered» gave, at 60 frames a second, a frame with no step and the next with two whenever the gathered time sat at a
      step's edge — and a phone's screen runs a hair off 60 Hz, so it drifts onto that edge every few seconds and stays there jittering for
@@ -149,7 +159,7 @@ var Pong=(function(){
      the middle, far from both edges, so a jitter can't flip it back. More than 5 steps behind (a pause, a hitch) — the rest is dropped.
      Not part of the rules: only the drawing's rhythm */
   function frameSteps(acc){ var n=1; acc-=DT; while(acc>0.75*DT&&n<5){ n++; acc-=DT; } if(acc>0.75*DT) acc=0; if(acc<-0.75*DT){ n--; acc+=DT; } return {n:n,acc:acc}; }
-  var TAG='pong-7';   // v1.61b: «Дуги в поле» (pong-4); v1.61c: «Запас силы» 0.2 (pong-5); v1.61d: «Потолок трескается», 5 (pong-6); v1.61e: «Паутина» 0.5% from the 4th minute (pong-7)
-  return {NONE:NONE,TAG:TAG,frameSteps:frameSteps,TUNE:TUNE,DT:DT,create:create,step:step,replay:replay,surf:surf,aimDir:aimDir,softTop:softTop,expNeg:expNeg,webTarget:webTarget,padOf:padOf,hwOf:hwOf,mult:mult,ptsOf:ptsOf,width:width,nextNarrow:nextNarrow};
+  var TAG='pong-8';   // v1.61b: «Дуги в поле» (pong-4); v1.61c: «Запас силы» 0.2 (pong-5); v1.61d: «Потолок трескается», 5 (pong-6); v1.61e: «Паутина» 0.5% from the 4th minute (pong-7); v1.61r: the first step after a pause is no swing (pong-8)
+  return {NONE:NONE,TAG:TAG,frameSteps:frameSteps,TUNE:TUNE,DT:DT,create:create,step:step,resume:resume,replay:replay,surf:surf,aimDir:aimDir,softTop:softTop,expNeg:expNeg,webTarget:webTarget,padOf:padOf,hwOf:hwOf,mult:mult,ptsOf:ptsOf,width:width,nextNarrow:nextNarrow};
 })();
 if(typeof module!=='undefined') module.exports=Pong;

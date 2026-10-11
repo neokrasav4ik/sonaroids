@@ -46,8 +46,9 @@ const SCEN=`function(t){ if(t<8) return null; return 110-40*Math.cos(2*Math.PI*(
       /* 1.61p: the game's log replays to the same game — the palm as logged (4 digits, −9 for none) through the rules alone */
       over.rep=await p.evaluate(async()=>{ const g=__sonaroids.state().g, bl=Logs.gameBlob(), u8=new Uint8Array(await bl.arrayBuffer()); let i=12; const rd=(o)=>u8[o]|(u8[o+1]<<8)|(u8[o+2]<<16)|(u8[o+3]<<24); let glog=null, meta=null;
         while(i+8<=u8.length){ const id=String.fromCharCode(u8[i],u8[i+1],u8[i+2],u8[i+3]), n=rd(i+4); if(id==='glog') glog=JSON.parse(new TextDecoder().decode(u8.slice(i+8,i+8+n))); if(id==='LIST') meta=JSON.parse(new TextDecoder().decode(u8.slice(i+8+12,i+8+n)).trim()); i+=8+n+(n%2); }
-        const G0=meta.game, hands=glog.render.map(r=>r[2]), r=Pong.replay(G0.seed,G0.ar,G0.sens,hands,G0.span);
-        return {rows:hands.length,steps:g.n,score:r.score,want:g.score,none:hands.filter(h=>h===-9).length}; });
+        const G0=meta.game, hands=glog.render.map(r=>r[2]), marks=glog.events.filter(e=>e[1]==='resume'||e[1]==='sens').map(e=>e[1]==='resume'?[e[2],'resume']:[e[2][0],'sens',e[2][1]]);
+        const r=Pong.replay(G0.seed,G0.ar,G0.sens,hands,G0.span,marks), r0=Pong.replay(G0.seed,G0.ar,G0.sens,hands,G0.span);
+        return {rows:hands.length,steps:g.n,score:r.score,want:g.score,none:hands.filter(h=>h===-9).length,marks:marks.length,noMarks:r0.score,core:meta.game.core}; });
       break; }
   }
   await b.close();
@@ -64,7 +65,7 @@ const SCEN=`function(t){ if(t<8) return null; return 110-40*Math.cos(2*Math.PI*(
   { const f=shots.field; check('the field is the lab\'s shape (2.16 screen heights) across the whole screen, not the safe area',!!f&&f.gar===2.16&&f.ar===2.16&&Math.abs(f.x0)<=2&&Math.abs(f.x1-f.LW)<=2&&Math.abs(f.y1-f.y0-f.LH)<=1,f?`ar ${f.gar}; the field ${f.x0.toFixed(1)}…${f.x1.toFixed(1)} of ${f.LW} px`:'no game'); }
   check('pause: resume, hold again, start over, end, menu; then the countdown and the game',!!paused&&paused.scr==='paused'&&['resume','pg_recal','restart','quit','exit'].every(id=>paused.btn.includes(id))&&paused.cr==='count-resume'&&paused.back==='play',paused?`${paused.scr} → ${paused.cr} → ${paused.back}`:'');
   check('pause → «Подстроить ладонь» → «back»: the pause again, the calibration as it was (1.61l)',!!paused&&!!paused.recal&&paused.recal.scr==='phold'&&paused.recal.btn.includes('pg_back')&&paused.recal.lin===null&&paused.back0.scr==='paused'&&paused.back0.same,paused&&paused.recal?`${paused.recal.scr} [${paused.recal.btn.join(' ')}] → ${paused.back0.scr}, calibration kept: ${paused.back0.same}`:'');
-  check('the game\'s log replays to the same game (1.61p)',!!over&&!!over.rep&&over.rep.rows===over.rep.steps&&over.rep.score===over.rep.want,over&&over.rep?`${over.rep.rows} steps (${over.rep.none} without the palm), replayed ${over.rep.score}, played ${over.rep.want}`:'');
+  check('the game\'s log replays to the same game, the pauses too (1.61p, 1.61r)',!!over&&!!over.rep&&over.rep.rows===over.rep.steps&&over.rep.score===over.rep.want&&over.rep.marks>=1,over&&over.rep?`${over.rep.core}: ${over.rep.rows} steps (${over.rep.none} without the palm, ${over.rep.marks} goes-on after a pause), replayed ${over.rep.score}, played ${over.rep.want} (without the marks ${over.rep.noMarks})`:'');
   check('the game over keeps the best',!!over&&over.scr==='over'&&over.best===over.score&&['again','over_cal','menu'].every(id=>over.btn.includes(id)),over?`score ${over.score}, best kept ${over.best}`:'');
   check('no page errors',errors.length===0,errors.slice(0,2).join(' | '));
   out.forEach(x=>console.log(x)); console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;

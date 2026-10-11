@@ -159,6 +159,7 @@ function hubCard(id,x,y,w,ih,img,name,sub,on){
   R(P.bg,x,y,w,ih+26);
   if(img&&(img===hdCv||img===flyHC||img===hubTmp)){ var tc=img; if(img===hdCv){ tc=hubHdTmp(); tc.getContext('2d').drawImage(hdCv,0,0); } lx.clearRect(x+2,y+2,w-4,ih);   // v0.72, HD: the card cut into the pixel canvas, the
     hx.save(); hx.setTransform(1,0,0,1,0,0); if(id==='hub_rocks') hx.drawImage(tc,0,tc.height*0.18,tc.width*0.62,tc.height*0.62,Math.round((x+2)*hs),Math.round((y+2)*hs),Math.round((w-4)*hs),Math.round(ih*hs)); else hx.drawImage(tc,Math.round((x+2)*hs),Math.round((y+2)*hs),Math.round((w-4)*hs),Math.round(ih*hs)); hx.restore(); }   // world drawn sharp under it
+  else if(img&&img.smooth){ lx.save(); lx.imageSmoothingEnabled=true; lx.imageSmoothingQuality='high'; lx.drawImage(img,x+2,y+2,w-4,ih); lx.restore(); }   /* 1.61s: SonaLob's card, drawn at its own size — laid smoothly */
   else if(img) lx.drawImage(img,x+2,y+2,w-4,ih);
   if(!on){ lx.globalAlpha=0.55; R(P.bg,x+2,y+2,w-4,ih); lx.globalAlpha=1; }
   frame(x,y,w,ih+26,on?P.band:P.line); if(on) frame(x-1,y-1,w+2,ih+28,P.band);
@@ -200,7 +201,7 @@ function sHub(){ var fr, rimg, fid=SKIN_IDS[hubSkin], rsk=RACE_SKINS[hubRace]; h
   ih=Math.round(cw*LH/LW); var cx=Math.round(cx0-(NC*cw+(NC-1)*gap)/2), ty=Math.round(top+(playY-8-lab-top-ih)/2);
   hubCard('hub_rocks',cx,ty,cw,ih,fr,'SonaFly','',true);
   hubCard('hub_race',cx+cw+gap,ty,cw,ih,rimg||withRaceSkin(rsk,function(){ return raceCardHD(cw-4,ih); }),'SonaRace','',true);
-  hubCard('hub_pong',cx+2*(cw+gap),ty,cw,ih,pgCard(),'SonaLob',L('r_test'),true);   // v1.61k: SonaPong → SonaLob (Den 19:18)   // v1.59: a test version until its skins and sounds   // v0.84: the race is open; v0.92: «тестовая пока версия»; v1.00: no longer («после добавления тетрадки надпись можно убирать»)
+  hubCard('hub_pong',cx+2*(cw+gap),ty,cw,ih,pgCard(cw-4,ih),'SonaLob',L('r_test'),true);   // v1.61k: SonaPong → SonaLob (Den 19:18)   // v1.59: a test version until its skins and sounds   // v0.84: the race is open; v0.92: «тестовая пока версия»; v1.00: no longer («после добавления тетрадки надпись можно убирать»)
   if(narrow){ button('settings',L('settings'),Math.round(cx0-sw/2),playY,sw,BH,'');
     var x2=Math.round(cx0-bw-4); button('howto',L('howto'),x2,rowY,bw,BH,''); button('lang',L('lang'),x2+bw+8,rowY,bw,BH,''); }
   else { var tw=bw*2+sw+16, bx=Math.round(cx0-tw/2); button('howto',L('howto'),bx,rowY,bw,BH,''); button('lang',L('lang'),bx+bw+8,rowY,bw,BH,''); button('settings',L('settings'),bx+2*bw+16,rowY,sw,BH,''); }
@@ -869,7 +870,7 @@ function quickOr(full,any){ if(mode==='pong'?pgReady():any?readyNow():liveReady(
 function toRoom(b){ roomAgain=false; Sonar.setBand(b); prep=null; silentRetry=false; go('away'); }
 function toWave(){ forceWave=false; autoTry=false; try{ DSP2.set('quarter',0); }catch(e){}   // v1.59: the quarter-frame phase only for SonaPong's rackets
   T=Tune.create(+store.get('sonaroids_field','100')||100,true); caught=false; flips=0; flipT=-9; seenT=0; go('wave'); }
-function pauseGame(){ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; go('paused'); } }
+function pauseGame(){ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; if(mode==='pong'&&pausedFrom==='play') PG.resumed=true; go('paused'); } }   /* 1.61r: SonaLob's rules are told the game goes on (src/15_pong.js resume) */
 function startCount(){ flyReset(); if(resumeAfterPrep&&g&&g.state!=='over'){ resumeAfterPrep=false; if(mode==='pong') pgKeep(); countT=3; go('count-resume'); return; }
   resumeAfterPrep=false; if(mode==='pong'){ pgCountStart(); return; } countT=3; mixStart(); if(scr!=='wave') shipY=null; lastHand=handFrac()===null?lastHand:handFrac(); /* from the try-out the ship goes on where it is */ Logs.ev('отсчёт',{field:+T.field.toFixed(1),auto:T.auto}); store.set('sonaroids_field',Math.round(T.field));
   // v1.14: a hand calibration's middle (the echo's range) — the auto-calibration plays with it (20_sonar liveMid)
@@ -904,7 +905,7 @@ var ACT={
   hub_rocks:function(){ modeSet('fly'); go('title'); }, rskin:function(){ raceSkinStep(1); }, rskin_next:function(){ raceSkinStep(1); }, rskin_prev:function(){ raceSkinStep(-1); }, hub_play:function(){ modeSet('fly'); go('title'); }, hub_race:function(){ modeSet('race'); go('rtitle'); }, hub_pong:function(){ modeSet('pong'); go('ptitle'); },   // v1.59
   pg_hint:function(){ PG.hint=pgHint()===1?2:1; store.set('sonaroids_pong_hint',String(PG.hint)); },   // v1.61j: О1 ↔ О2, until Den picks
   pg_skin:function(){ PG.skin=1-pgSkin(); store.set('sonaroids_pong_skin',String(PG.skin)); },   // v1.61i: light ↔ dark «набросок»
-  pg_sens:function(){ PG.sens=(pgSens()+1)%4; store.set('sonaroids_pong_sens',String(PG.sens)); if(g&&g.ball!==undefined&&g.state==='play'){ g.H=Pong.TUNE.SENS[PG.sens]; Logs.gameEv('чувствительность',PG.sens); }   /* 1.61p: in the log — a replay needs it */ }, pg_rehold:function(){ pgWaveStart(scrT-WAVE_PAUSE+1); }, pg_recal:function(){ var c=PG.c; PG.prevCal=c?{lin:c.lin,mxCal:c.mxCal,mxOff:c.mxOff}:null; if(!(booted&&Sonar.healthy())){ resumeAfterPrep=true; PG.resume=false; ensure(null); return; } PG.resume=true; flipT=-9; go('phold'); pgWaveStart(); },
+  pg_sens:function(){ PG.sens=(pgSens()+1)%4; store.set('sonaroids_pong_sens',String(PG.sens)); if(g&&g.ball!==undefined&&g.state==='play'){ g.H=Pong.TUNE.SENS[PG.sens]; Logs.gameEv('sens',[g.n,PG.sens]); }   /* 1.61p: in the log — a replay needs it */ }, pg_rehold:function(){ pgWaveStart(scrT-WAVE_PAUSE+1); }, pg_recal:function(){ var c=PG.c; PG.prevCal=c?{lin:c.lin,mxCal:c.mxCal,mxOff:c.mxOff}:null; if(!(booted&&Sonar.healthy())){ resumeAfterPrep=true; PG.resume=false; ensure(null); return; } PG.resume=true; flipT=-9; go('phold'); pgWaveStart(); },
   /* v1.61l: the pause's «Подстроить ладонь» can be left — the corner's «back» returns to the pause with the calibration as it was (before: only «menu», with the old one already wiped and the game left hanging; the next «play» went on with it) */
   pg_back:function(){ var c=PG.c, q=PG.prevCal; if(c&&q){ c.wave=null; c.lin=q.lin; c.mxCal=q.mxCal; c.mxOff=q.mxOff; c.mxH=null; } PG.resume=false; PG.done=!!(c&&c.lin); pausedFrom='play'; go('paused'); },
   /* v1.58 (Ден, 7.10, после «Жонглёра» в лабе — «лучшее управление, что я вообще пробовал»: «да, сделай переключатель в меню паузы —

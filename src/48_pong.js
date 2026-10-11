@@ -77,8 +77,14 @@ function pgDemoTick(){ var d=PG.demo; if(!d||d.state==='over'||Math.abs(d.ar-pgA
 function pgDemoDraw(){ var d=pgDemoTick(); pgField(d,0); }
 /* the card on the games' screen: the menu's rally drawn full size off screen */
 var pgCardC=null;
-function pgCard(){ if(!pgCardC||pgCardC.width!==LW||pgCardC.height!==LH){ pgCardC=document.createElement('canvas'); pgCardC.width=LW; pgCardC.height=LH; }
-  var keep=lx; try{ lx=pgCardC.getContext('2d'); pgDemoDraw(); } finally { lx=keep; } return pgCardC; }
+/* 1.61s (Den 21:53: «почему на главном экране скин на карточке SonaLob такого низкого качества?»): the card was the whole screen's drawing at
+   the game's pixels, squeezed ~4× into the card without smoothing — the pen's thin lines broke into steps. Now the rally is drawn for the
+   card at the card's own size (one and a half times its dots, smoothed down), the pen thicker, and laid smoothly */
+function pgCard(w,h){ var s=Math.min(3,Math.max(1,uiS)*1.5), CW=Math.max(8,Math.round((w||LW)*s)), CH=Math.max(4,Math.round((h||LH)*s));
+  if(!pgCardC||pgCardC.width!==CW||pgCardC.height!==CH){ pgCardC=document.createElement('canvas'); pgCardC.width=CW; pgCardC.height=CH; }
+  var d=pgDemoTick(), fh=Math.min(CH,CW/PG_AR), fc=pgSkDraw(d,0,false,fh), c=pgCardC.getContext('2d'); c.setTransform(1,0,0,1,0,0);
+  c.fillStyle=pgSkin()?'#1d1b18':'#f6f1e6'; c.fillRect(0,0,CW,CH); c.imageSmoothingEnabled=true; c.imageSmoothingQuality='high'; c.drawImage(fc,(CW-fc.width)/2,(CH-fc.height)/2);
+  pgCardC.smooth=true; return pgCardC; }
 /* ── the menu: play, how to play, the sensitivity (the only setting), the sounds, all the games ── */
 function pgSensLabel(){ return L('pg_sens')+': '+L('pg_sens'+pgSens()); }
 function sPTitle(){ pgDemoDraw();
@@ -135,7 +141,7 @@ function pgCount(){ countT-=DT; var v=pgView(PG.view?PG.view.py:Pong.TUNE.PAD_LO
   if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.play('tick');
   if(countT<=0) startGame(); }
 function pgCountStart(){ pgKeep(); countT=3; try{ DSP2.set('quarter',1); }catch(e){} go('count'); }
-function pgStart(){ PG.fps=null; PG.resume=false; var seed=newSeed(); var lin=PG.c&&PG.c.lin; g=Pong.create(seed,pgAr(),pgSens(),lin?Math.max(30,lin.t-lin.b):null); var f=PG.c?PongCtl.frac(PG.c,PongCtl.palm(PG.c)):null; if(f!==null) g.py=Pong.padOf(g,f);
+function pgStart(){ PG.fps=null; PG.resume=false; PG.resumed=false; var seed=newSeed(); var lin=PG.c&&PG.c.lin; g=Pong.create(seed,pgAr(),pgSens(),lin?Math.max(30,lin.t-lin.b):null); var f=PG.c?PongCtl.frac(PG.c,PongCtl.palm(PG.c)):null; if(f!==null) g.py=Pong.padOf(g,f);
   acc=0; parts=[]; PG.pts=[]; PG.newBest=false; nickAsked=false; var I=Sonar.info(), c=PG.c||{};
   Logs.gameStart({core:Pong.TAG,game:'pong',auto_cal:!!PG.auto,seed:seed,ar:+g.ar.toFixed(4),sens:pgSens(),span:g.span,cal:DSP2.info().cal,lin:c.lin?{b:+c.lin.b.toFixed(1),t:+c.lin.t.toFixed(1)}:null,mix_off:c.mxCal===null||c.mxCal===undefined?null:+c.mxCal.toFixed(1),
     chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids'});
@@ -158,6 +164,7 @@ function pgPlay(){
   if(now-fp.t>=5000){ Logs.gameEv('кадры',{n:fp.n,s:+((now-fp.t)/1000).toFixed(2),max:Math.round(fp.mx),slow:fp.slow}); fp.t=now; fp.n=0; fp.mx=0; fp.slow=0; }
   while(n<want){ n++; var c=PG.c, f=c?PongCtl.frac(c,c.present?PongCtl.palmAt(c,vs-(want-n)*1000*Pong.DT):null):null;   // 1.59e: the palm at each step's own time (src/16_pong_ctl.js palmAt)
     f=f===null?null:Math.round(f*10000)/10000;   /* 1.61p: the palm rounded to the 4 digits the log keeps, so a replay from the log is the same game (since 1.59g this line sat inside the comment above — the rules got the unrounded palm; the grid was 1/4000, which 4 digits can't hold) */
+    if(PG.resumed){ PG.resumed=false; Pong.resume(g); Logs.gameEv('resume',g.n); }   // 1.61r: the first step after a pause is no swing (pong-8)
     Pong.step(g,f); Logs.step({pong:1,n:g.n,FH:1,ship:{y:g.py},lives:g.lives,score:g.score,events:g.events},f); pgReact(); if(g.state==='over') break; }
   flash=Math.max(0,flash-DT); duckT-=DT; if(duckT<=0&&Sonar.peak()>DUCK_PEAK){ duckT=0.4; if(Sfx.duck()) Logs.gameEv('sounds down',+Sfx.level().toFixed(2)); }
   pgField(g,DT); pgHud(); coveredLine(topY()+40); pgPauseBtn(); say(L('menu_a'));

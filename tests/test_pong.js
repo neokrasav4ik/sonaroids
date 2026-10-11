@@ -56,6 +56,11 @@ function rngOf(seed){ let a=seed>>>0; return function(){ a=(a+0x6D2B79F5)>>>0; l
   const room=T.PAD_LO-T.CB*g.H-T.LIFT-T.R-(T.TOP+T.R), w=s=>at[s]/room*100, g2=Pong.create(1,2.16,1); g2.step=500;
   check('«Паутина»: from the 4th minute (the 9th narrowing) 0.5% of the room a narrowing, eased (pong-7)',at[8]===0&&Math.abs(w(9)-0.5)<0.01&&Math.abs(w(12)-2)<0.01&&Math.abs(Pong.webTarget(g2)/room-0.5)<1e-12,
     `the web after 8 / 9 / 10 / 12 narrowings: ${[8,9,10,12].map(s=>w(s).toFixed(2)+'%').join(' / ')} of the room; at most half`); }
+// 3d. v1.61r (pong-8): the first step after a pause is no swing — the racket «jumped» to where the palm is now
+{ const mk=()=>{ const g=Pong.create(7,2.16,1); g.respawn=1e9; for(let i=0;i<30;i++) Pong.step(g,0.1); return g; };
+  const a=mk(); Pong.step(a,0.7); const jump=a.vpb; const b=mk(); Pong.resume(b); Pong.step(b,0.7); const after=b.vpb; Pong.step(b,0.7);
+  const c=mk(), hands=[]; for(let i=0;i<30;i++) hands.push(0.1); hands.push(0.7,0.7); const r=Pong.replay(7,2.16,1,hands,null,[[30,'resume']]);
+  check('after a pause the racket\'s jump to the palm is no swing; the replay does the same (pong-8)',Math.abs(jump)>1&&after===0&&b.vpb===0&&Math.abs(r.vpb)<1e-12&&r.n===b.n&&r.py===b.py,`a jump of ${(0.6*0.4).toFixed(2)} screens in one step: swing ${jump.toFixed(2)} → ${after.toFixed(2)}`); }
 // 3. the world's rules
 { const g=Pong.create(1,2.16,1); g.respawn=1e9; const ks=[]; for(let i=0;i<60*200;i++){ Pong.step(g,0.3); if(g.events.indexOf('narrow')>=0) ks.push(g.t.toFixed(2)+':'+g.k); }
   check('the rackets narrow every 30 s by an eighth, without end',ks.length===6&&ks[0]==='30.00:0.875'&&Math.abs(g.k-Math.pow(0.875,6))<1e-12,`${ks.length} times by 200 s, now ${(Pong.width(g)*100).toFixed(0)}% of the half-field`);

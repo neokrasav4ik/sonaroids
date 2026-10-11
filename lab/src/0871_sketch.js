@@ -238,16 +238,36 @@ function pgsMotors(c,i,tp,M,v,t,dt){ var n=tp.length-1, up=Math.max(0,Math.min(1
 /* 1.60l (Ден 11:14, снимок ползунков демо «набросок»: линер, толщина 2,2, дрожь 1,5, вылет 10, кружки 60%, обвести 2, разброс 1,5,
    штриховка 0,8×, перерисовок нет, крест-накрест): вид линий — из ползунков «Рисунок» (по умолчанию — этот набор); бумага и потолок
    перерисовываются, когда вид меняется */
-function pgsStyle(){ var V=PG_V; PGS_ST.w=V.skw||2.2; PGS_ST.wob=V.skwob===undefined?1.5:V.skwob; PGS_ST.overK=(V.skover===undefined?10:V.skover)/3; PGS_ST.open=V.skopen===undefined?0.6:V.skopen; PGS_ST.passes=Math.round(V.skpass||2); PGS_ST.jit=V.skjit===undefined?1.5:V.skjit; PGS_ST.hs=1/(V.skhs||0.8); PGS_ST.cross=(V.skcross===undefined?1:V.skcross)>=0.5; var ql=typeof PG_Q!=='undefined'?PG_Q.lvl:0; PGS_ST.step=[1.2,1.2,1.8,2.4,3][ql]||1.2; if(ql>=3) PGS_ST.passes=1;   /* 1.60r: на слабом телефоне — реже точки линий, обводка в один проход */
-  return [PGS_ST.w,PGS_ST.wob,PGS_ST.overK,PGS_ST.open,PGS_ST.passes,PGS_ST.jit,PGS_ST.hs,PGS_ST.cross,PGS_ST.step].join(','); }
+function pgsStyle(){ var V=PG_V; PGS_ST.w=V.skw||2.2; PGS_ST.wob=V.skwob===undefined?1.5:V.skwob; PGS_ST.overK=(V.skover===undefined?10:V.skover)/3; PGS_ST.open=V.skopen===undefined?0.6:V.skopen; PGS_ST.passes=Math.round(V.skpass||2); PGS_ST.jit=V.skjit===undefined?1.5:V.skjit; PGS_ST.hs=1/(V.skhs||0.8); PGS_ST.cross=(V.skcross===undefined?1:V.skcross)>=0.5; PGS_ST.dark=(V.dark||0)>=0.5; PGS_ST.ink=PGS_ST.dark?'#ece7dc':'#121116'; var ql=typeof PG_Q!=='undefined'?PG_Q.lvl:0; PGS_ST.step=[1.2,1.2,1.8,2.4,3][ql]||1.2; if(ql>=3) PGS_ST.passes=1;   /* 1.60r: на слабом телефоне — реже точки линий, обводка в один проход */
+  return [PGS_ST.w,PGS_ST.wob,PGS_ST.overK,PGS_ST.open,PGS_ST.passes,PGS_ST.jit,PGS_ST.hs,PGS_ST.cross,PGS_ST.step,PGS_ST.dark].join(','); }
+/* 1.60t (Ден 12:31: «хинт набранных очков — сейчас в углу, и глаз туда не успевает, т.к. следит за воланом» → эскизы О1–О4 → «О1 и О2
+   посмотрел бы»). «Очки у волана» (Рисунок): О1 — ярлык «+N» летит рядом с воланом и растёт с высотой (те же очки, что дадут за дугу
+   этой высоты, с множителем); на вершине замирает и чуть вырастает; на приёме — улетает в общий счёт в углу. О2 — на вершине дуги ручка
+   пишет число (цифра за цифрой, 0,3 с); оно висит там, пока волан падает, и гаснет после приёма. Потолок — очков нет, ярлык гаснет */
+function pgsPtsLive(b){ if(b.touched||b.peakY===undefined||b.peakY===null) return 0; var lvl0=JG_PAD_LO-PG_CB*jgPadH()-PG_LIFT-b.r, room=lvl0-(JG_TOP+b.r), h=(b.y0===undefined?b.y:b.y0)-Math.min(b.peakY,b.y);
+  var f=Math.max(0,Math.min(1,h/room)); return Math.round((Math.round(PG_V.pts)===1?10:pgPtsF(f))*pgMultAll()); }
+function pgsPtsHint(c,t,F,FW,I){ var mode=Math.round(PG_V.phint||0); if(!mode||ARC.phase!=='play') return; var S=PGS.pth; if(!S||t<S.tl-0.5) S=PGS.pth={hid:-1,val:0,apex:null,old:null}; S.tl=t; var b=(ARC.balls||[])[0];   /* новая партия — с чистого листа */
+  if(b&&!(b.wait>0)&&!b.hold&&b.from!==null&&b.from!==undefined){
+    if(S.hid!==PGS.hid){ var got=(ARC.score||0)-(S.score0||0); if(S.hid>=0&&(S.val>0||got>0)) S.old={val:got>0?got:S.val,x:S.lx,y:S.ly,ax:S.apex?S.apex.x:undefined,ay:S.apex?S.apex.y:undefined,t:t}; S.hid=PGS.hid; S.val=0; S.apex=null; S.score0=ARC.score||0; S.zero=false; }
+    var v=pgsPtsLive(b); if(b.touched){ S.zero=true; }
+    if(!S.apex&&!S.zero){ if((b.vy||0)<0) S.val=v; else if(S.val>0) S.apex={x:F(b.x),y:F(b.peakY),t:t}; }
+    var bx=F(b.x), by=F(b.y); S.lx=bx+22; S.ly=by-20; }
+  var pen1=pgsPen(c,7200+(S.hid%40+40)%40);
+  if(mode===1){ if(S.val>0&&!S.zero){ var pop=S.apex?1+0.25*Math.max(0,1-(t-S.apex.t)/0.25):1, sz=(S.apex?18:13)*pop; pen1.text('+'+S.val,S.lx,S.ly,sz,{align:'left',w:I.w*0.6}); }
+    var O=S.old; if(O&&t-O.t<0.45){ var u=(t-O.t)/0.45, e=u*u*(3-2*u), tx=FW-F(0.08), ty=F(0.12); pgsPen(c,7250).text('+'+O.val,O.x+(tx-O.x)*e,O.y+(ty-O.y)*e,18*(1-0.5*e),{align:'left',w:I.w*0.6,a:1-0.6*e}); } }
+  else { if(S.apex&&S.val>0&&!S.zero){ var str=String(S.val), n=Math.max(1,Math.ceil(str.length*Math.min(1,(t-S.apex.t)/0.3))); pen1.text(str.slice(0,n),S.apex.x+14,Math.max(F(JG_TOP)+20,S.apex.y-4),18,{align:'left',w:I.w*0.6}); }   /* справа от вершины, не залезая на потолок */
+    var O2=S.old; if(O2&&t-O2.t<0.8&&O2.ax!==undefined){ var str2=String(O2.val); pgsPen(c,7260).text(str2,O2.ax+14,Math.max(F(JG_TOP)+20,O2.ay-4),18,{align:'left',w:I.w*0.6,a:1-(t-O2.t)/0.8}); } } }
 function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ return v*390; }, I=PGS_ST;
   /* the page: paper and the ceiling, kept until the screen changes size */
   var key=W+'x'+H+'|'+pgsStyle(); if(PGS.key!==key){ PGS.key=key; var bg=document.createElement('canvas'); bg.width=W; bg.height=H; var bc=bg.getContext('2d'); bc.scale(dpr,dpr); Sk.paper(bc,W/dpr,H/dpr,dpr,{seed:7});
+    /* 1.60s: тёмная бумага рисуется сама (а не фильтром поверх кадра — на Android фильтр дорог): та же бумага, вывернутая один раз при
+       построении (зерно и волокна те же), чернила светлые и кладутся «осветлением» (screen) вместо «умножения» */
+    if(PGS_ST.dark){ try{ var idt=bc.getImageData(0,0,W,H), dd=idt.data; for(var q=0;q<dd.length;q+=4){ var lu=0.3*dd[q]+0.59*dd[q+1]+0.11*dd[q+2], v=Math.max(0,255-lu*0.93); dd[q]=v*1.02+3; dd[q+1]=v*0.98+2; dd[q+2]=v*0.93; } bc.putImageData(idt,0,0); }catch(e){} }
     var L=document.createElement('canvas'); L.width=W; L.height=H; var lc=L.getContext('2d'); lc.setTransform(U,0,0,U,0,0); var p0=pgsPen(lc,101), CE=F(JG_TOP);
     p0.line(6,CE+1,FW*0.52,CE-1,{w:p0.w*1.25,over:6}); p0.line(FW*0.48,CE-1.5,FW-6,CE+1.5,{w:p0.w*1.25,over:6});
     var tp=[], bt=[]; for(var x=0;x<=FW;x+=2){ tp.push([x,CE-0.5]); bt.push([x,CE-8-6*Sk.noise(x/40)-p0.rnd(0,3)]); } p0.band(tp,bt,{sp:6,shift:4,w:p0.w*0.5,a:0.7});
-    Sk.lay(bc,L,0,0,{alpha:1}); PGS.bg=bg; }
-  c.setTransform(1,0,0,1,0,0); c.drawImage(PGS.bg,0,0); c.setTransform(U,0,0,U,0,0); c.globalCompositeOperation=(typeof PG_Q!=='undefined'&&PG_Q.lvl>=1)?'source-over':'multiply';   /* 1.60r: на слабом телефоне — обычное наложение */
+    if(PGS_ST.dark){ bc.save(); bc.setTransform(1,0,0,1,0,0); bc.globalCompositeOperation='screen'; bc.drawImage(L,0,0); bc.restore(); } else Sk.lay(bc,L,0,0,{alpha:1}); PGS.bg=bg; }
+  c.setTransform(1,0,0,1,0,0); c.drawImage(PGS.bg,0,0); c.setTransform(U,0,0,U,0,0); c.globalCompositeOperation=(typeof PG_Q!=='undefined'&&PG_Q.lvl>=1)?'source-over':PGS_ST.dark?'screen':'multiply';   /* 1.60r: на слабом телефоне — обычное наложение */
   var hw=pgHw(ar), A=PG_V.curve>=0.5?pgCupA():Math.tan(PG_TILTV*Math.PI/180)*hw, hand=ARC.py, py=ARC.padSoft!==null&&ARC.padSoft!==undefined?ARC.padSoft:ARC.py, t=ARC.t||0, dt=PGS.tLast===null?0:Math.max(0,Math.min(0.1,t-PGS.tLast)); PGS.tLast=t;
   /* the field's edges and the net, if the rules have them */
   var fl=ar*(1-PG_V.fw)/2, fr=ar*(1+PG_V.fw)/2, pe=pgsPen(c,151);
@@ -296,8 +316,13 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
      резче, тем больше; когда опускается — наоборот» → эскизы М1–М3 → «сопла снизу (без верхних) или пропеллеры — решу в игре»).
      Скорость доски — по её же рисованному месту, сглажено за 0,06 с; «резко» — 2,5 высоты экрана в секунду и быстрее */
   var MOT=Math.round(PG_V.motor||0); if(MOT&&who!==4){ if(PGS.mPl===undefined||PGS.mPl===null){ PGS.mPl=plat; PGS.mV=0; PGS.mRot=[0,0.7]; }
-    var vRaw=dt>0?-(plat-PGS.mPl)/dt:0; PGS.mPl=plat; PGS.mV+=(vRaw-PGS.mV)*(1-Math.exp(-dt/0.06)); }
-  var tops=[0,1].map(function(i){ var xc=ar*(i?1-PG_XC:PG_XC), tp=[]; for(var j=0;j<=48;j++){ var x=xc-hw+2*hw*j/48; tp.push([F(x),F(pgSurf(i,x,plat,ar,A).y)]); } if(who===4) pgsTent(c,i,tp,xc,hw,ar,A,hand,t); else { if(MOT) pgsMotors(c,i,tp,MOT,PGS.mV,t,dt); pgsPlatform(pgsPen(c,201+100*i),tp); } return {xc:xc,tp:tp}; });
+    var vRaw=dt>0?-(plat-PGS.mPl)/dt:0; PGS.mPl=plat; PGS.mV+=(vRaw-PGS.mV)*(1-Math.exp(-dt/0.06));
+    /* 1.60u (Ден 12:53–12:56: на Mi 9 «меньше штришков — завихрений от пропеллеров и пр.»; там чувствительность «ниже средней» — доски ходят
+       уже и медленнее, и до 2,5 высоты экрана в секунду, где моторы на полной, взмах не дотягивал). Теперь «резко» — относительно своих же
+       ударов: опорная скорость — самый быстрый подъём доски за последние ~6 с (медленно забывается, не ниже 0,8 высоты/с); удар на 85%
+       от неё — моторы на полной. При любой чувствительности и на любом телефоне сильный удар — полный огонь или диск */
+    PGS.mRef=Math.max(0.8,Math.max(Math.abs(PGS.mV),(PGS.mRef||1.5)*Math.exp(-dt/6))); }
+  var tops=[0,1].map(function(i){ var xc=ar*(i?1-PG_XC:PG_XC), tp=[]; for(var j=0;j<=48;j++){ var x=xc-hw+2*hw*j/48; tp.push([F(x),F(pgSurf(i,x,plat,ar,A).y)]); } if(who===4) pgsTent(c,i,tp,xc,hw,ar,A,hand,t); else { if(MOT) pgsMotors(c,i,tp,MOT,PGS.mV*2.5/(0.85*(PGS.mRef||1.5)),t,dt); pgsPlatform(pgsPen(c,201+100*i),tp); } return {xc:xc,tp:tp}; });
   /* 1.59v (Ден 01:01–01:02: «больше жизни на доске и в воздухе — глаз в основном смотрит на волан.. но зритель геймплея будет смотреть на
      всё»): события игры (удар, потолок, потерянный мяч, сужение) оживляют и волан, и доски, и человечков. Всё — только рисунок */
   var LF=PGS.life; if(!LF||t<LF.lastT-0.5){ LF=PGS.life={ceils:ARC.ceils||0,falls:ARC.falls||0,nk:ARC.narrowK||1,kt:[null,null],fx:[],feathers:[],act:[null,null],flipT:-9,hitA:0.5,spinT:-9,prevVy:0,hang:-9,lastT:t}; }
@@ -400,6 +425,7 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
         for(var m=hh.length-1;m>=0&&acc<d1;m--){ var qx=F(hh[m][0]), qy=F(hh[m][1]); acc+=Math.hypot(qx-px0,qy-py0); px0=qx; py0=qy; if(acc>=d0) dots.push([qx,qy,acc]); }
         var step=Math.max(1,Math.round(dots.length/6)); for(var di=0;di<dots.length;di+=step){ var g=(dots[di][2]-d0)/(d1-d0), rr=Math.max(0.6,2.6-g*2.0); tp.loop(dots[di][0],dots[di][1],rr,rr,{w:I.w*0.45,a:0.9*fade*(1-g*0.8)}); } } }
     pgsShuttle(pgsPen(c,401+bi),bx+ca*8*k,by+sa*8*k,a,{cork:I.accent,k:k}); });
+  pgsPtsHint(c,t,F,FW,I);
   /* the numbers, written by the same pen: score, multiplier, balls left, the series, the bar to the next narrowing */
   if(ARC.phase==='play'){ var rx=FW-F(0.05), ph=pgsPen(c,701); ph.text(String(ARC.score||0),rx,F(0.13),27,{align:'right',w:I.w*0.75});
     var mu=pgMultAll(); if(mu>1.05) pgsPen(c,702).text('×'+mu.toFixed(1).replace('.',','),rx,F(0.2),15,{align:'right',w:I.w*0.55,ink:I.accent});

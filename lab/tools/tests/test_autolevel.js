@@ -16,9 +16,11 @@ function scenario(phoneVolDb,noiseAmp){
     function bandLo(){ return F_LO; }   // 0.39u: нижний край полосы (обычный зонд)
     ${grab('probeSNR')}
     ${grab('measureSNR')}
+    var LV_LOG=[];
+    ${grab('measureLvl')}
     ${grab('autoLevel')}
     return {autoLevel:autoLevel,get g(){ return PROBE_G; }};`;
-  const moves=[]; const api=new Function('__base','__moves',src)(base,moves);
+  const moves=[]; const api=new Function('__base','__moves','LevelFit',src)(base,moves,require('../../../src/18_level.js'));   // 1.60z: подбор — общий с игрой
   return api.autoLevel().then(L=>({L,moves,g:api.g}));
 }
 (async()=>{

@@ -14,12 +14,23 @@
      «pulled the palm to the table»). ── */
 var PongCtl=(function(){
   var TAU=3, TAU_OFF=1.5, CB=0.08, CT=0.75, TOL=14, WIN=1.2, NEED=1.1, MINR=35, MAXR=160;
-  function create(){ return {mxH:null,mxF:null,mxOff:null,mxCal:null,mix:null,height:null,abs:null,present:false,
-    lin:null,hold:null,k:0,tl:[],lag:null}; }
+  /* v1.61f — the calibration by waving (the lab's 1.60a–c, «Калибровка: помахать», «Низ подальше от стола», «Размах 75 мм»; the maintainer
+     11 Oct 08:35–10:02: «калибровку с маханием, как в SonaFly и SonaRace.. калибруюсь по 3–4 раза и всё равно недоволен», «ладонь упирается
+     в разъём/стол.. сколько можно», «ни низ, ни верх не должны уползать, и ход ладони должен быть достаточным»). Wave as you will hit, from
+     the hit's low to its top, a few times. The last WAVE_WIN s of the palm (no hurry): once the swing (the 10th…90th share of the heights)
+     is ≥ WAVE_MIN mm and the palm has crossed the middle WAVE_CR times (two swings) over ≥ WAVE_T s, the height scale is tied to the
+     swings' middle (DSP2 recenter), then shifted so the swings' low is at 100 mm (where the echo holds the fine height well, as the hold's low
+     since 1.59s). The travel is SPAN mm (a hit's strength no longer depends on where the top was caught); the low → 8% of the rackets'
+     travel, low + SPAN → 75%. If the swings' low is nearer the probe than LOW_R mm of the echo's range (the table: in good games the low was
+     93–120), the whole travel goes up by the difference (×cal.k, at most LIFT_MAX mm) — the hand never has to reach the table. The mix's
+     offset is 0 (the height and the echo meet at the tie). While waving, the rackets already follow what is caught so far */
+  var WAVE_WIN=6, WAVE_MIN=35, WAVE_CR=4, WAVE_T=2.5, SPAN=75, LOW_R=95, LIFT_MAX=60;
+  function create(){ return {mxH:null,mxF:null,mxOff:null,mxCal:null,mix:null,height:null,abs:null,rng:null,present:false,
+    lin:null,hold:null,wave:null,k:0,tl:[],lag:null}; }
   /* one DSP2 frame (r: its result; N, fs: the frame's size and rate; calS: DSP2's scale cal.s; counting: the countdown before play — the
      offset is learnt there only if the holds gave none). Returns the mix, or null while no palm is seen */
   function frame(c,r,N,fs,calS,counting,now){
-    var k=c.k++; if(!r) return c.mix; c.present=!!r.present; if(r.present){ c.height=r.height; c.abs=r.abs; }
+    var k=c.k++; if(!r) return c.mix; c.present=!!r.present; if(r.present){ c.height=r.height; c.abs=r.abs; c.rng=r.range===undefined?null:r.range; }
     if(!r.present||r.height===null) return c.mix;
     if(now!==undefined&&now!==null) tlPush(c,k,now,N,fs);
     var F=r.fast*(calS||1), a=1-Math.exp(-N/(TAU*fs));
@@ -66,12 +77,33 @@ var PongCtl=(function(){
       if(H.dd.length>=20){ var sd=H.dd.slice().sort(function(p,q){ return p-q; }); c.mxCal=sd[sd.length>>1]; c.mxOff=c.mxCal; c.mxH=null; }
       c.hold=null; res.caught='top'; res.done=true; }
     return res; }
+  /* the waving: waveStart, then wave() every frame (t — seconds; o — {recenter(), shift(d), k: the echo's scale cal.k; the lab's options:
+     span — mm, under 30: the swing waved; lowr — false: no lift}). The lab's «помахать» calls this too (one code for both).
+     Returns {k: 0…5 (the swings so far), big: the swing is wide enough, done, and when done: span0 (the swing waved, mm), lift, tie} */
+  function waveStart(c){ c.wave={buf:[],k:0}; c.hold=null; }
+  function wave(c,t,o){ o=o||{}; var W=c.wave; if(!W) return {done:true,k:5,big:true};
+    var h=c.height, res={k:W.k,big:false,done:false};
+    if(c.present&&h!==null&&h!==undefined) W.buf.push({t:t,h:h,r:c.rng}); while(W.buf.length&&W.buf[0].t<t-WAVE_WIN) W.buf.shift();
+    if(W.buf.length<20) return res;
+    var hs=W.buf.map(function(q){ return q.h; }).sort(function(a,b){ return a-b; }), lo=hs[Math.floor(hs.length*0.1)], hi=hs[Math.floor(hs.length*0.9)], md=hs[hs.length>>1];
+    var cr=0, sd=0, i; for(i=0;i<W.buf.length;i++){ var d=W.buf[i].h-md, sg=d>8?1:d<-8?-1:0; if(sg&&sg!==sd){ if(sd) cr++; sd=sg; } }
+    var big=hi-lo>=WAVE_MIN; W.k=Math.max(W.k,big?Math.min(5,Math.floor(cr/4*5+0.0001)):0); res.k=W.k; res.big=big;   // the dots only add up
+    if(big) c.lin={b:lo,t:lo+Math.min(MAXR,hi-lo)};
+    if(!big||cr<WAVE_CR||W.buf[W.buf.length-1].t-W.buf[0].t<WAVE_T) return res;
+    var rc=o.recenter?o.recenter():null, sh=rc?rc.shift:0; lo+=sh; hi+=sh; var dl=100-lo; if(o.shift) o.shift(dl); if(c.height!==null&&c.height!==undefined) c.height+=sh+dl;
+    var span0=Math.max(MINR,Math.min(MAXR,hi-lo)), lw=o.lowr===false?{lift:0,r:null}:lift(W.buf.map(function(q){ return q.r; }),o.k||1.4), sp=o.span===undefined?SPAN:o.span>=30?o.span:span0;
+    c.lin={b:100+lw.lift,t:100+lw.lift+sp}; c.mxCal=0; c.mxOff=0; c.mxH=null; c.wave=null;
+    res.done=true; res.k=5; res.span0=span0; res.span=sp; res.lift=lw.lift; res.low_r=lw.r; res.tie=sh+dl; return res; }
+  /* «Низ подальше от стола»: the swings' low (the 10th share of the echo's range, mm from the probe) nearer than LOW_R — the travel goes up */
+  function lift(rs,k){ var v=rs.filter(function(x){ return x!==null&&x!==undefined&&isFinite(x); }).sort(function(a,b){ return a-b; }); if(v.length<10) return {lift:0,r:null};
+    var rl=v[Math.floor(v.length*0.1)]; return {lift:Math.max(0,Math.min(LIFT_MAX,k*(LOW_R-rl))),r:rl}; }
+  function waving(c){ return !!c.wave; }
   function holding(c){ return !!c.hold; }
   function lowStep(c){ return !!c.hold&&c.hold.step===1; }
   /* the palm (a height in mm, the mix) → the share of the calibrated travel that the rules take (0.08 at the low hold, 0.75 at the top) */
   function frac(c,h){ if(!c.lin||h===null||h===undefined) return null; return CB+(CT-CB)*(h-c.lin.b)/Math.max(30,c.lin.t-c.lin.b); }
   /* what the rackets follow now: the mix, or the height before the mix has started */
   function palm(c){ return c.mix!==null?c.mix:c.height; }
-  return {create:create,frame:frame,palmAt:palmAt,start:start,hold:hold,holding:holding,lowStep:lowStep,frac:frac,palm:palm,CB:CB,CT:CT,TOL:TOL};
+  return {create:create,frame:frame,palmAt:palmAt,start:start,hold:hold,holding:holding,waveStart:waveStart,wave:wave,waving:waving,lift:lift,SPAN:SPAN,LOW_R:LOW_R,lowStep:lowStep,frac:frac,palm:palm,CB:CB,CT:CT,TOL:TOL};
 })();
 if(typeof module!=='undefined') module.exports=PongCtl;

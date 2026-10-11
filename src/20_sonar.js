@@ -254,14 +254,16 @@ var Sonar=(function(){
      tells a muted phone from a noisy room. On the maintainer's iPhone it is 12–13 dB with any volume that worked (24 Sep). */
   var SNR_TARGET=48, G_MIN=0.015, G_MAX=0.3, PROBE_LVL=null, QUIET_LVL=-6;
   function measureSNR(){ return sleep(350).then(function(){ return collect(8); }).then(function(fr){ var st=probeStats(fr,fs,F_LO,20450); PROBE_LVL=st.line-20*Math.log10(PROBE_G); return st.snr; }); }
-  function autoLevel(){
-    var tries=0;
-    function step(){ return measureSNR().then(function(s){
-      PROBE_SNR=s; tries++;
-      var raw=PROBE_G*Math.pow(10,(SNR_TARGET-s)/20), want=Math.max(G_MIN,Math.min(G_MAX,raw));
-      var tooQuiet=raw>G_MAX*1.01&&s<SNR_TARGET-6;
-      if(tries>=3||Math.abs(20*Math.log10(want/PROBE_G))<1) return {snr:s,g:PROBE_G,atMax:tooQuiet};
-      PROBE_G=want; setProbe('single-'+chan); return step(); }); }
+  /* v1.60z: the probe level fitted by LevelFit (src/18_level.js, shared with the lab): it also turns a loud probe DOWN — an overloaded
+     microphone, or the speaker's own distortion at the top (the maintainer's iPhone at 100% media volume, 11 Oct 16:36/16:38: 10× louder,
+     10 dB dirtier, the rackets slid down). levelLog — what was tried, for the game log */
+  var levelLog=[];
+  function measureLvl(){ return sleep(350).then(function(){ return collect(8); }).then(function(fr){ var st=probeStats(fr,fs,F_LO,20450); PROBE_LVL=st.line-20*Math.log10(PROBE_G);
+    var pk=0; fr.forEach(function(f){ for(var i=0;i<f.length;i++){ var a=f[i]<0?-f[i]:f[i]; if(a>pk) pk=a; } }); return {snr:st.snr,peak:pk}; }); }
+  function autoLevel(){ var h=[]; levelLog=h;
+    function step(){ return measureLvl().then(function(m){ h.push({g:+PROBE_G.toFixed(4),snr:+m.snr.toFixed(1),peak:+m.peak.toFixed(3)}); PROBE_SNR=m.snr; var d=LevelFit.next(h); h[h.length-1].why=d.why;
+      if(d.done){ if(Math.abs(d.g-PROBE_G)>1e-6){ PROBE_G=d.g; setProbe('single-'+chan); } var b=LevelFit.best(h); PROBE_SNR=b.snr; return {snr:b.snr,g:PROBE_G,atMax:!!d.atMax}; }
+      PROBE_G=d.g; setProbe('single-'+chan); return step(); }); }
     return step();
   }
   /* which side the palm is on: the speaker whose probe is louder at the microphone */
@@ -386,7 +388,7 @@ var Sonar=(function(){
     /* what the browser really gave for the microphone: on Android the echo/noise/gain processing may stay on despite our request */
     micSettings:function(){ if(natOn){ try{ var st=JSON.parse(NATA.audioStatus()); return {audio:'app',probe_end:lsGet('sonaroids_probe_end','auto'),src:st.src,usage:st.usage,fx:st.fx,mic_wanted:st.mic_wanted,out_wanted:st.out_wanted,in:st.in,out:st.out,active:st.active}; }catch(e){ return {audio:'app'}; } }
       try{ var t=stream&&stream.getAudioTracks()[0]; if(!t) return null; var s=t.getSettings(), o={}; ['autoGainControl','echoCancellation','noiseSuppression','sampleRate','channelCount','latency','deviceId'].forEach(function(k){ if(s[k]!==undefined) o[k]=k==='deviceId'?String(s[k]).slice(0,8):s[k]; }); o.label=t.label; return o; }catch(e){ return null; } },
-    info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,probe_level:PROBE_LVL,vol_fit:volLog.slice(),f_lo:F_LO,band:band,cal:curCal(),gaps:gaps,booted:booted,audio:natOn?'app':'browser',auto_audio:autoLog,routes:routeLog.slice(),route:routeKey,settle:settleLog}; },
+    info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,probe_level:PROBE_LVL,vol_fit:volLog.slice(),level_fit:levelLog.slice(),f_lo:F_LO,band:band,cal:curCal(),gaps:gaps,booted:booted,audio:natOn?'app':'browser',auto_audio:autoLog,routes:routeLog.slice(),route:routeKey,settle:settleLog}; },
     audioRetest:function(){ autoRetest=true; try{ localStorage.removeItem('sonaroids_autoaudio'); }catch(e){} },
     native:function(){ return natOn; }, nativeAvail:natAvail,
     chan:function(){ return chan; }, ctx:function(){ return ctx; }};

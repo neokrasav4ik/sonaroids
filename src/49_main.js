@@ -67,7 +67,7 @@ function diagCorner(label,top,ty,flip,ax){ var vr=ty?(freeSide()!=='left')!==!!f
  }
 function titles(t,s,col){ var y=topY(), mw=LW-SAFE.l-SAFE.r-2*(BH+14),   /* v1.54 (the review's п.3): clear of the corner button and the version */
      cx0=Math.round((SAFE.l+LW-SAFE.r)/2), tl=PF.wrap(t,mw,1);
-  var pq=mode==='race'||(SK&&SK.id==='obsidian');   /* v1.55 (the review's п.8): a plaque under the titles over the busy worlds (the race's, obsidian) */
+  var pq=mode==='race'||(SK&&SK.id==='obsidian')||(mode==='pong'&&pgSkOn());   /* v1.61h: and over SonaPong's paper */   /* v1.55 (the review's п.8): a plaque under the titles over the busy worlds (the race's, obsidian) */
   if(pq){ var sl=s?PF.wrap(s,mw,1):[], ww=0; tl.concat(sl).forEach(function(l){ ww=Math.max(ww,PF.width(l)); }); plaque(cx0-ww/2,y-2,cx0+ww/2,y+tl.length*10+(s?3+sl.length*10:0)-3,0.55); }
   tl.forEach(function(l){ text(l,cx0,y,col||P.text,'center'); y+=10; });
   if(s){ y+=3; var n=PF.wrap(s,mw,1).length, lo=Math.floor(mw/Math.max(1,n)), hi=mw;   /* v1.54: the lines balanced — the narrowest width that keeps their count, so no word hangs alone («…ОДНО / ИМЯ…») */
@@ -96,7 +96,7 @@ function soundRow(x,y,w,h){ var on=Sfx.on(), n=Sfx.steps, lv=Sfx.lvl(), s=Math.r
   for(var j=0;j<n;j++) R(on&&j<lv?P.band:P.line,cx+tw+6+j*4,ty,3,7);
   BTN.push({id:'sfx',x:x+s,y:y,w:w-2*s,h:h}); }
 function nextBtn(id,label){ var w=btnW([label]); button(id,label,sideX(w),Math.round(LH*0.76),w,BH,'primary',Math.floor(scrT*2)%2===0); }   /* v0.35: lower, off the pictures */
-function ringAt(){ var yy=0.80;   /* v1.56 (the review's п.24): off the drawn table (0.74 before) */ return freeSide()==='left'?[Math.round(LW*0.13),Math.round(LH*yy)]:[Math.round(LW*0.87),Math.round(LH*yy)]; }   /* v0.35: lower, under the two pictures */
+function ringAt(){ var yy=mode==='pong'&&scr==='phold'?0.42:0.80;   /* v1.61f: SonaPong's waving — above the rackets */   /* v1.56 (the review's п.24): off the drawn table (0.74 before) */ return freeSide()==='left'?[Math.round(LW*0.13),Math.round(LH*yy)]:[Math.round(LW*0.87),Math.round(LH*yy)]; }   /* v0.35: lower, under the two pictures */
 function ringUI(p,st){ var r=ringAt(), col=st==='wait'?P.soft:st==='ok'?P.band:P.bullet;
   ring(r[0],r[1],11,p,col); if(st==='ok') tick(r[0],r[1],P.band);
   text(L(st==='wait'?'ring_wait':st==='listen'?'ring_listen':st==='catch'?'ring_catch':'ring_ok'),r[0],r[1]+17,col,'center'); }
@@ -852,7 +852,7 @@ function liveOn(){ return Sonar.live(); }
 function awayPause(){ return liveOn()?2.5:PAUSE; }   // v1.10: 1.2 s was too short to take the hand away (the OnePlus 18:17)
 var roomAgain=false;
 function liveReady(){ return liveOn()&&booted&&Sonar.healthy()&&acoustic&&T!==null; }
-function afterRoom(){ if(mode==='pong'){ pgToHold(); return; }   // v1.59: SonaPong — the two holds instead of the waving
+function afterRoom(){ if(mode==='pong'){ pgToHold(); return; }   // v1.59: SonaPong — its own waving (v1.61f; the two holds before)
   if(!liveOn()||forceWave){ toWave(); return; }
   /* v1.19: the try-out first — the ship follows the palm with the copied calibration, «play» or «recalibrate» (the maintainer's pick «В») */
   T=Tune.create(+store.get('sonaroids_field','100')||100,true); T.ok=true; T.copied=true; caught=true; caughtT=-9; autoTry=true; var cL=DSP2.info().cal; Logs.ev('живой режим: без взмахов',{field:T.field,mid_mm:+((100-cL.o)/cL.k).toFixed(1),saved_mm:Sonar.savedMid()}); go('wave'); caughtT=-9; }
@@ -896,7 +896,7 @@ var ACT={
   set_live_prev:function(){ SET_ROWS[2][2](-1); }, set_live_next:function(){ SET_ROWS[2][2](1); }, set_room_prev:function(){ SET_ROOM[2](-1); }, set_room_next:function(){ SET_ROOM[2](1); },
   rset:function(){ go('rset'); },
   hub_rocks:function(){ mode='fly'; go('title'); }, rskin:function(){ raceSkinStep(1); }, rskin_next:function(){ raceSkinStep(1); }, rskin_prev:function(){ raceSkinStep(-1); }, hub_play:function(){ mode='fly'; go('title'); }, hub_race:function(){ mode='race'; go('rtitle'); }, hub_pong:function(){ mode='pong'; go('ptitle'); },   // v1.59
-  pg_sens:function(){ PG.sens=(pgSens()+1)%4; store.set('sonaroids_pong_sens',String(PG.sens)); if(g&&g.ball!==undefined&&g.state==='play'){ g.H=Pong.TUNE.SENS[PG.sens]; } }, pg_rehold:function(){ pgHoldStart(); }, pg_recal:function(){ PG.resume=true; go('phold'); pgHoldStart(); },
+  pg_sens:function(){ PG.sens=(pgSens()+1)%4; store.set('sonaroids_pong_sens',String(PG.sens)); if(g&&g.ball!==undefined&&g.state==='play'){ g.H=Pong.TUNE.SENS[PG.sens]; } }, pg_rehold:function(){ pgWaveStart(scrT-WAVE_PAUSE+1); }, pg_recal:function(){ PG.resume=true; go('phold'); pgWaveStart(); },
   /* v1.58 (Ден, 7.10, после «Жонглёра» в лабе — «лучшее управление, что я вообще пробовал»: «да, сделай переключатель в меню паузы —
      чтоб я сравнил управляемость»): корабль / машина без сглаживания (там, куда показывает ладонь, без догоняния 25 мс). Проба: такая
      партия не идёт в таблицы — переключил посреди партии, и она тоже уже не идёт */
@@ -1085,7 +1085,7 @@ function audAct(id){ var p=id.split(':'), k=p[1], v=p.slice(2).join(':');
   else if(k==='retest') Sonar.audioRetest();
   else if(k==='lab'){ location.href='../lab/sonar_lab3.html'; return; }
   Sonar.restart(); booted=false; acoustic=false; audDev=null; }
-var NO_MENU={hub:1,title:1,rtitle:1,ptitle:1,lang:1,paused:1,restart:1,play:1,over:1},   /* v1.55 (the review's п.14): the game over has its «menu» button */ NO_VER={skins:1,rset:1,hub:1,over:1,play:1,count:1,'count-resume':1,paused:1,restart:1};
+var NO_MENU={hub:1,title:1,rtitle:1,ptitle:1,lang:1,paused:1,restart:1,play:1,over:1},   /* v1.55 (the review's п.14): the game over has its «menu» button */ NO_VER={phold:1,skins:1,rset:1,hub:1,over:1,play:1,count:1,'count-resume':1,paused:1,restart:1};
 function chrome(){ if(LH>LW) return;
   var s=BH-3, vr=freeSide()!=='left', x=vr?LW-Math.round(SAFE.r*0.5)-10-s:Math.round(SAFE.l*0.5)+10, y=SAFE.t+7;
   if(!NO_MENU[scr]) iconButton(scr==='count'||scr==='count-resume'?'pause':scr==='scores'?'sc_back':scr==='settings'?'set_back':scr==='skins'?'sk_back':scr==='audio'&&audFrom==='settings'?'settings':'menu',x,y);
@@ -1110,7 +1110,7 @@ window.__sonaroids={mixStart:function(){ mixStart(); },setSkin:function(id){ set
   race:function(){ mode='race'; booted=true; prep={res:{ok:true},doneT:-9}; T=Tune.create(100,true); T.ok=true; caught=true;   // a stand-in race for layout checks
     g=Race.create(1,raceFW(),90); for(var i=0;i<60*20;i++) raceDemoStep(g); g.fuel=40; },
   pong:function(){ mode='pong'; booted=true; prep={res:{ok:true},doneT:-9}; PG.c=PongCtl.create(); PG.c.lin={b:80,t:160}; PG.c.mix=120; PG.c.present=true; PG.c.height=120;   // v1.59: a stand-in SonaPong game for layout checks
-    g=Pong.create(3,pgAr(),pgSens()); var bot=pgDemoBot(); for(var i=0;i<60*40&&g.state==='play';i++) Pong.step(g,bot(g)); g.state='play'; return g; }, pongCtl:function(){ var c=PG.c; return c?{lin:c.lin,mxCal:c.mxCal,mix:c.mix,height:c.height,present:c.present,holding:PongCtl.holding(c),low:PongCtl.lowStep(c),done:PG.done,frac:PongCtl.frac(c,PongCtl.palm(c))}:null; }, pongField:function(){ return {ar:pgAr(),x0:pgX(0),x1:pgX(PG_AR),y0:pgY(0),y1:pgY(1),LW:LW,LH:LH}; }, pongDone:function(){ if(PG.c){ PG.c.hold=null; PG.c.lin=PG.c.lin||{b:80,t:160}; } PG.done=true; },
+    g=Pong.create(3,pgAr(),pgSens()); var bot=pgDemoBot(); for(var i=0;i<60*40&&g.state==='play';i++) Pong.step(g,bot(g)); g.state='play'; return g; }, pongCtl:function(){ var c=PG.c; return c?{lin:c.lin,mxCal:c.mxCal,mix:c.mix,height:c.height,present:c.present,holding:PongCtl.waving(c),waving:PongCtl.waving(c),wk:PG.wk,auto:!!PG.auto,t:scrT,done:PG.done,frac:PongCtl.frac(c,PongCtl.palm(c))}:null; }, pongField:function(){ return {ar:pgAr(),x0:pgX(0),x1:pgX(PG_AR),y0:pgY(0),y1:pgY(1),LW:LW,LH:LH}; }, pongDone:function(){ if(PG.c){ PG.c.hold=null; PG.c.wave=null; PG.c.lin=PG.c.lin||{b:80,t:160}; } PG.done=true; PG.doneT=-9; },
   phoneK:function(k){ PHONE_SHIPK=k; }, press:function(id,look){ var b=BTN.filter(function(q){ return q.id===id; })[0]; if(look) PRESS_LOOK=look; if(b){ press.id=id; press.x=b.x+b.w/2; press.y=b.y+b.h/2; press.until=clock+99; } return !!b; }, prepBg:function(v){ PREP_BG=v; },
   raceChunkMs:function(n){ var rg=Race.create(5,raceFW(),90), t0=performance.now(); rReset(5); RC.ch={}; for(var i=0;i<n;i++) rChunk(rg,i); var ms=(performance.now()-t0)/n; RC.ch={}; return ms; } };
 })();

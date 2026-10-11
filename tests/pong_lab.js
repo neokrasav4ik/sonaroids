@@ -27,8 +27,10 @@ globalThis.__fakeLevel=()=>new Promise(r=>setTimeout(()=>r({snr:44,g:0.1,atMax:f
 globalThis.__noSfx=true;
 const R0=Math.random; new Function(js)(); Math.random=R0; const P=globalThis.__pg;
 /* the lab set up as the game's world: «World for balance → Endless», sensitivity «below middle» unless asked */
-function setup(ar,sens,rand){ const V=P.PGV(), W=P.BALW; Object.assign(V,W.common,W.endless); P.apply(); const J=P.JGS(); J.sens=sens===undefined?1:sens; J.net=0;
+/* v1.61b: the game's world (pong-4) in the lab's terms — the options the lab plays it with */
+const WORLD={aim:1,aims:0.5,soft2:0.2,crack:5,web:0.5};
+function setup(ar,sens,rand){ const V=P.PGV(), W=P.BALW; Object.assign(V,W.common,W.endless,WORLD); P.apply(); const J=P.JGS(); J.sens=sens===undefined?1:sens; J.net=0;
   const A=P.ARC(); A.game='pong'; A.ar=ar; P.init(); A.ar=ar; A.log=[]; A.frames=[]; A.t=0; A.pf=[]; A.over=false; A.on=true; Math.random=rand; return A; }
 /* one step as the lab's game loop does it: the time, the rackets from the palm (jgPad), then the pong step */
 function step(A,n,hand){ A.t=n/60; if(hand!==null&&hand!==undefined) A.py=Math.max(0.3,Math.min(0.97,0.94-hand*P.H())); P.STEP().pong(1/60); }
-module.exports={setup,step,P};
+module.exports={setup,step,P,WORLD};

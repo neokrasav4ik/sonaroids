@@ -5,16 +5,27 @@ const Pong=require('../src/15_pong.js'), B=require('./pong_bot.js'), L=require('
 let ok=true; const out=[]; const check=(name,good,info)=>{ ok=ok&&good; out.push(`${name}: ${info||''} ${good?'ok':'FAIL'}`); };
 function rngOf(seed){ let a=seed>>>0; return function(){ a=(a+0x6D2B79F5)>>>0; let t=a; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
 // 1. the lab and the core side by side: three screen shapes, all four sensitivities, the palm lost now and then
-{ let same=0, games=0, steps=0, passes=0, why='';
+{ let same=0, games=0, steps=0, passes=0, why='', caves=0, mends=0;
   for(let seed=1;seed<=12;seed++){ const ar=[844/390,667/375,2.0][seed%3], sens=seed%4;
     const g=Pong.create(seed,ar,sens), bot=B.makeBot(seed*7+3,0.4+0.1*(seed%6)), A=L.setup(ar,sens,rngOf(seed)); let bad='';
-    for(let n=1;n<=60*600&&g.state!=='over'&&!A.over;n++){ const h=(n%400<5)?null:bot(g); Pong.step(g,h); L.step(A,n,h); steps++;
+    for(let n=1;n<=60*600&&g.state!=='over'&&!A.over;n++){ const h=(n%400<5)?null:bot(g); Pong.step(g,h); L.step(A,n,h); steps++; if(g.events.indexOf('cave')>=0) caves++; if(g.fx.some(f=>f.mend)) mends++;
       const lb=A.balls[0], cb=g.ball;
       if(!!lb!==!!cb){ bad='a ball in one only, step '+n; break; }
       if(lb&&cb&&(lb.x!==cb.x||lb.y!==cb.y||(lb.vx||0)!==cb.vx||(lb.vy||0)!==cb.vy)){ bad='the ball differs, step '+n; break; }
       if((A.score||0)!==g.score||A.py!==g.py){ bad='score or rackets differ, step '+n; break; } }
     games++; if(!bad&&A.over===(g.state==='over')&&A.falls===g.falls&&A.passes===g.passes){ same++; passes+=g.passes; } else why=why||`seed ${seed}: ${bad||'the end differs'}`; }
-  check('the core plays the lab\'s game bit for bit',same===games,`${same} of ${games} games the same (${steps} steps, ${passes} passes)${why?' — '+why:''}`); }
+  check('the core plays the lab\'s game bit for bit',same===games&&caves>0&&mends>0,`${same} of ${games} games the same (${steps} steps, ${passes} passes, the spider took ${caves} shuttles, cracks mended ${mends} times)${why?' — '+why:''}`); }
+// 1b. v1.61e «Паутина»: the same side by side, the games started late (4–7 minutes in), when the web is down
+{ let same=0, games=0, steps=0, ceils=0, web=0, why='';
+  for(let seed=21;seed<=28;seed++){ const ar=[844/390,667/375,2.0][seed%3], sens=seed%4, n0=60*(240+20*(seed-21));
+    const g=Pong.create(seed,ar,sens), bot=B.makeBot(seed*7+3,0.6+0.05*(seed%6)), A=L.setup(ar,sens,rngOf(seed)); g.n=n0; let bad='';
+    for(let n=n0+1;n<=n0+60*300&&g.state!=='over'&&!A.over;n++){ const h=(n%400<5)?null:bot(g); Pong.step(g,h); L.step(A,n,h); steps++; ceils+=g.events.indexOf('ceil')>=0?1:0; web=Math.max(web,g.webD);
+      const lb=A.balls[0], cb=g.ball;
+      if(!!lb!==!!cb){ bad='a ball in one only, step '+n; break; }
+      if(lb&&cb&&(lb.x!==cb.x||lb.y!==cb.y||(lb.vx||0)!==cb.vx||(lb.vy||0)!==cb.vy)){ bad='the ball differs, step '+n; break; }
+      if((A.score||0)!==g.score||A.py!==g.py||A.webD!==g.webD){ bad='score, rackets or web differ, step '+n; break; } }
+    games++; if(!bad&&A.over===(g.state==='over')&&A.falls===g.falls&&A.passes===g.passes) same++; else why=why||`seed ${seed}: ${bad||'the end differs'}`; }
+  check('…and with the web down (games from the 4th–7th minute)',same===games&&web>0.005&&ceils>0,`${same} of ${games} the same (${steps} steps, ${ceils} touches of the ceiling or web, the web down to ${(web*100).toFixed(1)}% of the screen)${why?' — '+why:''}`); }
 // 2. deterministic: the same seed and palm — the same game; a replay; another seed — other serves
 { const a=B.play(42,844/390,1,0.6), b=B.play(42,844/390,1,0.6), r=Pong.replay(42,844/390,1,a.hands), c=B.play(43,844/390,1,0.6);
   check('same seed and palm → same game',a.g.score===b.g.score&&a.g.t===b.g.t&&a.g.passes===b.g.passes,`score ${a.g.score}, ${a.g.t.toFixed(1)} s, ${a.g.passes} passes`);
@@ -22,6 +33,29 @@ function rngOf(seed){ let a=seed>>>0; return function(){ a=(a+0x6D2B79F5)>>>0; l
   check('another seed → another game',c.g.score!==a.g.score||c.g.t!==a.g.t); }
 { let L0=0, R0=0; for(let s=1;s<=200;s++){ const g=Pong.create(s,2.16,1); for(let i=0;i<20;i++) Pong.step(g,0.2); g.fx.length; if(g.ball&&g.ball.to===1) L0++; else R0++; }
   check('the serve comes from either top corner',L0>70&&R0>70,`from the left ${L0}, from the right ${R0} of 200`); }
+// 2b. v1.61b «Дуги в поле»: from 8 points of a racket, arcs to 90% and 96% of the room land on the other racket — at full length and at 40%,
+//     whatever the aim point (the far edge or the nearest the spread allows)
+{ let land=0, all=0, miss=''; for(const k of [1,0.39]) for(const e of [0.92,0.92-0.5*0.62]) for(const fr of [0.9,0.96]){ const g=Pong.create(1,2.16,1); g.k=k; g.hw=Pong.hwOf(g); g.py=Pong.TUNE.PAD_LO-0.08*g.H;
+    for(let q=0;q<8;q++){ const T=Pong.TUNE, b={r:T.R}, x0=g.ar*T.XC+(-1+(2*q+1)/8)*g.hw, S=Pong.surf(g,0,x0), y0=S.y-b.r, d=Pong.aimDir(g,0,x0,b,e), v=Math.sqrt(2*T.G*fr*(y0-(T.TOP+b.r)))/Math.abs(d[1]);
+      let x=x0,y=y0,vx=v*d[0],vy=v*d[1],ok2=false; for(let n=0;n<4000;n++){ vy+=T.G*Pong.DT; x+=vx*Pong.DT; y+=vy*Pong.DT; if(vy>0){ const S1=Pong.surf(g,1,x); if(S1.u>=-1&&S1.u<=1&&y>=S1.y-b.r){ ok2=true; break; } if(y>1.1) break; } }
+      all++; if(ok2) land++; else miss=miss||`k ${k}, aim ${e.toFixed(2)}, ${fr*100}%, point ${q+1}`; } }
+  check('«Дуги в поле»: high arcs from anywhere land on the other racket (pong-4)',land===all,`${land} of ${all}${miss?' — missed: '+miss:''}`); }
+// 3b. v1.61d «Потолок трескается»: every 5th ceiling touch of one shuttle — the spider takes it, the next comes 4.1 s later; a shuttle
+//     lost otherwise mends the cracks
+{ const T=Pong.TUNE, up=g=>{ const b=g.ball; b.wait=0; b.x=g.ar/2; b.y=0.3; b.vx=0; b.vy=-3; };
+  const g=Pong.create(3,2.16,1); g.respawn=0; Pong.step(g,0.2); let ev=[], tLost=null, tNext=null;
+  for(let k=0;k<5;k++){ up(g); for(let i=0;i<30&&g.ball;i++){ Pong.step(g,0.2); if(g.events.indexOf('ceil')>=0){ ev.push(g.events.filter(e=>e!=='ceil').join('+')); break; } } }
+  tLost=g.t; while(!g.ball&&g.n<60*20) Pong.step(g,0.2); tNext=g.t;
+  const g2=Pong.create(3,2.16,1); g2.respawn=0; Pong.step(g2,0.2); for(let k=0;k<3;k++){ up(g2); for(let i=0;i<30;i++){ Pong.step(g2,0.2); if(g2.events.indexOf('ceil')>=0) break; } }
+  const c3=g2.crk.length; g2.ball.y=1.2; Pong.step(g2,0.2); const mend=g2.fx.find(f=>f.mend);
+  check('«Потолок трескается»: the 5th touch — the spider takes the shuttle, the next after the cartoon; a fall mends the cracks (pong-6)',
+    ev.join()==='crack,crack,crack,crack,cave+lost'&&g.falls===1&&Math.abs(tNext-tLost-(T.SPIDER+T.SPIDER_PAUSE))<0.05&&c3===3&&mend&&mend.mend.length===3&&g2.crk.length===0&&g2.respawn===T.RESPAWN,
+    `${ev.join(' ')}; next shuttle ${(tNext-tLost).toFixed(2)} s later; 3 cracks, a fall → mended ${mend?mend.mend.length:0}, the next in ${g2.respawn} s`); }
+// 3c. v1.61e: the web — none for 8 narrowings, then 0.5% of the room a narrowing, easing down in ~1 s, never below half the room
+{ const g=Pong.create(1,2.16,1), T=Pong.TUNE; g.respawn=1e9; const at={}; for(let i=0;i<60*(30*13);i++){ Pong.step(g,0.3); if(g.n%(60*30)===60*29) at[g.step]=g.webD; }
+  const room=T.PAD_LO-T.CB*g.H-T.LIFT-T.R-(T.TOP+T.R), w=s=>at[s]/room*100, g2=Pong.create(1,2.16,1); g2.step=500;
+  check('«Паутина»: from the 4th minute (the 9th narrowing) 0.5% of the room a narrowing, eased (pong-7)',at[8]===0&&Math.abs(w(9)-0.5)<0.01&&Math.abs(w(12)-2)<0.01&&Math.abs(Pong.webTarget(g2)/room-0.5)<1e-12,
+    `the web after 8 / 9 / 10 / 12 narrowings: ${[8,9,10,12].map(s=>w(s).toFixed(2)+'%').join(' / ')} of the room; at most half`); }
 // 3. the world's rules
 { const g=Pong.create(1,2.16,1); g.respawn=1e9; const ks=[]; for(let i=0;i<60*200;i++){ Pong.step(g,0.3); if(g.events.indexOf('narrow')>=0) ks.push(g.t.toFixed(2)+':'+g.k); }
   check('the rackets narrow every 30 s by an eighth, without end',ks.length===6&&ks[0]==='30.00:0.875'&&Math.abs(g.k-Math.pow(0.875,6))<1e-12,`${ks.length} times by 200 s, now ${(Pong.width(g)*100).toFixed(0)}% of the half-field`);

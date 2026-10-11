@@ -1243,14 +1243,15 @@ function probeSNR(frames,fs,fLo,fHi,par){   /* par — только свои т�
 /* ── автоуровень: убавляю свой зонд до минимума с запасом — громкость в комнате почти не зависит от громкости телефона ── */
 var SNR_TARGET=48, G_MIN=0.015, G_MAX=0.3;
 function measureSNR(){ return sleep(350).then(function(){ return collect(8); }).then(function(fr){ return probeSNR(fr,fs,bandLo(),20450,(typeof linkPar==='function'?linkPar():'all')); }); }
-function autoLevel(){
-  var tries=0;
-  function step(){ return measureSNR().then(function(s){
-    PROBE_SNR=s; tries++;
-    var raw=PROBE_G*Math.pow(10,(SNR_TARGET-s)/20), want=Math.max(G_MIN,Math.min(G_MAX,raw));
-    var tooQuiet=raw>G_MAX*1.01&&s<SNR_TARGET-6;                 // нужно больше, чем можем дать
-    if(tries>=3||Math.abs(20*Math.log10(want/PROBE_G))<1) return {snr:s,g:PROBE_G,atMax:tooQuiet};
-    PROBE_G=want; setProbe('single-'+chan); return step(); }); }
+/* 1.60z: подбор громкости зонда — общий с игрой (src/18_level.js, LevelFit): не только прибавляет тихий, но и убавляет громкий —
+   перегруз микрофона (пик выше 0,09) или грязь от собственной громкости на максимуме. Каждый замер — в журнал записи (probe.fit) */
+var LV_LOG=[];
+function measureLvl(){ return sleep(350).then(function(){ return collect(8); }).then(function(fr){ var pk=0; fr.forEach(function(f){ for(var i=0;i<f.length;i++){ var a=f[i]<0?-f[i]:f[i]; if(a>pk) pk=a; } });
+  return {snr:probeSNR(fr,fs,bandLo(),20450,(typeof linkPar==='function'?linkPar():'all')),peak:pk}; }); }
+function autoLevel(){ var h=[]; LV_LOG=h;
+  function step(){ return measureLvl().then(function(m){ h.push({g:+PROBE_G.toFixed(4),snr:+m.snr.toFixed(1),peak:+m.peak.toFixed(3)}); PROBE_SNR=m.snr; var d=LevelFit.next(h); h[h.length-1].why=d.why;
+    if(d.done){ if(Math.abs(d.g-PROBE_G)>1e-6){ PROBE_G=d.g; setProbe('single-'+chan); } var b=LevelFit.best(h); PROBE_SNR=b.snr; return {snr:b.snr,g:PROBE_G,atMax:!!d.atMax}; }
+    PROBE_G=d.g; setProbe('single-'+chan); return step(); }); }
   return step();
 }
 /* ── слышен ли каждый из двух зондов: пик прямого сигнала над остальной характеристикой ── */
@@ -1386,7 +1387,7 @@ function runRec(kind){ var long=kind==='long', dual=kind==='dual', right=kind===
       var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
       var so=(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0);
       recMeta={v:4,pose:right?rpPose:undefined,kind:right?'right-portrait':dual?'dual-landscape':side?'side-portrait':long?'single-landscape-long':'single-landscape',port:orientSide(),dual_gain:0.25,fs:fs,N:N,kLo:kLo,kHi:kHi,
-        hand:hand,probe:{bins:(typeof linkPar==='function'?linkPar():'all'),channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:wideP?DEPTH_LO:F_LO,f_hi:wideP?DEPTH_HI:20500,loop:true},
+        hand:hand,probe:{bins:(typeof linkPar==='function'?linkPar():'all'),channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,fit:(typeof LV_LOG!=='undefined'?LV_LOG:null),f_lo:wideP?DEPTH_LO:F_LO,f_hi:wideP?DEPTH_HI:20500,loop:true},
         prom_db:prom,samples:n,gaps:rec.gaps,peak:pk,orientation:{angle:so,w:window.innerWidth,h:window.innerHeight},
         script:S.filter(function(s){return s.k!=='end';}).map(function(s){ return {k:s.k,t:s.t,H:s.d,probe:s.probe}; }),
         marks:marks,units:right?'target distance of the palm from the phone in mm (phone upright, port towards the player, palm to the right of the bottom end, level with it)':dual?'target position of the palm along the phone in mm from its middle, + = to the right as the player sees it (phone flat, landscape); port — the end with the port, from the screen rotation':side?'target sideways offset of the palm in mm, + = to the right as the player sees it (phone upright, port towards the player)':'target height in mm above the table',ua:navigator.userAgent,date:new Date().toISOString()};
@@ -1739,6 +1740,39 @@ var Tune=(function(){
   return {create:create,fracOf:fracOf,pick:pick,step:step,ASYM:ASYM};
 })();
 if(typeof module!=='undefined') module.exports=Tune;
+/* ── PROBE LEVEL FIT (v1.60z): one rule for the game (src/20_sonar.js autoLevel) and the lab (lab/src/04_audio_engine.js autoLevel; the lab's
+   build includes this file). Pure: given what was measured so far — [{g: our probe gain, snr: dB, peak: the microphone's loudest sample}] —
+   says which gain to try next, or that the fit is done and which gain to keep.
+   Before (both): the gain was only ever turned UP towards 48 dB signal-to-noise. On a phone at 100% media volume (the maintainer, 11 Oct,
+   records 16:36 and 16:38, iPhone) the microphone heard the probe 10× louder than usual (peak 0.19–0.25 against 0.024) yet with LESS
+   signal-to-noise (35 dB against 45): the speaker driven hard distorts, its own noise rises with it, the gain stayed at the top (0.3) and
+   the echo's distance slid to the nearest — the rackets lay on the bottom, the palm had to climb higher and higher.
+   Now: 1) the microphone overloaded (peak above 0.09) — turn down in proportion, towards 0.045; 2) quieter than the target — turn up as
+   before, but not to a gain already tried that was no cleaner; 3) at the top and still well under target — try half once: if our own
+   loudness is the dirt, half is cleaner, and it keeps halving while that helps; 4) the kept gain: the quietest of those that reach the
+   target, else the cleanest tried (of two within 1 dB, the quieter). At most 6 measurements (~2.4 s, was up to 3). ── */
+var LevelFit=(function(){
+  var TARGET=48, G_MIN=0.015, G_MAX=0.3, PEAK_HI=0.09, PEAK_OK=0.045, MAXN=6;
+  function tried(h,g){ for(var i=0;i<h.length;i++) if(Math.abs(Math.log(h[i].g/g))<0.08) return true; return false; }
+  // the kept gain: of those that reach the target (−1 dB), the quietest; if none does, the cleanest (and of two within 1 dB, the quieter)
+  function best(h){ var ok=h.filter(function(q){ return q.snr>=TARGET-1; }); if(ok.length) return ok.reduce(function(a,q){ return q.g<a.g?q:a; });
+    var b=null; h.forEach(function(q){ if(!b||q.snr>b.snr+1||(Math.abs(q.snr-b.snr)<=1&&q.g<b.g)) b=q; }); return b; }
+  function next(h){ var cur=h[h.length-1], b=best(h), atMax=b.g>=G_MAX*0.99&&b.snr<TARGET-6;
+    if(h.length>=MAXN) return {g:b.g,done:true,why:'tries',atMax:atMax};
+    // 1) overloaded microphone
+    if(cur.peak>PEAK_HI&&cur.g>G_MIN*1.01){ var gl=Math.max(G_MIN,cur.g*Math.max(0.25,PEAK_OK/cur.peak)); if(!tried(h,gl)) return {g:gl,done:false,why:'loud'}; }
+    // 2) quieter than the target: up, unless a higher gain was tried and was no cleaner; more than enough: down to the target (as before)
+    var raw=cur.g*Math.pow(10,(TARGET-cur.snr)/20), want=Math.max(G_MIN,Math.min(G_MAX,raw)), higher=h.filter(function(q){ return q.g>cur.g*1.05; });
+    var upOk=!higher.length;   // a higher gain already tried: the answer is among the tried ones
+    if(want>cur.g*1.12&&upOk&&cur.peak<=PEAK_HI&&!tried(h,want)) return {g:want,done:false,why:'quiet'};
+    if(want<cur.g/1.12&&cur.snr>=TARGET-1&&!tried(h,want)) return {g:want,done:false,why:'margin'};
+    // 3) at the top (or coming down helped) and still well under target: try half
+    var lower=h.filter(function(q){ return q.g<cur.g*0.95; }), helped=higher.length&&higher.every(function(q){ return q.snr<cur.snr-1; });
+    if(cur.snr<TARGET-6&&!lower.length&&(cur.g>=G_MAX*0.9||helped)&&cur.g/2>=G_MIN&&!tried(h,cur.g/2)) return {g:cur.g/2,done:false,why:'down'};
+    return {g:b.g,done:true,why:'fit',atMax:atMax}; }
+  return {next:next,best:best,TARGET:TARGET,G_MIN:G_MIN,G_MAX:G_MAX,PEAK_HI:PEAK_HI};
+})();
+if(typeof module!=='undefined') module.exports=LevelFit;
 
 /* ── АРКАНОИД: прототип (с 27.09) ──
    Решение автора 27.09: следующая игра — Арканоид, режимом внутри Sonaroids (сборник ретро-игр с сонарным управлением);
@@ -1926,12 +1960,23 @@ el('akHome').addEventListener('click',function(){ cancelAnimationFrame(AK.raf); 
      «pulled the palm to the table»). ── */
 var PongCtl=(function(){
   var TAU=3, TAU_OFF=1.5, CB=0.08, CT=0.75, TOL=14, WIN=1.2, NEED=1.1, MINR=35, MAXR=160;
-  function create(){ return {mxH:null,mxF:null,mxOff:null,mxCal:null,mix:null,height:null,abs:null,present:false,
-    lin:null,hold:null,k:0,tl:[],lag:null}; }
+  /* v1.61f — the calibration by waving (the lab's 1.60a–c, «Калибровка: помахать», «Низ подальше от стола», «Размах 75 мм»; the maintainer
+     11 Oct 08:35–10:02: «калибровку с маханием, как в SonaFly и SonaRace.. калибруюсь по 3–4 раза и всё равно недоволен», «ладонь упирается
+     в разъём/стол.. сколько можно», «ни низ, ни верх не должны уползать, и ход ладони должен быть достаточным»). Wave as you will hit, from
+     the hit's low to its top, a few times. The last WAVE_WIN s of the palm (no hurry): once the swing (the 10th…90th share of the heights)
+     is ≥ WAVE_MIN mm and the palm has crossed the middle WAVE_CR times (two swings) over ≥ WAVE_T s, the height scale is tied to the
+     swings' middle (DSP2 recenter), then shifted so the swings' low is at 100 mm (where the echo holds the fine height well, as the hold's low
+     since 1.59s). The travel is SPAN mm (a hit's strength no longer depends on where the top was caught); the low → 8% of the rackets'
+     travel, low + SPAN → 75%. If the swings' low is nearer the probe than LOW_R mm of the echo's range (the table: in good games the low was
+     93–120), the whole travel goes up by the difference (×cal.k, at most LIFT_MAX mm) — the hand never has to reach the table. The mix's
+     offset is 0 (the height and the echo meet at the tie). While waving, the rackets already follow what is caught so far */
+  var WAVE_WIN=6, WAVE_MIN=35, WAVE_CR=4, WAVE_T=2.5, SPAN=75, LOW_R=95, LIFT_MAX=60;
+  function create(){ return {mxH:null,mxF:null,mxOff:null,mxCal:null,mix:null,height:null,abs:null,rng:null,present:false,
+    lin:null,hold:null,wave:null,k:0,tl:[],lag:null}; }
   /* one DSP2 frame (r: its result; N, fs: the frame's size and rate; calS: DSP2's scale cal.s; counting: the countdown before play — the
      offset is learnt there only if the holds gave none). Returns the mix, or null while no palm is seen */
   function frame(c,r,N,fs,calS,counting,now){
-    var k=c.k++; if(!r) return c.mix; c.present=!!r.present; if(r.present){ c.height=r.height; c.abs=r.abs; }
+    var k=c.k++; if(!r) return c.mix; c.present=!!r.present; if(r.present){ c.height=r.height; c.abs=r.abs; c.rng=r.range===undefined?null:r.range; }
     if(!r.present||r.height===null) return c.mix;
     if(now!==undefined&&now!==null) tlPush(c,k,now,N,fs);
     var F=r.fast*(calS||1), a=1-Math.exp(-N/(TAU*fs));
@@ -1978,13 +2023,34 @@ var PongCtl=(function(){
       if(H.dd.length>=20){ var sd=H.dd.slice().sort(function(p,q){ return p-q; }); c.mxCal=sd[sd.length>>1]; c.mxOff=c.mxCal; c.mxH=null; }
       c.hold=null; res.caught='top'; res.done=true; }
     return res; }
+  /* the waving: waveStart, then wave() every frame (t — seconds; o — {recenter(), shift(d), k: the echo's scale cal.k; the lab's options:
+     span — mm, under 30: the swing waved; lowr — false: no lift}). The lab's «помахать» calls this too (one code for both).
+     Returns {k: 0…5 (the swings so far), big: the swing is wide enough, done, and when done: span0 (the swing waved, mm), lift, tie} */
+  function waveStart(c){ c.wave={buf:[],k:0}; c.hold=null; }
+  function wave(c,t,o){ o=o||{}; var W=c.wave; if(!W) return {done:true,k:5,big:true};
+    var h=c.height, res={k:W.k,big:false,done:false};
+    if(c.present&&h!==null&&h!==undefined) W.buf.push({t:t,h:h,r:c.rng}); while(W.buf.length&&W.buf[0].t<t-WAVE_WIN) W.buf.shift();
+    if(W.buf.length<20) return res;
+    var hs=W.buf.map(function(q){ return q.h; }).sort(function(a,b){ return a-b; }), lo=hs[Math.floor(hs.length*0.1)], hi=hs[Math.floor(hs.length*0.9)], md=hs[hs.length>>1];
+    var cr=0, sd=0, i; for(i=0;i<W.buf.length;i++){ var d=W.buf[i].h-md, sg=d>8?1:d<-8?-1:0; if(sg&&sg!==sd){ if(sd) cr++; sd=sg; } }
+    var big=hi-lo>=WAVE_MIN; W.k=Math.max(W.k,big?Math.min(5,Math.floor(cr/4*5+0.0001)):0); res.k=W.k; res.big=big;   // the dots only add up
+    if(big) c.lin={b:lo,t:lo+Math.min(MAXR,hi-lo)};
+    if(!big||cr<WAVE_CR||W.buf[W.buf.length-1].t-W.buf[0].t<WAVE_T) return res;
+    var rc=o.recenter?o.recenter():null, sh=rc?rc.shift:0; lo+=sh; hi+=sh; var dl=100-lo; if(o.shift) o.shift(dl); if(c.height!==null&&c.height!==undefined) c.height+=sh+dl;
+    var span0=Math.max(MINR,Math.min(MAXR,hi-lo)), lw=o.lowr===false?{lift:0,r:null}:lift(W.buf.map(function(q){ return q.r; }),o.k||1.4), sp=o.span===undefined?SPAN:o.span>=30?o.span:span0;
+    c.lin={b:100+lw.lift,t:100+lw.lift+sp}; c.mxCal=0; c.mxOff=0; c.mxH=null; c.wave=null;
+    res.done=true; res.k=5; res.span0=span0; res.span=sp; res.lift=lw.lift; res.low_r=lw.r; res.tie=sh+dl; return res; }
+  /* «Низ подальше от стола»: the swings' low (the 10th share of the echo's range, mm from the probe) nearer than LOW_R — the travel goes up */
+  function lift(rs,k){ var v=rs.filter(function(x){ return x!==null&&x!==undefined&&isFinite(x); }).sort(function(a,b){ return a-b; }); if(v.length<10) return {lift:0,r:null};
+    var rl=v[Math.floor(v.length*0.1)]; return {lift:Math.max(0,Math.min(LIFT_MAX,k*(LOW_R-rl))),r:rl}; }
+  function waving(c){ return !!c.wave; }
   function holding(c){ return !!c.hold; }
   function lowStep(c){ return !!c.hold&&c.hold.step===1; }
   /* the palm (a height in mm, the mix) → the share of the calibrated travel that the rules take (0.08 at the low hold, 0.75 at the top) */
   function frac(c,h){ if(!c.lin||h===null||h===undefined) return null; return CB+(CT-CB)*(h-c.lin.b)/Math.max(30,c.lin.t-c.lin.b); }
   /* what the rackets follow now: the mix, or the height before the mix has started */
   function palm(c){ return c.mix!==null?c.mix:c.height; }
-  return {create:create,frame:frame,palmAt:palmAt,start:start,hold:hold,holding:holding,lowStep:lowStep,frac:frac,palm:palm,CB:CB,CT:CT,TOL:TOL};
+  return {create:create,frame:frame,palmAt:palmAt,start:start,hold:hold,holding:holding,waveStart:waveStart,wave:wave,waving:waving,lift:lift,SPAN:SPAN,LOW_R:LOW_R,lowStep:lowStep,frac:frac,palm:palm,CB:CB,CT:CT,TOL:TOL};
 })();
 if(typeof module!=='undefined') module.exports=PongCtl;
 /* ── ЭКШН-ПРОТОТИПЫ: слалом, ловец бомб, пещера (с 27.09, 0.39m) ──
@@ -2191,7 +2257,7 @@ PG_SL=[{k:'g',t:'Тяжесть',min:0.8,max:4.5,st:0.1,d:1.8,rec:1.8},{k:'hit',
   {k:'stau',t:'Плавность платформы (Б)',min:0.1,max:0.8,st:0.05,d:0.3,help:'Как быстро платформа догоняет ладонь: меньше — платформа почти как ладонь, больше — плывёт, а взмахи уходят в руку.'},
   {k:'phint',t:'Очки у волана',min:0,max:2,st:1,d:0,opts:[0,1,2],help:'Только «набросок». О1 — «+N» летит рядом с воланом и растёт с высотой, на вершине замирает, на приёме улетает в счёт. О2 — число пишется на вершине дуги и висит, пока волан падает.'},{k:'dark',t:'Бумага',min:0,max:1,st:1,d:0,opts:[0,1],help:'«Тёмная» — белые чернила на тёмной бумаге (весь рисунок вывернут; красное остаётся красным).'},{k:'skw',t:'Толщина линий',min:0.6,max:2.6,st:0.1,d:2.2},{k:'skwob',t:'Дрожь руки',min:0,max:3,st:0.1,d:1.5},{k:'skover',t:'Вылет линий за концы',min:0,max:10,st:0.5,d:10},{k:'skopen',t:'Кружки не смыкаются',min:0,max:1,st:0.05,d:0.6},{k:'skpass',t:'Сколько раз обвести',min:1,max:3,st:1,d:2},{k:'skjit',t:'Разброс обводки',min:0,max:3,st:0.1,d:1.5},{k:'skhs',t:'Штриховка гуще',min:0.4,max:2.2,st:0.1,d:0.8},{k:'skcross',t:'Штриховка крест-накрест',min:0,max:1,st:1,d:1,opts:[0,1]},{k:'motor',t:'Моторы под досками',min:0,max:2,st:1,d:0,opts:[0,1,2],help:'Только рисунок «набросок». Работают, когда доска поднимается: чем резче, тем сильнее. Сопла — огонь вниз; пропеллеры — раскручиваются до размытого диска, вниз — крутятся назад.'},{k:'soft',t:'Мягкость тента',min:0,max:1,st:0.05,d:0,help:'Меняет игру, не только картинку. 0 — как было. Больше — то, обо что бьётся мяч, догоняет ладонь на пружине: на резком взмахе сначала проседает, потом отдаёт. Лучше всего видно с «пожарными с тентом».'},
   {k:'lives',t:'Мячей',min:0,max:10,st:1,d:5,opts:[3,5,10,0],help:'Сколько мячей можно уронить.',rec:5},{k:'tsec',t:'Время',min:110,max:500,st:10,d:250,rec:250},
-  {k:'pts',t:'Очки',min:0,max:1,st:1,d:0,opts:[0,1],help:'«За пас» — высота не важна.',rec:0},{k:'pexp',t:'Крутизна очков',min:1,max:5,st:0.5,d:3,rec:3},{k:'phill',t:'Горка у потолка',min:0,max:2,st:1,d:0,opts:[0,1,2]},{k:'mult',t:'Множитель за узкие ракетки',min:0,max:2,st:1,d:1,opts:[1,2,0],help:'Узкие ракетки — больше очков.',rec:1},{k:'combo',t:'Серия',min:0,max:2,st:1,d:2,opts:[0,2,1],help:'+10% за чистый пас подряд. Длинная — осторожно, короткая — компромисс, без серии — смело.',rec:2},{k:'svis',t:'Серия на экране',min:0,max:2,st:1,d:0,opts:[0,1,2],help:'Точки, полоска у счёта или свечение вокруг мяча.'},{k:'ceil',t:'Потолок',min:0,max:1,st:1,d:0,opts:[0,1],help:'«Мяч потерян» — очень жёстко.',rec:0},{k:'web',t:'Паутина опускается',min:0,max:2,st:0.5,d:0,help:'С 3-й минуты паук после каждого сужения затягивает потолок паутиной ниже (на столько % высоты). Касание паутины — как касание потолка. Углы отскока прежние; очки — до паутины. 0 — нет.'},{k:'crack',t:'Потолок трескается',min:0,max:8,st:1,d:0,help:'Каждое касание потолка оставляет трещину; на N-е — потолок обваливается, мяч потерян, трещины заделываются. 0 — нет (касание — пас без очков). Работает, когда «Потолок» — «пас без очков».'}],
+  {k:'pts',t:'Очки',min:0,max:1,st:1,d:0,opts:[0,1],help:'«За пас» — высота не важна.',rec:0},{k:'pexp',t:'Крутизна очков',min:1,max:5,st:0.5,d:3,rec:3},{k:'phill',t:'Горка у потолка',min:0,max:2,st:1,d:0,opts:[0,1,2]},{k:'mult',t:'Множитель за узкие ракетки',min:0,max:2,st:1,d:1,opts:[1,2,0],help:'Узкие ракетки — больше очков.',rec:1},{k:'combo',t:'Серия',min:0,max:2,st:1,d:2,opts:[0,2,1],help:'+10% за чистый пас подряд. Длинная — осторожно, короткая — компромисс, без серии — смело.',rec:2},{k:'svis',t:'Серия на экране',min:0,max:2,st:1,d:0,opts:[0,1,2],help:'Точки, полоска у счёта или свечение вокруг мяча.'},{k:'ceil',t:'Потолок',min:0,max:1,st:1,d:0,opts:[0,1],help:'«Мяч потерян» — очень жёстко.',rec:0},{k:'web',t:'Паутина опускается',min:0,max:2,st:0.5,d:0,help:'С 4-й минуты паук после каждого сужения затягивает потолок паутиной ниже (на столько % высоты). Касание паутины — как касание потолка. Углы отскока прежние; очки — до паутины. 0 — нет.'},{k:'crack',t:'Потолок трескается',min:0,max:8,st:1,d:0,help:'Каждое касание потолка оставляет трещину; на N-е — потолок обваливается, мяч потерян. Трещины заделываются, когда волан пропал (любым способом): у каждого волана свои N касаний. 0 — нет (касание — пас без очков). Работает, когда «Потолок» — «пас без очков».'}],
 /* 1.58z10 (Ден 20:20–20:21: «очки растут ещё круче с высотой — добавь опцией.. это важнее; не сбрасывать серию — было бы странным»):
    «Очки: за высоту, круче» — 100·доля³ вместо 100·доля² (дуга вполовину — 1/8 очков, а не 1/4). Модель (сужение каждую минуту 80→40%, серия,
    3 мяча, 5 мин): пас в центр на 65% высоты ~17 700, 72% ~17 500, 80% ~13 700 (с долей² было 25 000 / 22 800 / 17 000) */
@@ -2397,14 +2463,16 @@ var PG_SPIDER=3.2;
    положения ракеток до потолка; ползунок, 1% — как в расчёте). Касание паутины — касание потолка (пас без очков, трещина, паук). Углы
    отскока («Дуги в поле») — по-прежнему по настоящему потолку; очки и «Запас силы» — до паутины (дуга под самую паутину — максимум).
    Модель: точная рука 10,2 → 7,0 мин, опытный 6,3 → 5,3, средний и новичок не меняются */
-function pgWebD(){ var p=PG_V.web||0; if(p<0.01||ARC.game!=='pong') return 0; var n=Math.round(Math.log(ARC.narrowK||1)/Math.log(0.875)), k=Math.max(0,n-6)*p/100;
+function pgWebD(){ var p=PG_V.web||0; if(p<0.01||ARC.game!=='pong') return 0; var n=Math.round(Math.log(ARC.narrowK||1)/Math.log(0.875)), k=Math.max(0,n-8)*p/100;   /* 1.61a: с 4-й минуты (после 8-го сужения) */
   var lvl0=JG_PAD_LO-PG_CB*jgPadH()-PG_LIFT-JG_R, room=lvl0-(JG_TOP+JG_R); return Math.min(0.5*room,k*room); }
 /* 1.60m (Ден 11:19: «с запасом силы слишком просто играть — подкрутить.. поначалу непривычно, даже чувствительность прибавил — стало
    надо сильнее бить»). Было: с 0,85 скорости потолка удар сразу резко слабел (наклон 0,72) — все высокие удары выходили ниже, чем рука
    привыкла, а окно 86–97% — ±10%, потолок — только при +30%. Теперь «Запас силы» — ползунок k (0 — нет): сжатие начинается с
    u0 = 1 − 0,15·k и входит плавно (наклон 1 в начале — удары до u0 какими были, чуть выше — почти какими были), предел — 1,02.
    k = 0,5: окно 86–97% — u 0,93…1,02 (±5%), потолок — с +7%; k = 1 — ±8%, потолок с +21% (близко к 1.60f) */
-function pgSoftTop(un,ny,top,r){ var k=PG_V.soft2||0; if(k<0.01||un<=0||ny>=-0.05) return un; var vc=Math.sqrt(2*PG_G*Math.max(1e-4,top-(JG_TOP+(ARC.webD||0)+(r||JG_R))))/(-ny), u=un/vc, u0=1-0.15*k, A=1.02, W=A-u0; if(u<=u0) return un; return vc*(u0+W*(1-Math.exp(-(u-u0)/W))); }
+function pgSoftTop(un,ny,top,r){ var k=PG_V.soft2||0; if(k<0.01||un<=0||ny>=-0.05) return un; var vc=Math.sqrt(2*PG_G*Math.max(1e-4,top-(JG_TOP+(ARC.webD||0)+(r||JG_R))))/(-ny), u=un/vc, u0=1-0.15*k, A=1.02, W=A-u0; if(u<=u0) return un; return vc*(u0+W*(1-pgExpNeg((u-u0)/W))); }
+/* 1.61c: e^(−x) только сложением и умножением — как в игре (src/15_pong.js expNeg), бит в бит; от Math.exp отличается в 16-м знаке */
+function pgExpNeg(x){ var y=x/32, t=1, s=1; for(var k=1;k<=10;k++){ t=t*(-y)/k; s+=t; } for(var q=0;q<5;q++) s=s*s; return s; }
 function pgAimE(){ var a=PG_V.aims||0; return a>0.001?PG_AIM_EDGE-a*PG_AIM_Z*Math.random():PG_AIM_EDGE; }
 /* 1.60g (Ден 10:28: «как мяч ушёл в перелёт, если дуга была высокой, но не больше 90%, а дуги настроены не на перелёт?»). Запись 10:00,
    80-я с: пас 1,48 вверх (обычный высокий) улетел за дальний край. Прицел считал, что чужая ракетка встретит мяч на той же высоте, что
@@ -2413,7 +2481,7 @@ function pgAimE(){ var a=PG_V.aims||0; return a>0.001?PG_AIM_EDGE-a*PG_AIM_Z*Mat
    приём на нижнем положении ракеток (низ калибровки) или ниже, если ракетки уже там: опустил — мяч всё равно на ракетке; держишь
    выше — ляжет ближе к середине */
 function pgAimDir(i,x,pad,ar,A,b,e){ var hw=pgHw(ar), j=1-i, xcj=ar*(j?1-PG_XC:PG_XC), xt=xcj+(j?1:-1)*(e===undefined?PG_AIM_EDGE:e)*hw, S=pgSurf(i,x,pad,ar,A), y0=S.y-b.r, yt=pgSurf(j,xt,Math.max(pad,JG_PAD_LO),ar,A).y-b.r,
-    ya=y0-PG_AIM_H*(y0-(JG_TOP+b.r)), vy0=Math.sqrt(2*PG_G*Math.max(1e-4,y0-ya)), ta=vy0/PG_G, td=Math.sqrt(2*Math.max(1e-4,yt-ya)/PG_G), vx=(xt-x)/(ta+td), nl=Math.hypot(vx,vy0);
+    ya=y0-PG_AIM_H*(y0-(JG_TOP+b.r)), vy0=Math.sqrt(2*PG_G*Math.max(1e-4,y0-ya)), ta=vy0/PG_G, td=Math.sqrt(2*Math.max(1e-4,yt-ya)/PG_G), vx=(xt-x)/(ta+td), nl=Math.sqrt(vx*vx+vy0*vy0);   /* 1.61b: как в игре (src/15_pong.js aimDir) — бит в бит */
   return [vx/nl,-vy0/nl]; }
 function pgKick(i,a){ if(i!==0&&i!==1) return; if(!ARC.kick) ARC.kick=[null,null]; ARC.kick[i]={t0:ARC.t,a:Math.max(0.3,Math.min(1,a||0))}; }
 function pgMult(){ if(PG_V.mult<0.5) return 1; var ar=ARC.ar||2.16, w=pgHw(ar)/(ar*PG_V.fw/4); return 1/Math.max(Math.round(PG_V.mult)===2?0.5:0.2,Math.min(1,w)); }   // 1.58z22: «до ×2» — для «без конца»
@@ -2633,20 +2701,15 @@ function pgCalStart(){ ARC.c2={step:1,buf:[],k:-1}; ARC.T=ARC.T&&ARC.T.lin?ARC.T
    (DSP2.recenter), затем сдвигается так, чтобы низ взмахов был на 100 мм (как низ удержания с 1.59s — выше, где эхо держит точную высоту);
    низ взмахов → 8% хода ракеток, верх → 75%, как у удержаний. Сдвиг смеси 0 (высота и эхо сведены привязкой). Пока машешь, ракетки уже
    ходят по пойманному. «Размах, мм» действует и здесь */
-function pgWaveStep(c,now,h){
-  if(ARC.present&&h!==null&&h!==undefined) c.buf.push({t:now,h:h,r:(ARC.rngH===undefined?null:ARC.rngH)}); while(c.buf.length&&c.buf[0].t<now-6) c.buf.shift();
-  if(c.buf.length<20){ if(c.k!==0){ c.k=0; el('acSub').textContent='Как будешь бить: от низа удара до верха и обратно, несколько раз.'; } return; }
-  var hs=c.buf.map(function(q){ return q.h; }).sort(function(a,b){ return a-b; }), lo=hs[Math.floor(hs.length*0.1)], hi=hs[Math.floor(hs.length*0.9)], md=hs[hs.length>>1];
-  var cr=0, sd=0; for(var i=0;i<c.buf.length;i++){ var d=c.buf[i].h-md, sg=d>8?1:d<-8?-1:0; if(sg&&sg!==sd){ if(sd) cr++; sd=sg; } }
-  var big=hi-lo>=35, k=Math.max(c.k>0?c.k:0,big?Math.min(5,Math.floor(cr/4*5+0.0001)):0);   /* точки только прибавляются */
-  if(big&&ARC.T){ ARC.T.lin={b:lo,t:lo+Math.min(160,hi-lo)}; }
-  if(k!==c.k){ c.k=k; el('acSub').textContent=(big?'Так, ещё. ':'Как будешь бить — от низа до верха. ')+(k?'●'.repeat(k)+'○'.repeat(5-k):''); }
-  if(!big||cr<4||c.buf[c.buf.length-1].t-c.buf[0].t<2.5) return;
-  var rc=DSP2.recenter(), sh=rc?rc.shift:0; lo+=sh; hi+=sh; var dl=100-lo; DSP2.shift(dl); if(ARC.dist!==null&&ARC.dist!==undefined) ARC.dist+=sh+dl;
-  var span=Math.max(35,Math.min(160,hi-lo)); arcEv('cal:помах:'+Math.round(span)+':привязка:'+sh.toFixed(0)+':'+dl.toFixed(0));
-  if((PG_V.span||0)>=30){ arcEv('cal:размах:'+Math.round(PG_V.span)); span=PG_V.span; }
-  var lw=pgLift(c.buf.map(function(q){ return q.r; }),0.1); ARC.T={field:span,ok:true,lin:{b:100+lw,t:100+lw+span}}; ARC.c2=null; ARC.mxCal=0; ARC.mxOff=0; ARC.mxH=null;
-  arcEv('cal:низ:100'); arcEv('cal:верх:'+(100+span).toFixed(0)); sfx('level');
+function pgWaveStep(c,now,h){   /* 1.61f: сама калибровка взмахами — в коде игры (src/16_pong_ctl.js PongCtl.wave), лаба берёт её оттуда */
+  var q={height:h,present:ARC.present,rng:(ARC.rngH===undefined?null:ARC.rngH),wave:c,lin:null}, k0=c.k, cal=DSP2.info().cal||{};
+  var r=PongCtl.wave(q,now,{recenter:function(){ return DSP2.recenter(); },shift:function(d){ DSP2.shift(d); },k:cal.k||1.4,span:PG_V.span||0,lowr:(PG_V.lowr||0)>=0.5});
+  if(!r.done){ if(q.lin&&ARC.T) ARC.T.lin=q.lin; if(c.buf.length<20){ if(k0!==0){ c.k=0; el('acSub').textContent='Как будешь бить: от низа удара до верха и обратно, несколько раз.'; } return; }
+    if(r.k!==k0||k0<0){ el('acSub').textContent=(r.big?'Так, ещё. ':'Как будешь бить — от низа до верха. ')+(r.k?'●'.repeat(r.k)+'○'.repeat(5-r.k):''); } return; }
+  if(ARC.dist!==null&&ARC.dist!==undefined) ARC.dist+=r.tie;
+  arcEv('cal:помах:'+Math.round(r.span0)+':привязка:'+r.tie.toFixed(0)); if((PG_V.span||0)>=30) arcEv('cal:размах:'+Math.round(PG_V.span)); if((PG_V.lowr||0)>=0.5&&r.low_r!==null) arcEv('cal:низ-эхо:'+r.low_r.toFixed(0)+':подъём:'+r.lift.toFixed(0));
+  ARC.T={field:r.span,ok:true,lin:q.lin}; ARC.c2=null; ARC.mxCal=0; ARC.mxOff=0; ARC.mxH=null;
+  arcEv('cal:низ:100'); arcEv('cal:верх:'+(100+r.span).toFixed(0)); sfx('level');
   if(ARC.onCaught){ var f=ARC.onCaught; ARC.onCaught=null; f(); } }
 function pgCalStep(now){ var c=ARC.c2; if(!c) return; var h=pgCalH(); if(c.wave) return pgWaveStep(c,now,h);
   if(ARC.present&&h!==null&&h!==undefined) c.buf.push({t:now,h:h,a:(ARC.absH===undefined?null:ARC.absH),r:(ARC.rngH===undefined?null:ARC.rngH)}); while(c.buf.length&&c.buf[0].t<now-1.2) c.buf.shift();
@@ -2781,7 +2844,7 @@ var ARC_STEP={
     if(s.k==='move'||s.k==='flick'){ var per=s.k==='move'?s.per:s.gap, nb=Math.floor(u/per); if(nb>=ARC.fwBeat&&nb<s.n){ ARC.fwBeat=nb+1; arcEv('beat:'+(s.k==='move'?(nb%2?5:15):15)); sfx('jtoss',1); } }
     ARC.fwCm=fwCmAt(S,t); var left=Math.max(0,s.t1-t); el('acSub').textContent=left>0.5?Math.ceil(left)+' с':''; },
   pong:function(dt){ if(pgTime()>0&&ARC.t>=pgTime()&&!ARC.over){ ARC.over=true; arcEv('time-up'); return; }
-    ARC.webD=(ARC.webD||0)+(pgWebD()-(ARC.webD||0))*(1-Math.exp(-dt/0.8));   /* 1.60v: паутина опускается плавно, ~1 с */
+    ARC.webD=(ARC.webD||0)+(pgWebD()-(ARC.webD||0))*(1-pgExpNeg(dt/0.8));   /* 1.60v: паутина опускается плавно, ~1 с (1.61e: e^−x как в игре) */
     var gmS=Math.round(PG_V.grow); if(gmS===2||gmS===3){ var tk=gmS===3?Math.pow(0.875,Math.floor(ARC.t/pgNarrowP())):1-0.125*Math.min(4,Math.floor(ARC.t/pgNarrowP())); if((ARC.narrowK||1)>tk+1e-6){ ARC.narrowK=tk; arcEv('narrow:'+tk.toFixed(gmS===3?3:1)); sfx('level'); } }
     var pad=ARC.py, vr=ARC.padPrev===null?0:(pad-ARC.padPrev)/Math.max(dt,1e-3); ARC.padPrev=pad;
     /* 1.59t (Ден 23:37–23:39: «тент же мягкий — он должен пружинить, прогибаться.. часть взмаха должна передаваться на его прогибы и
@@ -2828,7 +2891,7 @@ var ARC_STEP={
                 if(JG_SET.net===3) ARC.netY=(Math.random()-0.5)*0.1; } b.from=i; } } } }
       if(was&&!b.on&&b.vy<-0.5){ pgKick(b.onI,Math.hypot(b.vx,b.vy)/1.2); b.touched=false; b.peakY=b.y; b.peakX=b.x; b.y0=b.y; ARC.tosses++; arcEv('toss:'+(-b.vy).toFixed(2)+':'+b.vx.toFixed(2)); sfx('jtoss',-b.vy); }
       b.rest=b.on?(b.rest||0)+dt:0;
-      if(b.dead||b.y>1.1||b.x<-0.15||b.x>ar+0.15){ ARC.falls++; arcEv('lost:'+b.x.toFixed(2)); ARC.streak=0; ARC.clean=0; ARC.series=0; ARC.flash=0.25; sfx('jburn'); ARC.balls.splice(ARC.balls.indexOf(b),1);
+      if(b.dead||b.y>1.1||b.x<-0.15||b.x>ar+0.15){ ARC.falls++; arcEv('lost:'+b.x.toFixed(2)); if(!b.dead&&(ARC.crk||[]).length){ ARC.crkM={t:ARC.t,xs:ARC.crk.map(function(q){ return q.x; })}; ARC.crk=[]; }   /* 1.61a: «по 5 трещин на каждый волан» — пропал волан, трещины заделаны */ ARC.streak=0; ARC.clean=0; ARC.series=0; ARC.flash=0.25; sfx('jburn'); ARC.balls.splice(ARC.balls.indexOf(b),1);
         ARC.serve=1-ARC.serve; ARC.respawn=(ARC.crkB&&Math.abs((ARC.t||0)-ARC.crkB.t)<0.05)?PG_SPIDER+0.9:0.6;   /* 1.60q: после паука — новый волан, когда мультик кончился, и ещё пауза */ if(PG_V.lives>0&&ARC.falls>=PG_V.lives){ ARC.over=true; arcEv('out-of-balls'); } } });   // 1.58z4: мячей — сколько выбрано (0 — без счёта)
     pgMeat(dt,ar);
     ARC.pf=ARC.pf.filter(function(p){ p.t-=dt; return p.t>0; }); if(ARC.lastT>0) ARC.lastT-=dt; },
@@ -2926,8 +2989,8 @@ function arcDraw(){ var cv=el('acC'); if(!cv||!cv.getContext) return; var dpr=Ma
     if(ARC.fwCm!==null){ var gy=cmY(ARC.fwCm||5); c.strokeStyle='#ffd166'; c.lineWidth=3*dpr; c.beginPath(); c.arc(rx-0.12*H,gy,0.04*H,0,6.283); c.stroke(); }
     var fm=ARC.mix!==undefined&&ARC.mix!==null&&ARC.T?Tune.fracOf(ARC.T,ARC.mix):ARC.frac;
     if(fm!==null&&fm!==undefined){ var my=cmY(5+10*fm); c.fillStyle='#ff8a3d'; c.fillRect(rx-0.32*H,my-0.012*H,0.16*H,0.024*H); } }
-  var skS=g==='pong'&&PG_V.skin>=0.5;   /* 1.59q: «набросок» — свой рисунок (0871_sketch.js) */
-  /* 1.60s: тёмная бумага — рисованием (0871_sketch.js), фильтр 1.60p снят */
+  var skS=g==='pong'&&PG_V.skin>=0.5;   /* 1.59q: «набросок» — свой рисунок (src/39_sketch.js — общий с игрой с 1.61h) */
+  /* 1.60s: тёмная бумага — рисованием (src/39_sketch.js), фильтр 1.60p снят */
   var cvF=el('acC'); if(cvF&&cvF.style.filter) cvF.style.filter='';
   if(skS) pgSketch(c,W,H,dpr);
   else if(g==='pong'){ var ar3=W/H, hw3=pgHw(ar3), A3=PG_V.curve>=0.5?pgCupA():Math.tan(PG_TILTV*Math.PI/180)*hw3, py3=ARC.padSoft!==null&&ARC.padSoft!==undefined?ARC.padSoft:ARC.py;
@@ -3036,7 +3099,7 @@ function arcDraw(){ var cv=el('acC'); if(!cv||!cv.getContext) return; var dpr=Ma
 function arcSave(){ if(!ARC.frames.length) return; var n=ARC.frames.length*N, all=new Float32Array(n); ARC.frames.forEach(function(f,j){ all.set(f,j*N); });
   var pk=0; for(var i=0;i<n;i++){ var a=Math.abs(all[i]); if(a>pk) pk=a; }
   var meta={v:1,kind:'arc-play',game:ARC.game,port:ARC.port,autocenter:true,unwrap:false,half:false,quarter:ARC.game==='juggle'||ARC.game==='follow'||ARC.game==='pong',mix_tau:MIX_TAU,mix_anchor:'abs',mix_off:ARC.mxOff===undefined||ARC.mxOff===null?null:+ARC.mxOff.toFixed(1),unw:DSP2.info().unw,halfN:DSP2.info().half,jg:ARC.game==='juggle'||ARC.game==='pong'?{pad_lo:JG_PAD_LO,pad_h:JG_PAD_H,hp_s:JG_HP,hp_g:JG_HPG,lead_s:JG_LEAD,g:JG_G,practice:JG_PRACTICE,set:JG_SET,bowls:JG_BOWLS,kicks:JG_KICKS,sens:JG_SENS,damps:JG_DAMPS,hw:JG_HW,lives:JG_LIVES,pong:{hw:PG_HW,xc:PG_XC,g:PG_G,lift:PG_LIFT,net0:PG_NET0,tilt:PG_TILT,e:PG_E,hit:PG_HIT,sliders:PG_V,training:true},v:'1.58g'}:null,tune:ARC.T?{field:+ARC.T.field.toFixed(2),asym:Tune.ASYM,shifts:ARC.shifts,lin:ARC.T.lin?{b:+ARC.T.lin.b.toFixed(1),t:+ARC.T.lin.t.toFixed(1),fb:PG_CB,ft:PG_CT}:null}:null,margin:ARC_M,
-    fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:(typeof linkPar==='function'?linkPar():'all'),channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,f_lo:bandLo(),loop:true},
+    fs:fs,N:N,kLo:kLo,kHi:kHi,probe:{bins:(typeof linkPar==='function'?linkPar():'all'),channel:chan,phase:'pi*q^2/M',peak:0.9,gain:PROBE_G,snr_db:PROBE_SNR,fit:(typeof LV_LOG!=='undefined'?LV_LOG:null),f_lo:bandLo(),loop:true},
     cal:DSP2.info().cal||PHYS_CAL,marks:ARC.marks,log:ARC.log,score:ARC.score,summary:arcSummary(),samples:n,gaps:ARC.gaps,peak:pk,
     orientation:{angle:(screen.orientation&&screen.orientation.angle!==undefined)?screen.orientation.angle:(window.orientation||0),w:window.innerWidth,h:window.innerHeight},
     units:ARC.game==='follow'?'log: [frame, palm share by Tune.fracOf, where the palm should be (cm on the ruler; null — free), palm seen, mixed height (slow from the height, fast from the phase)] or [frame, event]':'log: [frame, palm share of the height by Tune.fracOf (0 low … 1 high), player y (0 top … 1 bottom, eased 0.49 per 60 Hz frame), palm seen] or [frame, event]',
@@ -3066,10 +3129,10 @@ function pzShow(open,pre){ var g=pzGame(); if(open){ PZ.pre=!!pre; PZ.sec=null; 
    ракетки не уплывают; цели выключены, рисунок «набросок» с человечком «для вида», тент жёсткий. Мячи, сужение, моторы и вид линий — не
    трогает. Раздел «Цели» убран из меню (всё было выключено), а ползунки, нужные только другим человечкам («доля руки», «плавность
    платформы», «мягкость тента»), видны, только когда выбран такой человечек */
-var PG_ADV={crack:5,aim:1,aims:0.5,soft2:0.2,calw:1,lowr:1,span:75,mix2:1,rings:0,stars:0,bricks:0,skin:1,who:0,soft:0};
+var PG_ADV={lives:5,web:0.5,crack:5,aim:1,aims:0.5,soft2:0.2,calw:1,lowr:1,span:75,mix2:1,rings:0,stars:0,bricks:0,skin:1,who:0,soft:0};
 function pgAdvOk(){ for(var k in PG_ADV) if(Math.abs((PG_V[k]||0)-PG_ADV[k])>1e-6) return false; return true; }
 function pzSecs(){ var f=function(k){ return pgFmt(pgQ(k),PG_V[k]); }, sens=['низкая','ниже средней','средняя','высокая'][JG_SET.sens]||'';
-  if(arcGame==='pong') return [['advise','Как советую'+(pgAdvOk()?' ✓':''),pgAdvOk()?'всё стоит':'дуги в поле, запас силы 0,2, потолок — 5 трещин, помахать, низ от стола, размах 75'],['sets','Наборы',pgSetName()],['rules','Правила','мячей '+f('lives')+' · очки '+f('pts')+' · сужение: '+f('grow')],['ball','Мяч','тяжесть '+f('g')+' · удар '+f('hit')],
+  if(arcGame==='pong') return [['advise','Как советую'+(pgAdvOk()?' ✓':''),pgAdvOk()?'всё стоит':'5 мячей, 5 трещин на волан, паутина 0,5% с 4-й мин, дуги в поле, запас силы 0,2, помахать, низ от стола, размах 75'],['sets','Наборы',pgSetName()],['rules','Правила','мячей '+f('lives')+' · очки '+f('pts')+' · сужение: '+f('grow')],['ball','Мяч','тяжесть '+f('g')+' · удар '+f('hit')],
     ['rack','Ракетки и ладонь','ширина '+f('hwr')+' · '+(PG_V.curve>=0.5?'изогнутая: '+f('curve'):'наклон '+f('tilt')+'°')],['field','Поле','ширина '+f('fw')+(PG_V.wall>=0.5?' · стенки':' · без стенок')],['look','Рисунок',f('skin')+(PG_V.skin>=0.5?' · человечек: '+f('who'):'')+(PG_V.soft>0.001?' · мягкость '+f('soft'):'')],['how','Как играть','что сейчас за правила']];
   return [['jset','Настройки','мячей: '+(JG_SET.lives>0?JG_SET.lives:'без счёта')+' · чаша: '+(JG_SET.bowl?JG_SET.bowl+' из 5':'нет')],['how','Как играть','правила и очки']]; }
 function pzRender(){ var sub=PZ.sec, store=el('pzStore'); PZ_JG.forEach(function(id){ store.appendChild(el(id)); });
@@ -3129,6 +3192,8 @@ window.__show=function(id){ show(id); }; window.__arcOpen=function(g){ arcOpen(g
    возврате показываю меню перед игрой; «Играть» откроет звук заново */
 try{ document.addEventListener('visibilitychange',function(){ if(!document.hidden||!ARC||!(ARC.on||ARC.phase==='play'||ARC.phase==='wave'||ARC.phase==='count'||ARC.phase==='prep'||ARC.phase==='empty')) return;
   if(el('arcPlay').classList.contains('hidden')) return; arcEv('hidden'); arcHalt(); if(arcGame==='juggle'||arcGame==='pong') arcOpen(arcGame); else { arcText('Свернули — партия остановлена','Нажми «Ещё раз».'); arcButtons(true); } }); }catch(e){}
+/* ── v1.61h: the «набросок» renderer is shared — the lab's SonaPong (lab/build.py takes it from here; it was lab/src/0871_sketch.js) and the
+   game's (src/48_pongsk.js feeds it the game's state through the names it reads: ARC, PG_V, pgSurf…). One drawing for both. ── */
 /* ── 1.59q: SonaPong «набросок» (Ден 10.10 19:40: «графика — в стиле наброска от руки.. фон — светлая чуть текстурированная мягкая
    бумага, как в блокнотах художников для скетчей. объектов минимум, всё нарисовано как бы на скорую руку ручкой»; 20:10 — «линер и
    ручка»; 21:20 — «проверим это в лабе.. линер, грубо, без перерисовок»). Перо (Sk) — то же, что на странице-наброске: каждая линия —
@@ -3405,12 +3470,16 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
   /* 1.60n «Потолок трескается»: трещина растёт за 0,25 с из точки, куда ударил волан (ломаная вверх в штриховку и чуть вниз, с
      отколами); каждая следующая — длиннее и ветвистее; перед последней трещины подрагивают; обвал — куски потолка и пыль падают
      на месте всех трещин */
-  /* 1.60v: паутина под потолком — нити от потолка вниз и провисающая кромка на её высоте; опускается плавно вместе с физикой */
-  if((ARC.webD||0)>0.002){ var CEw=F(JG_TOP), WY=F(JG_TOP+ARC.webD), wp0=pgsPen(c,6600), na=Math.max(8,Math.round(FW/70)), anch=[];
-    for(var ai=0;ai<=na;ai++){ var ax=FW*ai/na; anch.push(ax); wp0.stroke([[ax,CEw+1],[ax+((ai%2)?3:-3),WY]],{w:I.w*0.3,a:0.7}); }
-    for(var ai2=0;ai2<na;ai2++){ var x1=anch[ai2], x2=anch[ai2+1], pts3=[]; for(var m5=0;m5<=8;m5++){ var u5=m5/8; pts3.push([x1+(x2-x1)*u5,WY+Math.sin(Math.PI*u5)*6]); } wp0.stroke(pts3,{w:I.w*0.35,a:0.8});
-      var pm=[]; for(var m6=0;m6<=8;m6++){ var u6=m6/8; pm.push([x1+(x2-x1)*u6,CEw+(WY-CEw)*0.55+Math.sin(Math.PI*u6)*4]); } wp0.stroke(pm,{w:I.w*0.25,a:0.5});
-      wp0.stroke([[x1,CEw+2],[x1+(x2-x1)*0.5,WY+5]],{w:I.w*0.22,a:0.45}); } }
+  /* 1.61a (Ден 14:02: «выглядит как занавес — закругляйтесь, идите домой»): паутина не шторой во всю ширину — тонкая полупрозрачная кромка,
+     провисающая между редкими точками крепления, и два-три «колеса» паутины в углах и у последней трещины, где живёт паук */
+  if((ARC.webD||0)>0.002){ var CEw=F(JG_TOP), WY=F(JG_TOP+ARC.webD), dH=WY-CEw, wp0=pgsPen(c,6600), na=Math.max(4,Math.round(FW/180)), xs0=[];
+    for(var ai=0;ai<=na;ai++) xs0.push(FW*ai/na);
+    for(var ai2=0;ai2<na;ai2++){ var x1=xs0[ai2], x2=xs0[ai2+1], pts3=[]; for(var m5=0;m5<=10;m5++){ var u5=m5/10; pts3.push([x1+(x2-x1)*u5,CEw+dH*(0.35+0.65*Math.sin(Math.PI*u5))]); } wp0.stroke(pts3,{w:I.w*0.28,a:0.55}); }
+    var wheel=function(cx,r,sd){ var wq=pgsPen(c,sd); for(var sp=0;sp<5;sp++){ var aa=Math.PI*(0.1+0.8*sp/4); wq.stroke([[cx,CEw+1],[cx+Math.cos(aa)*r,CEw+Math.sin(aa)*r]],{w:I.w*0.25,a:0.6}); }
+      for(var rr2=r*0.35;rr2<=r;rr2+=r*0.32){ var arcP=[]; for(var m7=0;m7<=10;m7++){ var aa2=Math.PI*(0.1+0.8*m7/10); arcP.push([cx+Math.cos(aa2)*rr2,CEw+Math.sin(aa2)*rr2]); } wq.stroke(arcP,{w:I.w*0.22,a:0.55}); } };
+    var rW=Math.min(60,10+dH*1.2); wheel(rW*0.2,rW,6610); wheel(FW-rW*0.2,rW,6620); var lc=(ARC.crk||[])[(ARC.crk||[]).length-1]; if(lc) wheel(F(lc.x),rW*0.7,6630); }
+  /* 1.61a: волан пропал не от паука — трещины заделаны: быстро бледнеют за 0,6 с */
+  var KM=ARC.crkM; if(KM&&t-KM.t<0.6){ var pm2=pgsPen(c,6640), am=1-(t-KM.t)/0.6; KM.xs.forEach(function(xx){ pm2.stroke([[F(xx),F(JG_TOP)+2],[F(xx)+2,F(JG_TOP)-10]],{w:I.w*0.6,a:am}); }); }
   if((PG_V.crack||0)>=1){ var NC=Math.round(PG_V.crack), CE2=F(JG_TOP);
     (ARC.crk||[]).forEach(function(q,j){ var pc=pgsPen(c,6100+j*7+Math.round(q.x*97)%5), gr=Math.min(1,(t-q.t)/0.25), x0=F(q.x)+(j===NC-2?Math.sin(t*28)*0.8:0), L=(10+5*j)*gr, pts=[[x0,CE2+2]];
       for(var m=1;m<=5;m++){ var hh=((j+1)*7.31+m*3.17)%1; pts.push([x0+(m%2?1:-1)*(2+hh*5),CE2+2-L*m/5]); } pc.draw(pts,{w:I.w*0.7});

@@ -162,14 +162,15 @@ function probeSNR(frames,fs,fLo,fHi,par){   /* par — только свои т�
 /* ── автоуровень: убавляю свой зонд до минимума с запасом — громкость в комнате почти не зависит от громкости телефона ── */
 var SNR_TARGET=48, G_MIN=0.015, G_MAX=0.3;
 function measureSNR(){ return sleep(350).then(function(){ return collect(8); }).then(function(fr){ return probeSNR(fr,fs,bandLo(),20450,(typeof linkPar==='function'?linkPar():'all')); }); }
-function autoLevel(){
-  var tries=0;
-  function step(){ return measureSNR().then(function(s){
-    PROBE_SNR=s; tries++;
-    var raw=PROBE_G*Math.pow(10,(SNR_TARGET-s)/20), want=Math.max(G_MIN,Math.min(G_MAX,raw));
-    var tooQuiet=raw>G_MAX*1.01&&s<SNR_TARGET-6;                 // нужно больше, чем можем дать
-    if(tries>=3||Math.abs(20*Math.log10(want/PROBE_G))<1) return {snr:s,g:PROBE_G,atMax:tooQuiet};
-    PROBE_G=want; setProbe('single-'+chan); return step(); }); }
+/* 1.60z: подбор громкости зонда — общий с игрой (src/18_level.js, LevelFit): не только прибавляет тихий, но и убавляет громкий —
+   перегруз микрофона (пик выше 0,09) или грязь от собственной громкости на максимуме. Каждый замер — в журнал записи (probe.fit) */
+var LV_LOG=[];
+function measureLvl(){ return sleep(350).then(function(){ return collect(8); }).then(function(fr){ var pk=0; fr.forEach(function(f){ for(var i=0;i<f.length;i++){ var a=f[i]<0?-f[i]:f[i]; if(a>pk) pk=a; } });
+  return {snr:probeSNR(fr,fs,bandLo(),20450,(typeof linkPar==='function'?linkPar():'all')),peak:pk}; }); }
+function autoLevel(){ var h=[]; LV_LOG=h;
+  function step(){ return measureLvl().then(function(m){ h.push({g:+PROBE_G.toFixed(4),snr:+m.snr.toFixed(1),peak:+m.peak.toFixed(3)}); PROBE_SNR=m.snr; var d=LevelFit.next(h); h[h.length-1].why=d.why;
+    if(d.done){ if(Math.abs(d.g-PROBE_G)>1e-6){ PROBE_G=d.g; setProbe('single-'+chan); } var b=LevelFit.best(h); PROBE_SNR=b.snr; return {snr:b.snr,g:PROBE_G,atMax:!!d.atMax}; }
+    PROBE_G=d.g; setProbe('single-'+chan); return step(); }); }
   return step();
 }
 /* ── слышен ли каждый из двух зондов: пик прямого сигнала над остальной характеристикой ── */

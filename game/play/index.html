@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='1.59w';
+var VERSION='1.61h';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -715,6 +715,8 @@ if(typeof module!=='undefined') module.exports=Race;
    - the series: +10% for every clean pass in a row, up to ×1.5;
    - the rackets narrow every 30 s by 1/8 of their width, without end; the multiplier for narrow rackets — up to ×2;
    - 5 balls; the game is over when they are all lost;
+   - v1.61b–d (the lab's world, the maintainer 11 Oct): «Дуги в поле» with spread 0.5, «Запас силы» 0.2, the ceiling cracks — the 5th
+     touch of one shuttle brings it down and the spider takes the shuttle; from the 4th minute the web lowers the ceiling 0.5% a narrowing;
    - the swing's strength is the palm's own speed (1.59b, pong-2): the racket's speed on the screen, brought back to the palm's mm/s by the
      calibrated travel (span, mm; 70 — the lab's usual). Before, it was the speed in shares of the calibrated travel: a narrow calibration
      (Den's 18:59 game: the holds 4 cm apart) made every swing 1.6 times stronger, and half the passes hit the ceiling. The sensitivity
@@ -734,26 +736,60 @@ var Pong=(function(){
     SPAN_REF:70,                   // 1.59b: the calibrated palm travel (mm) the swing's strength was found with — the lab's usual (Den's holds)
     SERVE_Y:0.32,                  // 1.59d (pong-3): the serve appears below the pause button and the score (at 0.13 they hid it)
     NARROW_T:30, NARROW_K:0.875, MULT_CAP:2, SERIES:0.1, SERIES_N:5, LIVES:5,
-    WAIT:0.8, RESPAWN0:0.3, RESPAWN:0.6, HILL:0.7, HILL_W:0.3, HILL_PTS:200};   // the hill: from 70% of the height, over the last 0.3
+    WAIT:0.8, RESPAWN0:0.3, RESPAWN:0.6, HILL:0.7, HILL_W:0.3, HILL_PTS:200,
+    /* v1.61b (pong-4): «Дуги в поле» (the lab's 1.59x/y, 1.60g, the maintainer 11 Oct: «высокие дуги должны падать в поле»): the launch
+       direction is picked so that an arc to AIM_H of the room lands at AIM_EDGE of the other racket's half-length from its middle, the catch
+       taken on the low racket (or lower); every hit aims at its own point — AIM_SPREAD·AIM_Z nearer at most (the seeded RNG) */
+    AIM:1, AIM_H:0.97, AIM_EDGE:0.92, AIM_Z:0.62, AIM_SPREAD:0.5,
+    /* v1.61c (pong-5): «Запас силы» (the lab's 1.60f/m, the maintainer 17:11: 0.2): a hit's launch speed as a share u of the speed that just
+       touches the ceiling along its direction; above U0 = 1 − 0.15·SOFT it is squeezed smoothly (slope 1 at U0) towards SOFT_A:
+       f = U0 + W·(1 − e^(−(u−U0)/W)), W = SOFT_A − U0 */
+    SOFT:0.2, SOFT_A:1.02,
+    /* v1.61d (pong-6): «Потолок трескается» (the lab's 1.60n/q, 1.61a; the maintainer 11 Oct 11:49–17:11: «потолок отнимает мяч не каждый
+       раз.. каждый 5-й», «волан забирает паук после 5», «по 5 трещин на каждый волан»). A ceiling touch leaves a crack where the shuttle
+       hit; the CRACK-th one brings the ceiling down — the spider takes the shuttle (a ball lost), and the next shuttle comes after the
+       spider's cartoon and a pause (SPIDER + SPIDER_PAUSE s instead of RESPAWN). A shuttle lost any other way mends the cracks — every
+       shuttle has its own CRACK touches. 0 — off (a touch only costs the pass's points, as before) */
+    CRACK:5, SPIDER:3.2, SPIDER_PAUSE:0.9,
+    /* v1.61e (pong-7): «Паутина» (the lab's 1.60v, 1.61a; the maintainer 11 Oct 13:21–17:11: «для новичков нормально, а сильным можно немного
+       усложнить» → «паутина 0,5% с 4-й минуты»). After the WEB_FROM-th narrowing the spider draws the ceiling down with web, by WEB % of
+       the room (the low rackets → the ceiling) with every narrowing, never below half the room, easing down (WEB_TAU s). The web is the
+       ceiling for the touches (cracks too), the points and «Запас силы»; «Дуги в поле» still aim by the real ceiling */
+    WEB:0.5, WEB_FROM:8, WEB_TAU:0.8};   // the hill: from 70% of the height, over the last 0.3
   function rng(seed){ var a=seed>>>0; return function(){ a=(a+0x6D2B79F5)>>>0; var t=a; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
   function clamp(v,a,b){ return v<a?a:v>b?b:v; }
   /* the rackets' half-width now (narrowed by k) */
   function hwOf(g){ return Math.max(0.03,Math.min(g.ar*(TUNE.HWR/4)*g.k,g.ar/4-0.09)); }
   /* the racket surface under x: u — across the racket (−1 … 1), ui — the same from the field's edge (−1) to the gap (+1), f — how the
      slope's tangent compares with the middle's, y — the surface's height (the bowl's shape added to the racket's place) */
-  function surf(g,i,x){ var s=i?-1:1, xc=g.ar*(i?1-TUNE.XC:TUNE.XC), hw=g.hw, u=(x-xc)/hw, ui=s*u, A=TUNE.CUP/(1+TUNE.KV/2), kv=TUNE.KV,
+  function surf(g,i,x,py){ if(py===undefined) py=g.py; var s=i?-1:1, xc=g.ar*(i?1-TUNE.XC:TUNE.XC), hw=g.hw, u=(x-xc)/hw, ui=s*u, A=TUNE.CUP/(1+TUNE.KV/2), kv=TUNE.KV,
       yr=A*(ui-kv*ui*ui/2), f, D=g.ar/2, tc=TUNE.T_MID, hc=D/(4*tc), H1=hc;
     var law=function(uu,yy){ var H0=Math.max(0.02,hc+yy); return ((D-uu*hw)/(2*H0+2*Math.sqrt(H0*H1)))/tc; };
     if(ui<0){ var ym=A*(-1-kv/2); f=law(ui,yr)+(-ui)*(TUNE.T_OUT/tc-law(-1,ym)); }
     else { var H0=Math.max(0.02,hc+yr); f=((D-ui*hw)/(2*H0+2*Math.sqrt(H0*H1)))/tc;
       if(ui>0){ var y1=A*(1-kv/2), H01=Math.max(0.02,hc+y1), f1=((D-hw)/(2*H01+2*Math.sqrt(H01*H1)))/tc; f+=ui*(TUNE.T_IN/tc-f1); } }
-    return {u:u,s:s,ui:ui,f:f,xc:xc,y:g.py-TUNE.LIFT+yr}; }
+    return {u:u,s:s,ui:ui,f:f,xc:xc,y:py-TUNE.LIFT+yr}; }
+  /* v1.61b: «Дуги в поле» — the launch direction from racket i at x for an arc to AIM_H of the room landing at e of the other racket's
+     half-length (from its middle, towards its outer edge), caught with that racket at its low place or lower. As the lab's pgAimDir */
+  function aimDir(g,i,x,b,e){ var hw=g.hw, j=1-i, xcj=g.ar*(j?1-TUNE.XC:TUNE.XC), xt=xcj+(j?1:-1)*e*hw, S=surf(g,i,x), y0=S.y-b.r, yt=surf(g,j,xt,Math.max(g.py,TUNE.PAD_LO)).y-b.r,
+      ya=y0-TUNE.AIM_H*(y0-(TUNE.TOP+b.r)), vy0=Math.sqrt(2*TUNE.G*Math.max(1e-4,y0-ya)), ta=vy0/TUNE.G, td=Math.sqrt(2*Math.max(1e-4,yt-ya)/TUNE.G), vx=(xt-x)/(ta+td), nl=Math.sqrt(vx*vx+vy0*vy0);
+    return [vx/nl,-vy0/nl]; }
+  /* e^(−x), x ≥ 0, with + − × ÷ only (so it is the same on every phone and on a server): x/32 by its Taylor series, then squared 5 times */
+  function expNeg(x){ var y=x/32, t=1, s=1; for(var k=1;k<=10;k++){ t=t*(-y)/k; s+=t; } for(var q=0;q<5;q++) s=s*s; return s; }
+  /* v1.61c: «Запас силы» — as the lab's pgSoftTop */
+  function softTop(g,un,ny,top,r){ var k=TUNE.SOFT; if(k<0.01||un<=0||ny>=-0.05) return un; var vc=Math.sqrt(2*TUNE.G*Math.max(1e-4,top-(TUNE.TOP+g.webD+r)))/(-ny), u=un/vc, u0=1-0.15*k, A=TUNE.SOFT_A, W=A-u0;
+    if(u<=u0) return un; return vc*(u0+W*(1-expNeg((u-u0)/W))); }
+  /* v1.61e: how far down the web hangs now (screen heights), for the narrowings so far — as the lab's pgWebD */
+  var WEB_E=expNeg(DT/TUNE.WEB_TAU);
+  function webTarget(g){ if(TUNE.WEB<0.01) return 0; var k=Math.max(0,g.step-TUNE.WEB_FROM)*TUNE.WEB/100, lvl0=TUNE.PAD_LO-TUNE.CB*g.H-TUNE.LIFT-TUNE.R, room=lvl0-(TUNE.TOP+TUNE.R);
+    return Math.min(0.5*room,k*room); }
+  function aimEdge(g){ return TUNE.AIM_SPREAD>0.001?TUNE.AIM_EDGE-TUNE.AIM_SPREAD*TUNE.AIM_Z*g.rand():TUNE.AIM_EDGE; }
   /* the palm → the rackets' place: hand is the palm as a share of the calibrated travel (0.08 at the low hold, 0.75 at the top one) */
   function padOf(g,hand){ return Math.max(TUNE.PAD_MIN,Math.min(TUNE.PAD_MAX,TUNE.PAD_LO-hand*g.H)); }
   function create(seed,ar,sens,span){
     var H=TUNE.SENS[sens===undefined||sens===null?1:sens]||TUNE.SENS[1];
     var g={seed:seed>>>0,ar:ar||2.16,H:H,span:span>0?span:TUNE.SPAN_REF,rand:rng(seed),n:0,t:0,state:'play',score:0,lives:TUNE.LIVES,falls:0,passes:0,tosses:0,ceils:0,
-      series:0,streak:0,best:0,bestPts:0,k:1,step:0,py:TUNE.PAD_LO-0.5*H,padPrev:null,vpS:0,vr:0,vpb:0,ball:null,respawn:TUNE.RESPAWN0,events:[],fx:[]};
+      series:0,streak:0,best:0,crk:[],webD:0,bestPts:0,k:1,step:0,py:TUNE.PAD_LO-0.5*H,padPrev:null,vpS:0,vr:0,vpb:0,ball:null,respawn:TUNE.RESPAWN0,events:[],fx:[]};
     g.hw=hwOf(g); return g; }
   function mult(g){ var w=g.hw/(g.ar/4); return 1/Math.max(1/TUNE.MULT_CAP,Math.min(1,w)); }
   function ptsOf(f){ var v=100*(f*f*f); if(f>TUNE.HILL){ var x=(f-TUNE.HILL)/TUNE.HILL_W; v+=TUNE.HILL_PTS*x; } return v; }
@@ -762,16 +798,19 @@ var Pong=(function(){
   function serveGo(g,b){ var tx=g.ar*(b.to?1-TUNE.XC:TUNE.XC), ty=surf(g,b.to,tx).y-b.r, ya=TUNE.TOP+b.r+0.012, y0=b.y;
     var vy0=-Math.sqrt(2*TUNE.G*Math.max(0.001,y0-ya)), tu=-vy0/TUNE.G, td=Math.sqrt(2*Math.max(0.01,ty-ya)/TUNE.G); b.vy=vy0; b.vx=(tx-b.x)/(tu+td);
     var hcS=(g.ar/2)/(4*TUNE.T_MID); b.sk=Math.sqrt(Math.min(1,hcS/Math.max(0.01,ty-ya))); g.events.push('go'); }
-  function points(g,b){ if(b.touched||b.peakY===null) return; var lvl0=TUNE.PAD_LO-TUNE.CB*g.H-TUNE.LIFT-b.r, room=lvl0-(TUNE.TOP+b.r), h=(b.y0===null?g.py-TUNE.LIFT-b.r:b.y0)-b.peakY;
+  function points(g,b){ if(b.touched||b.peakY===null) return; var lvl0=TUNE.PAD_LO-TUNE.CB*g.H-TUNE.LIFT-b.r, room=lvl0-(TUNE.TOP+g.webD+b.r), h=(b.y0===null?g.py-TUNE.LIFT-b.r:b.y0)-b.peakY;
     var f=Math.max(0,Math.min(1,h/room)), m=mult(g)*(1+TUNE.SERIES*Math.min(TUNE.SERIES_N,g.series)), p=Math.round(ptsOf(f)*m); if(p<1) return;
     g.score+=p; if(p>g.bestPts) g.bestPts=p; g.events.push('pts'); g.fx.push({pts:p,mult:m,f:f,x:b.x,y:b.y}); }
-  function lose(g,b){ g.falls++; g.lives=Math.max(0,TUNE.LIVES-g.falls); g.streak=0; g.series=0; g.ball=null; g.respawn=TUNE.RESPAWN; g.events.push('lost'); g.fx.push({lost:b.x});
+  function lose(g,b){ g.falls++; g.lives=Math.max(0,TUNE.LIVES-g.falls); g.streak=0; g.series=0; g.ball=null; g.events.push('lost'); g.fx.push({lost:b.x,cave:!!b.dead});
+    if(!b.dead&&g.crk.length){ g.fx.push({mend:g.crk.slice()}); g.crk=[]; }   // v1.61d: a shuttle lost — the cracks are mended
+    g.respawn=b.dead?TUNE.SPIDER+TUNE.SPIDER_PAUSE:TUNE.RESPAWN;
     if(g.falls>=TUNE.LIVES){ g.state='over'; g.events.push('over'); } }
   /* one fixed step. hand: the palm as a share of the calibrated travel (see padOf), or null when no palm is seen (the rackets stay) */
   function step(g,hand){
     g.events=[]; g.fx=[]; if(g.state==='over') return g;
     g.n++; g.t=g.n*DT;
     if(hand!==null&&hand!==undefined) g.py=padOf(g,hand);
+    g.webD+=(webTarget(g)-g.webD)*(1-WEB_E);   // before this step's narrowing, as the lab
     var st=Math.floor(g.t/TUNE.NARROW_T); while(g.step<st){ g.step++; g.k*=TUNE.NARROW_K; g.events.push('narrow'); }
     g.hw=hwOf(g);
     var pad=g.py, vr=g.padPrev===null?0:(pad-g.padPrev)/DT; g.padPrev=pad; g.vr=vr;
@@ -780,19 +819,20 @@ var Pong=(function(){
     var b=g.ball; if(!b) return g;
     if(b.wait>0){ b.wait-=DT; if(b.wait<=0) serveGo(g,b); return g; }
     var was=b.on, py0=b.y; b.vy+=TUNE.G*DT; b.x+=b.vx*DT; b.y+=b.vy*DT; b.on=false; if(b.peakY!==null&&b.y<b.peakY) b.peakY=b.y;
-    if(b.y-b.r<TUNE.TOP&&b.vy<0){ b.y=TUNE.TOP+b.r; b.vy=-b.vy*TUNE.CEIL_BACK; b.touched=true; g.ceils++; g.events.push('ceil'); }
+    var CT=TUNE.TOP+g.webD; if(b.y-b.r<CT&&b.vy<0){ b.y=CT+b.r; b.vy=-b.vy*TUNE.CEIL_BACK; b.touched=true; g.ceils++; g.events.push('ceil');
+      if(TUNE.CRACK>=1){ g.crk.push(b.x); if(g.crk.length>=TUNE.CRACK){ b.dead=true; g.events.push('cave'); g.fx.push({cave:g.crk.slice(),x:b.x}); g.crk=[]; } else { g.events.push('crack'); g.fx.push({crack:b.x,n:g.crk.length}); } } }
     for(var i=0;i<2;i++){ var S=surf(g,i,b.x);
       if(S.u<=1&&S.u>=-1){ var top=S.y-b.r;
-        if(b.y>top&&b.y<top+0.12&&py0<=top-vr*DT+0.01){ var sl=S.s*(TUNE.T_MID*g.hw)/g.hw*S.f, nl=Math.sqrt(sl*sl+1), nx=sl/nl, ny=-1/nl, sk=b.sk||1, rx=b.vx*sk, ry=b.vy*sk-vpb, vn=rx*nx+ry*ny;
+        if(b.y>top&&b.y<top+0.12&&py0<=top-vr*DT+0.01){ var sl=S.s*(TUNE.T_MID*g.hw)/g.hw*S.f, nl=Math.sqrt(sl*sl+1), nx=sl/nl, ny=-1/nl; if(TUNE.AIM){ var dA=aimDir(g,i,b.x,b,aimEdge(g)); nx=dA[0]; ny=dA[1]; } var sk=b.sk||1, rx=b.vx*sk, ry=b.vy*sk-vpb, vn=rx*nx+ry*ny;
           b.y=top; b.sk=0;
-          if(vn<0){ var un=(-vn>TUNE.STICK?-TUNE.E*vn:0)+vpb*ny; if(-vn>0.5){ g.events.push('land'); g.fx.push({land:i,v:-vn}); } b.vx=un*nx; b.vy=un*ny; }
+          if(vn<0){ var un=(-vn>TUNE.STICK?-TUNE.E*vn:0)+vpb*ny; un=softTop(g,un,ny,top,b.r); if(-vn>0.5){ g.events.push('land'); g.fx.push({land:i,v:-vn}); } b.vx=un*nx; b.vy=un*ny; }
           b.on=true; b.onI=i;
           if(b.from!==i){ if(b.from!==null){ points(g,b);
               if(b.touched){ g.series=0; g.events.push('dull'); } else { g.series++; g.events.push('pass'); }
               g.passes++; g.streak++; if(g.streak>g.best) g.best=g.streak; }
             b.from=i; } } } }
     if(was&&!b.on&&b.vy<-0.5){ var sp=Math.sqrt(b.vx*b.vx+b.vy*b.vy); b.touched=false; b.peakY=b.y; b.y0=b.y; g.tosses++; g.events.push('toss'); g.fx.push({kick:b.onI,a:sp/1.2,vy:-b.vy}); }
-    if(b.y>1.1||b.x<-0.15||b.x>g.ar+0.15) lose(g,b);
+    if(b.dead||b.y>1.1||b.x<-0.15||b.x>g.ar+0.15) lose(g,b);
     return g; }
   /* the share of the start width the rackets have now, and how long till they narrow again */
   function width(g){ return TUNE.HWR*g.k; }
@@ -808,8 +848,8 @@ var Pong=(function(){
      the middle, far from both edges, so a jitter can't flip it back. More than 5 steps behind (a pause, a hitch) — the rest is dropped.
      Not part of the rules: only the drawing's rhythm */
   function frameSteps(acc){ var n=1; acc-=DT; while(acc>0.75*DT&&n<5){ n++; acc-=DT; } if(acc>0.75*DT) acc=0; if(acc<-0.75*DT){ n--; acc+=DT; } return {n:n,acc:acc}; }
-  var TAG='pong-3';
-  return {NONE:NONE,TAG:TAG,frameSteps:frameSteps,TUNE:TUNE,DT:DT,create:create,step:step,replay:replay,surf:surf,padOf:padOf,hwOf:hwOf,mult:mult,ptsOf:ptsOf,width:width,nextNarrow:nextNarrow};
+  var TAG='pong-7';   // v1.61b: «Дуги в поле» (pong-4); v1.61c: «Запас силы» 0.2 (pong-5); v1.61d: «Потолок трескается», 5 (pong-6); v1.61e: «Паутина» 0.5% from the 4th minute (pong-7)
+  return {NONE:NONE,TAG:TAG,frameSteps:frameSteps,TUNE:TUNE,DT:DT,create:create,step:step,replay:replay,surf:surf,aimDir:aimDir,softTop:softTop,expNeg:expNeg,webTarget:webTarget,padOf:padOf,hwOf:hwOf,mult:mult,ptsOf:ptsOf,width:width,nextNarrow:nextNarrow};
 })();
 if(typeof module!=='undefined') module.exports=Pong;
 /* ── PONG CONTROL (SonaPong, v1.59): the palm → the rackets, moved from the lab (lab/src/087_arcade.js 1.57f–1.58z24) as it is.
@@ -828,12 +868,23 @@ if(typeof module!=='undefined') module.exports=Pong;
      «pulled the palm to the table»). ── */
 var PongCtl=(function(){
   var TAU=3, TAU_OFF=1.5, CB=0.08, CT=0.75, TOL=14, WIN=1.2, NEED=1.1, MINR=35, MAXR=160;
-  function create(){ return {mxH:null,mxF:null,mxOff:null,mxCal:null,mix:null,height:null,abs:null,present:false,
-    lin:null,hold:null,k:0,tl:[],lag:null}; }
+  /* v1.61f — the calibration by waving (the lab's 1.60a–c, «Калибровка: помахать», «Низ подальше от стола», «Размах 75 мм»; the maintainer
+     11 Oct 08:35–10:02: «калибровку с маханием, как в SonaFly и SonaRace.. калибруюсь по 3–4 раза и всё равно недоволен», «ладонь упирается
+     в разъём/стол.. сколько можно», «ни низ, ни верх не должны уползать, и ход ладони должен быть достаточным»). Wave as you will hit, from
+     the hit's low to its top, a few times. The last WAVE_WIN s of the palm (no hurry): once the swing (the 10th…90th share of the heights)
+     is ≥ WAVE_MIN mm and the palm has crossed the middle WAVE_CR times (two swings) over ≥ WAVE_T s, the height scale is tied to the
+     swings' middle (DSP2 recenter), then shifted so the swings' low is at 100 mm (where the echo holds the fine height well, as the hold's low
+     since 1.59s). The travel is SPAN mm (a hit's strength no longer depends on where the top was caught); the low → 8% of the rackets'
+     travel, low + SPAN → 75%. If the swings' low is nearer the probe than LOW_R mm of the echo's range (the table: in good games the low was
+     93–120), the whole travel goes up by the difference (×cal.k, at most LIFT_MAX mm) — the hand never has to reach the table. The mix's
+     offset is 0 (the height and the echo meet at the tie). While waving, the rackets already follow what is caught so far */
+  var WAVE_WIN=6, WAVE_MIN=35, WAVE_CR=4, WAVE_T=2.5, SPAN=75, LOW_R=95, LIFT_MAX=60;
+  function create(){ return {mxH:null,mxF:null,mxOff:null,mxCal:null,mix:null,height:null,abs:null,rng:null,present:false,
+    lin:null,hold:null,wave:null,k:0,tl:[],lag:null}; }
   /* one DSP2 frame (r: its result; N, fs: the frame's size and rate; calS: DSP2's scale cal.s; counting: the countdown before play — the
      offset is learnt there only if the holds gave none). Returns the mix, or null while no palm is seen */
   function frame(c,r,N,fs,calS,counting,now){
-    var k=c.k++; if(!r) return c.mix; c.present=!!r.present; if(r.present){ c.height=r.height; c.abs=r.abs; }
+    var k=c.k++; if(!r) return c.mix; c.present=!!r.present; if(r.present){ c.height=r.height; c.abs=r.abs; c.rng=r.range===undefined?null:r.range; }
     if(!r.present||r.height===null) return c.mix;
     if(now!==undefined&&now!==null) tlPush(c,k,now,N,fs);
     var F=r.fast*(calS||1), a=1-Math.exp(-N/(TAU*fs));
@@ -880,13 +931,34 @@ var PongCtl=(function(){
       if(H.dd.length>=20){ var sd=H.dd.slice().sort(function(p,q){ return p-q; }); c.mxCal=sd[sd.length>>1]; c.mxOff=c.mxCal; c.mxH=null; }
       c.hold=null; res.caught='top'; res.done=true; }
     return res; }
+  /* the waving: waveStart, then wave() every frame (t — seconds; o — {recenter(), shift(d), k: the echo's scale cal.k; the lab's options:
+     span — mm, under 30: the swing waved; lowr — false: no lift}). The lab's «помахать» calls this too (one code for both).
+     Returns {k: 0…5 (the swings so far), big: the swing is wide enough, done, and when done: span0 (the swing waved, mm), lift, tie} */
+  function waveStart(c){ c.wave={buf:[],k:0}; c.hold=null; }
+  function wave(c,t,o){ o=o||{}; var W=c.wave; if(!W) return {done:true,k:5,big:true};
+    var h=c.height, res={k:W.k,big:false,done:false};
+    if(c.present&&h!==null&&h!==undefined) W.buf.push({t:t,h:h,r:c.rng}); while(W.buf.length&&W.buf[0].t<t-WAVE_WIN) W.buf.shift();
+    if(W.buf.length<20) return res;
+    var hs=W.buf.map(function(q){ return q.h; }).sort(function(a,b){ return a-b; }), lo=hs[Math.floor(hs.length*0.1)], hi=hs[Math.floor(hs.length*0.9)], md=hs[hs.length>>1];
+    var cr=0, sd=0, i; for(i=0;i<W.buf.length;i++){ var d=W.buf[i].h-md, sg=d>8?1:d<-8?-1:0; if(sg&&sg!==sd){ if(sd) cr++; sd=sg; } }
+    var big=hi-lo>=WAVE_MIN; W.k=Math.max(W.k,big?Math.min(5,Math.floor(cr/4*5+0.0001)):0); res.k=W.k; res.big=big;   // the dots only add up
+    if(big) c.lin={b:lo,t:lo+Math.min(MAXR,hi-lo)};
+    if(!big||cr<WAVE_CR||W.buf[W.buf.length-1].t-W.buf[0].t<WAVE_T) return res;
+    var rc=o.recenter?o.recenter():null, sh=rc?rc.shift:0; lo+=sh; hi+=sh; var dl=100-lo; if(o.shift) o.shift(dl); if(c.height!==null&&c.height!==undefined) c.height+=sh+dl;
+    var span0=Math.max(MINR,Math.min(MAXR,hi-lo)), lw=o.lowr===false?{lift:0,r:null}:lift(W.buf.map(function(q){ return q.r; }),o.k||1.4), sp=o.span===undefined?SPAN:o.span>=30?o.span:span0;
+    c.lin={b:100+lw.lift,t:100+lw.lift+sp}; c.mxCal=0; c.mxOff=0; c.mxH=null; c.wave=null;
+    res.done=true; res.k=5; res.span0=span0; res.span=sp; res.lift=lw.lift; res.low_r=lw.r; res.tie=sh+dl; return res; }
+  /* «Низ подальше от стола»: the swings' low (the 10th share of the echo's range, mm from the probe) nearer than LOW_R — the travel goes up */
+  function lift(rs,k){ var v=rs.filter(function(x){ return x!==null&&x!==undefined&&isFinite(x); }).sort(function(a,b){ return a-b; }); if(v.length<10) return {lift:0,r:null};
+    var rl=v[Math.floor(v.length*0.1)]; return {lift:Math.max(0,Math.min(LIFT_MAX,k*(LOW_R-rl))),r:rl}; }
+  function waving(c){ return !!c.wave; }
   function holding(c){ return !!c.hold; }
   function lowStep(c){ return !!c.hold&&c.hold.step===1; }
   /* the palm (a height in mm, the mix) → the share of the calibrated travel that the rules take (0.08 at the low hold, 0.75 at the top) */
   function frac(c,h){ if(!c.lin||h===null||h===undefined) return null; return CB+(CT-CB)*(h-c.lin.b)/Math.max(30,c.lin.t-c.lin.b); }
   /* what the rackets follow now: the mix, or the height before the mix has started */
   function palm(c){ return c.mix!==null?c.mix:c.height; }
-  return {create:create,frame:frame,palmAt:palmAt,start:start,hold:hold,holding:holding,lowStep:lowStep,frac:frac,palm:palm,CB:CB,CT:CT,TOL:TOL};
+  return {create:create,frame:frame,palmAt:palmAt,start:start,hold:hold,holding:holding,waveStart:waveStart,wave:wave,waving:waving,lift:lift,SPAN:SPAN,LOW_R:LOW_R,lowStep:lowStep,frac:frac,palm:palm,CB:CB,CT:CT,TOL:TOL};
 })();
 if(typeof module!=='undefined') module.exports=PongCtl;
 /* ── PALM CLOCK (1.59l): the palm's height in time, not in bunches — for SonaFly and SonaRace (SonaPong has its own, src/16_pong_ctl.js
@@ -915,6 +987,39 @@ var PalmClock=(function(){
   return {create:create,tick:tick,push:push,at:at,reset:reset};
 })();
 if(typeof module!=='undefined') module.exports=PalmClock;
+/* ── PROBE LEVEL FIT (v1.60z): one rule for the game (src/20_sonar.js autoLevel) and the lab (lab/src/04_audio_engine.js autoLevel; the lab's
+   build includes this file). Pure: given what was measured so far — [{g: our probe gain, snr: dB, peak: the microphone's loudest sample}] —
+   says which gain to try next, or that the fit is done and which gain to keep.
+   Before (both): the gain was only ever turned UP towards 48 dB signal-to-noise. On a phone at 100% media volume (the maintainer, 11 Oct,
+   records 16:36 and 16:38, iPhone) the microphone heard the probe 10× louder than usual (peak 0.19–0.25 against 0.024) yet with LESS
+   signal-to-noise (35 dB against 45): the speaker driven hard distorts, its own noise rises with it, the gain stayed at the top (0.3) and
+   the echo's distance slid to the nearest — the rackets lay on the bottom, the palm had to climb higher and higher.
+   Now: 1) the microphone overloaded (peak above 0.09) — turn down in proportion, towards 0.045; 2) quieter than the target — turn up as
+   before, but not to a gain already tried that was no cleaner; 3) at the top and still well under target — try half once: if our own
+   loudness is the dirt, half is cleaner, and it keeps halving while that helps; 4) the kept gain: the quietest of those that reach the
+   target, else the cleanest tried (of two within 1 dB, the quieter). At most 6 measurements (~2.4 s, was up to 3). ── */
+var LevelFit=(function(){
+  var TARGET=48, G_MIN=0.015, G_MAX=0.3, PEAK_HI=0.09, PEAK_OK=0.045, MAXN=6;
+  function tried(h,g){ for(var i=0;i<h.length;i++) if(Math.abs(Math.log(h[i].g/g))<0.08) return true; return false; }
+  // the kept gain: of those that reach the target (−1 dB), the quietest; if none does, the cleanest (and of two within 1 dB, the quieter)
+  function best(h){ var ok=h.filter(function(q){ return q.snr>=TARGET-1; }); if(ok.length) return ok.reduce(function(a,q){ return q.g<a.g?q:a; });
+    var b=null; h.forEach(function(q){ if(!b||q.snr>b.snr+1||(Math.abs(q.snr-b.snr)<=1&&q.g<b.g)) b=q; }); return b; }
+  function next(h){ var cur=h[h.length-1], b=best(h), atMax=b.g>=G_MAX*0.99&&b.snr<TARGET-6;
+    if(h.length>=MAXN) return {g:b.g,done:true,why:'tries',atMax:atMax};
+    // 1) overloaded microphone
+    if(cur.peak>PEAK_HI&&cur.g>G_MIN*1.01){ var gl=Math.max(G_MIN,cur.g*Math.max(0.25,PEAK_OK/cur.peak)); if(!tried(h,gl)) return {g:gl,done:false,why:'loud'}; }
+    // 2) quieter than the target: up, unless a higher gain was tried and was no cleaner; more than enough: down to the target (as before)
+    var raw=cur.g*Math.pow(10,(TARGET-cur.snr)/20), want=Math.max(G_MIN,Math.min(G_MAX,raw)), higher=h.filter(function(q){ return q.g>cur.g*1.05; });
+    var upOk=!higher.length;   // a higher gain already tried: the answer is among the tried ones
+    if(want>cur.g*1.12&&upOk&&cur.peak<=PEAK_HI&&!tried(h,want)) return {g:want,done:false,why:'quiet'};
+    if(want<cur.g/1.12&&cur.snr>=TARGET-1&&!tried(h,want)) return {g:want,done:false,why:'margin'};
+    // 3) at the top (or coming down helped) and still well under target: try half
+    var lower=h.filter(function(q){ return q.g<cur.g*0.95; }), helped=higher.length&&higher.every(function(q){ return q.snr<cur.snr-1; });
+    if(cur.snr<TARGET-6&&!lower.length&&(cur.g>=G_MAX*0.9||helped)&&cur.g/2>=G_MIN&&!tried(h,cur.g/2)) return {g:cur.g/2,done:false,why:'down'};
+    return {g:b.g,done:true,why:'fit',atMax:atMax}; }
+  return {next:next,best:best,TARGET:TARGET,G_MIN:G_MIN,G_MAX:G_MAX,PEAK_HI:PEAK_HI};
+})();
+if(typeof module!=='undefined') module.exports=LevelFit;
 /* ── SONAR: speaker probe, microphone, echo processing. Moved over from the lab (04_audio_engine, 06_side_pick, 07_calibration)
    without changes to the numbers; only the lab's screens are gone.
    The probe is a periodic multi-tone (512 samples, 18.3–20.5 kHz, Schroeder phases). Two extra probes on the even and odd tones
@@ -1171,14 +1276,16 @@ var Sonar=(function(){
      tells a muted phone from a noisy room. On the maintainer's iPhone it is 12–13 dB with any volume that worked (24 Sep). */
   var SNR_TARGET=48, G_MIN=0.015, G_MAX=0.3, PROBE_LVL=null, QUIET_LVL=-6;
   function measureSNR(){ return sleep(350).then(function(){ return collect(8); }).then(function(fr){ var st=probeStats(fr,fs,F_LO,20450); PROBE_LVL=st.line-20*Math.log10(PROBE_G); return st.snr; }); }
-  function autoLevel(){
-    var tries=0;
-    function step(){ return measureSNR().then(function(s){
-      PROBE_SNR=s; tries++;
-      var raw=PROBE_G*Math.pow(10,(SNR_TARGET-s)/20), want=Math.max(G_MIN,Math.min(G_MAX,raw));
-      var tooQuiet=raw>G_MAX*1.01&&s<SNR_TARGET-6;
-      if(tries>=3||Math.abs(20*Math.log10(want/PROBE_G))<1) return {snr:s,g:PROBE_G,atMax:tooQuiet};
-      PROBE_G=want; setProbe('single-'+chan); return step(); }); }
+  /* v1.60z: the probe level fitted by LevelFit (src/18_level.js, shared with the lab): it also turns a loud probe DOWN — an overloaded
+     microphone, or the speaker's own distortion at the top (the maintainer's iPhone at 100% media volume, 11 Oct 16:36/16:38: 10× louder,
+     10 dB dirtier, the rackets slid down). levelLog — what was tried, for the game log */
+  var levelLog=[];
+  function measureLvl(){ return sleep(350).then(function(){ return collect(8); }).then(function(fr){ var st=probeStats(fr,fs,F_LO,20450); PROBE_LVL=st.line-20*Math.log10(PROBE_G);
+    var pk=0; fr.forEach(function(f){ for(var i=0;i<f.length;i++){ var a=f[i]<0?-f[i]:f[i]; if(a>pk) pk=a; } }); return {snr:st.snr,peak:pk}; }); }
+  function autoLevel(){ var h=[]; levelLog=h;
+    function step(){ return measureLvl().then(function(m){ h.push({g:+PROBE_G.toFixed(4),snr:+m.snr.toFixed(1),peak:+m.peak.toFixed(3)}); PROBE_SNR=m.snr; var d=LevelFit.next(h); h[h.length-1].why=d.why;
+      if(d.done){ if(Math.abs(d.g-PROBE_G)>1e-6){ PROBE_G=d.g; setProbe('single-'+chan); } var b=LevelFit.best(h); PROBE_SNR=b.snr; return {snr:b.snr,g:PROBE_G,atMax:!!d.atMax}; }
+      PROBE_G=d.g; setProbe('single-'+chan); return step(); }); }
     return step();
   }
   /* which side the palm is on: the speaker whose probe is louder at the microphone */
@@ -1303,7 +1410,7 @@ var Sonar=(function(){
     /* what the browser really gave for the microphone: on Android the echo/noise/gain processing may stay on despite our request */
     micSettings:function(){ if(natOn){ try{ var st=JSON.parse(NATA.audioStatus()); return {audio:'app',probe_end:lsGet('sonaroids_probe_end','auto'),src:st.src,usage:st.usage,fx:st.fx,mic_wanted:st.mic_wanted,out_wanted:st.out_wanted,in:st.in,out:st.out,active:st.active}; }catch(e){ return {audio:'app'}; } }
       try{ var t=stream&&stream.getAudioTracks()[0]; if(!t) return null; var s=t.getSettings(), o={}; ['autoGainControl','echoCancellation','noiseSuppression','sampleRate','channelCount','latency','deviceId'].forEach(function(k){ if(s[k]!==undefined) o[k]=k==='deviceId'?String(s[k]).slice(0,8):s[k]; }); o.label=t.label; return o; }catch(e){ return null; } },
-    info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,probe_level:PROBE_LVL,vol_fit:volLog.slice(),f_lo:F_LO,band:band,cal:curCal(),gaps:gaps,booted:booted,audio:natOn?'app':'browser',auto_audio:autoLog,routes:routeLog.slice(),route:routeKey,settle:settleLog}; },
+    info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,probe_level:PROBE_LVL,vol_fit:volLog.slice(),level_fit:levelLog.slice(),f_lo:F_LO,band:band,cal:curCal(),gaps:gaps,booted:booted,audio:natOn?'app':'browser',auto_audio:autoLog,routes:routeLog.slice(),route:routeKey,settle:settleLog}; },
     audioRetest:function(){ autoRetest=true; try{ localStorage.removeItem('sonaroids_autoaudio'); }catch(e){} },
     native:function(){ return natOn; }, nativeAvail:natAvail,
     chan:function(){ return chan; }, ctx:function(){ return ctx; }};
@@ -1557,7 +1664,7 @@ STR.en={
   probe_t:'CHOOSE THE PROBE', probe_s:'WITH THIS SOUND THE PHONE HEARS YOUR HAND', probe_wide:'WIDE', probe_wide1:'CLEANER CONTROL', probe_wide2:'CHILDREN AND PETS MAY HEAR IT',
   probe_norm:'NORMAL', probe_norm1:'INAUDIBLE', probe_norm2:'SLIGHTLY ROUGHER CONTROL',
   away_t:'TAKE YOUR HAND AWAY', away_s:'LISTENING TO THE EMPTY ROOM', away_ok:'THE ROOM IS QUIET',
-  aud_fx:'PHONE PROCESSING:', aud_src:'SOURCE', aud_usage:'PROBE AS', aud_end:'PROBE FROM', turn_t:'TURN THE PHONE ROUND', hub_s:'GAMES YOU PLAY WITH YOUR PALM IN MID-AIR', soon:'SOON', pg_s:'ONE PALM — TWO RACKETS. TOSS THE BALL HIGHER, DON\'T TOUCH THE CEILING', pg_sens:'SENSITIVITY', pg_sens0:'LOW', pg_sens1:'BELOW MID', pg_sens2:'MEDIUM', pg_sens3:'HIGH', pg_low_t:'LOWER YOUR PALM', pg_low_s:'TO WHERE YOUR HIT STARTS FROM BELOW. THE RACKETS ARE DOWN ALREADY. HOLD', pg_top_t:'NOW RAISE IT', pg_top_s:'TO A COMFORTABLE HEIGHT — WHERE YOU WILL HIT FROM ABOVE. HOLD', pg_ok_t:'GOT IT', pg_ok_s:'THE RACKETS FOLLOW YOUR PALM, FROM THE LOW TO THE TOP', pg_recal:'HOLD THE PALM AGAIN', pg_width:'RACKETS DOWN TO {n}%', pg_passes:'PASSES: {n}', all_games:'← ALL GAMES', skin:'SKIN', gfx:'GRAPHICS', gfx_pixel:'PIXELS', smooth:'SMOOTHING', s_on:'ON', s_off:'OFF', skin_space:'SPACE', skin_vector:'VECTOR 80S', skin_neon:'NEON', skin_note:'NOTEBOOK', skin_lcd:'RETRO LCD', skin_obsidian:'OBSIDIAN', skin_fairy:'FAIRY TALE', turn_s:'BY 180° IF YOU PLAY', turn_s2:'WITH YOUR RIGHT HAND', turn_h:'ROUND LIKE A WHEEL — DON\'T FLIP IT FACE DOWN', lefty:'I PLAY LEFT-HANDED', aud_vol:'VOLUME', aud_keep:'LEAVE AS IS', aud_cam:'CAMERA END', aud_port:'PORT END', aud_media:'MEDIA', aud_game:'GAME', aud_autotest:'AUTO PICK', aud_notyet:'NOT DONE YET', aud_retest:'TEST AGAIN', aud_lab:'LAB', aud_nextgame:'WITH THE NEXT GAME', aud_on:'ON', aud_off:'OFF', aud_t2:'SOUND', aud_s2:'TRIALS OF THE ECHO PROCESSING', settings:'SETTINGS', settings_t:'SETTINGS', set_gfx:'GRAPHICS', set_gfx_menu:'ASK IN GAME', set_gfx_hd:'ALWAYS HD', set_gfx_px:'ALWAYS PIXELS', set_band:'PROBE BAND', set_band_ask:'ASK EVERY GAME', set_band_w:'ALWAYS WIDE', set_band_n:'ALWAYS NORMAL', set_live:'AUTO-CALIBRATION', set_on:'ON', set_off:'OFF', set_live_on_s:'NO WAVING: THE GAME TAKES YOUR LAST MANUAL CALIBRATION AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', set_live_on_d:'NO WAVING: THE GAME TAKES YOUR MANUAL CALIBRATION OF {d} AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', auto_ok:'CALIBRATION FROM YOUR LAST GAME', set_room:'ROOM ADAPTATION', set_live_new_s:'NO MANUAL CALIBRATION YET: SWITCH THIS OFF, PLAY ONE GAME WAVING YOUR PALM, SWITCH IT ON AGAIN — AUTO-CALIBRATION WILL TAKE IT', set_live_off_s:'BEFORE EVERY GAME: TAKE YOUR HAND AWAY, WAVE YOUR PALM, TAP "PLAY". A GOOD SETUP CAN THEN BE KEPT WITH AUTO-CALIBRATION', set_expert:'ADVANCED PROBE SETTINGS', aud_link:'SOUND', aud_t:'APP SOUND', aud_s:'WHERE THE GAME TAKES THE MICROPHONE FROM AND WHERE THE PROBE PLAYS', aud_mode:'SOUND', aud_browser:'BROWSER', aud_app:'APP', aud_mic:'MICROPHONE', aud_out:'SPEAKER', aud_auto:'AUTO', aud_speaker:'SPEAKER', aud_earpiece:'EARPIECE', aud_bottom:'BOTTOM', aud_top:'TOP', aud_back:'BACK', aud_now:'NOW:', aud_active:'RECORDING:', aud_idle:'THE MICROPHONE OPENS WITH THE GAME', aud_browser_now:'NOW THE SOUND GOES THROUGH THE BROWSER: ANDROID PICKS THE MICROPHONE', aud_nopos:'THE PHONE DOES NOT TELL WHERE ITS MICROPHONES ARE',
+  aud_fx:'PHONE PROCESSING:', aud_src:'SOURCE', aud_usage:'PROBE AS', aud_end:'PROBE FROM', turn_t:'TURN THE PHONE ROUND', hub_s:'GAMES YOU PLAY WITH YOUR PALM IN MID-AIR', soon:'SOON', pg_s:'ONE PALM — TWO RACKETS. TOSS THE BALL HIGHER, DON\'T TOUCH THE CEILING', pg_sens:'SENSITIVITY', pg_sens0:'LOW', pg_sens1:'BELOW MID', pg_sens2:'MEDIUM', pg_sens3:'HIGH', pg_low_t:'LOWER YOUR PALM', pg_low_s:'TO WHERE YOUR HIT STARTS FROM BELOW. THE RACKETS ARE DOWN ALREADY. HOLD', pg_top_t:'NOW RAISE IT', pg_top_s:'TO A COMFORTABLE HEIGHT — WHERE YOU WILL HIT FROM ABOVE. HOLD', pg_wave_s:'AS YOU WILL HIT: FROM THE HIT\'S LOW TO THE TOP AND BACK, 2–3 TIMES', pg_try_s:'THE RACKETS FOLLOW YOUR PALM — CHECK THE TOP AND THE LOW', pg_ok_t:'GOT IT', pg_ok_s:'THE RACKETS FOLLOW YOUR PALM, FROM THE LOW TO THE TOP', pg_recal:'HOLD THE PALM AGAIN', pg_width:'RACKETS DOWN TO {n}%', pg_passes:'PASSES: {n}', all_games:'← ALL GAMES', skin:'SKIN', gfx:'GRAPHICS', gfx_pixel:'PIXELS', smooth:'SMOOTHING', s_on:'ON', s_off:'OFF', skin_space:'SPACE', skin_vector:'VECTOR 80S', skin_neon:'NEON', skin_note:'NOTEBOOK', skin_lcd:'RETRO LCD', skin_obsidian:'OBSIDIAN', skin_fairy:'FAIRY TALE', turn_s:'BY 180° IF YOU PLAY', turn_s2:'WITH YOUR RIGHT HAND', turn_h:'ROUND LIKE A WHEEL — DON\'T FLIP IT FACE DOWN', lefty:'I PLAY LEFT-HANDED', aud_vol:'VOLUME', aud_keep:'LEAVE AS IS', aud_cam:'CAMERA END', aud_port:'PORT END', aud_media:'MEDIA', aud_game:'GAME', aud_autotest:'AUTO PICK', aud_notyet:'NOT DONE YET', aud_retest:'TEST AGAIN', aud_lab:'LAB', aud_nextgame:'WITH THE NEXT GAME', aud_on:'ON', aud_off:'OFF', aud_t2:'SOUND', aud_s2:'TRIALS OF THE ECHO PROCESSING', settings:'SETTINGS', settings_t:'SETTINGS', set_gfx:'GRAPHICS', set_gfx_menu:'ASK IN GAME', set_gfx_hd:'ALWAYS HD', set_gfx_px:'ALWAYS PIXELS', set_band:'PROBE BAND', set_band_ask:'ASK EVERY GAME', set_band_w:'ALWAYS WIDE', set_band_n:'ALWAYS NORMAL', set_live:'AUTO-CALIBRATION', set_on:'ON', set_off:'OFF', set_live_on_s:'NO WAVING: THE GAME TAKES YOUR LAST MANUAL CALIBRATION AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', set_live_on_d:'NO WAVING: THE GAME TAKES YOUR MANUAL CALIBRATION OF {d} AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', auto_ok:'CALIBRATION FROM YOUR LAST GAME', set_room:'ROOM ADAPTATION', set_live_new_s:'NO MANUAL CALIBRATION YET: SWITCH THIS OFF, PLAY ONE GAME WAVING YOUR PALM, SWITCH IT ON AGAIN — AUTO-CALIBRATION WILL TAKE IT', set_live_off_s:'BEFORE EVERY GAME: TAKE YOUR HAND AWAY, WAVE YOUR PALM, TAP "PLAY". A GOOD SETUP CAN THEN BE KEPT WITH AUTO-CALIBRATION', set_expert:'ADVANCED PROBE SETTINGS', aud_link:'SOUND', aud_t:'APP SOUND', aud_s:'WHERE THE GAME TAKES THE MICROPHONE FROM AND WHERE THE PROBE PLAYS', aud_mode:'SOUND', aud_browser:'BROWSER', aud_app:'APP', aud_mic:'MICROPHONE', aud_out:'SPEAKER', aud_auto:'AUTO', aud_speaker:'SPEAKER', aud_earpiece:'EARPIECE', aud_bottom:'BOTTOM', aud_top:'TOP', aud_back:'BACK', aud_now:'NOW:', aud_active:'RECORDING:', aud_idle:'THE MICROPHONE OPENS WITH THE GAME', aud_browser_now:'NOW THE SOUND GOES THROUGH THE BROWSER: ANDROID PICKS THE MICROPHONE', aud_nopos:'THE PHONE DOES NOT TELL WHERE ITS MICROPHONES ARE',
   wave_t:'WAVE YOUR PALM', wave_s:'5–10 CM ABOVE THE TABLE OR 5–15 CM FROM THE PHONE\'S END', wave_ok:'GOT YOUR RANGE', other_t:'WAVE ON THE OTHER SIDE', other_s:'THE PHONE DOES NOT HEAR THE PALM ON THIS SIDE', try_s:'THE SHIP FOLLOWS YOUR PALM — TRY THE TOP AND THE BOTTOM', cm:'CM',
   ring_wait:'GET READY', ring_listen:'LISTENING', ring_catch:'CATCHING THE RANGE', ring_ok:'DONE',
   start:'START', over:'GAME OVER', best:'BEST', again:'AGAIN', menu:'MENU', logs:'LOGS', tilt_test:'TEST RULES: NOT FOR THE TABLES', ftilt:'PICTURE TILT', stilt:'SHOT TILT', straight:'STRAIGHT', as_nose:'AS THE NOSE', bounce_off:'SHOTS OFF THE EDGES: NO', obs_off:'HEAVY SKIN: OFF', obs_on:'HEAVY SKIN: OBSIDIAN', obs_na:'HEAVY SKIN: NO WEBGL 2', mouse_off:'MOUSE INSTEAD OF SONAR: NO', mouse_on:'MOUSE INSTEAD OF SONAR: YES', obs_ink:'INK ON HITS', obs_ring:'RING: UNEVEN', obs_wake:'SHIP WAKE', obs_rwake:'ROCK WAKES', obs_det:'INK DETAIL', obs_vsp:'VEINS SPEED', obs_shot:'SHOT', obs_shot1:'L1 COMET', obs_shot4:'L4 BEADS', obs_shot5:'L5 CRYSTAL', obs_shot6:'L6 FRINGE', obs_shot9:'L9 TWIN NEEDLES', obs_shot10:'L10 BANDS', obs_rstr:'RING: STRENGTH', obs_damp:'CALMER IN ACTION', obs_reco:'DEFAULTS', obs_ringon_on:'HIT RING: YES', obs_ringon_off:'HIT RING: NO', obs_grim_on:'POWER-UP RIM: YES', obs_grim_off:'POWER-UP RIM: NO', bounce_on:'SHOTS OFF THE EDGES: YES', 
@@ -1592,7 +1699,7 @@ STR.ru={
   probe_t:'ВЫБЕРИ ЗОНД', probe_s:'ЭТИМ ЗВУКОМ ТЕЛЕФОН СЛЫШИТ ТВОЮ РУКУ', probe_wide:'ШИРОКИЙ', probe_wide1:'УПРАВЛЕНИЕ ЧИЩЕ', probe_wide2:'МОГУТ СЛЫШАТЬ ДЕТИ И ЖИВОТНЫЕ',
   probe_norm:'ОБЫЧНЫЙ', probe_norm1:'НЕ СЛЫШЕН', probe_norm2:'УПРАВЛЕНИЕ ЧУТЬ ГРУБЕЕ',
   away_t:'УБЕРИ РУКУ', away_s:'СЛУШАЮ ПУСТУЮ КОМНАТУ', away_ok:'КОМНАТА ТИХАЯ',
-  aud_fx:'ОБРАБОТКА ТЕЛЕФОНА:', aud_src:'ИСТОЧНИК', aud_usage:'ЗОНД КАК', aud_end:'ЗОНД ИЗ', turn_t:'РАЗВЕРНИ ТЕЛЕФОН', hub_s:'ИГРЫ, КОТОРЫМИ УПРАВЛЯЕТ ЛАДОНЬ В ВОЗДУХЕ', soon:'СКОРО', pg_s:'ОДНА ЛАДОНЬ — ДВЕ РАКЕТКИ. ПОДКИДЫВАЙ МЯЧ ВЫШЕ, НЕ ЗАДЕВАЯ ПОТОЛОК', pg_sens:'ЧУВСТВИТЕЛЬНОСТЬ', pg_sens0:'НИЗКАЯ', pg_sens1:'НИЖЕ СРЕДНЕЙ', pg_sens2:'СРЕДНЯЯ', pg_sens3:'ВЫСОКАЯ', pg_low_t:'ОПУСТИ ЛАДОНЬ', pg_low_s:'В НИЖНЮЮ ТОЧКУ УДАРА — ОТКУДА НАЧИНАЕШЬ БИТЬ СНИЗУ. РАКЕТКИ УЖЕ ВНИЗУ. ДЕРЖИ', pg_top_t:'ТЕПЕРЬ ПОДНИМИ', pg_top_s:'НА УДОБНУЮ ВЫСОТУ — ГДЕ БУДЕШЬ БИТЬ СВЕРХУ. ДЕРЖИ', pg_ok_t:'ПОЙМАЛ', pg_ok_s:'РАКЕТКИ ХОДЯТ ЗА ЛАДОНЬЮ — ОТ НИЗА ДО ВЕРХА', pg_recal:'ПОДСТРОИТЬ ЛАДОНЬ', pg_width:'РАКЕТКИ ДО {n}%', pg_passes:'ПАСОВ: {n}', all_games:'← ВСЕ ИГРЫ', skin:'СКИН', gfx:'ГРАФИКА', gfx_pixel:'ПИКСЕЛИ', smooth:'ПЛАВНОСТЬ', s_on:'ВКЛ', s_off:'ВЫКЛ', skin_space:'КОСМОС', skin_vector:'ВЕКТОР 80-Х', skin_neon:'НЕОН', skin_note:'ТЕТРАДКА', skin_lcd:'РЕТРО LCD', skin_obsidian:'ОБСИДИАН', skin_fairy:'СКАЗКА', turn_s:'НА 180°, ЕСЛИ ИГРАЕШЬ', turn_s2:'ПРАВОЙ РУКОЙ', turn_h:'ПО КРУГУ, КАК РУЛЬ — НЕ ПЕРЕВОРАЧИВАЙ ЭКРАНОМ ВНИЗ', lefty:'ИГРАЮ ЛЕВОЙ РУКОЙ', aud_vol:'ГРОМКОСТЬ', aud_keep:'НЕ ТРОГАТЬ', aud_cam:'У КАМЕРЫ', aud_port:'У РАЗЪЁМА', aud_media:'МЕДИА', aud_game:'ИГРА', aud_autotest:'АВТОВЫБОР', aud_notyet:'ЕЩЁ НЕ ДЕЛАЛСЯ', aud_retest:'ПЕРЕПРОВЕРИТЬ', aud_lab:'ЛАБА', aud_nextgame:'БУДЕТ ПРИ СЛЕДУЮЩЕЙ ИГРЕ', aud_on:'ВКЛ', aud_off:'ВЫКЛ', aud_t2:'ЗВУК', aud_s2:'ОПЫТЫ С ОБРАБОТКОЙ ЭХА', settings:'НАСТРОЙКИ', settings_t:'НАСТРОЙКИ', set_gfx:'ГРАФИКА', set_gfx_menu:'ВЫБОР В ИГРЕ', set_gfx_hd:'ВСЕГДА HD', set_gfx_px:'ВСЕГДА ПИКСЕЛИ', set_band:'ПОЛОСА ЗОНДА', set_band_ask:'ВЫБОР ПЕРЕД ИГРОЙ', set_band_w:'ВСЕГДА ШИРОКАЯ', set_band_n:'ВСЕГДА ОБЫЧНАЯ', set_live:'АВТОКАЛИБРОВКА', set_on:'ВКЛ', set_off:'ВЫКЛ', set_live_on_s:'БЕЗ ВЗМАХОВ: ИГРА БЕРЁТ ТВОЮ ПОСЛЕДНЮЮ РУЧНУЮ КАЛИБРОВКУ И САМА ПОДСТРАИВАЕТСЯ ПОД ЗВУКИ КОМНАТЫ. УПРАВЛЯЕТСЯ ХУЖЕ? ВЫКЛЮЧИ, СЫГРАЙ С РУЧНОЙ И ВКЛЮЧИ СНОВА', set_live_on_d:'БЕЗ ВЗМАХОВ: ИГРА БЕРЁТ ТВОЮ РУЧНУЮ КАЛИБРОВКУ ОТ {d} И САМА ПОДСТРАИВАЕТСЯ ПОД ЗВУКИ КОМНАТЫ. УПРАВЛЯЕТСЯ ХУЖЕ? ВЫКЛЮЧИ, СЫГРАЙ С РУЧНОЙ И ВКЛЮЧИ СНОВА', auto_ok:'КАЛИБРОВКА ИЗ ПРОШЛОЙ ИГРЫ', set_room:'ПОДСТРОЙКА ПОД КОМНАТУ', set_live_new_s:'РУЧНОЙ КАЛИБРОВКИ ЕЩЁ НЕ БЫЛО: ВЫКЛЮЧИ, СЫГРАЙ ОДНУ ИГРУ С ВЗМАХАМИ И ВКЛЮЧИ СНОВА — АВТОКАЛИБРОВКА ВОЗЬМЁТ ЕЁ', set_live_off_s:'ПЕРЕД КАЖДОЙ ИГРОЙ: УБРАТЬ РУКУ, ПОМАХАТЬ ЛАДОНЬЮ, НАЖАТЬ «ИГРАТЬ». УДАЧНУЮ НАСТРОЙКУ ПОТОМ МОЖНО ОСТАВИТЬ АВТОКАЛИБРОВКОЙ', set_expert:'РАСШИРЕННЫЕ НАСТРОЙКИ ЗОНДА', aud_link:'ЗВУК', aud_t:'ЗВУК ПРИЛОЖЕНИЯ', aud_s:'ОТКУДА ИГРА БЕРЁТ МИКРОФОН И КУДА ИГРАЕТ ЗОНД', aud_mode:'ЗВУК', aud_browser:'БРАУЗЕР', aud_app:'ПРИЛОЖЕНИЕ', aud_mic:'МИКРОФОН', aud_out:'ДИНАМИК', aud_auto:'АВТО', aud_speaker:'ДИНАМИК', aud_earpiece:'РАЗГОВОРНЫЙ', aud_bottom:'НИЗ', aud_top:'ВЕРХ', aud_back:'СЗАДИ', aud_now:'СЕЙЧАС:', aud_active:'ПИШУТ:', aud_idle:'МИКРОФОН ОТКРОЕТСЯ ПРИ ИГРЕ', aud_browser_now:'СЕЙЧАС ЗВУК ЧЕРЕЗ БРАУЗЕР: МИКРОФОН ВЫБИРАЕТ ANDROID', aud_nopos:'ТЕЛЕФОН НЕ СООБЩАЕТ, ГДЕ МИКРОФОНЫ',
+  aud_fx:'ОБРАБОТКА ТЕЛЕФОНА:', aud_src:'ИСТОЧНИК', aud_usage:'ЗОНД КАК', aud_end:'ЗОНД ИЗ', turn_t:'РАЗВЕРНИ ТЕЛЕФОН', hub_s:'ИГРЫ, КОТОРЫМИ УПРАВЛЯЕТ ЛАДОНЬ В ВОЗДУХЕ', soon:'СКОРО', pg_s:'ОДНА ЛАДОНЬ — ДВЕ РАКЕТКИ. ПОДКИДЫВАЙ МЯЧ ВЫШЕ, НЕ ЗАДЕВАЯ ПОТОЛОК', pg_sens:'ЧУВСТВИТЕЛЬНОСТЬ', pg_sens0:'НИЗКАЯ', pg_sens1:'НИЖЕ СРЕДНЕЙ', pg_sens2:'СРЕДНЯЯ', pg_sens3:'ВЫСОКАЯ', pg_low_t:'ОПУСТИ ЛАДОНЬ', pg_low_s:'В НИЖНЮЮ ТОЧКУ УДАРА — ОТКУДА НАЧИНАЕШЬ БИТЬ СНИЗУ. РАКЕТКИ УЖЕ ВНИЗУ. ДЕРЖИ', pg_top_t:'ТЕПЕРЬ ПОДНИМИ', pg_top_s:'НА УДОБНУЮ ВЫСОТУ — ГДЕ БУДЕШЬ БИТЬ СВЕРХУ. ДЕРЖИ', pg_wave_s:'КАК БУДЕШЬ БИТЬ: ОТ НИЗА УДАРА ДО ВЕРХА И ОБРАТНО, 2–3 РАЗА', pg_try_s:'РАКЕТКИ ИДУТ ЗА ЛАДОНЬЮ — ПРОВЕРЬ ВЕРХ И НИЗ', pg_ok_t:'ПОЙМАЛ', pg_ok_s:'РАКЕТКИ ХОДЯТ ЗА ЛАДОНЬЮ — ОТ НИЗА ДО ВЕРХА', pg_recal:'ПОДСТРОИТЬ ЛАДОНЬ', pg_width:'РАКЕТКИ ДО {n}%', pg_passes:'ПАСОВ: {n}', all_games:'← ВСЕ ИГРЫ', skin:'СКИН', gfx:'ГРАФИКА', gfx_pixel:'ПИКСЕЛИ', smooth:'ПЛАВНОСТЬ', s_on:'ВКЛ', s_off:'ВЫКЛ', skin_space:'КОСМОС', skin_vector:'ВЕКТОР 80-Х', skin_neon:'НЕОН', skin_note:'ТЕТРАДКА', skin_lcd:'РЕТРО LCD', skin_obsidian:'ОБСИДИАН', skin_fairy:'СКАЗКА', turn_s:'НА 180°, ЕСЛИ ИГРАЕШЬ', turn_s2:'ПРАВОЙ РУКОЙ', turn_h:'ПО КРУГУ, КАК РУЛЬ — НЕ ПЕРЕВОРАЧИВАЙ ЭКРАНОМ ВНИЗ', lefty:'ИГРАЮ ЛЕВОЙ РУКОЙ', aud_vol:'ГРОМКОСТЬ', aud_keep:'НЕ ТРОГАТЬ', aud_cam:'У КАМЕРЫ', aud_port:'У РАЗЪЁМА', aud_media:'МЕДИА', aud_game:'ИГРА', aud_autotest:'АВТОВЫБОР', aud_notyet:'ЕЩЁ НЕ ДЕЛАЛСЯ', aud_retest:'ПЕРЕПРОВЕРИТЬ', aud_lab:'ЛАБА', aud_nextgame:'БУДЕТ ПРИ СЛЕДУЮЩЕЙ ИГРЕ', aud_on:'ВКЛ', aud_off:'ВЫКЛ', aud_t2:'ЗВУК', aud_s2:'ОПЫТЫ С ОБРАБОТКОЙ ЭХА', settings:'НАСТРОЙКИ', settings_t:'НАСТРОЙКИ', set_gfx:'ГРАФИКА', set_gfx_menu:'ВЫБОР В ИГРЕ', set_gfx_hd:'ВСЕГДА HD', set_gfx_px:'ВСЕГДА ПИКСЕЛИ', set_band:'ПОЛОСА ЗОНДА', set_band_ask:'ВЫБОР ПЕРЕД ИГРОЙ', set_band_w:'ВСЕГДА ШИРОКАЯ', set_band_n:'ВСЕГДА ОБЫЧНАЯ', set_live:'АВТОКАЛИБРОВКА', set_on:'ВКЛ', set_off:'ВЫКЛ', set_live_on_s:'БЕЗ ВЗМАХОВ: ИГРА БЕРЁТ ТВОЮ ПОСЛЕДНЮЮ РУЧНУЮ КАЛИБРОВКУ И САМА ПОДСТРАИВАЕТСЯ ПОД ЗВУКИ КОМНАТЫ. УПРАВЛЯЕТСЯ ХУЖЕ? ВЫКЛЮЧИ, СЫГРАЙ С РУЧНОЙ И ВКЛЮЧИ СНОВА', set_live_on_d:'БЕЗ ВЗМАХОВ: ИГРА БЕРЁТ ТВОЮ РУЧНУЮ КАЛИБРОВКУ ОТ {d} И САМА ПОДСТРАИВАЕТСЯ ПОД ЗВУКИ КОМНАТЫ. УПРАВЛЯЕТСЯ ХУЖЕ? ВЫКЛЮЧИ, СЫГРАЙ С РУЧНОЙ И ВКЛЮЧИ СНОВА', auto_ok:'КАЛИБРОВКА ИЗ ПРОШЛОЙ ИГРЫ', set_room:'ПОДСТРОЙКА ПОД КОМНАТУ', set_live_new_s:'РУЧНОЙ КАЛИБРОВКИ ЕЩЁ НЕ БЫЛО: ВЫКЛЮЧИ, СЫГРАЙ ОДНУ ИГРУ С ВЗМАХАМИ И ВКЛЮЧИ СНОВА — АВТОКАЛИБРОВКА ВОЗЬМЁТ ЕЁ', set_live_off_s:'ПЕРЕД КАЖДОЙ ИГРОЙ: УБРАТЬ РУКУ, ПОМАХАТЬ ЛАДОНЬЮ, НАЖАТЬ «ИГРАТЬ». УДАЧНУЮ НАСТРОЙКУ ПОТОМ МОЖНО ОСТАВИТЬ АВТОКАЛИБРОВКОЙ', set_expert:'РАСШИРЕННЫЕ НАСТРОЙКИ ЗОНДА', aud_link:'ЗВУК', aud_t:'ЗВУК ПРИЛОЖЕНИЯ', aud_s:'ОТКУДА ИГРА БЕРЁТ МИКРОФОН И КУДА ИГРАЕТ ЗОНД', aud_mode:'ЗВУК', aud_browser:'БРАУЗЕР', aud_app:'ПРИЛОЖЕНИЕ', aud_mic:'МИКРОФОН', aud_out:'ДИНАМИК', aud_auto:'АВТО', aud_speaker:'ДИНАМИК', aud_earpiece:'РАЗГОВОРНЫЙ', aud_bottom:'НИЗ', aud_top:'ВЕРХ', aud_back:'СЗАДИ', aud_now:'СЕЙЧАС:', aud_active:'ПИШУТ:', aud_idle:'МИКРОФОН ОТКРОЕТСЯ ПРИ ИГРЕ', aud_browser_now:'СЕЙЧАС ЗВУК ЧЕРЕЗ БРАУЗЕР: МИКРОФОН ВЫБИРАЕТ ANDROID', aud_nopos:'ТЕЛЕФОН НЕ СООБЩАЕТ, ГДЕ МИКРОФОНЫ',
   wave_t:'ПОМАШИ ЛАДОНЬЮ', wave_s:'5–10 СМ НАД СТОЛОМ ИЛИ 5–15 СМ ОТ ТОРЦА ТЕЛЕФОНА', wave_ok:'РАЗМАХ ПОЙМАН', other_t:'ПОМАШИ С ДРУГОЙ СТОРОНЫ', other_s:'С ЭТОЙ СТОРОНЫ ТЕЛЕФОН НЕ СЛЫШИТ ЛАДОНЬ', try_s:'КОРАБЛЬ ИДЁТ ЗА ЛАДОНЬЮ — ПРОВЕРЬ ВЕРХ И НИЗ', cm:'СМ',
   ring_wait:'ПРИГОТОВЬСЯ', ring_listen:'СЛУШАЮ', ring_catch:'ЛОВЛЮ РАЗМАХ', ring_ok:'ГОТОВО',
   start:'СТАРТ', over:'ИГРА ОКОНЧЕНА', best:'РЕКОРД', again:'ЕЩЁ РАЗ', menu:'МЕНЮ', logs:'ЖУРНАЛЫ', tilt_test:'ТЕСТОВЫЕ ПРАВИЛА: НЕ В ТАБЛИЦАХ', ftilt:'НАКЛОН КАРТИНКИ', stilt:'НАКЛОН ВЫСТРЕЛОВ', straight:'ПРЯМО', as_nose:'КАК НОС', bounce_off:'ВЫСТРЕЛЫ ОТ КРАЁВ: НЕТ', obs_off:'ТЯЖЁЛЫЙ СКИН: НЕТ', obs_on:'ТЯЖЁЛЫЙ СКИН: ОБСИДИАН', obs_na:'ТЯЖЁЛЫЙ СКИН: НЕТ WEBGL 2', mouse_off:'МЫШЬ ВМЕСТО СОНАРА: НЕТ', mouse_on:'МЫШЬ ВМЕСТО СОНАРА: ДА', obs_ink:'ЧЕРНИЛА НА ВЗРЫВЫ', obs_ring:'КОЛЬЦО: НЕРОВНОСТЬ', obs_wake:'СЛЕД КОРАБЛЯ', obs_rwake:'СЛЕД КАМНЕЙ', obs_det:'ЧЕРНИЛА: ДЕТАЛИ', obs_vsp:'ПРОЖИЛКИ: СКОРОСТЬ', obs_shot:'ВЫСТРЕЛ', obs_shot1:'Л1 КОМЕТА', obs_shot4:'Л4 БУСИНЫ', obs_shot5:'Л5 КРИСТАЛЛ', obs_shot6:'Л6 КАЙМА', obs_shot9:'Л9 ДВЕ ИГЛЫ', obs_shot10:'Л10 ПОЛОСЫ', obs_rstr:'КОЛЬЦО: СИЛА', obs_damp:'ГАШЕНИЕ В ЭКШНЕ', obs_reco:'ПО УМОЛЧАНИЮ', obs_ringon_on:'КОЛЬЦО ОТ ВЗРЫВА: ДА', obs_ringon_off:'КОЛЬЦО ОТ ВЗРЫВА: НЕТ', obs_grim_on:'КРОМКА ПОДАРКА: ДА', obs_grim_off:'КРОМКА ПОДАРКА: НЕТ', bounce_on:'ВЫСТРЕЛЫ ОТ КРАЁВ: ДА', 
@@ -1609,6 +1716,461 @@ STR.ru={
   link_ok_t:'ГОТОВО', link_ok_s:'ТЕПЕРЬ ЭТО ОДИН ИГРОК{nick}. РЕКОРДЫ ОБЪЕДИНЕНЫ',
   place_day:'МЕСТО {n} ЗА СЕГОДНЯ', place_week:'МЕСТО {n} ЗА НЕДЕЛЮ', place_all:'МЕСТО {n} ЗА ВСЁ ВРЕМЯ', restart:'НАЧАТЬ ЗАНОВО', restart_s:'С ТОЙ ЖЕ КАЛИБРОВКОЙ ИЛИ ПЕРЕКАЛИБРОВАТЬ?', rs_go:'СРАЗУ ИГРАТЬ', back:'НАЗАД', exit:'МЕНЮ', menu_a:'МЕНЮ'
 };
+/* ── v1.61h: the «набросок» renderer is shared — the lab's SonaPong (lab/build.py takes it from here; it was lab/src/0871_sketch.js) and the
+   game's (src/48_pongsk.js feeds it the game's state through the names it reads: ARC, PG_V, pgSurf…). One drawing for both. ── */
+/* ── 1.59q: SonaPong «набросок» (Ден 10.10 19:40: «графика — в стиле наброска от руки.. фон — светлая чуть текстурированная мягкая
+   бумага, как в блокнотах художников для скетчей. объектов минимум, всё нарисовано как бы на скорую руку ручкой»; 20:10 — «линер и
+   ручка»; 21:20 — «проверим это в лабе.. линер, грубо, без перерисовок»). Перо (Sk) — то же, что на странице-наброске: каждая линия —
+   заливка с нажимом (тоньше в начале и конце), медленная дрожь руки, вылет за концы, обводка в два прохода; кружки не смыкаются; тень —
+   быстрая штриховка; цифры и надписи пишет то же перо (своя рукописная «азбука» из штрихов, без шрифта). Без перерисовок: у каждого
+   предмета своё зерно, рисунок кадр от кадра один и тот же. Это только картинка — физика и правила не тронуты ── */
+/* Hand-drawn pen on sketchbook paper — a canvas 2D toolkit (prototype for SonaPong's look).
+   Every line is a filled outline with pressure (thin at the start and end), a slow hand wobble and a little overshoot;
+   loops don't close exactly; shading is quick hatching; text is single-stroke handwriting drawn by the same pen. */
+var Sk=(function(){
+function mulberry(a){ return function(){ a=(a+0x6D2B79F5)>>>0; let t=a; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
+function hash(i){ i=(i|0)*374761393; i=(i^(i>>>13))*1274126177; i=i^(i>>>16); return ((i>>>0)%100000)/100000; }
+function noise(x){ const i=Math.floor(x), f=x-i, u=f*f*(3-2*f); return hash(i)*(1-u)+hash(i+1)*u; }
+function resample(pts,step){ const out=[pts[0]]; let acc=0; for(let i=1;i<pts.length;i++){ let [x0,y0]=pts[i-1]; const [x1,y1]=pts[i]; let d=Math.hypot(x1-x0,y1-y0); while(acc+d>=step){ const k=(step-acc)/d; x0=x0+(x1-x0)*k; y0=y0+(y1-y0)*k; out.push([x0,y0]); d=Math.hypot(x1-x0,y1-y0); acc=0; } acc+=d; } const l=pts[pts.length-1]; out.push(l); return out; }
+
+/* A pen. opt: seed (the drawing), tick + amt (the «boil»: each tick the drawing is redrawn a little differently — amt 0 the same,
+   1 a wholly new one), w thickness, wob hand wobble, overK overshoot, open (loops left open), passes + jit (lines gone over again),
+   hs hatching spacing, cross (cross-hatching). Every random choice is a blend of the drawing's own and the tick's. */
+function Pen(ctx,opt){ this.c=ctx; this.rb=mulberry(opt.seed||1); this.rt=mulberry(((opt.seed||1)*7919+(opt.tick||0)*104729+13)>>>0); this.amt=opt.tick?(opt.amt||0):0;
+  this.ink=opt.ink||'#1b1b1f'; this.step=opt.step||1.2; this.w=opt.w||1.6; this.wob=opt.wob===undefined?1.3:opt.wob; this.passes=opt.passes||1; this.jit=opt.jit===undefined?1:opt.jit;
+  this.overK=opt.overK===undefined?1:opt.overK; this.open=opt.open||0; this.hs=opt.hs||1; this.cross=!!opt.cross; }
+Pen.prototype.rnd=function(a,b){ const x=this.rb(), y=this.rt(); return a+(b-a)*(x+this.amt*(y-x)); };
+Pen.prototype.sd=function(){ return [this.rb()*9999,this.rt()*9999]; };
+Pen.prototype.nz=function(s,x){ const a=this.amt; if(!a) return noise(s[0]+x); return 0.5+((1-a)*(noise(s[0]+x)-0.5)+a*(noise(s[1]+x)-0.5))/Math.sqrt((1-a)*(1-a)+a*a); };
+/* one stroke along points: o.w width, o.ink, o.taper (0..1), o.wob */
+Pen.prototype.stroke=function(pts,o={}){ const c=this.c, P=resample(pts,this.step), n=P.length; if(n<2) return;
+  const w0=o.w||this.w, wob=(o.wob===undefined?this.wob:o.wob*Math.min(2,this.wob/1.3)), s0=this.sd(), s1=this.sd(), tp=o.taper===undefined?1:o.taper;
+  let dist=0; const L=[], R=[]; const tot=(n-1)*this.step;
+  for(let i=0;i<n;i++){ if(i) dist+=Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]);
+    const a=P[Math.max(i-1,0)], b=P[Math.min(i+1,n-1)]; let tx=b[0]-a[0], ty=b[1]-a[1]; const tl=Math.hypot(tx,ty)||1; tx/=tl; ty/=tl; const nx=-ty, ny=tx;
+    const wv=wob*((this.nz(s0,dist/55)-0.5)*2+0.35*(this.nz(s0,500+dist/9)-0.5));
+    const u=dist/Math.max(tot,1), head=Math.min(1,u*tot/6), tail=Math.min(1,(1-u)*tot/9);
+    const press=(1-tp)+tp*(0.25+0.75*Math.min(head,1))*(0.35+0.65*Math.min(tail,1));
+    const w=w0*press*(0.8+0.4*this.nz(s1,dist/14));
+    const x=P[i][0]+nx*wv, y=P[i][1]+ny*wv; L.push([x+nx*w/2,y+ny*w/2]); R.push([x-nx*w/2,y-ny*w/2]); }
+  c.beginPath(); c.moveTo(L[0][0],L[0][1]); for(let i=1;i<n;i++) c.lineTo(L[i][0],L[i][1]); for(let i=n-1;i>=0;i--) c.lineTo(R[i][0],R[i][1]); c.closePath();
+  c.fillStyle=o.ink||this.ink; c.globalAlpha=o.a===undefined?1:o.a; c.fill(); c.globalAlpha=1; };
+/* a stroke gone over (passes) times, each a bit off */
+Pen.prototype.draw=function(pts,o={}){ const k=o.passes||this.passes; for(let p=0;p<k;p++){ const j=p?this.jit*1.2:0, dx=this.rnd(-j,j), dy=this.rnd(-j,j); this.stroke(pts.map(q=>[q[0]+dx,q[1]+dy]),Object.assign({},o,{a:p?(o.a===undefined?1:o.a)*0.7:o.a, w:(o.w||this.w)*(p?0.8:1)})); } };
+/* a straight-ish line with overshoot and a slight bow */
+Pen.prototype.line=function(x0,y0,x1,y1,o={}){ const d=Math.hypot(x1-x0,y1-y0)||1, ux=(x1-x0)/d, uy=(y1-y0)/d, K=this.overK, e0=this.rnd(0,(o.over===undefined?3:o.over)*K), e1=this.rnd(0,(o.over===undefined?4:o.over)*K), bow=this.rnd(-1,1)*d*(0.012+0.006*K);
+  const a=[x0-ux*e0,y0-uy*e0], b=[x1+ux*e1,y1+uy*e1], m=[(a[0]+b[0])/2-uy*bow,(a[1]+b[1])/2+ux*bow], pts=[]; for(let i=0;i<=24;i++){ const t=i/24; pts.push([(1-t)*(1-t)*a[0]+2*(1-t)*t*m[0]+t*t*b[0],(1-t)*(1-t)*a[1]+2*(1-t)*t*m[1]+t*t*b[1]]); } this.draw(pts,o); };
+/* a loop: with «open» it is left open or runs past its start as a spiral */
+Pen.prototype.loop=function(cx,cy,rx,ry,o={}){ const op=this.open, a0=o.a0===undefined?this.rnd(-2.6,-1.6):o.a0, sw=o.sweep||Math.PI*2+this.rnd(0.25-1.3*op,0.6-0.7*op), rot=o.rot||0, s=this.sd(), pts=[];
+  for(let i=0;i<=60;i++){ const t=a0+sw*i/60, k=1+0.07*(this.nz(s,i/9)-0.5)*2+(0.04+0.1*op)*i/60, x=Math.cos(t)*rx*k, y=Math.sin(t)*ry*k; pts.push([cx+x*Math.cos(rot)-y*Math.sin(rot),cy+x*Math.sin(rot)+y*Math.cos(rot)]); } this.draw(pts,o); };
+/* loose hand hatching between a top and a bottom polyline (same length): quick flicks, irregular spacing, ends not kept exactly;
+   with cross — a second, sparser layer the other way */
+Pen.prototype.band=function(top,bot,o={}){ const n=top.length, layers=this.cross&&!o.single?2:1;
+  for(let Lr=0;Lr<layers;Lr++){ const sp=(o.sp||4.5)*this.hs*(Lr?1.4:1), sh=(o.shift||4)*(Lr?-1:1); let acc=0;
+  for(let i=1;i<n;i++){ acc+=Math.hypot(top[i][0]-top[i-1][0],top[i][1]-top[i-1][1]); if(acc<sp*this.rnd(0.7,1.3)) continue; acc=0;
+    const j=Math.min(n-1,Math.max(0,i+Math.round(sh*this.rnd(0.7,1.3)))), a=top[i], b=bot[j], k0=this.rnd(-0.08,0.12)*this.overK, k1=1-this.rnd(-0.12,0.22)*this.overK;
+    const A=[a[0]+(b[0]-a[0])*k0,a[1]+(b[1]-a[1])*k0], B=[a[0]+(b[0]-a[0])*k1,a[1]+(b[1]-a[1])*k1];
+    this.stroke([A,[(A[0]+B[0])/2+this.rnd(-0.4,0.4),(A[1]+B[1])/2],B],{w:(o.w||this.w*0.55)*this.rnd(0.8,1.25),a:(o.a||0.8)*this.rnd(0.75,1)*(Lr?0.75:1),wob:0.25,ink:o.ink}); } } };
+/* ── single-stroke handwriting: glyphs in a box 1 tall (baseline at 1), polylines ── */
+function arc(cx,cy,rx,ry,a0,a1,n=18){ const p=[]; for(let i=0;i<=n;i++){ const t=(a0+(a1-a0)*i/n)*Math.PI/180; p.push([cx+rx*Math.cos(t),cy+ry*Math.sin(t)]); } return p; }
+const GL={
+ '0':{w:.6,s:[arc(.3,.5,.28,.5,-100,275,30)]},
+ '1':{w:.42,s:[[[.06,.22],[.3,0],[.31,1]]]},
+ '2':{w:.6,s:[arc(.3,.27,.27,.26,195,390,16).concat([[.03,1],[.62,.99]])]},
+ '3':{w:.58,s:[arc(.28,.25,.25,.24,205,445,16).concat(arc(.28,.73,.29,.27,-95,160,16))]},
+ '4':{w:.62,s:[[[.46,1],[.46,0],[.0,.68],[.64,.68]]]},
+ '5':{w:.6,s:[[[.55,.01],[.12,0],[.07,.44]].concat(arc(.3,.69,.28,.3,-125,150,16))]},
+ '6':{w:.6,s:[[[.5,0],[.26,.2],[.09,.48]].concat(arc(.31,.73,.26,.26,180,540,22))]},
+ '7':{w:.58,s:[[[.0,.03],[.58,0],[.2,1]]]},
+ '8':{w:.6,s:[arc(.3,.25,.22,.24,90,450,20).concat(arc(.3,.74,.28,.26,-90,270,22))]},
+ '9':{w:.6,s:[arc(.3,.28,.26,.27,0,375,22).concat([[.56,.32],[.48,1]])]},
+ '×':{w:.5,s:[[[.05,.45],[.42,.95]],[[.42,.45],[.05,.95]]]},
+ ',':{w:.22,s:[[[.1,.88],[.12,1],[.02,1.15]]]},
+ '.':{w:.2,s:[[[.08,.96],[.1,1]]]},
+ ' ':{w:.3,s:[]},
+ 'o':{w:.48,s:[arc(.23,.73,.21,.27,-80,300,20)]},
+ 'a':{w:.52,s:[arc(.24,.73,.21,.27,-20,330,20),[[.45,.47],[.48,1]]]},
+ 's':{w:.44,s:[[[.4,.5],[.2,.45],[.05,.56],[.18,.7],[.37,.8],[.35,.95],[.14,1],[.0,.92]]]},
+ 'n':{w:.5,s:[[[.05,.46],[.05,1],[.05,.64],[.15,.49],[.31,.46],[.41,.6],[.42,1]]]},
+ 'r':{w:.38,s:[[[.05,.46],[.05,1],[.05,.66],[.16,.5],[.36,.47]]]},
+ 'i':{w:.2,s:[[[.07,.49],[.08,1]],[[.08,.29],[.09,.31]]]},
+ 'd':{w:.52,s:[arc(.23,.73,.2,.26,-10,350,20),[[.45,0],[.46,1]]]},
+ 'p':{w:.5,s:[[[.05,.47],[.05,1.32]],arc(.26,.72,.21,.25,185,545,20)]},
+ 'x':{w:.44,s:[[[.0,.48],[.4,1]],[[.4,.48],[.0,1]]]},
+ '+':{w:.5,s:[[[.03,.62],[.47,.6]],[[.25,.38],[.24,.86]]]},
+};
+Pen.prototype.text=function(str,x,y,size,o={}){ let cx=x; const al=o.align||'left'; let tw=0; for(const ch of str) tw+=((GL[ch]||GL[' ']).w+0.1)*size*0.95; if(al==='right') cx=x-tw; else if(al==='center') cx=x-tw/2;
+  for(const ch of str){ const g=GL[ch]||GL[' '], dy=this.rnd(-0.03,0.03)*size, sk=this.rnd(-0.06,0.02), sz=size*this.rnd(0.94,1.05);
+    g.s.forEach(st=>{ if(st.length===2&&Math.hypot(st[1][0]-st[0][0],st[1][1]-st[0][1])<0.05){ this.stroke([[cx+st[0][0]*sz,y-sz+st[0][1]*sz+dy],[cx+st[1][0]*sz+1.2,y-sz+st[1][1]*sz+dy+1.2]],Object.assign({taper:0.3},o)); return; }
+      this.stroke(st.map(p=>[cx+p[0]*sz+(1-p[1])*sz*sk,y-sz+p[1]*sz+dy]),Object.assign({w:(o.w||this.w)},o)); });
+    cx+=(g.w+0.1)*size*0.95; } return cx; };
+
+/* ── paper: warm sketchbook, soft grain, a few fibers, darker towards the edges ── */
+function paper(ctx,W,H,dpr,o={}){ const r=mulberry(o.seed||3); ctx.fillStyle=o.base||'#f6f1e6'; ctx.fillRect(0,0,W,H);
+  for(let i=0;i<24;i++){ const x=r()*W, y=r()*H, R=60+r()*240, g=ctx.createRadialGradient(x,y,0,x,y,R), d=r()<0.5; g.addColorStop(0,d?'rgba(170,140,95,0.012)':'rgba(255,255,250,0.05)'); g.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=g; ctx.fillRect(x-R,y-R,2*R,2*R); }
+  ctx.lineCap='round'; for(let i=0;i<420;i++){ const x=r()*W, y=r()*H, a=r()*6.28, l=3+r()*12; ctx.strokeStyle=`rgba(${r()<0.5?'120,100,70':'255,255,255'},${0.05+r()*0.07})`; ctx.lineWidth=0.4+r()*0.4; ctx.beginPath(); ctx.moveTo(x,y); ctx.quadraticCurveTo(x+Math.cos(a)*l/2+r()*3,y+Math.sin(a)*l/2+r()*3,x+Math.cos(a)*l,y+Math.sin(a)*l); ctx.stroke(); }
+  const v=ctx.createRadialGradient(W/2,H/2,H*0.35,W/2,H/2,W*0.62); v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(120,92,55,0.10)'); ctx.fillStyle=v; ctx.fillRect(0,0,W,H);
+  const id=ctx.getImageData(0,0,W*dpr,H*dpr), d=id.data; for(let i=0;i<d.length;i+=4){ const n=(r()-0.5)*9+(r()<0.003?-14:0); d[i]+=n; d[i+1]+=n; d[i+2]+=n*0.9; } ctx.putImageData(id,0,0); }
+/* the ink layer laid on the paper: multiply, and (for a ballpoint) the paper's tooth showing through */
+function lay(ctx,layer,W,H,o={}){ if(o.dry){ const l=layer.getContext('2d'), r=mulberry(9); l.save(); l.setTransform(1,0,0,1,0,0); l.globalCompositeOperation='destination-out'; for(let i=0;i<o.dry;i++){ l.fillStyle=`rgba(0,0,0,${0.25+r()*0.5})`; l.fillRect(r()*layer.width,r()*layer.height,1+r()*1.5,1); } l.restore(); }
+  ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.globalCompositeOperation='multiply'; ctx.globalAlpha=o.alpha||1; ctx.drawImage(layer,0,0); ctx.restore(); }
+/* a loose watercolour wash over a polygon: smooth wobbly edge, a few thin layers, a darker rim where the water dried, a little granulation */
+function washPoly(ctx,poly,col,o={}){ const r=mulberry(o.seed||Math.floor(poly[0][0]*7+poly[0][1]*13)), a=o.a||0.14, amp=o.amp||4;
+  const P=resample(poly.concat([poly[0]]),3); ctx.save(); ctx.globalCompositeOperation='multiply';
+  for(let L=0;L<3;L++){ const s1=r()*99, s2=r()*99; ctx.beginPath(); P.forEach((p,i)=>{ const x=p[0]+amp*(noise(s1+i/14)-0.5)*2, y=p[1]+amp*(noise(s2+i/14)-0.5)*2; i?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.closePath();
+    ctx.filter='blur(0.7px)'; ctx.fillStyle=col.replace('A',String(a*(L?0.6:1))); ctx.fill(); ctx.filter='none';
+    if(L===0){ ctx.strokeStyle=col.replace('A',String(a*1.5)); ctx.lineWidth=1.3; ctx.stroke(); ctx.save(); ctx.clip(); for(let i=0;i<(o.grain||250);i++){ const q=P[Math.floor(r()*P.length)], c=[P.reduce((s,v)=>s+v[0],0)/P.length,P.reduce((s,v)=>s+v[1],0)/P.length], k=r(); ctx.fillStyle=col.replace('A',String(a*0.9)); ctx.fillRect(c[0]+(q[0]-c[0])*k+(r()-0.5)*6,c[1]+(q[1]-c[1])*k+(r()-0.5)*6,0.8,0.8); } ctx.restore(); } }
+  ctx.restore(); }
+function wash(ctx,cx,cy,rx,ry,col,o={}){ const poly=[]; for(let i=0;i<48;i++){ const t=i/48*Math.PI*2; poly.push([cx+Math.cos(t)*rx,cy+Math.sin(t)*ry]); } washPoly(ctx,poly,col,Object.assign({amp:Math.min(rx,ry)*0.18},o)); }
+return {Pen:Pen,paper:paper,lay:lay,wash:wash,washPoly:washPoly,mulberry:mulberry,noise:noise};
+})();
+
+/* the look Den picked: fineliner, «грубо» (thick, shaky, gone over twice, loops left open), no redraws */
+var PGS_ST={ink:'#121116',accent:'#d2432f',w:2.3,wob:2.2,overK:5/3,open:0.5,passes:2,jit:1.8,hs:1/0.6,cross:false};
+var PGS={key:'',bg:null,pl:null,hist:[],hid:0,hb:null,tLast:null,tgt:[null,null],tKey:''};
+function pgsPen(c,seed){ return new Sk.Pen(c,{seed:seed,tick:0,ink:PGS_ST.ink,w:PGS_ST.w,wob:PGS_ST.wob,overK:PGS_ST.overK,open:PGS_ST.open,passes:PGS_ST.passes,jit:PGS_ST.jit,hs:PGS_ST.hs,cross:PGS_ST.cross,step:PGS_ST.step}); }
+/* a doodled player: feet at (x,y) in field units (the screen is 390 tall), facing d; pose ready | low (racket down, waiting) | swing | run */
+function pgsPlayer(p,x,y,d,pose,o){ o=o||{}; var X=function(v){ return x+d*v; }, k=o.k||1.15, st=o.step||0, hx=X(0), hy=y-47*k;
+  p.loop(hx,hy,7*k,7.5*k,{w:p.w*1.05});
+  if(o.hair) p.draw([[X(-6),hy-3],[X(-3),hy-8],[X(2),hy-8.5],[X(6),hy-4]],{w:p.w*0.9});
+  if(o.cap) p.draw([[X(-6.5),hy-2],[X(-2),hy-7.5],[X(5),hy-6],[X(12),hy-4]],{w:p.w*1.1});
+  p.draw([[X(0.5),y-39*k],[X(1.5),y-29*k],[X(1),y-19*k]]);
+  var legs=pose==='swing'?[[-4,-10,-8,-1],[6,-9,10,-1]]:pose==='run'?(st?[[-6,-9,-12,-2],[5,-10,7,-1]]:[[-2,-10,-3,-1],[7,-8,12,-3]]):pose==='low'?[[-5,-9,-9,-1],[8,-10,9,-1]]:[[-5,-11,-6,-1],[7,-11,7,-1]];
+  legs.forEach(function(l){ p.draw([[X(1),y-19*k],[X(l[0]),y+l[1]*k],[X(l[2]),y+l[3]*k]]); });
+  if(pose==='swing'){ p.draw([[X(0.5),y-35*k],[X(8),y-42*k],[X(11),y-52*k]]); p.draw([[X(0.5),y-35*k],[X(-7),y-31*k],[X(-11),y-35*k]]);
+    p.line(X(11),y-52*k,X(14),y-60*k,{over:1}); p.loop(X(16.5),y-68*k,5*k,8*k,{rot:d*0.3}); }
+  else if(pose==='low'){ p.draw([[X(0.5),y-35*k],[X(9),y-25*k],[X(14),y-16*k]]); p.draw([[X(0.5),y-35*k],[X(-7),y-29*k],[X(-10),y-23*k]]);
+    p.line(X(14),y-16*k,X(19),y-11*k,{over:1}); p.loop(X(24),y-6*k,5*k,8*k,{rot:d*1.0}); }
+  else if(pose!=='hold'){ p.draw([[X(0.5),y-35*k],[X(8),y-30*k],[X(13),y-34*k]]); p.draw([[X(0.5),y-35*k],[X(-6),y-28*k],[X(-8),y-22*k]]);
+    p.line(X(13),y-34*k,X(17),y-41*k,{over:1}); p.loop(X(19.5),y-48.5*k,5*k,8*k,{rot:d*0.5}); }
+  if(pose!=='run'){ p.line(X(legs[0][2]-3),y-1*k,X(legs[0][2]+3),y-1*k,{over:1,w:p.w*0.9}); p.line(X(legs[1][2]),y-1*k,X(legs[1][2]+6),y-1*k,{over:1,w:p.w*0.9}); } }
+/* the shuttlecock, cork first along angle a */
+/* 1.60o: паучок — тельце, головка снизу, восемь лап по две косточки; лапы шевелятся по фазе ph */
+function pgsSpider(p,x,y,ph,k){ p.loop(x,y,6*k,7*k,{}); p.loop(x,y+8*k,3.6*k,3.2*k,{}); var I=PGS_ST;
+  for(var sd=-1;sd<=1;sd+=2) for(var m=0;m<4;m++){ var w=Math.sin(ph+m*1.7+(sd>0?1:0))*2.5*k, ay=y-4*k+m*3*k, kx=x+sd*(12+m)*k, ky=ay-6*k+w, fx=x+sd*(17+m*1.5)*k, fy=ay+5*k-w*0.5; p.draw([[x+sd*5*k,ay],[kx,ky],[fx,fy]],{w:I.w*0.55}); }
+  var cx0=p.c; cx0.save(); cx0.fillStyle=I.ink; [-1.6,1.6].forEach(function(dx){ cx0.beginPath(); cx0.arc(x+dx*k,y+9*k,0.9*k,0,6.283); cx0.fill(); }); cx0.restore(); }
+function pgsShuttle(p,x,y,a,o){ o=o||{}; var c=Math.cos(a), s=Math.sin(a), R=function(u,v){ return [x+u*c-v*s,y+u*s+v*c]; }, k=o.k||1;
+  var r0=R(0,0); p.loop(r0[0],r0[1],3.3*k,3.3*k,{ink:o.cork,w:p.w*1.0});
+  var a1=R(-3*k,-2.4*k), b1=R(-15*k,-7*k), a2=R(-3*k,2.4*k), b2=R(-15*k,7*k); p.line(a1[0],a1[1],b1[0],b1[1],{over:1}); p.line(a2[0],a2[1],b2[0],b2[1],{over:1});
+  p.draw([R(-15*k,-7*k),R(-16.5*k,-2*k),R(-16.5*k,3*k),R(-15*k,7*k)]); }
+/* a racket as a plank: its top (the real bouncing surface) in two overlapping strokes, a loosely hatched belly */
+function pgsPlatform(p,top){ var n=top.length, m=Math.floor(n*p.rnd(0.42,0.58));
+  p.draw(top.slice(0,Math.min(n,m+3)),{w:p.w*1.4}); p.draw(top.slice(Math.max(0,m-3)),{w:p.w*1.4});
+  var bot=top.map(function(q,j){ return [q[0],q[1]+13*(0.6+0.4*Math.sin(Math.PI*j/(n-1)))]; });
+  p.draw(bot.filter(function(v,j){ return j%2===0; }),{w:p.w*0.75,a:0.85}); p.band(top,bot,{sp:4.2,shift:-3,w:p.w*0.55});
+  p.line(top[0][0],top[0][1],bot[0][0],bot[0][1],{over:2,w:p.w*0.85}); p.line(top[n-1][0],top[n-1][1],bot[n-1][0],bot[n-1][1],{over:2,w:p.w*0.85}); }
+/* 1.59r: a doodled player whose racket meets a given point: feet at (fx,fy), facing d, the racket's face centred at (cx,cy) and tilted by
+   ang (the bounce's slope). Higher than he can reach — he jumps; a racket low — he crouches */
+function pgsReach(p,fx,fy,d,cx,cy,ang,o){ o=o||{}; var k=1.15, dh=fy-cy, jump=Math.max(0,dh-80), crouch=Math.max(0,Math.min(10,22-dh)), y=fy-jump+crouch*0.6, X=function(v){ return fx+d*v; };
+  var hy=y-47*k, sx=X(1), sy=y-35*k;
+  p.loop(X(0),hy,7*k,7.5*k,{w:p.w*1.05});
+  if(o.hair) p.draw([[X(-6),hy-3],[X(-3),hy-8],[X(2),hy-8.5],[X(6),hy-4]],{w:p.w*0.9});
+  if(o.cap) p.draw([[X(-6.5),hy-2],[X(-2),hy-7.5],[X(5),hy-6],[X(12),hy-4]],{w:p.w*1.1});
+  p.draw([[X(0.5),y-39*k],[X(1.5),y-29*k],[X(1),y-19*k]]);
+  var legs=jump>0?[[-6,-12,-3,-4],[6,-12,9,-6]]:o.moving?(o.step?[[-6,-9,-12,-2],[5,-10,7,-1]]:[[-2,-10,-3,-1],[7,-8,12,-3]]):crouch>4?[[-6,-8,-9,-1],[8,-8,9,-1]]:[[-5,-11,-6,-1],[7,-11,7,-1]];
+  legs.forEach(function(l){ p.draw([[X(1),y-19*k],[X(l[0]),y+l[1]*k],[X(l[2]),y+l[3]*k]]); });
+  if(!jump&&!o.moving){ p.line(X(legs[0][2]-3),y-1*k,X(legs[0][2]+3),y-1*k,{over:1,w:p.w*0.9}); p.line(X(legs[1][2]),y-1*k,X(legs[1][2]+6),y-1*k,{over:1,w:p.w*0.9}); }
+  if(o.far&&o.moving){ p.stroke([[X(-14),y-30],[X(-26),y-31]],{w:p.w*0.5}); p.stroke([[X(-12),y-20],[X(-22),y-20]],{w:p.w*0.5}); }
+  /* the racket: an oval whose far end is at the point, along the line to the shoulder; the handle on to the hand, the arm to the handle */
+  var ux=sx-cx, uy=sy-cy, ul=Math.hypot(ux,uy)||1; ux/=ul; uy/=ul;
+  var hc=[cx+ux*8.5,cy+uy*8.5], rot=Math.atan2(uy,ux)+Math.PI/2; p.loop(hc[0],hc[1],5.5,8.5,{rot:rot,w:p.w*0.95});
+  var he=[cx+ux*17,cy+uy*17], arm=26*k, hd=[he[0]+ux*9,he[1]+uy*9], ad=Math.hypot(hd[0]-sx,hd[1]-sy);
+  if(ad>arm){ hd=[sx-ux*arm,sy-uy*arm]; } p.line(he[0],he[1],hd[0],hd[1],{over:1,w:p.w*0.9});
+  var mx=(sx+hd[0])/2, my=(sy+hd[1])/2, bend=Math.min(6,Math.max(0,(arm-Math.hypot(hd[0]-sx,hd[1]-sy))*0.4)); p.draw([[sx,sy],[mx-uy*bend*d,my+ux*bend*d],hd]);
+  p.draw([[X(0.5),sy],[X(-7),sy+(jump?-8:7)],[X(-10),sy+(jump?-14:13)]]);
+  if(o.hit){ p.stroke([[cx-d*4,cy-12],[cx+d*8,cy-16]],{w:p.w*0.5}); p.stroke([[cx-d*2,cy-7],[cx+d*12,cy-9]],{w:p.w*0.5}); } }
+/* 1.59t: «пожарные с тентом» (Ден 23:37–23:42: тент — Л1, подъёмники-«ножницы»). Двое на подъёмниках держат тент за концы, руки — там,
+   где ладонь (ARC.py); полотно — там, где оно по физике (с мягкостью отстаёт от рук, видно по натянутым лямкам). Подъёмники стоят на земле
+   и раздвигаются, при сужении подъезжают друг к другу */
+function pgsLift(p,x,top,gy,w){ var n=Math.max(1,Math.round((gy-12-top)/26)), h=(gy-12-top)/n, i;
+  p.draw([[x-w/2-4,gy],[x+w/2+4,gy]],{w:p.w*1.1}); p.draw([[x-w/2,gy],[x-w/2,gy-12],[x+w/2,gy-12],[x+w/2,gy]]); p.loop(x-w/2+6,gy+1,3,3,{w:p.w*0.8}); p.loop(x+w/2-6,gy+1,3,3,{w:p.w*0.8});
+  for(i=0;i<n;i++){ var y0=gy-12-i*h, y1=y0-h; p.line(x-w/2,y0,x+w/2,y1,{over:1,w:p.w*0.75}); p.line(x+w/2,y0,x-w/2,y1,{over:1,w:p.w*0.75}); }
+  p.draw([[x-w/2-3,top],[x+w/2+3,top]],{w:p.w*1.2}); p.draw([[x-w/2-3,top],[x-w/2-3,top-11],[x+w/2+3,top-11],[x+w/2+3,top]],{w:p.w*0.55,a:0.8}); }
+function pgsTent(c,i,tp,xc,hw,ar,A,hand,t){ var F=function(v){ return v*390; }, d=i?-1:1, n=tp.length, p=pgsPen(c,231+100*i), GY=Math.min(386,F(1)-4);
+  p.draw(tp,{w:p.w*1.3}); var low=tp.map(function(q,j){ return [q[0],q[1]+5+5*Math.sin(Math.PI*j/(n-1))]; }); p.draw(low,{w:p.w*0.65,a:0.8});
+  for(var j=6;j<n-5;j+=7) p.stroke([tp[j],[tp[j][0]+d*3,low[j][1]+3]],{w:p.w*0.33});
+  [0,n-1].forEach(function(e,k){ var x=xc+(e?1:-1)*hw, hy=F(pgSurf(i,x,hand,ar,A).y), hx=tp[e][0], s=k?1:-1;   /* s: −1 the left end, +1 the right */
+    var fx=hx+s*9, deck=hy+60, pf=pgsPen(c,241+100*i+10*k); pgsLift(pgsPen(c,251+100*i+10*k),fx,deck,GY,30);
+    if(Math.abs(hy-tp[e][1])>1.5) pf.line(hx,hy,tp[e][0],tp[e][1],{over:0.5,w:pf.w*0.6});   /* a strap: the cloth lags behind the hands */
+    pf.loop(hx,tp[e][1],2.5,2.5,{w:pf.w*0.7});
+    var kk=ARC.kick&&ARC.kick[i], hit=kk&&t-kk.t0<0.25, jy=hit?-3:0;
+    pgsPlayer(pf,fx,deck+jy,-s,'hold',{k:1.0});
+    /* his arms go up to the corner: redraw them over the doodle's ready arms */
+    var sx=fx-s*0.5, sy=deck+jy-35; pf.draw([[sx,sy],[(sx+hx)/2-s*2,(sy+hy)/2+2],[hx,hy]],{w:pf.w*0.95}); pf.draw([[sx,sy],[(sx+hx)/2+s*3,(sy+hy)/2+5],[hx+s*3,hy+3]],{w:pf.w*0.9});
+    var hb=deck+jy-47; pf.draw([[fx+s*8,hb-1],[fx+s*6,hb-9],[fx-s*3,hb-11],[fx-s*8,hb-5],[fx-s*13,hb-3]],{w:pf.w*1.05});   /* the helmet */
+  }); }
+/* 1.59u (Ден 00:43–00:47: «берём «для вида» и дорабатываем.. на доске должна быть жизнь»; раскадровка 1–4): удар человечка читается
+   как удар. Позы — суставы в долях роста (смотрит вправо): подход — присел, ракетка внизу сзади; касание — ракетка плашмя на доске прямо
+   под воланом (доска и ракетка бьют в одной точке и в одно время); после удара — взмах по силе: слабый — кистью до пояса, сильный —
+   снизу через голову, на носках, с дугами. Отскок по-прежнему от доски — это только рисунок */
+var PGS_POSE={
+ ready:{head:[0,-47],neck:[0.5,-39],hip:[1,-19],kneeL:[-5,-11],footL:[-6,-1],kneeR:[7,-11],footR:[7,-1],elbowL:[-6,-28],handL:[-8,-22],elbowR:[8,-30],handR:[13,-34],rk:-1.0},
+ crouch:{head:[2,-41],neck:[2,-33],hip:[-2,-15],kneeL:[6,-9],footL:[4,-1],kneeR:[-8,-8],footR:[-10,-1],elbowL:[9,-27],handL:[14,-30],elbowR:[-4,-24],handR:[-12,-16],rk:2.98},
+ contact:{head:[4,-38],neck:[4,-30],hip:[-2,-14],kneeL:[7,-8],footL:[5,-1],kneeR:[-8,-7],footR:[-10,-1],elbowL:[-6,-24],handL:[-12,-18],elbowR:[14,-17],handR:[24,-8],rk:-0.06},
+ flick:{head:[2,-46],neck:[2,-38],hip:[1,-19],kneeL:[-5,-11],footL:[-6,-1],kneeR:[7,-11],footR:[7,-1],elbowL:[-6,-28],handL:[-10,-22],elbowR:[12,-26],handR:[20,-26],rk:-0.5},
+ big:{head:[3,-52],neck:[3,-44],hip:[2,-24],kneeL:[-3,-14],footL:[-5,-2],kneeR:[8,-14],footR:[9,-3],elbowL:[-8,-36],handL:[-14,-44],elbowR:[9,-58],handR:[6,-70],rk:-2.0},
+ runA:{head:[6,-46],neck:[5,-38],hip:[1,-19],kneeL:[9,-12],footL:[15,-6],kneeR:[-6,-9],footR:[-12,-1],elbowL:[-6,-32],handL:[-12,-26],elbowR:[12,-28],handR:[18,-34],rk:-0.9},
+ runB:{head:[6,-46],neck:[5,-38],hip:[1,-19],kneeL:[-6,-9],footL:[-12,-1],kneeR:[9,-12],footR:[15,-6],elbowL:[-6,-32],handL:[-12,-26],elbowR:[12,-28],handR:[18,-34],rk:-0.9},
+ dive:{head:[28,-18],neck:[20,-17],hip:[1,-15],kneeL:[-11,-12],footL:[-22,-7],kneeR:[-9,-19],footR:[-20,-22],elbowL:[14,-25],handL:[8,-30],elbowR:[33,-13],handR:[44,-9],rk:0.1},
+ sit:{head:[2,-31],neck:[1.5,-23],hip:[0,-4],kneeL:[11,-13],footL:[20,-2],kneeR:[13,-10],footR:[23,0],elbowL:[-8,-15],handL:[-12,-5],elbowR:[10,-20],handR:[15,-14],rk:0.4},
+ joy:{head:[0,-58],neck:[0,-50],hip:[1,-30],kneeL:[-5,-22],footL:[-8,-14],kneeR:[7,-22],footR:[9,-14],elbowL:[-10,-60],handL:[-14,-70],elbowR:[10,-60],handR:[12,-70],rk:-1.4},
+ duck:{head:[2,-36],neck:[1,-28],hip:[-1,-14],kneeL:[6,-8],footL:[5,-1],kneeR:[-7,-7],footR:[-9,-1],elbowL:[-6,-40],handL:[-1,-44],elbowR:[9,-40],handR:[4,-44],rk:-2.4}};
+/* 1.59v: little drawn things — a feather (lying or gliding), a star, a puff of dust */
+function pgsFeather(p,x,y,a,k){ var ca=Math.cos(a), sa=Math.sin(a), R=function(u,v){ return [x+u*ca-v*sa,y+u*sa+v*ca]; }; p.draw([R(-9*k,0),R(9*k,0)],{w:p.w*0.6});
+  for(var t=-7;t<=6;t+=3.2){ p.stroke([R(t*k,0),R((t+3)*k,-3*k)],{w:p.w*0.35}); p.stroke([R(t*k,0),R((t+3)*k,3*k)],{w:p.w*0.35}); } }
+function pgsStar(p,x,y,r){ p.stroke([[x-r,y],[x+r,y]],{w:p.w*0.55}); p.stroke([[x,y-r],[x,y+r]],{w:p.w*0.55}); }
+var PGS_REACH=49;   /* from the feet to the racket's head in the «contact» pose, in figure units */
+function pgsMix(a,b,u){ u=Math.max(0,Math.min(1,u)); var o={}; for(var k in a){ if(k==='rk') o.rk=a.rk+(b.rk-a.rk)*u; else o[k]=[a[k][0]+(b[k][0]-a[k][0])*u,a[k][1]+(b[k][1]-a[k][1])*u]; } return o; }
+function pgsFig(p,x,y,d,J,o){ o=o||{}; var k=o.k||1.15, P=function(q){ return [x+d*q[0]*k,y+q[1]*k]; }, h=P(J.head);
+  p.loop(h[0],h[1],7*k,7.5*k,{w:p.w*1.05});
+  if(o.hair) p.draw([[h[0]-d*6,h[1]-3],[h[0]-d*3,h[1]-8],[h[0]+d*2,h[1]-8.5],[h[0]+d*6,h[1]-4]],{w:p.w*0.9});
+  if(o.cap) p.draw([[h[0]-d*6.5,h[1]-2],[h[0]-d*2,h[1]-7.5],[h[0]+d*5,h[1]-6],[h[0]+d*12,h[1]-4]],{w:p.w*1.1});
+  p.draw([P(J.neck),P(J.hip)]); p.draw([P(J.hip),P(J.kneeL),P(J.footL)]); p.draw([P(J.hip),P(J.kneeR),P(J.footR)]);
+  p.draw([P(J.neck),P(J.elbowL),P(J.handL)]); p.draw([P(J.neck),P(J.elbowR),P(J.handR)]);
+  var fl=P(J.footL), fr=P(J.footR); if(fl[1]>y-4*k) p.line(fl[0]-d*3,fl[1],fl[0]+d*5,fl[1],{over:1,w:p.w*0.9}); if(fr[1]>y-4*k) p.line(fr[0]-d*3,fr[1],fr[0]+d*5,fr[1],{over:1,w:p.w*0.9});
+  /* 1.60i: d бывает дробным (поворот) — ракетка поворачивается вместе с фигуркой, в повороте видна с ребра */
+  var ca=d*Math.cos(J.rk), sa=Math.sin(J.rk), a=Math.atan2(sa,ca), hd=P(J.handR), he=[hd[0]+ca*12*k,hd[1]+sa*12*k], hc=[hd[0]+ca*21.5*k,hd[1]+sa*21.5*k];
+  p.line(hd[0],hd[1],he[0],he[1],{over:1}); p.loop(hc[0],hc[1],9.5*k*Math.max(0.35,Math.hypot(ca,sa)),5.5*k,{rot:a,w:p.w});
+  if(o.shake){ p.stroke([[h[0]-12*k,h[1]-6*k],[h[0]-16*k,h[1]-2*k]],{w:p.w*0.45}); p.stroke([[h[0]+12*k,h[1]-6*k],[h[0]+16*k,h[1]-2*k]],{w:p.w*0.45}); }
+  if(o.stars){ pgsStar(p,h[0]-10*k,h[1]-14*k,3*k); pgsStar(p,h[0]+4*k,h[1]-18*k,3*k); pgsStar(p,h[0]+14*k,h[1]-12*k,3*k); }
+  if(o.arcs){ var sh=P(J.neck), r=40*k; [0,1].forEach(function(j){ var pts=[], a0=d>0?0.7:Math.PI-0.7, a1=d>0?-1.8:Math.PI+1.8; for(var m=0;m<=14;m++){ var aa=a0+(a1-a0)*m/14; pts.push([sh[0]+Math.cos(aa)*(r+j*9),sh[1]+Math.sin(aa)*(r+j*9)]); } p.stroke(pts,{w:p.w*(j?0.35:0.5),a:0.75}); }); }
+  return hc; }
+/* 1.60k: моторы под доской (рисуются до доски — крепления уходят под неё). M=1 — два сопла, огонь вниз растёт с резкостью подъёма,
+   мерцает, на резком — искры; вниз — огонь гаснет, из сопел дымок. M=2 — два пропеллера лопастями вниз: обороты растут с подъёмом; пока
+   медленно — видны лопасти (с ребра, их видимая длина меняется с поворотом) и дужки движения, быстро — размытый диск и поток вниз; вниз —
+   крутятся назад, воздух тянет вверх. Видимое плавно перетекает: лопасти гаснут, диск проявляется */
+function pgsMotors(c,i,tp,M,v,t,dt){ var n=tp.length-1, up=Math.max(0,Math.min(1,v/2.5)), dn=Math.max(0,Math.min(1,-v/2.5)), I=PGS_ST;
+  [0.2,0.8].forEach(function(fr,k){ var j=Math.round(n*fr), x=tp[j][0], y=tp[j][1]+13*(0.6+0.4*Math.sin(Math.PI*j/n)), sd=7000+i*20+k*5, p=pgsPen(c,sd);
+    if(M===1){ p.draw([[x-6,y-1],[x-9,y+10],[x+9,y+10],[x+6,y-1]],{w:p.w*0.85}); p.line(x-9,y+10,x+9,y+10,{over:1,w:p.w*0.8});
+      var L=4+58*up*(1+0.12*Math.sin(t*33+k*2)), w=5+6*up, tip=[x+Math.sin(t*41+k)*3*up,y+11+L];
+      if(L>5){ c.save(); c.globalAlpha=Math.min(0.9,(0.16+0.22*up)*(I.dark?2.2:1.3)); c.fillStyle=I.accent||'#d2432f'; c.beginPath(); c.moveTo(x-w*0.75,y+11); c.quadraticCurveTo(tip[0],y+11+L*1.05,x+w*0.75,y+11); c.fill(); c.restore();
+        var f=pgsPen(c,sd+1); f.draw([[x-w,y+11],[x-w*0.6,y+11+L*0.45],tip,[x+w*0.6,y+11+L*0.45],[x+w,y+11]],{w:I.w*0.75,a:Math.min(1,0.4+up)});
+        if(up>0.25){ var g=pgsPen(c,sd+2); g.draw([[x-w*0.4,y+12],[x,y+11+L*0.6],[x+w*0.4,y+12]],{w:I.w*0.5,a:up}); }
+        if(up>0.6){ var sp=pgsPen(c,sd+3); for(var m=0;m<4;m++){ var ph=(t*2.2+m*0.25+k*0.13)%1, sx=x+(m%2?1:-1)*(8+ph*14), sy=y+18+ph*L*0.9; sp.stroke([[sx,sy],[sx+(m%2?2:-2),sy+5]],{w:I.w*0.45,a:(up-0.6)/0.4*(1-ph)}); } } }
+      if(dn>0.05){ var sm=pgsPen(c,sd+4); for(var q=0;q<2;q++){ var ph2=(t*1.3+q*0.5+k*0.3)%1; sm.loop(x+(q?5:-5)+Math.sin(t*3+q)*2,y+16+ph2*12,3+ph2*4,2.5+ph2*3,{w:I.w*0.35,a:dn*(1-ph2)*0.8}); } } }
+    else { var om=6+70*up-26*dn; PGS.mRot[k]+=om*dt; var rot=PGS.mRot[k]+i*1.3, aw=Math.abs(om), bl=Math.max(0,Math.min(1,(aw-18)/22));
+      p.line(x,y-1,x,y+8,{over:1,w:p.w*0.8}); p.loop(x,y+10,3,2.4,{w:p.w*0.8});
+      if(bl<1){ var hl=22*Math.cos(rot), hz=2.2*Math.sin(rot); p.draw([[x-hl,y+10-hz],[x+hl,y+10+hz]],{w:p.w*0.9,a:1-bl});
+        if(aw>8){ var ar2=pgsPen(c,sd+1), sg=om>0?1:-1, pts=[]; for(var m2=0;m2<=6;m2++){ var aa=rot-sg*m2*0.12; pts.push([x+22*Math.cos(aa),y+10+2.2*Math.sin(aa)]); } ar2.stroke(pts,{w:I.w*0.4,a:(1-bl)*Math.min(1,(aw-8)/10)}); } }
+      if(bl>0){ var d=pgsPen(c,sd+2); d.loop(x,y+10,25,4.2,{w:I.w*0.55,a:bl}); d.loop(x,y+10,19,2.8,{w:I.w*0.35,a:bl*0.6}); }
+      if(up>0.2){ var dw=pgsPen(c,sd+3); for(var m3=-2;m3<=2;m3++){ var ph3=(t*3+m3*0.17+k*0.3)%1, xx=x+m3*8, L3=10+30*up; dw.stroke([[xx+m3*ph3*2,y+18+ph3*L3*0.6],[xx+m3*(ph3*2+1),y+18+ph3*L3*0.6+L3*0.35]],{w:I.w*0.45,a:(up-0.2)/0.8*(1-ph3)}); } }
+      if(dn>0.15){ var ua=pgsPen(c,sd+4); for(var m4=-1;m4<=1;m4++){ var ph4=(t*1.8+m4*0.3)%1, xx4=x+m4*11, yy=y+42-ph4*22; ua.stroke([[xx4,yy],[xx4,yy-9]],{w:I.w*0.4,a:dn*(1-ph4)}); ua.stroke([[xx4-3,yy-6],[xx4,yy-10],[xx4+3,yy-6]],{w:I.w*0.4,a:dn*(1-ph4)}); } } } }); }
+/* 1.60l (Ден 11:14, снимок ползунков демо «набросок»: линер, толщина 2,2, дрожь 1,5, вылет 10, кружки 60%, обвести 2, разброс 1,5,
+   штриховка 0,8×, перерисовок нет, крест-накрест): вид линий — из ползунков «Рисунок» (по умолчанию — этот набор); бумага и потолок
+   перерисовываются, когда вид меняется */
+function pgsStyle(){ var V=PG_V; PGS_ST.w=V.skw||2.2; PGS_ST.wob=V.skwob===undefined?1.5:V.skwob; PGS_ST.overK=(V.skover===undefined?10:V.skover)/3; PGS_ST.open=V.skopen===undefined?0.6:V.skopen; PGS_ST.passes=Math.round(V.skpass||2); PGS_ST.jit=V.skjit===undefined?1.5:V.skjit; PGS_ST.hs=1/(V.skhs||0.8); PGS_ST.cross=(V.skcross===undefined?1:V.skcross)>=0.5; PGS_ST.dark=(V.dark||0)>=0.5; PGS_ST.ink=PGS_ST.dark?'#ffffff':'#121116'; PGS_ST.accent=PGS_ST.dark?'#ff4b36':'#ec2a17'; if(PGS_ST.dark) PGS_ST.w*=1.2;   /* 1.60x (Ден 14:00): красный ярче; на тёмной бумаге белый — чисто белый и линии толще, красный — ещё ярче */ var ql=typeof PG_Q!=='undefined'?PG_Q.lvl:0; PGS_ST.step=[1.2,1.2,1.8,2.4,3][ql]||1.2; if(ql>=3) PGS_ST.passes=1;   /* 1.60r: на слабом телефоне — реже точки линий, обводка в один проход */
+  return [PGS_ST.w,PGS_ST.wob,PGS_ST.overK,PGS_ST.open,PGS_ST.passes,PGS_ST.jit,PGS_ST.hs,PGS_ST.cross,PGS_ST.step,PGS_ST.dark].join(','); }
+/* 1.60t (Ден 12:31: «хинт набранных очков — сейчас в углу, и глаз туда не успевает, т.к. следит за воланом» → эскизы О1–О4 → «О1 и О2
+   посмотрел бы»). «Очки у волана» (Рисунок): О1 — ярлык «+N» летит рядом с воланом и растёт с высотой (те же очки, что дадут за дугу
+   этой высоты, с множителем); на вершине замирает и чуть вырастает; на приёме — улетает в общий счёт в углу. О2 — на вершине дуги ручка
+   пишет число (цифра за цифрой, 0,3 с); оно висит там, пока волан падает, и гаснет после приёма. Потолок — очков нет, ярлык гаснет */
+function pgsPtsLive(b){ if(b.touched||b.peakY===undefined||b.peakY===null) return 0; var lvl0=JG_PAD_LO-PG_CB*jgPadH()-PG_LIFT-b.r, room=lvl0-(JG_TOP+(ARC.webD||0)+b.r), h=(b.y0===undefined?b.y:b.y0)-Math.min(b.peakY,b.y);
+  var f=Math.max(0,Math.min(1,h/room)); return Math.round((Math.round(PG_V.pts)===1?10:pgPtsF(f))*pgMultAll()); }
+function pgsPtsHint(c,t,F,FW,I){ var mode=Math.round(PG_V.phint||0); if(!mode||ARC.phase!=='play') return; var S=PGS.pth; if(!S||t<S.tl-0.5) S=PGS.pth={hid:-1,val:0,apex:null,old:null}; S.tl=t; var b=(ARC.balls||[])[0];   /* новая партия — с чистого листа */
+  if(b&&!(b.wait>0)&&!b.hold&&b.from!==null&&b.from!==undefined){
+    if(S.hid!==PGS.hid){ var got=(ARC.score||0)-(S.score0||0); if(S.hid>=0&&(S.val>0||got>0)) S.old={val:got>0?got:S.val,x:S.lx,y:S.ly,ax:S.apex?S.apex.x:undefined,ay:S.apex?S.apex.y:undefined,t:t}; S.hid=PGS.hid; S.val=0; S.apex=null; S.score0=ARC.score||0; S.zero=false; }
+    var v=pgsPtsLive(b); if(b.touched){ S.zero=true; }
+    if(!S.apex&&!S.zero){ if((b.vy||0)<0) S.val=v; else if(S.val>0) S.apex={x:F(b.x),y:F(b.peakY),t:t}; }
+    var bx=F(b.x), by=F(b.y); S.lx=bx-16; S.ly=by+26; }   /* 1.60w (Ден 13:34): ярлык О1 — снизу слева от волана */
+  var pen1=pgsPen(c,7200+(S.hid%40+40)%40);
+  if(mode===1){ if(S.val>0&&!S.zero){ var pop=S.apex?1+0.25*Math.max(0,1-(t-S.apex.t)/0.25):1, sz=(S.apex?18:13)*pop; pen1.text('+'+S.val,S.lx,S.ly,sz,{align:'right',w:I.w*0.6}); }
+    var O=S.old; if(O&&t-O.t<0.45){ var u=(t-O.t)/0.45, e=u*u*(3-2*u), tx=FW-F(0.08), ty=F(0.12); pgsPen(c,7250).text('+'+O.val,O.x+(tx-O.x)*e,O.y+(ty-O.y)*e,18*(1-0.5*e),{align:e>0.5?'left':'right',w:I.w*0.6,a:1-0.6*e}); } }
+  else { if(S.apex&&S.val>0&&!S.zero){ var str=String(S.val), n=Math.max(1,Math.ceil(str.length*Math.min(1,(t-S.apex.t)/0.3))); pen1.text(str.slice(0,n),S.apex.x+14,Math.max(F(JG_TOP+(ARC.webD||0))+30,S.apex.y-4),18,{align:'left',w:I.w*0.6}); }   /* 1.60w (Ден 13:37): у самого потолка (и паутины) — ниже, не на нём */   /* справа от вершины, не залезая на потолок */
+    var O2=S.old; if(O2&&t-O2.t<0.8&&O2.ax!==undefined){ var str2=String(O2.val); pgsPen(c,7260).text(str2,O2.ax+14,Math.max(F(JG_TOP+(ARC.webD||0))+30,O2.ay-4),18,{align:'left',w:I.w*0.6,a:1-(t-O2.t)/0.8}); } } }
+function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ return v*390; }, I=PGS_ST;
+  /* the page: paper and the ceiling, kept until the screen changes size */
+  var key=W+'x'+H+'|'+pgsStyle(); if(PGS.key!==key){ PGS.key=key; var bg=document.createElement('canvas'); bg.width=W; bg.height=H; var bc=bg.getContext('2d'); bc.scale(dpr,dpr); Sk.paper(bc,W/dpr,H/dpr,dpr,{seed:7});
+    /* 1.60s: тёмная бумага рисуется сама (а не фильтром поверх кадра — на Android фильтр дорог): та же бумага, вывернутая один раз при
+       построении (зерно и волокна те же), чернила светлые и кладутся «осветлением» (screen) вместо «умножения» */
+    if(PGS_ST.dark){ try{ var idt=bc.getImageData(0,0,W,H), dd=idt.data; for(var q=0;q<dd.length;q+=4){ var lu=0.3*dd[q]+0.59*dd[q+1]+0.11*dd[q+2], v=Math.max(0,255-lu*0.93); dd[q]=v*1.02+3; dd[q+1]=v*0.98+2; dd[q+2]=v*0.93; } bc.putImageData(idt,0,0); }catch(e){} }
+    var L=document.createElement('canvas'); L.width=W; L.height=H; var lc=L.getContext('2d'); lc.setTransform(U,0,0,U,0,0); var p0=pgsPen(lc,101), CE=F(JG_TOP);
+    p0.line(6,CE+1,FW*0.52,CE-1,{w:p0.w*1.25,over:6}); p0.line(FW*0.48,CE-1.5,FW-6,CE+1.5,{w:p0.w*1.25,over:6});
+    var tp=[], bt=[]; for(var x=0;x<=FW;x+=2){ tp.push([x,CE-0.5]); bt.push([x,CE-8-6*Sk.noise(x/40)-p0.rnd(0,3)]); } p0.band(tp,bt,{sp:6,shift:4,w:p0.w*0.5,a:0.7});
+    if(PGS_ST.dark){ bc.save(); bc.setTransform(1,0,0,1,0,0); bc.globalCompositeOperation='screen'; bc.drawImage(L,0,0); bc.restore(); } else Sk.lay(bc,L,0,0,{alpha:1}); PGS.bg=bg; }
+  c.setTransform(1,0,0,1,0,0); c.drawImage(PGS.bg,0,0); c.setTransform(U,0,0,U,0,0); c.globalCompositeOperation=(typeof PG_Q!=='undefined'&&PG_Q.lvl>=1)?'source-over':PGS_ST.dark?'screen':'multiply';   /* 1.60r: на слабом телефоне — обычное наложение */
+  var hw=pgHw(ar), A=PG_V.curve>=0.5?pgCupA():Math.tan(PG_TILTV*Math.PI/180)*hw, hand=ARC.py, py=ARC.padSoft!==null&&ARC.padSoft!==undefined?ARC.padSoft:ARC.py, t=ARC.t||0, dt=PGS.tLast===null?0:Math.max(0,Math.min(0.1,t-PGS.tLast)); PGS.tLast=t;
+  /* the field's edges and the net, if the rules have them */
+  var fl=ar*(1-PG_V.fw)/2, fr=ar*(1+PG_V.fw)/2, pe=pgsPen(c,151);
+  /* 1.60n «Потолок трескается»: трещина растёт за 0,25 с из точки, куда ударил волан (ломаная вверх в штриховку и чуть вниз, с
+     отколами); каждая следующая — длиннее и ветвистее; перед последней трещины подрагивают; обвал — куски потолка и пыль падают
+     на месте всех трещин */
+  /* 1.61a (Ден 14:02: «выглядит как занавес — закругляйтесь, идите домой»): паутина не шторой во всю ширину — тонкая полупрозрачная кромка,
+     провисающая между редкими точками крепления, и два-три «колеса» паутины в углах и у последней трещины, где живёт паук */
+  if((ARC.webD||0)>0.002){ var CEw=F(JG_TOP), WY=F(JG_TOP+ARC.webD), dH=WY-CEw, wp0=pgsPen(c,6600), na=Math.max(4,Math.round(FW/180)), xs0=[];
+    for(var ai=0;ai<=na;ai++) xs0.push(FW*ai/na);
+    for(var ai2=0;ai2<na;ai2++){ var x1=xs0[ai2], x2=xs0[ai2+1], pts3=[]; for(var m5=0;m5<=10;m5++){ var u5=m5/10; pts3.push([x1+(x2-x1)*u5,CEw+dH*(0.35+0.65*Math.sin(Math.PI*u5))]); } wp0.stroke(pts3,{w:I.w*0.28,a:0.55}); }
+    var wheel=function(cx,r,sd){ var wq=pgsPen(c,sd); for(var sp=0;sp<5;sp++){ var aa=Math.PI*(0.1+0.8*sp/4); wq.stroke([[cx,CEw+1],[cx+Math.cos(aa)*r,CEw+Math.sin(aa)*r]],{w:I.w*0.25,a:0.6}); }
+      for(var rr2=r*0.35;rr2<=r;rr2+=r*0.32){ var arcP=[]; for(var m7=0;m7<=10;m7++){ var aa2=Math.PI*(0.1+0.8*m7/10); arcP.push([cx+Math.cos(aa2)*rr2,CEw+Math.sin(aa2)*rr2]); } wq.stroke(arcP,{w:I.w*0.22,a:0.55}); } };
+    var rW=Math.min(60,10+dH*1.2); wheel(rW*0.2,rW,6610); wheel(FW-rW*0.2,rW,6620); var lc=(ARC.crk||[])[(ARC.crk||[]).length-1]; if(lc) wheel(F(lc.x),rW*0.7,6630); }
+  /* 1.61a: волан пропал не от паука — трещины заделаны: быстро бледнеют за 0,6 с */
+  var KM=ARC.crkM; if(KM&&t-KM.t<0.6){ var pm2=pgsPen(c,6640), am=1-(t-KM.t)/0.6; KM.xs.forEach(function(xx){ pm2.stroke([[F(xx),F(JG_TOP)+2],[F(xx)+2,F(JG_TOP)-10]],{w:I.w*0.6,a:am}); }); }
+  if((PG_V.crack||0)>=1){ var NC=Math.round(PG_V.crack), CE2=F(JG_TOP);
+    (ARC.crk||[]).forEach(function(q,j){ var pc=pgsPen(c,6100+j*7+Math.round(q.x*97)%5), gr=Math.min(1,(t-q.t)/0.25), x0=F(q.x)+(j===NC-2?Math.sin(t*28)*0.8:0), L=(10+5*j)*gr, pts=[[x0,CE2+2]];
+      for(var m=1;m<=5;m++){ var hh=((j+1)*7.31+m*3.17)%1; pts.push([x0+(m%2?1:-1)*(2+hh*5),CE2+2-L*m/5]); } pc.draw(pts,{w:I.w*0.7});
+      if(gr>0.5){ var br=pts[2]; pc.stroke([[br[0],br[1]],[br[0]+(j%2?6:-6)*(0.6+0.1*j),br[1]-4]],{w:I.w*0.45}); pc.stroke([[x0-3,CE2+2],[x0-1,CE2+6],[x0+2,CE2+3]],{w:I.w*0.4}); }
+      if(j>=2&&gr>0.8){ var b2=pts[3]; pc.stroke([[b2[0],b2[1]],[b2[0]+(j%2?-7:7),b2[1]-3]],{w:I.w*0.4}); } });
+    /* 1.60o (Ден 11:58–12:01: «почему волан теряется на 5-м касании? может, кто-то вылезает из потолка и забирает?» → эскизы А–Г →
+       «Г, паук — отлично санимируется, эдакий микромультик посреди партии»). В трещинах живёт паук: за две трещины до обвала в
+       последней щели появляются глаза-бусинки и моргают; за одну — смотрят на волан, из щели торчат кончики лап. Обвал — микромультик
+       PG_SPIDER (3,2 с): волан отскакивает от потолка и повисает на паутинках, паук выползает из щели, спускается на нитке, заматывает волан в кокон (лапы
+       мелькают, витки ложатся один за другим), утаскивает кокон наверх, а трещины затягиваются паутиной и тают */
+    var crN=(ARC.crk||[]).length, b0e=(ARC.balls||[])[0];
+    if(NC>=3&&crN>=NC-2&&crN>0&&!(ARC.crkB&&t-ARC.crkB.t<PG_SPIDER)){ var lq=ARC.crk[crN-1], ex=F(lq.x), ey=CE2-3, pe2=pgsPen(c,6400), blink=(t*0.7)%1>0.93;
+      [-4,4].forEach(function(dx){ if(blink) pe2.stroke([[ex+dx-2,ey],[ex+dx+2,ey]],{w:I.w*0.5}); else { pe2.loop(ex+dx,ey,2.4,2.4,{w:I.w*0.5});
+        if(crN===NC-1&&b0e){ var vx=F(b0e.x)-ex, vy=F(b0e.y)-ey, vl=Math.hypot(vx,vy)||1; c.save(); c.fillStyle=I.ink; c.beginPath(); c.arc(ex+dx+vx/vl*1.1,ey+vy/vl*1.1,1.1,0,6.283); c.fill(); c.restore(); } } });
+      if(crN===NC-1){ var lw2=Math.sin(t*9)*1.5; pe2.stroke([[ex-9,CE2-1],[ex-12,CE2+4+lw2]],{w:I.w*0.45}); pe2.stroke([[ex+9,CE2-1],[ex+12,CE2+4-lw2]],{w:I.w*0.45}); } }
+    var KB=ARC.crkB; if(KB&&t-KB.t<PG_SPIDER){ var T=(t-KB.t)*2.4/PG_SPIDER, sx=F(KB.x), sy=F(JG_TOP+(ARC.webD||0))+20+30*Math.min(1,T/0.25), hy=CE2-4, ez=function(u){ u=Math.max(0,Math.min(1,u)); return u*u*(3-2*u); };
+      var wb=pgsPen(c,6500); [[-14,-4],[0,-6],[14,-4]].forEach(function(q){ wb.stroke([[sx,sy-6],[sx+q[0],CE2+1]],{w:I.w*0.3,a:Math.min(1,T/0.15)*(T<1.7?0.8:Math.max(0,0.8-(T-1.7)*1.2))}); });
+      var spY, coc=0, carry=false;
+      if(T<0.25) spY=hy+8*ez(T/0.25); else if(T<0.6) spY=hy+8+(sy-14-hy-8)*ez((T-0.25)/0.35); else if(T<1.1){ spY=sy-14; coc=(T-0.6)/0.5; } else if(T<1.7){ carry=true; coc=1; spY=sy-14+(hy-(sy-14))*ez((T-1.1)/0.6); } else spY=null;
+      var cy=carry?spY+14:sy;
+      if(T<1.1&&coc<1) pgsShuttle(pgsPen(c,6510),sx,cy,-Math.PI/2,{cork:I.accent,k:1.1*(1-0.35*coc)});
+      if(coc>0&&T<1.7){ var cp=pgsPen(c,6520); cp.loop(sx,cy-2,6+2*Math.min(1,coc*2),9,{w:I.w*0.6,a:Math.min(1,coc*2)}); for(var w2=0;w2<Math.floor(coc*6);w2++) cp.stroke([[sx-7,cy-9+w2*3],[sx+7,cy-7+w2*3]],{w:I.w*0.35}); }
+      if(spY!==null){ var tp2=pgsPen(c,6530); tp2.stroke([[sx,hy],[sx,spY-5]],{w:I.w*0.25}); var fast=(T>0.6&&T<1.1)?3:1; pgsSpider(pgsPen(c,6540),sx,spY,t*6*fast,1); }
+      if(T>1.5){ var ma=Math.min(1,(T-1.5)/0.2)*Math.max(0,1-(T-1.9)/0.5), wp=pgsPen(c,6550); KB.xs.forEach(function(xx,j2){ var X0=F(xx); for(var r2=4;r2<=10;r2+=3) wp.loop(X0,CE2-2,r2,r2*0.5,{w:I.w*0.25,a:ma}); wp.stroke([[X0-10,CE2-2],[X0+10,CE2-2]],{w:I.w*0.25,a:ma}); wp.stroke([[X0,CE2-8],[X0,CE2+3]],{w:I.w*0.25,a:ma}); }); } } }
+  if(PG_V.wall>=0.5){ pe.line(F(fl),F(JG_TOP)+4,F(fl)+1,386); pe.line(F(fr),F(JG_TOP)+4,F(fr)-1,386); }
+  var nt=ARC.netTop===undefined?PG_NET0:ARC.netTop; if(nt<0.97){ pe.line(F(ar/2),F(nt),F(ar/2)+1,392,{w:pe.w*1.2}); pe.line(F(ar/2)-6,F(nt),F(ar/2)+6,F(nt)-1); }
+  /* 1.59r (Ден 22:00: «половина движения ладони — на платформу, половина — на ракетку в руках человечка, и чтобы волан отскакивал от
+     ракетки»; 22:02: «посмотрел бы на все три варианта»). Под ладонью не меняется ничего: точка, о которую бьётся волан, ходит ровно как
+     ракетка до сих пор (pgSurf при ARC.py). Меняется только рисунок — где стоит платформа и сколько добирает рука:
+     А — платформа идёт за ладонью на часть хода (ползунок «доля руки»), остальное — рука; Б — плавное движение ладони ведёт платформу
+     (сглаживание — ползунок), резкое уходит в замах; В — платформа стоит внизу, человечек тянется и прыгает. Ракетка в руке встаёт ровно
+     в точку удара и наклонена так, как уходит отскок */
+  var who=Math.round(PG_V.who||0), REST=0.92, OFF0=30/390, plat=py;
+  if(who===1) plat=REST+(1-(PG_V.share===undefined?0.5:PG_V.share))*(py-REST)+OFF0;
+  else if(who===2){ var tau=PG_V.stau===undefined?0.3:PG_V.stau; PGS.slow=(PGS.slow===undefined||PGS.slow===null)?py:PGS.slow+(py-PGS.slow)*(1-Math.exp(-dt/Math.max(0.02,tau))); plat=PGS.slow+OFF0; }
+  else if(who===3) plat=REST+OFF0;
+  if(who) plat=Math.max(py+5/390,Math.min(who===3?9:py+105/390,plat));
+  if(who===4) plat=py;
+  /* 1.60k (Ден 10:06–10:51: «приделать к платформам снизу двигатели или пропеллеры.. когда платформа поднимается — работают, чем
+     резче, тем больше; когда опускается — наоборот» → эскизы М1–М3 → «сопла снизу (без верхних) или пропеллеры — решу в игре»).
+     Скорость доски — по её же рисованному месту, сглажено за 0,06 с; «резко» — 2,5 высоты экрана в секунду и быстрее */
+  var MOT=Math.round(PG_V.motor||0); if(MOT&&who!==4){ if(PGS.mPl===undefined||PGS.mPl===null){ PGS.mPl=plat; PGS.mV=0; PGS.mRot=[0,0.7]; }
+    var vRaw=dt>0?-(plat-PGS.mPl)/dt:0; PGS.mPl=plat; PGS.mV+=(vRaw-PGS.mV)*(1-Math.exp(-dt/0.06));
+    /* 1.60u (Ден 12:53–12:56: на Mi 9 «меньше штришков — завихрений от пропеллеров и пр.»; там чувствительность «ниже средней» — доски ходят
+       уже и медленнее, и до 2,5 высоты экрана в секунду, где моторы на полной, взмах не дотягивал). Теперь «резко» — относительно своих же
+       ударов: опорная скорость — самый быстрый подъём доски за последние ~6 с (медленно забывается, не ниже 0,8 высоты/с); удар на 85%
+       от неё — моторы на полной. При любой чувствительности и на любом телефоне сильный удар — полный огонь или диск */
+    PGS.mRef=Math.max(0.8,Math.max(Math.abs(PGS.mV),(PGS.mRef||1.5)*Math.exp(-dt/6))); }
+  var tops=[0,1].map(function(i){ var xc=ar*(i?1-PG_XC:PG_XC), tp=[]; for(var j=0;j<=48;j++){ var x=xc-hw+2*hw*j/48; tp.push([F(x),F(pgSurf(i,x,plat,ar,A).y)]); } if(who===4) pgsTent(c,i,tp,xc,hw,ar,A,hand,t); else { if(MOT) pgsMotors(c,i,tp,MOT,PGS.mV*2.5/(0.85*(PGS.mRef||1.5)),t,dt); pgsPlatform(pgsPen(c,201+100*i),tp); } return {xc:xc,tp:tp}; });
+  /* 1.59v (Ден 01:01–01:02: «больше жизни на доске и в воздухе — глаз в основном смотрит на волан.. но зритель геймплея будет смотреть на
+     всё»): события игры (удар, потолок, потерянный мяч, сужение) оживляют и волан, и доски, и человечков. Всё — только рисунок */
+  var LF=PGS.life; if(!LF||t<LF.lastT-0.5){ LF=PGS.life={ceils:ARC.ceils||0,falls:ARC.falls||0,nk:ARC.narrowK||1,kt:[null,null],fx:[],feathers:[],act:[null,null],flipT:-9,hitA:0.5,spinT:-9,prevVy:0,hang:-9,lastT:t}; }
+  LF.lastT=t; var b00=(ARC.balls||[])[0], rnd=function(a,b){ return a+(b-a)*Math.random(); };
+  var setAct=function(i,kind,dur){ LF.act[i]={kind:kind,t0:t,dur:dur}; };
+  if((ARC.ceils||0)>LF.ceils){ LF.ceils=ARC.ceils; LF.spinT=t; if(b00){ var nAir=LF.fx.filter(function(f){ return f.k==='feather'; }).length; for(var f1=0;f1<Math.min(2,4-nAir);f1++) LF.fx.push({k:'feather',x:F(b00.x)+rnd(-10,10),y:F(b00.y),vx:rnd(-30,30),vy:rnd(5,25),t:0,life:6,a:rnd(0,6),glide:true}); for(var f2=0;f2<4;f2++) LF.fx.push({k:'star',x:F(b00.x)+rnd(-22,22),y:F(b00.y)+rnd(-6,18),vx:0,vy:0,t:0,life:0.6}); } setAct(0,'duck',0.6); setAct(1,'duck',0.6); }
+  if((ARC.falls||0)>LF.falls){ LF.falls=ARC.falls; var lx=PGS.hist.length?PGS.hist[PGS.hist.length-1][0]:ar/2, mi=PGS.tgt[0]!==null?0:PGS.tgt[1]!==null?1:(lx<ar/2?0:1); setAct(mi,'sit',1.3); setAct(1-mi,'shake',1.2); }
+  if((ARC.narrowK||1)<LF.nk-1e-6){ LF.nk=ARC.narrowK; tops.forEach(function(tp0,i){ [0,tp0.tp.length-1].forEach(function(e){ var q0=tp0.tp[e]; LF.fx.push({k:'piece',x:q0[0]+(e?8:-8),y:q0[1]+6,vx:(e?1:-1)*rnd(10,40),vy:-rnd(20,60),t:0,life:2.5,a:0,spin:(e?1:-1)*rnd(2,5),len:rnd(16,26)}); }); }); }
+  [0,1].forEach(function(i){ var kq=ARC.kick&&ARC.kick[i]; if(kq&&kq.t0!==LF.kt[i]){ LF.kt[i]=kq.t0; LF.flipT=t; LF.hitA=kq.a; if(kq.a>0.95&&b00&&Math.random()<0.3&&!LF.fx.some(function(f){ return f.k==='feather'; })) LF.fx.push({k:'feather',x:F(b00.x),y:F(b00.y),vx:rnd(-20,20),vy:-rnd(30,60),t:0,life:12,a:rnd(0,6),glide:true}); } });
+  if(b00&&!(b00.wait>0)){ if(LF.prevVy<0&&b00.vy>=0&&!b00.touched&&b00.y<0.22){ LF.hang=t; if(b00.from===0||b00.from===1) setAct(b00.from,'joy',0.7); } LF.prevVy=b00.vy; }
+  /* the particles: feathers glide down and stay on a plank, stars blink, dust puffs, sawn-off bits of plank fall */
+  var pfx=pgsPen(c,881); LF.fx.forEach(function(f){ f.t+=dt;
+    if(f.k==='feather'&&f.glide){ f.vy=Math.min(f.vy+70*dt,f.y>F(0.75)?120:55); f.x+=(f.vx+Math.sin(f.t*3.2)*26)*dt; f.y+=f.vy*dt; f.a=Math.sin(f.t*3.2)*0.6;
+      for(var pi=0;pi<2;pi++){ var xc0=ar*(pi?1-PG_XC:PG_XC); if(Math.abs(f.x/390-xc0)<=hw){ var yy=F(pgSurf(pi,f.x/390,plat,ar,A).y); if(f.y>=yy-2){ LF.feathers.push({i:pi,u:(f.x/390-xc0),a:rnd(-0.2,0.2)}); if(LF.feathers.length>14) LF.feathers.shift(); f.t=f.life; } } } }
+    else if(f.k==='piece'||f.k==='fall'){ f.vy+=700*dt; f.x+=f.vx*dt; f.y+=f.vy*dt; f.a+=(f.spin||0)*dt; }
+    else if(f.k==='dust'){ f.x+=f.vx*dt; f.y+=f.vy*dt; } });
+  LF.fx=LF.fx.filter(function(f){ return f.t<f.life&&f.y<420; });
+  LF.feathers=LF.feathers.filter(function(fe){ var xc0=ar*(fe.i?1-PG_XC:PG_XC); if(Math.abs(fe.u)>hw){ LF.fx.push({k:'fall',x:F(xc0+fe.u),y:F(pgSurf(fe.i,xc0+Math.sign(fe.u)*hw,plat,ar,A).y),vx:0,vy:0,t:0,life:2,a:fe.a,spin:3,feather:true}); return false; } return true; });
+  /* 1.60j, этап 2 — воздух: у каждой частицы и пёрышка своё постоянное перо (раньше перо бралось по номеру в списке — когда одно
+     исчезало, все следующие перерисовывались заново и «мигали»); звёздочки пульсируют плавно, а не мигают; всё гаснет, а не пропадает */
+  LF.feathers.forEach(function(fe,j){ if(fe.sd===undefined) fe.sd=LF.sid=(LF.sid||0)+1; var xc0=ar*(fe.i?1-PG_XC:PG_XC), x=xc0+fe.u; pgsFeather(pgsPen(c,890+fe.sd%997),F(x),F(pgSurf(fe.i,x,plat,ar,A).y)-2,fe.a,1); });
+  LF.fx.forEach(function(f,j){ var al=Math.max(0,1-f.t/f.life); if(f.sd===undefined) f.sd=LF.sid=(LF.sid||0)+1; var fin=Math.min(1,(f.life-f.t)/0.25);
+    if(f.k==='feather'||(f.k==='fall'&&f.feather)) pgsFeather(pgsPen(c,1900+f.sd%997),f.x,f.y,f.a,Math.max(0.2,Math.min(1,fin*1.2)));
+    else if(f.k==='star'){ var sr=4*(0.65+0.35*Math.cos(f.t*14))*Math.min(1,f.t/0.08)*fin; if(sr>0.4) pgsStar(pgsPen(c,2900+f.sd%997),f.x,f.y,sr); }
+    else if(f.k==='dust'){ var pd=pgsPen(c,4900+f.sd%997); pd.loop(f.x,f.y,2+f.t*8,1.5+f.t*5,{w:pd.w*0.35,a:al}); }
+    else if(f.k==='piece'||f.k==='fall'){ var pc=pgsPen(c,3900+f.sd%997), ca=Math.cos(f.a), sa=Math.sin(f.a), L=f.len||20; var R=function(u,v){ return [f.x+u*ca-v*sa,f.y+u*sa+v*ca]; }; pc.draw([R(-L/2,-5),R(L/2,-5),R(L/2,5),R(-L/2,5),R(-L/2,-5)],{w:pc.w*0.8}); pc.stroke([R(-L/2+3,0),R(L/2-3,1)],{w:pc.w*0.3}); } });
+  /* the players: the one the ball is coming to runs to where it will land; «как был» — stands just behind it, racket low, a hit — a swing;
+     А/Б/В — stands so that his racket meets the shuttle there */
+  if(!PGS.pl) PGS.pl=[{x:ar*PG_XC},{x:ar*(1-PG_XC)}];
+  var noRun=who===4;
+  var b0=(ARC.balls||[])[0], tk=b0?(b0.from===null||b0.from===undefined?'s':b0.from)+':'+(b0.vy>0?1:0)+':'+PGS.hid:'none';
+  /* 1.59r (Ден 22:12: «когда ускоряется темп — человечки часто не успевают добежать.. поднимаешь платформу, чтобы войти в траекторию, —
+     и отбиваешь платформой»): куда упадёт волан — пересчёт каждый кадр, пока он летит вниз (ракетка-то ходит за ладонью), и бег — не с
+     постоянной скоростью, а догоняя: чем дальше, тем быстрее (выпад) */
+  if(tk!==PGS.tKey){ PGS.tKey=tk; PGS.tgt=[null,null]; }
+  if(b0&&b0.vy>0&&!(b0.wait>0)&&!b0.hold&&!b0.on){ var Pt=pgMeatPath(b0,py,ar); if(Pt){ PGS.tgt[Pt.i]=Pt.P[0]; PGS.tgt[1-Pt.i]=null; } }
+  var REACH=26/390, Ap=Math.tan(PG_TILT*Math.PI/180)*hw;
+  if(!noRun) [0,1].forEach(function(i){ var P=PGS.pl[i], d=i?-1:1, xc=tops[i].xc, lo=xc-hw+0.02, hi=xc+hw-0.02, off=who?REACH:PGS_REACH*1.15/390;
+    /* where to stand: just behind where the shuttle lands; if that is off the plank (it lands near the far edge) — just in front, the racket
+       on the other side (backhand) */
+    if(P.side===undefined) P.side=d; var want=xc-P.side*(who?REACH:0); if(!who&&PGS.tgt[i]===null) P.side=d;
+    if(PGS.tgt[i]!==null){ var L=PGS.tgt[i], sb=L-d*off; P.side=(sb>=lo&&sb<=hi)?d:-d; want=L-P.side*off; }
+    var tx=Math.max(lo,Math.min(hi,want));
+    P.x=Math.max(lo,Math.min(hi,P.x)); var dx=tx-P.x, far=Math.abs(dx)>0.08, v=Math.sign(dx)*Math.min(Math.abs(dx),Math.max(2*dt,Math.abs(dx)*(1-Math.exp(-dt/0.06)))); P.x+=v; var moving=Math.abs(dx)>0.004;
+    var kk=ARC.kick&&ARC.kick[i], hit=kk&&t-kk.t0<0.3, fy=F(pgSurf(i,P.x,plat,ar,A).y);
+    if(!who){ var fc=P.side, R0=PGS_REACH*1.15/390, bb=b0&&!(b0.wait>0)?b0:null, riding=bb&&bb.on&&bb.onI===i, tc=null;
+      if(riding){ var rx0=Math.max(lo,Math.min(hi,bb.x-fc*R0)); P.x+=(rx0-P.x)*(1-Math.exp(-dt/0.05)); fy=F(pgSurf(i,P.x,plat,ar,A).y); }   /* 1.60i: не скачком к волану */
+      if(bb&&PGS.tgt[i]!==null&&bb.vy>0){ var sY=pgSurf(i,Math.max(xc-hw,Math.min(xc+hw,bb.x)),py,ar,A).y; tc=Math.max(0,(sY-bb.r-bb.y)/Math.max(0.05,bb.vy)); }
+      /* 1.60i (Ден 10:16: «добавь кадров и плавности всей жизни мира — на платформах и в воздухе»), этап 1 — человечки. Было: бег — два
+         кадра, сменявшиеся 9 раз в секунду; позы (бег, стойка, присед, выпад, радость…) переключались скачком; поворот — мгновенным
+         отражением. Теперь: шаг — непрерывный цикл (ноги перетекают из одного положения в другое, темп от скорости бега); переход
+         «стоит ↔ бежит» за ~0,1 с; любая смена позы — через промежуточные кадры (нарисованная поза догоняет нужную за ~0,06 с, в миг
+         удара — за 0,025 с, чтобы касание не запаздывало); поворот — фигурка сплющивается и раскрывается в другую сторону за ~0,15 с */
+      var PP=PGS_POSE; if(P.ph===undefined){ P.ph=0; P.rw=0; P.fcS=fc; P.jd=null; }
+      if(moving) P.ph+=dt*(far?15:10); P.rw+=((moving?1:0)-P.rw)*(1-Math.exp(-dt/0.1));
+      var J=pgsMix(PP.ready,pgsMix(PP.runA,PP.runB,0.5-0.5*Math.cos(P.ph)),P.rw), arcs=false, extra={};
+      if(moving&&Math.random()<dt*(far?22:9)) LF.fx.push({k:'dust',x:F(P.x)-fc*8,y:fy-3,vx:-fc*rnd(10,30),vy:-rnd(4,14),t:0,life:0.5});
+      var lunge=moving&&far&&tc!==null&&tc<0.28; if(lunge){ J=PP.dive; pgsPen(c,960+i).stroke([[F(P.x)-fc*30,fy-20],[F(P.x)-fc*62,fy-20]],{w:I.w*0.4}); pgsPen(c,962+i).stroke([[F(P.x)-fc*28,fy-32],[F(P.x)-fc*54,fy-33]],{w:I.w*0.4}); }
+      var act=LF.act[i]; if(act&&t-act.t0>act.dur) act=LF.act[i]=null;
+      if(act&&!(kk&&t-kk.t0<0.3)&&!riding){ var ua=(t-act.t0)/act.dur, inout=Math.min(1,Math.min(ua,1-ua)*6); if(act.kind==='sit'){ J=pgsMix(J,PP.sit,Math.min(1,ua*6)); extra.stars=ua>0.15; } else if(act.kind==='joy'){ J=pgsMix(J,PP.joy,inout); } else if(act.kind==='duck'){ J=pgsMix(J,PP.duck,inout); } else if(act.kind==='shake'){ J=pgsMix(J,PP.ready,1); J.head=[J.head[0]+Math.sin((t-act.t0)*22)*2.2,J.head[1]]; extra.shake=true; } }
+      if(kk&&t-kk.t0<0.45){ var u=t-kk.t0, fol=pgsMix(PP.flick,PP.big,(kk.a-0.45)/0.45); J=u<0.12?pgsMix(PP.contact,fol,u/0.12):u<0.3?fol:pgsMix(fol,PP.ready,(u-0.3)/0.15); arcs=kk.a>0.6&&u<0.3; }
+      else if(riding||(tc!==null&&tc<0.1)) J=riding?PP.contact:pgsMix(PP.crouch,PP.contact,(0.1-tc)/0.1);
+      else if(tc!==null&&tc<0.5) J=pgsMix(J,PP.crouch,(0.5-tc)/0.4);
+      if(J===PP.joy||(act&&act.kind==='joy')) fy-=6*Math.sin(Math.min(1,(t-(act?act.t0:t))/0.7)*Math.PI);
+      var tauJ=kk&&t-kk.t0<0.15?0.025:0.06; P.jd=P.jd?pgsMix(P.jd,J,1-Math.exp(-dt/tauJ)):J; if(extra.shake) P.jd.head=J.head.slice();
+      P.fcS+=(fc-P.fcS)*(1-Math.exp(-dt/0.05)); var fcD=Math.abs(P.fcS)<0.12?(P.fcS<0?-0.12:0.12):P.fcS;
+      pgsFig(pgsPen(c,301+10*i),F(P.x),fy,fcD,P.jd,{hair:!i,cap:!!i,arcs:arcs,shake:extra.shake,stars:extra.stars}); return; }
+    var xr=Math.max(xc-hw,Math.min(xc+hw,P.x+P.side*REACH));
+    /* the last moment: the shuttle close above this plank (or riding it) — the racket reaches for it, so they always meet */
+    var bm=b0&&!(b0.wait>0)?b0:null; if(bm&&(PGS.tgt[i]!==null||(bm.on&&bm.onI===i))&&Math.abs(bm.x-xc)<=hw+0.05){ var gap=pgSurf(i,Math.max(xc-hw,Math.min(xc+hw,bm.x)),py,ar,A).y-bm.y, wv=Math.max(0,Math.min(1,1-gap/0.14)); xr=Math.max(xc-hw,Math.min(xc+hw,xr+(bm.x-xr)*wv)); }
+    var S=pgSurf(i,xr,py,ar,A), sl=S.s*Ap/hw*S.f;
+    pgsReach(pgsPen(c,301+10*i),F(P.x),fy,d,F(xr),F(S.y),Math.atan(sl),{hair:!i,cap:!!i,moving:moving,far:far,hit:hit,step:Math.floor(t*9)%2}); });
+  /* the shuttle and its dashed trail (since the last hit) */
+  (ARC.balls||[]).forEach(function(b,bi){ if(bi===0){ var hk=(b.from===null||b.from===undefined?'s':b.from)+':'+(b.wait>0?'w':'f'); if(hk!==PGS.hb){ PGS.hb=hk; PGS.hid++; PGS.hist=[]; }
+      var last=PGS.hist[PGS.hist.length-1]; if(!(b.wait>0)&&(!last||Math.hypot(b.x-last[0],b.y-last[1])>0.002)) PGS.hist.push([b.x,b.y]); }
+    if(b.wait>0&&Math.floor(b.wait*6)%2) return;
+    var sp=Math.hypot(b.vx||0,b.vy||0), a=sp>0.05?Math.atan2(b.vy,b.vx):Math.PI/2, k=F(b.r)/8.5;
+    var LFb=PGS.life||{flipT:-9,spinT:-9,hang:-9,hitA:0.5};
+    /* 1.60d (Ден 10:06: «развороту волана при ударе не хватает промежуточных кадров — плавнее, без дёрганий»). Было: угол = направление
+       полёта (скачком меняется в миг удара) + π·(1−u)² за 0,32 с — в первые кадры и скачок направления, и самый быстрый поворот. Теперь
+       нарисованный угол — своё состояние: в миг удара запоминается, на сколько он отстаёт от нового направления, и это отставание
+       убирается за 0,45 с плавно (медленно — быстро — медленно, без рывка в начале и в конце; не быстрее ~11° за кадр 60 Гц); в полёте угол
+       догоняет направление мягко (за ~0,06 с), а не прыгает; кружение после потолка — один оборот, с ходу и плавно затихая, за 0,8 с */
+    if(bi===0){ var SH=PGS.sh||(PGS.sh={ang:a,t:t,flip:-9,off:0,spin:-9}), dtS=Math.max(0,Math.min(0.1,t-SH.t)); SH.t=t;
+      var wrap=function(v){ while(v>Math.PI) v-=2*Math.PI; while(v<-Math.PI) v+=2*Math.PI; return v; };
+      if(LFb.flipT!==SH.flip){ SH.flip=LFb.flipT; var dir=(b.vx||0)>=0?-1:1, off=wrap(SH.ang-a); if(dir<0&&off>0.2) off-=2*Math.PI; if(dir>0&&off<-0.2) off+=2*Math.PI; if(Math.abs(off)>4) off=wrap(off); SH.off=off; }
+      if(LFb.spinT!==SH.spin){ SH.spin=LFb.spinT; }
+      var uf=(t-SH.flip)/0.45, aS;
+      if(uf>=0&&uf<1){ var e=uf*uf*uf*(uf*(uf*6-15)+10); aS=a+SH.off*(1-e); }
+      else { aS=SH.ang+wrap(a-SH.ang)*(1-Math.exp(-dtS/0.06)); }
+      var us=(t-SH.spin)/0.8; var spin=us>=0&&us<1?2*Math.PI*(1-(1-us)*(1-us)*(1-us)):0;   /* ровно оборот — в конце без скачка */
+      SH.ang=aS; a=aS+spin; }
+    var jx=0, jy=0, nwC=bi===0&&!b.touched&&!(b.wait>0)?Math.max(0,Math.min(1,(JG_TOP+0.045-(b.y-b.r))/0.025)):0, nearC=nwC>0.02; if(nearC){ jx=Math.sin(t*61)*1.3*nwC; jy=Math.cos(t*53)*1.1*nwC; }   /* 1.60j: дрожь и усики нарастают по мере подлёта к потолку */
+    var ca=Math.cos(a), sa=Math.sin(a), bx=F(b.x)+jx, by=F(b.y)+jy;
+    if(nearC){ var pb=pgsPen(c,431), wl=3+3*nwC; pb.stroke([[bx-16,by-10],[bx-16-wl,by-10-wl]],{w:I.w*0.4,a:nwC}); pb.stroke([[bx-16,by+10],[bx-16-wl,by+10+wl]],{w:I.w*0.4,a:nwC}); pb.stroke([[bx+16,by-10],[bx+16+wl,by-10-wl]],{w:I.w*0.4,a:nwC}); pb.stroke([[bx+16,by+10],[bx+16+wl,by+10+wl]],{w:I.w*0.4,a:nwC}); }
+    if(bi===0&&t-LFb.hang<0.45&&Math.abs(b.vy||0)<0.5){ var ph2=pgsPen(c,433), rr=24+4*Math.sin(t*14), haA=Math.sin(Math.PI*Math.max(0,Math.min(1,(t-LFb.hang)/0.45))); [[-2.6,-2.0],[-1.1,-0.5]].forEach(function(r2){ var pts2=[]; for(var m=0;m<=8;m++){ var aa=r2[0]+(r2[1]-r2[0])*m/8; pts2.push([bx+Math.cos(aa)*rr,by+Math.sin(aa)*rr]); } ph2.stroke(pts2,{w:I.w*0.35,a:0.8*haA}); }); }
+    /* 1.59w (Ден 01:33–01:38: «полосы, которые оставляет волан, отвлекают.. уменьшить, и пусть исчезают, когда он летит вниз» → вариант С3,
+       «по точкам»): тающий пунктир — несколько точек сразу за юбкой, дальше — мельче; к вершине бледнеет, на спуске исчезает */
+    if(bi===0&&PGS.hist.length>2&&!(b.wait>0)){ var fade=(b.vy||0)<=0?1:Math.max(0,1-(b.vy||0)/0.7); if(fade>0.02){ var hh=PGS.hist, acc=0, px0=bx, py0=by, tp=pgsPen(c,5000+PGS.hid), dots=[], d0=26*k/1.47, d1=95*k/1.47;
+        for(var m=hh.length-1;m>=0&&acc<d1;m--){ var qx=F(hh[m][0]), qy=F(hh[m][1]); acc+=Math.hypot(qx-px0,qy-py0); px0=qx; py0=qy; if(acc>=d0) dots.push([qx,qy,acc]); }
+        var step=Math.max(1,Math.round(dots.length/6)); for(var di=0;di<dots.length;di+=step){ var g=(dots[di][2]-d0)/(d1-d0), rr=Math.max(0.6,2.6-g*2.0); tp.loop(dots[di][0],dots[di][1],rr,rr,{w:I.w*0.45,a:0.9*fade*(1-g*0.8)}); } } }
+    pgsShuttle(pgsPen(c,401+bi),bx+ca*8*k,by+sa*8*k,a,{cork:I.accent,k:k}); });
+  pgsPtsHint(c,t,F,FW,I);
+  /* the numbers, written by the same pen: score, multiplier, balls left, the series, the bar to the next narrowing */
+  if(ARC.phase==='play'){ var rx=FW-F(0.05), ph=pgsPen(c,701); ph.text(String(ARC.score||0),rx,F(0.13),27,{align:'right',w:I.w*0.75});
+    var mu=pgMultAll(); if(mu>1.05) pgsPen(c,702).text('×'+mu.toFixed(1).replace('.',','),rx,F(0.2),15,{align:'right',w:I.w*0.55,ink:I.accent});
+    if(ARC.lastT>0) pgsPen(c,703).text('+'+ARC.lastPts,rx-F(0.16),F(0.2),15,{align:'right',w:I.w*0.55,a:Math.min(1,ARC.lastT/0.5)});
+    if(PG_V.lives>0){ var hl=Math.max(0,PG_V.lives-(ARC.falls||0)); for(var h=0;h<hl;h++) pgsShuttle(pgsPen(c,720+h),rx-6-h*15,F(0.255)-4,-Math.PI/2,{k:0.6,cork:I.accent}); }
+    var cb=Math.round(PG_V.combo), cap=cb===2?5:10, sr=Math.min(cap,ARC.series||0);
+    if(cb){ for(var d8=0;d8<cap;d8++){ var dx8=rx-4-(cap-1-d8)*(cap>5?11:14), pd=pgsPen(c,740+d8); pd.loop(dx8,F(0.31),3,3,{w:I.w*0.38}); if(d8<sr) pd.draw([[dx8-2.5,F(0.31)+2],[dx8+2,F(0.31)-3],[dx8-1.5,F(0.31)+1],[dx8+2.5,F(0.31)-1]],{w:I.w*0.7,ink:I.accent}); } }
+    var gm=Math.round(PG_V.grow), T9=pgTime(), P9=pgNarrowP(), fr9=null;
+    if((gm===2&&ARC.t<4*P9)||gm===3) fr9=1-(ARC.t%P9)/P9; else if(gm===1&&(ARC.narrowK||1)>0.41) fr9=1-Math.min(10,ARC.clean||0)/10;
+    if(fr9===null&&T9>0){ var st9=gm===2?4*P9:0; fr9=Math.max(0,(T9-ARC.t)/Math.max(1,T9-st9)); }
+    if(fr9!==null){ var bx=FW-F(0.03), y0=F(0.38), y1=F(0.92), pb=pgsPen(c,760); pb.line(bx,y0,bx+1,y1,{over:2,w:I.w*0.45}); pb.line(bx+7,y0,bx+7,y1,{over:2,w:I.w*0.45}); pb.line(bx-1,y0,bx+8,y0,{over:1,w:I.w*0.4}); pb.line(bx-1,y1,bx+8,y1,{over:1,w:I.w*0.4});
+      if(fr9>0.01){ var tl=[], bl=[]; for(var yy=y1-1;yy>=y1-(y1-y0)*fr9;yy-=1){ tl.push([bx+0.5,yy]); bl.push([bx+6.5,yy]); } if(tl.length>2) pb.band(tl,bl,{sp:2.8,shift:3,w:I.w*0.35,a:0.9,ink:I.accent,single:true}); } } }
+  (ARC.pf||[]).forEach(function(p,i){ pgsPen(c,800+(p.pts%97)).text('+'+p.pts,F(p.x),F(p.y+0.06-0.05*(1-p.t)),24,{align:'center',w:I.w*0.65,ink:I.accent,a:Math.min(1,p.t/0.4)}); });
+  c.globalCompositeOperation='source-over'; c.setTransform(1,0,0,1,0,0);
+  if(ARC.flash>0){ c.fillStyle='rgba(210,67,47,'+(0.5*ARC.flash)+')'; c.fillRect(0,0,W,H); } }
 /* ════ THE APP: drawing, first-launch screens and the game loop share one scope (40_gfx … 49_main) ════ */
 (function(){
 "use strict";
@@ -4364,11 +4926,23 @@ function pgView(py){ var v=PG.view; if(!v||v.ar!==pgAr()||v.H!==Pong.TUNE.SENS[p
 function pgPalmPad(v){ var c=PG.c, f=c?PongCtl.frac(c,PongCtl.palmAt(c,lastNow)):null; return f===null?v.py:Pong.padOf(v,f); }
 /* ── drawing (a stand-in look) ── */
 var PG_COL={bg:'#0d1024',ceil:'#3a4370',rack:'#7ee0ff',rack2:'#3b8fb0',ball:'#ffd166',gap:'#1a2040'};
-function pgField(q,dt){ R(PG_COL.bg,0,0,LW,LH);
+function pgField(q,dt){ if(pgSkOn()){ if(q===PG.view) q.t=clock; pgSkDraw(q,dt||0,q===g&&(scr==='play'||scr==='paused'||scr==='count-resume')); return; }   // v1.61h: «набросок» (src/48_pongsk.js)
+  R(PG_COL.bg,0,0,LW,LH);
   R(PG_COL.ceil,Math.max(SAFE.l,pgX(0)),pgY(Pong.TUNE.TOP)-1,Math.min(LW-SAFE.r,pgX(PG_AR))-Math.max(SAFE.l,pgX(0)),2);                                  // the ceiling
+  if(q.webD>0.002){ var wx0=Math.max(0,pgX(0)), wx1=Math.min(LW,pgX(PG_AR)), wy=pgY(Pong.TUNE.TOP+q.webD), wt=pgY(Pong.TUNE.TOP);   // v1.61e: the web (a stand-in until the skins)
+    lx.fillStyle='rgba(200,210,235,.08)'; lx.fillRect(wx0,wt,wx1-wx0,wy-wt); lx.strokeStyle='rgba(220,228,245,.5)'; lx.lineWidth=1.2; lx.beginPath();
+    for(var j=0;j<=24;j++){ var x=wx0+(wx1-wx0)*j/24, y=wy-Math.abs(Math.sin(j/24*12*Math.PI))*0.006*pgU(); if(j) lx.lineTo(x,y); else lx.moveTo(x,y); } lx.stroke(); }
+  pgCracks(q,dt||0);
   for(var i=0;i<2;i++) pgRacket(q,i);
   var b=q.ball; if(b&&!(b.wait>0&&Math.floor(clock*6)%2)){ lx.fillStyle=PG_COL.ball; lx.beginPath(); lx.arc(pgX(b.x),pgY(b.y),Math.max(2,b.r*pgU()),0,6.2832); lx.fill(); }
   drawParts(dt||0); }
+/* v1.61d: the ceiling's cracks (the rules' g.crk) as jagged lines down from it, the next one to break trembling; mended ones fade (a stand-in
+   until the skins and the spider, stage 3 of claude/SONAPONG_PORT.md) */
+function pgCrack(x,n,a,wob){ var u=pgU(), x0=pgX(x)+wob, y0=pgY(Pong.TUNE.TOP), L=(0.025+0.012*n)*u, s=((x*997)|0)%7-3;
+  lx.globalAlpha=a; lx.strokeStyle='#ff8c78'; lx.lineWidth=1.6; lx.beginPath(); lx.moveTo(x0,y0); lx.lineTo(x0+s*0.6,y0+L*0.4); lx.lineTo(x0-s*0.4,y0+L*0.7); lx.lineTo(x0+s*0.3,y0+L);
+  lx.moveTo(x0+s*0.6,y0+L*0.4); lx.lineTo(x0+s*1.8+4,y0+L*0.6); lx.stroke(); lx.globalAlpha=1; }
+function pgCracks(q,dt){ var cr=q.crk||[], N=Pong.TUNE.CRACK; cr.forEach(function(x,j){ pgCrack(x,j+1,1,j===N-2?Math.sin(clock*30)*0.8:0); });
+  PG.mend=(PG.mend||[]).filter(function(m){ m.t-=dt; if(m.t>0) m.xs.forEach(function(x,j){ pgCrack(x,j+1,m.t/0.6,0); }); return m.t>0; }); }
 function pgRacket(q,i){ var n=18, xc=q.ar*(i?1-Pong.TUNE.XC:Pong.TUNE.XC), hw=q.hw, pts=[], k, x, s;
   for(k=0;k<=n;k++){ x=xc+(-1+2*k/n)*hw; s=Pong.surf(q,i,x); pts.push([pgX(x),pgY(s.y)]); }
   lx.fillStyle=PG_COL.rack2; lx.beginPath(); pts.forEach(function(p,j){ if(j) lx.lineTo(p[0],p[1]); else lx.moveTo(p[0],p[1]); });
@@ -4378,7 +4952,8 @@ function pgHeart(x,y,c){ R(c,x,y,2,1); R(c,x+3,y,2,1); R(c,x-1,y+1,7,2); R(c,x,y
 /* the HUD (Den's lab layout): the score and the multiplier in the top corner on the hand's side, the balls and the series under them in the bottom one (1.59d); the time till the
    rackets narrow again — a bar along the bottom, burning down to its middle (1.59c; was along the right edge). 1.59d (Den 20:23): the pause
    as in the other games — in the top corner on the free side; the site's name (sonaroids.app) — in the bottom corner on the free side */
-function pgHud(){ var hr=freeSide()==='left', al=hr?'right':'left', sg=hr?-1:1, x=hr?LW-SAFE.r-8:SAFE.l+8, y=topY(), m=Pong.mult(g)*(1+Pong.TUNE.SERIES*Math.min(Pong.TUNE.SERIES_N,g.series));
+function pgHud(){ if(pgSkOn()){ var hr0=freeSide()==='left'; text(SITE,hr0?SAFE.l+14:LW-SAFE.r-14,LH-SAFE.b-12,PG_V.dark?'#d8d2c4':'#5a554c',hr0?'left':'right'); PG.pts=[]; return; }   // v1.61h: the sketch writes the score, the balls, the series and the narrowing with its pen
+  var hr=freeSide()==='left', al=hr?'right':'left', sg=hr?-1:1, x=hr?LW-SAFE.r-8:SAFE.l+8, y=topY(), m=Pong.mult(g)*(1+Pong.TUNE.SERIES*Math.min(Pong.TUNE.SERIES_N,g.series));
   text(String(g.score),x,y,P.text,al,2); y+=PF.CAP*2+5;
   text('×'+m.toFixed(2),x,y,P.band,al);
   /* 1.59d (Den 20:31): the balls and the series — one row in the bottom corner on the same side: ♥♥♥♥♥  ■■■■■ (the series nearer the edge) */
@@ -4401,7 +4976,7 @@ function pgDemoBot(){ var s=12345, rnd=function(){ s=(s*1664525+1013904223)>>>0;
       if(st==='rest'&&b&&!(b.wait>0)&&b.vy>0&&(q.py-Pong.TUNE.LIFT-b.r-b.y)/b.vy<trig){ st='swing'; t0=t; h0=hand; amp=base+rnd()*0.06; trig=0.08+rnd()*0.01; } }
     return hand; }; }
 function pgDemoTick(){ var d=PG.demo; if(!d||d.state==='over'||Math.abs(d.ar-pgAr())>1e-6||d.t>600){ d=PG.demo=Pong.create(20261009,pgAr(),1); PG.dbot=pgDemoBot(); }
-  if(d._c===clock) return d; d._c=clock; for(var n=Math.max(1,Math.round(DT*60));n>0;n--) Pong.step(d,PG.dbot(d)); return d; }
+  if(d._c===clock) return d; d._c=clock; for(var n=Math.max(1,Math.round(DT*60));n>0;n--){ Pong.step(d,PG.dbot(d)); pgSkFx(d); } return d; }
 function pgDemoDraw(){ var d=pgDemoTick(); pgField(d,0); }
 /* the card on the games' screen: the menu's rally drawn full size off screen */
 var pgCardC=null;
@@ -4418,39 +4993,63 @@ function sPTitle(){ pgDemoDraw();
   text('SonaPong',cx0,y,P.band,'center',lsc); y+=lsc*10+6; sl.forEach(function(l){ text(l,cx0,y,P.text,'center'); y+=10; });
   if(pgBest()>0) text(L('best')+' '+pgBest(),cx0,LH-SAFE.b-28,P.text,'center');
   say('SonaPong. '+L('play')+'. '+pgSensLabel()); }
-/* ── the getting ready's last step: the two holds (instead of SonaFly's waving), then the try-out — the rackets follow the palm ── */
-function pgHoldStart(){ if(!PG.c) PG.c=PongCtl.create(); PongCtl.start(PG.c); PG.done=false; PG.seenT=scrT; try{ PG.fs=Sonar.info().fs||48000; }catch(e){} }
-function pgToHold(){ forceWave=false; autoTry=false; try{ DSP2.set('quarter',1); }catch(e){} PG.c=PongCtl.create(); PG.flips=0; caught=false; go('phold'); pgHoldStart(); }
-function pgReady(){ return booted&&Sonar.healthy()&&acoustic&&!!PG.c&&!!PG.c.lin&&!PongCtl.holding(PG.c); }
-function sPHold(){ var c=PG.c; if(!c){ pgHoldStart(); c=PG.c; }
-  var v=pgView(Pong.TUNE.PAD_LO-Pong.TUNE.CB*Pong.TUNE.SENS[pgSens()]), r=null;
-  if(PongCtl.holding(c)){ r=PongCtl.hold(c,clock); if(r.caught){ Sfx.play('ok'); Logs.ev(r.caught==='low'?'низ':'верх',{low:c.lin&&+c.lin.b.toFixed(1),top:c.lin&&+c.lin.t.toFixed(1),off:c.mxCal===null?null:+c.mxCal.toFixed(1)}); }
-    if(r.done){ PG.done=true; PG.doneT=scrT; store.set('sonaroids_seen','1'); handSaved=handSide(); store.set('sonaroids_hand',handSaved); } }
-  if(!PongCtl.lowStep(c)) v.py=pgPalmPad(v);                                             // the low hold: the rackets wait at the bottom
-  if(c.present) PG.seenT=scrT; if(PongCtl.holding(c)&&scrT-PG.seenT>NOHAND_T){ flipSide(); PG.flips++; pgHoldStart(); }   // no palm heard: offer the other end
+/* ── the getting ready's last step. v1.61f: the waving, as SonaFly's and SonaRace's (was the two holds): «get ready» (WAVE_PAUSE), «wave as
+   you will hit», the ring fills with the swings, the rackets already follow what is caught (src/16_pong_ctl.js PongCtl.wave — the lab's
+   «помахать», «низ подальше от стола», «размах 75 мм»); caught — «РАЗМАХ ПОЙМАН» for CAUGHT_SHOW s, then the try-out: the rackets follow
+   the palm; «play», «recalibrate» (the waving again) and the sensitivity — watch the rackets and turn it here (the maintainer 11 Oct
+   17:28). No palm heard for NOHAND_T s — «wave from the other side», as SonaFly's ── */
+function pgWaveStart(w0){ if(!PG.c) PG.c=PongCtl.create(); PongCtl.waveStart(PG.c); PG.c.lin=null; PG.done=false; PG.auto=false; PG.wk=0; PG.w0=w0===undefined?scrT:w0; PG.seenT=scrT; try{ PG.fs=Sonar.info().fs||48000; }catch(e){} }
+/* v1.61g — the auto-calibration for SonaPong (the maintainer 11 Oct 17:26: «если на ручной один раз удачно откалибровался и игроку понравилось
+   — он включает авто, и в следующие разы играет на этих настройках, просто перед игрой телефон слушает пустую комнату»). As SonaFly's
+   (settings → АВТОКАЛИБРОВКА, 'sonaroids_live'): a waving that the player started a game with is kept — the rackets' low as the echo's range
+   (mm from the probe, the lift off the table included; per probe band, with the time). With the auto-calibration on: the empty room, then
+   straight to the try-out «КАЛИБРОВКА ИЗ ПРОШЛОЙ ИГРЫ» — the rackets follow the palm on the kept low (+PG_LIVE_UP mm of range, as SonaFly's
+   1.15: the range of the same palm shifts by ~5 mm from one getting ready to the next; up — away from the table); «play», «recalibrate»
+   (the waving), the sensitivity. Nothing kept yet — the waving, as with it off */
+var PG_LIVE_UP=6;
+function pgSavedLow(){ try{ var q=JSON.parse(store.get('sonaroids_pong_cal_'+Sonar.band(),'null')); return q&&q.r>=30&&q.r<=250?q:null; }catch(e){ return null; } }
+function pgKeep(){ var c=PG.c, cal=DSP2.info().cal; if(!c||!c.lin||PG.auto||!PG.fresh||!cal||!(cal.k>0)) return; PG.fresh=false;
+  var r=(c.lin.b-cal.o)/cal.k; if(r>=30&&r<=250){ store.set('sonaroids_pong_cal_'+Sonar.band(),JSON.stringify({r:+r.toFixed(1),t:Date.now()})); store.set('sonaroids_mid_t',String(Date.now())); Logs.ev('низ запомнен',{range_mm:+r.toFixed(1),low:+c.lin.b.toFixed(1)}); } }
+function pgToHold(){ var fw=forceWave; forceWave=false; autoTry=false; try{ DSP2.set('quarter',1); }catch(e){} PG.c=PongCtl.create(); PG.flips=0; PG.auto=false; PG.fresh=false; caught=false; go('phold');
+  var q=liveOn()&&!fw?pgSavedLow():null, cal=DSP2.info().cal;
+  if(q&&cal&&cal.k>0){ var b=cal.k*(q.r+PG_LIVE_UP)+cal.o; PG.c.lin={b:b,t:b+PongCtl.SPAN}; PG.c.mxCal=0; PG.c.mxOff=0; PG.auto=true; PG.done=true; PG.doneT=-9; PG.w0=-9; PG.seenT=0;
+    Logs.ev('живой режим: без взмахов',{range_mm:q.r,up:PG_LIVE_UP,low:+b.toFixed(1),top:+(b+PongCtl.SPAN).toFixed(1),saved:new Date(q.t).toISOString()}); return; }
+  pgWaveStart(); }
+function pgReady(){ return booted&&Sonar.healthy()&&acoustic&&!!PG.c&&!!PG.c.lin&&!PongCtl.waving(PG.c); }
+function sPHold(){ var c=PG.c; if(!c){ pgWaveStart(); c=PG.c; }
+  var v=pgView(Pong.TUNE.PAD_LO-Pong.TUNE.CB*Pong.TUNE.SENS[pgSens()]), wt=scrT-PG.w0;
+  if(PongCtl.waving(c)&&wt>=WAVE_PAUSE){ var cal=DSP2.info().cal||{}, r=PongCtl.wave(c,clock,{recenter:function(){ return DSP2.recenter(); },shift:function(d){ DSP2.shift(d); },k:cal.k||1.4}); PG.wk=r.k;
+    if(r.done){ PG.done=true; PG.doneT=scrT; PG.auto=false; PG.fresh=true; Sfx.play('ok'); store.set('sonaroids_seen','1'); handSaved=handSide(); store.set('sonaroids_hand',handSaved);
+      Logs.ev('размах',{swing:Math.round(r.span0),span:r.span,lift:Math.round(r.lift),low_r:r.low_r===null?null:Math.round(r.low_r),tie:+r.tie.toFixed(1),low:+c.lin.b.toFixed(1),top:+c.lin.t.toFixed(1)}); } }
+  if(c.lin) v.py=pgPalmPad(v);                                                           // the rackets follow what is caught so far
+  if(c.present||wt<WAVE_PAUSE) PG.seenT=scrT;
+  if(PongCtl.waving(c)&&scrT-PG.seenT>NOHAND_T){ flipSide(); PG.flips++; pgWaveStart(scrT-WAVE_PAUSE); }   // no palm heard: offer the other end
   pgField(v,DT);
-  if(PG.done&&PG.resume){ if(scrT-PG.doneT>0.6){ PG.resume=false; countT=3; go('count-resume'); } titles(L('pg_ok_t')); return; }
-  if(PG.done){ titles(L('pg_ok_t'),L('pg_ok_s'));
-    column([['start',L('play'),'primary'],['pg_rehold',L('recal')]],Math.round(LH*0.62)); return; }
-  var low=PongCtl.lowStep(c), k=r?r.k:0, y=titles(L(low?'pg_low_t':'pg_top_t'),L(low?'pg_low_s':'pg_top_s')), cx0=Math.round((SAFE.l+LW-SAFE.r)/2);
-  for(var d=0;d<5;d++){ var x=cx0-24+d*12; if(d<k) { lx.fillStyle=P.band; lx.beginPath(); lx.arc(x,y+8,3.5,0,6.2832); lx.fill(); } else { lx.strokeStyle=P.soft; lx.lineWidth=1; lx.beginPath(); lx.arc(x,y+8,3,0,6.2832); lx.stroke(); } }
-  coveredLine(y+20); handBeacon(); }
+  if(PG.done&&PG.resume){ if(scrT-PG.doneT>0.6){ PG.resume=false; pgKeep(); countT=3; go('count-resume'); } titles(L('wave_ok')); return; }
+  if(PG.done&&scrT-PG.doneT>=CAUGHT_SHOW){ titles(L(PG.auto?'auto_ok':'wave_ok'),L('pg_try_s'));
+    column([['start',L('play'),'primary'],['pg_rehold',L('recal')],['pg_sens',pgSensLabel()]],Math.round(LH*0.43)); /* under the titles: over the free side's racket only at its top, the other one is always in sight */ say(L(PG.auto?'auto_ok':'wave_ok')+'. '+L('pg_try_s')); return; }
+  var st=wt<WAVE_PAUSE?'wait':PG.done?'ok':'catch';
+  var y=(scrT-flipT<4&&!PG.done)?titles(L('other_t'),L('other_s'),P.pick):titles(L('wave_t'),PG.done?L('wave_ok'):L('pg_wave_s'));
+  coveredLine(y+2); ringUI(st==='wait'?wt/WAVE_PAUSE:st==='ok'?1:Math.min(0.95,PG.wk/5),st); handBeacon(); }
 /* ── the countdown: the rackets at the palm, then the game ── */
 function pgCount(){ countT-=DT; var v=pgView(PG.view?PG.view.py:Pong.TUNE.PAD_LO-0.5*Pong.TUNE.SENS[pgSens()]); v.py=pgPalmPad(v); pgField(v,DT);
   var n=Math.max(1,Math.ceil(countT)), cx0=Math.round(LW/2), cy0=Math.round(LH/2), fr=countT-Math.floor(countT), cs=3, pu=1+0.18*Math.max(0,fr-0.75)/0.25;
   ring(cx0,cy0,13*cs,1-fr,P.band); lx.save(); lx.translate(cx0,cy0); lx.scale(pu,pu); lx.translate(-cx0,-cy0); text(String(n),cx0,cy0-Math.round(3.5*cs),P.text,'center',cs); lx.restore(); say(String(n));
   if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.play('tick');
   if(countT<=0) startGame(); }
-function pgCountStart(){ countT=3; try{ DSP2.set('quarter',1); }catch(e){} go('count'); }
+function pgCountStart(){ pgKeep(); countT=3; try{ DSP2.set('quarter',1); }catch(e){} go('count'); }
 function pgStart(){ PG.fps=null; var seed=newSeed(); var lin=PG.c&&PG.c.lin; g=Pong.create(seed,pgAr(),pgSens(),lin?Math.max(30,lin.t-lin.b):null); var f=PG.c?PongCtl.frac(PG.c,PongCtl.palm(PG.c)):null; if(f!==null) g.py=Pong.padOf(g,f);
   acc=0; parts=[]; PG.pts=[]; PG.newBest=false; nickAsked=false; var I=Sonar.info(), c=PG.c||{};
-  Logs.gameStart({core:Pong.TAG,game:'pong',seed:seed,ar:+g.ar.toFixed(4),sens:pgSens(),span:g.span,cal:DSP2.info().cal,lin:c.lin?{b:+c.lin.b.toFixed(1),t:+c.lin.t.toFixed(1)}:null,mix_off:c.mxCal===null||c.mxCal===undefined?null:+c.mxCal.toFixed(1),
+  Logs.gameStart({core:Pong.TAG,game:'pong',auto_cal:!!PG.auto,seed:seed,ar:+g.ar.toFixed(4),sens:pgSens(),span:g.span,cal:DSP2.info().cal,lin:c.lin?{b:+c.lin.b.toFixed(1),t:+c.lin.t.toFixed(1)}:null,mix_off:c.mxCal===null||c.mxCal===undefined?null:+c.mxCal.toFixed(1),
     chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids'});
   Sfx.play('start'); go('play'); }
 /* ── the game ── */
 var PG_SND={go:'tap',land:'tap',ceil:'rub',pass:'coin',dull:'syrup',lost:'crash',narrow:'level'};
-function pgReact(){ g.events.forEach(function(k){ if(PG_SND[k]) Sfx.play(PG_SND[k]); });
-  (g.fx||[]).forEach(function(f){ if(f.pts) PG.pts.push({n:f.pts,x:f.x,y:f.y,t:1.2}); if(f.lost!==undefined){ flash=0.25; burst(pgX(Math.max(0,Math.min(g.ar,f.lost))),Math.min(LH,pgY(1))-6,20,[PG_COL.ball,'#ffffff',P.hit],60*K); } }); }
+function pgReact(){ pgSkFx(g); if(pgSkOn()){ g.events.forEach(function(k){ if(PG_SND[k]) Sfx.play(PG_SND[k]); }); (g.fx||[]).forEach(function(f){ if(f.pts) PG.pts.push({n:f.pts,x:f.x,y:f.y,t:1.2}); }); return; }
+  g.events.forEach(function(k){ if(PG_SND[k]) Sfx.play(PG_SND[k]); });
+  (g.fx||[]).forEach(function(f){ if(f.pts) PG.pts.push({n:f.pts,x:f.x,y:f.y,t:1.2}); if(f.lost!==undefined){ flash=0.25; burst(pgX(Math.max(0,Math.min(g.ar,f.lost))),f.cave?pgY(Pong.TUNE.TOP)+4:Math.min(LH,pgY(1))-6,20,[PG_COL.ball,'#ffffff',P.hit],60*K); }
+    if(f.cave) f.cave.forEach(function(x){ burst(pgX(x),pgY(Pong.TUNE.TOP)+3,8,[PG_COL.ceil,'#ff8c78','#8f9cc0'],40*K); });   // v1.61d: the ceiling comes down
+    if(f.mend) PG.mend=(PG.mend||[]).concat([{xs:f.mend,t:0.6}]); }); }
 function pgPlay(){
   /* 1.59c: the steps a frame — the nearest whole number, not «while a whole step has gathered»: at 60 frames a second the gathered time
      hovers right at one step, and a hair's difference either way gave a frame with no step and the next with two — the ball jerked
@@ -4464,7 +5063,7 @@ function pgPlay(){
     Pong.step(g,f); Logs.step({n:g.n,FH:1,ship:{y:g.py},lives:g.lives,score:g.score,events:g.events},f); pgReact(); if(g.state==='over') break; }
   flash=Math.max(0,flash-DT); duckT-=DT; if(duckT<=0&&Sonar.peak()>DUCK_PEAK){ duckT=0.4; if(Sfx.duck()) Logs.gameEv('sounds down',+Sfx.level().toFixed(2)); }
   pgField(g,DT); pgHud(); coveredLine(topY()+40); pgPauseBtn(); say(L('menu_a'));
-  if(flash>0){ lx.globalAlpha=Math.min(0.3,flash); R(P.hit,0,0,LW,LH); lx.globalAlpha=1; }
+  if(flash>0&&!pgSkOn()){ lx.globalAlpha=Math.min(0.3,flash); R(P.hit,0,0,LW,LH); lx.globalAlpha=1; }
   if(g.state==='over') endGame(); }
 function pgEnd(){ g.state='over'; overT=0; Logs.gameStop(); if(g.score>pgBest()){ PG.best=g.score; PG.newBest=true; store.set('sonaroids_pong_best',PG.best); } go('over'); }
 function pgDrop(){ if(g&&g.ball!==undefined&&g.state!=='over'){ Logs.gameEv('restarted by the player'); g.state='over'; Logs.gameStop(); if(g.score>pgBest()){ PG.best=g.score; store.set('sonaroids_pong_best',PG.best); } } }
@@ -4478,6 +5077,60 @@ function pgOver(){ overT+=DT; pgField(g,DT); lx.globalAlpha=0.45; R(P.bg,0,0,LW,
   text(vs,vx,vy,diag?P.band:P.soft,vr?'right':'left'); var bx0=Math.max(0,(vr?vx-vw:vx)-8), bx1=Math.min(LW,(vr?vx:vx+vw)+8), by0=vy-8; BTN.push({id:'ver',x:bx0,y:by0,w:bx1-bx0,h:Math.min(PF.CAP+16,LH-by0)});
   say(L('over')+' '+g.score);
   if(overT>0.8) column([['again',L('again'),'primary'],['over_cal',L('recal')],['menu',L('menu')]].concat(diag&&Logs.has()?[['logs',L('logs')]]:[]),Math.round(LH*0.52)); }
+/* ════ SONAPONG «НАБРОСОК» in the game (v1.61h; stage 3 of claude/SONAPONG_PORT.md — the maintainer 11 Oct 17:29: «скины — пока два, наши
+   тёмный и светлый, оба „набросок“»; 16:50: «с соплами вместо пропеллеров картинка смотрится поинтереснее»). The lab's drawing as it is:
+   src/39_sketch.js (pgSketch) is one file for the lab and the game. It reads the lab's names — ARC (the game's state), PG_V (the options),
+   pgSurf, JG_TOP… — so here they are made from the game's own: the rules' state (src/15_pong.js) and its world (Pong.TUNE). The lab's
+   options are the world Den chose («Как советую»): the bowls, cracks every 5th, 5 balls, the series to 5, the rackets narrowing without
+   end, the nozzles under the planks, the little players («для вида»). Only the picture: the rules see nothing of it.
+   The field is drawn on its own canvas at the field's shape (2.16) and laid where the field is (pgX/pgY); the paper fills the rest ════ */
+var PGK={cv:null,src:null,arc:null,crk:[],crkB:null,crkM:null,kick:[null,null],lastPts:null,lastT:0,flash:0,v:{ar:PG_AR,hw:0.2},q:{ms:16.7,slow:0}};
+(function(){ var T=Pong.TUNE, G=window;
+  G.JG_TOP=T.TOP; G.PG_XC=T.XC; G.PG_LIFT=T.LIFT; G.PG_CB=T.CB; G.JG_PAD_LO=T.PAD_LO; G.PG_NET0=1; G.PG_SPIDER=T.SPIDER; G.PG_G=T.G;
+  G.PG_TILT=26; G.PG_TILTV=25; G.PG_Q={lvl:0,ms:16.7,slow:0};
+  G.PG_V={fw:1,curve:2,crack:T.CRACK,lives:T.LIVES,combo:2,grow:3,gsec:T.NARROW_T,motor:1,phint:0,pts:0,wall:0,who:0,skin:1,dark:0,mult:1};
+  G.ARC={};
+  G.pgHw=function(){ return PGK.v.hw; };
+  G.pgCupA=function(){ return T.CUP/(1+T.KV/2); };
+  G.pgSurf=function(i,x,py){ return Pong.surf(PGK.v,i,x,py); };
+  G.jgPadH=function(){ return PGK.v.H||T.SENS[1]; };
+  G.pgPtsF=function(f){ return Pong.ptsOf(f); };
+  G.pgMultAll=function(){ var q=PGK.src; return q?Pong.mult(q)*(1+T.SERIES*Math.min(T.SERIES_N,q.series||0)):1; };
+  G.pgTime=function(){ return 0; };
+  G.pgNarrowP=function(){ return T.NARROW_T; };
+  /* where the shuttle will land on the racket it flies to — for the little player who runs there (the lab's pgMeatPath, only what the drawing uses) */
+  G.pgMeatPath=function(b,pad,ar){ var i=b.from===null||b.from===undefined?b.to:1-b.from; if(i!==0&&i!==1) return null;
+    var x=b.x, y=b.y, vx=b.vx, vy=b.vy, h=1/240, S=null, k;
+    for(k=0;k<1200;k++){ vy+=T.G*h; x+=vx*h; y+=vy*h; if(vy>0){ S=Pong.surf(PGK.v,i,x,pad); if(Math.abs(S.u)<=1&&y>=S.y-b.r) break; S=null; } if(y>1.1) return null; }
+    return S?{i:i,P:[x,S.y-b.r]}:null; };
+})();
+function pgSkOn(){ return true; }
+/* the game's events → what the drawing animates: cracks with the time they appeared, the cave-in (the spider's cartoon), the mended cracks,
+   the hits (the planks' kick, the players' swing), the last points. Called after every rules step of the game that is on the screen */
+function pgSkFx(q){ if(PGK.src!==q){ PGK.src=q; PGK.crk=[]; PGK.crkB=null; PGK.crkM=null; PGK.kick=[null,null]; PGK.lastT=0; PGS.life=null; PGS.pl=null; PGS.sh=null; PGS.hist=[]; }
+  var t=q.t; (q.fx||[]).forEach(function(f){
+    if(f.cave){ if(f.x!==undefined) PGK.crkB={t:t,x:f.x,xs:f.cave.slice()}; }
+    if(f.mend) PGK.crkM={t:t,xs:f.mend.slice()};
+    if(f.kick!==undefined) PGK.kick[f.kick]={t0:t,a:Math.max(0.3,Math.min(1,f.a||0))};
+    if(f.pts){ PGK.lastPts=f.pts; PGK.lastT=1.5; }
+    if(f.lost!==undefined) PGK.flash=0.25; });
+  var cr=q.crk||[]; PGK.crk=cr.map(function(x,j){ var o=PGK.crk[j]; return o&&o.x===x?o:{x:x,t:t}; }); }
+/* the drawing: q — a game (or a view of the field: the menu's demo, the waving, the countdown); playing — the score and the rest written in the corner */
+function pgSkDraw(q,dt,playing){ var u=pgU(), fw=Math.max(1,Math.round(PG_AR*u*uiS)), fh=Math.max(1,Math.round(u*uiS));
+  if(!PGK.cv) PGK.cv=document.createElement('canvas'); var cv0=PGK.cv; if(cv0.width!==fw||cv0.height!==fh){ cv0.width=fw; cv0.height=fh; PGS.key=''; }
+  if(PGK.src!==q) pgSkFx(q);
+  PGK.v.ar=PG_AR; PGK.v.hw=q.hw; PGK.v.H=q.H; PGK.lastT=Math.max(0,PGK.lastT-dt); PGK.flash=Math.max(0,PGK.flash-dt);
+  var A=window.ARC; A.ar=PG_AR; A.t=q.t; A.py=q.py; A.padSoft=null; A.balls=q.ball?[q.ball]:[]; A.webD=q.webD||0; A.crk=PGK.crk; A.crkB=PGK.crkB; A.crkM=PGK.crkM;
+  A.ceils=q.ceils||0; A.falls=q.falls||0; A.narrowK=q.k||1; A.score=q.score||0; A.series=q.series||0; A.kick=PGK.kick; A.phase=playing?'play':'menu'; A.lastPts=PGK.lastPts; A.lastT=PGK.lastT; A.pf=[]; A.flash=PGK.flash; A.clean=0;
+  var t0=performance.now(), c=cv0.getContext('2d'); c.setTransform(1,0,0,1,0,0);
+  pgSketch(c,fw,fh,Math.max(1,uiS*DPR/S));
+  if(PGK.q.prev) pgSkQual(t0-PGK.q.prev); PGK.q.prev=t0;   // the frames' own rhythm, as the lab's
+  lx.fillStyle=PG_V.dark?'#1b1916':'#f6f1e6'; lx.fillRect(0,0,LW,LH); var sm=lx.imageSmoothingEnabled; lx.imageSmoothingEnabled=true;
+  lx.drawImage(cv0,pgX(0),pgY(0),PG_AR*u,u); lx.imageSmoothingEnabled=sm; }
+/* a slow phone: as the lab's (1.60r) — frames longer than ~21 ms for 1.5 s step the drawing down once: the ink laid plainly instead of
+   «multiply» (slow on Android), then the lines' points sparser. The canvas is already at most twice the game's pixels */
+function pgSkQual(ms){ var Q=PG_Q; if(!(ms>0&&ms<200)) return; Q.ms+=(ms-Q.ms)*0.1; if(Q.ms>21) Q.slow+=ms/1000; else Q.slow=Math.max(0,Q.slow-ms/2000);
+  if(Q.slow>1.5&&Q.lvl<4){ Q.lvl++; Q.slow=0; Q.ms=16.7; try{ Logs.gameEv('набросок: качество',Q.lvl); }catch(e){} } }
 /* ── SONARACE: THE CANDY LAND REDRAWN (v1.20; the maintainer, 2 Oct: «переходим к редизайну конфетной гонки… надо сделать конфетную такой же
    красивой и детализированной», as the river; his yes to the three zones of the sketches «Пряничная деревня — Мармеладный лес — Мороженые
    горы», driven through one after another as the river's). Built as the river world (48_racepirate.js — its noise, tiles, shadows and the
@@ -6115,7 +6768,7 @@ function diagCorner(label,top,ty,flip,ax){ var vr=ty?(freeSide()!=='left')!==!!f
  }
 function titles(t,s,col){ var y=topY(), mw=LW-SAFE.l-SAFE.r-2*(BH+14),   /* v1.54 (the review's п.3): clear of the corner button and the version */
      cx0=Math.round((SAFE.l+LW-SAFE.r)/2), tl=PF.wrap(t,mw,1);
-  var pq=mode==='race'||(SK&&SK.id==='obsidian');   /* v1.55 (the review's п.8): a plaque under the titles over the busy worlds (the race's, obsidian) */
+  var pq=mode==='race'||(SK&&SK.id==='obsidian')||(mode==='pong'&&pgSkOn());   /* v1.61h: and over SonaPong's paper */   /* v1.55 (the review's п.8): a plaque under the titles over the busy worlds (the race's, obsidian) */
   if(pq){ var sl=s?PF.wrap(s,mw,1):[], ww=0; tl.concat(sl).forEach(function(l){ ww=Math.max(ww,PF.width(l)); }); plaque(cx0-ww/2,y-2,cx0+ww/2,y+tl.length*10+(s?3+sl.length*10:0)-3,0.55); }
   tl.forEach(function(l){ text(l,cx0,y,col||P.text,'center'); y+=10; });
   if(s){ y+=3; var n=PF.wrap(s,mw,1).length, lo=Math.floor(mw/Math.max(1,n)), hi=mw;   /* v1.54: the lines balanced — the narrowest width that keeps their count, so no word hangs alone («…ОДНО / ИМЯ…») */
@@ -6144,7 +6797,7 @@ function soundRow(x,y,w,h){ var on=Sfx.on(), n=Sfx.steps, lv=Sfx.lvl(), s=Math.r
   for(var j=0;j<n;j++) R(on&&j<lv?P.band:P.line,cx+tw+6+j*4,ty,3,7);
   BTN.push({id:'sfx',x:x+s,y:y,w:w-2*s,h:h}); }
 function nextBtn(id,label){ var w=btnW([label]); button(id,label,sideX(w),Math.round(LH*0.76),w,BH,'primary',Math.floor(scrT*2)%2===0); }   /* v0.35: lower, off the pictures */
-function ringAt(){ var yy=0.80;   /* v1.56 (the review's п.24): off the drawn table (0.74 before) */ return freeSide()==='left'?[Math.round(LW*0.13),Math.round(LH*yy)]:[Math.round(LW*0.87),Math.round(LH*yy)]; }   /* v0.35: lower, under the two pictures */
+function ringAt(){ var yy=mode==='pong'&&scr==='phold'?0.42:0.80;   /* v1.61f: SonaPong's waving — above the rackets */   /* v1.56 (the review's п.24): off the drawn table (0.74 before) */ return freeSide()==='left'?[Math.round(LW*0.13),Math.round(LH*yy)]:[Math.round(LW*0.87),Math.round(LH*yy)]; }   /* v0.35: lower, under the two pictures */
 function ringUI(p,st){ var r=ringAt(), col=st==='wait'?P.soft:st==='ok'?P.band:P.bullet;
   ring(r[0],r[1],11,p,col); if(st==='ok') tick(r[0],r[1],P.band);
   text(L(st==='wait'?'ring_wait':st==='listen'?'ring_listen':st==='catch'?'ring_catch':'ring_ok'),r[0],r[1]+17,col,'center'); }
@@ -6900,7 +7553,7 @@ function liveOn(){ return Sonar.live(); }
 function awayPause(){ return liveOn()?2.5:PAUSE; }   // v1.10: 1.2 s was too short to take the hand away (the OnePlus 18:17)
 var roomAgain=false;
 function liveReady(){ return liveOn()&&booted&&Sonar.healthy()&&acoustic&&T!==null; }
-function afterRoom(){ if(mode==='pong'){ pgToHold(); return; }   // v1.59: SonaPong — the two holds instead of the waving
+function afterRoom(){ if(mode==='pong'){ pgToHold(); return; }   // v1.59: SonaPong — its own waving (v1.61f; the two holds before)
   if(!liveOn()||forceWave){ toWave(); return; }
   /* v1.19: the try-out first — the ship follows the palm with the copied calibration, «play» or «recalibrate» (the maintainer's pick «В») */
   T=Tune.create(+store.get('sonaroids_field','100')||100,true); T.ok=true; T.copied=true; caught=true; caughtT=-9; autoTry=true; var cL=DSP2.info().cal; Logs.ev('живой режим: без взмахов',{field:T.field,mid_mm:+((100-cL.o)/cL.k).toFixed(1),saved_mm:Sonar.savedMid()}); go('wave'); caughtT=-9; }
@@ -6944,7 +7597,7 @@ var ACT={
   set_live_prev:function(){ SET_ROWS[2][2](-1); }, set_live_next:function(){ SET_ROWS[2][2](1); }, set_room_prev:function(){ SET_ROOM[2](-1); }, set_room_next:function(){ SET_ROOM[2](1); },
   rset:function(){ go('rset'); },
   hub_rocks:function(){ mode='fly'; go('title'); }, rskin:function(){ raceSkinStep(1); }, rskin_next:function(){ raceSkinStep(1); }, rskin_prev:function(){ raceSkinStep(-1); }, hub_play:function(){ mode='fly'; go('title'); }, hub_race:function(){ mode='race'; go('rtitle'); }, hub_pong:function(){ mode='pong'; go('ptitle'); },   // v1.59
-  pg_sens:function(){ PG.sens=(pgSens()+1)%4; store.set('sonaroids_pong_sens',String(PG.sens)); if(g&&g.ball!==undefined&&g.state==='play'){ g.H=Pong.TUNE.SENS[PG.sens]; } }, pg_rehold:function(){ pgHoldStart(); }, pg_recal:function(){ PG.resume=true; go('phold'); pgHoldStart(); },
+  pg_sens:function(){ PG.sens=(pgSens()+1)%4; store.set('sonaroids_pong_sens',String(PG.sens)); if(g&&g.ball!==undefined&&g.state==='play'){ g.H=Pong.TUNE.SENS[PG.sens]; } }, pg_rehold:function(){ pgWaveStart(scrT-WAVE_PAUSE+1); }, pg_recal:function(){ PG.resume=true; go('phold'); pgWaveStart(); },
   /* v1.58 (Ден, 7.10, после «Жонглёра» в лабе — «лучшее управление, что я вообще пробовал»: «да, сделай переключатель в меню паузы —
      чтоб я сравнил управляемость»): корабль / машина без сглаживания (там, куда показывает ладонь, без догоняния 25 мс). Проба: такая
      партия не идёт в таблицы — переключил посреди партии, и она тоже уже не идёт */
@@ -7133,7 +7786,7 @@ function audAct(id){ var p=id.split(':'), k=p[1], v=p.slice(2).join(':');
   else if(k==='retest') Sonar.audioRetest();
   else if(k==='lab'){ location.href='../lab/sonar_lab3.html'; return; }
   Sonar.restart(); booted=false; acoustic=false; audDev=null; }
-var NO_MENU={hub:1,title:1,rtitle:1,ptitle:1,lang:1,paused:1,restart:1,play:1,over:1},   /* v1.55 (the review's п.14): the game over has its «menu» button */ NO_VER={skins:1,rset:1,hub:1,over:1,play:1,count:1,'count-resume':1,paused:1,restart:1};
+var NO_MENU={hub:1,title:1,rtitle:1,ptitle:1,lang:1,paused:1,restart:1,play:1,over:1},   /* v1.55 (the review's п.14): the game over has its «menu» button */ NO_VER={phold:1,skins:1,rset:1,hub:1,over:1,play:1,count:1,'count-resume':1,paused:1,restart:1};
 function chrome(){ if(LH>LW) return;
   var s=BH-3, vr=freeSide()!=='left', x=vr?LW-Math.round(SAFE.r*0.5)-10-s:Math.round(SAFE.l*0.5)+10, y=SAFE.t+7;
   if(!NO_MENU[scr]) iconButton(scr==='count'||scr==='count-resume'?'pause':scr==='scores'?'sc_back':scr==='settings'?'set_back':scr==='skins'?'sk_back':scr==='audio'&&audFrom==='settings'?'settings':'menu',x,y);
@@ -7158,7 +7811,7 @@ window.__sonaroids={mixStart:function(){ mixStart(); },setSkin:function(id){ set
   race:function(){ mode='race'; booted=true; prep={res:{ok:true},doneT:-9}; T=Tune.create(100,true); T.ok=true; caught=true;   // a stand-in race for layout checks
     g=Race.create(1,raceFW(),90); for(var i=0;i<60*20;i++) raceDemoStep(g); g.fuel=40; },
   pong:function(){ mode='pong'; booted=true; prep={res:{ok:true},doneT:-9}; PG.c=PongCtl.create(); PG.c.lin={b:80,t:160}; PG.c.mix=120; PG.c.present=true; PG.c.height=120;   // v1.59: a stand-in SonaPong game for layout checks
-    g=Pong.create(3,pgAr(),pgSens()); var bot=pgDemoBot(); for(var i=0;i<60*40&&g.state==='play';i++) Pong.step(g,bot(g)); g.state='play'; return g; }, pongCtl:function(){ var c=PG.c; return c?{lin:c.lin,mxCal:c.mxCal,mix:c.mix,height:c.height,present:c.present,holding:PongCtl.holding(c),low:PongCtl.lowStep(c),done:PG.done,frac:PongCtl.frac(c,PongCtl.palm(c))}:null; }, pongField:function(){ return {ar:pgAr(),x0:pgX(0),x1:pgX(PG_AR),y0:pgY(0),y1:pgY(1),LW:LW,LH:LH}; }, pongDone:function(){ if(PG.c){ PG.c.hold=null; PG.c.lin=PG.c.lin||{b:80,t:160}; } PG.done=true; },
+    g=Pong.create(3,pgAr(),pgSens()); var bot=pgDemoBot(); for(var i=0;i<60*40&&g.state==='play';i++) Pong.step(g,bot(g)); g.state='play'; return g; }, pongCtl:function(){ var c=PG.c; return c?{lin:c.lin,mxCal:c.mxCal,mix:c.mix,height:c.height,present:c.present,holding:PongCtl.waving(c),waving:PongCtl.waving(c),wk:PG.wk,auto:!!PG.auto,t:scrT,done:PG.done,frac:PongCtl.frac(c,PongCtl.palm(c))}:null; }, pongField:function(){ return {ar:pgAr(),x0:pgX(0),x1:pgX(PG_AR),y0:pgY(0),y1:pgY(1),LW:LW,LH:LH}; }, pongDone:function(){ if(PG.c){ PG.c.hold=null; PG.c.wave=null; PG.c.lin=PG.c.lin||{b:80,t:160}; } PG.done=true; PG.doneT=-9; },
   phoneK:function(k){ PHONE_SHIPK=k; }, press:function(id,look){ var b=BTN.filter(function(q){ return q.id===id; })[0]; if(look) PRESS_LOOK=look; if(b){ press.id=id; press.x=b.x+b.w/2; press.y=b.y+b.h/2; press.until=clock+99; } return !!b; }, prepBg:function(v){ PREP_BG=v; },
   raceChunkMs:function(n){ var rg=Race.create(5,raceFW(),90), t0=performance.now(); rReset(5); RC.ch={}; for(var i=0;i<n;i++) rChunk(rg,i); var ms=(performance.now()-t0)/n; RC.ch={}; return ms; } };
 })();

@@ -56,4 +56,21 @@ const run=(path,off,jit)=>{ const c=Ctl.create(); Ctl.start(c); const got=[]; le
 { const r=run([[0,130],[1,40],[3,40],[3.8,230],[6,230]],20,4);
   check('the travel is at most 160 mm',r.top-r.low===160,`low ${r.low.toFixed(0)}, top ${r.top.toFixed(0)}`); }
 { const c=Ctl.create(); Ctl.start(c); check('while the low hold is caught the rackets wait at the bottom',Ctl.lowStep(c)&&Ctl.holding(c)); }
+// 3. v1.61f: the calibration by waving (the lab's «помахать», «низ подальше от стола», «размах 75 мм» — one code, PongCtl.wave)
+const waveRun=(path,rngOf,o)=>{ const c=Ctl.create(); Ctl.waveStart(c); let shifted=0, done=null, dots=new Set(), seenLin=false;
+  const opt=Object.assign({recenter:()=>({shift:0}),shift:d=>{ shifted+=d; },k:1.4},o||{});
+  for(const f of frames(path,0,3)){ f.r.range=f.r.present?rngOf(f.r.height):null; Ctl.frame(c,f.r,N,FS,1,false); const r=Ctl.wave(c,f.t,opt); dots.add(r.k); if(!r.done&&c.lin) seenLin=true; if(r.done){ done=Object.assign({t:f.t},r); break; } }
+  return {c,done,shifted,dots,seenLin}; };
+const swings=(lo,hi,n,per)=>{ const p=[[0,lo+20],[1,lo]]; for(let i=0;i<n;i++){ p.push([1+per*(i+0.5),hi]); p.push([1+per*(i+1),lo]); } return p; };
+{ const r=waveRun(swings(70,150,6,1.2),h=>h/1.4+20), d=r.done, want=d?Math.min(60,1.4*(95-d.low_r)):0;
+  check('waving 70↔150 mm: caught in a few swings, the swings\' low tied to 100 mm, the travel 75 mm (1.61f)',!!d&&d.t<6&&r.shifted>15&&r.shifted<32&&r.c.lin.t-r.c.lin.b===75&&r.c.mxCal===0&&d.span0>50&&d.span0<=80,
+    d?`done at ${d.t.toFixed(1)} s, swing ${d.span0.toFixed(0)} mm, tied by ${r.shifted.toFixed(0)} mm, low ${r.c.lin.b.toFixed(0)} → top ${r.c.lin.t.toFixed(0)}`:'not caught');
+  check('…the low near the table (the echo\'s range ~75 mm) lifts the travel, the travel unchanged',!!d&&d.lift>15&&Math.abs(d.lift-want)<1e-9&&Math.abs(r.c.lin.b-100-d.lift)<1e-9,d?`lift ${d.lift.toFixed(0)} mm (expected ~${want.toFixed(0)}), the echo's low ${d.low_r.toFixed(0)} mm`:'');
+  check('…the dots add up and the rackets follow while waving',[2,3].every(k=>r.dots.has(k))&&r.seenLin,[...r.dots].sort().join(' ')); }
+{ const r=waveRun(swings(70,150,6,1.2),h=>h/1.4+60);
+  check('a low far from the table: no lift',!!r.done&&r.done.lift===0,r.done?`the echo's low ${r.done.low_r.toFixed(0)} mm`:'not caught'); }
+{ const r=waveRun(swings(95,115,8,1.2),h=>h/1.4+20);
+  check('a small wiggle (20 mm) is not taken for a swing',!r.done&&!r.c.lin,'±10 mm'); }
+{ const r=waveRun(swings(70,150,6,1.2),h=>h/1.4+20,{span:0,lowr:false});
+  check('the lab\'s options: «размах из калибровки», no lift',!!r.done&&r.done.lift===0&&Math.abs(r.c.lin.t-r.c.lin.b-r.done.span0)<1e-9,r.done?`travel ${(r.c.lin.t-r.c.lin.b).toFixed(0)} mm`:''); }
 out.forEach(x=>console.log(x)); console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;

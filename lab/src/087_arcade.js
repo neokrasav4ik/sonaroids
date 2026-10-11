@@ -117,7 +117,7 @@ function arcLive(now){ if(ARC.phase!=='wave'&&ARC.phase!=='count') return; var d
 function arcLoop(now){
   if(ARC.phase!=='play') return;
   if(ARC.paused){ ARC.last=now; arcMove(0.016); arcDraw(); ARC.raf=requestAnimationFrame(arcLoop); return; }   // 1.58e: пауза — мир стоит, платформа ходит
-  var dt=Math.min(0.033,(now-ARC.last)/1000); ARC.last=now; ARC.t+=dt; arcMove(dt);
+  var rawMs=now-ARC.last, dt=Math.min(0.033,(now-ARC.last)/1000); ARC.last=now; ARC.t+=dt; arcMove(dt); if(ARC.game==='pong'&&PG_V.skin>=0.5) pgQual(rawMs);
   var cv=el('acC'); ARC.ar=(cv.width||800)/(cv.height||400);
   ARC_STEP[ARC.game](dt);
   ARC.log.push([ARC.frames.length,ARC.frac===null?null:+ARC.frac.toFixed(4),ARC.game==='follow'?(ARC.fwCm===null?null:+ARC.fwCm.toFixed(2)):+ARC.py.toFixed(4),ARC.present?1:0,ARC.mix===undefined||ARC.mix===null?null:+ARC.mix.toFixed(1)]);
@@ -888,7 +888,16 @@ var ARC_STEP={
 };
 
 /* ── рисование: пиксельный ретро-стиль, как в Sonaroids ── */
+/* 1.60r (Ден 12:36, Mi 9 Lite: «на ми9 это выглядит как обсидиан.. всё жутко тормозит»; на iPhone — отлично). «Набросок» сам следит,
+   успевает ли телефон: если кадры дольше ~21 мс (меньше ~48 в секунду) полторы секунды подряд — на ступень проще: 1) чернила кладутся
+   обычным наложением, а не «умножением» (на Android — дорогой путь); 2–4) холст рисуется в 0,75 / 0,6 / 0,5 от разрешения экрана (не
+   ниже 1 точки на пиксель) — линии толстые, на глаз почти не видно; точки линий реже (шаг 1,8 / 2,4 / 3 вместо 1,2), с 3-й ступени
+   обводка в один проход. Ступень запоминается до перезагрузки страницы; в журнал — quality:N */
+var PG_Q={lvl:0,ms:16.7,slow:0}, PG_QS=[1,1,0.75,0.6,0.5];
+function pgQual(ms){ if(!(ms>0&&ms<200)) return; PG_Q.ms+=(ms-PG_Q.ms)*0.1; if(PG_Q.ms>21) PG_Q.slow+=ms/1000; else PG_Q.slow=Math.max(0,PG_Q.slow-ms/2000);
+  if(PG_Q.slow>1.5&&PG_Q.lvl<PG_QS.length-1){ PG_Q.lvl++; PG_Q.slow=0; PG_Q.ms=16.7; arcEv('quality:'+PG_Q.lvl); } }
 function arcDraw(){ var cv=el('acC'); if(!cv||!cv.getContext) return; var dpr=Math.min(2,window.devicePixelRatio||1), bw0=cv.clientWidth||800, bh0=cv.clientHeight||400;
+  if(ARC.game==='pong'&&PG_V.skin>=0.5&&PG_Q.lvl>=2) dpr=Math.max(1,dpr*PG_QS[PG_Q.lvl]);
   if(cv.width!==Math.round(bw0*dpr)){ cv.width=Math.round(bw0*dpr); cv.height=Math.round(bh0*dpr); }
   var c=cv.getContext('2d'), W=cv.width, H=cv.height, g=ARC.game, X=function(x){ return x*H; }, Y=function(y){ return y*H; }, px=ARC_PX, py=ARC.py;
   c.fillStyle=g==='slalom'?'#1a2230':'#070a12'; c.fillRect(0,0,W,H);

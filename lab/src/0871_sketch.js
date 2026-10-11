@@ -204,12 +204,33 @@ function pgsFig(p,x,y,d,J,o){ o=o||{}; var k=o.k||1.15, P=function(q){ return [x
   p.draw([P(J.neck),P(J.hip)]); p.draw([P(J.hip),P(J.kneeL),P(J.footL)]); p.draw([P(J.hip),P(J.kneeR),P(J.footR)]);
   p.draw([P(J.neck),P(J.elbowL),P(J.handL)]); p.draw([P(J.neck),P(J.elbowR),P(J.handR)]);
   var fl=P(J.footL), fr=P(J.footR); if(fl[1]>y-4*k) p.line(fl[0]-d*3,fl[1],fl[0]+d*5,fl[1],{over:1,w:p.w*0.9}); if(fr[1]>y-4*k) p.line(fr[0]-d*3,fr[1],fr[0]+d*5,fr[1],{over:1,w:p.w*0.9});
-  var a=d>0?J.rk:Math.PI-J.rk, ca=Math.cos(a), sa=Math.sin(a), hd=P(J.handR), he=[hd[0]+ca*12*k,hd[1]+sa*12*k], hc=[hd[0]+ca*21.5*k,hd[1]+sa*21.5*k];
-  p.line(hd[0],hd[1],he[0],he[1],{over:1}); p.loop(hc[0],hc[1],9.5*k,5.5*k,{rot:a,w:p.w});
+  /* 1.60i: d бывает дробным (поворот) — ракетка поворачивается вместе с фигуркой, в повороте видна с ребра */
+  var ca=d*Math.cos(J.rk), sa=Math.sin(J.rk), a=Math.atan2(sa,ca), hd=P(J.handR), he=[hd[0]+ca*12*k,hd[1]+sa*12*k], hc=[hd[0]+ca*21.5*k,hd[1]+sa*21.5*k];
+  p.line(hd[0],hd[1],he[0],he[1],{over:1}); p.loop(hc[0],hc[1],9.5*k*Math.max(0.35,Math.hypot(ca,sa)),5.5*k,{rot:a,w:p.w});
   if(o.shake){ p.stroke([[h[0]-12*k,h[1]-6*k],[h[0]-16*k,h[1]-2*k]],{w:p.w*0.45}); p.stroke([[h[0]+12*k,h[1]-6*k],[h[0]+16*k,h[1]-2*k]],{w:p.w*0.45}); }
   if(o.stars){ pgsStar(p,h[0]-10*k,h[1]-14*k,3*k); pgsStar(p,h[0]+4*k,h[1]-18*k,3*k); pgsStar(p,h[0]+14*k,h[1]-12*k,3*k); }
   if(o.arcs){ var sh=P(J.neck), r=40*k; [0,1].forEach(function(j){ var pts=[], a0=d>0?0.7:Math.PI-0.7, a1=d>0?-1.8:Math.PI+1.8; for(var m=0;m<=14;m++){ var aa=a0+(a1-a0)*m/14; pts.push([sh[0]+Math.cos(aa)*(r+j*9),sh[1]+Math.sin(aa)*(r+j*9)]); } p.stroke(pts,{w:p.w*(j?0.35:0.5),a:0.75}); }); }
   return hc; }
+/* 1.60k: моторы под доской (рисуются до доски — крепления уходят под неё). M=1 — два сопла, огонь вниз растёт с резкостью подъёма,
+   мерцает, на резком — искры; вниз — огонь гаснет, из сопел дымок. M=2 — два пропеллера лопастями вниз: обороты растут с подъёмом; пока
+   медленно — видны лопасти (с ребра, их видимая длина меняется с поворотом) и дужки движения, быстро — размытый диск и поток вниз; вниз —
+   крутятся назад, воздух тянет вверх. Видимое плавно перетекает: лопасти гаснут, диск проявляется */
+function pgsMotors(c,i,tp,M,v,t,dt){ var n=tp.length-1, up=Math.max(0,Math.min(1,v/2.5)), dn=Math.max(0,Math.min(1,-v/2.5)), I=PGS_ST;
+  [0.2,0.8].forEach(function(fr,k){ var j=Math.round(n*fr), x=tp[j][0], y=tp[j][1]+13*(0.6+0.4*Math.sin(Math.PI*j/n)), sd=7000+i*20+k*5, p=pgsPen(c,sd);
+    if(M===1){ p.draw([[x-6,y-1],[x-9,y+10],[x+9,y+10],[x+6,y-1]],{w:p.w*0.85}); p.line(x-9,y+10,x+9,y+10,{over:1,w:p.w*0.8});
+      var L=4+58*up*(1+0.12*Math.sin(t*33+k*2)), w=5+6*up, tip=[x+Math.sin(t*41+k)*3*up,y+11+L];
+      if(L>5){ c.save(); c.globalAlpha=0.16+0.22*up; c.fillStyle=I.accent||'#d2432f'; c.beginPath(); c.moveTo(x-w*0.75,y+11); c.quadraticCurveTo(tip[0],y+11+L*1.05,x+w*0.75,y+11); c.fill(); c.restore();
+        var f=pgsPen(c,sd+1); f.draw([[x-w,y+11],[x-w*0.6,y+11+L*0.45],tip,[x+w*0.6,y+11+L*0.45],[x+w,y+11]],{w:I.w*0.75,a:Math.min(1,0.4+up)});
+        if(up>0.25){ var g=pgsPen(c,sd+2); g.draw([[x-w*0.4,y+12],[x,y+11+L*0.6],[x+w*0.4,y+12]],{w:I.w*0.5,a:up}); }
+        if(up>0.6){ var sp=pgsPen(c,sd+3); for(var m=0;m<4;m++){ var ph=(t*2.2+m*0.25+k*0.13)%1, sx=x+(m%2?1:-1)*(8+ph*14), sy=y+18+ph*L*0.9; sp.stroke([[sx,sy],[sx+(m%2?2:-2),sy+5]],{w:I.w*0.45,a:(up-0.6)/0.4*(1-ph)}); } } }
+      if(dn>0.05){ var sm=pgsPen(c,sd+4); for(var q=0;q<2;q++){ var ph2=(t*1.3+q*0.5+k*0.3)%1; sm.loop(x+(q?5:-5)+Math.sin(t*3+q)*2,y+16+ph2*12,3+ph2*4,2.5+ph2*3,{w:I.w*0.35,a:dn*(1-ph2)*0.8}); } } }
+    else { var om=6+70*up-26*dn; PGS.mRot[k]+=om*dt; var rot=PGS.mRot[k]+i*1.3, aw=Math.abs(om), bl=Math.max(0,Math.min(1,(aw-18)/22));
+      p.line(x,y-1,x,y+8,{over:1,w:p.w*0.8}); p.loop(x,y+10,3,2.4,{w:p.w*0.8});
+      if(bl<1){ var hl=22*Math.cos(rot), hz=2.2*Math.sin(rot); p.draw([[x-hl,y+10-hz],[x+hl,y+10+hz]],{w:p.w*0.9,a:1-bl});
+        if(aw>8){ var ar2=pgsPen(c,sd+1), sg=om>0?1:-1, pts=[]; for(var m2=0;m2<=6;m2++){ var aa=rot-sg*m2*0.12; pts.push([x+22*Math.cos(aa),y+10+2.2*Math.sin(aa)]); } ar2.stroke(pts,{w:I.w*0.4,a:(1-bl)*Math.min(1,(aw-8)/10)}); } }
+      if(bl>0){ var d=pgsPen(c,sd+2); d.loop(x,y+10,25,4.2,{w:I.w*0.55,a:bl}); d.loop(x,y+10,19,2.8,{w:I.w*0.35,a:bl*0.6}); }
+      if(up>0.2){ var dw=pgsPen(c,sd+3); for(var m3=-2;m3<=2;m3++){ var ph3=(t*3+m3*0.17+k*0.3)%1, xx=x+m3*8, L3=10+30*up; dw.stroke([[xx+m3*ph3*2,y+18+ph3*L3*0.6],[xx+m3*(ph3*2+1),y+18+ph3*L3*0.6+L3*0.35]],{w:I.w*0.45,a:(up-0.2)/0.8*(1-ph3)}); } }
+      if(dn>0.15){ var ua=pgsPen(c,sd+4); for(var m4=-1;m4<=1;m4++){ var ph4=(t*1.8+m4*0.3)%1, xx4=x+m4*11, yy=y+42-ph4*22; ua.stroke([[xx4,yy],[xx4,yy-9]],{w:I.w*0.4,a:dn*(1-ph4)}); ua.stroke([[xx4-3,yy-6],[xx4,yy-10],[xx4+3,yy-6]],{w:I.w*0.4,a:dn*(1-ph4)}); } } } }); }
 function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ return v*390; }, I=PGS_ST;
   /* the page: paper and the ceiling, kept until the screen changes size */
   var key=W+'x'+H; if(PGS.key!==key){ PGS.key=key; var bg=document.createElement('canvas'); bg.width=W; bg.height=H; var bc=bg.getContext('2d'); bc.scale(dpr,dpr); Sk.paper(bc,W/dpr,H/dpr,dpr,{seed:7});
@@ -235,7 +256,12 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
   else if(who===3) plat=REST+OFF0;
   if(who) plat=Math.max(py+5/390,Math.min(who===3?9:py+105/390,plat));
   if(who===4) plat=py;
-  var tops=[0,1].map(function(i){ var xc=ar*(i?1-PG_XC:PG_XC), tp=[]; for(var j=0;j<=48;j++){ var x=xc-hw+2*hw*j/48; tp.push([F(x),F(pgSurf(i,x,plat,ar,A).y)]); } if(who===4) pgsTent(c,i,tp,xc,hw,ar,A,hand,t); else pgsPlatform(pgsPen(c,201+100*i),tp); return {xc:xc,tp:tp}; });
+  /* 1.60k (Ден 10:06–10:51: «приделать к платформам снизу двигатели или пропеллеры.. когда платформа поднимается — работают, чем
+     резче, тем больше; когда опускается — наоборот» → эскизы М1–М3 → «сопла снизу (без верхних) или пропеллеры — решу в игре»).
+     Скорость доски — по её же рисованному месту, сглажено за 0,06 с; «резко» — 2,5 высоты экрана в секунду и быстрее */
+  var MOT=Math.round(PG_V.motor||0); if(MOT&&who!==4){ if(PGS.mPl===undefined||PGS.mPl===null){ PGS.mPl=plat; PGS.mV=0; PGS.mRot=[0,0.7]; }
+    var vRaw=dt>0?-(plat-PGS.mPl)/dt:0; PGS.mPl=plat; PGS.mV+=(vRaw-PGS.mV)*(1-Math.exp(-dt/0.06)); }
+  var tops=[0,1].map(function(i){ var xc=ar*(i?1-PG_XC:PG_XC), tp=[]; for(var j=0;j<=48;j++){ var x=xc-hw+2*hw*j/48; tp.push([F(x),F(pgSurf(i,x,plat,ar,A).y)]); } if(who===4) pgsTent(c,i,tp,xc,hw,ar,A,hand,t); else { if(MOT) pgsMotors(c,i,tp,MOT,PGS.mV,t,dt); pgsPlatform(pgsPen(c,201+100*i),tp); } return {xc:xc,tp:tp}; });
   /* 1.59v (Ден 01:01–01:02: «больше жизни на доске и в воздухе — глаз в основном смотрит на волан.. но зритель геймплея будет смотреть на
      всё»): события игры (удар, потолок, потерянный мяч, сужение) оживляют и волан, и доски, и человечков. Всё — только рисунок */
   var LF=PGS.life; if(!LF||t<LF.lastT-0.5){ LF=PGS.life={ceils:ARC.ceils||0,falls:ARC.falls||0,nk:ARC.narrowK||1,kt:[null,null],fx:[],feathers:[],act:[null,null],flipT:-9,hitA:0.5,spinT:-9,prevVy:0,hang:-9,lastT:t}; }
@@ -254,12 +280,14 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
     else if(f.k==='dust'){ f.x+=f.vx*dt; f.y+=f.vy*dt; } });
   LF.fx=LF.fx.filter(function(f){ return f.t<f.life&&f.y<420; });
   LF.feathers=LF.feathers.filter(function(fe){ var xc0=ar*(fe.i?1-PG_XC:PG_XC); if(Math.abs(fe.u)>hw){ LF.fx.push({k:'fall',x:F(xc0+fe.u),y:F(pgSurf(fe.i,xc0+Math.sign(fe.u)*hw,plat,ar,A).y),vx:0,vy:0,t:0,life:2,a:fe.a,spin:3,feather:true}); return false; } return true; });
-  LF.feathers.forEach(function(fe,j){ var xc0=ar*(fe.i?1-PG_XC:PG_XC), x=xc0+fe.u; pgsFeather(pgsPen(c,890+j),F(x),F(pgSurf(fe.i,x,plat,ar,A).y)-2,fe.a,1); });
-  LF.fx.forEach(function(f,j){ var al=Math.max(0,1-f.t/f.life);
-    if(f.k==='feather'||(f.k==='fall'&&f.feather)) pgsFeather(pgsPen(c,900+j),f.x,f.y,f.a,1);
-    else if(f.k==='star'){ if(Math.floor(f.t*12)%2===0) pgsStar(pfx,f.x,f.y,4); }
-    else if(f.k==='dust') pfx.loop(f.x,f.y,2+f.t*8,1.5+f.t*5,{w:pfx.w*0.35,a:al});
-    else if(f.k==='piece'||f.k==='fall'){ var pc=pgsPen(c,950+j), ca=Math.cos(f.a), sa=Math.sin(f.a), L=f.len||20; var R=function(u,v){ return [f.x+u*ca-v*sa,f.y+u*sa+v*ca]; }; pc.draw([R(-L/2,-5),R(L/2,-5),R(L/2,5),R(-L/2,5),R(-L/2,-5)],{w:pc.w*0.8}); pc.stroke([R(-L/2+3,0),R(L/2-3,1)],{w:pc.w*0.3}); } });
+  /* 1.60j, этап 2 — воздух: у каждой частицы и пёрышка своё постоянное перо (раньше перо бралось по номеру в списке — когда одно
+     исчезало, все следующие перерисовывались заново и «мигали»); звёздочки пульсируют плавно, а не мигают; всё гаснет, а не пропадает */
+  LF.feathers.forEach(function(fe,j){ if(fe.sd===undefined) fe.sd=LF.sid=(LF.sid||0)+1; var xc0=ar*(fe.i?1-PG_XC:PG_XC), x=xc0+fe.u; pgsFeather(pgsPen(c,890+fe.sd%997),F(x),F(pgSurf(fe.i,x,plat,ar,A).y)-2,fe.a,1); });
+  LF.fx.forEach(function(f,j){ var al=Math.max(0,1-f.t/f.life); if(f.sd===undefined) f.sd=LF.sid=(LF.sid||0)+1; var fin=Math.min(1,(f.life-f.t)/0.25);
+    if(f.k==='feather'||(f.k==='fall'&&f.feather)) pgsFeather(pgsPen(c,1900+f.sd%997),f.x,f.y,f.a,Math.max(0.2,Math.min(1,fin*1.2)));
+    else if(f.k==='star'){ var sr=4*(0.65+0.35*Math.cos(f.t*14))*Math.min(1,f.t/0.08)*fin; if(sr>0.4) pgsStar(pgsPen(c,2900+f.sd%997),f.x,f.y,sr); }
+    else if(f.k==='dust'){ var pd=pgsPen(c,4900+f.sd%997); pd.loop(f.x,f.y,2+f.t*8,1.5+f.t*5,{w:pd.w*0.35,a:al}); }
+    else if(f.k==='piece'||f.k==='fall'){ var pc=pgsPen(c,3900+f.sd%997), ca=Math.cos(f.a), sa=Math.sin(f.a), L=f.len||20; var R=function(u,v){ return [f.x+u*ca-v*sa,f.y+u*sa+v*ca]; }; pc.draw([R(-L/2,-5),R(L/2,-5),R(L/2,5),R(-L/2,5),R(-L/2,-5)],{w:pc.w*0.8}); pc.stroke([R(-L/2+3,0),R(L/2-3,1)],{w:pc.w*0.3}); } });
   /* the players: the one the ball is coming to runs to where it will land; «как был» — stands just behind it, racket low, a hit — a swing;
      А/Б/В — stands so that his racket meets the shuttle there */
   if(!PGS.pl) PGS.pl=[{x:ar*PG_XC},{x:ar*(1-PG_XC)}];
@@ -280,9 +308,16 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
     P.x=Math.max(lo,Math.min(hi,P.x)); var dx=tx-P.x, far=Math.abs(dx)>0.08, v=Math.sign(dx)*Math.min(Math.abs(dx),Math.max(2*dt,Math.abs(dx)*(1-Math.exp(-dt/0.06)))); P.x+=v; var moving=Math.abs(dx)>0.004;
     var kk=ARC.kick&&ARC.kick[i], hit=kk&&t-kk.t0<0.3, fy=F(pgSurf(i,P.x,plat,ar,A).y);
     if(!who){ var fc=P.side, R0=PGS_REACH*1.15/390, bb=b0&&!(b0.wait>0)?b0:null, riding=bb&&bb.on&&bb.onI===i, tc=null;
-      if(riding){ P.x=Math.max(lo,Math.min(hi,bb.x-fc*R0)); fy=F(pgSurf(i,P.x,plat,ar,A).y); }
+      if(riding){ var rx0=Math.max(lo,Math.min(hi,bb.x-fc*R0)); P.x+=(rx0-P.x)*(1-Math.exp(-dt/0.05)); fy=F(pgSurf(i,P.x,plat,ar,A).y); }   /* 1.60i: не скачком к волану */
       if(bb&&PGS.tgt[i]!==null&&bb.vy>0){ var sY=pgSurf(i,Math.max(xc-hw,Math.min(xc+hw,bb.x)),py,ar,A).y; tc=Math.max(0,(sY-bb.r-bb.y)/Math.max(0.05,bb.vy)); }
-      var PP=PGS_POSE, J=moving?(Math.floor(t*9)%2?PP.runA:PP.runB):PP.ready, arcs=false, extra={};
+      /* 1.60i (Ден 10:16: «добавь кадров и плавности всей жизни мира — на платформах и в воздухе»), этап 1 — человечки. Было: бег — два
+         кадра, сменявшиеся 9 раз в секунду; позы (бег, стойка, присед, выпад, радость…) переключались скачком; поворот — мгновенным
+         отражением. Теперь: шаг — непрерывный цикл (ноги перетекают из одного положения в другое, темп от скорости бега); переход
+         «стоит ↔ бежит» за ~0,1 с; любая смена позы — через промежуточные кадры (нарисованная поза догоняет нужную за ~0,06 с, в миг
+         удара — за 0,025 с, чтобы касание не запаздывало); поворот — фигурка сплющивается и раскрывается в другую сторону за ~0,15 с */
+      var PP=PGS_POSE; if(P.ph===undefined){ P.ph=0; P.rw=0; P.fcS=fc; P.jd=null; }
+      if(moving) P.ph+=dt*(far?15:10); P.rw+=((moving?1:0)-P.rw)*(1-Math.exp(-dt/0.1));
+      var J=pgsMix(PP.ready,pgsMix(PP.runA,PP.runB,0.5-0.5*Math.cos(P.ph)),P.rw), arcs=false, extra={};
       if(moving&&Math.random()<dt*(far?22:9)) LF.fx.push({k:'dust',x:F(P.x)-fc*8,y:fy-3,vx:-fc*rnd(10,30),vy:-rnd(4,14),t:0,life:0.5});
       var lunge=moving&&far&&tc!==null&&tc<0.28; if(lunge){ J=PP.dive; pgsPen(c,960+i).stroke([[F(P.x)-fc*30,fy-20],[F(P.x)-fc*62,fy-20]],{w:I.w*0.4}); pgsPen(c,962+i).stroke([[F(P.x)-fc*28,fy-32],[F(P.x)-fc*54,fy-33]],{w:I.w*0.4}); }
       var act=LF.act[i]; if(act&&t-act.t0>act.dur) act=LF.act[i]=null;
@@ -291,7 +326,9 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
       else if(riding||(tc!==null&&tc<0.1)) J=riding?PP.contact:pgsMix(PP.crouch,PP.contact,(0.1-tc)/0.1);
       else if(tc!==null&&tc<0.5) J=pgsMix(J,PP.crouch,(0.5-tc)/0.4);
       if(J===PP.joy||(act&&act.kind==='joy')) fy-=6*Math.sin(Math.min(1,(t-(act?act.t0:t))/0.7)*Math.PI);
-      pgsFig(pgsPen(c,301+10*i),F(P.x),fy,fc,J,{hair:!i,cap:!!i,arcs:arcs,shake:extra.shake,stars:extra.stars}); return; }
+      var tauJ=kk&&t-kk.t0<0.15?0.025:0.06; P.jd=P.jd?pgsMix(P.jd,J,1-Math.exp(-dt/tauJ)):J; if(extra.shake) P.jd.head=J.head.slice();
+      P.fcS+=(fc-P.fcS)*(1-Math.exp(-dt/0.05)); var fcD=Math.abs(P.fcS)<0.12?(P.fcS<0?-0.12:0.12):P.fcS;
+      pgsFig(pgsPen(c,301+10*i),F(P.x),fy,fcD,P.jd,{hair:!i,cap:!!i,arcs:arcs,shake:extra.shake,stars:extra.stars}); return; }
     var xr=Math.max(xc-hw,Math.min(xc+hw,P.x+P.side*REACH));
     /* the last moment: the shuttle close above this plank (or riding it) — the racket reaches for it, so they always meet */
     var bm=b0&&!(b0.wait>0)?b0:null; if(bm&&(PGS.tgt[i]!==null||(bm.on&&bm.onI===i))&&Math.abs(bm.x-xc)<=hw+0.05){ var gap=pgSurf(i,Math.max(xc-hw,Math.min(xc+hw,bm.x)),py,ar,A).y-bm.y, wv=Math.max(0,Math.min(1,1-gap/0.14)); xr=Math.max(xc-hw,Math.min(xc+hw,xr+(bm.x-xr)*wv)); }
@@ -317,10 +354,10 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
       else { aS=SH.ang+wrap(a-SH.ang)*(1-Math.exp(-dtS/0.06)); }
       var us=(t-SH.spin)/0.8; var spin=us>=0&&us<1?2*Math.PI*(1-(1-us)*(1-us)*(1-us)):0;   /* ровно оборот — в конце без скачка */
       SH.ang=aS; a=aS+spin; }
-    var jx=0, jy=0, nearC=bi===0&&!b.touched&&b.y-b.r<JG_TOP+0.035&&!(b.wait>0); if(nearC){ jx=Math.sin(t*61)*1.3; jy=Math.cos(t*53)*1.1; }
+    var jx=0, jy=0, nwC=bi===0&&!b.touched&&!(b.wait>0)?Math.max(0,Math.min(1,(JG_TOP+0.045-(b.y-b.r))/0.025)):0, nearC=nwC>0.02; if(nearC){ jx=Math.sin(t*61)*1.3*nwC; jy=Math.cos(t*53)*1.1*nwC; }   /* 1.60j: дрожь и усики нарастают по мере подлёта к потолку */
     var ca=Math.cos(a), sa=Math.sin(a), bx=F(b.x)+jx, by=F(b.y)+jy;
-    if(nearC){ var pb=pgsPen(c,431); pb.stroke([[bx-16,by-10],[bx-21,by-15]],{w:I.w*0.4}); pb.stroke([[bx-16,by+10],[bx-21,by+15]],{w:I.w*0.4}); pb.stroke([[bx+16,by-10],[bx+21,by-15]],{w:I.w*0.4}); pb.stroke([[bx+16,by+10],[bx+21,by+15]],{w:I.w*0.4}); }
-    if(bi===0&&t-LFb.hang<0.45&&Math.abs(b.vy||0)<0.5){ var ph2=pgsPen(c,433), rr=24+4*Math.sin(t*14); [[-2.6,-2.0],[-1.1,-0.5]].forEach(function(r2){ var pts2=[]; for(var m=0;m<=8;m++){ var aa=r2[0]+(r2[1]-r2[0])*m/8; pts2.push([bx+Math.cos(aa)*rr,by+Math.sin(aa)*rr]); } ph2.stroke(pts2,{w:I.w*0.35,a:0.8}); }); }
+    if(nearC){ var pb=pgsPen(c,431), wl=3+3*nwC; pb.stroke([[bx-16,by-10],[bx-16-wl,by-10-wl]],{w:I.w*0.4,a:nwC}); pb.stroke([[bx-16,by+10],[bx-16-wl,by+10+wl]],{w:I.w*0.4,a:nwC}); pb.stroke([[bx+16,by-10],[bx+16+wl,by-10-wl]],{w:I.w*0.4,a:nwC}); pb.stroke([[bx+16,by+10],[bx+16+wl,by+10+wl]],{w:I.w*0.4,a:nwC}); }
+    if(bi===0&&t-LFb.hang<0.45&&Math.abs(b.vy||0)<0.5){ var ph2=pgsPen(c,433), rr=24+4*Math.sin(t*14), haA=Math.sin(Math.PI*Math.max(0,Math.min(1,(t-LFb.hang)/0.45))); [[-2.6,-2.0],[-1.1,-0.5]].forEach(function(r2){ var pts2=[]; for(var m=0;m<=8;m++){ var aa=r2[0]+(r2[1]-r2[0])*m/8; pts2.push([bx+Math.cos(aa)*rr,by+Math.sin(aa)*rr]); } ph2.stroke(pts2,{w:I.w*0.35,a:0.8*haA}); }); }
     /* 1.59w (Ден 01:33–01:38: «полосы, которые оставляет волан, отвлекают.. уменьшить, и пусть исчезают, когда он летит вниз» → вариант С3,
        «по точкам»): тающий пунктир — несколько точек сразу за юбкой, дальше — мельче; к вершине бледнеет, на спуске исчезает */
     if(bi===0&&PGS.hist.length>2&&!(b.wait>0)){ var fade=(b.vy||0)<=0?1:Math.max(0,1-(b.vy||0)/0.7); if(fade>0.02){ var hh=PGS.hist, acc=0, px0=bx, py0=by, tp=pgsPen(c,5000+PGS.hid), dots=[], d0=26*k/1.47, d1=95*k/1.47;

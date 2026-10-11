@@ -24,6 +24,7 @@ const mixRun=(creep)=>{ L.P.setFs(); const D=L.P.DSP(), A=L.P.ARC(); D.info=()=>
   const md=v=>{ v=v.slice().sort((p,q)=>p-q); return v[v.length>>1]; }; return {lab:md(res.lab),now:md(res.now),n:res.now.length}; };
 { const a=mixRun(0), b=mixRun(23), c=mixRun(-3);
   check('the mix sits on the palm as the lab\'s did while the phase holds still',a.n>4000&&Math.abs(a.now)<3&&Math.abs(a.now-a.lab)<2,`off the palm by ${a.now.toFixed(1)} mm (the lab's ${a.lab.toFixed(1)})`);
+  check('the lab\'s SonaPong takes the game\'s mix: a creeping phase doesn\'t move its rackets either (1.60h)',Math.abs(b.lab)<5&&Math.abs(c.lab)<3&&Math.abs(b.lab-b.now)<0.5,`lab: creep +23 mm/s: ${b.lab.toFixed(1)} mm, −3 mm/s: ${c.lab.toFixed(1)} mm`);
   check('a creeping phase doesn\'t lift or lower the rackets (1.59c)',Math.abs(b.now)<5&&Math.abs(c.now)<3,`creep +23 mm/s: ${b.now.toFixed(1)} mm (the lab's mix ${b.lab.toFixed(0)}); −3 mm/s: ${c.now.toFixed(1)} mm (the lab's ${c.lab.toFixed(0)})`); }
 // 1b. 1.59e: frames handed over in bunches (the Mi 9 Lite: two at once every 21 ms) — the rackets take the palm at each screen frame's
 //     own time: no frames where they stand while the palm moves, and only a few ms late

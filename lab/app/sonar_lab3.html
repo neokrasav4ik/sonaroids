@@ -4711,8 +4711,14 @@ function handFrac(){
 }
 /* звуки: громкие и яркие — но через три фильтра, чтобы ни одна гармоника не попала в полосу зонда */
 var sfxIn=null, sfxVol=0.9, sfxNoise=null;
+/* 1.60y (Ден 16:37, запись 16:36: «лаба иногда подвисает на калибровке, пока не перезагрузишь»). Шина звуков строилась один раз — на том
+   звуковом контексте, что был при первом звуке. После перезапуска звука (labRestart: телефон заблокировали, страница уходила в фон,
+   микрофон прерывался) контекст новый, а шина — от старого: первый же звук бросал ошибку «узел из другого контекста». Первый звук
+   после калибровки — «поймал» (sfx('level')), он стоял до перехода к отсчёту: ошибка обрывала и переход, и кадры — висело до
+   перезагрузки. В игре это решено давно (src/22_sfx.js: новый контекст — шина заново); теперь и в лабе. И звук больше не может
+   сломать игру: ошибка в звуке глушится */
 function sfxBus(){
-  if(sfxIn) return;
+  if(sfxIn&&sfxIn.context===ctx) return; sfxIn=null;
   sfxIn=ctx.createGain(); sfxIn.gain.value=1.4*sfxVol;
   var comp=ctx.createDynamicsCompressor(); comp.threshold.value=-20; comp.knee.value=6; comp.ratio.value=6; comp.attack.value=0.002; comp.release.value=0.12;
   var lim=ctx.createDynamicsCompressor(); lim.threshold.value=-3; lim.knee.value=0; lim.ratio.value=20; lim.attack.value=0.001; lim.release.value=0.06;
@@ -4722,7 +4728,8 @@ function sfxBus(){
   var len=Math.floor(ctx.sampleRate*0.8); sfxNoise=ctx.createBuffer(1,len,ctx.sampleRate);
   var d=sfxNoise.getChannelData(0); for(var i=0;i<len;i++) d[i]=Math.random()*2-1;
 }
-function sfx(kind,x){
+function sfx(kind,x){ try{ sfxBody(kind,x); }catch(e){ sfxIn=null; } }
+function sfxBody(kind,x){
   if(!gSfxOn||!ctx) return;
   sfxBus();
   var t=ctx.currentTime;

@@ -302,8 +302,21 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
       var last=PGS.hist[PGS.hist.length-1]; if(!(b.wait>0)&&(!last||Math.hypot(b.x-last[0],b.y-last[1])>0.002)) PGS.hist.push([b.x,b.y]); }
     if(b.wait>0&&Math.floor(b.wait*6)%2) return;
     var sp=Math.hypot(b.vx||0,b.vy||0), a=sp>0.05?Math.atan2(b.vy,b.vx):Math.PI/2, k=F(b.r)/8.5;
-    var LFb=PGS.life||{flipT:-9,spinT:-9,hang:-9,hitA:0.5}, uf=(t-LFb.flipT)/0.32; if(bi===0&&uf>=0&&uf<1) a+=Math.PI*(1-uf)*(1-uf)*((b.vx||0)>=0?-1:1);   /* the turnover after a hit */
-    var us=(t-LFb.spinT)/0.6; if(bi===0&&us>=0&&us<1) a+=(1-us)*9;   /* spinning after the ceiling */
+    var LFb=PGS.life||{flipT:-9,spinT:-9,hang:-9,hitA:0.5};
+    /* 1.60d (Ден 10:06: «развороту волана при ударе не хватает промежуточных кадров — плавнее, без дёрганий»). Было: угол = направление
+       полёта (скачком меняется в миг удара) + π·(1−u)² за 0,32 с — в первые кадры и скачок направления, и самый быстрый поворот. Теперь
+       нарисованный угол — своё состояние: в миг удара запоминается, на сколько он отстаёт от нового направления, и это отставание
+       убирается за 0,45 с плавно (медленно — быстро — медленно, без рывка в начале и в конце; не быстрее ~11° за кадр 60 Гц); в полёте угол
+       догоняет направление мягко (за ~0,06 с), а не прыгает; кружение после потолка — один оборот, с ходу и плавно затихая, за 0,8 с */
+    if(bi===0){ var SH=PGS.sh||(PGS.sh={ang:a,t:t,flip:-9,off:0,spin:-9}), dtS=Math.max(0,Math.min(0.1,t-SH.t)); SH.t=t;
+      var wrap=function(v){ while(v>Math.PI) v-=2*Math.PI; while(v<-Math.PI) v+=2*Math.PI; return v; };
+      if(LFb.flipT!==SH.flip){ SH.flip=LFb.flipT; var dir=(b.vx||0)>=0?-1:1, off=wrap(SH.ang-a); if(dir<0&&off>0.2) off-=2*Math.PI; if(dir>0&&off<-0.2) off+=2*Math.PI; if(Math.abs(off)>4) off=wrap(off); SH.off=off; }
+      if(LFb.spinT!==SH.spin){ SH.spin=LFb.spinT; }
+      var uf=(t-SH.flip)/0.45, aS;
+      if(uf>=0&&uf<1){ var e=uf*uf*uf*(uf*(uf*6-15)+10); aS=a+SH.off*(1-e); }
+      else { aS=SH.ang+wrap(a-SH.ang)*(1-Math.exp(-dtS/0.06)); }
+      var us=(t-SH.spin)/0.8; var spin=us>=0&&us<1?2*Math.PI*(1-(1-us)*(1-us)*(1-us)):0;   /* ровно оборот — в конце без скачка */
+      SH.ang=aS; a=aS+spin; }
     var jx=0, jy=0, nearC=bi===0&&!b.touched&&b.y-b.r<JG_TOP+0.035&&!(b.wait>0); if(nearC){ jx=Math.sin(t*61)*1.3; jy=Math.cos(t*53)*1.1; }
     var ca=Math.cos(a), sa=Math.sin(a), bx=F(b.x)+jx, by=F(b.y)+jy;
     if(nearC){ var pb=pgsPen(c,431); pb.stroke([[bx-16,by-10],[bx-21,by-15]],{w:I.w*0.4}); pb.stroke([[bx-16,by+10],[bx-21,by+15]],{w:I.w*0.4}); pb.stroke([[bx+16,by-10],[bx+21,by-15]],{w:I.w*0.4}); pb.stroke([[bx+16,by+10],[bx+21,by+15]],{w:I.w*0.4}); }

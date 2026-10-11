@@ -648,7 +648,7 @@ function pgCalStart(){ ARC.c2={step:1,buf:[],k:-1}; ARC.T=ARC.T&&ARC.T.lin?ARC.T
    ходят по пойманному. «Размах, мм» действует и здесь */
 function pgWaveStep(c,now,h){   /* 1.61f: сама калибровка взмахами — в коде игры (src/16_pong_ctl.js PongCtl.wave), лаба берёт её оттуда */
   var q={height:h,present:ARC.present,rng:(ARC.rngH===undefined?null:ARC.rngH),wave:c,lin:null}, k0=c.k, cal=DSP2.info().cal||{};
-  var r=PongCtl.wave(q,now,{recenter:function(){ return DSP2.recenter(); },shift:function(d){ DSP2.shift(d); },k:cal.k||1.4,span:PG_V.span||0,lowr:(PG_V.lowr||0)>=0.5});
+  var r=PongCtl.wave(q,now,{recenter:function(){ return DSP2.recenter(); },shift:function(d){ DSP2.shift(d); },k:cal.k||1.4,span:PG_V.span||0,lowr:(PG_V.lowr||0)>=0.5,centered:!!DSP2.info().centered}); if(r.retie) arcEv('cal:привязка-сама');
   if(!r.done){ if(q.lin&&ARC.T) ARC.T.lin=q.lin; if(c.buf.length<20){ if(k0!==0){ c.k=0; el('acSub').textContent='Как будешь бить: от низа удара до верха и обратно, несколько раз.'; } return; }
     if(r.k!==k0||k0<0){ el('acSub').textContent=(r.big?'Так, ещё. ':'Как будешь бить — от низа до верха. ')+(r.k?'●'.repeat(r.k)+'○'.repeat(5-r.k):''); } return; }
   if(ARC.dist!==null&&ARC.dist!==undefined) ARC.dist+=r.tie;

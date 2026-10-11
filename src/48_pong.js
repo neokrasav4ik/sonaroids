@@ -106,8 +106,8 @@ function pgWaveStart(w0){ if(!PG.c) PG.c=PongCtl.create(); PongCtl.waveStart(PG.
 var PG_LIVE_UP=6;
 function pgSavedLow(){ try{ var q=JSON.parse(store.get('sonaroids_pong_cal_'+Sonar.band(),'null')); return q&&q.r>=30&&q.r<=250?q:null; }catch(e){ return null; } }
 function pgKeep(){ var c=PG.c, cal=DSP2.info().cal; if(!c||!c.lin||PG.auto||!PG.fresh||!cal||!(cal.k>0)) return; PG.fresh=false;
-  var r=(c.lin.b-cal.o)/cal.k; if(r>=30&&r<=250){ store.set('sonaroids_pong_cal_'+Sonar.band(),JSON.stringify({r:+r.toFixed(1),t:Date.now()})); store.set('sonaroids_mid_t',String(Date.now())); Logs.ev('низ запомнен',{range_mm:+r.toFixed(1),low:+c.lin.b.toFixed(1)}); } }
-function pgToHold(){ var fw=forceWave; forceWave=false; autoTry=false; try{ DSP2.set('quarter',1); }catch(e){} PG.c=PongCtl.create(); PG.flips=0; PG.auto=false; PG.fresh=false; caught=false; go('phold');
+  var r=(c.lin.b-cal.o)/cal.k; if(r>=30&&r<=250){ store.set('sonaroids_pong_cal_'+Sonar.band(),JSON.stringify({r:+r.toFixed(1),t:Date.now()})); Logs.ev('низ запомнен',{range_mm:+r.toFixed(1),low:+c.lin.b.toFixed(1)}); } }
+function pgToHold(){ var fw=forceWave; forceWave=false; autoTry=false; PG.resume=false; flipT=-9; try{ DSP2.set('quarter',1); }catch(e){} PG.c=PongCtl.create(); PG.flips=0; PG.auto=false; PG.fresh=false; caught=false; go('phold');
   var q=liveOn()&&!fw?pgSavedLow():null, cal=DSP2.info().cal;
   if(q&&cal&&cal.k>0){ var b=cal.k*(q.r+PG_LIVE_UP)+cal.o; PG.c.lin={b:b,t:b+PongCtl.SPAN}; PG.c.mxCal=0; PG.c.mxOff=0; PG.auto=true; PG.done=true; PG.doneT=-9; PG.w0=-9; PG.seenT=0;
     Logs.ev('живой режим: без взмахов',{range_mm:q.r,up:PG_LIVE_UP,low:+b.toFixed(1),top:+(b+PongCtl.SPAN).toFixed(1),saved:new Date(q.t).toISOString()}); return; }
@@ -115,7 +115,7 @@ function pgToHold(){ var fw=forceWave; forceWave=false; autoTry=false; try{ DSP2
 function pgReady(){ return booted&&Sonar.healthy()&&acoustic&&!!PG.c&&!!PG.c.lin&&!PongCtl.waving(PG.c); }
 function sPHold(){ var c=PG.c; if(!c){ pgWaveStart(); c=PG.c; }
   var v=pgView(Pong.TUNE.PAD_LO-Pong.TUNE.CB*Pong.TUNE.SENS[pgSens()]), wt=scrT-PG.w0;
-  if(PongCtl.waving(c)&&wt>=WAVE_PAUSE){ var cal=DSP2.info().cal||{}, r=PongCtl.wave(c,clock,{recenter:function(){ return DSP2.recenter(); },shift:function(d){ DSP2.shift(d); },k:cal.k||1.4}); PG.wk=r.k;
+  if(PongCtl.waving(c)&&wt>=WAVE_PAUSE){ var cal=DSP2.info().cal||{}, r=PongCtl.wave(c,clock,{recenter:function(){ return DSP2.recenter(); },shift:function(d){ DSP2.shift(d); },k:cal.k||1.4,centered:!!DSP2.info().centered}); if(r.retie) Logs.ev('взмахи: шкала привязалась — собираю заново'); PG.wk=r.k;
     if(r.done){ PG.done=true; PG.doneT=scrT; PG.auto=false; PG.fresh=true; Sfx.play('ok'); store.set('sonaroids_seen','1'); handSaved=handSide(); store.set('sonaroids_hand',handSaved);
       Logs.ev('размах',{swing:Math.round(r.span0),span:r.span,lift:Math.round(r.lift),low_r:r.low_r===null?null:Math.round(r.low_r),tie:+r.tie.toFixed(1),low:+c.lin.b.toFixed(1),top:+c.lin.t.toFixed(1)}); } }
   if(c.lin) v.py=pgPalmPad(v);                                                           // the rackets follow what is caught so far
@@ -135,7 +135,7 @@ function pgCount(){ countT-=DT; var v=pgView(PG.view?PG.view.py:Pong.TUNE.PAD_LO
   if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.play('tick');
   if(countT<=0) startGame(); }
 function pgCountStart(){ pgKeep(); countT=3; try{ DSP2.set('quarter',1); }catch(e){} go('count'); }
-function pgStart(){ PG.fps=null; var seed=newSeed(); var lin=PG.c&&PG.c.lin; g=Pong.create(seed,pgAr(),pgSens(),lin?Math.max(30,lin.t-lin.b):null); var f=PG.c?PongCtl.frac(PG.c,PongCtl.palm(PG.c)):null; if(f!==null) g.py=Pong.padOf(g,f);
+function pgStart(){ PG.fps=null; PG.resume=false; var seed=newSeed(); var lin=PG.c&&PG.c.lin; g=Pong.create(seed,pgAr(),pgSens(),lin?Math.max(30,lin.t-lin.b):null); var f=PG.c?PongCtl.frac(PG.c,PongCtl.palm(PG.c)):null; if(f!==null) g.py=Pong.padOf(g,f);
   acc=0; parts=[]; PG.pts=[]; PG.newBest=false; nickAsked=false; var I=Sonar.info(), c=PG.c||{};
   Logs.gameStart({core:Pong.TAG,game:'pong',auto_cal:!!PG.auto,seed:seed,ar:+g.ar.toFixed(4),sens:pgSens(),span:g.span,cal:DSP2.info().cal,lin:c.lin?{b:+c.lin.b.toFixed(1),t:+c.lin.t.toFixed(1)}:null,mix_off:c.mxCal===null||c.mxCal===undefined?null:+c.mxCal.toFixed(1),
     chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids'});
@@ -145,7 +145,7 @@ var PG_SND={go:'tap',land:'tap',ceil:'rub',pass:'coin',dull:'syrup',lost:'crash'
 function pgReact(){ pgSkFx(g); if(pgSkOn()){ g.events.forEach(function(k){ if(PG_SND[k]) Sfx.play(PG_SND[k]); }); (g.fx||[]).forEach(function(f){ if(f.pts) PG.pts.push({n:f.pts,x:f.x,y:f.y,t:1.2}); }); return; }
   g.events.forEach(function(k){ if(PG_SND[k]) Sfx.play(PG_SND[k]); });
   (g.fx||[]).forEach(function(f){ if(f.pts) PG.pts.push({n:f.pts,x:f.x,y:f.y,t:1.2}); if(f.lost!==undefined){ flash=0.25; burst(pgX(Math.max(0,Math.min(g.ar,f.lost))),f.cave?pgY(Pong.TUNE.TOP)+4:Math.min(LH,pgY(1))-6,20,[PG_COL.ball,'#ffffff',P.hit],60*K); }
-    if(f.cave) f.cave.forEach(function(x){ burst(pgX(x),pgY(Pong.TUNE.TOP)+3,8,[PG_COL.ceil,'#ff8c78','#8f9cc0'],40*K); });   // v1.61d: the ceiling comes down
+    if(Array.isArray(f.cave)) f.cave.forEach(function(x){ burst(pgX(x),pgY(Pong.TUNE.TOP)+3,8,[PG_COL.ceil,'#ff8c78','#8f9cc0'],40*K); });   // v1.61d: the ceiling comes down
     if(f.mend) PG.mend=(PG.mend||[]).concat([{xs:f.mend,t:0.6}]); }); }
 function pgPlay(){
   /* 1.59c: the steps a frame — the nearest whole number, not «while a whole step has gathered»: at 60 frames a second the gathered time
@@ -156,8 +156,9 @@ function pgPlay(){
   /* 1.59f: how the phone keeps up — every 5 s into the game's log: frames drawn, the longest one (ms), frames over 25 ms */
   var fp=PG.fps||(PG.fps={t:now,n:0,mx:0,slow:0,last:null}); if(fp.last!==null&&now-fp.last<1000){ var fd=now-fp.last; fp.n++; if(fd>fp.mx) fp.mx=fd; if(fd>25) fp.slow++; } fp.last=now;
   if(now-fp.t>=5000){ Logs.gameEv('кадры',{n:fp.n,s:+((now-fp.t)/1000).toFixed(2),max:Math.round(fp.mx),slow:fp.slow}); fp.t=now; fp.n=0; fp.mx=0; fp.slow=0; }
-  while(n<want){ n++; var c=PG.c, f=c?PongCtl.frac(c,c.present?PongCtl.palmAt(c,vs-(want-n)*1000*Pong.DT):null):null;   // 1.59e: the palm at each step's own time (src/16_pong_ctl.js palmAt) f=f===null?null:Math.round(f*4000)/4000;   // the palm rounded as the other games' (a replay takes these exact numbers)
-    Pong.step(g,f); Logs.step({n:g.n,FH:1,ship:{y:g.py},lives:g.lives,score:g.score,events:g.events},f); pgReact(); if(g.state==='over') break; }
+  while(n<want){ n++; var c=PG.c, f=c?PongCtl.frac(c,c.present?PongCtl.palmAt(c,vs-(want-n)*1000*Pong.DT):null):null;   // 1.59e: the palm at each step's own time (src/16_pong_ctl.js palmAt)
+    f=f===null?null:Math.round(f*10000)/10000;   /* 1.61p: the palm rounded to the 4 digits the log keeps, so a replay from the log is the same game (since 1.59g this line sat inside the comment above — the rules got the unrounded palm; the grid was 1/4000, which 4 digits can't hold) */
+    Pong.step(g,f); Logs.step({pong:1,n:g.n,FH:1,ship:{y:g.py},lives:g.lives,score:g.score,events:g.events},f); pgReact(); if(g.state==='over') break; }
   flash=Math.max(0,flash-DT); duckT-=DT; if(duckT<=0&&Sonar.peak()>DUCK_PEAK){ duckT=0.4; if(Sfx.duck()) Logs.gameEv('sounds down',+Sfx.level().toFixed(2)); }
   pgField(g,DT); pgHud(); coveredLine(topY()+40); pgPauseBtn(); say(L('menu_a'));
   if(flash>0&&!pgSkOn()){ lx.globalAlpha=Math.min(0.3,flash); R(P.hit,0,0,LW,LH); lx.globalAlpha=1; }

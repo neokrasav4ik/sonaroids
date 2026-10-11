@@ -11,7 +11,7 @@ const SRC=fs.readFileSync(path.join(__dirname,'sim_source.js'),'utf8');
 // the palm: away 0–8 s, then swings 70↔150 mm (a 1.6 s period) — the waving, then the game
 const SCEN=`function(t){ if(t<8) return null; return 110-40*Math.cos(2*Math.PI*(t-8)/1.6); }`;
 (async()=>{
-  const b=await chromium.launch(); const ctx=await b.newContext({viewport:{width:844,height:390},deviceScaleFactor:2});
+  const b=await chromium.launch(); const ctx=await b.newContext({viewport:{width:844,height:390},deviceScaleFactor:2,hasTouch:true});   // 1.61n: a phone (touch) — SonaLob at most twice the game's pixels, as on a phone; a computer draws it at full resolution
   await ctx.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_live','0'); localStorage.setItem('sonaroids_lang','${process.env.LANG2||'ru'}'); ${SRC}; window.makeSimSource=makeSimSource; window.__scen=${SCEN};`);
   const p=await ctx.newPage(); const errors=[]; p.on('pageerror',e=>errors.push(e.message+(errors.length?'':' '+String(e.stack).split('\n').slice(0,4).join(' < '))));
   await p.goto('file://'+path.join(ROOT,'game','play','index.html')); await p.waitForTimeout(600);
@@ -36,9 +36,19 @@ const SCEN=`function(t){ if(t<8) return null; return 110-40*Math.cos(2*Math.PI*(
     if(s.scr==='play'&&T()-startAt>20&&!paused){ const bp=await p.evaluate(()=>{ const b=__sonaroids.btn().find(q=>q.id==='pause'), m=__sonaroids.S(); return b?{x:(b.x+b.w/2)*m.S/m.DPR,y:(b.y+b.h/2)*m.S/m.DPR}:null; });
       if(bp) await p.mouse.click(bp.x,bp.y); await p.waitForTimeout(300); await shot('05_paused');
       paused=await p.evaluate(()=>({scr:__sonaroids.scr(),btn:__sonaroids.btn().map(b=>b.id)}));
+      /* 1.61l: «Подстроить ладонь» can be left — the corner's «back» returns to the pause with the calibration as it was */
+      const lin0=await p.evaluate(()=>JSON.stringify(__sonaroids.pongCtl().lin)); await p.evaluate(()=>__sonaroids.act.pg_recal()); await p.waitForTimeout(400);
+      paused.recal=await p.evaluate(()=>({scr:__sonaroids.scr(),btn:__sonaroids.btn().map(b=>b.id),lin:__sonaroids.pongCtl().lin})); await p.evaluate(()=>__sonaroids.act.pg_back()); await p.waitForTimeout(200);
+      paused.back0=await p.evaluate(lin0=>({scr:__sonaroids.scr(),same:JSON.stringify(__sonaroids.pongCtl().lin)===lin0}),lin0);
       await p.evaluate(()=>__sonaroids.act.resume()); await p.waitForTimeout(300); paused.cr=await p.evaluate(()=>__sonaroids.scr()); await p.waitForTimeout(3300); paused.back=await p.evaluate(()=>__sonaroids.scr()); }
     if(paused&&T()-startAt>30&&!over){ if(s.scr==='play') await p.evaluate(()=>__sonaroids.act.quit()); await p.waitForTimeout(1500); await shot('06_over');
-      seen.push('over@'+T().toFixed(1)); over=await p.evaluate(()=>({scr:__sonaroids.scr(),score:__sonaroids.state().g.score,best:+localStorage.getItem('sonaroids_pong_best'),btn:__sonaroids.btn().map(b=>b.id)})); break; }
+      seen.push('over@'+T().toFixed(1)); over=await p.evaluate(()=>({scr:__sonaroids.scr(),score:__sonaroids.state().g.score,best:+localStorage.getItem('sonaroids_pong_best'),btn:__sonaroids.btn().map(b=>b.id)}));
+      /* 1.61p: the game's log replays to the same game — the palm as logged (4 digits, −9 for none) through the rules alone */
+      over.rep=await p.evaluate(async()=>{ const g=__sonaroids.state().g, bl=Logs.gameBlob(), u8=new Uint8Array(await bl.arrayBuffer()); let i=12; const rd=(o)=>u8[o]|(u8[o+1]<<8)|(u8[o+2]<<16)|(u8[o+3]<<24); let glog=null, meta=null;
+        while(i+8<=u8.length){ const id=String.fromCharCode(u8[i],u8[i+1],u8[i+2],u8[i+3]), n=rd(i+4); if(id==='glog') glog=JSON.parse(new TextDecoder().decode(u8.slice(i+8,i+8+n))); if(id==='LIST') meta=JSON.parse(new TextDecoder().decode(u8.slice(i+8+12,i+8+n)).trim()); i+=8+n+(n%2); }
+        const G0=meta.game, hands=glog.render.map(r=>r[2]), r=Pong.replay(G0.seed,G0.ar,G0.sens,hands,G0.span);
+        return {rows:hands.length,steps:g.n,score:r.score,want:g.score,none:hands.filter(h=>h===-9).length}; });
+      break; }
   }
   await b.close();
   let ok=true; const out=[], check=(n,g,i)=>{ ok=ok&&g; out.push(`${n}: ${i||''} ${g?'ok':'FAIL'}`); };
@@ -53,6 +63,8 @@ const SCEN=`function(t){ if(t<8) return null; return 110-40*Math.cos(2*Math.PI*(
     check('one rules step a frame (the ball moves evenly)',d.length>100&&one>=d.length*0.95,`${one} of ${d.length} frames; others: ${d.filter(x=>x!==1).join(' ')||'—'}`); }
   { const f=shots.field; check('the field is the lab\'s shape (2.16 screen heights) across the whole screen, not the safe area',!!f&&f.gar===2.16&&f.ar===2.16&&Math.abs(f.x0)<=2&&Math.abs(f.x1-f.LW)<=2&&Math.abs(f.y1-f.y0-f.LH)<=1,f?`ar ${f.gar}; the field ${f.x0.toFixed(1)}…${f.x1.toFixed(1)} of ${f.LW} px`:'no game'); }
   check('pause: resume, hold again, start over, end, menu; then the countdown and the game',!!paused&&paused.scr==='paused'&&['resume','pg_recal','restart','quit','exit'].every(id=>paused.btn.includes(id))&&paused.cr==='count-resume'&&paused.back==='play',paused?`${paused.scr} → ${paused.cr} → ${paused.back}`:'');
+  check('pause → «Подстроить ладонь» → «back»: the pause again, the calibration as it was (1.61l)',!!paused&&!!paused.recal&&paused.recal.scr==='phold'&&paused.recal.btn.includes('pg_back')&&paused.recal.lin===null&&paused.back0.scr==='paused'&&paused.back0.same,paused&&paused.recal?`${paused.recal.scr} [${paused.recal.btn.join(' ')}] → ${paused.back0.scr}, calibration kept: ${paused.back0.same}`:'');
+  check('the game\'s log replays to the same game (1.61p)',!!over&&!!over.rep&&over.rep.rows===over.rep.steps&&over.rep.score===over.rep.want,over&&over.rep?`${over.rep.rows} steps (${over.rep.none} without the palm), replayed ${over.rep.score}, played ${over.rep.want}`:'');
   check('the game over keeps the best',!!over&&over.scr==='over'&&over.best===over.score&&['again','over_cal','menu'].every(id=>over.btn.includes(id)),over?`score ${over.score}, best kept ${over.best}`:'');
   check('no page errors',errors.length===0,errors.slice(0,2).join(' | '));
   out.forEach(x=>console.log(x)); console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;

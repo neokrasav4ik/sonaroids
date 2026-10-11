@@ -37,7 +37,10 @@ function resize(){
      time); 1.59d: at most twice as fine — at the screen's own resolution the Mi 9 Lite fell to ~45 frames a second (Den 20:28: «лаг в
      управлении»; in Chromium with the processor slowed 6×: busy 80% → 58%, the same as on game pixels) */
   uiPong=typeof mode!=='undefined'&&mode==='pong';
-  var uiFull=S*Math.min(2,DPR)/DPR; uiS=uiPong?Math.min(2,uiFull):(typeof gfxMode!=='undefined'&&gfxMode==='hd')?uiFull:1;
+  /* 1.61n (Den 20:26: «открыл SonaLob на компе — разрешение у меню пиксельное»): the «twice the game's pixels» cap is for phones (the Mi 9
+     Lite); on a computer (a mouse, no touch) SonaLob is drawn at the screen's own resolution */
+  var desk=false; try{ desk=!!(window.matchMedia&&window.matchMedia('(pointer: fine)').matches)&&!('ontouchstart' in window)&&!(navigator.maxTouchPoints>0); }catch(e){}
+  var uiFull=S*Math.min(2,DPR)/DPR; uiS=uiPong?(desk?Math.max(uiFull,S):Math.min(2,uiFull)):(typeof gfxMode!=='undefined'&&gfxMode==='hd')?uiFull:1;
   lc.width=Math.round(LW*uiS); lc.height=Math.round(LH*uiS); pc.width=lc.width; pc.height=lc.height;
   lx.setTransform(uiS,0,0,uiS,0,0); lx.imageSmoothingEnabled=false; var pcx0=pc.getContext('2d'); pcx0.setTransform(uiS,0,0,uiS,0,0); pcx0.imageSmoothingEnabled=false;
   var css=function(el){ el.style.width=(LW*S/DPR)+'px'; el.style.height=(LH*S/DPR)+'px'; };
@@ -124,7 +127,7 @@ var BH=22;                                                          // button he
 /* a small icon button: three bars (menu) in a frame; the hit area is larger than the drawing */
 /* v1.54 (the polish review's п.2, the maintainer's «1»): the corner button says what it does — «←» where it goes back (the scores, the settings,
    the skins, the sound from the settings), «❚❚» where it pauses (the count-down, the game), «☰» only where it opens the menu */
-var ICON_BACK={sc_back:1,set_back:1,sk_back:1,settings:1};
+var ICON_BACK={sc_back:1,set_back:1,sk_back:1,settings:1,pg_back:1};
 function iconButton(id,x,y){ var s=BH-3, kind=id==='pause'?'pause':ICON_BACK[id]?'back':'menu';
   if(uiS>1){ lx.fillStyle=P.bg; lx.beginPath(); lx.roundRect(x,y,s,s,3); lx.fill(); lx.strokeStyle=P.line; lx.lineWidth=0.7; lx.stroke(); lx.fillStyle=P.soft; lx.strokeStyle=P.soft;
     if(kind==='pause'){ lx.beginPath(); lx.roundRect(x+s*0.33,y+s*0.27,s*0.12,s*0.46,0.6); lx.roundRect(x+s*0.55,y+s*0.27,s*0.12,s*0.46,0.6); lx.fill(); }

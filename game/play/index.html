@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='1.61k';
+var VERSION='1.61q';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -937,6 +937,9 @@ var PongCtl=(function(){
   function waveStart(c){ c.wave={buf:[],k:0}; c.hold=null; }
   function wave(c,t,o){ o=o||{}; var W=c.wave; if(!W) return {done:true,k:5,big:true};
     var h=c.height, res={k:W.k,big:false,done:false};
+    /* 1.61q: the sonar ties its height scale on its own 0.8 s after the palm appears (DSP2 autocenter, the hand calibration) — if that
+       happens while waving, the heights before and after it are on different scales: what was gathered is dropped (the dots stay) */
+    if(o.centered!==undefined){ if(W.cen===false&&o.centered){ W.buf=[]; res.retie=true; } W.cen=!!o.centered; }
     if(c.present&&h!==null&&h!==undefined) W.buf.push({t:t,h:h,r:c.rng}); while(W.buf.length&&W.buf[0].t<t-WAVE_WIN) W.buf.shift();
     if(W.buf.length<20) return res;
     var hs=W.buf.map(function(q){ return q.h; }).sort(function(a,b){ return a-b; }), lo=hs[Math.floor(hs.length*0.1)], hi=hs[Math.floor(hs.length*0.9)], md=hs[hs.length>>1];
@@ -1446,7 +1449,8 @@ var Logs=(function(){
   }
   /* one core step: [mic frame, step, palm 0…1 or −1, ship y/FH, lives, score] */
   function step(g,hand){ if(!G||!G.on) return;
-    G.ren.push([G.f,g.n,hand===null?-1:+hand.toFixed(4),+(g.ship.y/g.FH).toFixed(3),g.lives,g.score]);
+    G.ren.push([G.f,g.n,hand===null?(g.pong?-9:-1):+hand.toFixed(4),   /* 1.61p: SonaLob's «no palm» is −9 (Pong.NONE): its palm may go below 0 */
+      +(g.ship.y/g.FH).toFixed(3),g.lives,g.score]);
     g.events.forEach(function(k){ if(k!=='fire') G.ev.push([G.f,k,g.n]); });
     if(G.ren.length>GLOG_SEC*62) G.ren.splice(0,G.ren.length-GLOG_SEC*60); }
   function gameEv(k,x){ if(G&&G.on) G.ev.push([G.f,k,x===undefined?null:x]); }
@@ -1664,7 +1668,7 @@ STR.en={
   probe_t:'CHOOSE THE PROBE', probe_s:'WITH THIS SOUND THE PHONE HEARS YOUR HAND', probe_wide:'WIDE', probe_wide1:'CLEANER CONTROL', probe_wide2:'CHILDREN AND PETS MAY HEAR IT',
   probe_norm:'NORMAL', probe_norm1:'INAUDIBLE', probe_norm2:'SLIGHTLY ROUGHER CONTROL',
   away_t:'TAKE YOUR HAND AWAY', away_s:'LISTENING TO THE EMPTY ROOM', away_ok:'THE ROOM IS QUIET',
-  aud_fx:'PHONE PROCESSING:', aud_src:'SOURCE', aud_usage:'PROBE AS', aud_end:'PROBE FROM', turn_t:'TURN THE PHONE ROUND', hub_s:'GAMES YOU PLAY WITH YOUR PALM IN MID-AIR', soon:'SOON', pg_s:'ONE PALM — TWO RACKETS. TOSS THE SHUTTLE HIGHER, DON\'T TOUCH THE CEILING', pg_sens:'SENSITIVITY', pg_sens0:'LOW', pg_sens1:'BELOW MID', pg_sens2:'MEDIUM', pg_sens3:'HIGH', pg_low_t:'LOWER YOUR PALM', pg_low_s:'TO WHERE YOUR HIT STARTS FROM BELOW. THE RACKETS ARE DOWN ALREADY. HOLD', pg_top_t:'NOW RAISE IT', pg_top_s:'TO A COMFORTABLE HEIGHT — WHERE YOU WILL HIT FROM ABOVE. HOLD', pg_wave_s:'AS YOU WILL HIT: FROM THE HIT\'S LOW TO THE TOP AND BACK, 2–3 TIMES', pg_try_s:'THE RACKETS FOLLOW YOUR PALM — CHECK THE TOP AND THE LOW', pg_sk0:'LIGHT SKETCH', pg_sk1:'DARK SKETCH', pg_hint:'POINTS', pg_h1:'O1, A TAG', pg_h2:'O2, AT THE TOP', pg_ok_t:'GOT IT', pg_ok_s:'THE RACKETS FOLLOW YOUR PALM, FROM THE LOW TO THE TOP', pg_recal:'HOLD THE PALM AGAIN', pg_width:'RACKETS DOWN TO {n}%', pg_passes:'PASSES: {n}', all_games:'← ALL GAMES', skin:'SKIN', gfx:'GRAPHICS', gfx_pixel:'PIXELS', smooth:'SMOOTHING', s_on:'ON', s_off:'OFF', skin_space:'SPACE', skin_vector:'VECTOR 80S', skin_neon:'NEON', skin_note:'NOTEBOOK', skin_lcd:'RETRO LCD', skin_obsidian:'OBSIDIAN', skin_fairy:'FAIRY TALE', turn_s:'BY 180° IF YOU PLAY', turn_s2:'WITH YOUR RIGHT HAND', turn_h:'ROUND LIKE A WHEEL — DON\'T FLIP IT FACE DOWN', lefty:'I PLAY LEFT-HANDED', aud_vol:'VOLUME', aud_keep:'LEAVE AS IS', aud_cam:'CAMERA END', aud_port:'PORT END', aud_media:'MEDIA', aud_game:'GAME', aud_autotest:'AUTO PICK', aud_notyet:'NOT DONE YET', aud_retest:'TEST AGAIN', aud_lab:'LAB', aud_nextgame:'WITH THE NEXT GAME', aud_on:'ON', aud_off:'OFF', aud_t2:'SOUND', aud_s2:'TRIALS OF THE ECHO PROCESSING', settings:'SETTINGS', settings_t:'SETTINGS', set_gfx:'GRAPHICS', set_gfx_menu:'ASK IN GAME', set_gfx_hd:'ALWAYS HD', set_gfx_px:'ALWAYS PIXELS', set_band:'PROBE BAND', set_band_ask:'ASK EVERY GAME', set_band_w:'ALWAYS WIDE', set_band_n:'ALWAYS NORMAL', set_live:'AUTO-CALIBRATION', set_on:'ON', set_off:'OFF', set_live_on_s:'NO WAVING: THE GAME TAKES YOUR LAST MANUAL CALIBRATION AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', set_live_on_d:'NO WAVING: THE GAME TAKES YOUR MANUAL CALIBRATION OF {d} AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', auto_ok:'CALIBRATION FROM YOUR LAST GAME', set_room:'ROOM ADAPTATION', set_live_new_s:'NO MANUAL CALIBRATION YET: SWITCH THIS OFF, PLAY ONE GAME WAVING YOUR PALM, SWITCH IT ON AGAIN — AUTO-CALIBRATION WILL TAKE IT', set_live_off_s:'BEFORE EVERY GAME: TAKE YOUR HAND AWAY, WAVE YOUR PALM, TAP "PLAY". A GOOD SETUP CAN THEN BE KEPT WITH AUTO-CALIBRATION', set_expert:'ADVANCED PROBE SETTINGS', aud_link:'SOUND', aud_t:'APP SOUND', aud_s:'WHERE THE GAME TAKES THE MICROPHONE FROM AND WHERE THE PROBE PLAYS', aud_mode:'SOUND', aud_browser:'BROWSER', aud_app:'APP', aud_mic:'MICROPHONE', aud_out:'SPEAKER', aud_auto:'AUTO', aud_speaker:'SPEAKER', aud_earpiece:'EARPIECE', aud_bottom:'BOTTOM', aud_top:'TOP', aud_back:'BACK', aud_now:'NOW:', aud_active:'RECORDING:', aud_idle:'THE MICROPHONE OPENS WITH THE GAME', aud_browser_now:'NOW THE SOUND GOES THROUGH THE BROWSER: ANDROID PICKS THE MICROPHONE', aud_nopos:'THE PHONE DOES NOT TELL WHERE ITS MICROPHONES ARE',
+  aud_fx:'PHONE PROCESSING:', aud_src:'SOURCE', aud_usage:'PROBE AS', aud_end:'PROBE FROM', turn_t:'TURN THE PHONE ROUND', hub_s:'GAMES YOU PLAY WITH YOUR PALM IN MID-AIR', soon:'SOON', pg_s:'ONE PALM — TWO RACKETS. TOSS THE SHUTTLE HIGHER, DON\'T TOUCH THE CEILING', pg_sens:'SENSITIVITY', pg_sens0:'LOW', pg_sens1:'BELOW MID', pg_sens2:'MEDIUM', pg_sens3:'HIGH', pg_low_t:'LOWER YOUR PALM', pg_low_s:'TO WHERE YOUR HIT STARTS FROM BELOW. THE RACKETS ARE DOWN ALREADY. HOLD', pg_top_t:'NOW RAISE IT', pg_top_s:'TO A COMFORTABLE HEIGHT — WHERE YOU WILL HIT FROM ABOVE. HOLD', pg_wave_s:'AS YOU WILL HIT: FROM THE HIT\'S LOW TO THE TOP AND BACK, 2–3 TIMES', pg_try_s:'THE RACKETS FOLLOW YOUR PALM — CHECK THE TOP AND THE LOW', pg_sk0:'LIGHT SKETCH', pg_sk1:'DARK SKETCH', pg_hint:'POINTS', pg_h1:'O1, A TAG', pg_h2:'O2, AT THE TOP', pg_ok_t:'GOT IT', pg_ok_s:'THE RACKETS FOLLOW YOUR PALM, FROM THE LOW TO THE TOP', pg_recal:'TUNE THE PALM AGAIN', pg_width:'RACKETS DOWN TO {n}%', pg_passes:'PASSES: {n}', all_games:'← ALL GAMES', skin:'SKIN', gfx:'GRAPHICS', gfx_pixel:'PIXELS', smooth:'SMOOTHING', s_on:'ON', s_off:'OFF', skin_space:'SPACE', skin_vector:'VECTOR 80S', skin_neon:'NEON', skin_note:'NOTEBOOK', skin_lcd:'RETRO LCD', skin_obsidian:'OBSIDIAN', skin_fairy:'FAIRY TALE', turn_s:'BY 180° IF YOU PLAY', turn_s2:'WITH YOUR RIGHT HAND', turn_h:'ROUND LIKE A WHEEL — DON\'T FLIP IT FACE DOWN', lefty:'I PLAY LEFT-HANDED', aud_vol:'VOLUME', aud_keep:'LEAVE AS IS', aud_cam:'CAMERA END', aud_port:'PORT END', aud_media:'MEDIA', aud_game:'GAME', aud_autotest:'AUTO PICK', aud_notyet:'NOT DONE YET', aud_retest:'TEST AGAIN', aud_lab:'LAB', aud_nextgame:'WITH THE NEXT GAME', aud_on:'ON', aud_off:'OFF', aud_t2:'SOUND', aud_s2:'TRIALS OF THE ECHO PROCESSING', settings:'SETTINGS', settings_t:'SETTINGS', set_gfx:'GRAPHICS', set_gfx_menu:'ASK IN GAME', set_gfx_hd:'ALWAYS HD', set_gfx_px:'ALWAYS PIXELS', set_band:'PROBE BAND', set_band_ask:'ASK EVERY GAME', set_band_w:'ALWAYS WIDE', set_band_n:'ALWAYS NORMAL', set_live:'AUTO-CALIBRATION', set_on:'ON', set_off:'OFF', set_live_on_s:'NO WAVING: THE GAME TAKES YOUR LAST MANUAL CALIBRATION AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', set_live_on_d:'NO WAVING: THE GAME TAKES YOUR MANUAL CALIBRATION OF {d} AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', auto_ok:'CALIBRATION FROM YOUR LAST GAME', set_room:'ROOM ADAPTATION', set_live_new_s:'NO MANUAL CALIBRATION YET: SWITCH THIS OFF, PLAY ONE GAME WAVING YOUR PALM, SWITCH IT ON AGAIN — AUTO-CALIBRATION WILL TAKE IT', set_live_off_s:'BEFORE EVERY GAME: TAKE YOUR HAND AWAY, WAVE YOUR PALM, TAP "PLAY". A GOOD SETUP CAN THEN BE KEPT WITH AUTO-CALIBRATION', set_expert:'ADVANCED PROBE SETTINGS', aud_link:'SOUND', aud_t:'APP SOUND', aud_s:'WHERE THE GAME TAKES THE MICROPHONE FROM AND WHERE THE PROBE PLAYS', aud_mode:'SOUND', aud_browser:'BROWSER', aud_app:'APP', aud_mic:'MICROPHONE', aud_out:'SPEAKER', aud_auto:'AUTO', aud_speaker:'SPEAKER', aud_earpiece:'EARPIECE', aud_bottom:'BOTTOM', aud_top:'TOP', aud_back:'BACK', aud_now:'NOW:', aud_active:'RECORDING:', aud_idle:'THE MICROPHONE OPENS WITH THE GAME', aud_browser_now:'NOW THE SOUND GOES THROUGH THE BROWSER: ANDROID PICKS THE MICROPHONE', aud_nopos:'THE PHONE DOES NOT TELL WHERE ITS MICROPHONES ARE',
   wave_t:'WAVE YOUR PALM', wave_s:'5–10 CM ABOVE THE TABLE OR 5–15 CM FROM THE PHONE\'S END', wave_ok:'GOT YOUR RANGE', other_t:'WAVE ON THE OTHER SIDE', other_s:'THE PHONE DOES NOT HEAR THE PALM ON THIS SIDE', try_s:'THE SHIP FOLLOWS YOUR PALM — TRY THE TOP AND THE BOTTOM', cm:'CM',
   ring_wait:'GET READY', ring_listen:'LISTENING', ring_catch:'CATCHING THE RANGE', ring_ok:'DONE',
   start:'START', over:'GAME OVER', best:'BEST', again:'AGAIN', menu:'MENU', logs:'LOGS', tilt_test:'TEST RULES: NOT FOR THE TABLES', ftilt:'PICTURE TILT', stilt:'SHOT TILT', straight:'STRAIGHT', as_nose:'AS THE NOSE', bounce_off:'SHOTS OFF THE EDGES: NO', obs_off:'HEAVY SKIN: OFF', obs_on:'HEAVY SKIN: OBSIDIAN', obs_na:'HEAVY SKIN: NO WEBGL 2', mouse_off:'MOUSE INSTEAD OF SONAR: NO', mouse_on:'MOUSE INSTEAD OF SONAR: YES', obs_ink:'INK ON HITS', obs_ring:'RING: UNEVEN', obs_wake:'SHIP WAKE', obs_rwake:'ROCK WAKES', obs_det:'INK DETAIL', obs_vsp:'VEINS SPEED', obs_shot:'SHOT', obs_shot1:'L1 COMET', obs_shot4:'L4 BEADS', obs_shot5:'L5 CRYSTAL', obs_shot6:'L6 FRINGE', obs_shot9:'L9 TWIN NEEDLES', obs_shot10:'L10 BANDS', obs_rstr:'RING: STRENGTH', obs_damp:'CALMER IN ACTION', obs_reco:'DEFAULTS', obs_ringon_on:'HIT RING: YES', obs_ringon_off:'HIT RING: NO', obs_grim_on:'POWER-UP RIM: YES', obs_grim_off:'POWER-UP RIM: NO', bounce_on:'SHOTS OFF THE EDGES: YES', 
@@ -1973,9 +1977,9 @@ function pgsPtsHint(c,t,F,FW,I){ var mode=Math.round(PG_V.phint||0); if(!mode||A
     if(!S.apex&&!S.zero){ if((b.vy||0)<0) S.val=v; else if(S.val>0) S.apex={x:F(b.x),y:F(b.peakY),t:t}; }
     var bx=F(b.x), by=F(b.y); S.lx=bx-16; S.ly=by+26; }   /* 1.60w (Ден 13:34): ярлык О1 — снизу слева от волана */
   var pen1=pgsPen(c,7200+(S.hid%40+40)%40);
-  if(mode===1){ if(S.val>0&&!S.zero){ var pop=S.apex?1+0.25*Math.max(0,1-(t-S.apex.t)/0.25):1, sz=(S.apex?18:13)*pop; pen1.text('+'+S.val,S.lx,S.ly,sz,{align:'right',w:I.w*0.6}); }
-    var O=S.old; if(O&&t-O.t<0.45){ var u=(t-O.t)/0.45, e=u*u*(3-2*u), tx=FW-F(0.08), ty=F(0.12); pgsPen(c,7250).text('+'+O.val,O.x+(tx-O.x)*e,O.y+(ty-O.y)*e,18*(1-0.5*e),{align:e>0.5?'left':'right',w:I.w*0.6,a:1-0.6*e}); } }
-  else { if(S.apex&&S.val>0&&!S.zero){ var str=String(S.val), n=Math.max(1,Math.ceil(str.length*Math.min(1,(t-S.apex.t)/0.3))); pen1.text(str.slice(0,n),S.apex.x+14,Math.max(F(JG_TOP+(ARC.webD||0))+30,S.apex.y-4),18,{align:'left',w:I.w*0.6}); }   /* 1.60w (Ден 13:37): у самого потолка (и паутины) — ниже, не на нём */   /* справа от вершины, не залезая на потолок */
+  if(mode===1){ if(S.val>0&&!S.zero&&b&&!(b.wait>0)){ var pop=S.apex?1+0.25*Math.max(0,1-(t-S.apex.t)/0.25):1, sz=(S.apex?18:13)*pop; pen1.text('+'+S.val,S.lx,S.ly,sz,{align:'right',w:I.w*0.6}); }
+    var O=S.old; if(O&&t-O.t<0.45){ var u=(t-O.t)/0.45, e=u*u*(3-2*u), tx=PG_V.hudL?F(0.27):FW-F(0.08), ty=F(0.12); pgsPen(c,7250).text('+'+O.val,O.x+(tx-O.x)*e,O.y+(ty-O.y)*e,18*(1-0.5*e),{align:e>0.5?'left':'right',w:I.w*0.6,a:1-0.6*e}); } }
+  else { if(b&&S.apex&&S.val>0&&!S.zero){ var str=String(S.val), n=Math.max(1,Math.ceil(str.length*Math.min(1,(t-S.apex.t)/0.3))); pen1.text(str.slice(0,n),S.apex.x+14,Math.max(F(JG_TOP+(ARC.webD||0))+30,S.apex.y-4),18,{align:'left',w:I.w*0.6}); }   /* 1.60w (Ден 13:37): у самого потолка (и паутины) — ниже, не на нём */   /* справа от вершины, не залезая на потолок */
     var O2=S.old; if(O2&&t-O2.t<0.8&&O2.ax!==undefined){ var str2=String(O2.val); pgsPen(c,7260).text(str2,O2.ax+14,Math.max(F(JG_TOP+(ARC.webD||0))+30,O2.ay-4),18,{align:'left',w:I.w*0.6,a:1-(t-O2.t)/0.8}); } } }
 function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ return v*390; }, I=PGS_ST;
   /* the page: paper and the ceiling, kept until the screen changes size */
@@ -2157,7 +2161,7 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
     pgsShuttle(pgsPen(c,401+bi),bx+ca*8*k,by+sa*8*k,a,{cork:I.accent,k:k}); });
   pgsPtsHint(c,t,F,FW,I);
   /* the numbers, written by the same pen: score, multiplier, balls left, the series, the bar to the next narrowing */
-  if(ARC.phase==='play'){ var rx=FW-F(0.05), ph=pgsPen(c,701); ph.text(String(ARC.score||0),rx,F(0.13),27,{align:'right',w:I.w*0.75});
+  if(ARC.phase==='play'){ var rx=PG_V.hudL?F(0.33):FW-F(0.05), ph=pgsPen(c,701);   /* 1.61m: hudL — the numbers in the top left (the game: a left hand, the pause button on the right) */ ph.text(String(ARC.score||0),rx,F(0.13),27,{align:'right',w:I.w*0.75});
     var mu=pgMultAll(); if(mu>1.05) pgsPen(c,702).text('×'+mu.toFixed(1).replace('.',','),rx,F(0.2),15,{align:'right',w:I.w*0.55,ink:I.accent});
     if(ARC.lastT>0) pgsPen(c,703).text('+'+ARC.lastPts,rx-F(0.16),F(0.2),15,{align:'right',w:I.w*0.55,a:Math.min(1,ARC.lastT/0.5)});
     if(PG_V.lives>0){ var hl=Math.max(0,PG_V.lives-(ARC.falls||0)); for(var h=0;h<hl;h++) pgsShuttle(pgsPen(c,720+h),rx-6-h*15,F(0.255)-4,-Math.PI/2,{k:0.6,cork:I.accent}); }
@@ -2166,7 +2170,7 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
     var gm=Math.round(PG_V.grow), T9=pgTime(), P9=pgNarrowP(), fr9=null;
     if((gm===2&&ARC.t<4*P9)||gm===3) fr9=1-(ARC.t%P9)/P9; else if(gm===1&&(ARC.narrowK||1)>0.41) fr9=1-Math.min(10,ARC.clean||0)/10;
     if(fr9===null&&T9>0){ var st9=gm===2?4*P9:0; fr9=Math.max(0,(T9-ARC.t)/Math.max(1,T9-st9)); }
-    if(fr9!==null){ var bx=FW-F(0.03), y0=F(0.38), y1=F(0.92), pb=pgsPen(c,760); pb.line(bx,y0,bx+1,y1,{over:2,w:I.w*0.45}); pb.line(bx+7,y0,bx+7,y1,{over:2,w:I.w*0.45}); pb.line(bx-1,y0,bx+8,y0,{over:1,w:I.w*0.4}); pb.line(bx-1,y1,bx+8,y1,{over:1,w:I.w*0.4});
+    if(fr9!==null){ var bx=PG_V.hudL?F(0.02):FW-F(0.03), y0=F(0.38), y1=F(0.92), pb=pgsPen(c,760); pb.line(bx,y0,bx+1,y1,{over:2,w:I.w*0.45}); pb.line(bx+7,y0,bx+7,y1,{over:2,w:I.w*0.45}); pb.line(bx-1,y0,bx+8,y0,{over:1,w:I.w*0.4}); pb.line(bx-1,y1,bx+8,y1,{over:1,w:I.w*0.4});
       if(fr9>0.01){ var tl=[], bl=[]; for(var yy=y1-1;yy>=y1-(y1-y0)*fr9;yy-=1){ tl.push([bx+0.5,yy]); bl.push([bx+6.5,yy]); } if(tl.length>2) pb.band(tl,bl,{sp:2.8,shift:3,w:I.w*0.35,a:0.9,ink:I.accent,single:true}); } } }
   (ARC.pf||[]).forEach(function(p,i){ pgsPen(c,800+(p.pts%97)).text('+'+p.pts,F(p.x),F(p.y+0.06-0.05*(1-p.t)),24,{align:'center',w:I.w*0.65,ink:I.accent,a:Math.min(1,p.t/0.4)}); });
   c.globalCompositeOperation='source-over'; c.setTransform(1,0,0,1,0,0);
@@ -2210,7 +2214,10 @@ function resize(){
      time); 1.59d: at most twice as fine — at the screen's own resolution the Mi 9 Lite fell to ~45 frames a second (Den 20:28: «лаг в
      управлении»; in Chromium with the processor slowed 6×: busy 80% → 58%, the same as on game pixels) */
   uiPong=typeof mode!=='undefined'&&mode==='pong';
-  var uiFull=S*Math.min(2,DPR)/DPR; uiS=uiPong?Math.min(2,uiFull):(typeof gfxMode!=='undefined'&&gfxMode==='hd')?uiFull:1;
+  /* 1.61n (Den 20:26: «открыл SonaLob на компе — разрешение у меню пиксельное»): the «twice the game's pixels» cap is for phones (the Mi 9
+     Lite); on a computer (a mouse, no touch) SonaLob is drawn at the screen's own resolution */
+  var desk=false; try{ desk=!!(window.matchMedia&&window.matchMedia('(pointer: fine)').matches)&&!('ontouchstart' in window)&&!(navigator.maxTouchPoints>0); }catch(e){}
+  var uiFull=S*Math.min(2,DPR)/DPR; uiS=uiPong?(desk?Math.max(uiFull,S):Math.min(2,uiFull)):(typeof gfxMode!=='undefined'&&gfxMode==='hd')?uiFull:1;
   lc.width=Math.round(LW*uiS); lc.height=Math.round(LH*uiS); pc.width=lc.width; pc.height=lc.height;
   lx.setTransform(uiS,0,0,uiS,0,0); lx.imageSmoothingEnabled=false; var pcx0=pc.getContext('2d'); pcx0.setTransform(uiS,0,0,uiS,0,0); pcx0.imageSmoothingEnabled=false;
   var css=function(el){ el.style.width=(LW*S/DPR)+'px'; el.style.height=(LH*S/DPR)+'px'; };
@@ -2297,7 +2304,7 @@ var BH=22;                                                          // button he
 /* a small icon button: three bars (menu) in a frame; the hit area is larger than the drawing */
 /* v1.54 (the polish review's п.2, the maintainer's «1»): the corner button says what it does — «←» where it goes back (the scores, the settings,
    the skins, the sound from the settings), «❚❚» where it pauses (the count-down, the game), «☰» only where it opens the menu */
-var ICON_BACK={sc_back:1,set_back:1,sk_back:1,settings:1};
+var ICON_BACK={sc_back:1,set_back:1,sk_back:1,settings:1,pg_back:1};
 function iconButton(id,x,y){ var s=BH-3, kind=id==='pause'?'pause':ICON_BACK[id]?'back':'menu';
   if(uiS>1){ lx.fillStyle=P.bg; lx.beginPath(); lx.roundRect(x,y,s,s,3); lx.fill(); lx.strokeStyle=P.line; lx.lineWidth=0.7; lx.stroke(); lx.fillStyle=P.soft; lx.strokeStyle=P.soft;
     if(kind==='pause'){ lx.beginPath(); lx.roundRect(x+s*0.33,y+s*0.27,s*0.12,s*0.46,0.6); lx.roundRect(x+s*0.55,y+s*0.27,s*0.12,s*0.46,0.6); lx.fill(); }
@@ -2491,7 +2498,7 @@ function phoneIso(o,cm,portOn,cam){                                          // 
 /* v0.76 (the maintainer: the drawn phone's game in the chosen skin and graphics): the skin's own world — its sky, rocks, saucer, shots and
    ship, the ship at the palm's height — drawn off-screen (pixels, or the HD pictures) and laid onto the phone's screen in perspective */
 var phoneSt={}, phoneC=null, phoneHC=null, phoneAt=-1, PHONE_SHIPK=4;   // v0.84: the ship on the drawn phone ~3× larger (the maintainer: «оочень маленький кораблик — его вообще не видно», his pick «А»)
-function phoneWorld(f){ if(mode==='race') return racePhone(f); var sk=SK, k=PHONE_SHIPK, hh=Math.max(LH*0.12,7*k+4), sy=hh+(1-f)*(LH-2*hh), sx=LW*0.12+10*(k-1.4);
+function phoneWorld(f){ if(mode==='race') return racePhone(f); if(mode==='pong') return pongPhone(f);   /* 1.61o: SonaLob — one plank on the paper */ var sk=SK, k=PHONE_SHIPK, hh=Math.max(LH*0.12,7*k+4), sy=hh+(1-f)*(LH-2*hh), sx=LW*0.12+10*(k-1.4);
   if(phoneAt===clock) return sk.hd?phoneHC:phoneC; phoneAt=clock;                       // two phones in one picture share the frame
   if(sk.hd){ var q=Math.min(hs,1.5); if(!phoneHC||phoneHC.width!==Math.round(LW*q)||phoneHC.height!==Math.round(LH*q)){ phoneHC=document.createElement('canvas'); phoneHC.width=Math.round(LW*q); phoneHC.height=Math.round(LH*q); }
     var keep=hx; hx=phoneHC.getContext('2d'); hx.setTransform(q,0,0,q,0,0); hx.imageSmoothingEnabled=true; noLight=true;
@@ -5009,8 +5016,8 @@ function pgWaveStart(w0){ if(!PG.c) PG.c=PongCtl.create(); PongCtl.waveStart(PG.
 var PG_LIVE_UP=6;
 function pgSavedLow(){ try{ var q=JSON.parse(store.get('sonaroids_pong_cal_'+Sonar.band(),'null')); return q&&q.r>=30&&q.r<=250?q:null; }catch(e){ return null; } }
 function pgKeep(){ var c=PG.c, cal=DSP2.info().cal; if(!c||!c.lin||PG.auto||!PG.fresh||!cal||!(cal.k>0)) return; PG.fresh=false;
-  var r=(c.lin.b-cal.o)/cal.k; if(r>=30&&r<=250){ store.set('sonaroids_pong_cal_'+Sonar.band(),JSON.stringify({r:+r.toFixed(1),t:Date.now()})); store.set('sonaroids_mid_t',String(Date.now())); Logs.ev('низ запомнен',{range_mm:+r.toFixed(1),low:+c.lin.b.toFixed(1)}); } }
-function pgToHold(){ var fw=forceWave; forceWave=false; autoTry=false; try{ DSP2.set('quarter',1); }catch(e){} PG.c=PongCtl.create(); PG.flips=0; PG.auto=false; PG.fresh=false; caught=false; go('phold');
+  var r=(c.lin.b-cal.o)/cal.k; if(r>=30&&r<=250){ store.set('sonaroids_pong_cal_'+Sonar.band(),JSON.stringify({r:+r.toFixed(1),t:Date.now()})); Logs.ev('низ запомнен',{range_mm:+r.toFixed(1),low:+c.lin.b.toFixed(1)}); } }
+function pgToHold(){ var fw=forceWave; forceWave=false; autoTry=false; PG.resume=false; flipT=-9; try{ DSP2.set('quarter',1); }catch(e){} PG.c=PongCtl.create(); PG.flips=0; PG.auto=false; PG.fresh=false; caught=false; go('phold');
   var q=liveOn()&&!fw?pgSavedLow():null, cal=DSP2.info().cal;
   if(q&&cal&&cal.k>0){ var b=cal.k*(q.r+PG_LIVE_UP)+cal.o; PG.c.lin={b:b,t:b+PongCtl.SPAN}; PG.c.mxCal=0; PG.c.mxOff=0; PG.auto=true; PG.done=true; PG.doneT=-9; PG.w0=-9; PG.seenT=0;
     Logs.ev('живой режим: без взмахов',{range_mm:q.r,up:PG_LIVE_UP,low:+b.toFixed(1),top:+(b+PongCtl.SPAN).toFixed(1),saved:new Date(q.t).toISOString()}); return; }
@@ -5018,7 +5025,7 @@ function pgToHold(){ var fw=forceWave; forceWave=false; autoTry=false; try{ DSP2
 function pgReady(){ return booted&&Sonar.healthy()&&acoustic&&!!PG.c&&!!PG.c.lin&&!PongCtl.waving(PG.c); }
 function sPHold(){ var c=PG.c; if(!c){ pgWaveStart(); c=PG.c; }
   var v=pgView(Pong.TUNE.PAD_LO-Pong.TUNE.CB*Pong.TUNE.SENS[pgSens()]), wt=scrT-PG.w0;
-  if(PongCtl.waving(c)&&wt>=WAVE_PAUSE){ var cal=DSP2.info().cal||{}, r=PongCtl.wave(c,clock,{recenter:function(){ return DSP2.recenter(); },shift:function(d){ DSP2.shift(d); },k:cal.k||1.4}); PG.wk=r.k;
+  if(PongCtl.waving(c)&&wt>=WAVE_PAUSE){ var cal=DSP2.info().cal||{}, r=PongCtl.wave(c,clock,{recenter:function(){ return DSP2.recenter(); },shift:function(d){ DSP2.shift(d); },k:cal.k||1.4,centered:!!DSP2.info().centered}); if(r.retie) Logs.ev('взмахи: шкала привязалась — собираю заново'); PG.wk=r.k;
     if(r.done){ PG.done=true; PG.doneT=scrT; PG.auto=false; PG.fresh=true; Sfx.play('ok'); store.set('sonaroids_seen','1'); handSaved=handSide(); store.set('sonaroids_hand',handSaved);
       Logs.ev('размах',{swing:Math.round(r.span0),span:r.span,lift:Math.round(r.lift),low_r:r.low_r===null?null:Math.round(r.low_r),tie:+r.tie.toFixed(1),low:+c.lin.b.toFixed(1),top:+c.lin.t.toFixed(1)}); } }
   if(c.lin) v.py=pgPalmPad(v);                                                           // the rackets follow what is caught so far
@@ -5038,7 +5045,7 @@ function pgCount(){ countT-=DT; var v=pgView(PG.view?PG.view.py:Pong.TUNE.PAD_LO
   if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.play('tick');
   if(countT<=0) startGame(); }
 function pgCountStart(){ pgKeep(); countT=3; try{ DSP2.set('quarter',1); }catch(e){} go('count'); }
-function pgStart(){ PG.fps=null; var seed=newSeed(); var lin=PG.c&&PG.c.lin; g=Pong.create(seed,pgAr(),pgSens(),lin?Math.max(30,lin.t-lin.b):null); var f=PG.c?PongCtl.frac(PG.c,PongCtl.palm(PG.c)):null; if(f!==null) g.py=Pong.padOf(g,f);
+function pgStart(){ PG.fps=null; PG.resume=false; var seed=newSeed(); var lin=PG.c&&PG.c.lin; g=Pong.create(seed,pgAr(),pgSens(),lin?Math.max(30,lin.t-lin.b):null); var f=PG.c?PongCtl.frac(PG.c,PongCtl.palm(PG.c)):null; if(f!==null) g.py=Pong.padOf(g,f);
   acc=0; parts=[]; PG.pts=[]; PG.newBest=false; nickAsked=false; var I=Sonar.info(), c=PG.c||{};
   Logs.gameStart({core:Pong.TAG,game:'pong',auto_cal:!!PG.auto,seed:seed,ar:+g.ar.toFixed(4),sens:pgSens(),span:g.span,cal:DSP2.info().cal,lin:c.lin?{b:+c.lin.b.toFixed(1),t:+c.lin.t.toFixed(1)}:null,mix_off:c.mxCal===null||c.mxCal===undefined?null:+c.mxCal.toFixed(1),
     chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids'});
@@ -5048,7 +5055,7 @@ var PG_SND={go:'tap',land:'tap',ceil:'rub',pass:'coin',dull:'syrup',lost:'crash'
 function pgReact(){ pgSkFx(g); if(pgSkOn()){ g.events.forEach(function(k){ if(PG_SND[k]) Sfx.play(PG_SND[k]); }); (g.fx||[]).forEach(function(f){ if(f.pts) PG.pts.push({n:f.pts,x:f.x,y:f.y,t:1.2}); }); return; }
   g.events.forEach(function(k){ if(PG_SND[k]) Sfx.play(PG_SND[k]); });
   (g.fx||[]).forEach(function(f){ if(f.pts) PG.pts.push({n:f.pts,x:f.x,y:f.y,t:1.2}); if(f.lost!==undefined){ flash=0.25; burst(pgX(Math.max(0,Math.min(g.ar,f.lost))),f.cave?pgY(Pong.TUNE.TOP)+4:Math.min(LH,pgY(1))-6,20,[PG_COL.ball,'#ffffff',P.hit],60*K); }
-    if(f.cave) f.cave.forEach(function(x){ burst(pgX(x),pgY(Pong.TUNE.TOP)+3,8,[PG_COL.ceil,'#ff8c78','#8f9cc0'],40*K); });   // v1.61d: the ceiling comes down
+    if(Array.isArray(f.cave)) f.cave.forEach(function(x){ burst(pgX(x),pgY(Pong.TUNE.TOP)+3,8,[PG_COL.ceil,'#ff8c78','#8f9cc0'],40*K); });   // v1.61d: the ceiling comes down
     if(f.mend) PG.mend=(PG.mend||[]).concat([{xs:f.mend,t:0.6}]); }); }
 function pgPlay(){
   /* 1.59c: the steps a frame — the nearest whole number, not «while a whole step has gathered»: at 60 frames a second the gathered time
@@ -5059,8 +5066,9 @@ function pgPlay(){
   /* 1.59f: how the phone keeps up — every 5 s into the game's log: frames drawn, the longest one (ms), frames over 25 ms */
   var fp=PG.fps||(PG.fps={t:now,n:0,mx:0,slow:0,last:null}); if(fp.last!==null&&now-fp.last<1000){ var fd=now-fp.last; fp.n++; if(fd>fp.mx) fp.mx=fd; if(fd>25) fp.slow++; } fp.last=now;
   if(now-fp.t>=5000){ Logs.gameEv('кадры',{n:fp.n,s:+((now-fp.t)/1000).toFixed(2),max:Math.round(fp.mx),slow:fp.slow}); fp.t=now; fp.n=0; fp.mx=0; fp.slow=0; }
-  while(n<want){ n++; var c=PG.c, f=c?PongCtl.frac(c,c.present?PongCtl.palmAt(c,vs-(want-n)*1000*Pong.DT):null):null;   // 1.59e: the palm at each step's own time (src/16_pong_ctl.js palmAt) f=f===null?null:Math.round(f*4000)/4000;   // the palm rounded as the other games' (a replay takes these exact numbers)
-    Pong.step(g,f); Logs.step({n:g.n,FH:1,ship:{y:g.py},lives:g.lives,score:g.score,events:g.events},f); pgReact(); if(g.state==='over') break; }
+  while(n<want){ n++; var c=PG.c, f=c?PongCtl.frac(c,c.present?PongCtl.palmAt(c,vs-(want-n)*1000*Pong.DT):null):null;   // 1.59e: the palm at each step's own time (src/16_pong_ctl.js palmAt)
+    f=f===null?null:Math.round(f*10000)/10000;   /* 1.61p: the palm rounded to the 4 digits the log keeps, so a replay from the log is the same game (since 1.59g this line sat inside the comment above — the rules got the unrounded palm; the grid was 1/4000, which 4 digits can't hold) */
+    Pong.step(g,f); Logs.step({pong:1,n:g.n,FH:1,ship:{y:g.py},lives:g.lives,score:g.score,events:g.events},f); pgReact(); if(g.state==='over') break; }
   flash=Math.max(0,flash-DT); duckT-=DT; if(duckT<=0&&Sonar.peak()>DUCK_PEAK){ duckT=0.4; if(Sfx.duck()) Logs.gameEv('sounds down',+Sfx.level().toFixed(2)); }
   pgField(g,DT); pgHud(); coveredLine(topY()+40); pgPauseBtn(); say(L('menu_a'));
   if(flash>0&&!pgSkOn()){ lx.globalAlpha=Math.min(0.3,flash); R(P.hit,0,0,LW,LH); lx.globalAlpha=1; }
@@ -5084,7 +5092,7 @@ function pgOver(){ overT+=DT; pgField(g,DT); lx.globalAlpha=0.45; R(P.bg,0,0,LW,
    options are the world Den chose («Как советую»): the bowls, cracks every 5th, 5 balls, the series to 5, the rackets narrowing without
    end, the nozzles under the planks, the little players («для вида»). Only the picture: the rules see nothing of it.
    The field is drawn on its own canvas at the field's shape (2.16) and laid where the field is (pgX/pgY); the paper fills the rest ════ */
-var PGK={cv:null,src:null,arc:null,crk:[],crkB:null,crkM:null,kick:[null,null],lastPts:null,lastT:0,flash:0,v:{ar:PG_AR,hw:0.2},q:{ms:16.7,slow:0}};
+var PGK={cv:null,src:null,v:{ar:PG_AR,hw:0.2},q:{prev:0}};
 (function(){ var T=Pong.TUNE, G=window;
   G.JG_TOP=T.TOP; G.PG_XC=T.XC; G.PG_LIFT=T.LIFT; G.PG_CB=T.CB; G.JG_PAD_LO=T.PAD_LO; G.PG_NET0=1; G.PG_SPIDER=T.SPIDER; G.PG_G=T.G;
   G.PG_TILT=26; G.PG_TILTV=25; G.PG_Q={lvl:0,ms:16.7,slow:0};
@@ -5115,31 +5123,53 @@ function pgSkinLabel(){ return L('skin')+': '+L('pg_sk'+pgSkin()); }
 function pgHint(){ if(PG.hint===undefined||PG.hint===null){ var v=parseInt(store.get('sonaroids_pong_hint','1'),10); PG.hint=v===2?2:1; } return PG.hint; }
 function pgHintLabel(){ return L('pg_hint')+': '+L('pg_h'+pgHint()); }
 /* the game's events → what the drawing animates: cracks with the time they appeared, the cave-in (the spider's cartoon), the mended cracks,
-   the hits (the planks' kick, the players' swing), the last points. Called after every rules step of the game that is on the screen */
-function pgSkFx(q){ if(PGK.src!==q){ PGK.src=q; PGK.crk=[]; PGK.crkB=null; PGK.crkM=null; PGK.kick=[null,null]; PGK.lastT=0; PGS.life=null; PGS.pl=null; PGS.sh=null; PGS.hist=[]; }
-  var t=q.t; (q.fx||[]).forEach(function(f){
-    if(f.cave){ if(f.x!==undefined) PGK.crkB={t:t,x:f.x,xs:f.cave.slice()}; }
-    if(f.mend) PGK.crkM={t:t,xs:f.mend.slice()};
-    if(f.kick!==undefined) PGK.kick[f.kick]={t0:t,a:Math.max(0.3,Math.min(1,f.a||0))};
-    if(f.pts){ PGK.lastPts=f.pts; PGK.lastT=1.5; }
-    if(f.lost!==undefined) PGK.flash=0.25; });
-  var cr=q.crk||[]; PGK.crk=cr.map(function(x,j){ var o=PGK.crk[j]; return o&&o.x===x?o:{x:x,t:t}; }); }
+   the hits (the planks' kick, the players' swing), the last points. Called after every rules step of the game that is on the screen.
+   1.61m: kept on the game itself (q._sk) — the menu's rally, the views and the real game each keep their own; coming back to the game
+   after the pause's waving, its cracks don't grow again and the spider goes on */
+function pgSkSt(q){ return q._sk||(q._sk={crk:[],crkB:null,crkM:null,kick:[null,null],lastPts:null,lastT:0,flash:0,t:q.t}); }
+function pgSkFx(q){ var K=pgSkSt(q), t=q.t; (q.fx||[]).forEach(function(f){
+    if(Array.isArray(f.cave)) K.crkB={t:t,x:f.x,xs:f.cave.slice()};
+    if(f.mend) K.crkM={t:t,xs:f.mend.slice()};
+    if(f.kick!==undefined) K.kick[f.kick]={t0:t,a:Math.max(0.3,Math.min(1,f.a||0))};
+    if(f.pts){ K.lastPts=f.pts; K.lastT=1.5; }
+    if(f.lost!==undefined) K.flash=0.25; });
+  var cr=q.crk||[]; K.crk=cr.map(function(x,j){ var o=K.crk[j]; return o&&o.x===x?o:{x:x,t:t}; }); }
 /* the drawing: q — a game (or a view of the field: the menu's demo, the waving, the countdown); playing — the score and the rest written in the corner */
 function pgSkDraw(q,dt,playing){ var u=pgU(), fw=Math.max(1,Math.round(PG_AR*u*uiS)), fh=Math.max(1,Math.round(u*uiS));
   if(!PGK.cv) PGK.cv=document.createElement('canvas'); var cv0=PGK.cv; if(cv0.width!==fw||cv0.height!==fh){ cv0.width=fw; cv0.height=fh; PGS.key=''; }
-  if(PGK.src!==q) pgSkFx(q);
-  PG_V.dark=pgSkin(); PG_V.phint=pgHint(); PGK.v.ar=PG_AR; PGK.v.hw=q.hw; PGK.v.H=q.H; PGK.lastT=Math.max(0,PGK.lastT-dt); PGK.flash=Math.max(0,PGK.flash-dt);
-  var A=window.ARC; A.ar=PG_AR; A.t=q.t; A.py=q.py; A.padSoft=null; A.balls=q.ball?[q.ball]:[]; A.webD=q.webD||0; A.crk=PGK.crk; A.crkB=PGK.crkB; A.crkM=PGK.crkM;
-  A.ceils=q.ceils||0; A.falls=q.falls||0; A.narrowK=q.k||1; A.score=q.score||0; A.series=q.series||0; A.kick=PGK.kick; A.phase=playing?'play':'menu'; A.lastPts=PGK.lastPts; A.lastT=PGK.lastT; A.pf=[]; A.flash=PGK.flash; A.clean=0;
+  var K=pgSkSt(q), dq=Math.max(0,Math.min(0.1,q.t-K.t)); K.t=q.t;   // 1.61m: the flash and the «+N» fade by the game's own time (the menu's rally was drawn with dt 0 — its red veil never faded)
+  if(PGK.src!==q){ PGK.src=q; PGS.life=null; PGS.pl=null; PGS.sh=null; PGS.hist=[]; PGS.mPl=null; PGS.mV=0; PGS.mRef=undefined; PGS.tLast=null; PGS.slow=null; PGS.pth=null; }   // another game on the screen: the players, the shuttle's turn, the motors start afresh
+  PG_V.dark=pgSkin(); PG_V.phint=pgHint(); PG_V.hudL=handSide()==='left'; PGK.v.ar=PG_AR; PGK.v.hw=q.hw; PGK.v.H=q.H; K.lastT=Math.max(0,K.lastT-dq); K.flash=Math.max(0,K.flash-dq);
+  var A=window.ARC; A.ar=PG_AR; A.t=q.t; A.py=q.py; A.padSoft=null; A.balls=q.ball?[q.ball]:[]; A.webD=q.webD||0; A.crk=K.crk; A.crkB=K.crkB; A.crkM=K.crkM;
+  A.ceils=q.ceils||0; A.falls=q.falls||0; A.narrowK=q.k||1; A.score=q.score||0; A.series=q.series||0; A.kick=K.kick; A.phase=playing?'play':'menu'; A.lastPts=K.lastPts; A.lastT=K.lastT; A.pf=[]; A.flash=K.flash; A.clean=0;
   var t0=performance.now(), c=cv0.getContext('2d'); c.setTransform(1,0,0,1,0,0);
   pgSketch(c,fw,fh,Math.max(1,uiS*DPR/S));
-  if(PGK.q.prev) pgSkQual(t0-PGK.q.prev); PGK.q.prev=t0;   // the frames' own rhythm, as the lab's
+  /* 1.61m: the slow-phone steps only in the game itself (the menu and the getting ready run at 30 frames a second on purpose — they read
+     as «slow» and stepped every phone down to the coarsest drawing within seconds) */
+  if(scr==='play'&&PGK.q.prev&&t0-PGK.q.prev<100) pgSkQual(t0-PGK.q.prev); PGK.q.prev=scr==='play'?t0:0;
   lx.fillStyle=PG_V.dark?'#1d1b18':'#f6f1e6'; lx.fillRect(0,0,LW,LH); var sm=lx.imageSmoothingEnabled; lx.imageSmoothingEnabled=true;
   lx.drawImage(cv0,pgX(0),pgY(0),PG_AR*u,u); lx.imageSmoothingEnabled=sm; }
 /* a slow phone: as the lab's (1.60r) — frames longer than ~21 ms for 1.5 s step the drawing down once: the ink laid plainly instead of
    «multiply» (slow on Android), then the lines' points sparser. The canvas is already at most twice the game's pixels */
 function pgSkQual(ms){ var Q=PG_Q; if(!(ms>0&&ms<200)) return; Q.ms+=(ms-Q.ms)*0.1; if(Q.ms>21) Q.slow+=ms/1000; else Q.slow=Math.max(0,Q.slow-ms/2000);
   if(Q.slow>1.5&&Q.lvl<4){ Q.lvl++; Q.slow=0; Q.ms=16.7; try{ Logs.gameEv('набросок: качество',Q.lvl); }catch(e){} } }
+/* 1.61o: the drawn phone on the getting-ready screens (away, the waving, the instructions) showed SonaFly's ship; for SonaLob it shows
+   the paper with one big plank going up and down with the palm (Den 20:28: «на нарисованном смартфоне скин сонафлая вместо платформ..
+   лучше одну платформу нарисовать — так её точно видно будет»). Drawn thick: the phone on the picture is small */
+var PGP={c:null,at:-1};
+function pongPhone(f){ if(PGP.at===clock&&PGP.c) return PGP.c; PGP.at=clock; var q=2, W=Math.round(LW*q), H=Math.round(LH*q);
+  if(!PGP.c||PGP.c.width!==W||PGP.c.height!==H){ PGP.c=document.createElement('canvas'); PGP.c.width=W; PGP.c.height=H; }
+  var c=PGP.c.getContext('2d'), dark=pgSkin()===1, U=H/390, FW=390*W/H; c.setTransform(1,0,0,1,0,0); c.fillStyle=dark?'#1d1b18':'#f3eee2'; c.fillRect(0,0,W,H);
+  c.setTransform(U,0,0,U,0,0); var ff=f===null||f===undefined?0.5:Math.max(0,Math.min(1,f)), y=80+(1-ff)*190, x0=FW*0.12, x1=FW*0.88, top=[], bot=[], TH=46;   // the phone on the picture is seen nearly edge-on: everything drawn tall
+  for(var j=0;j<=24;j++){ var u=j/24, x=x0+(x1-x0)*u, yt=y-40*(1-u)*(1-u)+8*u; top.push([x,yt]); bot.push([x,yt+TH*(0.75+0.25*Math.sin(Math.PI*u))]); }   // a bowl: the outer edge higher
+  var ink=dark?'#ffffff':'#121116', red=dark?'#ff4b36':'#ec2a17';
+  [0.26,0.74].forEach(function(u){ var k=Math.round(u*24), x=top[k][0], yy=bot[k][1]; c.fillStyle=red; c.globalAlpha=0.85; c.beginPath(); c.moveTo(x-22,yy+8); c.lineTo(x+22,yy+8); c.lineTo(x,yy+90); c.closePath(); c.fill(); c.globalAlpha=1;
+    c.fillStyle=ink; c.fillRect(x-26,yy-2,52,14); });   // the nozzles and their fire under it
+  c.beginPath(); top.forEach(function(q,k){ if(k) c.lineTo(q[0],q[1]); else c.moveTo(q[0],q[1]); }); for(var k2=bot.length-1;k2>=0;k2--) c.lineTo(bot[k2][0],bot[k2][1]); c.closePath();
+  c.fillStyle=ink; c.globalAlpha=0.28; c.fill(); c.globalAlpha=1;
+  var p=new Sk.Pen(c,{seed:5151,tick:0,ink:ink,w:9,wob:1.2,overK:2,open:0.5,passes:1,jit:1,hs:1/0.8,cross:true,step:3});
+  p.draw(top,{w:16}); p.draw(bot,{w:9}); p.band(top,bot,{sp:14,shift:-10,w:5}); p.line(top[0][0],top[0][1],bot[0][0],bot[0][1],{w:9}); p.line(top[24][0],top[24][1],bot[24][0],bot[24][1],{w:9});
+  c.setTransform(1,0,0,1,0,0); return PGP.c; }
 /* ── SONARACE: THE CANDY LAND REDRAWN (v1.20; the maintainer, 2 Oct: «переходим к редизайну конфетной гонки… надо сделать конфетную такой же
    красивой и детализированной», as the river; his yes to the three zones of the sketches «Пряничная деревня — Мармеладный лес — Мороженые
    горы», driven through one after another as the river's). Built as the river world (48_racepirate.js — its noise, tiles, shadows and the
@@ -6763,7 +6793,7 @@ function topY(){ return SAFE.t+Math.max(8,Math.round(LH*0.05)); }
    a setup that stopped ("too quiet", "too loud") or went badly can be sent right away. A tap on the version shows the link, another hides it.
    top — at the top corner (the getting-ready screens: the bottom has the buttons, the ring and the "wave here" beacon), else at the bottom */
 function diagCorner(label,top,ty,flip,ax){ var vr=ty?(freeSide()!=='left')!==!!flip:(flip!==undefined?!!flip:freeSide()==='left'),   /* at the bottom: flip true — always the right corner (the games' screen, v0.71) */   /* under the menu button (ty) — its side; flip — the other side */ vx=ax!==undefined?ax:vr?LW-SAFE.r-8-(scr==='wave'?12:0):SAFE.l+8+(scr==='wave'?12:0),   /* v1.56 (the review's п.25): off the «wave here» glow */ vy=top?(ty||SAFE.t+8):LH-SAFE.b-12, vw=PF.width(label), al=vr?'right':'left';
-  var hot=(scr==='scores'?scPeople:diag); if(!hot) lx.globalAlpha=0.5;   /* v1.55 (the review's п.10): the version quieter — the place and the touch zone as before */ text(label,vx,vy,hot?P.band:P.soft,al); lx.globalAlpha=1; var bx0=Math.max(0,(vr?vx-vw:vx)-8), bx1=Math.min(LW,(vr?vx:vx+vw)+8);
+  var hot=(scr==='scores'?scPeople:diag), ink=mode==='pong'&&pgSkOn()&&!pgSkin()&&scr==='ptitle';   /* 1.61m: on SonaLob's light paper — dark ink, readable */ if(!hot) lx.globalAlpha=ink?0.75:0.5;   /* v1.55 (the review's п.10): the version quieter — the place and the touch zone as before */ text(label,vx,vy,hot?P.band:ink?'#4a463f':P.soft,al,1,ink); lx.globalAlpha=1; var bx0=Math.max(0,(vr?vx-vw:vx)-8), bx1=Math.min(LW,(vr?vx:vx+vw)+8);
   var by0=top?Math.max(0,vy-8):vy-4; BTN.push({id:'ver',x:bx0,y:by0,w:bx1-bx0,h:Math.min(top?PF.CAP+16:PF.CAP+10,LH-by0)});
   if(top&&diag&&Logs.has()&&scr!=='scores'&&scr!=='paused'){ var ls=L('logs'), lw=PF.width(ls), ly=vy+PF.CAP+12, lx0=vr?vx-lw:vx;
     text(ls,lx0,ly,P.band,'left'); R(P.band,lx0,ly+PF.CAP+2,lw,1); BTN.push({id:'logs',x:lx0-8,y:ly-6,w:lw+16,h:PF.CAP+12}); }
@@ -6806,10 +6836,11 @@ function soundRow(x,y,w,h){ var on=Sfx.on(), n=Sfx.steps, lv=Sfx.lvl(), s=Math.r
   for(var j=0;j<n;j++) R(on&&j<lv?P.band:P.line,cx+tw+6+j*4,ty,3,7);
   BTN.push({id:'sfx',x:x+s,y:y,w:w-2*s,h:h}); }
 function nextBtn(id,label){ var w=btnW([label]); button(id,label,sideX(w),Math.round(LH*0.76),w,BH,'primary',Math.floor(scrT*2)%2===0); }   /* v0.35: lower, off the pictures */
-function ringAt(){ var yy=mode==='pong'&&scr==='phold'?0.42:0.80;   /* v1.61f: SonaPong's waving — above the rackets */   /* v1.56 (the review's п.24): off the drawn table (0.74 before) */ return freeSide()==='left'?[Math.round(LW*0.13),Math.round(LH*yy)]:[Math.round(LW*0.87),Math.round(LH*yy)]; }   /* v0.35: lower, under the two pictures */
+function ringAt(){ var yy=0.80; if(mode==='pong'&&scr==='phold') return [Math.round(LW/2),Math.round(LH*0.36)];   /* v1.61f: SonaLob's waving — above the rackets; 1.61m: in the middle, over the gap between them (on the free side the racket went up into it) */   /* v1.56 (the review's п.24): off the drawn table (0.74 before) */ return freeSide()==='left'?[Math.round(LW*0.13),Math.round(LH*yy)]:[Math.round(LW*0.87),Math.round(LH*yy)]; }   /* v0.35: lower, under the two pictures */
 function ringUI(p,st){ var r=ringAt(), col=st==='wait'?P.soft:st==='ok'?P.band:P.bullet;
   ring(r[0],r[1],11,p,col); if(st==='ok') tick(r[0],r[1],P.band);
-  text(L(st==='wait'?'ring_wait':st==='listen'?'ring_listen':st==='catch'?'ring_catch':'ring_ok'),r[0],r[1]+17,col,'center'); }
+  var lb=L(st==='wait'?'ring_wait':st==='listen'?'ring_listen':st==='catch'?'ring_catch':'ring_ok'); if(mode==='pong'&&pgSkOn()){ var lw=PF.width(lb); plaque(r[0]-lw/2,r[1]+17,r[0]+lw/2,r[1]+17+PF.CAP,0.55); }   /* 1.61m: over SonaLob's paper — on a plaque */
+  text(lb,r[0],r[1]+17,col,'center'); }
 function stepSquares(id){ if(!onboarding) return; var n=STEPS.length, q=6, gap=6, x=Math.round(LW/2-(n*q+(n-1)*gap)/2), y=LH-SAFE.b-q*3;
   for(var i=0;i<n;i++) R(STEPS[i]===id?P.band:P.line,x+i*(q+gap),y,q,q); }
 /* v1.44: the mouse instead of the sonar — a test on a computer (the maintainer: «было бы круто иметь возможность тестировать визуалы
@@ -7569,12 +7600,17 @@ function afterRoom(){ if(mode==='pong'){ pgToHold(); return; }   // v1.59: SonaP
 /* v1.19: «again» after a game straight to the countdown with the same calibration, in the hand calibration too (the maintainer: «переносим в ручную»; within one launch the readings don't drift); «recalibrate» beside it */
 function readyNow(){ return booted&&Sonar.healthy()&&acoustic&&T!==null&&T.ok; }
 var forceWave=false, autoTry=false;
+/* v1.61l: SonaLob ties the sonar's height scale to its own waving, SonaFly and SonaRace to theirs: going into or out of SonaLob, the
+   room and the calibration are taken anew (before, a SonaLob waving could be played in SonaFly's quick start, and the other way round —
+   and even kept for SonaLob's auto-calibration) */
+var famPong=null;   // which family the room and the calibration were last taken for (the hub itself sets mode 'fly' — not counted)
+function modeSet(m){ var f=m==='pong'; if(famPong!==null&&famPong!==f){ PG.c=null; PG.resume=false; acoustic=false; } famPong=f; mode=m; }
 function quickOr(full,any){ if(mode==='pong'?pgReady():any?readyNow():liveReady()){ Logs.ev('живой режим: сразу отсчёт'); dropGame(); resumeAfterPrep=false; startCount(); } else full(); }
 function toRoom(b){ roomAgain=false; Sonar.setBand(b); prep=null; silentRetry=false; go('away'); }
 function toWave(){ forceWave=false; autoTry=false; try{ DSP2.set('quarter',0); }catch(e){}   // v1.59: the quarter-frame phase only for SonaPong's rackets
   T=Tune.create(+store.get('sonaroids_field','100')||100,true); caught=false; flips=0; flipT=-9; seenT=0; go('wave'); }
 function pauseGame(){ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; go('paused'); } }
-function startCount(){ flyReset(); if(resumeAfterPrep&&g&&g.state!=='over'){ resumeAfterPrep=false; countT=3; go('count-resume'); return; }
+function startCount(){ flyReset(); if(resumeAfterPrep&&g&&g.state!=='over'){ resumeAfterPrep=false; if(mode==='pong') pgKeep(); countT=3; go('count-resume'); return; }
   resumeAfterPrep=false; if(mode==='pong'){ pgCountStart(); return; } countT=3; mixStart(); if(scr!=='wave') shipY=null; lastHand=handFrac()===null?lastHand:handFrac(); /* from the try-out the ship goes on where it is */ Logs.ev('отсчёт',{field:+T.field.toFixed(1),auto:T.auto}); store.set('sonaroids_field',Math.round(T.field));
   // v1.14: a hand calibration's middle (the echo's range) — the auto-calibration plays with it (20_sonar liveMid)
   if(T.ok&&!T.copied){ var cI=DSP2.info().cal, rMid=(100-cI.o)/cI.k; if(rMid>=55&&rMid<=140){ store.set('sonaroids_mid_r_'+Sonar.band(),rMid.toFixed(1)); store.set('sonaroids_mid_t',String(Date.now()));   /* v1.19: per band (А), with the time (Г) */ Logs.ev('середина запомнена',{range_mm:+rMid.toFixed(1),field:Math.round(T.field)}); } }
@@ -7598,17 +7634,19 @@ var ACT={
   play:function(){ if(store.get('sonaroids_seen','')!=='1'){ ACT.howto(); return; } onboarding=false; direct=false; quickOr(function(){ ensure(toAway); }); },
   howto:function(){ onboarding=true; direct=false; go('sound'); },
   /* a deep recalibration: forget the saved palm range, close the microphone and start from "put the phone down" */
-  recal:function(){ onboarding=false; direct=false; store.set('sonaroids_field','100'); store.set('sonaroids_mid_r',''); store.set('sonaroids_mid_r_wide',''); store.set('sonaroids_mid_r_normal',''); store.set('sonaroids_mid_t',''); Sonar.restart(); booted=false; acoustic=false; go('phone'); },
+  recal:function(){ onboarding=false; direct=false; store.set('sonaroids_pong_cal_wide',''); store.set('sonaroids_pong_cal_normal',''); store.set('sonaroids_field','100'); store.set('sonaroids_mid_r',''); store.set('sonaroids_mid_r_wide',''); store.set('sonaroids_mid_r_normal',''); store.set('sonaroids_mid_t',''); Sonar.restart(); booted=false; acoustic=false; go('phone'); },
   lefty:function(){ lefty=true; store.set('sonaroids_lefty','1'); turnShown=false; Logs.ev('играю левой'); seenT=scrT; },
   hub:function(){ mode='fly'; go('hub'); },
   settings:function(){ go('settings'); }, set_expert:function(){ audDev=null; audFrom='settings'; go('audio'); }, set_back:function(){ go('hub'); },
   set_gfx_prev:function(){ SET_ROWS[0][2](-1); }, set_gfx_next:function(){ SET_ROWS[0][2](1); }, set_band_prev:function(){ SET_ROWS[1][2](-1); }, set_band_next:function(){ SET_ROWS[1][2](1); },
   set_live_prev:function(){ SET_ROWS[2][2](-1); }, set_live_next:function(){ SET_ROWS[2][2](1); }, set_room_prev:function(){ SET_ROOM[2](-1); }, set_room_next:function(){ SET_ROOM[2](1); },
   rset:function(){ go('rset'); },
-  hub_rocks:function(){ mode='fly'; go('title'); }, rskin:function(){ raceSkinStep(1); }, rskin_next:function(){ raceSkinStep(1); }, rskin_prev:function(){ raceSkinStep(-1); }, hub_play:function(){ mode='fly'; go('title'); }, hub_race:function(){ mode='race'; go('rtitle'); }, hub_pong:function(){ mode='pong'; go('ptitle'); },   // v1.59
+  hub_rocks:function(){ modeSet('fly'); go('title'); }, rskin:function(){ raceSkinStep(1); }, rskin_next:function(){ raceSkinStep(1); }, rskin_prev:function(){ raceSkinStep(-1); }, hub_play:function(){ modeSet('fly'); go('title'); }, hub_race:function(){ modeSet('race'); go('rtitle'); }, hub_pong:function(){ modeSet('pong'); go('ptitle'); },   // v1.59
   pg_hint:function(){ PG.hint=pgHint()===1?2:1; store.set('sonaroids_pong_hint',String(PG.hint)); },   // v1.61j: О1 ↔ О2, until Den picks
   pg_skin:function(){ PG.skin=1-pgSkin(); store.set('sonaroids_pong_skin',String(PG.skin)); },   // v1.61i: light ↔ dark «набросок»
-  pg_sens:function(){ PG.sens=(pgSens()+1)%4; store.set('sonaroids_pong_sens',String(PG.sens)); if(g&&g.ball!==undefined&&g.state==='play'){ g.H=Pong.TUNE.SENS[PG.sens]; } }, pg_rehold:function(){ pgWaveStart(scrT-WAVE_PAUSE+1); }, pg_recal:function(){ PG.resume=true; go('phold'); pgWaveStart(); },
+  pg_sens:function(){ PG.sens=(pgSens()+1)%4; store.set('sonaroids_pong_sens',String(PG.sens)); if(g&&g.ball!==undefined&&g.state==='play'){ g.H=Pong.TUNE.SENS[PG.sens]; Logs.gameEv('чувствительность',PG.sens); }   /* 1.61p: in the log — a replay needs it */ }, pg_rehold:function(){ pgWaveStart(scrT-WAVE_PAUSE+1); }, pg_recal:function(){ var c=PG.c; PG.prevCal=c?{lin:c.lin,mxCal:c.mxCal,mxOff:c.mxOff}:null; if(!(booted&&Sonar.healthy())){ resumeAfterPrep=true; PG.resume=false; ensure(null); return; } PG.resume=true; flipT=-9; go('phold'); pgWaveStart(); },
+  /* v1.61l: the pause's «Подстроить ладонь» can be left — the corner's «back» returns to the pause with the calibration as it was (before: only «menu», with the old one already wiped and the game left hanging; the next «play» went on with it) */
+  pg_back:function(){ var c=PG.c, q=PG.prevCal; if(c&&q){ c.wave=null; c.lin=q.lin; c.mxCal=q.mxCal; c.mxOff=q.mxOff; c.mxH=null; } PG.resume=false; PG.done=!!(c&&c.lin); pausedFrom='play'; go('paused'); },
   /* v1.58 (Ден, 7.10, после «Жонглёра» в лабе — «лучшее управление, что я вообще пробовал»: «да, сделай переключатель в меню паузы —
      чтоб я сравнил управляемость»): корабль / машина без сглаживания (там, куда показывает ладонь, без догоняния 25 мс). Проба: такая
      партия не идёт в таблицы — переключил посреди партии, и она тоже уже не идёт */
@@ -7800,7 +7838,7 @@ function audAct(id){ var p=id.split(':'), k=p[1], v=p.slice(2).join(':');
 var NO_MENU={hub:1,title:1,rtitle:1,ptitle:1,lang:1,paused:1,restart:1,play:1,over:1},   /* v1.55 (the review's п.14): the game over has its «menu» button */ NO_VER={phold:1,skins:1,rset:1,hub:1,over:1,play:1,count:1,'count-resume':1,paused:1,restart:1};
 function chrome(){ if(LH>LW) return;
   var s=BH-3, vr=freeSide()!=='left', x=vr?LW-Math.round(SAFE.r*0.5)-10-s:Math.round(SAFE.l*0.5)+10, y=SAFE.t+7;
-  if(!NO_MENU[scr]) iconButton(scr==='count'||scr==='count-resume'?'pause':scr==='scores'?'sc_back':scr==='settings'?'set_back':scr==='skins'?'sk_back':scr==='audio'&&audFrom==='settings'?'settings':'menu',x,y);
+  if(!NO_MENU[scr]) iconButton(scr==='phold'&&PG.resume?'pg_back':scr==='count'||scr==='count-resume'?'pause':scr==='scores'?'sc_back':scr==='settings'?'set_back':scr==='skins'?'sk_back':scr==='audio'&&audFrom==='settings'?'settings':'menu',x,y);
   // the wave screen: the try-out ship flies up the free side's edge — the version goes to the other top corner (by the "wave here" beacon)
   // the try-out ship flies up the left edge: there the version goes to the top right corner; on the scores screen the buttons' column
   // starts right under the menu button — the version stands beside it

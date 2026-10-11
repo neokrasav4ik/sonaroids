@@ -53,7 +53,7 @@ function topY(){ return SAFE.t+Math.max(8,Math.round(LH*0.05)); }
    a setup that stopped ("too quiet", "too loud") or went badly can be sent right away. A tap on the version shows the link, another hides it.
    top — at the top corner (the getting-ready screens: the bottom has the buttons, the ring and the "wave here" beacon), else at the bottom */
 function diagCorner(label,top,ty,flip,ax){ var vr=ty?(freeSide()!=='left')!==!!flip:(flip!==undefined?!!flip:freeSide()==='left'),   /* at the bottom: flip true — always the right corner (the games' screen, v0.71) */   /* under the menu button (ty) — its side; flip — the other side */ vx=ax!==undefined?ax:vr?LW-SAFE.r-8-(scr==='wave'?12:0):SAFE.l+8+(scr==='wave'?12:0),   /* v1.56 (the review's п.25): off the «wave here» glow */ vy=top?(ty||SAFE.t+8):LH-SAFE.b-12, vw=PF.width(label), al=vr?'right':'left';
-  var hot=(scr==='scores'?scPeople:diag); if(!hot) lx.globalAlpha=0.5;   /* v1.55 (the review's п.10): the version quieter — the place and the touch zone as before */ text(label,vx,vy,hot?P.band:P.soft,al); lx.globalAlpha=1; var bx0=Math.max(0,(vr?vx-vw:vx)-8), bx1=Math.min(LW,(vr?vx:vx+vw)+8);
+  var hot=(scr==='scores'?scPeople:diag), ink=mode==='pong'&&pgSkOn()&&!pgSkin()&&scr==='ptitle';   /* 1.61m: on SonaLob's light paper — dark ink, readable */ if(!hot) lx.globalAlpha=ink?0.75:0.5;   /* v1.55 (the review's п.10): the version quieter — the place and the touch zone as before */ text(label,vx,vy,hot?P.band:ink?'#4a463f':P.soft,al,1,ink); lx.globalAlpha=1; var bx0=Math.max(0,(vr?vx-vw:vx)-8), bx1=Math.min(LW,(vr?vx:vx+vw)+8);
   var by0=top?Math.max(0,vy-8):vy-4; BTN.push({id:'ver',x:bx0,y:by0,w:bx1-bx0,h:Math.min(top?PF.CAP+16:PF.CAP+10,LH-by0)});
   if(top&&diag&&Logs.has()&&scr!=='scores'&&scr!=='paused'){ var ls=L('logs'), lw=PF.width(ls), ly=vy+PF.CAP+12, lx0=vr?vx-lw:vx;
     text(ls,lx0,ly,P.band,'left'); R(P.band,lx0,ly+PF.CAP+2,lw,1); BTN.push({id:'logs',x:lx0-8,y:ly-6,w:lw+16,h:PF.CAP+12}); }
@@ -96,10 +96,11 @@ function soundRow(x,y,w,h){ var on=Sfx.on(), n=Sfx.steps, lv=Sfx.lvl(), s=Math.r
   for(var j=0;j<n;j++) R(on&&j<lv?P.band:P.line,cx+tw+6+j*4,ty,3,7);
   BTN.push({id:'sfx',x:x+s,y:y,w:w-2*s,h:h}); }
 function nextBtn(id,label){ var w=btnW([label]); button(id,label,sideX(w),Math.round(LH*0.76),w,BH,'primary',Math.floor(scrT*2)%2===0); }   /* v0.35: lower, off the pictures */
-function ringAt(){ var yy=mode==='pong'&&scr==='phold'?0.42:0.80;   /* v1.61f: SonaPong's waving — above the rackets */   /* v1.56 (the review's п.24): off the drawn table (0.74 before) */ return freeSide()==='left'?[Math.round(LW*0.13),Math.round(LH*yy)]:[Math.round(LW*0.87),Math.round(LH*yy)]; }   /* v0.35: lower, under the two pictures */
+function ringAt(){ var yy=0.80; if(mode==='pong'&&scr==='phold') return [Math.round(LW/2),Math.round(LH*0.36)];   /* v1.61f: SonaLob's waving — above the rackets; 1.61m: in the middle, over the gap between them (on the free side the racket went up into it) */   /* v1.56 (the review's п.24): off the drawn table (0.74 before) */ return freeSide()==='left'?[Math.round(LW*0.13),Math.round(LH*yy)]:[Math.round(LW*0.87),Math.round(LH*yy)]; }   /* v0.35: lower, under the two pictures */
 function ringUI(p,st){ var r=ringAt(), col=st==='wait'?P.soft:st==='ok'?P.band:P.bullet;
   ring(r[0],r[1],11,p,col); if(st==='ok') tick(r[0],r[1],P.band);
-  text(L(st==='wait'?'ring_wait':st==='listen'?'ring_listen':st==='catch'?'ring_catch':'ring_ok'),r[0],r[1]+17,col,'center'); }
+  var lb=L(st==='wait'?'ring_wait':st==='listen'?'ring_listen':st==='catch'?'ring_catch':'ring_ok'); if(mode==='pong'&&pgSkOn()){ var lw=PF.width(lb); plaque(r[0]-lw/2,r[1]+17,r[0]+lw/2,r[1]+17+PF.CAP,0.55); }   /* 1.61m: over SonaLob's paper — on a plaque */
+  text(lb,r[0],r[1]+17,col,'center'); }
 function stepSquares(id){ if(!onboarding) return; var n=STEPS.length, q=6, gap=6, x=Math.round(LW/2-(n*q+(n-1)*gap)/2), y=LH-SAFE.b-q*3;
   for(var i=0;i<n;i++) R(STEPS[i]===id?P.band:P.line,x+i*(q+gap),y,q,q); }
 /* v1.44: the mouse instead of the sonar — a test on a computer (the maintainer: «было бы круто иметь возможность тестировать визуалы
@@ -859,12 +860,17 @@ function afterRoom(){ if(mode==='pong'){ pgToHold(); return; }   // v1.59: SonaP
 /* v1.19: «again» after a game straight to the countdown with the same calibration, in the hand calibration too (the maintainer: «переносим в ручную»; within one launch the readings don't drift); «recalibrate» beside it */
 function readyNow(){ return booted&&Sonar.healthy()&&acoustic&&T!==null&&T.ok; }
 var forceWave=false, autoTry=false;
+/* v1.61l: SonaLob ties the sonar's height scale to its own waving, SonaFly and SonaRace to theirs: going into or out of SonaLob, the
+   room and the calibration are taken anew (before, a SonaLob waving could be played in SonaFly's quick start, and the other way round —
+   and even kept for SonaLob's auto-calibration) */
+var famPong=null;   // which family the room and the calibration were last taken for (the hub itself sets mode 'fly' — not counted)
+function modeSet(m){ var f=m==='pong'; if(famPong!==null&&famPong!==f){ PG.c=null; PG.resume=false; acoustic=false; } famPong=f; mode=m; }
 function quickOr(full,any){ if(mode==='pong'?pgReady():any?readyNow():liveReady()){ Logs.ev('живой режим: сразу отсчёт'); dropGame(); resumeAfterPrep=false; startCount(); } else full(); }
 function toRoom(b){ roomAgain=false; Sonar.setBand(b); prep=null; silentRetry=false; go('away'); }
 function toWave(){ forceWave=false; autoTry=false; try{ DSP2.set('quarter',0); }catch(e){}   // v1.59: the quarter-frame phase only for SonaPong's rackets
   T=Tune.create(+store.get('sonaroids_field','100')||100,true); caught=false; flips=0; flipT=-9; seenT=0; go('wave'); }
 function pauseGame(){ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; go('paused'); } }
-function startCount(){ flyReset(); if(resumeAfterPrep&&g&&g.state!=='over'){ resumeAfterPrep=false; countT=3; go('count-resume'); return; }
+function startCount(){ flyReset(); if(resumeAfterPrep&&g&&g.state!=='over'){ resumeAfterPrep=false; if(mode==='pong') pgKeep(); countT=3; go('count-resume'); return; }
   resumeAfterPrep=false; if(mode==='pong'){ pgCountStart(); return; } countT=3; mixStart(); if(scr!=='wave') shipY=null; lastHand=handFrac()===null?lastHand:handFrac(); /* from the try-out the ship goes on where it is */ Logs.ev('отсчёт',{field:+T.field.toFixed(1),auto:T.auto}); store.set('sonaroids_field',Math.round(T.field));
   // v1.14: a hand calibration's middle (the echo's range) — the auto-calibration plays with it (20_sonar liveMid)
   if(T.ok&&!T.copied){ var cI=DSP2.info().cal, rMid=(100-cI.o)/cI.k; if(rMid>=55&&rMid<=140){ store.set('sonaroids_mid_r_'+Sonar.band(),rMid.toFixed(1)); store.set('sonaroids_mid_t',String(Date.now()));   /* v1.19: per band (А), with the time (Г) */ Logs.ev('середина запомнена',{range_mm:+rMid.toFixed(1),field:Math.round(T.field)}); } }
@@ -888,17 +894,19 @@ var ACT={
   play:function(){ if(store.get('sonaroids_seen','')!=='1'){ ACT.howto(); return; } onboarding=false; direct=false; quickOr(function(){ ensure(toAway); }); },
   howto:function(){ onboarding=true; direct=false; go('sound'); },
   /* a deep recalibration: forget the saved palm range, close the microphone and start from "put the phone down" */
-  recal:function(){ onboarding=false; direct=false; store.set('sonaroids_field','100'); store.set('sonaroids_mid_r',''); store.set('sonaroids_mid_r_wide',''); store.set('sonaroids_mid_r_normal',''); store.set('sonaroids_mid_t',''); Sonar.restart(); booted=false; acoustic=false; go('phone'); },
+  recal:function(){ onboarding=false; direct=false; store.set('sonaroids_pong_cal_wide',''); store.set('sonaroids_pong_cal_normal',''); store.set('sonaroids_field','100'); store.set('sonaroids_mid_r',''); store.set('sonaroids_mid_r_wide',''); store.set('sonaroids_mid_r_normal',''); store.set('sonaroids_mid_t',''); Sonar.restart(); booted=false; acoustic=false; go('phone'); },
   lefty:function(){ lefty=true; store.set('sonaroids_lefty','1'); turnShown=false; Logs.ev('играю левой'); seenT=scrT; },
   hub:function(){ mode='fly'; go('hub'); },
   settings:function(){ go('settings'); }, set_expert:function(){ audDev=null; audFrom='settings'; go('audio'); }, set_back:function(){ go('hub'); },
   set_gfx_prev:function(){ SET_ROWS[0][2](-1); }, set_gfx_next:function(){ SET_ROWS[0][2](1); }, set_band_prev:function(){ SET_ROWS[1][2](-1); }, set_band_next:function(){ SET_ROWS[1][2](1); },
   set_live_prev:function(){ SET_ROWS[2][2](-1); }, set_live_next:function(){ SET_ROWS[2][2](1); }, set_room_prev:function(){ SET_ROOM[2](-1); }, set_room_next:function(){ SET_ROOM[2](1); },
   rset:function(){ go('rset'); },
-  hub_rocks:function(){ mode='fly'; go('title'); }, rskin:function(){ raceSkinStep(1); }, rskin_next:function(){ raceSkinStep(1); }, rskin_prev:function(){ raceSkinStep(-1); }, hub_play:function(){ mode='fly'; go('title'); }, hub_race:function(){ mode='race'; go('rtitle'); }, hub_pong:function(){ mode='pong'; go('ptitle'); },   // v1.59
+  hub_rocks:function(){ modeSet('fly'); go('title'); }, rskin:function(){ raceSkinStep(1); }, rskin_next:function(){ raceSkinStep(1); }, rskin_prev:function(){ raceSkinStep(-1); }, hub_play:function(){ modeSet('fly'); go('title'); }, hub_race:function(){ modeSet('race'); go('rtitle'); }, hub_pong:function(){ modeSet('pong'); go('ptitle'); },   // v1.59
   pg_hint:function(){ PG.hint=pgHint()===1?2:1; store.set('sonaroids_pong_hint',String(PG.hint)); },   // v1.61j: О1 ↔ О2, until Den picks
   pg_skin:function(){ PG.skin=1-pgSkin(); store.set('sonaroids_pong_skin',String(PG.skin)); },   // v1.61i: light ↔ dark «набросок»
-  pg_sens:function(){ PG.sens=(pgSens()+1)%4; store.set('sonaroids_pong_sens',String(PG.sens)); if(g&&g.ball!==undefined&&g.state==='play'){ g.H=Pong.TUNE.SENS[PG.sens]; } }, pg_rehold:function(){ pgWaveStart(scrT-WAVE_PAUSE+1); }, pg_recal:function(){ PG.resume=true; go('phold'); pgWaveStart(); },
+  pg_sens:function(){ PG.sens=(pgSens()+1)%4; store.set('sonaroids_pong_sens',String(PG.sens)); if(g&&g.ball!==undefined&&g.state==='play'){ g.H=Pong.TUNE.SENS[PG.sens]; Logs.gameEv('чувствительность',PG.sens); }   /* 1.61p: in the log — a replay needs it */ }, pg_rehold:function(){ pgWaveStart(scrT-WAVE_PAUSE+1); }, pg_recal:function(){ var c=PG.c; PG.prevCal=c?{lin:c.lin,mxCal:c.mxCal,mxOff:c.mxOff}:null; if(!(booted&&Sonar.healthy())){ resumeAfterPrep=true; PG.resume=false; ensure(null); return; } PG.resume=true; flipT=-9; go('phold'); pgWaveStart(); },
+  /* v1.61l: the pause's «Подстроить ладонь» can be left — the corner's «back» returns to the pause with the calibration as it was (before: only «menu», with the old one already wiped and the game left hanging; the next «play» went on with it) */
+  pg_back:function(){ var c=PG.c, q=PG.prevCal; if(c&&q){ c.wave=null; c.lin=q.lin; c.mxCal=q.mxCal; c.mxOff=q.mxOff; c.mxH=null; } PG.resume=false; PG.done=!!(c&&c.lin); pausedFrom='play'; go('paused'); },
   /* v1.58 (Ден, 7.10, после «Жонглёра» в лабе — «лучшее управление, что я вообще пробовал»: «да, сделай переключатель в меню паузы —
      чтоб я сравнил управляемость»): корабль / машина без сглаживания (там, куда показывает ладонь, без догоняния 25 мс). Проба: такая
      партия не идёт в таблицы — переключил посреди партии, и она тоже уже не идёт */
@@ -1090,7 +1098,7 @@ function audAct(id){ var p=id.split(':'), k=p[1], v=p.slice(2).join(':');
 var NO_MENU={hub:1,title:1,rtitle:1,ptitle:1,lang:1,paused:1,restart:1,play:1,over:1},   /* v1.55 (the review's п.14): the game over has its «menu» button */ NO_VER={phold:1,skins:1,rset:1,hub:1,over:1,play:1,count:1,'count-resume':1,paused:1,restart:1};
 function chrome(){ if(LH>LW) return;
   var s=BH-3, vr=freeSide()!=='left', x=vr?LW-Math.round(SAFE.r*0.5)-10-s:Math.round(SAFE.l*0.5)+10, y=SAFE.t+7;
-  if(!NO_MENU[scr]) iconButton(scr==='count'||scr==='count-resume'?'pause':scr==='scores'?'sc_back':scr==='settings'?'set_back':scr==='skins'?'sk_back':scr==='audio'&&audFrom==='settings'?'settings':'menu',x,y);
+  if(!NO_MENU[scr]) iconButton(scr==='phold'&&PG.resume?'pg_back':scr==='count'||scr==='count-resume'?'pause':scr==='scores'?'sc_back':scr==='settings'?'set_back':scr==='skins'?'sk_back':scr==='audio'&&audFrom==='settings'?'settings':'menu',x,y);
   // the wave screen: the try-out ship flies up the free side's edge — the version goes to the other top corner (by the "wave here" beacon)
   // the try-out ship flies up the left edge: there the version goes to the top right corner; on the scores screen the buttons' column
   // starts right under the menu button — the version stands beside it

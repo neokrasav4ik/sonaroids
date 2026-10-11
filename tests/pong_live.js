@@ -9,7 +9,7 @@ const ROOT=path.join(__dirname,'..'), OUT=path.join(__dirname,'out'); fs.mkdirSy
 const SRC=fs.readFileSync(path.join(__dirname,'sim_source.js'),'utf8');
 const SCEN=`function(t){ if(t<8) return null; return 110-40*Math.cos(2*Math.PI*(t-8)/1.6); }`;
 async function run(b,kept){
-  const ctx=await b.newContext({viewport:{width:844,height:390},deviceScaleFactor:2});
+  const ctx=await b.newContext({viewport:{width:844,height:390},deviceScaleFactor:2,hasTouch:true});
   await ctx.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_live','1'); localStorage.setItem('sonaroids_lang','ru'); localStorage.setItem('sonaroids_band_lock','normal');
     ${kept?`localStorage.setItem('sonaroids_pong_cal_normal',JSON.stringify({r:${kept},t:1760000000000}));`:''} ${SRC}; window.makeSimSource=makeSimSource; window.__scen=${SCEN};`);
   const p=await ctx.newPage(); const errors=[]; p.on('pageerror',e=>errors.push(e.message));

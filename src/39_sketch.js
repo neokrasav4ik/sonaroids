@@ -255,9 +255,9 @@ function pgsPtsHint(c,t,F,FW,I){ var mode=Math.round(PG_V.phint||0); if(!mode||A
     if(!S.apex&&!S.zero){ if((b.vy||0)<0) S.val=v; else if(S.val>0) S.apex={x:F(b.x),y:F(b.peakY),t:t}; }
     var bx=F(b.x), by=F(b.y); S.lx=bx-16; S.ly=by+26; }   /* 1.60w (Ден 13:34): ярлык О1 — снизу слева от волана */
   var pen1=pgsPen(c,7200+(S.hid%40+40)%40);
-  if(mode===1){ if(S.val>0&&!S.zero){ var pop=S.apex?1+0.25*Math.max(0,1-(t-S.apex.t)/0.25):1, sz=(S.apex?18:13)*pop; pen1.text('+'+S.val,S.lx,S.ly,sz,{align:'right',w:I.w*0.6}); }
-    var O=S.old; if(O&&t-O.t<0.45){ var u=(t-O.t)/0.45, e=u*u*(3-2*u), tx=FW-F(0.08), ty=F(0.12); pgsPen(c,7250).text('+'+O.val,O.x+(tx-O.x)*e,O.y+(ty-O.y)*e,18*(1-0.5*e),{align:e>0.5?'left':'right',w:I.w*0.6,a:1-0.6*e}); } }
-  else { if(S.apex&&S.val>0&&!S.zero){ var str=String(S.val), n=Math.max(1,Math.ceil(str.length*Math.min(1,(t-S.apex.t)/0.3))); pen1.text(str.slice(0,n),S.apex.x+14,Math.max(F(JG_TOP+(ARC.webD||0))+30,S.apex.y-4),18,{align:'left',w:I.w*0.6}); }   /* 1.60w (Ден 13:37): у самого потолка (и паутины) — ниже, не на нём */   /* справа от вершины, не залезая на потолок */
+  if(mode===1){ if(S.val>0&&!S.zero&&b&&!(b.wait>0)){ var pop=S.apex?1+0.25*Math.max(0,1-(t-S.apex.t)/0.25):1, sz=(S.apex?18:13)*pop; pen1.text('+'+S.val,S.lx,S.ly,sz,{align:'right',w:I.w*0.6}); }
+    var O=S.old; if(O&&t-O.t<0.45){ var u=(t-O.t)/0.45, e=u*u*(3-2*u), tx=PG_V.hudL?F(0.27):FW-F(0.08), ty=F(0.12); pgsPen(c,7250).text('+'+O.val,O.x+(tx-O.x)*e,O.y+(ty-O.y)*e,18*(1-0.5*e),{align:e>0.5?'left':'right',w:I.w*0.6,a:1-0.6*e}); } }
+  else { if(b&&S.apex&&S.val>0&&!S.zero){ var str=String(S.val), n=Math.max(1,Math.ceil(str.length*Math.min(1,(t-S.apex.t)/0.3))); pen1.text(str.slice(0,n),S.apex.x+14,Math.max(F(JG_TOP+(ARC.webD||0))+30,S.apex.y-4),18,{align:'left',w:I.w*0.6}); }   /* 1.60w (Ден 13:37): у самого потолка (и паутины) — ниже, не на нём */   /* справа от вершины, не залезая на потолок */
     var O2=S.old; if(O2&&t-O2.t<0.8&&O2.ax!==undefined){ var str2=String(O2.val); pgsPen(c,7260).text(str2,O2.ax+14,Math.max(F(JG_TOP+(ARC.webD||0))+30,O2.ay-4),18,{align:'left',w:I.w*0.6,a:1-(t-O2.t)/0.8}); } } }
 function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ return v*390; }, I=PGS_ST;
   /* the page: paper and the ceiling, kept until the screen changes size */
@@ -439,7 +439,7 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
     pgsShuttle(pgsPen(c,401+bi),bx+ca*8*k,by+sa*8*k,a,{cork:I.accent,k:k}); });
   pgsPtsHint(c,t,F,FW,I);
   /* the numbers, written by the same pen: score, multiplier, balls left, the series, the bar to the next narrowing */
-  if(ARC.phase==='play'){ var rx=FW-F(0.05), ph=pgsPen(c,701); ph.text(String(ARC.score||0),rx,F(0.13),27,{align:'right',w:I.w*0.75});
+  if(ARC.phase==='play'){ var rx=PG_V.hudL?F(0.33):FW-F(0.05), ph=pgsPen(c,701);   /* 1.61m: hudL — the numbers in the top left (the game: a left hand, the pause button on the right) */ ph.text(String(ARC.score||0),rx,F(0.13),27,{align:'right',w:I.w*0.75});
     var mu=pgMultAll(); if(mu>1.05) pgsPen(c,702).text('×'+mu.toFixed(1).replace('.',','),rx,F(0.2),15,{align:'right',w:I.w*0.55,ink:I.accent});
     if(ARC.lastT>0) pgsPen(c,703).text('+'+ARC.lastPts,rx-F(0.16),F(0.2),15,{align:'right',w:I.w*0.55,a:Math.min(1,ARC.lastT/0.5)});
     if(PG_V.lives>0){ var hl=Math.max(0,PG_V.lives-(ARC.falls||0)); for(var h=0;h<hl;h++) pgsShuttle(pgsPen(c,720+h),rx-6-h*15,F(0.255)-4,-Math.PI/2,{k:0.6,cork:I.accent}); }
@@ -448,7 +448,7 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
     var gm=Math.round(PG_V.grow), T9=pgTime(), P9=pgNarrowP(), fr9=null;
     if((gm===2&&ARC.t<4*P9)||gm===3) fr9=1-(ARC.t%P9)/P9; else if(gm===1&&(ARC.narrowK||1)>0.41) fr9=1-Math.min(10,ARC.clean||0)/10;
     if(fr9===null&&T9>0){ var st9=gm===2?4*P9:0; fr9=Math.max(0,(T9-ARC.t)/Math.max(1,T9-st9)); }
-    if(fr9!==null){ var bx=FW-F(0.03), y0=F(0.38), y1=F(0.92), pb=pgsPen(c,760); pb.line(bx,y0,bx+1,y1,{over:2,w:I.w*0.45}); pb.line(bx+7,y0,bx+7,y1,{over:2,w:I.w*0.45}); pb.line(bx-1,y0,bx+8,y0,{over:1,w:I.w*0.4}); pb.line(bx-1,y1,bx+8,y1,{over:1,w:I.w*0.4});
+    if(fr9!==null){ var bx=PG_V.hudL?F(0.02):FW-F(0.03), y0=F(0.38), y1=F(0.92), pb=pgsPen(c,760); pb.line(bx,y0,bx+1,y1,{over:2,w:I.w*0.45}); pb.line(bx+7,y0,bx+7,y1,{over:2,w:I.w*0.45}); pb.line(bx-1,y0,bx+8,y0,{over:1,w:I.w*0.4}); pb.line(bx-1,y1,bx+8,y1,{over:1,w:I.w*0.4});
       if(fr9>0.01){ var tl=[], bl=[]; for(var yy=y1-1;yy>=y1-(y1-y0)*fr9;yy-=1){ tl.push([bx+0.5,yy]); bl.push([bx+6.5,yy]); } if(tl.length>2) pb.band(tl,bl,{sp:2.8,shift:3,w:I.w*0.35,a:0.9,ink:I.accent,single:true}); } } }
   (ARC.pf||[]).forEach(function(p,i){ pgsPen(c,800+(p.pts%97)).text('+'+p.pts,F(p.x),F(p.y+0.06-0.05*(1-p.t)),24,{align:'center',w:I.w*0.65,ink:I.accent,a:Math.min(1,p.t/0.4)}); });
   c.globalCompositeOperation='source-over'; c.setTransform(1,0,0,1,0,0);

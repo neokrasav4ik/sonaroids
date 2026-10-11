@@ -83,6 +83,9 @@ var PongCtl=(function(){
   function waveStart(c){ c.wave={buf:[],k:0}; c.hold=null; }
   function wave(c,t,o){ o=o||{}; var W=c.wave; if(!W) return {done:true,k:5,big:true};
     var h=c.height, res={k:W.k,big:false,done:false};
+    /* 1.61q: the sonar ties its height scale on its own 0.8 s after the palm appears (DSP2 autocenter, the hand calibration) — if that
+       happens while waving, the heights before and after it are on different scales: what was gathered is dropped (the dots stay) */
+    if(o.centered!==undefined){ if(W.cen===false&&o.centered){ W.buf=[]; res.retie=true; } W.cen=!!o.centered; }
     if(c.present&&h!==null&&h!==undefined) W.buf.push({t:t,h:h,r:c.rng}); while(W.buf.length&&W.buf[0].t<t-WAVE_WIN) W.buf.shift();
     if(W.buf.length<20) return res;
     var hs=W.buf.map(function(q){ return q.h; }).sort(function(a,b){ return a-b; }), lo=hs[Math.floor(hs.length*0.1)], hi=hs[Math.floor(hs.length*0.9)], md=hs[hs.length>>1];

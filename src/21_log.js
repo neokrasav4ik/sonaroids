@@ -29,7 +29,8 @@ var Logs=(function(){
   }
   /* one core step: [mic frame, step, palm 0…1 or −1, ship y/FH, lives, score] */
   function step(g,hand){ if(!G||!G.on) return;
-    G.ren.push([G.f,g.n,hand===null?-1:+hand.toFixed(4),+(g.ship.y/g.FH).toFixed(3),g.lives,g.score]);
+    G.ren.push([G.f,g.n,hand===null?(g.pong?-9:-1):+hand.toFixed(4),   /* 1.61p: SonaLob's «no palm» is −9 (Pong.NONE): its palm may go below 0 */
+      +(g.ship.y/g.FH).toFixed(3),g.lives,g.score]);
     g.events.forEach(function(k){ if(k!=='fire') G.ev.push([G.f,k,g.n]); });
     if(G.ren.length>GLOG_SEC*62) G.ren.splice(0,G.ren.length-GLOG_SEC*60); }
   function gameEv(k,x){ if(G&&G.on) G.ev.push([G.f,k,x===undefined?null:x]); }

@@ -73,4 +73,8 @@ const swings=(lo,hi,n,per)=>{ const p=[[0,lo+20],[1,lo]]; for(let i=0;i<n;i++){ 
   check('a small wiggle (20 mm) is not taken for a swing',!r.done&&!r.c.lin,'±10 mm'); }
 { const r=waveRun(swings(70,150,6,1.2),h=>h/1.4+20,{span:0,lowr:false});
   check('the lab\'s options: «размах из калибровки», no lift',!!r.done&&r.done.lift===0&&Math.abs(r.c.lin.t-r.c.lin.b-r.done.span0)<1e-9,r.done?`travel ${(r.c.lin.t-r.c.lin.b).toFixed(0)} mm`:''); }
+{ /* 1.61q: the sonar ties its scale on its own while waving — what was gathered before is dropped, the swing is caught on the new scale */
+  const c=Ctl.create(); Ctl.waveStart(c); const o={recenter:()=>({shift:0}),shift:()=>{},k:1.4,centered:false}; let done=null, re=false, shift=0;
+  for(const f of frames(swings(70,150,8,1.2),0,3)){ if(f.t>2.2&&!o.centered){ o.centered=true; shift=60; } if(f.r.present){ f.r.height+=shift; f.r.range=f.r.height/1.4+20; } Ctl.frame(c,f.r,N,FS,1,false); const r=Ctl.wave(c,f.t,o); if(r.retie) re=true; if(r.done){ done=Object.assign({t:f.t},r); break; } }
+  check('the sonar ties its scale while waving: the swings before it are dropped (1.61q)',re&&!!done&&done.t>4.5&&done.span0<=80,done?`re-gathered from 2.2 s, caught at ${done.t.toFixed(1)} s, swing ${done.span0.toFixed(0)} mm (a mix of both scales would read ~140)`:'not caught'); }
 out.forEach(x=>console.log(x)); console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;

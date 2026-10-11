@@ -125,6 +125,10 @@ function pgsPlayer(p,x,y,d,pose,o){ o=o||{}; var X=function(v){ return x+d*v; },
     p.line(X(13),y-34*k,X(17),y-41*k,{over:1}); p.loop(X(19.5),y-48.5*k,5*k,8*k,{rot:d*0.5}); }
   if(pose!=='run'){ p.line(X(legs[0][2]-3),y-1*k,X(legs[0][2]+3),y-1*k,{over:1,w:p.w*0.9}); p.line(X(legs[1][2]),y-1*k,X(legs[1][2]+6),y-1*k,{over:1,w:p.w*0.9}); } }
 /* the shuttlecock, cork first along angle a */
+/* 1.60o: паучок — тельце, головка снизу, восемь лап по две косточки; лапы шевелятся по фазе ph */
+function pgsSpider(p,x,y,ph,k){ p.loop(x,y,6*k,7*k,{}); p.loop(x,y+8*k,3.6*k,3.2*k,{}); var I=PGS_ST;
+  for(var sd=-1;sd<=1;sd+=2) for(var m=0;m<4;m++){ var w=Math.sin(ph+m*1.7+(sd>0?1:0))*2.5*k, ay=y-4*k+m*3*k, kx=x+sd*(12+m)*k, ky=ay-6*k+w, fx=x+sd*(17+m*1.5)*k, fy=ay+5*k-w*0.5; p.draw([[x+sd*5*k,ay],[kx,ky],[fx,fy]],{w:I.w*0.55}); }
+  var cx0=p.c; cx0.save(); cx0.fillStyle=I.ink; [-1.6,1.6].forEach(function(dx){ cx0.beginPath(); cx0.arc(x+dx*k,y+9*k,0.9*k,0,6.283); cx0.fill(); }); cx0.restore(); }
 function pgsShuttle(p,x,y,a,o){ o=o||{}; var c=Math.cos(a), s=Math.sin(a), R=function(u,v){ return [x+u*c-v*s,y+u*s+v*c]; }, k=o.k||1;
   var r0=R(0,0); p.loop(r0[0],r0[1],3.3*k,3.3*k,{ink:o.cork,w:p.w*1.0});
   var a1=R(-3*k,-2.4*k), b1=R(-15*k,-7*k), a2=R(-3*k,2.4*k), b2=R(-15*k,7*k); p.line(a1[0],a1[1],b1[0],b1[1],{over:1}); p.line(a2[0],a2[1],b2[0],b2[1],{over:1});
@@ -247,6 +251,33 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
   var hw=pgHw(ar), A=PG_V.curve>=0.5?pgCupA():Math.tan(PG_TILTV*Math.PI/180)*hw, hand=ARC.py, py=ARC.padSoft!==null&&ARC.padSoft!==undefined?ARC.padSoft:ARC.py, t=ARC.t||0, dt=PGS.tLast===null?0:Math.max(0,Math.min(0.1,t-PGS.tLast)); PGS.tLast=t;
   /* the field's edges and the net, if the rules have them */
   var fl=ar*(1-PG_V.fw)/2, fr=ar*(1+PG_V.fw)/2, pe=pgsPen(c,151);
+  /* 1.60n «Потолок трескается»: трещина растёт за 0,25 с из точки, куда ударил волан (ломаная вверх в штриховку и чуть вниз, с
+     отколами); каждая следующая — длиннее и ветвистее; перед последней трещины подрагивают; обвал — куски потолка и пыль падают
+     на месте всех трещин */
+  if((PG_V.crack||0)>=1){ var NC=Math.round(PG_V.crack), CE2=F(JG_TOP);
+    (ARC.crk||[]).forEach(function(q,j){ var pc=pgsPen(c,6100+j*7+Math.round(q.x*97)%5), gr=Math.min(1,(t-q.t)/0.25), x0=F(q.x)+(j===NC-2?Math.sin(t*28)*0.8:0), L=(10+5*j)*gr, pts=[[x0,CE2+2]];
+      for(var m=1;m<=5;m++){ var hh=((j+1)*7.31+m*3.17)%1; pts.push([x0+(m%2?1:-1)*(2+hh*5),CE2+2-L*m/5]); } pc.draw(pts,{w:I.w*0.7});
+      if(gr>0.5){ var br=pts[2]; pc.stroke([[br[0],br[1]],[br[0]+(j%2?6:-6)*(0.6+0.1*j),br[1]-4]],{w:I.w*0.45}); pc.stroke([[x0-3,CE2+2],[x0-1,CE2+6],[x0+2,CE2+3]],{w:I.w*0.4}); }
+      if(j>=2&&gr>0.8){ var b2=pts[3]; pc.stroke([[b2[0],b2[1]],[b2[0]+(j%2?-7:7),b2[1]-3]],{w:I.w*0.4}); } });
+    /* 1.60o (Ден 11:58–12:01: «почему волан теряется на 5-м касании? может, кто-то вылезает из потолка и забирает?» → эскизы А–Г →
+       «Г, паук — отлично санимируется, эдакий микромультик посреди партии»). В трещинах живёт паук: за две трещины до обвала в
+       последней щели появляются глаза-бусинки и моргают; за одну — смотрят на волан, из щели торчат кончики лап. Обвал — микромультик
+       ~2,4 с: волан отскакивает от потолка и повисает на паутинках, паук выползает из щели, спускается на нитке, заматывает волан в кокон (лапы
+       мелькают, витки ложатся один за другим), утаскивает кокон наверх, а трещины затягиваются паутиной и тают */
+    var crN=(ARC.crk||[]).length, b0e=(ARC.balls||[])[0];
+    if(NC>=3&&crN>=NC-2&&crN>0&&!(ARC.crkB&&t-ARC.crkB.t<2.4)){ var lq=ARC.crk[crN-1], ex=F(lq.x), ey=CE2-3, pe2=pgsPen(c,6400), blink=(t*0.7)%1>0.93;
+      [-4,4].forEach(function(dx){ if(blink) pe2.stroke([[ex+dx-2,ey],[ex+dx+2,ey]],{w:I.w*0.5}); else { pe2.loop(ex+dx,ey,2.4,2.4,{w:I.w*0.5});
+        if(crN===NC-1&&b0e){ var vx=F(b0e.x)-ex, vy=F(b0e.y)-ey, vl=Math.hypot(vx,vy)||1; c.save(); c.fillStyle=I.ink; c.beginPath(); c.arc(ex+dx+vx/vl*1.1,ey+vy/vl*1.1,1.1,0,6.283); c.fill(); c.restore(); } } });
+      if(crN===NC-1){ var lw2=Math.sin(t*9)*1.5; pe2.stroke([[ex-9,CE2-1],[ex-12,CE2+4+lw2]],{w:I.w*0.45}); pe2.stroke([[ex+9,CE2-1],[ex+12,CE2+4-lw2]],{w:I.w*0.45}); } }
+    var KB=ARC.crkB; if(KB&&t-KB.t<2.4){ var T=t-KB.t, sx=F(KB.x), sy=CE2+20+30*Math.min(1,T/0.25), hy=CE2-4, ez=function(u){ u=Math.max(0,Math.min(1,u)); return u*u*(3-2*u); };
+      var wb=pgsPen(c,6500); [[-14,-4],[0,-6],[14,-4]].forEach(function(q){ wb.stroke([[sx,sy-6],[sx+q[0],CE2+1]],{w:I.w*0.3,a:Math.min(1,T/0.15)*(T<1.7?0.8:Math.max(0,0.8-(T-1.7)*1.2))}); });
+      var spY, coc=0, carry=false;
+      if(T<0.25) spY=hy+8*ez(T/0.25); else if(T<0.6) spY=hy+8+(sy-14-hy-8)*ez((T-0.25)/0.35); else if(T<1.1){ spY=sy-14; coc=(T-0.6)/0.5; } else if(T<1.7){ carry=true; coc=1; spY=sy-14+(hy-(sy-14))*ez((T-1.1)/0.6); } else spY=null;
+      var cy=carry?spY+14:sy;
+      if(T<1.1&&coc<1) pgsShuttle(pgsPen(c,6510),sx,cy,-Math.PI/2,{cork:I.accent,k:1.1*(1-0.35*coc)});
+      if(coc>0&&T<1.7){ var cp=pgsPen(c,6520); cp.loop(sx,cy-2,6+2*Math.min(1,coc*2),9,{w:I.w*0.6,a:Math.min(1,coc*2)}); for(var w2=0;w2<Math.floor(coc*6);w2++) cp.stroke([[sx-7,cy-9+w2*3],[sx+7,cy-7+w2*3]],{w:I.w*0.35}); }
+      if(spY!==null){ var tp2=pgsPen(c,6530); tp2.stroke([[sx,hy],[sx,spY-5]],{w:I.w*0.25}); var fast=(T>0.6&&T<1.1)?3:1; pgsSpider(pgsPen(c,6540),sx,spY,t*6*fast,1); }
+      if(T>1.5){ var ma=Math.min(1,(T-1.5)/0.2)*Math.max(0,1-(T-1.9)/0.5), wp=pgsPen(c,6550); KB.xs.forEach(function(xx,j2){ var X0=F(xx); for(var r2=4;r2<=10;r2+=3) wp.loop(X0,CE2-2,r2,r2*0.5,{w:I.w*0.25,a:ma}); wp.stroke([[X0-10,CE2-2],[X0+10,CE2-2]],{w:I.w*0.25,a:ma}); wp.stroke([[X0,CE2-8],[X0,CE2+3]],{w:I.w*0.25,a:ma}); }); } } }
   if(PG_V.wall>=0.5){ pe.line(F(fl),F(JG_TOP)+4,F(fl)+1,386); pe.line(F(fr),F(JG_TOP)+4,F(fr)-1,386); }
   var nt=ARC.netTop===undefined?PG_NET0:ARC.netTop; if(nt<0.97){ pe.line(F(ar/2),F(nt),F(ar/2)+1,392,{w:pe.w*1.2}); pe.line(F(ar/2)-6,F(nt),F(ar/2)+6,F(nt)-1); }
   /* 1.59r (Ден 22:00: «половина движения ладони — на платформу, половина — на ракетку в руках человечка, и чтобы волан отскакивал от

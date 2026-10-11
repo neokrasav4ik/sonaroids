@@ -27,7 +27,7 @@ const SCEN=`function(t){ if(t<8) return null; return 110-40*Math.cos(2*Math.PI*(
     if(s.scr!==last){ seen.push(s.scr+'@'+T().toFixed(1)); last=s.scr; }
     if(s.scr==='probe') await p.evaluate(()=>__sonaroids.act.probe_norm());
     if(s.scr==='phold'&&s.c&&s.c.wk>=2&&!s.c.done&&!shots.hold){ shots.hold=1; await shot('02_wave'); }
-    if(s.scr==='phold'&&s.c&&s.c.done&&!startAt){ hold=s.c; await p.waitForTimeout(1300); await shot('03_try'); hold.btn=await p.evaluate(()=>__sonaroids.btn().map(b=>b.id)); startAt=T(); await p.evaluate(()=>__sonaroids.act.start()); await p.waitForTimeout(200); hold.kept=await p.evaluate(()=>({q:JSON.parse(localStorage.getItem('sonaroids_pong_cal_normal')||'null'),cal:DSP2.info().cal})); }
+    if(s.scr==='phold'&&s.c&&s.c.done&&!startAt){ hold=s.c; await p.waitForTimeout(1300); await shot('03_try'); hold.btn=await p.evaluate(()=>__sonaroids.btn().map(b=>b.id)); startAt=T(); await p.evaluate(()=>{ window.__lob={}; const o=Sfx.lob; Sfx.lob=function(k){ window.__lob[k]=(window.__lob[k]||0)+1; return o.apply(this,arguments); }; __sonaroids.act.start(); }); await p.waitForTimeout(200); hold.kept=await p.evaluate(()=>({q:JSON.parse(localStorage.getItem('sonaroids_pong_cal_normal')||'null'),cal:DSP2.info().cal})); }
     if(s.scr==='play'&&s.py!==null&&s.c&&s.c.frac!==null) follow.push([s.c.frac,s.py,s.H]);
     if(s.scr==='play'&&!shots.serve){ shots.serve=1; await p.waitForTimeout(500); await shot('04a_serve'); }
     if(s.scr==='play'&&T()-startAt>14&&!shots.play){ shots.play=1; await shot('04_play'); }
@@ -44,6 +44,7 @@ const SCEN=`function(t){ if(t<8) return null; return 110-40*Math.cos(2*Math.PI*(
     if(paused&&T()-startAt>30&&!over){ if(s.scr==='play') await p.evaluate(()=>__sonaroids.act.quit()); await p.waitForTimeout(1500); await shot('06_over');
       seen.push('over@'+T().toFixed(1)); over=await p.evaluate(()=>({scr:__sonaroids.scr(),score:__sonaroids.state().g.score,best:+localStorage.getItem('sonaroids_pong_best'),btn:__sonaroids.btn().map(b=>b.id)}));
       /* 1.61p: the game's log replays to the same game — the palm as logged (4 digits, −9 for none) through the rules alone */
+      over.lob=await p.evaluate(()=>window.__lob);
       over.rep=await p.evaluate(async()=>{ const g=__sonaroids.state().g, bl=Logs.gameBlob(), u8=new Uint8Array(await bl.arrayBuffer()); let i=12; const rd=(o)=>u8[o]|(u8[o+1]<<8)|(u8[o+2]<<16)|(u8[o+3]<<24); let glog=null, meta=null;
         while(i+8<=u8.length){ const id=String.fromCharCode(u8[i],u8[i+1],u8[i+2],u8[i+3]), n=rd(i+4); if(id==='glog') glog=JSON.parse(new TextDecoder().decode(u8.slice(i+8,i+8+n))); if(id==='LIST') meta=JSON.parse(new TextDecoder().decode(u8.slice(i+8+12,i+8+n)).trim()); i+=8+n+(n%2); }
         const G0=meta.game, hands=glog.render.map(r=>r[2]), marks=glog.events.filter(e=>e[1]==='resume'||e[1]==='sens').map(e=>e[1]==='resume'?[e[2],'resume']:[e[2][0],'sens',e[2][1]]);
@@ -66,6 +67,7 @@ const SCEN=`function(t){ if(t<8) return null; return 110-40*Math.cos(2*Math.PI*(
   check('pause: resume, hold again, start over, end, menu; then the countdown and the game',!!paused&&paused.scr==='paused'&&['resume','pg_recal','restart','quit','exit'].every(id=>paused.btn.includes(id))&&paused.cr==='count-resume'&&paused.back==='play',paused?`${paused.scr} → ${paused.cr} → ${paused.back}`:'');
   check('pause → «Подстроить ладонь» → «back»: the pause again, the calibration as it was (1.61l)',!!paused&&!!paused.recal&&paused.recal.scr==='phold'&&paused.recal.btn.includes('pg_back')&&paused.recal.lin===null&&paused.back0.scr==='paused'&&paused.back0.same,paused&&paused.recal?`${paused.recal.scr} [${paused.recal.btn.join(' ')}] → ${paused.back0.scr}, calibration kept: ${paused.back0.same}`:'');
   check('the game\'s log replays to the same game, the pauses too (1.61p, 1.61r)',!!over&&!!over.rep&&over.rep.rows===over.rep.steps&&over.rep.score===over.rep.want&&over.rep.marks>=1,over&&over.rep?`${over.rep.core}: ${over.rep.rows} steps (${over.rep.none} without the palm, ${over.rep.marks} goes-on after a pause), replayed ${over.rep.score}, played ${over.rep.want} (without the marks ${over.rep.noMarks})`:'');
+  check('SonaLob\'s own sounds play: the countdown, the serve, the hits, the landings (1.61t)',!!over&&!!over.lob&&['tick','start','serve','pass','land'].every(k=>over.lob[k]>0),over&&over.lob?Object.keys(over.lob).map(k=>k+' '+over.lob[k]).join(', '):'');
   check('the game over keeps the best',!!over&&over.scr==='over'&&over.best===over.score&&['again','over_cal','menu'].every(id=>over.btn.includes(id)),over?`score ${over.score}, best kept ${over.best}`:'');
   check('no page errors',errors.length===0,errors.slice(0,2).join(' | '));
   out.forEach(x=>console.log(x)); console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;

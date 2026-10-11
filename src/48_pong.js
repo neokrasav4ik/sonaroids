@@ -138,17 +138,33 @@ function sPHold(){ var c=PG.c; if(!c){ pgWaveStart(); c=PG.c; }
 function pgCount(){ countT-=DT; var v=pgView(PG.view?PG.view.py:Pong.TUNE.PAD_LO-0.5*Pong.TUNE.SENS[pgSens()]); v.py=pgPalmPad(v); pgField(v,DT);
   var n=Math.max(1,Math.ceil(countT)), cx0=Math.round(LW/2), cy0=Math.round(LH/2), fr=countT-Math.floor(countT), cs=3, pu=1+0.18*Math.max(0,fr-0.75)/0.25;
   ring(cx0,cy0,13*cs,1-fr,P.band); lx.save(); lx.translate(cx0,cy0); lx.scale(pu,pu); lx.translate(-cx0,-cy0); text(String(n),cx0,cy0-Math.round(3.5*cs),P.text,'center',cs); lx.restore(); say(String(n));
-  if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.play('tick');
+  if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.lob('tick');   // 1.61t: SonaLob's own
   if(countT<=0) startGame(); }
 function pgCountStart(){ pgKeep(); countT=3; try{ DSP2.set('quarter',1); }catch(e){} go('count'); }
 function pgStart(){ PG.fps=null; PG.resume=false; PG.resumed=false; var seed=newSeed(); var lin=PG.c&&PG.c.lin; g=Pong.create(seed,pgAr(),pgSens(),lin?Math.max(30,lin.t-lin.b):null); var f=PG.c?PongCtl.frac(PG.c,PongCtl.palm(PG.c)):null; if(f!==null) g.py=Pong.padOf(g,f);
   acc=0; parts=[]; PG.pts=[]; PG.newBest=false; nickAsked=false; var I=Sonar.info(), c=PG.c||{};
   Logs.gameStart({core:Pong.TAG,game:'pong',auto_cal:!!PG.auto,seed:seed,ar:+g.ar.toFixed(4),sens:pgSens(),span:g.span,cal:DSP2.info().cal,lin:c.lin?{b:+c.lin.b.toFixed(1),t:+c.lin.t.toFixed(1)}:null,mix_off:c.mxCal===null||c.mxCal===undefined?null:+c.mxCal.toFixed(1),
     chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids'});
-  Sfx.play('start'); go('play'); }
+  Sfx.lob('start'); go('play'); }
 /* ── the game ── */
 var PG_SND={go:'tap',land:'tap',ceil:'rub',pass:'coin',dull:'syrup',lost:'crash',narrow:'level'};
-function pgReact(){ pgSkFx(g); if(pgSkOn()){ g.events.forEach(function(k){ if(PG_SND[k]) Sfx.play(PG_SND[k]); }); (g.fx||[]).forEach(function(f){ if(f.pts) PG.pts.push({n:f.pts,x:f.x,y:f.y,t:1.2}); }); return; }
+/* v1.61t — SonaLob's sounds (src/22_sfx.js Sfx.lob), from the rules' events of one step. The hit (the shuttle leaving a racket) plays the
+   marimba at the series' step — a run of clean passes climbs; after a ceiling touch the arrival is the muffled wood instead and the hit is
+   silent; the landing is the felt (soft, by how hard it landed); a crack — the pencil, sharper each time; the fifth — the spider's steps and
+   «ам» (no «lost» thud over it); the narrowing — the saw (the web lowers silently); the last shuttle — the marimba
+   down instead of the thud */
+function pgSound(q){ var ev=q.events, has=function(k){ return ev.indexOf(k)>=0; }, fx=q.fx||[], kick=null, land=null, crack=0, cave=false;
+  fx.forEach(function(f){ if(f.kick!==undefined) kick=f; if(f.land!==undefined) land=f; if(f.crack!==undefined) crack=f.n; if(f.lost!==undefined&&f.cave) cave=true; });
+  if(has('over')){ Sfx.lob('over'); return; }
+  if(has('serve')) Sfx.lob('serve');
+  if(has('dull')){ Sfx.lob('dull'); q._dullN=q.n; }
+  if(has('toss')&&!(q._dullN!==undefined&&q.n-q._dullN<=6)) Sfx.lob('pass',q.series,kick?kick.a:undefined);   // the hit right after a dull arrival stays silent
+  if(land&&!has('toss')) Sfx.lob('land',0,Math.min(1,land.v/2));
+  if(has('crack')) Sfx.lob('crack',crack-1);
+  if(has('cave')) Sfx.lob('cave');
+  if(has('lost')&&!cave&&!has('cave')) Sfx.lob('lost');
+  if(has('narrow')) Sfx.lob('narrow'); }   /* the web lowers silently (Den 22:27: «паутина — без звука») */
+function pgReact(){ pgSkFx(g); if(pgSkOn()){ pgSound(g); (g.fx||[]).forEach(function(f){ if(f.pts) PG.pts.push({n:f.pts,x:f.x,y:f.y,t:1.2}); }); return; }
   g.events.forEach(function(k){ if(PG_SND[k]) Sfx.play(PG_SND[k]); });
   (g.fx||[]).forEach(function(f){ if(f.pts) PG.pts.push({n:f.pts,x:f.x,y:f.y,t:1.2}); if(f.lost!==undefined){ flash=0.25; burst(pgX(Math.max(0,Math.min(g.ar,f.lost))),f.cave?pgY(Pong.TUNE.TOP)+4:Math.min(LH,pgY(1))-6,20,[PG_COL.ball,'#ffffff',P.hit],60*K); }
     if(Array.isArray(f.cave)) f.cave.forEach(function(x){ burst(pgX(x),pgY(Pong.TUNE.TOP)+3,8,[PG_COL.ceil,'#ff8c78','#8f9cc0'],40*K); });   // v1.61d: the ceiling comes down

@@ -32,8 +32,8 @@ function pgSkinLabel(){ return L('skin')+': '+L('pg_sk'+pgSkin()); }
 /* v1.61j: the points by the shuttle (the lab's 1.60t/w «Очки у волана»; Den 19:17: «сделай и о1, и о2, я потом выберу.. по умолчанию — о1»).
    О1 — a «+N» tag rides below-left of the shuttle, growing with the height; at the top it freezes and swells; on the catch it flies into the
    score. О2 — at the top of the arc the pen writes the number, it hangs there while the shuttle falls (never on the ceiling or the web) and
-   fades after the catch. A ceiling touch — no points, no tag. In the pause, until Den picks one */
-function pgHint(){ if(PG.hint===undefined||PG.hint===null){ var v=parseInt(store.get('sonaroids_pong_hint','1'),10); PG.hint=v===2?2:1; } return PG.hint; }
+   fades after the catch. A ceiling touch — no points, no tag. In the pause; О2 by default since 1.61u */
+function pgHint(){ if(PG.hint===undefined||PG.hint===null){ var v=parseInt(store.get('sonaroids_pong_hint','2'),10); PG.hint=v===1?1:2; }   /* 1.61u: О2 by default (Den 22:40) */ return PG.hint; }
 function pgHintLabel(){ return L('pg_hint')+': '+L('pg_h'+pgHint()); }
 /* the game's events → what the drawing animates: cracks with the time they appeared, the cave-in (the spider's cartoon), the mended cracks,
    the hits (the planks' kick, the players' swing), the last points. Called after every rules step of the game that is on the screen.

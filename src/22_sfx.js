@@ -63,6 +63,37 @@ var Sfx=(function(){
     else if(kind==='syrup'){ tone(260,140,0.22,'triangle',0.25); }
     else if(kind==='empty'){ tone(700,180,0.7,'triangle',0.4); }
   }
+  /* v1.61t — SonaLob's own sounds (the maintainer 11 Oct 22:01: «качественными, деликатными, ненавязчивыми, грамотно спроектированными»;
+     22:26 picked from the sketches page «Звуки SonaLob»). One family — wood and pencil, as the sketch on paper; the frequent sounds the
+     quietest and shortest; good goes up (the clean passes climb a pentatonic), bad goes down. Through the same chain as every sound
+     (the compressor, the player's level, the limiter, three low-passes at 6 kHz — nothing near the probe at 18–20 kHz). For a phone's small
+     speaker (it hardly plays below ~200 Hz) every low thump has its octave above. Each sound varies a little (±2.5% pitch, ±1.5 dB), so a
+     long rally doesn't sound like a machine. Not part of the rules: Math.random here is fine */
+  var PENTA=[261.63,293.66,329.63,392.0,440.0,523.25,587.33];
+  function lob(kind,n,a){
+    if(!on) return; setup(); if(!bus) return;
+    var t=ctx.currentTime+0.005, rp=function(){ return 1+(Math.random()-0.5)*0.05; }, rv=function(){ return Math.pow(10,(Math.random()-0.5)*0.15); };
+    function env(g,s,at,peak,dur){ g.gain.setValueAtTime(0.0001,s); g.gain.exponentialRampToValueAtTime(Math.max(0.0002,peak),s+at); g.gain.exponentialRampToValueAtTime(0.0001,s+at+dur); }
+    function sine(f,s,peak,dur,at,type,glide){ var o=ctx.createOscillator(), g=ctx.createGain(); o.type=type||'sine'; o.frequency.setValueAtTime(f,s); if(glide) o.frequency.exponentialRampToValueAtTime(glide,s+dur);
+      env(g,s,at||0.004,peak,dur); o.connect(g); g.connect(bus); o.start(s); o.stop(s+dur+0.05); }
+    function nz(s,dur,ft,freq,Q,peak,at,sweep){ var src=ctx.createBufferSource(), f=ctx.createBiquadFilter(), g=ctx.createGain(); src.buffer=noise; src.loop=true;
+      f.type=ft; f.frequency.setValueAtTime(freq,s); if(sweep) f.frequency.exponentialRampToValueAtTime(sweep,s+dur); f.Q.value=Q||1; env(g,s,at||0.002,peak,dur);
+      src.connect(f); f.connect(g); g.connect(bus); src.start(s,Math.random()*0.5); src.stop(s+dur+0.05); }
+    function wood(f,s,v,len){ sine(f,s,v,len,0.003); sine(f*3.93,s,v*0.22,len*0.18,0.002); nz(s,0.018,'bandpass',2400,1.5,v*0.35,0.001); }
+    function thump(s,v,f0,f1,len){ sine(f0,s,v,len,0.002,'sine',f1); sine(f0*2,s,v*0.45,len*0.6,0.002,'sine',f1*2); }   // the octave — for a phone's speaker
+    var v=rv();
+    if(kind==='serve'){ wood(196*rp(),t,0.26*v,0.2); wood(261.6*rp(),t+0.11,0.22*v,0.25); }
+    else if(kind==='pass'){ var f=PENTA[Math.max(0,Math.min(PENTA.length-1,n||0))]*(1+(Math.random()-0.5)*0.012), k=0.6+0.4*Math.max(0,Math.min(1,a===undefined?0.7:a)); wood(f,t,0.34*k*v,0.36); }   // the hit's strength — louder
+    else if(kind==='dull'){ sine(196*rp(),t,0.24*v,0.16); nz(t,0.03,'lowpass',700,1,0.2*v); }
+    else if(kind==='land'){ var kl=0.5+0.5*Math.max(0,Math.min(1,a===undefined?0.6:a)); thump(t,0.26*kl*v,150*rp(),70,0.09); }
+    else if(kind==='crack'){ var kc=1+0.25*Math.min(3,n||0); nz(t,0.025,'highpass',2600*rp(),0.8,0.3*kc*v); nz(t+0.02,0.04,'bandpass',1400,2,0.12*kc*v); }
+    else if(kind==='cave'){ [0,0.12,0.24,0.36].forEach(function(d,i){ sine((i%2?165:147)*rp(),t+d,0.18*v,0.08); sine((i%2?330:294),t+d,0.07*v,0.05); }); sine(330,t+0.6,0.2*v,0.22,0.01,'triangle',150); }   // creeping steps — and «ам»
+    else if(kind==='lost'){ thump(t,0.4*v,120,45,0.2); wood(220*rp(),t+0.08,0.22*v,0.3); wood(174.6*rp(),t+0.26,0.22*v,0.4); }
+    else if(kind==='narrow'){ nz(t,0.14,'bandpass',700*rp(),3,0.24*v,0.03,1600); nz(t+0.2,0.14,'bandpass',700*rp(),3,0.24*v,0.03,1600); }   // the saw: a bit of each plank is sawn off
+    else if(kind==='tick'){ wood(523.3,t,0.2*v,0.12); }
+    else if(kind==='start'){ [261.6,329.6,392].forEach(function(f,i){ wood(f,t+i*0.04,0.24*v,0.5); }); }
+    else if(kind==='over'){ [523.3,392,329.6,261.6].forEach(function(f,i){ wood(f,t+i*0.22,0.26*v,0.45); }); }
+  }
   /* the game's own sounds must not flood the microphone: on the OnePlus 13 (24 Sep) they reached it ~50 dB louder than on iPhone,
      far above the probe, and the ship drifted. When the microphone gets near its limit, the sounds are turned down step by step */
   /* v0.19: down to 0.03 and remembered for this phone. On the OnePlus the game's sounds reached the microphone at −17…−34 dB rms
@@ -73,7 +104,7 @@ var Sfx=(function(){
   function apply(){ if(bus){ bus.gain.setTargetAtTime(1.1*vol,ctx.currentTime,0.02); post.gain.setTargetAtTime(postGain(),ctx.currentTime,0.02); } }
   /* the sound row (v0.36): the middle switches on and off, − and + step the level; every change is heard at once */
   function setLevel(n){ if(n<1){ on=false; } else { on=true; lvl=Math.min(NL,n); vol=1; } apply(); save(); if(on) play('ping'); }
-  return {duck:duck,level:function(){ return vol; },steps:NL,lvl:function(){ return lvl; },play:play,on:function(){ return on; },
+  return {duck:duck,level:function(){ return vol; },steps:NL,lvl:function(){ return lvl; },play:play,lob:lob,on:function(){ return on; },
     toggle:function(){ on=!on; if(on){ vol=1; apply(); } save(); if(on) play('ping'); return on; },
     down:function(){ setLevel(on?lvl-1:lvl); }, up:function(){ setLevel(on?lvl+1:lvl); },
     state:function(){ return {on:on,lvl:lvl,duck:Math.round(vol*100)/100}; }};

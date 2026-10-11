@@ -36,6 +36,7 @@ LANE_A = [  # phase 2, beside lane B: the screens (their 28 sizes × languages �
     ('screens fit, all sizes (Chromium)', f'{H} tests/screens.js'),
 ]
 LANE_B = [  # phase 2, beside lane A: the rest
+    ('the sounds rendered offline: none clips, none near the probe, the frequent ones quietest (Chromium)', f'{H} tests/sfx_check.js'),
     ('the built game matches src/', 'python3 build.py --check'),
     ('the font matches its drawing', 'python3 font/make_font.py --check'),
     ("DSP2 is the lab's", f'{H} tests/test_same_dsp.js'),
@@ -64,7 +65,7 @@ LANE_B = [  # phase 2, beside lane A: the rest
     ('palm clock: the palm in time, not in bunches (SonaFly, SonaRace)', f'{H} tests/test_palmclock.js'),
 ]
 # the time limit of a check, s — about three times its run on 5 Oct (2 cores, no other load); the rest 180
-LIMIT = {'flow': 300, 'race_flow': 200, 'pong_flow': 200, 'pong_live': 150, 'native_audio': 150, 'silent': 120, 'volume': 90, 'side': 60, 'live_flow': 260, 'screens': 1200,
+LIMIT = {'flow': 300, 'race_flow': 200, 'pong_flow': 200, 'pong_live': 150, 'sfx_check': 90, 'native_audio': 150, 'silent': 120, 'volume': 90, 'side': 60, 'live_flow': 260, 'screens': 1200,
          'test_live': 120, 'mix': 200, 'skin_audit': 120, 'obsidian_sizes': 180, 'test_race': 120}
 
 def key(cmd):   # the check's script name: «flow», «screens», «build», «font»; HD=1 skin_audit is «skin_audit_hd»
@@ -88,7 +89,7 @@ MAP = [
     ('src/48_pong.js', 'pong_flow pong_live screens'),
     ('src/20_sonar.js', 'flow native_audio silent volume side live_flow test_eq'),
     ('src/21_log.js', 'flow'),
-    ('src/22_sfx.js', 'flow native_audio'),
+    ('src/22_sfx.js', 'flow native_audio sfx_check'),
     ('src/23_net.js server/*', 'test_server test_pair flow'),
     ('src/3?_lang_*.js font/* game/font.js', 'test_text screens first_open'),
     ('src/00_head.html src/99_end.html src/40_gfx.js src/41_sprites.js src/42_*.js src/44_thumbs.js', 'screens first_open press settings'),

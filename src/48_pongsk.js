@@ -85,3 +85,53 @@ function pongPhone(f){ if(PGP.at===clock&&PGP.c) return PGP.c; PGP.at=clock; var
   var p=new Sk.Pen(c,{seed:5151,tick:0,ink:ink,w:9,wob:1.2,overK:2,open:0.5,passes:1,jit:1,hs:1/0.8,cross:true,step:3});
   p.draw(top,{w:16}); p.draw(bot,{w:9}); p.band(top,bot,{sp:14,shift:-10,w:5}); p.line(top[0][0],top[0][1],bot[0][0],bot[0][1],{w:9}); p.line(top[24][0],top[24][1],bot[24][0],bot[24][1],{w:9});
   c.setTransform(1,0,0,1,0,0); return PGP.c; }
+/* ── v1.61v: «Как играть» — SonaLob's rules in four drawn screens, at the start of «ИНСТРУКЦИЯ» (the maintainer 11 Oct 22:50–23:08: «в
+   инструкции, отдельно правил не надо.. ладонь на первом экране лишняя»; the sketches «Подкидывай выше», «Серия», «Потолок трескается»,
+   «Ракетки сужаются»). Each a little cartoon of ~4 s on a loop, drawn by the game's own pen on its paper: the shuttle flies the high arc and
+   the pen writes 240 at its top; the series' dots fill one by one and the notes climb; the cracks come one by one and the spider takes the
+   shuttle; the planks' ends are sawn off and fall, the web comes down. Only the picture; the coordinates are the field's, 390 high ── */
+var PGH={cv:null,key:''};
+function pgHowDraw(step,t){ var u=pgU(), fw=Math.max(1,Math.round(PG_AR*u*uiS)), fh=Math.max(1,Math.round(u*uiS));
+  PG_V.dark=pgSkin(); PG_V.skw=undefined; var key=fw+'x'+fh+'|'+pgsStyle();
+  if(!PGH.cv) PGH.cv=document.createElement('canvas'); var cv=PGH.cv; if(cv.width!==fw||cv.height!==fh){ cv.width=fw; cv.height=fh; }
+  if(PGH.key!==key){ PGH.key=key; PGH.bg=document.createElement('canvas'); PGH.bg.width=fw; PGH.bg.height=fh; var bc=PGH.bg.getContext('2d'); var d0=Math.max(1,uiS*DPR/S); bc.scale(d0,d0); Sk.paper(bc,fw/d0,fh/d0,d0,{seed:7});
+    if(PGS_ST.dark){ try{ var idt=bc.getImageData(0,0,fw,fh), dd=idt.data; for(var q=0;q<dd.length;q+=4){ var lu=0.3*dd[q]+0.59*dd[q+1]+0.11*dd[q+2], v=Math.max(0,255-lu*0.93); dd[q]=v*1.02+3; dd[q+1]=v*0.98+2; dd[q+2]=v*0.93; } bc.putImageData(idt,0,0); }catch(e){} } }
+  var c=cv.getContext('2d'), U=fh/390, FW=390*fw/fh, I=PGS_ST, CE=112, PY=350, RED=I.accent;
+  c.setTransform(1,0,0,1,0,0); c.globalCompositeOperation='source-over'; c.drawImage(PGH.bg,0,0); c.setTransform(U,0,0,U,0,0); c.globalCompositeOperation=PGS_ST.dark?'screen':'multiply';
+  var P=function(s){ return pgsPen(c,s); }, T=function(s,str,x,y,size,o){ var pp=P(s); pp.text(str,x,y,size,Object.assign({align:'center',w:I.w*0.7},o||{})); };
+  var ez=function(v){ v=Math.max(0,Math.min(1,v)); return v*v*(3-2*v); };
+  /* the ceiling with its hatching */
+  var p0=P(101); p0.line(6,CE+1,FW*0.52,CE-1,{w:p0.w*1.25,over:6}); p0.line(FW*0.48,CE-1.5,FW-6,CE+1.5,{w:p0.w*1.25,over:6});
+  var tp=[], bt=[]; for(var x=0;x<=FW;x+=3){ tp.push([x,CE-0.5]); bt.push([x,CE-8-6*Sk.noise(x/40)]); } p0.band(tp,bt,{sp:6,shift:4,w:p0.w*0.5,a:0.7});
+  /* the scene under the ceiling, a little smaller (about the ceiling's middle) — the buttons get the bottom of the screen */
+  var KS=0.8; c.translate(FW/2,CE); c.scale(KS,KS); c.translate(-FW/2,-CE);
+  function plank(s,x0,x1,side){ var top=[]; for(var j=0;j<=24;j++){ var uu=j/24, ui=side?1-uu:uu; top.push([x0+(x1-x0)*uu,PY-16*(1-ui)*(1-ui)+4*ui]); } pgsPlatform(P(s),top); }
+  function fig(s,x,d,pose){ pgsFig(P(s),x,PY-10,d,PGS_POSE[pose||'ready'],{hair:d>0,cap:d<0}); }
+  function arcPt(x0,x1,y0,top,uu){ var base=y0, y=base-(base-top)*4*uu*(1-uu); return [x0+(x1-x0)*uu,y]; }
+  function dots(s,x0,x1,y0,top,u1){ var pd=P(s); for(var i=1;i<=Math.floor(40*u1);i+=2){ var q=arcPt(x0,x1,y0,top,i/40); pd.loop(q[0],q[1],1.3,1.3,{w:I.w*0.5,a:0.8}); } }
+  if(step===0){ var L=2.6, tt=t%L, uu=Math.min(1,tt/1.6); plank(11,60,430,0); plank(12,470,840,1); fig(21,200,1,tt<0.3?'flick':'ready'); fig(22,700,-1,uu>0.9?'crouch':'ready');
+    dots(31,300,600,322,CE+14,uu); var q1=arcPt(300,600,322,CE+14,uu), q2=arcPt(300,600,322,CE+14,Math.min(1,uu+0.01)); pgsShuttle(P(32),q1[0],q1[1],Math.atan2(q2[1]-q1[1],q2[0]-q1[0]),{cork:RED,k:1.1});
+    if(uu>=0.5){ var n=Math.max(1,Math.ceil(3*Math.min(1,(tt-0.8)/0.3))); T(41,'240'.slice(0,n),464,CE+40,22,{align:'left'}); }
+    dots(33,320,560,322,262,1); T(42,'30',446,252,16,{align:'left',a:0.6});
+    var ps=P(51); ps.stroke([[40,CE+14],[40,322]],{w:I.w*0.45}); for(var k=0;k<=4;k++) ps.stroke([[34,CE+14+k*(308-CE)/4],[46,CE+14+k*(308-CE)/4]],{w:I.w*0.45}); }
+  else if(step===1){ var nf=Math.floor(t/0.55)%7; plank(11,60,430,0); plank(12,470,840,1); fig(21,240,1,nf%2?'flick':'ready'); fig(22,660,-1,nf%2?'ready':'flick');
+    [0,1,2].forEach(function(i){ dots(31+i,262+i*14,640-i*14,322,215-i*30,1); });
+    ['1,1','1,2','1,3','1,4','1,5'].forEach(function(s,i){ var x=300+i*62, pd=P(60+i); pd.loop(x,268,6,6,{w:I.w*0.6}); if(i<Math.min(5,nf)) pd.draw([[x-4.5,271],[x+3.5,262],[x-3,269],[x+4.5,265]],{w:I.w*0.9,ink:RED}); T(70+i,'×'+s,x,298,13,{a:i<nf?1:0.45}); });
+    var pn=P(80); for(var m=0;m<Math.min(3,nf);m++){ var xx=690+m*22, yy=236-m*18; pn.loop(xx,yy,4.5,3.5,{w:I.w*0.6}); pn.stroke([[xx+4,yy],[xx+4,yy-16]],{w:I.w*0.5}); } }
+  else if(step===2){ var L3=4.2, t3=t%L3, nc=Math.min(4,Math.floor(t3/0.5)); plank(11,60,430,0); plank(12,470,840,1); fig(21,200,1); fig(22,700,-1,nc>=4?'duck':'ready');
+    [140,250,360,470].slice(0,nc).forEach(function(x0,j){ var pc=P(6100+j), Lc=10+5*j, pts=[[x0,CE+2]]; for(var mm=1;mm<=5;mm++){ var hh=((j+1)*7.31+mm*3.17)%1; pts.push([x0+(mm%2?1:-1)*(2+hh*5),CE+2+Lc*mm/5]); } pc.draw(pts,{w:I.w*0.7}); T(6200+j,String(j+1),x0,CE+Lc+30,13,{a:0.7}); });
+    var sp=ez((t3-2.2)/0.8), sx=600, lives=5-(t3>3.4?1:0);
+    if(t3>=2.0){ P(90).stroke([[sx,CE+2],[sx,CE+2+78*sp]],{w:I.w*0.3}); pgsSpider(P(91),sx,CE+8+78*sp,t3*6,1.4); }
+    if(t3<3.0){ var sy=t3<2.0?260-(260-CE-120)*ez(t3/2):CE+120; pgsShuttle(P(93),sx,sy,-Math.PI/2,{cork:RED,k:1.1}); }
+    else { var cp=P(92), cy=CE+120-(t3>3.4?60*ez((t3-3.4)/0.6):0); cp.loop(sx,cy,8,12,{w:I.w*0.6}); for(var w2=0;w2<6;w2++) cp.stroke([[sx-9,cy-10+w2*3.4],[sx+9,cy-8+w2*3.4]],{w:I.w*0.35}); }
+    if(nc>=4) T(94,'5',sx+30,CE+70,15,{ink:RED});
+    for(var h=0;h<lives;h++) pgsShuttle(P(95+h),790-h*18,150,-Math.PI/2,{k:0.7,cork:RED}); }
+  else { var L4=4.0, t4=t%L4, cut=ez((t4-0.4)/0.5), fall=Math.max(0,t4-0.9); var a0=60+70*cut, b1=840-70*cut;
+    plank(11,a0,380,0); plank(12,520,b1,1); fig(21,250,1); fig(22,650,-1);
+    if(t4>0.4&&t4<0.9){ var pw=P(30); pw.stroke([[130,PY-30],[130,PY+20]],{w:I.w*0.4,a:0.6}); pw.stroke([[770,PY-30],[770,PY+20]],{w:I.w*0.4,a:0.6}); }
+    if(t4>=0.9){ var pc4=P(31); [[95,-1],[805,1]].forEach(function(q){ var x=q[0]+q[1]*30*fall, y=PY+4+300*fall*fall, a=q[1]*(0.5+2*fall), ca=Math.cos(a), sa=Math.sin(a), R=function(uu,vv){ return [x+uu*ca-vv*sa,y+uu*sa+vv*ca]; }; if(y<420) pc4.draw([R(-30,-6),R(30,-6),R(30,6),R(-30,6),R(-30,-6)],{w:I.w*0.75}); }); }
+    var pop=1+0.15*Math.max(0,1-Math.abs(t4-1.0)/0.3); T(32,'×2',450,268,26*pop,{ink:RED});
+    var WY=CE+6+22*ez(t4/L4*1.6), wp=P(40); for(var aa=0;aa<6;aa++){ var x1=aa*FW/6, x2=(aa+1)*FW/6, pts4=[]; for(var m4=0;m4<=10;m4++){ var u4=m4/10; pts4.push([x1+(x2-x1)*u4,CE+(WY-CE)*(0.35+0.65*Math.sin(Math.PI*u4))]); } wp.stroke(pts4,{w:I.w*0.3,a:0.6}); }
+    c.setTransform(U,0,0,U,0,0); [[24,40],[FW-24,40]].forEach(function(q){ for(var k4=0;k4<5;k4++){ var an=Math.PI*(0.1+0.8*k4/4); wp.stroke([[q[0],CE+1],[q[0]+Math.cos(an)*q[1],CE+Math.sin(an)*q[1]]],{w:I.w*0.28,a:0.6}); } }); }
+  c.globalCompositeOperation='source-over'; c.setTransform(1,0,0,1,0,0);
+  lx.fillStyle=PG_V.dark?'#1d1b18':'#f6f1e6'; lx.fillRect(0,0,LW,LH); var sm=lx.imageSmoothingEnabled; lx.imageSmoothingEnabled=true; lx.drawImage(cv,pgX(0),pgY(0),PG_AR*u,u); lx.imageSmoothingEnabled=sm; }

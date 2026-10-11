@@ -490,7 +490,7 @@ function devInfo(){ var ua=navigator.userAgent||'', ios=/iPhone|iPad|iPod/.test(
 Board.devInfo(devInfo);
 function endGame(){ if(mode==='race'&&g&&g.car){ raceEnd(); return; } if(mode==='pong'&&g&&g.ball!==undefined){ pgEnd(); return; } g.state='over'; overT=0; Logs.gameStop(); Board.finish(g.score); Board.flush(); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } go('over'); }
 function react(){ g.events.forEach(function(k){
-  if(k==='fire'){ if(Math.random()<0.5) Sfx.play('fire'); } else if(k!=='crash') Sfx.play(k); });
+  if(k==='break') Sfx.play(k,Math.max(0,(g.combo||1)-1)%9); else if(k!=='crash') Sfx.play(k); });   /* 1.61w: every shot (a quiet tick now), a broken rock's note climbs with the combo */
   var BU=SK.bursts(); (g.gone||[]).forEach(function(r){ if(SK.gone) SK.gone(r,rockSpr[r.id]); else burst(fx(r.x),r.y*K,8+Math.round(r.r*K),BU.rock,50*K); delete rockSpr[r.id]; shake=Math.max(shake,0.08+r.r*0.004); });
   (g.fx||[]).forEach(function(f){ if(f.ufo){ if(SK.goneUfo) SK.goneUfo(f); else burst(fx(f.x),f.y*K,40,BU.ufo,90*K); shake=0.35; } else if(f.pick) burst(fx(f.x),f.y*K,14,BU['pick_'+f.pick]||BU.pick,50*K); });   // v1.28: a skin may colour each power-up's burst
   if(g.events.indexOf('ufo_hit')>=0&&g.ufo){ burst(fx(g.ufo.x),g.ufo.y*K,14,[P.text].concat(BU.ufo),60*K); shake=Math.max(shake,0.12); }
@@ -766,7 +766,7 @@ function raceStart(){ var y0=raceSteer==='road'?(rCarYs===null?null:+rCarYs.toFi
 var R_BURST={tbubble:['#ffffff','#ffd23f','#ff8ac4'],tmagnet:['#ffffff','#ffd23f','#e8284a'],coin:['#ffffff','#ffd23f','#ff4f7a'],fuel:['#ffffff','#3fd07a','#8fdcff'],magnet:['#ffffff','#e8284a','#ffd23f'],bubble:['#ffffff','#ff8ac4','#e0409a']};
 function raceReact(){ var cX=fx(Race.CAR_X), cY=g.car.y*K;
   var CB=RSKIN==='candy'?CW_BURST:null;   // v1.21: the candy race's sprinkles in the gifts' colours, cookie crumbs on a crash
-  g.events.forEach(function(k){ if(k!=='over') Sfx.play(k);
+  g.events.forEach(function(k){ Sfx.play(k);   /* 1.61w: the finish too — a quiet music box */
     if(k==='crash') cwDazeT=clock;   // the stars over the car (the candy land's and the notebook's)
     if(k==='crash'&&CB){ flash=0.25; shake=0.35; cwDazeT=clock; burst(cX+6,cY,18,CB.crash,60*K,'crumb'); }
     else if(CB&&(k==='pop'||k==='boing')) burst(cX,cY,k==='pop'?20:8,CB.bubble,(k==='pop'?60:40)*K,'spr');
@@ -893,7 +893,9 @@ var ACT={
   appupd:function(){ try{ APP.checkUpdate(); }catch(e){} setTimeout(function(){ location.reload(); },600); },
   probe_wide:function(){ toRoom('wide'); }, probe_norm:function(){ toRoom('normal'); },
   play:function(){ if(store.get('sonaroids_seen','')!=='1'){ ACT.howto(); return; } onboarding=false; direct=false; quickOr(function(){ ensure(toAway); }); },
-  howto:function(){ onboarding=true; direct=false; go('sound'); },
+  howto:function(){ if(mode==='pong'){ PG.how=0; go('phowto'); return; } onboarding=true; direct=false; go('sound'); },
+  ph_next:function(){ if((PG.how||0)<3){ PG.how=(PG.how||0)+1; scrT=0; return; } onboarding=true; direct=false; go('sound'); },   /* 1.61v: SonaLob's rules, then the getting ready */
+  ph_back:function(){ if((PG.how||0)>0){ PG.how--; scrT=0; } },
   /* a deep recalibration: forget the saved palm range, close the microphone and start from "put the phone down" */
   recal:function(){ onboarding=false; direct=false; store.set('sonaroids_pong_cal_wide',''); store.set('sonaroids_pong_cal_normal',''); store.set('sonaroids_field','100'); store.set('sonaroids_mid_r',''); store.set('sonaroids_mid_r_wide',''); store.set('sonaroids_mid_r_normal',''); store.set('sonaroids_mid_t',''); Sonar.restart(); booted=false; acoustic=false; go('phone'); },
   lefty:function(){ lefty=true; store.set('sonaroids_lefty','1'); turnShown=false; Logs.ev('играю левой'); seenT=scrT; },
@@ -1012,7 +1014,7 @@ function sCountResume(){ countT-=DT; field(DT,0); var n=Math.max(1,Math.ceil(cou
 var DT=1/60, lastNow=performance.now(), floorHeld=false;
 /* at most 60 frames a second in flight and 30 on the other screens: phones with 120 Hz screens would otherwise draw twice as often
    for nothing and warm up (v0.12) */
-function loop(now){
+function loop(now){ Sfx.setGame(mode);   /* 1.61w: which game's sounds */
   requestAnimationFrame(loop);
   var fast=scr==='play'||scr==='count'||scr==='count-resume'; if(now-lastNow<(fast?15:31)) return;
   DT=Math.min(0.05,Math.max(0,(now-lastNow)/1000)); lastNow=now; clock+=DT; scrT+=DT; BTN=[]; SLD=[];
@@ -1026,7 +1028,7 @@ function loop(now){
   // v0.74: a shapes-only skin with «pixels» — the same canvas at 1 px per game pixel   // v0.72: the HD world canvas under the pixel one
   uiColours(scr!=='hub'); obsTick();   // v1.42: the heavy skin's canvas hidden on a frame that drew no field
   switch(scr){
-    case 'lang': sLang(); break; case 'title': sTitle(); break; case 'rtitle': sRTitle(); break; case 'ptitle': sPTitle(); break; case 'phold': sPHold(); break; case 'skins': sSkins(); break; case 'rset': sRSet(); break; case 'hub': sHub(); break;
+    case 'lang': sLang(); break; case 'title': sTitle(); break; case 'rtitle': sRTitle(); break; case 'ptitle': sPTitle(); break; case 'phold': sPHold(); break; case 'phowto': sPHow(); break; case 'skins': sSkins(); break; case 'rset': sRSet(); break; case 'hub': sHub(); break;
     case 'sound': sSound(); break;
     case 'phone': sPhone(); break; case 'mic': sMic(); break; case 'probe': sProbe(); break; case 'away': sAway(); break; case 'wave': sWave(); break;
     case 'count': sCount(); break; case 'count-resume': sCountResume(); break; case 'play': sPlay(); break; case 'over': sOver(); break;
@@ -1096,7 +1098,7 @@ function audAct(id){ var p=id.split(':'), k=p[1], v=p.slice(2).join(':');
   else if(k==='retest') Sonar.audioRetest();
   else if(k==='lab'){ location.href='../lab/sonar_lab3.html'; return; }
   Sonar.restart(); booted=false; acoustic=false; audDev=null; }
-var NO_MENU={hub:1,title:1,rtitle:1,ptitle:1,lang:1,paused:1,restart:1,play:1,over:1},   /* v1.55 (the review's п.14): the game over has its «menu» button */ NO_VER={phold:1,skins:1,rset:1,hub:1,over:1,play:1,count:1,'count-resume':1,paused:1,restart:1};
+var NO_MENU={hub:1,title:1,rtitle:1,ptitle:1,lang:1,paused:1,restart:1,play:1,over:1},   /* v1.55 (the review's п.14): the game over has its «menu» button */ NO_VER={phold:1,phowto:1,skins:1,rset:1,hub:1,over:1,play:1,count:1,'count-resume':1,paused:1,restart:1};
 function chrome(){ if(LH>LW) return;
   var s=BH-3, vr=freeSide()!=='left', x=vr?LW-Math.round(SAFE.r*0.5)-10-s:Math.round(SAFE.l*0.5)+10, y=SAFE.t+7;
   if(!NO_MENU[scr]) iconButton(scr==='phold'&&PG.resume?'pg_back':scr==='count'||scr==='count-resume'?'pause':scr==='scores'?'sc_back':scr==='settings'?'set_back':scr==='skins'?'sk_back':scr==='audio'&&audFrom==='settings'?'settings':'menu',x,y);

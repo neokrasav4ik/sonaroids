@@ -1,7 +1,7 @@
 /* ── SOUNDS: event sounds only, synthesised in the spirit of old consoles. Everything goes through three low-pass filters
    at 6 kHz, so no harmonic can reach the probe band (18–20 kHz). No music. ── */
 var Sfx=(function(){
-  var ctx=null, bus=null, post=null, noise=null, on=true, vol=1, lvl=6, NL=8;
+  var ctx=null, bus=null, post=null, noise=null, echo=null, game='fly', coinT=-9, coinN=0, on=true, vol=1, lvl=6, NL=8;
   try{ var sv=+localStorage.getItem('sonaroids_sfxvol'); if(sv>0&&sv<=1) vol=sv; }catch(e){}   // v0.19: the level found on this phone is kept
   try{ var sl=+localStorage.getItem('sonaroids_sfxlvl'); if(sl>=1&&sl<=NL) lvl=Math.round(sl); }catch(e){}
   /* v0.36: the player's level, 1…8, after the compressor. At 6 (the default) the sounds are 2.25× louder than before (the maintainer, 26 Sep:
@@ -18,11 +18,85 @@ var Sfx=(function(){
     f.forEach(function(q){ q.type='lowpass'; q.frequency.value=6000; q.Q.value=0.7; });
     post=ctx.createGain(); post.gain.value=postGain();
     bus.connect(comp); comp.connect(post); post.connect(lim); lim.connect(f[0]); f[0].connect(f[1]); f[1].connect(f[2]); f[2].connect(ctx.destination);
+    /* v1.61w: SonaFly's space — a soft echo send (a quarter-second, darkened, into the same chain) */
+    echo=ctx.createGain(); var ed=ctx.createDelay(1), efb=ctx.createGain(), elp=ctx.createBiquadFilter(), ewet=ctx.createGain(); ed.delayTime.value=0.23; efb.gain.value=0.32; elp.type='lowpass'; elp.frequency.value=2600; ewet.gain.value=0.38;
+    echo.connect(ed); ed.connect(elp); elp.connect(efb); efb.connect(ed); elp.connect(ewet); ewet.connect(bus);
     var len=Math.floor(ctx.sampleRate*0.8); noise=ctx.createBuffer(1,len,ctx.sampleRate);
     var d=noise.getChannelData(0); for(var i=0;i<len;i++) d[i]=Math.random()*2-1;
   }
-  function play(kind){
+  /* ── v1.61w: SonaFly's, SonaRace's and the menus' own sounds (the maintainer 11 Oct 23:12: «наладим и цивилизуем звуки в SonaFly и
+     SonaRace — там сейчас обычные заглушки, давай профессионально»; 23:43 picked from the sketches page «Звуки SonaFly и SonaRace»). As
+     SonaLob's (1.61t): a family per game, the frequent sounds the quietest and shortest, good goes up and bad down, a little variation each
+     time, an octave over every low thump for a phone's speaker; all through the same chain (nothing near the probe). SonaFly — «soft
+     synthesis»: clean tones and bells in D major pentatonic with a little space echo; a broken rock is a note climbing with the combo.
+     SonaRace — «a music box»: glockenspiel, toy springs and bubbles in C major pentatonic, no echo; candies in a row ring up. The menus —
+     quiet and neutral, the same in every game. The old chip sounds stay for anything not named here ── */
+  /* the level under the limiter: measured offline (tests/sfx_check.js), the chords and arpeggios peaked over full scale at the default level */
+  var TRIM=0.6, LTRIM=0.72;
+  var PF=[293.66,329.63,369.99,440,493.88,587.33,659.25,739.99,880], PR=[523.25,587.33,659.25,783.99,880,1046.5,1174.66,1318.5];
+  var FLY={fire:1,'break':1,shield:1,hit:1,pick:1,level:1,ufo:1,ufo_fire:1,ufo_dodge:1,ufo_hit:1,ufo_die:1,tick:1,start:1,over:1};
+  var RACE={coin:1,line:1,fuel:1,pass:1,rub:1,crash:1,magnet:1,bubble:1,turbo:1,pop:1,boing:1,syrup:1,empty:1,tick:1,start:1,over:1};
+  var UI={tap:1,ok:1,ping:1};
+  function voice(kind,n){
+    var t=ctx.currentTime+0.005, rp=function(){ return 1+(Math.random()-0.5)*0.05; }, V=TRIM*Math.pow(10,(Math.random()-0.5)*0.15);
+    function env(g,s,at,peak,dur){ g.gain.setValueAtTime(0.0001,s); g.gain.exponentialRampToValueAtTime(Math.max(0.0002,peak*V),s+at); g.gain.exponentialRampToValueAtTime(0.0001,s+at+dur); }
+    function out(g,sp){ g.connect(bus); if(sp&&echo) g.connect(echo); }
+    function osc(f,s,peak,dur,o){ o=o||{}; var x=ctx.createOscillator(), g=ctx.createGain(); x.type=o.type||'sine'; x.frequency.setValueAtTime(f,s); if(o.to) x.frequency.exponentialRampToValueAtTime(o.to,s+(o.gl||dur));
+      if(o.vib){ var lf=ctx.createOscillator(), lg=ctx.createGain(); lf.frequency.value=o.vib; lg.gain.value=f*(o.vd||0.03); lf.connect(lg); lg.connect(x.frequency); lf.start(s); lf.stop(s+dur+0.1); }
+      var nd=x; if(o.lp){ var lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=o.lp; lp.Q.value=o.q||0.8; x.connect(lp); nd=lp; }
+      env(g,s,o.a||0.004,peak,dur); nd.connect(g); out(g,o.sp); x.start(s); x.stop(s+dur+(o.a||0.004)+0.05); }
+    function nz(s,dur,ft,freq,Q,peak,o){ o=o||{}; var src=ctx.createBufferSource(), f=ctx.createBiquadFilter(), g=ctx.createGain(); src.buffer=noise; src.loop=true;
+      f.type=ft; f.frequency.setValueAtTime(freq,s); if(o.to) f.frequency.exponentialRampToValueAtTime(o.to,s+dur); f.Q.value=Q||1; env(g,s,o.a||0.002,peak,dur);
+      src.connect(f); f.connect(g); out(g,o.sp); src.start(s,Math.random()*0.5); src.stop(s+dur+0.05); }
+    function bell(f,s,v,len,sp,ratio){ var c=ctx.createOscillator(), m=ctx.createOscillator(), mg=ctx.createGain(), g=ctx.createGain(); c.frequency.value=f; m.frequency.value=f*(ratio||1.4);
+      mg.gain.setValueAtTime(f*0.9,s); mg.gain.exponentialRampToValueAtTime(f*0.04,s+len*0.6); m.connect(mg); mg.connect(c.frequency); env(g,s,0.004,v,len); c.connect(g); out(g,sp); c.start(s); m.start(s); c.stop(s+len+0.05); m.stop(s+len+0.05); }
+    function glock(f,s,v,len){ len=len||0.5; osc(f,s,v,len,{a:0.002}); osc(f*2.76,s,v*0.35,len*0.35,{a:0.002}); osc(f*5.4,s,v*0.12,len*0.12,{a:0.001}); }
+    function thump(s,v,f0,f1,len){ osc(f0,s,v,len,{to:f1,a:0.002}); osc(f0*2,s,v*0.45,len*0.6,{to:f1*2,a:0.002}); }
+    var st=function(S,k){ return S[Math.max(0,Math.min(S.length-1,k||0))]*(1+(Math.random()-0.5)*0.012); };
+    if(game==='race'&&RACE[kind]){
+      if(kind==='coin') glock(st(PR,n),t,0.11,0.3);
+      else if(kind==='line') [783.99,1046.5,1318.5,1568].forEach(function(f,i){ glock(f,t+i*0.06,0.08,i===3?0.6:0.3); });
+      else if(kind==='fuel'){ nz(t,0.25,'highpass',2500,0.6,0.05); for(var i=0;i<5;i++) osc(500+i*120+Math.random()*80,t+i*0.04,0.08,0.05,{to:900+i*150}); }
+      else if(kind==='pass') nz(t,0.3,'bandpass',1400*rp(),2.5,0.12,{to:500,a:0.08});
+      else if(kind==='rub'){ for(var j=0;j<4;j++) nz(t+j*0.035,0.03,'bandpass',1100+Math.random()*400,3,0.13); }
+      else if(kind==='crash'){ thump(t,0.4,130,50,0.22); [1568,1318.5,1568,1318.5].forEach(function(f,i){ glock(f,t+0.15+i*0.1,0.06,0.2); }); }   // a bump and the stars over the head
+      else if(kind==='magnet'){ osc(400*rp(),t,0.15,0.35,{to:1200,vib:12,vd:0.02}); glock(1568,t+0.33,0.08,0.4); }
+      else if(kind==='bubble') osc(250*rp(),t,0.2,0.3,{to:700,vib:9,vd:0.03});
+      else if(kind==='turbo'){ nz(t,0.45,'bandpass',500,1.5,0.12,{to:2400,a:0.1}); osc(200,t,0.1,0.45,{to:800,type:'triangle',lp:1600,a:0.1}); }
+      else if(kind==='pop'){ osc(900*rp(),t,0.2,0.04,{to:250}); nz(t,0.015,'bandpass',2200,2,0.15); }
+      else if(kind==='boing') osc(330*rp(),t,0.2,0.3,{to:200,vib:22,vd:0.06});
+      else if(kind==='syrup') nz(t,0.18,'lowpass',700,2,0.2,{to:300});
+      else if(kind==='empty') osc(600,t,0.15,0.8,{to:120,type:'triangle',lp:1500});
+      else if(kind==='tick') glock(1046.5,t,0.08,0.2);
+      else if(kind==='start') [523.25,659.25,783.99,1046.5].forEach(function(f,i){ glock(f,t+i*0.04,0.07,0.6); });
+      else if(kind==='over'){ glock(783.99,t,0.1,0.6); glock(1046.5,t+0.3,0.1,0.9); }
+      return true; }
+    if(game==='fly'&&FLY[kind]){
+      if(kind==='fire') osc(1180*rp(),t,0.055,0.03,{to:880});
+      else if(kind==='break'){ var fb=st(PF,n); osc(fb,t,0.2,0.12,{to:fb*1.5,gl:0.06,sp:true}); }   // a drop, climbing with the combo
+      else if(kind==='shield') osc(300*rp(),t,0.22,0.22,{to:620,vib:18,vd:0.04});
+      else if(kind==='hit'){ thump(t,0.4,130,48,0.25); nz(t,0.3,'lowpass',900,0.7,0.22,{to:300}); osc(330,t+0.03,0.12,0.4,{to:196,type:'triangle',sp:true}); }
+      else if(kind==='pick') [587.3,740,880].forEach(function(f,i){ bell(f,t+i*0.07,0.13,0.4,true); });
+      else if(kind==='level') [293.7,440,587.3,740].forEach(function(f){ osc(f,t,0.05,1.1,{a:0.38,type:'triangle',lp:1800,sp:true}); osc(f*1.004,t,0.03,1.1,{a:0.38,sp:true}); });
+      else if(kind==='ufo') osc(600,t,0.12,0.8,{to:820,gl:0.8,vib:6,vd:0.025,a:0.15,sp:true});
+      else if(kind==='ufo_fire') osc(1400*rp(),t,0.08,0.07,{to:420});
+      else if(kind==='ufo_dodge'){}   // silent: it is seen
+      else if(kind==='ufo_hit') bell(980*rp(),t,0.14,0.25,true,2.73);
+      else if(kind==='ufo_die'){ for(var k=0;k<6;k++) bell(1760-k*180,t+k*0.05,0.06,0.3,true,3.1); }   // stars, scattering down
+      else if(kind==='tick') osc(880,t,0.1,0.08);
+      else if(kind==='start') [293.7,440,587.3].forEach(function(f,i){ bell(f,t+i*0.03,0.12,0.8,true); });
+      else if(kind==='over') [293.7,440,587.3].forEach(function(f){ osc(f,t,0.07,1.6,{to:f*0.75,gl:1.6,a:0.1,type:'triangle',lp:1500,sp:true}); });
+      return true; }
+    if(UI[kind]){
+      if(kind==='tap') osc(900,t,0.08,0.05,{to:1300});
+      else if(kind==='ok') [523.25,659.25,783.99].forEach(function(f,i){ glock(f,t+i*0.07,0.08,0.4); });
+      else if(kind==='ping') bell(880,t,0.12,0.35);
+      return true; }
+    return false; }
+  function play(kind,n){
     if(!on) return; setup(); if(!bus) return;
+    if(kind==='coin'&&game==='race'){ var cn=ctx.currentTime; coinN=cn-coinT<0.45?coinN+1:0; coinT=cn; n=coinN; }   // candies close together ring up
+    if(voice(kind,n)) return;
     var t=ctx.currentTime;
     function tone(f1,f2,dur,type,vol,at){ var o=ctx.createOscillator(), g=ctx.createGain(), s=t+(at||0); o.type=type||'square';
       o.frequency.setValueAtTime(f1,s); if(f2) o.frequency.exponentialRampToValueAtTime(f2,s+dur);
@@ -73,7 +147,7 @@ var Sfx=(function(){
   function lob(kind,n,a){
     if(!on) return; setup(); if(!bus) return;
     var t=ctx.currentTime+0.005, rp=function(){ return 1+(Math.random()-0.5)*0.05; }, rv=function(){ return Math.pow(10,(Math.random()-0.5)*0.15); };
-    function env(g,s,at,peak,dur){ g.gain.setValueAtTime(0.0001,s); g.gain.exponentialRampToValueAtTime(Math.max(0.0002,peak),s+at); g.gain.exponentialRampToValueAtTime(0.0001,s+at+dur); }
+    function env(g,s,at,peak,dur){ g.gain.setValueAtTime(0.0001,s); g.gain.exponentialRampToValueAtTime(Math.max(0.0002,peak*LTRIM),s+at); g.gain.exponentialRampToValueAtTime(0.0001,s+at+dur); }
     function sine(f,s,peak,dur,at,type,glide){ var o=ctx.createOscillator(), g=ctx.createGain(); o.type=type||'sine'; o.frequency.setValueAtTime(f,s); if(glide) o.frequency.exponentialRampToValueAtTime(glide,s+dur);
       env(g,s,at||0.004,peak,dur); o.connect(g); g.connect(bus); o.start(s); o.stop(s+dur+0.05); }
     function nz(s,dur,ft,freq,Q,peak,at,sweep){ var src=ctx.createBufferSource(), f=ctx.createBiquadFilter(), g=ctx.createGain(); src.buffer=noise; src.loop=true;
@@ -104,7 +178,7 @@ var Sfx=(function(){
   function apply(){ if(bus){ bus.gain.setTargetAtTime(1.1*vol,ctx.currentTime,0.02); post.gain.setTargetAtTime(postGain(),ctx.currentTime,0.02); } }
   /* the sound row (v0.36): the middle switches on and off, − and + step the level; every change is heard at once */
   function setLevel(n){ if(n<1){ on=false; } else { on=true; lvl=Math.min(NL,n); vol=1; } apply(); save(); if(on) play('ping'); }
-  return {duck:duck,level:function(){ return vol; },steps:NL,lvl:function(){ return lvl; },play:play,lob:lob,on:function(){ return on; },
+  return {duck:duck,level:function(){ return vol; },steps:NL,lvl:function(){ return lvl; },play:play,lob:lob,setGame:function(m){ game=m; },on:function(){ return on; },
     toggle:function(){ on=!on; if(on){ vol=1; apply(); } save(); if(on) play('ping'); return on; },
     down:function(){ setLevel(on?lvl-1:lvl); }, up:function(){ setLevel(on?lvl+1:lvl); },
     state:function(){ return {on:on,lvl:lvl,duck:Math.round(vol*100)/100}; }};

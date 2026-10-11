@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='1.61u';
+var VERSION='1.61w';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -1519,7 +1519,7 @@ var Logs=(function(){
 /* ── SOUNDS: event sounds only, synthesised in the spirit of old consoles. Everything goes through three low-pass filters
    at 6 kHz, so no harmonic can reach the probe band (18–20 kHz). No music. ── */
 var Sfx=(function(){
-  var ctx=null, bus=null, post=null, noise=null, on=true, vol=1, lvl=6, NL=8;
+  var ctx=null, bus=null, post=null, noise=null, echo=null, game='fly', coinT=-9, coinN=0, on=true, vol=1, lvl=6, NL=8;
   try{ var sv=+localStorage.getItem('sonaroids_sfxvol'); if(sv>0&&sv<=1) vol=sv; }catch(e){}   // v0.19: the level found on this phone is kept
   try{ var sl=+localStorage.getItem('sonaroids_sfxlvl'); if(sl>=1&&sl<=NL) lvl=Math.round(sl); }catch(e){}
   /* v0.36: the player's level, 1…8, after the compressor. At 6 (the default) the sounds are 2.25× louder than before (the maintainer, 26 Sep:
@@ -1536,11 +1536,85 @@ var Sfx=(function(){
     f.forEach(function(q){ q.type='lowpass'; q.frequency.value=6000; q.Q.value=0.7; });
     post=ctx.createGain(); post.gain.value=postGain();
     bus.connect(comp); comp.connect(post); post.connect(lim); lim.connect(f[0]); f[0].connect(f[1]); f[1].connect(f[2]); f[2].connect(ctx.destination);
+    /* v1.61w: SonaFly's space — a soft echo send (a quarter-second, darkened, into the same chain) */
+    echo=ctx.createGain(); var ed=ctx.createDelay(1), efb=ctx.createGain(), elp=ctx.createBiquadFilter(), ewet=ctx.createGain(); ed.delayTime.value=0.23; efb.gain.value=0.32; elp.type='lowpass'; elp.frequency.value=2600; ewet.gain.value=0.38;
+    echo.connect(ed); ed.connect(elp); elp.connect(efb); efb.connect(ed); elp.connect(ewet); ewet.connect(bus);
     var len=Math.floor(ctx.sampleRate*0.8); noise=ctx.createBuffer(1,len,ctx.sampleRate);
     var d=noise.getChannelData(0); for(var i=0;i<len;i++) d[i]=Math.random()*2-1;
   }
-  function play(kind){
+  /* ── v1.61w: SonaFly's, SonaRace's and the menus' own sounds (the maintainer 11 Oct 23:12: «наладим и цивилизуем звуки в SonaFly и
+     SonaRace — там сейчас обычные заглушки, давай профессионально»; 23:43 picked from the sketches page «Звуки SonaFly и SonaRace»). As
+     SonaLob's (1.61t): a family per game, the frequent sounds the quietest and shortest, good goes up and bad down, a little variation each
+     time, an octave over every low thump for a phone's speaker; all through the same chain (nothing near the probe). SonaFly — «soft
+     synthesis»: clean tones and bells in D major pentatonic with a little space echo; a broken rock is a note climbing with the combo.
+     SonaRace — «a music box»: glockenspiel, toy springs and bubbles in C major pentatonic, no echo; candies in a row ring up. The menus —
+     quiet and neutral, the same in every game. The old chip sounds stay for anything not named here ── */
+  /* the level under the limiter: measured offline (tests/sfx_check.js), the chords and arpeggios peaked over full scale at the default level */
+  var TRIM=0.6, LTRIM=0.72;
+  var PF=[293.66,329.63,369.99,440,493.88,587.33,659.25,739.99,880], PR=[523.25,587.33,659.25,783.99,880,1046.5,1174.66,1318.5];
+  var FLY={fire:1,'break':1,shield:1,hit:1,pick:1,level:1,ufo:1,ufo_fire:1,ufo_dodge:1,ufo_hit:1,ufo_die:1,tick:1,start:1,over:1};
+  var RACE={coin:1,line:1,fuel:1,pass:1,rub:1,crash:1,magnet:1,bubble:1,turbo:1,pop:1,boing:1,syrup:1,empty:1,tick:1,start:1,over:1};
+  var UI={tap:1,ok:1,ping:1};
+  function voice(kind,n){
+    var t=ctx.currentTime+0.005, rp=function(){ return 1+(Math.random()-0.5)*0.05; }, V=TRIM*Math.pow(10,(Math.random()-0.5)*0.15);
+    function env(g,s,at,peak,dur){ g.gain.setValueAtTime(0.0001,s); g.gain.exponentialRampToValueAtTime(Math.max(0.0002,peak*V),s+at); g.gain.exponentialRampToValueAtTime(0.0001,s+at+dur); }
+    function out(g,sp){ g.connect(bus); if(sp&&echo) g.connect(echo); }
+    function osc(f,s,peak,dur,o){ o=o||{}; var x=ctx.createOscillator(), g=ctx.createGain(); x.type=o.type||'sine'; x.frequency.setValueAtTime(f,s); if(o.to) x.frequency.exponentialRampToValueAtTime(o.to,s+(o.gl||dur));
+      if(o.vib){ var lf=ctx.createOscillator(), lg=ctx.createGain(); lf.frequency.value=o.vib; lg.gain.value=f*(o.vd||0.03); lf.connect(lg); lg.connect(x.frequency); lf.start(s); lf.stop(s+dur+0.1); }
+      var nd=x; if(o.lp){ var lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=o.lp; lp.Q.value=o.q||0.8; x.connect(lp); nd=lp; }
+      env(g,s,o.a||0.004,peak,dur); nd.connect(g); out(g,o.sp); x.start(s); x.stop(s+dur+(o.a||0.004)+0.05); }
+    function nz(s,dur,ft,freq,Q,peak,o){ o=o||{}; var src=ctx.createBufferSource(), f=ctx.createBiquadFilter(), g=ctx.createGain(); src.buffer=noise; src.loop=true;
+      f.type=ft; f.frequency.setValueAtTime(freq,s); if(o.to) f.frequency.exponentialRampToValueAtTime(o.to,s+dur); f.Q.value=Q||1; env(g,s,o.a||0.002,peak,dur);
+      src.connect(f); f.connect(g); out(g,o.sp); src.start(s,Math.random()*0.5); src.stop(s+dur+0.05); }
+    function bell(f,s,v,len,sp,ratio){ var c=ctx.createOscillator(), m=ctx.createOscillator(), mg=ctx.createGain(), g=ctx.createGain(); c.frequency.value=f; m.frequency.value=f*(ratio||1.4);
+      mg.gain.setValueAtTime(f*0.9,s); mg.gain.exponentialRampToValueAtTime(f*0.04,s+len*0.6); m.connect(mg); mg.connect(c.frequency); env(g,s,0.004,v,len); c.connect(g); out(g,sp); c.start(s); m.start(s); c.stop(s+len+0.05); m.stop(s+len+0.05); }
+    function glock(f,s,v,len){ len=len||0.5; osc(f,s,v,len,{a:0.002}); osc(f*2.76,s,v*0.35,len*0.35,{a:0.002}); osc(f*5.4,s,v*0.12,len*0.12,{a:0.001}); }
+    function thump(s,v,f0,f1,len){ osc(f0,s,v,len,{to:f1,a:0.002}); osc(f0*2,s,v*0.45,len*0.6,{to:f1*2,a:0.002}); }
+    var st=function(S,k){ return S[Math.max(0,Math.min(S.length-1,k||0))]*(1+(Math.random()-0.5)*0.012); };
+    if(game==='race'&&RACE[kind]){
+      if(kind==='coin') glock(st(PR,n),t,0.11,0.3);
+      else if(kind==='line') [783.99,1046.5,1318.5,1568].forEach(function(f,i){ glock(f,t+i*0.06,0.08,i===3?0.6:0.3); });
+      else if(kind==='fuel'){ nz(t,0.25,'highpass',2500,0.6,0.05); for(var i=0;i<5;i++) osc(500+i*120+Math.random()*80,t+i*0.04,0.08,0.05,{to:900+i*150}); }
+      else if(kind==='pass') nz(t,0.3,'bandpass',1400*rp(),2.5,0.12,{to:500,a:0.08});
+      else if(kind==='rub'){ for(var j=0;j<4;j++) nz(t+j*0.035,0.03,'bandpass',1100+Math.random()*400,3,0.13); }
+      else if(kind==='crash'){ thump(t,0.4,130,50,0.22); [1568,1318.5,1568,1318.5].forEach(function(f,i){ glock(f,t+0.15+i*0.1,0.06,0.2); }); }   // a bump and the stars over the head
+      else if(kind==='magnet'){ osc(400*rp(),t,0.15,0.35,{to:1200,vib:12,vd:0.02}); glock(1568,t+0.33,0.08,0.4); }
+      else if(kind==='bubble') osc(250*rp(),t,0.2,0.3,{to:700,vib:9,vd:0.03});
+      else if(kind==='turbo'){ nz(t,0.45,'bandpass',500,1.5,0.12,{to:2400,a:0.1}); osc(200,t,0.1,0.45,{to:800,type:'triangle',lp:1600,a:0.1}); }
+      else if(kind==='pop'){ osc(900*rp(),t,0.2,0.04,{to:250}); nz(t,0.015,'bandpass',2200,2,0.15); }
+      else if(kind==='boing') osc(330*rp(),t,0.2,0.3,{to:200,vib:22,vd:0.06});
+      else if(kind==='syrup') nz(t,0.18,'lowpass',700,2,0.2,{to:300});
+      else if(kind==='empty') osc(600,t,0.15,0.8,{to:120,type:'triangle',lp:1500});
+      else if(kind==='tick') glock(1046.5,t,0.08,0.2);
+      else if(kind==='start') [523.25,659.25,783.99,1046.5].forEach(function(f,i){ glock(f,t+i*0.04,0.07,0.6); });
+      else if(kind==='over'){ glock(783.99,t,0.1,0.6); glock(1046.5,t+0.3,0.1,0.9); }
+      return true; }
+    if(game==='fly'&&FLY[kind]){
+      if(kind==='fire') osc(1180*rp(),t,0.055,0.03,{to:880});
+      else if(kind==='break'){ var fb=st(PF,n); osc(fb,t,0.2,0.12,{to:fb*1.5,gl:0.06,sp:true}); }   // a drop, climbing with the combo
+      else if(kind==='shield') osc(300*rp(),t,0.22,0.22,{to:620,vib:18,vd:0.04});
+      else if(kind==='hit'){ thump(t,0.4,130,48,0.25); nz(t,0.3,'lowpass',900,0.7,0.22,{to:300}); osc(330,t+0.03,0.12,0.4,{to:196,type:'triangle',sp:true}); }
+      else if(kind==='pick') [587.3,740,880].forEach(function(f,i){ bell(f,t+i*0.07,0.13,0.4,true); });
+      else if(kind==='level') [293.7,440,587.3,740].forEach(function(f){ osc(f,t,0.05,1.1,{a:0.38,type:'triangle',lp:1800,sp:true}); osc(f*1.004,t,0.03,1.1,{a:0.38,sp:true}); });
+      else if(kind==='ufo') osc(600,t,0.12,0.8,{to:820,gl:0.8,vib:6,vd:0.025,a:0.15,sp:true});
+      else if(kind==='ufo_fire') osc(1400*rp(),t,0.08,0.07,{to:420});
+      else if(kind==='ufo_dodge'){}   // silent: it is seen
+      else if(kind==='ufo_hit') bell(980*rp(),t,0.14,0.25,true,2.73);
+      else if(kind==='ufo_die'){ for(var k=0;k<6;k++) bell(1760-k*180,t+k*0.05,0.06,0.3,true,3.1); }   // stars, scattering down
+      else if(kind==='tick') osc(880,t,0.1,0.08);
+      else if(kind==='start') [293.7,440,587.3].forEach(function(f,i){ bell(f,t+i*0.03,0.12,0.8,true); });
+      else if(kind==='over') [293.7,440,587.3].forEach(function(f){ osc(f,t,0.07,1.6,{to:f*0.75,gl:1.6,a:0.1,type:'triangle',lp:1500,sp:true}); });
+      return true; }
+    if(UI[kind]){
+      if(kind==='tap') osc(900,t,0.08,0.05,{to:1300});
+      else if(kind==='ok') [523.25,659.25,783.99].forEach(function(f,i){ glock(f,t+i*0.07,0.08,0.4); });
+      else if(kind==='ping') bell(880,t,0.12,0.35);
+      return true; }
+    return false; }
+  function play(kind,n){
     if(!on) return; setup(); if(!bus) return;
+    if(kind==='coin'&&game==='race'){ var cn=ctx.currentTime; coinN=cn-coinT<0.45?coinN+1:0; coinT=cn; n=coinN; }   // candies close together ring up
+    if(voice(kind,n)) return;
     var t=ctx.currentTime;
     function tone(f1,f2,dur,type,vol,at){ var o=ctx.createOscillator(), g=ctx.createGain(), s=t+(at||0); o.type=type||'square';
       o.frequency.setValueAtTime(f1,s); if(f2) o.frequency.exponentialRampToValueAtTime(f2,s+dur);
@@ -1591,7 +1665,7 @@ var Sfx=(function(){
   function lob(kind,n,a){
     if(!on) return; setup(); if(!bus) return;
     var t=ctx.currentTime+0.005, rp=function(){ return 1+(Math.random()-0.5)*0.05; }, rv=function(){ return Math.pow(10,(Math.random()-0.5)*0.15); };
-    function env(g,s,at,peak,dur){ g.gain.setValueAtTime(0.0001,s); g.gain.exponentialRampToValueAtTime(Math.max(0.0002,peak),s+at); g.gain.exponentialRampToValueAtTime(0.0001,s+at+dur); }
+    function env(g,s,at,peak,dur){ g.gain.setValueAtTime(0.0001,s); g.gain.exponentialRampToValueAtTime(Math.max(0.0002,peak*LTRIM),s+at); g.gain.exponentialRampToValueAtTime(0.0001,s+at+dur); }
     function sine(f,s,peak,dur,at,type,glide){ var o=ctx.createOscillator(), g=ctx.createGain(); o.type=type||'sine'; o.frequency.setValueAtTime(f,s); if(glide) o.frequency.exponentialRampToValueAtTime(glide,s+dur);
       env(g,s,at||0.004,peak,dur); o.connect(g); g.connect(bus); o.start(s); o.stop(s+dur+0.05); }
     function nz(s,dur,ft,freq,Q,peak,at,sweep){ var src=ctx.createBufferSource(), f=ctx.createBiquadFilter(), g=ctx.createGain(); src.buffer=noise; src.loop=true;
@@ -1622,7 +1696,7 @@ var Sfx=(function(){
   function apply(){ if(bus){ bus.gain.setTargetAtTime(1.1*vol,ctx.currentTime,0.02); post.gain.setTargetAtTime(postGain(),ctx.currentTime,0.02); } }
   /* the sound row (v0.36): the middle switches on and off, − and + step the level; every change is heard at once */
   function setLevel(n){ if(n<1){ on=false; } else { on=true; lvl=Math.min(NL,n); vol=1; } apply(); save(); if(on) play('ping'); }
-  return {duck:duck,level:function(){ return vol; },steps:NL,lvl:function(){ return lvl; },play:play,lob:lob,on:function(){ return on; },
+  return {duck:duck,level:function(){ return vol; },steps:NL,lvl:function(){ return lvl; },play:play,lob:lob,setGame:function(m){ game=m; },on:function(){ return on; },
     toggle:function(){ on=!on; if(on){ vol=1; apply(); } save(); if(on) play('ping'); return on; },
     down:function(){ setLevel(on?lvl-1:lvl); }, up:function(){ setLevel(on?lvl+1:lvl); },
     state:function(){ return {on:on,lvl:lvl,duck:Math.round(vol*100)/100}; }};
@@ -1709,7 +1783,7 @@ STR.en={
   probe_t:'CHOOSE THE PROBE', probe_s:'WITH THIS SOUND THE PHONE HEARS YOUR HAND', probe_wide:'WIDE', probe_wide1:'CLEANER CONTROL', probe_wide2:'CHILDREN AND PETS MAY HEAR IT',
   probe_norm:'NORMAL', probe_norm1:'INAUDIBLE', probe_norm2:'SLIGHTLY ROUGHER CONTROL',
   away_t:'TAKE YOUR HAND AWAY', away_s:'LISTENING TO THE EMPTY ROOM', away_ok:'THE ROOM IS QUIET',
-  aud_fx:'PHONE PROCESSING:', aud_src:'SOURCE', aud_usage:'PROBE AS', aud_end:'PROBE FROM', turn_t:'TURN THE PHONE ROUND', hub_s:'GAMES YOU PLAY WITH YOUR PALM IN MID-AIR', soon:'SOON', pg_s:'ONE PALM — TWO RACKETS. TOSS THE SHUTTLE HIGHER, DON\'T TOUCH THE CEILING', pg_sens:'SENSITIVITY', pg_sens0:'LOW', pg_sens1:'BELOW MID', pg_sens2:'MEDIUM', pg_sens3:'HIGH', pg_low_t:'LOWER YOUR PALM', pg_low_s:'TO WHERE YOUR HIT STARTS FROM BELOW. THE RACKETS ARE DOWN ALREADY. HOLD', pg_top_t:'NOW RAISE IT', pg_top_s:'TO A COMFORTABLE HEIGHT — WHERE YOU WILL HIT FROM ABOVE. HOLD', pg_wave_s:'AS YOU WILL HIT: FROM THE HIT\'S LOW TO THE TOP AND BACK, 2–3 TIMES', pg_try_s:'THE RACKETS FOLLOW YOUR PALM — CHECK THE TOP AND THE LOW', pg_sk0:'LIGHT SKETCH', pg_sk1:'DARK SKETCH', pg_hint:'POINTS', pg_h1:'O1, A TAG', pg_h2:'O2, AT THE TOP', pg_ok_t:'GOT IT', pg_ok_s:'THE RACKETS FOLLOW YOUR PALM, FROM THE LOW TO THE TOP', pg_recal:'TUNE THE PALM AGAIN', pg_width:'RACKETS DOWN TO {n}%', pg_passes:'PASSES: {n}', all_games:'← ALL GAMES', skin:'SKIN', gfx:'GRAPHICS', gfx_pixel:'PIXELS', smooth:'SMOOTHING', s_on:'ON', s_off:'OFF', skin_space:'SPACE', skin_vector:'VECTOR 80S', skin_neon:'NEON', skin_note:'NOTEBOOK', skin_lcd:'RETRO LCD', skin_obsidian:'OBSIDIAN', skin_fairy:'FAIRY TALE', turn_s:'BY 180° IF YOU PLAY', turn_s2:'WITH YOUR RIGHT HAND', turn_h:'ROUND LIKE A WHEEL — DON\'T FLIP IT FACE DOWN', lefty:'I PLAY LEFT-HANDED', aud_vol:'VOLUME', aud_keep:'LEAVE AS IS', aud_cam:'CAMERA END', aud_port:'PORT END', aud_media:'MEDIA', aud_game:'GAME', aud_autotest:'AUTO PICK', aud_notyet:'NOT DONE YET', aud_retest:'TEST AGAIN', aud_lab:'LAB', aud_nextgame:'WITH THE NEXT GAME', aud_on:'ON', aud_off:'OFF', aud_t2:'SOUND', aud_s2:'TRIALS OF THE ECHO PROCESSING', settings:'SETTINGS', settings_t:'SETTINGS', set_gfx:'GRAPHICS', set_gfx_menu:'ASK IN GAME', set_gfx_hd:'ALWAYS HD', set_gfx_px:'ALWAYS PIXELS', set_band:'PROBE BAND', set_band_ask:'ASK EVERY GAME', set_band_w:'ALWAYS WIDE', set_band_n:'ALWAYS NORMAL', set_live:'AUTO-CALIBRATION', set_on:'ON', set_off:'OFF', set_live_on_s:'NO WAVING: THE GAME TAKES YOUR LAST MANUAL CALIBRATION AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', set_live_on_d:'NO WAVING: THE GAME TAKES YOUR MANUAL CALIBRATION OF {d} AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', auto_ok:'CALIBRATION FROM YOUR LAST GAME', set_room:'ROOM ADAPTATION', set_live_new_s:'NO MANUAL CALIBRATION YET: SWITCH THIS OFF, PLAY ONE GAME WAVING YOUR PALM, SWITCH IT ON AGAIN — AUTO-CALIBRATION WILL TAKE IT', set_live_off_s:'BEFORE EVERY GAME: TAKE YOUR HAND AWAY, WAVE YOUR PALM, TAP "PLAY". A GOOD SETUP CAN THEN BE KEPT WITH AUTO-CALIBRATION', set_expert:'ADVANCED PROBE SETTINGS', aud_link:'SOUND', aud_t:'APP SOUND', aud_s:'WHERE THE GAME TAKES THE MICROPHONE FROM AND WHERE THE PROBE PLAYS', aud_mode:'SOUND', aud_browser:'BROWSER', aud_app:'APP', aud_mic:'MICROPHONE', aud_out:'SPEAKER', aud_auto:'AUTO', aud_speaker:'SPEAKER', aud_earpiece:'EARPIECE', aud_bottom:'BOTTOM', aud_top:'TOP', aud_back:'BACK', aud_now:'NOW:', aud_active:'RECORDING:', aud_idle:'THE MICROPHONE OPENS WITH THE GAME', aud_browser_now:'NOW THE SOUND GOES THROUGH THE BROWSER: ANDROID PICKS THE MICROPHONE', aud_nopos:'THE PHONE DOES NOT TELL WHERE ITS MICROPHONES ARE',
+  aud_fx:'PHONE PROCESSING:', aud_src:'SOURCE', aud_usage:'PROBE AS', aud_end:'PROBE FROM', turn_t:'TURN THE PHONE ROUND', hub_s:'GAMES YOU PLAY WITH YOUR PALM IN MID-AIR', soon:'SOON', pg_s:'ONE PALM — TWO RACKETS. TOSS THE SHUTTLE HIGHER, DON\'T TOUCH THE CEILING', pg_sens:'SENSITIVITY', pg_sens0:'LOW', pg_sens1:'BELOW MID', pg_sens2:'MEDIUM', pg_sens3:'HIGH', pg_low_t:'LOWER YOUR PALM', pg_low_s:'TO WHERE YOUR HIT STARTS FROM BELOW. THE RACKETS ARE DOWN ALREADY. HOLD', pg_top_t:'NOW RAISE IT', pg_top_s:'TO A COMFORTABLE HEIGHT — WHERE YOU WILL HIT FROM ABOVE. HOLD', pg_wave_s:'AS YOU WILL HIT: FROM THE HIT\'S LOW TO THE TOP AND BACK, 2–3 TIMES', pg_try_s:'THE RACKETS FOLLOW YOUR PALM — CHECK THE TOP AND THE LOW', pg_sk0:'LIGHT SKETCH', pg_sk1:'DARK SKETCH', pg_hint:'POINTS', pg_h1:'O1, A TAG', pg_h2:'O2, AT THE TOP', ph_t1:'LOB IT HIGHER', ph_s1:'ONE PALM MOVES BOTH RACKETS. POINTS FOR THE ARC\'S HEIGHT: THE HIGHER, THE MORE. THE MOST — JUST UNDER THE CEILING', ph_t2:'THE SERIES', ph_s2:'CLEAN PASSES IN A ROW ADD ×0.1 TO THE POINTS — UP TO ×1.5, AND EACH SOUNDS A NOTE HIGHER. TOUCH THE CEILING — THE SERIES STARTS AGAIN', ph_t3:'THE CEILING CRACKS', ph_s3:'TOUCH THE CEILING — A PASS WITHOUT POINTS AND A CRACK. ON THE FIFTH CRACK THE SPIDER TAKES THE SHUTTLE. YOU HAVE FIVE SHUTTLES', ph_t4:'THE RACKETS NARROW', ph_s4:'EVERY 30 SECONDS THE RACKETS GET SHORTER AND THE POINTS DEARER — UP TO ×2. FROM THE 4TH MINUTE THE SPIDER LOWERS THE CEILING WITH WEB', pg_ok_t:'GOT IT', pg_ok_s:'THE RACKETS FOLLOW YOUR PALM, FROM THE LOW TO THE TOP', pg_recal:'TUNE THE PALM AGAIN', pg_width:'RACKETS DOWN TO {n}%', pg_passes:'PASSES: {n}', all_games:'← ALL GAMES', skin:'SKIN', gfx:'GRAPHICS', gfx_pixel:'PIXELS', smooth:'SMOOTHING', s_on:'ON', s_off:'OFF', skin_space:'SPACE', skin_vector:'VECTOR 80S', skin_neon:'NEON', skin_note:'NOTEBOOK', skin_lcd:'RETRO LCD', skin_obsidian:'OBSIDIAN', skin_fairy:'FAIRY TALE', turn_s:'BY 180° IF YOU PLAY', turn_s2:'WITH YOUR RIGHT HAND', turn_h:'ROUND LIKE A WHEEL — DON\'T FLIP IT FACE DOWN', lefty:'I PLAY LEFT-HANDED', aud_vol:'VOLUME', aud_keep:'LEAVE AS IS', aud_cam:'CAMERA END', aud_port:'PORT END', aud_media:'MEDIA', aud_game:'GAME', aud_autotest:'AUTO PICK', aud_notyet:'NOT DONE YET', aud_retest:'TEST AGAIN', aud_lab:'LAB', aud_nextgame:'WITH THE NEXT GAME', aud_on:'ON', aud_off:'OFF', aud_t2:'SOUND', aud_s2:'TRIALS OF THE ECHO PROCESSING', settings:'SETTINGS', settings_t:'SETTINGS', set_gfx:'GRAPHICS', set_gfx_menu:'ASK IN GAME', set_gfx_hd:'ALWAYS HD', set_gfx_px:'ALWAYS PIXELS', set_band:'PROBE BAND', set_band_ask:'ASK EVERY GAME', set_band_w:'ALWAYS WIDE', set_band_n:'ALWAYS NORMAL', set_live:'AUTO-CALIBRATION', set_on:'ON', set_off:'OFF', set_live_on_s:'NO WAVING: THE GAME TAKES YOUR LAST MANUAL CALIBRATION AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', set_live_on_d:'NO WAVING: THE GAME TAKES YOUR MANUAL CALIBRATION OF {d} AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', auto_ok:'CALIBRATION FROM YOUR LAST GAME', set_room:'ROOM ADAPTATION', set_live_new_s:'NO MANUAL CALIBRATION YET: SWITCH THIS OFF, PLAY ONE GAME WAVING YOUR PALM, SWITCH IT ON AGAIN — AUTO-CALIBRATION WILL TAKE IT', set_live_off_s:'BEFORE EVERY GAME: TAKE YOUR HAND AWAY, WAVE YOUR PALM, TAP "PLAY". A GOOD SETUP CAN THEN BE KEPT WITH AUTO-CALIBRATION', set_expert:'ADVANCED PROBE SETTINGS', aud_link:'SOUND', aud_t:'APP SOUND', aud_s:'WHERE THE GAME TAKES THE MICROPHONE FROM AND WHERE THE PROBE PLAYS', aud_mode:'SOUND', aud_browser:'BROWSER', aud_app:'APP', aud_mic:'MICROPHONE', aud_out:'SPEAKER', aud_auto:'AUTO', aud_speaker:'SPEAKER', aud_earpiece:'EARPIECE', aud_bottom:'BOTTOM', aud_top:'TOP', aud_back:'BACK', aud_now:'NOW:', aud_active:'RECORDING:', aud_idle:'THE MICROPHONE OPENS WITH THE GAME', aud_browser_now:'NOW THE SOUND GOES THROUGH THE BROWSER: ANDROID PICKS THE MICROPHONE', aud_nopos:'THE PHONE DOES NOT TELL WHERE ITS MICROPHONES ARE',
   wave_t:'WAVE YOUR PALM', wave_s:'5–10 CM ABOVE THE TABLE OR 5–15 CM FROM THE PHONE\'S END', wave_ok:'GOT YOUR RANGE', other_t:'WAVE ON THE OTHER SIDE', other_s:'THE PHONE DOES NOT HEAR THE PALM ON THIS SIDE', try_s:'THE SHIP FOLLOWS YOUR PALM — TRY THE TOP AND THE BOTTOM', cm:'CM',
   ring_wait:'GET READY', ring_listen:'LISTENING', ring_catch:'CATCHING THE RANGE', ring_ok:'DONE',
   start:'START', over:'GAME OVER', best:'BEST', again:'AGAIN', menu:'MENU', logs:'LOGS', tilt_test:'TEST RULES: NOT FOR THE TABLES', ftilt:'PICTURE TILT', stilt:'SHOT TILT', straight:'STRAIGHT', as_nose:'AS THE NOSE', bounce_off:'SHOTS OFF THE EDGES: NO', obs_off:'HEAVY SKIN: OFF', obs_on:'HEAVY SKIN: OBSIDIAN', obs_na:'HEAVY SKIN: NO WEBGL 2', mouse_off:'MOUSE INSTEAD OF SONAR: NO', mouse_on:'MOUSE INSTEAD OF SONAR: YES', obs_ink:'INK ON HITS', obs_ring:'RING: UNEVEN', obs_wake:'SHIP WAKE', obs_rwake:'ROCK WAKES', obs_det:'INK DETAIL', obs_vsp:'VEINS SPEED', obs_shot:'SHOT', obs_shot1:'L1 COMET', obs_shot4:'L4 BEADS', obs_shot5:'L5 CRYSTAL', obs_shot6:'L6 FRINGE', obs_shot9:'L9 TWIN NEEDLES', obs_shot10:'L10 BANDS', obs_rstr:'RING: STRENGTH', obs_damp:'CALMER IN ACTION', obs_reco:'DEFAULTS', obs_ringon_on:'HIT RING: YES', obs_ringon_off:'HIT RING: NO', obs_grim_on:'POWER-UP RIM: YES', obs_grim_off:'POWER-UP RIM: NO', bounce_on:'SHOTS OFF THE EDGES: YES', 
@@ -1744,7 +1818,7 @@ STR.ru={
   probe_t:'ВЫБЕРИ ЗОНД', probe_s:'ЭТИМ ЗВУКОМ ТЕЛЕФОН СЛЫШИТ ТВОЮ РУКУ', probe_wide:'ШИРОКИЙ', probe_wide1:'УПРАВЛЕНИЕ ЧИЩЕ', probe_wide2:'МОГУТ СЛЫШАТЬ ДЕТИ И ЖИВОТНЫЕ',
   probe_norm:'ОБЫЧНЫЙ', probe_norm1:'НЕ СЛЫШЕН', probe_norm2:'УПРАВЛЕНИЕ ЧУТЬ ГРУБЕЕ',
   away_t:'УБЕРИ РУКУ', away_s:'СЛУШАЮ ПУСТУЮ КОМНАТУ', away_ok:'КОМНАТА ТИХАЯ',
-  aud_fx:'ОБРАБОТКА ТЕЛЕФОНА:', aud_src:'ИСТОЧНИК', aud_usage:'ЗОНД КАК', aud_end:'ЗОНД ИЗ', turn_t:'РАЗВЕРНИ ТЕЛЕФОН', hub_s:'ИГРЫ, КОТОРЫМИ УПРАВЛЯЕТ ЛАДОНЬ В ВОЗДУХЕ', soon:'СКОРО', pg_s:'ОДНА ЛАДОНЬ — ДВЕ РАКЕТКИ. ПОДКИДЫВАЙ ВОЛАН ВЫШЕ, НЕ ЗАДЕВАЯ ПОТОЛОК', pg_sens:'ЧУВСТВИТЕЛЬНОСТЬ', pg_sens0:'НИЗКАЯ', pg_sens1:'НИЖЕ СРЕДНЕЙ', pg_sens2:'СРЕДНЯЯ', pg_sens3:'ВЫСОКАЯ', pg_low_t:'ОПУСТИ ЛАДОНЬ', pg_low_s:'В НИЖНЮЮ ТОЧКУ УДАРА — ОТКУДА НАЧИНАЕШЬ БИТЬ СНИЗУ. РАКЕТКИ УЖЕ ВНИЗУ. ДЕРЖИ', pg_top_t:'ТЕПЕРЬ ПОДНИМИ', pg_top_s:'НА УДОБНУЮ ВЫСОТУ — ГДЕ БУДЕШЬ БИТЬ СВЕРХУ. ДЕРЖИ', pg_wave_s:'КАК БУДЕШЬ БИТЬ: ОТ НИЗА УДАРА ДО ВЕРХА И ОБРАТНО, 2–3 РАЗА', pg_try_s:'РАКЕТКИ ИДУТ ЗА ЛАДОНЬЮ — ПРОВЕРЬ ВЕРХ И НИЗ', pg_sk0:'СВЕТЛЫЙ НАБРОСОК', pg_sk1:'ТЁМНЫЙ НАБРОСОК', pg_hint:'ОЧКИ У ВОЛАНА', pg_h1:'О1, ЯРЛЫК', pg_h2:'О2, НА ВЕРШИНЕ', pg_ok_t:'ПОЙМАЛ', pg_ok_s:'РАКЕТКИ ХОДЯТ ЗА ЛАДОНЬЮ — ОТ НИЗА ДО ВЕРХА', pg_recal:'ПОДСТРОИТЬ ЛАДОНЬ', pg_width:'РАКЕТКИ ДО {n}%', pg_passes:'ПАСОВ: {n}', all_games:'← ВСЕ ИГРЫ', skin:'СКИН', gfx:'ГРАФИКА', gfx_pixel:'ПИКСЕЛИ', smooth:'ПЛАВНОСТЬ', s_on:'ВКЛ', s_off:'ВЫКЛ', skin_space:'КОСМОС', skin_vector:'ВЕКТОР 80-Х', skin_neon:'НЕОН', skin_note:'ТЕТРАДКА', skin_lcd:'РЕТРО LCD', skin_obsidian:'ОБСИДИАН', skin_fairy:'СКАЗКА', turn_s:'НА 180°, ЕСЛИ ИГРАЕШЬ', turn_s2:'ПРАВОЙ РУКОЙ', turn_h:'ПО КРУГУ, КАК РУЛЬ — НЕ ПЕРЕВОРАЧИВАЙ ЭКРАНОМ ВНИЗ', lefty:'ИГРАЮ ЛЕВОЙ РУКОЙ', aud_vol:'ГРОМКОСТЬ', aud_keep:'НЕ ТРОГАТЬ', aud_cam:'У КАМЕРЫ', aud_port:'У РАЗЪЁМА', aud_media:'МЕДИА', aud_game:'ИГРА', aud_autotest:'АВТОВЫБОР', aud_notyet:'ЕЩЁ НЕ ДЕЛАЛСЯ', aud_retest:'ПЕРЕПРОВЕРИТЬ', aud_lab:'ЛАБА', aud_nextgame:'БУДЕТ ПРИ СЛЕДУЮЩЕЙ ИГРЕ', aud_on:'ВКЛ', aud_off:'ВЫКЛ', aud_t2:'ЗВУК', aud_s2:'ОПЫТЫ С ОБРАБОТКОЙ ЭХА', settings:'НАСТРОЙКИ', settings_t:'НАСТРОЙКИ', set_gfx:'ГРАФИКА', set_gfx_menu:'ВЫБОР В ИГРЕ', set_gfx_hd:'ВСЕГДА HD', set_gfx_px:'ВСЕГДА ПИКСЕЛИ', set_band:'ПОЛОСА ЗОНДА', set_band_ask:'ВЫБОР ПЕРЕД ИГРОЙ', set_band_w:'ВСЕГДА ШИРОКАЯ', set_band_n:'ВСЕГДА ОБЫЧНАЯ', set_live:'АВТОКАЛИБРОВКА', set_on:'ВКЛ', set_off:'ВЫКЛ', set_live_on_s:'БЕЗ ВЗМАХОВ: ИГРА БЕРЁТ ТВОЮ ПОСЛЕДНЮЮ РУЧНУЮ КАЛИБРОВКУ И САМА ПОДСТРАИВАЕТСЯ ПОД ЗВУКИ КОМНАТЫ. УПРАВЛЯЕТСЯ ХУЖЕ? ВЫКЛЮЧИ, СЫГРАЙ С РУЧНОЙ И ВКЛЮЧИ СНОВА', set_live_on_d:'БЕЗ ВЗМАХОВ: ИГРА БЕРЁТ ТВОЮ РУЧНУЮ КАЛИБРОВКУ ОТ {d} И САМА ПОДСТРАИВАЕТСЯ ПОД ЗВУКИ КОМНАТЫ. УПРАВЛЯЕТСЯ ХУЖЕ? ВЫКЛЮЧИ, СЫГРАЙ С РУЧНОЙ И ВКЛЮЧИ СНОВА', auto_ok:'КАЛИБРОВКА ИЗ ПРОШЛОЙ ИГРЫ', set_room:'ПОДСТРОЙКА ПОД КОМНАТУ', set_live_new_s:'РУЧНОЙ КАЛИБРОВКИ ЕЩЁ НЕ БЫЛО: ВЫКЛЮЧИ, СЫГРАЙ ОДНУ ИГРУ С ВЗМАХАМИ И ВКЛЮЧИ СНОВА — АВТОКАЛИБРОВКА ВОЗЬМЁТ ЕЁ', set_live_off_s:'ПЕРЕД КАЖДОЙ ИГРОЙ: УБРАТЬ РУКУ, ПОМАХАТЬ ЛАДОНЬЮ, НАЖАТЬ «ИГРАТЬ». УДАЧНУЮ НАСТРОЙКУ ПОТОМ МОЖНО ОСТАВИТЬ АВТОКАЛИБРОВКОЙ', set_expert:'РАСШИРЕННЫЕ НАСТРОЙКИ ЗОНДА', aud_link:'ЗВУК', aud_t:'ЗВУК ПРИЛОЖЕНИЯ', aud_s:'ОТКУДА ИГРА БЕРЁТ МИКРОФОН И КУДА ИГРАЕТ ЗОНД', aud_mode:'ЗВУК', aud_browser:'БРАУЗЕР', aud_app:'ПРИЛОЖЕНИЕ', aud_mic:'МИКРОФОН', aud_out:'ДИНАМИК', aud_auto:'АВТО', aud_speaker:'ДИНАМИК', aud_earpiece:'РАЗГОВОРНЫЙ', aud_bottom:'НИЗ', aud_top:'ВЕРХ', aud_back:'СЗАДИ', aud_now:'СЕЙЧАС:', aud_active:'ПИШУТ:', aud_idle:'МИКРОФОН ОТКРОЕТСЯ ПРИ ИГРЕ', aud_browser_now:'СЕЙЧАС ЗВУК ЧЕРЕЗ БРАУЗЕР: МИКРОФОН ВЫБИРАЕТ ANDROID', aud_nopos:'ТЕЛЕФОН НЕ СООБЩАЕТ, ГДЕ МИКРОФОНЫ',
+  aud_fx:'ОБРАБОТКА ТЕЛЕФОНА:', aud_src:'ИСТОЧНИК', aud_usage:'ЗОНД КАК', aud_end:'ЗОНД ИЗ', turn_t:'РАЗВЕРНИ ТЕЛЕФОН', hub_s:'ИГРЫ, КОТОРЫМИ УПРАВЛЯЕТ ЛАДОНЬ В ВОЗДУХЕ', soon:'СКОРО', pg_s:'ОДНА ЛАДОНЬ — ДВЕ РАКЕТКИ. ПОДКИДЫВАЙ ВОЛАН ВЫШЕ, НЕ ЗАДЕВАЯ ПОТОЛОК', pg_sens:'ЧУВСТВИТЕЛЬНОСТЬ', pg_sens0:'НИЗКАЯ', pg_sens1:'НИЖЕ СРЕДНЕЙ', pg_sens2:'СРЕДНЯЯ', pg_sens3:'ВЫСОКАЯ', pg_low_t:'ОПУСТИ ЛАДОНЬ', pg_low_s:'В НИЖНЮЮ ТОЧКУ УДАРА — ОТКУДА НАЧИНАЕШЬ БИТЬ СНИЗУ. РАКЕТКИ УЖЕ ВНИЗУ. ДЕРЖИ', pg_top_t:'ТЕПЕРЬ ПОДНИМИ', pg_top_s:'НА УДОБНУЮ ВЫСОТУ — ГДЕ БУДЕШЬ БИТЬ СВЕРХУ. ДЕРЖИ', pg_wave_s:'КАК БУДЕШЬ БИТЬ: ОТ НИЗА УДАРА ДО ВЕРХА И ОБРАТНО, 2–3 РАЗА', pg_try_s:'РАКЕТКИ ИДУТ ЗА ЛАДОНЬЮ — ПРОВЕРЬ ВЕРХ И НИЗ', pg_sk0:'СВЕТЛЫЙ НАБРОСОК', pg_sk1:'ТЁМНЫЙ НАБРОСОК', pg_hint:'ОЧКИ У ВОЛАНА', pg_h1:'О1, ЯРЛЫК', pg_h2:'О2, НА ВЕРШИНЕ', ph_t1:'ПОДКИДЫВАЙ ВЫШЕ', ph_s1:'ОДНА ЛАДОНЬ ВОДИТ ОБЕ РАКЕТКИ. ОЧКИ — ЗА ВЫСОТУ ДУГИ: ЧЕМ ВЫШЕ, ТЕМ БОЛЬШЕ. БОЛЬШЕ ВСЕГО — ПОЧТИ ПОД ПОТОЛКОМ', ph_t2:'СЕРИЯ', ph_s2:'ЧИСТЫЕ ПАСЫ ПОДРЯД ПРИБАВЛЯЮТ К ОЧКАМ ПО ×0,1 — ДО ×1,5, И КАЖДЫЙ ЗВУЧИТ НОТОЙ ВЫШЕ. ЗАДЕЛ ПОТОЛОК — СЕРИЯ С НАЧАЛА', ph_t3:'ПОТОЛОК ТРЕСКАЕТСЯ', ph_s3:'КОСНУЛСЯ ПОТОЛКА — ПАС БЕЗ ОЧКОВ И ТРЕЩИНА. НА ПЯТОЙ ТРЕЩИНЕ ПАУК ЗАБИРАЕТ ВОЛАН. ВОЛАНОВ — ПЯТЬ', ph_t4:'РАКЕТКИ СУЖАЮТСЯ', ph_s4:'КАЖДЫЕ 30 СЕКУНД РАКЕТКИ КОРОЧЕ, А ОЧКИ ДОРОЖЕ — ДО ×2. С 4-Й МИНУТЫ ПАУК ОПУСКАЕТ ПОТОЛОК ПАУТИНОЙ', pg_ok_t:'ПОЙМАЛ', pg_ok_s:'РАКЕТКИ ХОДЯТ ЗА ЛАДОНЬЮ — ОТ НИЗА ДО ВЕРХА', pg_recal:'ПОДСТРОИТЬ ЛАДОНЬ', pg_width:'РАКЕТКИ ДО {n}%', pg_passes:'ПАСОВ: {n}', all_games:'← ВСЕ ИГРЫ', skin:'СКИН', gfx:'ГРАФИКА', gfx_pixel:'ПИКСЕЛИ', smooth:'ПЛАВНОСТЬ', s_on:'ВКЛ', s_off:'ВЫКЛ', skin_space:'КОСМОС', skin_vector:'ВЕКТОР 80-Х', skin_neon:'НЕОН', skin_note:'ТЕТРАДКА', skin_lcd:'РЕТРО LCD', skin_obsidian:'ОБСИДИАН', skin_fairy:'СКАЗКА', turn_s:'НА 180°, ЕСЛИ ИГРАЕШЬ', turn_s2:'ПРАВОЙ РУКОЙ', turn_h:'ПО КРУГУ, КАК РУЛЬ — НЕ ПЕРЕВОРАЧИВАЙ ЭКРАНОМ ВНИЗ', lefty:'ИГРАЮ ЛЕВОЙ РУКОЙ', aud_vol:'ГРОМКОСТЬ', aud_keep:'НЕ ТРОГАТЬ', aud_cam:'У КАМЕРЫ', aud_port:'У РАЗЪЁМА', aud_media:'МЕДИА', aud_game:'ИГРА', aud_autotest:'АВТОВЫБОР', aud_notyet:'ЕЩЁ НЕ ДЕЛАЛСЯ', aud_retest:'ПЕРЕПРОВЕРИТЬ', aud_lab:'ЛАБА', aud_nextgame:'БУДЕТ ПРИ СЛЕДУЮЩЕЙ ИГРЕ', aud_on:'ВКЛ', aud_off:'ВЫКЛ', aud_t2:'ЗВУК', aud_s2:'ОПЫТЫ С ОБРАБОТКОЙ ЭХА', settings:'НАСТРОЙКИ', settings_t:'НАСТРОЙКИ', set_gfx:'ГРАФИКА', set_gfx_menu:'ВЫБОР В ИГРЕ', set_gfx_hd:'ВСЕГДА HD', set_gfx_px:'ВСЕГДА ПИКСЕЛИ', set_band:'ПОЛОСА ЗОНДА', set_band_ask:'ВЫБОР ПЕРЕД ИГРОЙ', set_band_w:'ВСЕГДА ШИРОКАЯ', set_band_n:'ВСЕГДА ОБЫЧНАЯ', set_live:'АВТОКАЛИБРОВКА', set_on:'ВКЛ', set_off:'ВЫКЛ', set_live_on_s:'БЕЗ ВЗМАХОВ: ИГРА БЕРЁТ ТВОЮ ПОСЛЕДНЮЮ РУЧНУЮ КАЛИБРОВКУ И САМА ПОДСТРАИВАЕТСЯ ПОД ЗВУКИ КОМНАТЫ. УПРАВЛЯЕТСЯ ХУЖЕ? ВЫКЛЮЧИ, СЫГРАЙ С РУЧНОЙ И ВКЛЮЧИ СНОВА', set_live_on_d:'БЕЗ ВЗМАХОВ: ИГРА БЕРЁТ ТВОЮ РУЧНУЮ КАЛИБРОВКУ ОТ {d} И САМА ПОДСТРАИВАЕТСЯ ПОД ЗВУКИ КОМНАТЫ. УПРАВЛЯЕТСЯ ХУЖЕ? ВЫКЛЮЧИ, СЫГРАЙ С РУЧНОЙ И ВКЛЮЧИ СНОВА', auto_ok:'КАЛИБРОВКА ИЗ ПРОШЛОЙ ИГРЫ', set_room:'ПОДСТРОЙКА ПОД КОМНАТУ', set_live_new_s:'РУЧНОЙ КАЛИБРОВКИ ЕЩЁ НЕ БЫЛО: ВЫКЛЮЧИ, СЫГРАЙ ОДНУ ИГРУ С ВЗМАХАМИ И ВКЛЮЧИ СНОВА — АВТОКАЛИБРОВКА ВОЗЬМЁТ ЕЁ', set_live_off_s:'ПЕРЕД КАЖДОЙ ИГРОЙ: УБРАТЬ РУКУ, ПОМАХАТЬ ЛАДОНЬЮ, НАЖАТЬ «ИГРАТЬ». УДАЧНУЮ НАСТРОЙКУ ПОТОМ МОЖНО ОСТАВИТЬ АВТОКАЛИБРОВКОЙ', set_expert:'РАСШИРЕННЫЕ НАСТРОЙКИ ЗОНДА', aud_link:'ЗВУК', aud_t:'ЗВУК ПРИЛОЖЕНИЯ', aud_s:'ОТКУДА ИГРА БЕРЁТ МИКРОФОН И КУДА ИГРАЕТ ЗОНД', aud_mode:'ЗВУК', aud_browser:'БРАУЗЕР', aud_app:'ПРИЛОЖЕНИЕ', aud_mic:'МИКРОФОН', aud_out:'ДИНАМИК', aud_auto:'АВТО', aud_speaker:'ДИНАМИК', aud_earpiece:'РАЗГОВОРНЫЙ', aud_bottom:'НИЗ', aud_top:'ВЕРХ', aud_back:'СЗАДИ', aud_now:'СЕЙЧАС:', aud_active:'ПИШУТ:', aud_idle:'МИКРОФОН ОТКРОЕТСЯ ПРИ ИГРЕ', aud_browser_now:'СЕЙЧАС ЗВУК ЧЕРЕЗ БРАУЗЕР: МИКРОФОН ВЫБИРАЕТ ANDROID', aud_nopos:'ТЕЛЕФОН НЕ СООБЩАЕТ, ГДЕ МИКРОФОНЫ',
   wave_t:'ПОМАШИ ЛАДОНЬЮ', wave_s:'5–10 СМ НАД СТОЛОМ ИЛИ 5–15 СМ ОТ ТОРЦА ТЕЛЕФОНА', wave_ok:'РАЗМАХ ПОЙМАН', other_t:'ПОМАШИ С ДРУГОЙ СТОРОНЫ', other_s:'С ЭТОЙ СТОРОНЫ ТЕЛЕФОН НЕ СЛЫШИТ ЛАДОНЬ', try_s:'КОРАБЛЬ ИДЁТ ЗА ЛАДОНЬЮ — ПРОВЕРЬ ВЕРХ И НИЗ', cm:'СМ',
   ring_wait:'ПРИГОТОВЬСЯ', ring_listen:'СЛУШАЮ', ring_catch:'ЛОВЛЮ РАЗМАХ', ring_ok:'ГОТОВО',
   start:'СТАРТ', over:'ИГРА ОКОНЧЕНА', best:'РЕКОРД', again:'ЕЩЁ РАЗ', menu:'МЕНЮ', logs:'ЖУРНАЛЫ', tilt_test:'ТЕСТОВЫЕ ПРАВИЛА: НЕ В ТАБЛИЦАХ', ftilt:'НАКЛОН КАРТИНКИ', stilt:'НАКЛОН ВЫСТРЕЛОВ', straight:'ПРЯМО', as_nose:'КАК НОС', bounce_off:'ВЫСТРЕЛЫ ОТ КРАЁВ: НЕТ', obs_off:'ТЯЖЁЛЫЙ СКИН: НЕТ', obs_on:'ТЯЖЁЛЫЙ СКИН: ОБСИДИАН', obs_na:'ТЯЖЁЛЫЙ СКИН: НЕТ WEBGL 2', mouse_off:'МЫШЬ ВМЕСТО СОНАРА: НЕТ', mouse_on:'МЫШЬ ВМЕСТО СОНАРА: ДА', obs_ink:'ЧЕРНИЛА НА ВЗРЫВЫ', obs_ring:'КОЛЬЦО: НЕРОВНОСТЬ', obs_wake:'СЛЕД КОРАБЛЯ', obs_rwake:'СЛЕД КАМНЕЙ', obs_det:'ЧЕРНИЛА: ДЕТАЛИ', obs_vsp:'ПРОЖИЛКИ: СКОРОСТЬ', obs_shot:'ВЫСТРЕЛ', obs_shot1:'Л1 КОМЕТА', obs_shot4:'Л4 БУСИНЫ', obs_shot5:'Л5 КРИСТАЛЛ', obs_shot6:'Л6 КАЙМА', obs_shot9:'Л9 ДВЕ ИГЛЫ', obs_shot10:'Л10 ПОЛОСЫ', obs_rstr:'КОЛЬЦО: СИЛА', obs_damp:'ГАШЕНИЕ В ЭКШНЕ', obs_reco:'ПО УМОЛЧАНИЮ', obs_ringon_on:'КОЛЬЦО ОТ ВЗРЫВА: ДА', obs_ringon_off:'КОЛЬЦО ОТ ВЗРЫВА: НЕТ', obs_grim_on:'КРОМКА ПОДАРКА: ДА', obs_grim_off:'КРОМКА ПОДАРКА: НЕТ', bounce_on:'ВЫСТРЕЛЫ ОТ КРАЁВ: ДА', 
@@ -5085,6 +5159,15 @@ function sPHold(){ var c=PG.c; if(!c){ pgWaveStart(); c=PG.c; }
   var st=wt<WAVE_PAUSE?'wait':PG.done?'ok':'catch';
   var y=(scrT-flipT<4&&!PG.done)?titles(L('other_t'),L('other_s'),P.pick):titles(L('wave_t'),PG.done?L('wave_ok'):L('pg_wave_s'));
   coveredLine(y+2); ringUI(st==='wait'?wt/WAVE_PAUSE:st==='ok'?1:Math.min(0.95,PG.wk/5),st); handBeacon(); }
+/* ── v1.61v: «Как играть» — the four rules screens at the start of SonaLob's «ИНСТРУКЦИЯ», then the getting ready as in the other
+   games (the volume, the phone, the microphone…) ── */
+function sPHow(){ var st=PG.how||0; pgHowDraw(st,scrT);
+  titles(L('ph_t'+(st+1)),L('ph_s'+(st+1)));
+  /* the buttons in a row at the bottom, in the middle — under the scene; the four steps beside them */
+  var bw=btnW([L('next'),L('back')]), y=LH-SAFE.b-8-BH, cx=Math.round(LW/2), gap=10;
+  if(st>0){ button('ph_back',L('back'),cx-gap/2-bw,y,bw,BH,''); button('ph_next',L('next'),cx+gap/2,y,bw,BH,'primary',Math.floor(clock*2)%2===0); }
+  else button('ph_next',L('next'),cx-Math.round(bw/2),y,bw,BH,'primary',Math.floor(clock*2)%2===0);
+  var dx=cx+gap/2+bw+14; for(var d=0;d<4;d++) R(d<=st?P.band:P.line,dx+d*9,y+Math.round(BH/2)-3,6,6); }
 /* ── the countdown: the rackets at the palm, then the game ── */
 function pgCount(){ countT-=DT; var v=pgView(PG.view?PG.view.py:Pong.TUNE.PAD_LO-0.5*Pong.TUNE.SENS[pgSens()]); v.py=pgPalmPad(v); pgField(v,DT);
   var n=Math.max(1,Math.ceil(countT)), cx0=Math.round(LW/2), cy0=Math.round(LH/2), fr=countT-Math.floor(countT), cs=3, pu=1+0.18*Math.max(0,fr-0.75)/0.25;
@@ -5236,6 +5319,56 @@ function pongPhone(f){ if(PGP.at===clock&&PGP.c) return PGP.c; PGP.at=clock; var
   var p=new Sk.Pen(c,{seed:5151,tick:0,ink:ink,w:9,wob:1.2,overK:2,open:0.5,passes:1,jit:1,hs:1/0.8,cross:true,step:3});
   p.draw(top,{w:16}); p.draw(bot,{w:9}); p.band(top,bot,{sp:14,shift:-10,w:5}); p.line(top[0][0],top[0][1],bot[0][0],bot[0][1],{w:9}); p.line(top[24][0],top[24][1],bot[24][0],bot[24][1],{w:9});
   c.setTransform(1,0,0,1,0,0); return PGP.c; }
+/* ── v1.61v: «Как играть» — SonaLob's rules in four drawn screens, at the start of «ИНСТРУКЦИЯ» (the maintainer 11 Oct 22:50–23:08: «в
+   инструкции, отдельно правил не надо.. ладонь на первом экране лишняя»; the sketches «Подкидывай выше», «Серия», «Потолок трескается»,
+   «Ракетки сужаются»). Each a little cartoon of ~4 s on a loop, drawn by the game's own pen on its paper: the shuttle flies the high arc and
+   the pen writes 240 at its top; the series' dots fill one by one and the notes climb; the cracks come one by one and the spider takes the
+   shuttle; the planks' ends are sawn off and fall, the web comes down. Only the picture; the coordinates are the field's, 390 high ── */
+var PGH={cv:null,key:''};
+function pgHowDraw(step,t){ var u=pgU(), fw=Math.max(1,Math.round(PG_AR*u*uiS)), fh=Math.max(1,Math.round(u*uiS));
+  PG_V.dark=pgSkin(); PG_V.skw=undefined; var key=fw+'x'+fh+'|'+pgsStyle();
+  if(!PGH.cv) PGH.cv=document.createElement('canvas'); var cv=PGH.cv; if(cv.width!==fw||cv.height!==fh){ cv.width=fw; cv.height=fh; }
+  if(PGH.key!==key){ PGH.key=key; PGH.bg=document.createElement('canvas'); PGH.bg.width=fw; PGH.bg.height=fh; var bc=PGH.bg.getContext('2d'); var d0=Math.max(1,uiS*DPR/S); bc.scale(d0,d0); Sk.paper(bc,fw/d0,fh/d0,d0,{seed:7});
+    if(PGS_ST.dark){ try{ var idt=bc.getImageData(0,0,fw,fh), dd=idt.data; for(var q=0;q<dd.length;q+=4){ var lu=0.3*dd[q]+0.59*dd[q+1]+0.11*dd[q+2], v=Math.max(0,255-lu*0.93); dd[q]=v*1.02+3; dd[q+1]=v*0.98+2; dd[q+2]=v*0.93; } bc.putImageData(idt,0,0); }catch(e){} } }
+  var c=cv.getContext('2d'), U=fh/390, FW=390*fw/fh, I=PGS_ST, CE=112, PY=350, RED=I.accent;
+  c.setTransform(1,0,0,1,0,0); c.globalCompositeOperation='source-over'; c.drawImage(PGH.bg,0,0); c.setTransform(U,0,0,U,0,0); c.globalCompositeOperation=PGS_ST.dark?'screen':'multiply';
+  var P=function(s){ return pgsPen(c,s); }, T=function(s,str,x,y,size,o){ var pp=P(s); pp.text(str,x,y,size,Object.assign({align:'center',w:I.w*0.7},o||{})); };
+  var ez=function(v){ v=Math.max(0,Math.min(1,v)); return v*v*(3-2*v); };
+  /* the ceiling with its hatching */
+  var p0=P(101); p0.line(6,CE+1,FW*0.52,CE-1,{w:p0.w*1.25,over:6}); p0.line(FW*0.48,CE-1.5,FW-6,CE+1.5,{w:p0.w*1.25,over:6});
+  var tp=[], bt=[]; for(var x=0;x<=FW;x+=3){ tp.push([x,CE-0.5]); bt.push([x,CE-8-6*Sk.noise(x/40)]); } p0.band(tp,bt,{sp:6,shift:4,w:p0.w*0.5,a:0.7});
+  /* the scene under the ceiling, a little smaller (about the ceiling's middle) — the buttons get the bottom of the screen */
+  var KS=0.8; c.translate(FW/2,CE); c.scale(KS,KS); c.translate(-FW/2,-CE);
+  function plank(s,x0,x1,side){ var top=[]; for(var j=0;j<=24;j++){ var uu=j/24, ui=side?1-uu:uu; top.push([x0+(x1-x0)*uu,PY-16*(1-ui)*(1-ui)+4*ui]); } pgsPlatform(P(s),top); }
+  function fig(s,x,d,pose){ pgsFig(P(s),x,PY-10,d,PGS_POSE[pose||'ready'],{hair:d>0,cap:d<0}); }
+  function arcPt(x0,x1,y0,top,uu){ var base=y0, y=base-(base-top)*4*uu*(1-uu); return [x0+(x1-x0)*uu,y]; }
+  function dots(s,x0,x1,y0,top,u1){ var pd=P(s); for(var i=1;i<=Math.floor(40*u1);i+=2){ var q=arcPt(x0,x1,y0,top,i/40); pd.loop(q[0],q[1],1.3,1.3,{w:I.w*0.5,a:0.8}); } }
+  if(step===0){ var L=2.6, tt=t%L, uu=Math.min(1,tt/1.6); plank(11,60,430,0); plank(12,470,840,1); fig(21,200,1,tt<0.3?'flick':'ready'); fig(22,700,-1,uu>0.9?'crouch':'ready');
+    dots(31,300,600,322,CE+14,uu); var q1=arcPt(300,600,322,CE+14,uu), q2=arcPt(300,600,322,CE+14,Math.min(1,uu+0.01)); pgsShuttle(P(32),q1[0],q1[1],Math.atan2(q2[1]-q1[1],q2[0]-q1[0]),{cork:RED,k:1.1});
+    if(uu>=0.5){ var n=Math.max(1,Math.ceil(3*Math.min(1,(tt-0.8)/0.3))); T(41,'240'.slice(0,n),464,CE+40,22,{align:'left'}); }
+    dots(33,320,560,322,262,1); T(42,'30',446,252,16,{align:'left',a:0.6});
+    var ps=P(51); ps.stroke([[40,CE+14],[40,322]],{w:I.w*0.45}); for(var k=0;k<=4;k++) ps.stroke([[34,CE+14+k*(308-CE)/4],[46,CE+14+k*(308-CE)/4]],{w:I.w*0.45}); }
+  else if(step===1){ var nf=Math.floor(t/0.55)%7; plank(11,60,430,0); plank(12,470,840,1); fig(21,240,1,nf%2?'flick':'ready'); fig(22,660,-1,nf%2?'ready':'flick');
+    [0,1,2].forEach(function(i){ dots(31+i,262+i*14,640-i*14,322,215-i*30,1); });
+    ['1,1','1,2','1,3','1,4','1,5'].forEach(function(s,i){ var x=300+i*62, pd=P(60+i); pd.loop(x,268,6,6,{w:I.w*0.6}); if(i<Math.min(5,nf)) pd.draw([[x-4.5,271],[x+3.5,262],[x-3,269],[x+4.5,265]],{w:I.w*0.9,ink:RED}); T(70+i,'×'+s,x,298,13,{a:i<nf?1:0.45}); });
+    var pn=P(80); for(var m=0;m<Math.min(3,nf);m++){ var xx=690+m*22, yy=236-m*18; pn.loop(xx,yy,4.5,3.5,{w:I.w*0.6}); pn.stroke([[xx+4,yy],[xx+4,yy-16]],{w:I.w*0.5}); } }
+  else if(step===2){ var L3=4.2, t3=t%L3, nc=Math.min(4,Math.floor(t3/0.5)); plank(11,60,430,0); plank(12,470,840,1); fig(21,200,1); fig(22,700,-1,nc>=4?'duck':'ready');
+    [140,250,360,470].slice(0,nc).forEach(function(x0,j){ var pc=P(6100+j), Lc=10+5*j, pts=[[x0,CE+2]]; for(var mm=1;mm<=5;mm++){ var hh=((j+1)*7.31+mm*3.17)%1; pts.push([x0+(mm%2?1:-1)*(2+hh*5),CE+2+Lc*mm/5]); } pc.draw(pts,{w:I.w*0.7}); T(6200+j,String(j+1),x0,CE+Lc+30,13,{a:0.7}); });
+    var sp=ez((t3-2.2)/0.8), sx=600, lives=5-(t3>3.4?1:0);
+    if(t3>=2.0){ P(90).stroke([[sx,CE+2],[sx,CE+2+78*sp]],{w:I.w*0.3}); pgsSpider(P(91),sx,CE+8+78*sp,t3*6,1.4); }
+    if(t3<3.0){ var sy=t3<2.0?260-(260-CE-120)*ez(t3/2):CE+120; pgsShuttle(P(93),sx,sy,-Math.PI/2,{cork:RED,k:1.1}); }
+    else { var cp=P(92), cy=CE+120-(t3>3.4?60*ez((t3-3.4)/0.6):0); cp.loop(sx,cy,8,12,{w:I.w*0.6}); for(var w2=0;w2<6;w2++) cp.stroke([[sx-9,cy-10+w2*3.4],[sx+9,cy-8+w2*3.4]],{w:I.w*0.35}); }
+    if(nc>=4) T(94,'5',sx+30,CE+70,15,{ink:RED});
+    for(var h=0;h<lives;h++) pgsShuttle(P(95+h),790-h*18,150,-Math.PI/2,{k:0.7,cork:RED}); }
+  else { var L4=4.0, t4=t%L4, cut=ez((t4-0.4)/0.5), fall=Math.max(0,t4-0.9); var a0=60+70*cut, b1=840-70*cut;
+    plank(11,a0,380,0); plank(12,520,b1,1); fig(21,250,1); fig(22,650,-1);
+    if(t4>0.4&&t4<0.9){ var pw=P(30); pw.stroke([[130,PY-30],[130,PY+20]],{w:I.w*0.4,a:0.6}); pw.stroke([[770,PY-30],[770,PY+20]],{w:I.w*0.4,a:0.6}); }
+    if(t4>=0.9){ var pc4=P(31); [[95,-1],[805,1]].forEach(function(q){ var x=q[0]+q[1]*30*fall, y=PY+4+300*fall*fall, a=q[1]*(0.5+2*fall), ca=Math.cos(a), sa=Math.sin(a), R=function(uu,vv){ return [x+uu*ca-vv*sa,y+uu*sa+vv*ca]; }; if(y<420) pc4.draw([R(-30,-6),R(30,-6),R(30,6),R(-30,6),R(-30,-6)],{w:I.w*0.75}); }); }
+    var pop=1+0.15*Math.max(0,1-Math.abs(t4-1.0)/0.3); T(32,'×2',450,268,26*pop,{ink:RED});
+    var WY=CE+6+22*ez(t4/L4*1.6), wp=P(40); for(var aa=0;aa<6;aa++){ var x1=aa*FW/6, x2=(aa+1)*FW/6, pts4=[]; for(var m4=0;m4<=10;m4++){ var u4=m4/10; pts4.push([x1+(x2-x1)*u4,CE+(WY-CE)*(0.35+0.65*Math.sin(Math.PI*u4))]); } wp.stroke(pts4,{w:I.w*0.3,a:0.6}); }
+    c.setTransform(U,0,0,U,0,0); [[24,40],[FW-24,40]].forEach(function(q){ for(var k4=0;k4<5;k4++){ var an=Math.PI*(0.1+0.8*k4/4); wp.stroke([[q[0],CE+1],[q[0]+Math.cos(an)*q[1],CE+Math.sin(an)*q[1]]],{w:I.w*0.28,a:0.6}); } }); }
+  c.globalCompositeOperation='source-over'; c.setTransform(1,0,0,1,0,0);
+  lx.fillStyle=PG_V.dark?'#1d1b18':'#f6f1e6'; lx.fillRect(0,0,LW,LH); var sm=lx.imageSmoothingEnabled; lx.imageSmoothingEnabled=true; lx.drawImage(cv,pgX(0),pgY(0),PG_AR*u,u); lx.imageSmoothingEnabled=sm; }
 /* ── SONARACE: THE CANDY LAND REDRAWN (v1.20; the maintainer, 2 Oct: «переходим к редизайну конфетной гонки… надо сделать конфетную такой же
    красивой и детализированной», as the river; his yes to the three zones of the sketches «Пряничная деревня — Мармеладный лес — Мороженые
    горы», driven through one after another as the river's). Built as the river world (48_racepirate.js — its noise, tiles, shadows and the
@@ -7296,7 +7429,7 @@ function devInfo(){ var ua=navigator.userAgent||'', ios=/iPhone|iPad|iPod/.test(
 Board.devInfo(devInfo);
 function endGame(){ if(mode==='race'&&g&&g.car){ raceEnd(); return; } if(mode==='pong'&&g&&g.ball!==undefined){ pgEnd(); return; } g.state='over'; overT=0; Logs.gameStop(); Board.finish(g.score); Board.flush(); if(g.score>best){ best=g.score; store.set('sonaroids_best',best); } go('over'); }
 function react(){ g.events.forEach(function(k){
-  if(k==='fire'){ if(Math.random()<0.5) Sfx.play('fire'); } else if(k!=='crash') Sfx.play(k); });
+  if(k==='break') Sfx.play(k,Math.max(0,(g.combo||1)-1)%9); else if(k!=='crash') Sfx.play(k); });   /* 1.61w: every shot (a quiet tick now), a broken rock's note climbs with the combo */
   var BU=SK.bursts(); (g.gone||[]).forEach(function(r){ if(SK.gone) SK.gone(r,rockSpr[r.id]); else burst(fx(r.x),r.y*K,8+Math.round(r.r*K),BU.rock,50*K); delete rockSpr[r.id]; shake=Math.max(shake,0.08+r.r*0.004); });
   (g.fx||[]).forEach(function(f){ if(f.ufo){ if(SK.goneUfo) SK.goneUfo(f); else burst(fx(f.x),f.y*K,40,BU.ufo,90*K); shake=0.35; } else if(f.pick) burst(fx(f.x),f.y*K,14,BU['pick_'+f.pick]||BU.pick,50*K); });   // v1.28: a skin may colour each power-up's burst
   if(g.events.indexOf('ufo_hit')>=0&&g.ufo){ burst(fx(g.ufo.x),g.ufo.y*K,14,[P.text].concat(BU.ufo),60*K); shake=Math.max(shake,0.12); }
@@ -7572,7 +7705,7 @@ function raceStart(){ var y0=raceSteer==='road'?(rCarYs===null?null:+rCarYs.toFi
 var R_BURST={tbubble:['#ffffff','#ffd23f','#ff8ac4'],tmagnet:['#ffffff','#ffd23f','#e8284a'],coin:['#ffffff','#ffd23f','#ff4f7a'],fuel:['#ffffff','#3fd07a','#8fdcff'],magnet:['#ffffff','#e8284a','#ffd23f'],bubble:['#ffffff','#ff8ac4','#e0409a']};
 function raceReact(){ var cX=fx(Race.CAR_X), cY=g.car.y*K;
   var CB=RSKIN==='candy'?CW_BURST:null;   // v1.21: the candy race's sprinkles in the gifts' colours, cookie crumbs on a crash
-  g.events.forEach(function(k){ if(k!=='over') Sfx.play(k);
+  g.events.forEach(function(k){ Sfx.play(k);   /* 1.61w: the finish too — a quiet music box */
     if(k==='crash') cwDazeT=clock;   // the stars over the car (the candy land's and the notebook's)
     if(k==='crash'&&CB){ flash=0.25; shake=0.35; cwDazeT=clock; burst(cX+6,cY,18,CB.crash,60*K,'crumb'); }
     else if(CB&&(k==='pop'||k==='boing')) burst(cX,cY,k==='pop'?20:8,CB.bubble,(k==='pop'?60:40)*K,'spr');
@@ -7699,7 +7832,9 @@ var ACT={
   appupd:function(){ try{ APP.checkUpdate(); }catch(e){} setTimeout(function(){ location.reload(); },600); },
   probe_wide:function(){ toRoom('wide'); }, probe_norm:function(){ toRoom('normal'); },
   play:function(){ if(store.get('sonaroids_seen','')!=='1'){ ACT.howto(); return; } onboarding=false; direct=false; quickOr(function(){ ensure(toAway); }); },
-  howto:function(){ onboarding=true; direct=false; go('sound'); },
+  howto:function(){ if(mode==='pong'){ PG.how=0; go('phowto'); return; } onboarding=true; direct=false; go('sound'); },
+  ph_next:function(){ if((PG.how||0)<3){ PG.how=(PG.how||0)+1; scrT=0; return; } onboarding=true; direct=false; go('sound'); },   /* 1.61v: SonaLob's rules, then the getting ready */
+  ph_back:function(){ if((PG.how||0)>0){ PG.how--; scrT=0; } },
   /* a deep recalibration: forget the saved palm range, close the microphone and start from "put the phone down" */
   recal:function(){ onboarding=false; direct=false; store.set('sonaroids_pong_cal_wide',''); store.set('sonaroids_pong_cal_normal',''); store.set('sonaroids_field','100'); store.set('sonaroids_mid_r',''); store.set('sonaroids_mid_r_wide',''); store.set('sonaroids_mid_r_normal',''); store.set('sonaroids_mid_t',''); Sonar.restart(); booted=false; acoustic=false; go('phone'); },
   lefty:function(){ lefty=true; store.set('sonaroids_lefty','1'); turnShown=false; Logs.ev('играю левой'); seenT=scrT; },
@@ -7818,7 +7953,7 @@ function sCountResume(){ countT-=DT; field(DT,0); var n=Math.max(1,Math.ceil(cou
 var DT=1/60, lastNow=performance.now(), floorHeld=false;
 /* at most 60 frames a second in flight and 30 on the other screens: phones with 120 Hz screens would otherwise draw twice as often
    for nothing and warm up (v0.12) */
-function loop(now){
+function loop(now){ Sfx.setGame(mode);   /* 1.61w: which game's sounds */
   requestAnimationFrame(loop);
   var fast=scr==='play'||scr==='count'||scr==='count-resume'; if(now-lastNow<(fast?15:31)) return;
   DT=Math.min(0.05,Math.max(0,(now-lastNow)/1000)); lastNow=now; clock+=DT; scrT+=DT; BTN=[]; SLD=[];
@@ -7832,7 +7967,7 @@ function loop(now){
   // v0.74: a shapes-only skin with «pixels» — the same canvas at 1 px per game pixel   // v0.72: the HD world canvas under the pixel one
   uiColours(scr!=='hub'); obsTick();   // v1.42: the heavy skin's canvas hidden on a frame that drew no field
   switch(scr){
-    case 'lang': sLang(); break; case 'title': sTitle(); break; case 'rtitle': sRTitle(); break; case 'ptitle': sPTitle(); break; case 'phold': sPHold(); break; case 'skins': sSkins(); break; case 'rset': sRSet(); break; case 'hub': sHub(); break;
+    case 'lang': sLang(); break; case 'title': sTitle(); break; case 'rtitle': sRTitle(); break; case 'ptitle': sPTitle(); break; case 'phold': sPHold(); break; case 'phowto': sPHow(); break; case 'skins': sSkins(); break; case 'rset': sRSet(); break; case 'hub': sHub(); break;
     case 'sound': sSound(); break;
     case 'phone': sPhone(); break; case 'mic': sMic(); break; case 'probe': sProbe(); break; case 'away': sAway(); break; case 'wave': sWave(); break;
     case 'count': sCount(); break; case 'count-resume': sCountResume(); break; case 'play': sPlay(); break; case 'over': sOver(); break;
@@ -7902,7 +8037,7 @@ function audAct(id){ var p=id.split(':'), k=p[1], v=p.slice(2).join(':');
   else if(k==='retest') Sonar.audioRetest();
   else if(k==='lab'){ location.href='../lab/sonar_lab3.html'; return; }
   Sonar.restart(); booted=false; acoustic=false; audDev=null; }
-var NO_MENU={hub:1,title:1,rtitle:1,ptitle:1,lang:1,paused:1,restart:1,play:1,over:1},   /* v1.55 (the review's п.14): the game over has its «menu» button */ NO_VER={phold:1,skins:1,rset:1,hub:1,over:1,play:1,count:1,'count-resume':1,paused:1,restart:1};
+var NO_MENU={hub:1,title:1,rtitle:1,ptitle:1,lang:1,paused:1,restart:1,play:1,over:1},   /* v1.55 (the review's п.14): the game over has its «menu» button */ NO_VER={phold:1,phowto:1,skins:1,rset:1,hub:1,over:1,play:1,count:1,'count-resume':1,paused:1,restart:1};
 function chrome(){ if(LH>LW) return;
   var s=BH-3, vr=freeSide()!=='left', x=vr?LW-Math.round(SAFE.r*0.5)-10-s:Math.round(SAFE.l*0.5)+10, y=SAFE.t+7;
   if(!NO_MENU[scr]) iconButton(scr==='phold'&&PG.resume?'pg_back':scr==='count'||scr==='count-resume'?'pause':scr==='scores'?'sc_back':scr==='settings'?'set_back':scr==='skins'?'sk_back':scr==='audio'&&audFrom==='settings'?'settings':'menu',x,y);

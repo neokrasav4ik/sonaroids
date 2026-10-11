@@ -19,6 +19,10 @@ const SCEN=`function(t){ if(t<8) return null; return 110-40*Math.cos(2*Math.PI*(
   const shot=n=>p.screenshot({path:path.join(OUT,'pong_'+n+'.png')});
   await p.evaluate(()=>__sonaroids.act.hub_pong()); await p.waitForTimeout(1200);
   const menu=await p.evaluate(()=>({scr:__sonaroids.scr(),mode:__sonaroids.state().mode,btn:__sonaroids.btn().map(b=>b.id)})); await shot('01_menu');
+  /* 1.61v: «ИНСТРУКЦИЯ» in SonaLob — the four rules screens, «next»/«back», then the getting ready (the volume screen) */
+  const how=await p.evaluate(async()=>{ const S=__sonaroids, out=[]; S.act.howto(); await new Promise(r=>setTimeout(r,300)); out.push(S.scr()+':'+S.btn().map(b=>b.id).filter(i=>i.startsWith('ph_')).join('+'));
+    S.act.ph_next(); S.act.ph_next(); S.act.ph_back(); await new Promise(r=>setTimeout(r,200)); out.push(S.scr()+':'+S.btn().map(b=>b.id).filter(i=>i.startsWith('ph_')).join('+'));
+    S.act.ph_next(); S.act.ph_next(); S.act.ph_next(); await new Promise(r=>setTimeout(r,200)); out.push(S.scr()); S.act.hub_pong(); await new Promise(r=>setTimeout(r,300)); out.push(S.scr()); return out; });
   await p.evaluate(()=>__sonaroids.act.play()); const t0=Date.now(), T=()=>(Date.now()-t0)/1000;
   const seen=[]; let last=null, hold=null, hLow=[], hTop=[], startAt=null, follow=[], paused=null, over=null, shots={};
   while(T()<75){
@@ -54,6 +58,7 @@ const SCEN=`function(t){ if(t<8) return null; return 110-40*Math.cos(2*Math.PI*(
   }
   await b.close();
   let ok=true; const out=[], check=(n,g,i)=>{ ok=ok&&g; out.push(`${n}: ${i||''} ${g?'ok':'FAIL'}`); };
+  check('SonaLob\'s «ИНСТРУКЦИЯ»: the four rules screens, then the getting ready (1.61v)',how[0]==='phowto:ph_next'&&how[1]==='phowto:ph_back+ph_next'&&how[2]==='sound'&&how[3]==='ptitle',how.join(' → '));
   check('the SonaPong card opens its menu',menu.scr==='ptitle'&&menu.mode==='pong'&&['play','howto','pg_sens','hub'].every(id=>menu.btn.includes(id)),menu.scr);
   const order=['probe','away','phold','count','play','over'], sq=seen.map(x=>x.split('@')[0]);
   check('the screens in order',order.every((s,i)=>sq.indexOf(s)>=0&&(i===0||sq.indexOf(s)>sq.indexOf(order[i-1]))),seen.join(' → '));

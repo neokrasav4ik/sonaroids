@@ -134,6 +134,15 @@ function sPHold(){ var c=PG.c; if(!c){ pgWaveStart(); c=PG.c; }
   var st=wt<WAVE_PAUSE?'wait':PG.done?'ok':'catch';
   var y=(scrT-flipT<4&&!PG.done)?titles(L('other_t'),L('other_s'),P.pick):titles(L('wave_t'),PG.done?L('wave_ok'):L('pg_wave_s'));
   coveredLine(y+2); ringUI(st==='wait'?wt/WAVE_PAUSE:st==='ok'?1:Math.min(0.95,PG.wk/5),st); handBeacon(); }
+/* ── v1.61v: «Как играть» — the four rules screens at the start of SonaLob's «ИНСТРУКЦИЯ», then the getting ready as in the other
+   games (the volume, the phone, the microphone…) ── */
+function sPHow(){ var st=PG.how||0; pgHowDraw(st,scrT);
+  titles(L('ph_t'+(st+1)),L('ph_s'+(st+1)));
+  /* the buttons in a row at the bottom, in the middle — under the scene; the four steps beside them */
+  var bw=btnW([L('next'),L('back')]), y=LH-SAFE.b-8-BH, cx=Math.round(LW/2), gap=10;
+  if(st>0){ button('ph_back',L('back'),cx-gap/2-bw,y,bw,BH,''); button('ph_next',L('next'),cx+gap/2,y,bw,BH,'primary',Math.floor(clock*2)%2===0); }
+  else button('ph_next',L('next'),cx-Math.round(bw/2),y,bw,BH,'primary',Math.floor(clock*2)%2===0);
+  var dx=cx+gap/2+bw+14; for(var d=0;d<4;d++) R(d<=st?P.band:P.line,dx+d*9,y+Math.round(BH/2)-3,6,6); }
 /* ── the countdown: the rackets at the palm, then the game ── */
 function pgCount(){ countT-=DT; var v=pgView(PG.view?PG.view.py:Pong.TUNE.PAD_LO-0.5*Pong.TUNE.SENS[pgSens()]); v.py=pgPalmPad(v); pgField(v,DT);
   var n=Math.max(1,Math.ceil(countT)), cx0=Math.round(LW/2), cy0=Math.round(LH/2), fr=countT-Math.floor(countT), cs=3, pu=1+0.18*Math.max(0,fr-0.75)/0.25;

@@ -231,9 +231,14 @@ function pgsMotors(c,i,tp,M,v,t,dt){ var n=tp.length-1, up=Math.max(0,Math.min(1
       if(bl>0){ var d=pgsPen(c,sd+2); d.loop(x,y+10,25,4.2,{w:I.w*0.55,a:bl}); d.loop(x,y+10,19,2.8,{w:I.w*0.35,a:bl*0.6}); }
       if(up>0.2){ var dw=pgsPen(c,sd+3); for(var m3=-2;m3<=2;m3++){ var ph3=(t*3+m3*0.17+k*0.3)%1, xx=x+m3*8, L3=10+30*up; dw.stroke([[xx+m3*ph3*2,y+18+ph3*L3*0.6],[xx+m3*(ph3*2+1),y+18+ph3*L3*0.6+L3*0.35]],{w:I.w*0.45,a:(up-0.2)/0.8*(1-ph3)}); } }
       if(dn>0.15){ var ua=pgsPen(c,sd+4); for(var m4=-1;m4<=1;m4++){ var ph4=(t*1.8+m4*0.3)%1, xx4=x+m4*11, yy=y+42-ph4*22; ua.stroke([[xx4,yy],[xx4,yy-9]],{w:I.w*0.4,a:dn*(1-ph4)}); ua.stroke([[xx4-3,yy-6],[xx4,yy-10],[xx4+3,yy-6]],{w:I.w*0.4,a:dn*(1-ph4)}); } } } }); }
+/* 1.60l (Ден 11:14, снимок ползунков демо «набросок»: линер, толщина 2,2, дрожь 1,5, вылет 10, кружки 60%, обвести 2, разброс 1,5,
+   штриховка 0,8×, перерисовок нет, крест-накрест): вид линий — из ползунков «Рисунок» (по умолчанию — этот набор); бумага и потолок
+   перерисовываются, когда вид меняется */
+function pgsStyle(){ var V=PG_V; PGS_ST.w=V.skw||2.2; PGS_ST.wob=V.skwob===undefined?1.5:V.skwob; PGS_ST.overK=(V.skover===undefined?10:V.skover)/3; PGS_ST.open=V.skopen===undefined?0.6:V.skopen; PGS_ST.passes=Math.round(V.skpass||2); PGS_ST.jit=V.skjit===undefined?1.5:V.skjit; PGS_ST.hs=1/(V.skhs||0.8); PGS_ST.cross=(V.skcross===undefined?1:V.skcross)>=0.5;
+  return [PGS_ST.w,PGS_ST.wob,PGS_ST.overK,PGS_ST.open,PGS_ST.passes,PGS_ST.jit,PGS_ST.hs,PGS_ST.cross].join(','); }
 function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ return v*390; }, I=PGS_ST;
   /* the page: paper and the ceiling, kept until the screen changes size */
-  var key=W+'x'+H; if(PGS.key!==key){ PGS.key=key; var bg=document.createElement('canvas'); bg.width=W; bg.height=H; var bc=bg.getContext('2d'); bc.scale(dpr,dpr); Sk.paper(bc,W/dpr,H/dpr,dpr,{seed:7});
+  var key=W+'x'+H+'|'+pgsStyle(); if(PGS.key!==key){ PGS.key=key; var bg=document.createElement('canvas'); bg.width=W; bg.height=H; var bc=bg.getContext('2d'); bc.scale(dpr,dpr); Sk.paper(bc,W/dpr,H/dpr,dpr,{seed:7});
     var L=document.createElement('canvas'); L.width=W; L.height=H; var lc=L.getContext('2d'); lc.setTransform(U,0,0,U,0,0); var p0=pgsPen(lc,101), CE=F(JG_TOP);
     p0.line(6,CE+1,FW*0.52,CE-1,{w:p0.w*1.25,over:6}); p0.line(FW*0.48,CE-1.5,FW-6,CE+1.5,{w:p0.w*1.25,over:6});
     var tp=[], bt=[]; for(var x=0;x<=FW;x+=2){ tp.push([x,CE-0.5]); bt.push([x,CE-8-6*Sk.noise(x/40)-p0.rnd(0,3)]); } p0.band(tp,bt,{sp:6,shift:4,w:p0.w*0.5,a:0.7});

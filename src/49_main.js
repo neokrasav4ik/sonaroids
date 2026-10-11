@@ -199,7 +199,7 @@ function sHub(){ var fr, rimg, fid=SKIN_IDS[hubSkin], rsk=RACE_SKINS[hubRace]; h
   ih=Math.round(cw*LH/LW); var cx=Math.round(cx0-(NC*cw+(NC-1)*gap)/2), ty=Math.round(top+(playY-8-lab-top-ih)/2);
   hubCard('hub_rocks',cx,ty,cw,ih,fr,'SonaFly','',true);
   hubCard('hub_race',cx+cw+gap,ty,cw,ih,rimg||withRaceSkin(rsk,function(){ return raceCardHD(cw-4,ih); }),'SonaRace','',true);
-  hubCard('hub_pong',cx+2*(cw+gap),ty,cw,ih,pgCard(),'SonaPong',L('r_test'),true);   // v1.59: a test version until its skins and sounds   // v0.84: the race is open; v0.92: «тестовая пока версия»; v1.00: no longer («после добавления тетрадки надпись можно убирать»)
+  hubCard('hub_pong',cx+2*(cw+gap),ty,cw,ih,pgCard(),'SonaLob',L('r_test'),true);   // v1.61k: SonaPong → SonaLob (Den 19:18)   // v1.59: a test version until its skins and sounds   // v0.84: the race is open; v0.92: «тестовая пока версия»; v1.00: no longer («после добавления тетрадки надпись можно убирать»)
   if(narrow){ button('settings',L('settings'),Math.round(cx0-sw/2),playY,sw,BH,'');
     var x2=Math.round(cx0-bw-4); button('howto',L('howto'),x2,rowY,bw,BH,''); button('lang',L('lang'),x2+bw+8,rowY,bw,BH,''); }
   else { var tw=bw*2+sw+16, bx=Math.round(cx0-tw/2); button('howto',L('howto'),bx,rowY,bw,BH,''); button('lang',L('lang'),bx+bw+8,rowY,bw,BH,''); button('settings',L('settings'),bx+2*bw+16,rowY,sw,BH,''); }
@@ -584,7 +584,7 @@ function sPaused(){ field(DT,0); pauseVeil(); titles(L('paused'));
   // v1.03: SonaRace's pause as SonaFly's — the skin and the graphics beside the actions (Den: «во флае можно скин и графику менять прямо во время игры в меню паузы, в гонках надо сделать аналогичное»)
   var w1=colW(act), w2=colW(look), g=10, left=freeSide()==='left', x1=mode==='fly'&&left?Math.max(sideX(w1),Math.min(Math.round(fx(Core.SHIP_X))+34,LW-SAFE.r-Math.max(8,Math.round(LW*0.04))-w1-10-w2)):sideX(w1),   /* off the ship's lane, but both columns on screen */ x2=left?x1+w1+g:x1-g-w2, cy=Math.min(Math.round(LH*0.55),Math.round((top+bot)/2));
   if(w1+g+w2>LW-SAFE.l-SAFE.r-2*Math.max(8,Math.round(LW*0.04))){                                        // too narrow for two (a tablet in Russian): one tight column
-    var it=act.concat(look), gap=Math.max(2,Math.min(8,Math.floor((bot-top+2-it.length*BH)/(it.length-1))));
+    var it=act.concat(look.filter(function(q){ return q[0]!=='pg_hint'; })), /* v1.61k: О1/О2 is a test switch — only where the two columns fit (9 rows overflow a small phone or a tablet in one column) */ gap=Math.max(2,Math.min(8,Math.floor((bot-top+2-it.length*BH)/(it.length-1))));
     column(it,Math.round((top+bot)/2),undefined,gap); return; }
   column(act,cy,x1,8); var ob=mode==='fly'&&pausedFrom==='play'&&obsOn(); if(ob) diagCorner('V'+VERSION,true,SAFE.t+8,true);   /* v1.48: the test sliders hidden — a long press on the version shows them */
   var cyL=Math.round(cy-(act.length*(BH+8)-8)/2+(look.length*(BH+8)-8)/2);   /* v1.56 (the review's п.23): the two columns' tops level */

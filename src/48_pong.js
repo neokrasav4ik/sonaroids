@@ -85,11 +85,11 @@ function sPTitle(){ pgDemoDraw();
   var items=[['play',L('play'),'primary'],['howto',L('howto')],['pg_sens',pgSensLabel()],['pg_skin',pgSkinLabel()],['sfx','','sound'],['hub',L('all_games')]], w=colW(items);
   var bx0=sideX(w), m=Math.max(8,Math.round(LW*0.04)), band0=freeSide()==='left'?0:bx0-m, band1=freeSide()==='left'?bx0+w+m:LW;
   bandVeil(band0,band1,0.6); column(items,Math.round(LH*0.52),bx0,8);
-  var a0=freeSide()==='left'?band1:SAFE.l, a1=freeSide()==='left'?LW-SAFE.r:band0, cx0=Math.round((a0+a1)/2), lsc=PF.width('SonaPong',2)<=a1-a0-12?2:1, y=Math.round(LH*0.14);
-  var sl=PF.wrap(L('pg_s'),a1-a0-16,1), rw=PF.width('SonaPong',lsc); sl.forEach(function(l){ rw=Math.max(rw,PF.width(l)); }); plaque(cx0-rw/2,y-2,cx0+rw/2,y+lsc*10+6+sl.length*10-3,0.55);
-  text('SonaPong',cx0,y,P.band,'center',lsc); y+=lsc*10+6; sl.forEach(function(l){ text(l,cx0,y,P.text,'center'); y+=10; });
+  var a0=freeSide()==='left'?band1:SAFE.l, a1=freeSide()==='left'?LW-SAFE.r:band0, cx0=Math.round((a0+a1)/2), lsc=PF.width('SonaLob',2)<=a1-a0-12?2:1, y=Math.round(LH*0.14);
+  var sl=PF.wrap(L('pg_s'),a1-a0-16,1), rw=PF.width('SonaLob',lsc); sl.forEach(function(l){ rw=Math.max(rw,PF.width(l)); }); plaque(cx0-rw/2,y-2,cx0+rw/2,y+lsc*10+6+sl.length*10-3,0.55);
+  text('SonaLob',cx0,y,P.band,'center',lsc);   /* v1.61k: the name — SonaLob (Den 19:18: «у нас же теперь не сонапонг — SonaLob»; a lob — the high arc the game is about) */ y+=lsc*10+6; sl.forEach(function(l){ text(l,cx0,y,P.text,'center'); y+=10; });
   if(pgBest()>0) text(L('best')+' '+pgBest(),cx0,LH-SAFE.b-28,P.text,'center');
-  say('SonaPong. '+L('play')+'. '+pgSensLabel()); }
+  say('SonaLob. '+L('play')+'. '+pgSensLabel()); }
 /* ── the getting ready's last step. v1.61f: the waving, as SonaFly's and SonaRace's (was the two holds): «get ready» (WAVE_PAUSE), «wave as
    you will hit», the ring fills with the swings, the rackets already follow what is caught (src/16_pong_ctl.js PongCtl.wave — the lab's
    «помахать», «низ подальше от стола», «размах 75 мм»); caught — «РАЗМАХ ПОЙМАН» for CAUGHT_SHOW s, then the try-out: the rackets follow

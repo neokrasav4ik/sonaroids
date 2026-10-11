@@ -82,7 +82,7 @@ function pgCard(){ if(!pgCardC||pgCardC.width!==LW||pgCardC.height!==LH){ pgCard
 /* ── the menu: play, how to play, the sensitivity (the only setting), the sounds, all the games ── */
 function pgSensLabel(){ return L('pg_sens')+': '+L('pg_sens'+pgSens()); }
 function sPTitle(){ pgDemoDraw();
-  var items=[['play',L('play'),'primary'],['howto',L('howto')],['pg_sens',pgSensLabel()],['sfx','','sound'],['hub',L('all_games')]], w=colW(items);
+  var items=[['play',L('play'),'primary'],['howto',L('howto')],['pg_sens',pgSensLabel()],['pg_skin',pgSkinLabel()],['sfx','','sound'],['hub',L('all_games')]], w=colW(items);
   var bx0=sideX(w), m=Math.max(8,Math.round(LW*0.04)), band0=freeSide()==='left'?0:bx0-m, band1=freeSide()==='left'?bx0+w+m:LW;
   bandVeil(band0,band1,0.6); column(items,Math.round(LH*0.52),bx0,8);
   var a0=freeSide()==='left'?band1:SAFE.l, a1=freeSide()==='left'?LW-SAFE.r:band0, cx0=Math.round((a0+a1)/2), lsc=PF.width('SonaPong',2)<=a1-a0-12?2:1, y=Math.round(LH*0.14);

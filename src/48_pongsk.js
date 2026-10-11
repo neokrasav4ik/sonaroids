@@ -26,6 +26,15 @@ var PGK={cv:null,src:null,arc:null,crk:[],crkB:null,crkM:null,kick:[null,null],l
     return S?{i:i,P:[x,S.y-b.r]}:null; };
 })();
 function pgSkOn(){ return true; }
+/* v1.61i: the two skins — light paper with black ink, dark paper with white ink (the lab's «Бумага: тёмная», 1.60p/s/x); kept on the phone */
+function pgSkin(){ if(PG.skin===undefined||PG.skin===null){ var v=parseInt(store.get('sonaroids_pong_skin','0'),10); PG.skin=v===1?1:0; } return PG.skin; }
+function pgSkinLabel(){ return L('skin')+': '+L('pg_sk'+pgSkin()); }
+/* v1.61j: the points by the shuttle (the lab's 1.60t/w «Очки у волана»; Den 19:17: «сделай и о1, и о2, я потом выберу.. по умолчанию — о1»).
+   О1 — a «+N» tag rides below-left of the shuttle, growing with the height; at the top it freezes and swells; on the catch it flies into the
+   score. О2 — at the top of the arc the pen writes the number, it hangs there while the shuttle falls (never on the ceiling or the web) and
+   fades after the catch. A ceiling touch — no points, no tag. In the pause, until Den picks one */
+function pgHint(){ if(PG.hint===undefined||PG.hint===null){ var v=parseInt(store.get('sonaroids_pong_hint','1'),10); PG.hint=v===2?2:1; } return PG.hint; }
+function pgHintLabel(){ return L('pg_hint')+': '+L('pg_h'+pgHint()); }
 /* the game's events → what the drawing animates: cracks with the time they appeared, the cave-in (the spider's cartoon), the mended cracks,
    the hits (the planks' kick, the players' swing), the last points. Called after every rules step of the game that is on the screen */
 function pgSkFx(q){ if(PGK.src!==q){ PGK.src=q; PGK.crk=[]; PGK.crkB=null; PGK.crkM=null; PGK.kick=[null,null]; PGK.lastT=0; PGS.life=null; PGS.pl=null; PGS.sh=null; PGS.hist=[]; }
@@ -40,13 +49,13 @@ function pgSkFx(q){ if(PGK.src!==q){ PGK.src=q; PGK.crk=[]; PGK.crkB=null; PGK.c
 function pgSkDraw(q,dt,playing){ var u=pgU(), fw=Math.max(1,Math.round(PG_AR*u*uiS)), fh=Math.max(1,Math.round(u*uiS));
   if(!PGK.cv) PGK.cv=document.createElement('canvas'); var cv0=PGK.cv; if(cv0.width!==fw||cv0.height!==fh){ cv0.width=fw; cv0.height=fh; PGS.key=''; }
   if(PGK.src!==q) pgSkFx(q);
-  PGK.v.ar=PG_AR; PGK.v.hw=q.hw; PGK.v.H=q.H; PGK.lastT=Math.max(0,PGK.lastT-dt); PGK.flash=Math.max(0,PGK.flash-dt);
+  PG_V.dark=pgSkin(); PG_V.phint=pgHint(); PGK.v.ar=PG_AR; PGK.v.hw=q.hw; PGK.v.H=q.H; PGK.lastT=Math.max(0,PGK.lastT-dt); PGK.flash=Math.max(0,PGK.flash-dt);
   var A=window.ARC; A.ar=PG_AR; A.t=q.t; A.py=q.py; A.padSoft=null; A.balls=q.ball?[q.ball]:[]; A.webD=q.webD||0; A.crk=PGK.crk; A.crkB=PGK.crkB; A.crkM=PGK.crkM;
   A.ceils=q.ceils||0; A.falls=q.falls||0; A.narrowK=q.k||1; A.score=q.score||0; A.series=q.series||0; A.kick=PGK.kick; A.phase=playing?'play':'menu'; A.lastPts=PGK.lastPts; A.lastT=PGK.lastT; A.pf=[]; A.flash=PGK.flash; A.clean=0;
   var t0=performance.now(), c=cv0.getContext('2d'); c.setTransform(1,0,0,1,0,0);
   pgSketch(c,fw,fh,Math.max(1,uiS*DPR/S));
   if(PGK.q.prev) pgSkQual(t0-PGK.q.prev); PGK.q.prev=t0;   // the frames' own rhythm, as the lab's
-  lx.fillStyle=PG_V.dark?'#1b1916':'#f6f1e6'; lx.fillRect(0,0,LW,LH); var sm=lx.imageSmoothingEnabled; lx.imageSmoothingEnabled=true;
+  lx.fillStyle=PG_V.dark?'#1d1b18':'#f6f1e6'; lx.fillRect(0,0,LW,LH); var sm=lx.imageSmoothingEnabled; lx.imageSmoothingEnabled=true;
   lx.drawImage(cv0,pgX(0),pgY(0),PG_AR*u,u); lx.imageSmoothingEnabled=sm; }
 /* a slow phone: as the lab's (1.60r) — frames longer than ~21 ms for 1.5 s step the drawing down once: the ink laid plainly instead of
    «multiply» (slow on Android), then the lines' points sparser. The canvas is already at most twice the game's pixels */

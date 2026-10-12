@@ -81,14 +81,12 @@ function sideX(w){ return freeSide()==='left'?SAFE.l+Math.max(8,Math.round(LW*0.
 function colW(items){ var w=btnW(items.filter(function(b){ return b[2]!=='sound'&&b[2]!=='skin'; }).map(function(b){ return b[1]; }));
   if(items.some(function(b){ return b[2]==='skin'; })) w=Math.max(w,skinW());
   if(items.some(function(b){ return b[2]==='rskin'; })) w=Math.max(w,rskinW());
-  items.forEach(function(b){ if(b[2]==='pair') b[3].forEach(function(q){ w=Math.max(w,2*(PF.width(q[1])+18)+6); }); });
   return items.some(function(b){ return b[2]==='sound'; })?Math.max(w,soundW()):w; }
 /* the «◀ skin: … ▶» row's width: the longest skin name between the arrows */
 function rskinW(){ var lw=PF.width(L('r_skin')+': '+L('r_sk_'+RACE_SKINS.concat(['mix']).reduce(function(a,k){ return PF.width(L('r_sk_'+k))>PF.width(L('r_sk_'+a))?k:a; }))); return R_SKIN_ROW==='A'?lw+2*Math.round(BH*0.9)+24:lw+20; }
 function skinW(){ return PF.width(L('skin')+': '+L('skin_'+SKIN_IDS.concat(['mix']).reduce(function(a,k){ return PF.width(L('skin_'+k))>PF.width(L('skin_'+a))?k:a; })))+2*Math.round(BH*0.9)+24; }
 function column(items,y0,x0,gap){ var w=colW(items), h=BH; gap=gap===undefined?10:gap; var y=Math.round(y0-(items.length*(h+gap)-gap)/2), x=x0===undefined?sideX(w):x0;
-  items.forEach(function(b){ if(b[2]==='pair'){ var hw2=Math.floor((w-6)/2); b[3].forEach(function(q,j){ button(q[0],q[1],x+j*(w-hw2),y,hw2,h,q[2]||'',Math.floor(clock*2)%2===0); }); y+=h+gap; return; }   /* v1.64c: two buttons in one row (SonaLob's «ИГРАТЬ ОДНОМУ» · «ИГРАТЬ ВДВОЁМ») */
-    if(b[2]==='sound') soundRow(x,y,w,h); else if(b[2]==='skin') skinRow(x,y,w,h,gap); else if(b[2]==='rskin') rskinRow(x,y,w,h,gap); else button(b[0],b[1],x,y,w,h,b[2]||'',Math.floor(clock*2)%2===0); y+=h+gap; }); }
+  items.forEach(function(b){ if(b[2]==='sound') soundRow(x,y,w,h); else if(b[2]==='skin') skinRow(x,y,w,h,gap); else if(b[2]==='rskin') rskinRow(x,y,w,h,gap); else button(b[0],b[1],x,y,w,h,b[2]||'',Math.floor(clock*2)%2===0); y+=h+gap; }); }
 /* v0.36: the sound row in the menu and the pause — [ - | SOUNDS ▮▮▮▮▮▯▯▯ | + ]; the middle switches the sounds on and off */
 function soundW(){ return PF.width(L('sfx_off'))+6+Sfx.steps*4+2*Math.round(BH*0.9)+12; }
 function soundRow(x,y,w,h){ var on=Sfx.on(), n=Sfx.steps, lv=Sfx.lvl(), s=Math.round(h*0.9), ty=y+Math.round((h-7)/2);

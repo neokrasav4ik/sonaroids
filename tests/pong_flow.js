@@ -63,7 +63,7 @@ const SCEN=`function(t){ if(t<8) return null; return 110-40*Math.cos(2*Math.PI*(
   await b.close();
   let ok=true; const out=[], check=(n,g,i)=>{ ok=ok&&g; out.push(`${n}: ${i||''} ${g?'ok':'FAIL'}`); };
   check('SonaLob\'s «ИНСТРУКЦИЯ»: the four rules screens, then the getting ready (1.61v)',how[0]==='phowto:ph_next'&&how[1]==='phowto:ph_back+ph_next'&&how[2]==='sound'&&how[3]==='ptitle',how.join(' → '));
-  check('the SonaPong card opens its menu',menu.scr==='ptitle'&&menu.mode==='pong'&&['play','howto','pg_sens','hub'].every(id=>menu.btn.includes(id)),menu.scr);
+  check('the SonaPong card opens its menu',menu.scr==='ptitle'&&menu.mode==='pong'&&['play','pg_duo','howto','hub'].every(id=>menu.btn.includes(id)),menu.scr);
   const order=['probe','away','phold','count','play','over'], sq=seen.map(x=>x.split('@')[0]);
   check('the screens in order',order.every((s,i)=>sq.indexOf(s)>=0&&(i===0||sq.indexOf(s)>sq.indexOf(order[i-1]))),seen.join(' → '));
   check('the waving catches the swing: the travel 75 mm, the mix\'s offset 0; then the try-out: play, recalibrate, the sensitivity',!!hold&&!!hold.lin&&Math.abs(hold.lin.t-hold.lin.b-75)<1e-9&&hold.mxCal===0&&['start','pg_rehold','pg_sens'].every(id=>(hold.btn||[]).includes(id)),hold&&hold.lin?`low ${hold.lin.b.toFixed(0)} mm, top ${hold.lin.t.toFixed(0)} mm; ${(hold.btn||[]).join(' ')}`:'not caught');

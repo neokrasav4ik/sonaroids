@@ -63,7 +63,11 @@ function pgSkDraw(q,dt,playing,cardH,ckey){ var u=pgU(), fw=Math.max(1,Math.roun
   /* 1.61m: the slow-phone steps only in the game itself (the menu and the getting ready run at 30 frames a second on purpose — they read
      as «slow» and stepped every phone down to the coarsest drawing within seconds) */
   if(cardH) return cv0;
-  if(scr==='play'&&PGK.q.prev&&t0-PGK.q.prev<100) pgSkQual(t0-PGK.q.prev); PGK.q.prev=scr==='play'?t0:0;
+  /* v1.64i (Den 22:18: «ми9 всегда тормозит на экране калибровок, и только с началом игры тормоза уходят»): the stepping down works on
+     every screen the field is drawn on, each against its own pace — the game and the countdowns run at 60 frames a second, the menu and
+     the getting ready at 30 (1.61m stepped only in the game: measured against 60, the 30-a-second screens read as slow on every phone) */
+  var fast=scr==='play'||scr==='count'||scr==='count-resume'; if(PGK.q.scr!==scr){ PGK.q.scr=scr; PGK.q.prev=0; }
+  if(PGK.q.prev&&t0-PGK.q.prev<150) pgSkQual(t0-PGK.q.prev,fast?1000/60:1000/30); PGK.q.prev=t0;
   lx.fillStyle=PG_V.dark?'#1d1b18':'#f6f1e6'; lx.fillRect(0,0,LW,LH); var sm=lx.imageSmoothingEnabled; lx.imageSmoothingEnabled=true;
   lx.drawImage(cv0,pgX(0),pgY(0),PG_AR*u,u); lx.imageSmoothingEnabled=sm;
   if(A.me!==null&&A.meXY&&A.youA>0) pdYou(pgX(A.meXY[0]),pgY(A.meXY[1]),A.youA); A.meXY=null; }
@@ -79,14 +83,21 @@ function pgSkClip(v,cardH,ckey){ var keep=PGS, src=PGK.src; PGS=v._pgs||(v._pgs=
   try{ return pgSkDraw(v,0,false,cardH,ckey); } finally { v._pgs=PGS; PGS=keep; PGK.src=src; } }
 /* a slow phone: as the lab's (1.60r) — frames longer than ~21 ms for 1.5 s step the drawing down once: the ink laid plainly instead of
    «multiply» (slow on Android), then the lines' points sparser. The canvas is already at most twice the game's pixels */
-function pgSkQual(ms){ var Q=PG_Q; if(!(ms>0&&ms<200)) return; Q.ms+=(ms-Q.ms)*0.1; if(Q.ms>21) Q.slow+=ms/1000; else Q.slow=Math.max(0,Q.slow-ms/2000);
-  if(Q.slow>1.5&&Q.lvl<4){ Q.lvl++; Q.slow=0; Q.ms=16.7; try{ Logs.gameEv('набросок: качество',Q.lvl); }catch(e){} } }
+function pgSkQual(ms,pace){ var Q=PG_Q; pace=pace||1000/60; if(!(ms>0&&ms<200)) return; if(Q.pace!==pace){ Q.pace=pace; Q.ms=pace; Q.slow=0; }
+  Q.ms+=(ms-Q.ms)*0.1; if(Q.ms>pace*1.27) Q.slow+=ms/1000; else Q.slow=Math.max(0,Q.slow-ms/2000);   // ~21 ms at 60 a second (as before), ~42 at 30
+  if(Q.slow>1.5&&Q.lvl<4){ Q.lvl++; Q.slow=0; Q.ms=pace; store.set('sonaroids_pong_q',String(Q.lvl)); try{ Logs.ev('набросок: качество',{lvl:Q.lvl,scr:scr}); Logs.gameEv('набросок: качество',Q.lvl); }catch(e){} } }
+/* the level the phone stepped down to is kept: the next launch starts there (the Mi 9 stuttered through every getting ready till the game had
+   stepped it down again) */
+(function(){ var v=0; try{ v=parseInt(localStorage.getItem('sonaroids_pong_q')||'0',10); }catch(e){} if(v>=1&&v<=4) PG_Q.lvl=v; })();   /* store (src/49_main.js) is not there yet */
 /* 1.61o: the drawn phone on the getting-ready screens (away, the waving, the instructions) showed SonaFly's ship; for SonaLob it shows
    the paper with one big plank going up and down with the palm (Den 20:28: «на нарисованном смартфоне скин сонафлая вместо платформ..
    лучше одну платформу нарисовать — так её точно видно будет»). Drawn thick: the phone on the picture is small */
 var PGP={c:null,at:-1};
 function pongPhone(f){ if(PGP.at===clock&&PGP.c) return PGP.c; PGP.at=clock; var q=2, W=Math.round(LW*q), H=Math.round(LH*q);
-  if(!PGP.c||PGP.c.width!==W||PGP.c.height!==H){ PGP.c=document.createElement('canvas'); PGP.c.width=W; PGP.c.height=H; }
+  if(!PGP.c||PGP.c.width!==W||PGP.c.height!==H){ PGP.c=document.createElement('canvas'); PGP.c.width=W; PGP.c.height=H; PGP.key=''; }
+  /* v1.64i: the same picture is not drawn again (the pen's lines are the same for the same plank's place — on «take your hand away» it
+     stood still and was redrawn 30 times a second, ~a third of a slow phone's frame) */
+  var key=(f===null||f===undefined?'-':Math.round(Math.max(0,Math.min(1,f))*250))+'|'+pgSkin(); if(PGP.key===key) return PGP.c; PGP.key=key;
   var c=PGP.c.getContext('2d'), dark=pgSkin()===1, U=H/390, FW=390*W/H; c.setTransform(1,0,0,1,0,0); c.fillStyle=dark?'#1d1b18':'#f3eee2'; c.fillRect(0,0,W,H);
   c.setTransform(U,0,0,U,0,0); var ff=f===null||f===undefined?0.5:Math.max(0,Math.min(1,f)), y=80+(1-ff)*190, x0=FW*0.12, x1=FW*0.88, top=[], bot=[], TH=46;   // the phone on the picture is seen nearly edge-on: everything drawn tall
   for(var j=0;j<=24;j++){ var u=j/24, x=x0+(x1-x0)*u, yt=y-40*(1-u)*(1-u)+8*u; top.push([x,yt]); bot.push([x,yt+TH*(0.75+0.25*Math.sin(Math.PI*u))]); }   // a bowl: the outer edge higher

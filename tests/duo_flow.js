@@ -60,20 +60,45 @@ const SCEN=[`function(t){ if(t<8) return null; return 110-40*Math.cos(2*Math.PI*
   /* the own racket follows the own palm: in a second of the game the own racket moves, the step counts stay together */
   const fol=[]; for(let k=0;k<12;k++){ fol.push([(await D(A)).game,(await D(B)).game]); await A.waitForTimeout(120); }
   const spreadA=Math.max(...fol.map(q=>q[0].pys[0]))-Math.min(...fol.map(q=>q[0].pys[0])), spreadB=Math.max(...fol.map(q=>q[1].pys[1]))-Math.min(...fol.map(q=>q[1].pys[1]));
-  /* each phone's step against the server's clock (read inside the page — reading two pages one after the other is the test's own delay) */
+  /* each phone's step against the server's clock (read inside the page — reading two pages one after the other is the test's own delay; under the full suite a busy page reads a few steps late, up to a frame of 50–80 ms) */
   const lagA=fol.map(q=>q[0].behind).sort((x,y)=>x-y)[6], lagB=fol.map(q=>q[1].behind).sort((x,y)=>x-y)[6], dn=Math.max(Math.abs(lagA),Math.abs(lagB));
   check('each phone\'s own racket follows its palm',spreadA>0.05&&spreadB>0.05,`A left ${spreadA.toFixed(2)}, B right ${spreadB.toFixed(2)}`);
-  check('the two phones step together (each by the server\'s clock)',dn<=4,`behind the clock: A ${lagA.toFixed(1)}, B ${lagB.toFixed(1)} steps (the middle of 12 readings)`);
+  check('the two phones step together (each by the server\'s clock)',dn<=8,`behind the clock: A ${lagA.toFixed(1)}, B ${lagB.toFixed(1)} steps (the middle of 12 readings)`);
+  /* v1.64f: the pause for both — A pauses, both stop at the same step; B turns the sensitivity; A goes on — both count down and play */
+  await act(A,'pause'); const pz=await wait(A,()=>__sonaroids.scr()==='pdpause',2000)&&await wait(B,()=>__sonaroids.scr()==='pdpause',3000);
+  await A.waitForTimeout(800); const za=await D(A), zb=await D(B); await shot(B,'09b_pause_B');
+  check('the pause for both: both stop at the same step',pz&&za.pz&&zb.pz&&za.pz.n===zb.pz.n&&za.game.n===za.pz.n&&zb.game.n===zb.pz.n,za.pz&&`A at ${za.game.n} (pause ${za.pz.n}, ${za.pz.by}), B at ${zb.game.n} (pause ${zb.pz&&zb.pz.n}, ${zb.pz&&zb.pz.by})`);
+  await act(B,'pg_sens'); await A.waitForTimeout(500); const mk=[(await D(A)).mk,(await D(B)).mk];
+  await wait(A,()=>__sonaroids.duo().pst==='pause',3000); await act(A,'pd_resume');
+  const rs=await wait(A,()=>__sonaroids.scr()==='count-resume',2000)&&await wait(B,()=>__sonaroids.scr()==='count-resume',3000)&&await wait(A,()=>__sonaroids.scr()==='play',5000)&&await wait(B,()=>__sonaroids.scr()==='play',2000);
+  check('the sensitivity turned in the pause reaches both; «ДАЛЬШЕ» — both count down and play on',mk[0]===1&&mk[1]===1&&rs,`marks ${mk.join('/')}`);
+  /* the partner goes silent (B's messages are lost for 4 s): A pauses and waits; B comes back — both go on */
+  await A.waitForTimeout(1500); await B.evaluate(()=>{ const L=__sonaroids.link, o=L.send; window.__mute=true; L.send=function(m){ if(!window.__mute) return o.call(L,m); }; window.__unmute=function(){ window.__mute=false; L.send=o; }; });
+  const lost=await wait(A,()=>{ const d=__sonaroids.duo(); return __sonaroids.scr()==='pdpause'&&d.pz&&d.pz.by==='lost'; },5000); await shot(A,'09c_lost_A');
+  const bp=await wait(B,()=>__sonaroids.scr()==='pdpause',4000);
+  await B.evaluate(()=>window.__unmute()); const back=await wait(A,()=>{ const d=__sonaroids.duo(); return d.pz&&d.pz.by!=='lost'&&d.pst==='pause'; },5000);
+  const la=await D(A), lb=await D(B);
+  check('the partner silent — the pause with «НАПАРНИК ПРОПАЛ — ЖДЁМ»; back — the same step on both',lost&&bp&&back&&la.pz&&lb.pz&&la.pz.n===lb.pz.n&&la.game.n===lb.game.n,la.pz&&`A at ${la.game.n}, B at ${lb.game.n}`);
+  await act(B,'pd_resume'); const rs2=await wait(A,()=>__sonaroids.scr()==='play',6000)&&await wait(B,()=>__sonaroids.scr()==='play',3000);
+  check('and on — from the other phone',rs2);
   const over=await wait(A,()=>__sonaroids.scr()==='over',150000)&&await wait(B,()=>__sonaroids.scr()==='over',8000);
   const ea=await A.evaluate(()=>{ const g=__sonaroids.duoGame(); return g&&{n:g.n,score:g.score,passes:g.passes,ceils:g.ceils,falls:g.falls,tosses:g.tosses}; }), eb=await B.evaluate(()=>{ const g=__sonaroids.duoGame(); return g&&{n:g.n,score:g.score,passes:g.passes,ceils:g.ceils,falls:g.falls,tosses:g.tosses}; });
   const ga=(await D(A)).game, gb=(await D(B)).game; await A.waitForTimeout(1000); await shot(A,'10_over_A');
   const lk=await A.evaluate(()=>__sonaroids.link.state()); console.log('note the link:',lk.direct?'the direct channel':'through the server',lk.rttD?'direct '+Math.round(lk.rttD)+' ms':'',lk.rttS?'server '+Math.round(lk.rttS)+' ms':'');
   check('the game ends on both — the very same game',over&&JSON.stringify(ea)===JSON.stringify(eb),`A ${JSON.stringify(ea)} | B ${JSON.stringify(eb)}; rollbacks ${ga.rb}/${gb.rb}, the longest ${ga.rbMax}/${gb.rbMax} steps`);
+  const ca=await A.evaluate(()=>__sonaroids.pgClips()), cb=await B.evaluate(()=>__sonaroids.pgClips()); await A.waitForTimeout(1500); await shot(A,'10b_over_clips_A');
+  const cs=c=>c?JSON.stringify(c.clips.map(x=>[x.who,x.pts,x.h])):'none';
+  check('the best arcs together: each racket\'s best pass, the same on both phones, from the game stepped again',!!ca&&ca.check===ea.score&&cs(ca)===cs(cb),`A ${cs(ca)} | B ${cs(cb)}; stepped again to ${ca&&ca.check}`);
   const rp=await A.evaluate(()=>__sonaroids.duoReplay()), rpb=await B.evaluate(()=>__sonaroids.duoReplay());
   check('the game replays from the two palms kept (as the server will — Pong.replay2), on either phone',rp.n===ea.n&&rp.score===ea.score&&rp.passes===ea.passes&&JSON.stringify(rp)===JSON.stringify(rpb),`${JSON.stringify(rp)}`);
   await act(A,'pd_again'); await A.waitForTimeout(500); const one=await scr(A); await act(B,'pd_again');
   const again=await wait(A,()=>__sonaroids.scr()==='count'||__sonaroids.scr()==='play',4000)&&await wait(B,()=>__sonaroids.scr()==='count'||__sonaroids.scr()==='play',4000);
   check('«ЕЩЁ РАЗ» — when both press it',one==='over'&&again);
+  /* «ЗАКОНЧИТЬ ПАРТИЮ» from the pause — over for both, at the same step */
+  await wait(A,()=>__sonaroids.scr()==='play',6000); await A.waitForTimeout(1500); await act(B,'pause'); await wait(A,()=>__sonaroids.scr()==='pdpause',3000); await act(A,'pd_end');
+  const ended=await wait(A,()=>__sonaroids.scr()==='over',8000)&&await wait(B,()=>__sonaroids.scr()==='over',8000);
+  const fa=await A.evaluate(()=>{ const g=__sonaroids.duoGame(); return g&&[g.n,g.score,g.passes]; }), fb=await B.evaluate(()=>{ const g=__sonaroids.duoGame(); return g&&[g.n,g.score,g.passes]; });
+  check('«ЗАКОНЧИТЬ ПАРТИЮ» in the pause — over on both, the same game',ended&&JSON.stringify(fa)===JSON.stringify(fb),JSON.stringify(fa)+' | '+JSON.stringify(fb));
   await act(B,'pd_exit') .catch(()=>{}); const gone=await wait(A,()=>__sonaroids.duo().pst==='gone',4000);
   check('a phone that leaves — the other sees «УШЁЛ»',gone);
   check('out of the room — all the tones again',await B.evaluate(()=>Sonar.parity())==='all');

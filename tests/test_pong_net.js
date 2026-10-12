@@ -33,4 +33,12 @@ for(const [seed,opt,name] of [[11,{},'a game'],[12,{},'another'],[13,{pause:1},'
   const same=A.g.score===B.g.score&&A.g.n===B.g.n&&A.g.passes===B.g.passes&&A.g.falls===B.g.falls&&A.g.score===R.score&&A.g.n===R.n;
   check(`two phones over a delayed network end with the same game, the one replayed from both palms: ${name}`,same&&!A.lost&&!B.lost,
     `phones ${A.g.score}/${B.g.score} in ${A.g.n}/${B.g.n} steps, replay ${R.score} in ${R.n}; passes ${A.g.passes}; went back ${A.rb}/${B.rb} times, at most ${A.rbMax}/${B.rbMax} steps`); }
+/* v1.64f: the pause's cut — a phone that ran ahead to step 400 on guesses is cut back to 300; the steps after are run with the new palms
+   only (the old ones after 300 forgotten): the same game as the one replayed from the palms up to 300 and the new ones after */
+{ const g0=Pong.create2(21,2.16,[1,1],[75,75]), N=PongNet.create(Pong.clone2(g0),0), P0=palm(5), P1=palm(6), Q0=palm(7), Q1=palm(8), hL=[], hR=[];
+  for(let i=1;i<=400;i++){ PongNet.stepLocal(N,P0(i)); if(i<=380) PongNet.remote(N,[[i,P1(i)]]); }
+  const cutOk=PongNet.cut(N,300); for(let i=1;i<=300;i++){ hL.push(P0(i)); hR.push(P1(i)); }
+  for(let i=301;i<=1500;i++){ PongNet.stepLocal(N,Q0(i)); PongNet.remote(N,[[i,Q1(i)]]); hL.push(Q0(i)); hR.push(Q1(i)); }
+  const R=Pong.replay2(21,2.16,[1,1],[75,75],hL,hR,[]);
+  check('the pause\'s cut: back to the step, the later palms forgotten — the game the palms up to it and the new ones after make',cutOk&&N.g.n===R.n&&N.g.score===R.score&&N.g.passes===R.passes&&JSON.stringify(N.g.ball)===JSON.stringify(R.ball),`${N.g.score} in ${N.g.n} steps, replay ${R.score} in ${R.n}`); }
 console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;

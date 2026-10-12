@@ -129,7 +129,7 @@ function sPHold(){ var c=PG.c; if(!c){ pgWaveStart(); c=PG.c; }
   if(PongCtl.waving(c)&&scrT-PG.seenT>NOHAND_T){ flipSide(); PG.flips++; pgWaveStart(scrT-WAVE_PAUSE); }   // no palm heard: offer the other end
   pgField(v,DT);
   if(PG.done&&PG.resume){ if(scrT-PG.doneT>0.6){ PG.resume=false; pgKeep(); countT=3; go('count-resume'); } titles(L('wave_ok')); return; }
-  if(PG.done&&scrT-PG.doneT>=CAUGHT_SHOW&&PD.on){ var yd=titles(L(PG.auto?'auto_ok':'wave_ok'),L('pg_try_s')); pdMateLine(yd+4); var ti=pdTryItems(), tw=colW(ti), tm=Math.max(8,Math.round(LW*0.04)); column(ti,Math.round(LH*0.47),pdMe()?SAFE.l+tm:LW-SAFE.r-tm-tw); return; }   /* the buttons over the partner's racket — the own one stays in sight */   /* v1.64c: together — «ГОТОВ» instead of «ИГРАТЬ» */
+  if(PG.done&&scrT-PG.doneT>=CAUGHT_SHOW&&PD.on){ var yd=titles(L(PG.auto?'auto_ok':'wave_ok'),L('pg_try_s')); pdMateLine(yd+4); var ti=PD.fix?[['pd_fixed',L('resume'),'primary'],['pg_rehold',L('recal')],['pg_sens',pgSensLabel()]]:pdTryItems(), tw=colW(ti), tm=Math.max(8,Math.round(LW*0.04)); column(ti,Math.round(LH*0.47),pdMe()?SAFE.l+tm:LW-SAFE.r-tm-tw); return; }   /* the buttons over the partner's racket — the own one stays in sight */   /* v1.64c: together — «ГОТОВ» instead of «ИГРАТЬ» */
   if(PG.done&&scrT-PG.doneT>=CAUGHT_SHOW){ titles(L(PG.auto?'auto_ok':'wave_ok'),L('pg_try_s'));
     column([['start',L('play'),'primary'],['pg_rehold',L('recal')],['pg_sens',pgSensLabel()]],Math.round(LH*0.43)); /* under the titles: over the free side's racket only at its top, the other one is always in sight */ say(L(PG.auto?'auto_ok':'wave_ok')+'. '+L('pg_try_s')); return; }
   var st=wt<WAVE_PAUSE?'wait':PG.done?'ok':'catch';
@@ -168,7 +168,7 @@ function pgRecStep(f){ var R=PG.rec; if(!R) return; R.hands.push(f);
   (g.fx||[]).forEach(function(x){ if(x.kick!==undefined) R.cur={who:x.kick,n0:g.n};
     if(x.pts&&R.cur){ var b=R.best[R.cur.who]; if(!b||x.pts>b.pts) R.best[R.cur.who]={who:R.cur.who,n0:R.cur.n0,n1:g.n,pts:x.pts,f:x.f}; R.cur=null; } }); }
 var PG_PRE=24, PG_POST=30;   // the clip: 0.4 s before the hit, 0.5 s after the catch
-function pgSnap(q){ return {t:q.t,n:q.n,py:q.py,hw:q.hw,H:q.H,webD:q.webD||0,k:q.k,crk:(q.crk||[]).slice(),ceils:q.ceils,falls:q.falls,score:q.score,series:q.series,ball:q.ball?Object.assign({},q.ball):null,fx:(q.fx||[]).slice(),state:'play'}; }
+function pgSnap(q){ return {t:q.t,n:q.n,py:q.py,pys:q.pys?q.pys.slice():null,hw:q.hw,H:q.H,webD:q.webD||0,k:q.k,crk:(q.crk||[]).slice(),ceils:q.ceils,falls:q.falls,score:q.score,series:q.series,ball:q.ball?Object.assign({},q.ball):null,fx:(q.fx||[]).slice(),state:'play'}; }
 function pgClipsMake(){ var R=PG.rec; PG.clips=null; if(!R) return; var want=R.best.filter(function(b){ return b; }); if(!want.length) return;
   var g2=Pong.create(R.seed,R.ar,R.sens,R.span), M=R.marks, m=0, i, clips=want.map(function(b){ return {who:b.who,pts:b.pts,h:Math.round(b.f*100),a:Math.max(1,b.n0-PG_PRE),z:b.n1+PG_POST,fr:[]}; });
   for(i=0;i<R.hands.length&&g2.state!=='over';i++){ while(m<M.length&&M[m][0]<=g2.n){ if(M[m][1]==='resume') Pong.resume(g2); else if(M[m][1]==='sens'&&Pong.TUNE.SENS[M[m][2]]) g2.H=Pong.TUNE.SENS[M[m][2]]; m++; }
@@ -180,7 +180,7 @@ function pgClipsMake(){ var R=PG.rec; PG.clips=null; if(!R) return; var want=R.b
 function pgClipView(c,now){ if(c.t0===null) c.t0=now; var L=c.fr.length/30+0.7, s=((now-c.t0)/1000)%L*30, i=Math.min(c.fr.length-1,Math.floor(s)), j=Math.min(c.fr.length-1,i+1), u=Math.min(1,s-i), A=c.fr[i], B=c.fr[j], v=c.v;
   if(i<c.at){ v._sk=null; v._pgs=null; }   // round again: the drawing starts afresh
   for(var k in A) if(k!=='ball'&&k!=='fx') v[k]=A[k];
-  v.t=A.t+(B.t-A.t)*u; v.py=A.py+(B.py-A.py)*u; v.ball=A.ball?Object.assign({},A.ball):null;
+  v.t=A.t+(B.t-A.t)*u; v.py=A.py+(B.py-A.py)*u; if(A.pys&&B.pys) v.pys=[A.pys[0]+(B.pys[0]-A.pys[0])*u,A.pys[1]+(B.pys[1]-A.pys[1])*u]; v.ball=A.ball?Object.assign({},A.ball):null;
   if(v.ball&&B.ball){ ['x','y','vx','vy'].forEach(function(k){ v.ball[k]=A.ball[k]+(B.ball[k]-A.ball[k])*u; }); }
   v.fx=i!==c.at?A.fx:[]; if(i!==c.at) pgSkFx(v); c.at=i; return v; }
 function pgClipDraw(c,k,x,y,w,h,now){ var v=pgClipView(c,now), fh=Math.max(4,Math.round(h*Math.max(1,uiS)*1.5)), fc=pgSkClip(v,fh,'clip'+k);
@@ -230,10 +230,11 @@ function pgEnd(){ g.state='over'; overT=0; Logs.gameStop(); Board.finish(g.score
    «ПОВТОР ЛУЧШИХ ДУГ · 0,5×» and the windows, each signed with its racket, the arc's height and its points; all in the free side, the
    buttons where they always are */
 function pgOverItems(){ return [['again',L('again'),'primary'],['over_cal',L('recal')],['menu',L('menu')],['scores',L('scores')]].concat(diag&&Logs.has()?[['logs',L('logs')]]:[]); }
-function pgOverClips(){ var items=pgOverItems(), bw=colW(items), bx=sideX(bw), m=Math.max(8,Math.round(LW*0.03)), left=bx<LW/2;
+function pgOverClips(){ var duo=!!g.duo, items=duo?pdOverItems():pgOverItems(), bw=colW(items), bx=sideX(bw), m=Math.max(8,Math.round(LW*0.03)), left=bx<LW/2;
   var a0=left?bx+bw+m:SAFE.l+m, a1=left?LW-SAFE.r-m:bx-m, aw=a1-a0, y=topY();
-  var ls=[L('pg_width').replace('{n}',Math.round(Pong.width(g)*100)),L('pg_passes').replace('{n}',g.passes)], bl=boardLine(), hot=null;
-  if(PG.newBest) hot=L('best')+'!'; else if(pgBest()>0) ls.push(L('best')+' '+pgBest());
+  var ls=[L('pg_width').replace('{n}',Math.round(Pong.width(g)*100)),L('pg_passes').replace('{n}',g.passes)], bl=duo?null:boardLine(), hot=null;
+  if(duo) ls.push(pdName()+' + '+pdMate()); else if(PG.newBest) hot=L('best')+'!'; else if(pgBest()>0) ls.push(L('best')+' '+pgBest());   /* v1.64g: together — the two names, the partner's state under them */
+  if(duo) bl=[L('pd_mate_st').replace('{s}',pdMateSt()),PD.pst==='ready'?P.band:P.soft];
   var sub=PF.wrap(ls.join(' · '),aw-16,1), bls=bl?[bl[0]].concat(bl[2]?[bl[2]]:[]):[];
   var ph=24+sub.length*10+bls.length*10; plaque(a0,y-2,a1,y+ph,0.6);
   text(L('over'),a0+8,y+4,P.text); text(String(g.score),a1-8,y,P.band,'right',2); if(hot) text(hot,a1-8-PF.width(String(g.score),2)-10,y+4,P.band,'right'); var yy=y+22;   /* «РЕКОРД!» beside the score */
@@ -245,11 +246,11 @@ function pgOverClips(){ var items=pgOverItems(), bw=colW(items), bx=sideX(bw), m
   var x0=n>1?a0+Math.round((aw-(2*w+gap))/2):a0+Math.round((aw-w)/2); text(L('pg_replay'),x0,ly,P.soft);   // the title over the windows, from their edge
   PG.clips.forEach(function(c,i){ var x=x0+i*(w+gap); R(P.bg,x-1,y-1,w+2,h+2); pgClipDraw(c,i,x,y,w,h,now);
     plaque(x,y+h,x+w,y+h+cap,0.85); var rec=Math.floor(clock*2)%2===0; if(rec){ lx.fillStyle='#ec2a17'; lx.beginPath(); lx.arc(x+5,y+h+cap/2,2,0,6.283); lx.fill(); }
-    text(L(c.who?'pg_right':'pg_left')+' · '+c.h+'%',x+10,y+h+3,P.text); text('+'+c.pts,x+w-3,y+h+3,P.band,'right'); });
+    text((duo?(c.who===PD.me?pdName():pdMate()):L(c.who?'pg_right':'pg_left'))+' · '+c.h+'%',x+10,y+h+3,P.text); text('+'+c.pts,x+w-3,y+h+3,P.band,'right'); });
   var vs='V'+VERSION, vr=freeSide()==='left', vx=vr?LW-SAFE.r-8:SAFE.l+8, vy=LH-SAFE.b-12, vw=PF.width(vs);
   text(vs,vx,vy,diag?P.band:P.soft,vr?'right':'left'); var vb0=Math.max(0,(vr?vx-vw:vx)-8), vb1=Math.min(LW,(vr?vx:vx+vw)+8), by0=vy-8; BTN.push({id:'ver',x:vb0,y:by0,w:vb1-vb0,h:Math.min(PF.CAP+16,LH-by0)});
   say(L('over')+' '+g.score+(bl?'. '+bl[0]:'')+'. '+L('pg_replay'));
-  var lb=Board.last(); if(lb&&lb.state==='done'&&lb.listed&&!lb.named&&!nickAsked&&overT>1.5){ nickAsked=true; nickFrom='over'; go('nick'); return; }
+  var lb=Board.last(); if(!duo&&lb&&lb.state==='done'&&lb.listed&&!lb.named&&!nickAsked&&overT>1.5){ nickAsked=true; nickFrom='over'; go('nick'); return; }
   if(overT>0.8) column(items,Math.round(LH*0.52)); }
 function pgDrop(){ if(g&&g.ball!==undefined&&g.state!=='over'){ Logs.gameEv('restarted by the player'); g.state='over'; Logs.gameStop(); Board.finish(g.score); if(g.score>pgBest()){ PG.best=g.score; store.set('sonaroids_pong_best',PG.best); } } }
 function pgOver(){ if(g.duo){ pdOver(); return; } overT+=DT; pgField(g,DT); lx.globalAlpha=0.45; R(P.bg,0,0,LW,LH); lx.globalAlpha=1;

@@ -34,6 +34,13 @@ var PongNet=(function(){
   /* marks, as replay2's: at step s (applied before step s+1) — ['resume'] (a pause's end, agreed by both phones for the same step) or
      ['sens', side, 0…3]. A mark for a step already run makes the game run again from there */
   function mark(N,s,m){ (N.marks[s]=N.marks[s]||[]).push(m); if(s<N.g.n){ var base=N.snaps[s]; if(!base){ N.lost=true; return; } var to=N.g.n; N.g=Pong.clone2(base); N.rb++; while(N.g.n<to&&N.g.state!=='over') one(N); } }
-  return {create:create,stepLocal:stepLocal,remote:remote,mark:mark,KEEP:KEEP};
+  /* v1.64f: the pause for both — the game is cut back to step P (both phones stop at the same step: the one who paused, or the earlier of
+     two): everything after P is forgotten — the palms of both, the guesses, the copies, the marks — so that after the pause the steps
+     from P on are run with the new palms only. False when P is older than the copies kept */
+  function cut(N,P){ if(N.g.n>P){ var base=N.snaps[P]; if(!base){ N.lost=true; return false; } N.g=Pong.clone2(base); N.rb++; }
+    [0,1].forEach(function(i){ var I=N.inp[i]; for(var k in I) if(+k>P) delete I[k]; });
+    for(var u in N.used) if(+u>P) delete N.used[u]; for(var c in N.snaps) if(+c>P) delete N.snaps[c]; for(var m in N.marks) if(+m>=P) delete N.marks[m];
+    relast(N); N.n=N.g.n; return true; }
+  return {create:create,stepLocal:stepLocal,remote:remote,mark:mark,cut:cut,KEEP:KEEP};
 })();
 if(typeof module!=='undefined') module.exports=PongNet;

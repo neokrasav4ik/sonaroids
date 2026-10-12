@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='1.64e';
+var VERSION='1.64g';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -1067,7 +1067,14 @@ var PongNet=(function(){
   /* marks, as replay2's: at step s (applied before step s+1) — ['resume'] (a pause's end, agreed by both phones for the same step) or
      ['sens', side, 0…3]. A mark for a step already run makes the game run again from there */
   function mark(N,s,m){ (N.marks[s]=N.marks[s]||[]).push(m); if(s<N.g.n){ var base=N.snaps[s]; if(!base){ N.lost=true; return; } var to=N.g.n; N.g=Pong.clone2(base); N.rb++; while(N.g.n<to&&N.g.state!=='over') one(N); } }
-  return {create:create,stepLocal:stepLocal,remote:remote,mark:mark,KEEP:KEEP};
+  /* v1.64f: the pause for both — the game is cut back to step P (both phones stop at the same step: the one who paused, or the earlier of
+     two): everything after P is forgotten — the palms of both, the guesses, the copies, the marks — so that after the pause the steps
+     from P on are run with the new palms only. False when P is older than the copies kept */
+  function cut(N,P){ if(N.g.n>P){ var base=N.snaps[P]; if(!base){ N.lost=true; return false; } N.g=Pong.clone2(base); N.rb++; }
+    [0,1].forEach(function(i){ var I=N.inp[i]; for(var k in I) if(+k>P) delete I[k]; });
+    for(var u in N.used) if(+u>P) delete N.used[u]; for(var c in N.snaps) if(+c>P) delete N.snaps[c]; for(var m in N.marks) if(+m>=P) delete N.marks[m];
+    relast(N); N.n=N.g.n; return true; }
+  return {create:create,stepLocal:stepLocal,remote:remote,mark:mark,cut:cut,KEEP:KEEP};
 })();
 if(typeof module!=='undefined') module.exports=PongNet;
 /* ── PALM CLOCK (1.59l): the palm's height in time, not in bunches — for SonaFly and SonaRace (SonaPong has its own, src/16_pong_ctl.js
@@ -1960,7 +1967,8 @@ STR.en={
   pd_near_t:'LOOKING FOR A PARTNER NEARBY', pd_near_s:'LET THEM PRESS «NEARBY» TOO — ON THE SAME WI-FI', pd_wait:'WAITING FOR THE PARTNER', pd_cancel:'CANCEL',
   pd_in_t:'THE PARTNER\'S CODE', pd_in_s:'4 DIGITS — THEIR PHONE SHOWS THEM: PLAY TOGETHER → MAKE A CODE', pd_bad:'NO SUCH CODE', pd_full:'THERE ARE TWO ALREADY', pd_off:'NO LINK TO THE SERVER', pd_none:'NOBODY NEARBY — TRY A CODE',
   pd_tog:'YOU ARE TOGETHER', pd_lr0:'LEFT RACKET', pd_lr1:'RIGHT RACKET', pd_you:'YOU', pd_mate:'PARTNER', pd_next:'TO CALIBRATION', pd_swap:'SWAP', pd_exit:'LEAVE', pd_ready:'READY',
-  pd_st_menu:'HERE', pd_st_cal:'CALIBRATING', pd_st_try:'TRYING THE RACKET', pd_st_ready:'READY', pd_st_play:'PLAYING', pd_st_over:'LOOKING AT THE RESULT', pd_st_gone:'LEFT', pd_mate_st:'PARTNER: {s}', all_games:'← ALL GAMES', skin:'SKIN', gfx:'GRAPHICS', gfx_pixel:'PIXELS', smooth:'SMOOTHING', s_on:'ON', s_off:'OFF', skin_space:'SPACE', skin_vector:'VECTOR 80S', skin_neon:'NEON', skin_note:'NOTEBOOK', skin_lcd:'RETRO LCD', skin_obsidian:'OBSIDIAN', skin_fairy:'FAIRY TALE', turn_s:'BY 180° IF YOU PLAY', turn_s2:'WITH YOUR RIGHT HAND', turn_h:'ROUND LIKE A WHEEL — DON\'T FLIP IT FACE DOWN', lefty:'I PLAY LEFT-HANDED', aud_vol:'VOLUME', aud_keep:'LEAVE AS IS', aud_cam:'CAMERA END', aud_port:'PORT END', aud_media:'MEDIA', aud_game:'GAME', aud_autotest:'AUTO PICK', aud_notyet:'NOT DONE YET', aud_retest:'TEST AGAIN', aud_lab:'LAB', aud_nextgame:'WITH THE NEXT GAME', aud_on:'ON', aud_off:'OFF', aud_t2:'SOUND', aud_s2:'TRIALS OF THE ECHO PROCESSING', settings:'SETTINGS', settings_t:'SETTINGS', set_gfx:'GRAPHICS', set_gfx_menu:'ASK IN GAME', set_gfx_hd:'ALWAYS HD', set_gfx_px:'ALWAYS PIXELS', set_band:'PROBE BAND', set_band_ask:'ASK EVERY GAME', set_band_w:'ALWAYS WIDE', set_band_n:'ALWAYS NORMAL', set_live:'AUTO-CALIBRATION', set_on:'ON', set_off:'OFF', set_live_on_s:'NO WAVING: THE GAME TAKES YOUR LAST MANUAL CALIBRATION AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', set_live_on_d:'NO WAVING: THE GAME TAKES YOUR MANUAL CALIBRATION OF {d} AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', auto_ok:'CALIBRATION FROM YOUR LAST GAME', set_room:'ROOM ADAPTATION', set_live_new_s:'NO MANUAL CALIBRATION YET: SWITCH THIS OFF, PLAY ONE GAME WAVING YOUR PALM, SWITCH IT ON AGAIN — AUTO-CALIBRATION WILL TAKE IT', set_live_off_s:'BEFORE EVERY GAME: TAKE YOUR HAND AWAY, WAVE YOUR PALM, TAP "PLAY". A GOOD SETUP CAN THEN BE KEPT WITH AUTO-CALIBRATION', set_expert:'ADVANCED PROBE SETTINGS', aud_link:'SOUND', aud_t:'APP SOUND', aud_s:'WHERE THE GAME TAKES THE MICROPHONE FROM AND WHERE THE PROBE PLAYS', aud_mode:'SOUND', aud_browser:'BROWSER', aud_app:'APP', aud_mic:'MICROPHONE', aud_out:'SPEAKER', aud_auto:'AUTO', aud_speaker:'SPEAKER', aud_earpiece:'EARPIECE', aud_bottom:'BOTTOM', aud_top:'TOP', aud_back:'BACK', aud_now:'NOW:', aud_active:'RECORDING:', aud_idle:'THE MICROPHONE OPENS WITH THE GAME', aud_browser_now:'NOW THE SOUND GOES THROUGH THE BROWSER: ANDROID PICKS THE MICROPHONE', aud_nopos:'THE PHONE DOES NOT TELL WHERE ITS MICROPHONES ARE',
+  pd_st_menu:'HERE', pd_st_cal:'CALIBRATING', pd_st_try:'TRYING THE RACKET', pd_st_ready:'READY', pd_st_play:'PLAYING', pd_st_over:'LOOKING AT THE RESULT', pd_st_gone:'LEFT', pd_mate_st:'PARTNER: {s}',
+  pd_pz_by:'PAUSE: {n}', pd_lost:'THE PARTNER IS GONE — WAITING {s} S MORE', pd_end:'END THE GAME', pd_st_pause:'ON PAUSE', all_games:'← ALL GAMES', skin:'SKIN', gfx:'GRAPHICS', gfx_pixel:'PIXELS', smooth:'SMOOTHING', s_on:'ON', s_off:'OFF', skin_space:'SPACE', skin_vector:'VECTOR 80S', skin_neon:'NEON', skin_note:'NOTEBOOK', skin_lcd:'RETRO LCD', skin_obsidian:'OBSIDIAN', skin_fairy:'FAIRY TALE', turn_s:'BY 180° IF YOU PLAY', turn_s2:'WITH YOUR RIGHT HAND', turn_h:'ROUND LIKE A WHEEL — DON\'T FLIP IT FACE DOWN', lefty:'I PLAY LEFT-HANDED', aud_vol:'VOLUME', aud_keep:'LEAVE AS IS', aud_cam:'CAMERA END', aud_port:'PORT END', aud_media:'MEDIA', aud_game:'GAME', aud_autotest:'AUTO PICK', aud_notyet:'NOT DONE YET', aud_retest:'TEST AGAIN', aud_lab:'LAB', aud_nextgame:'WITH THE NEXT GAME', aud_on:'ON', aud_off:'OFF', aud_t2:'SOUND', aud_s2:'TRIALS OF THE ECHO PROCESSING', settings:'SETTINGS', settings_t:'SETTINGS', set_gfx:'GRAPHICS', set_gfx_menu:'ASK IN GAME', set_gfx_hd:'ALWAYS HD', set_gfx_px:'ALWAYS PIXELS', set_band:'PROBE BAND', set_band_ask:'ASK EVERY GAME', set_band_w:'ALWAYS WIDE', set_band_n:'ALWAYS NORMAL', set_live:'AUTO-CALIBRATION', set_on:'ON', set_off:'OFF', set_live_on_s:'NO WAVING: THE GAME TAKES YOUR LAST MANUAL CALIBRATION AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', set_live_on_d:'NO WAVING: THE GAME TAKES YOUR MANUAL CALIBRATION OF {d} AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', auto_ok:'CALIBRATION FROM YOUR LAST GAME', set_room:'ROOM ADAPTATION', set_live_new_s:'NO MANUAL CALIBRATION YET: SWITCH THIS OFF, PLAY ONE GAME WAVING YOUR PALM, SWITCH IT ON AGAIN — AUTO-CALIBRATION WILL TAKE IT', set_live_off_s:'BEFORE EVERY GAME: TAKE YOUR HAND AWAY, WAVE YOUR PALM, TAP "PLAY". A GOOD SETUP CAN THEN BE KEPT WITH AUTO-CALIBRATION', set_expert:'ADVANCED PROBE SETTINGS', aud_link:'SOUND', aud_t:'APP SOUND', aud_s:'WHERE THE GAME TAKES THE MICROPHONE FROM AND WHERE THE PROBE PLAYS', aud_mode:'SOUND', aud_browser:'BROWSER', aud_app:'APP', aud_mic:'MICROPHONE', aud_out:'SPEAKER', aud_auto:'AUTO', aud_speaker:'SPEAKER', aud_earpiece:'EARPIECE', aud_bottom:'BOTTOM', aud_top:'TOP', aud_back:'BACK', aud_now:'NOW:', aud_active:'RECORDING:', aud_idle:'THE MICROPHONE OPENS WITH THE GAME', aud_browser_now:'NOW THE SOUND GOES THROUGH THE BROWSER: ANDROID PICKS THE MICROPHONE', aud_nopos:'THE PHONE DOES NOT TELL WHERE ITS MICROPHONES ARE',
   wave_t:'WAVE YOUR PALM', wave_s:'5–10 CM ABOVE THE TABLE OR 5–15 CM FROM THE PHONE\'S END', wave_ok:'GOT YOUR RANGE', other_t:'WAVE ON THE OTHER SIDE', other_s:'THE PHONE DOES NOT HEAR THE PALM ON THIS SIDE', try_s:'THE SHIP FOLLOWS YOUR PALM — TRY THE TOP AND THE BOTTOM', cm:'CM',
   ring_wait:'GET READY', ring_listen:'LISTENING', ring_catch:'CATCHING THE RANGE', ring_ok:'DONE',
   start:'START', over:'GAME OVER', best:'BEST', again:'AGAIN', menu:'MENU', logs:'LOGS', tilt_test:'TEST RULES: NOT FOR THE TABLES', ftilt:'PICTURE TILT', stilt:'SHOT TILT', straight:'STRAIGHT', as_nose:'AS THE NOSE', bounce_off:'SHOTS OFF THE EDGES: NO', obs_off:'HEAVY SKIN: OFF', obs_on:'HEAVY SKIN: OBSIDIAN', obs_na:'HEAVY SKIN: NO WEBGL 2', mouse_off:'MOUSE INSTEAD OF SONAR: NO', mouse_on:'MOUSE INSTEAD OF SONAR: YES', obs_ink:'INK ON HITS', obs_ring:'RING: UNEVEN', obs_wake:'SHIP WAKE', obs_rwake:'ROCK WAKES', obs_det:'INK DETAIL', obs_vsp:'VEINS SPEED', obs_shot:'SHOT', obs_shot1:'L1 COMET', obs_shot4:'L4 BEADS', obs_shot5:'L5 CRYSTAL', obs_shot6:'L6 FRINGE', obs_shot9:'L9 TWIN NEEDLES', obs_shot10:'L10 BANDS', obs_rstr:'RING: STRENGTH', obs_damp:'CALMER IN ACTION', obs_reco:'DEFAULTS', obs_ringon_on:'HIT RING: YES', obs_ringon_off:'HIT RING: NO', obs_grim_on:'POWER-UP RIM: YES', obs_grim_off:'POWER-UP RIM: NO', bounce_on:'SHOTS OFF THE EDGES: YES', 
@@ -2001,7 +2009,8 @@ STR.ru={
   pd_near_t:'ИЩЕМ НАПАРНИКА РЯДОМ', pd_near_s:'ПУСТЬ ОН ТОЖЕ НАЖМЁТ «РЯДОМ» — В ТОЙ ЖЕ WI-FI', pd_wait:'ЖДЁМ НАПАРНИКА', pd_cancel:'ОТМЕНА',
   pd_in_t:'КОД НАПАРНИКА', pd_in_s:'4 ЦИФРЫ — ИХ ПОКАЖЕТ ЕГО ТЕЛЕФОН: ИГРАТЬ ВДВОЁМ → СОЗДАТЬ КОД', pd_bad:'НЕТ ТАКОГО КОДА', pd_full:'ТАМ УЖЕ ДВОЕ', pd_off:'НЕТ СВЯЗИ С СЕРВЕРОМ', pd_none:'РЯДОМ НИКОГО НЕ НАШЛИ — ПОПРОБУЙ ПО КОДУ',
   pd_tog:'ВЫ ВМЕСТЕ', pd_lr0:'ЛЕВАЯ РАКЕТКА', pd_lr1:'ПРАВАЯ РАКЕТКА', pd_you:'ТЫ', pd_mate:'НАПАРНИК', pd_next:'К КАЛИБРОВКЕ', pd_swap:'ПОМЕНЯТЬСЯ', pd_exit:'ВЫЙТИ', pd_ready:'ГОТОВ',
-  pd_st_menu:'ЗДЕСЬ', pd_st_cal:'КАЛИБРУЕТСЯ', pd_st_try:'ПРОБУЕТ РАКЕТКУ', pd_st_ready:'ГОТОВ', pd_st_play:'ИГРАЕТ', pd_st_over:'СМОТРИТ ИТОГ', pd_st_gone:'УШЁЛ', pd_mate_st:'НАПАРНИК: {s}', all_games:'← ВСЕ ИГРЫ', skin:'СКИН', gfx:'ГРАФИКА', gfx_pixel:'ПИКСЕЛИ', smooth:'ПЛАВНОСТЬ', s_on:'ВКЛ', s_off:'ВЫКЛ', skin_space:'КОСМОС', skin_vector:'ВЕКТОР 80-Х', skin_neon:'НЕОН', skin_note:'ТЕТРАДКА', skin_lcd:'РЕТРО LCD', skin_obsidian:'ОБСИДИАН', skin_fairy:'СКАЗКА', turn_s:'НА 180°, ЕСЛИ ИГРАЕШЬ', turn_s2:'ПРАВОЙ РУКОЙ', turn_h:'ПО КРУГУ, КАК РУЛЬ — НЕ ПЕРЕВОРАЧИВАЙ ЭКРАНОМ ВНИЗ', lefty:'ИГРАЮ ЛЕВОЙ РУКОЙ', aud_vol:'ГРОМКОСТЬ', aud_keep:'НЕ ТРОГАТЬ', aud_cam:'У КАМЕРЫ', aud_port:'У РАЗЪЁМА', aud_media:'МЕДИА', aud_game:'ИГРА', aud_autotest:'АВТОВЫБОР', aud_notyet:'ЕЩЁ НЕ ДЕЛАЛСЯ', aud_retest:'ПЕРЕПРОВЕРИТЬ', aud_lab:'ЛАБА', aud_nextgame:'БУДЕТ ПРИ СЛЕДУЮЩЕЙ ИГРЕ', aud_on:'ВКЛ', aud_off:'ВЫКЛ', aud_t2:'ЗВУК', aud_s2:'ОПЫТЫ С ОБРАБОТКОЙ ЭХА', settings:'НАСТРОЙКИ', settings_t:'НАСТРОЙКИ', set_gfx:'ГРАФИКА', set_gfx_menu:'ВЫБОР В ИГРЕ', set_gfx_hd:'ВСЕГДА HD', set_gfx_px:'ВСЕГДА ПИКСЕЛИ', set_band:'ПОЛОСА ЗОНДА', set_band_ask:'ВЫБОР ПЕРЕД ИГРОЙ', set_band_w:'ВСЕГДА ШИРОКАЯ', set_band_n:'ВСЕГДА ОБЫЧНАЯ', set_live:'АВТОКАЛИБРОВКА', set_on:'ВКЛ', set_off:'ВЫКЛ', set_live_on_s:'БЕЗ ВЗМАХОВ: ИГРА БЕРЁТ ТВОЮ ПОСЛЕДНЮЮ РУЧНУЮ КАЛИБРОВКУ И САМА ПОДСТРАИВАЕТСЯ ПОД ЗВУКИ КОМНАТЫ. УПРАВЛЯЕТСЯ ХУЖЕ? ВЫКЛЮЧИ, СЫГРАЙ С РУЧНОЙ И ВКЛЮЧИ СНОВА', set_live_on_d:'БЕЗ ВЗМАХОВ: ИГРА БЕРЁТ ТВОЮ РУЧНУЮ КАЛИБРОВКУ ОТ {d} И САМА ПОДСТРАИВАЕТСЯ ПОД ЗВУКИ КОМНАТЫ. УПРАВЛЯЕТСЯ ХУЖЕ? ВЫКЛЮЧИ, СЫГРАЙ С РУЧНОЙ И ВКЛЮЧИ СНОВА', auto_ok:'КАЛИБРОВКА ИЗ ПРОШЛОЙ ИГРЫ', set_room:'ПОДСТРОЙКА ПОД КОМНАТУ', set_live_new_s:'РУЧНОЙ КАЛИБРОВКИ ЕЩЁ НЕ БЫЛО: ВЫКЛЮЧИ, СЫГРАЙ ОДНУ ИГРУ С ВЗМАХАМИ И ВКЛЮЧИ СНОВА — АВТОКАЛИБРОВКА ВОЗЬМЁТ ЕЁ', set_live_off_s:'ПЕРЕД КАЖДОЙ ИГРОЙ: УБРАТЬ РУКУ, ПОМАХАТЬ ЛАДОНЬЮ, НАЖАТЬ «ИГРАТЬ». УДАЧНУЮ НАСТРОЙКУ ПОТОМ МОЖНО ОСТАВИТЬ АВТОКАЛИБРОВКОЙ', set_expert:'РАСШИРЕННЫЕ НАСТРОЙКИ ЗОНДА', aud_link:'ЗВУК', aud_t:'ЗВУК ПРИЛОЖЕНИЯ', aud_s:'ОТКУДА ИГРА БЕРЁТ МИКРОФОН И КУДА ИГРАЕТ ЗОНД', aud_mode:'ЗВУК', aud_browser:'БРАУЗЕР', aud_app:'ПРИЛОЖЕНИЕ', aud_mic:'МИКРОФОН', aud_out:'ДИНАМИК', aud_auto:'АВТО', aud_speaker:'ДИНАМИК', aud_earpiece:'РАЗГОВОРНЫЙ', aud_bottom:'НИЗ', aud_top:'ВЕРХ', aud_back:'СЗАДИ', aud_now:'СЕЙЧАС:', aud_active:'ПИШУТ:', aud_idle:'МИКРОФОН ОТКРОЕТСЯ ПРИ ИГРЕ', aud_browser_now:'СЕЙЧАС ЗВУК ЧЕРЕЗ БРАУЗЕР: МИКРОФОН ВЫБИРАЕТ ANDROID', aud_nopos:'ТЕЛЕФОН НЕ СООБЩАЕТ, ГДЕ МИКРОФОНЫ',
+  pd_st_menu:'ЗДЕСЬ', pd_st_cal:'КАЛИБРУЕТСЯ', pd_st_try:'ПРОБУЕТ РАКЕТКУ', pd_st_ready:'ГОТОВ', pd_st_play:'ИГРАЕТ', pd_st_over:'СМОТРИТ ИТОГ', pd_st_gone:'УШЁЛ', pd_mate_st:'НАПАРНИК: {s}',
+  pd_pz_by:'ПАУЗА: {n}', pd_lost:'НАПАРНИК ПРОПАЛ — ЖДЁМ ЕЩЁ {s} С', pd_end:'ЗАКОНЧИТЬ ПАРТИЮ', pd_st_pause:'НА ПАУЗЕ', all_games:'← ВСЕ ИГРЫ', skin:'СКИН', gfx:'ГРАФИКА', gfx_pixel:'ПИКСЕЛИ', smooth:'ПЛАВНОСТЬ', s_on:'ВКЛ', s_off:'ВЫКЛ', skin_space:'КОСМОС', skin_vector:'ВЕКТОР 80-Х', skin_neon:'НЕОН', skin_note:'ТЕТРАДКА', skin_lcd:'РЕТРО LCD', skin_obsidian:'ОБСИДИАН', skin_fairy:'СКАЗКА', turn_s:'НА 180°, ЕСЛИ ИГРАЕШЬ', turn_s2:'ПРАВОЙ РУКОЙ', turn_h:'ПО КРУГУ, КАК РУЛЬ — НЕ ПЕРЕВОРАЧИВАЙ ЭКРАНОМ ВНИЗ', lefty:'ИГРАЮ ЛЕВОЙ РУКОЙ', aud_vol:'ГРОМКОСТЬ', aud_keep:'НЕ ТРОГАТЬ', aud_cam:'У КАМЕРЫ', aud_port:'У РАЗЪЁМА', aud_media:'МЕДИА', aud_game:'ИГРА', aud_autotest:'АВТОВЫБОР', aud_notyet:'ЕЩЁ НЕ ДЕЛАЛСЯ', aud_retest:'ПЕРЕПРОВЕРИТЬ', aud_lab:'ЛАБА', aud_nextgame:'БУДЕТ ПРИ СЛЕДУЮЩЕЙ ИГРЕ', aud_on:'ВКЛ', aud_off:'ВЫКЛ', aud_t2:'ЗВУК', aud_s2:'ОПЫТЫ С ОБРАБОТКОЙ ЭХА', settings:'НАСТРОЙКИ', settings_t:'НАСТРОЙКИ', set_gfx:'ГРАФИКА', set_gfx_menu:'ВЫБОР В ИГРЕ', set_gfx_hd:'ВСЕГДА HD', set_gfx_px:'ВСЕГДА ПИКСЕЛИ', set_band:'ПОЛОСА ЗОНДА', set_band_ask:'ВЫБОР ПЕРЕД ИГРОЙ', set_band_w:'ВСЕГДА ШИРОКАЯ', set_band_n:'ВСЕГДА ОБЫЧНАЯ', set_live:'АВТОКАЛИБРОВКА', set_on:'ВКЛ', set_off:'ВЫКЛ', set_live_on_s:'БЕЗ ВЗМАХОВ: ИГРА БЕРЁТ ТВОЮ ПОСЛЕДНЮЮ РУЧНУЮ КАЛИБРОВКУ И САМА ПОДСТРАИВАЕТСЯ ПОД ЗВУКИ КОМНАТЫ. УПРАВЛЯЕТСЯ ХУЖЕ? ВЫКЛЮЧИ, СЫГРАЙ С РУЧНОЙ И ВКЛЮЧИ СНОВА', set_live_on_d:'БЕЗ ВЗМАХОВ: ИГРА БЕРЁТ ТВОЮ РУЧНУЮ КАЛИБРОВКУ ОТ {d} И САМА ПОДСТРАИВАЕТСЯ ПОД ЗВУКИ КОМНАТЫ. УПРАВЛЯЕТСЯ ХУЖЕ? ВЫКЛЮЧИ, СЫГРАЙ С РУЧНОЙ И ВКЛЮЧИ СНОВА', auto_ok:'КАЛИБРОВКА ИЗ ПРОШЛОЙ ИГРЫ', set_room:'ПОДСТРОЙКА ПОД КОМНАТУ', set_live_new_s:'РУЧНОЙ КАЛИБРОВКИ ЕЩЁ НЕ БЫЛО: ВЫКЛЮЧИ, СЫГРАЙ ОДНУ ИГРУ С ВЗМАХАМИ И ВКЛЮЧИ СНОВА — АВТОКАЛИБРОВКА ВОЗЬМЁТ ЕЁ', set_live_off_s:'ПЕРЕД КАЖДОЙ ИГРОЙ: УБРАТЬ РУКУ, ПОМАХАТЬ ЛАДОНЬЮ, НАЖАТЬ «ИГРАТЬ». УДАЧНУЮ НАСТРОЙКУ ПОТОМ МОЖНО ОСТАВИТЬ АВТОКАЛИБРОВКОЙ', set_expert:'РАСШИРЕННЫЕ НАСТРОЙКИ ЗОНДА', aud_link:'ЗВУК', aud_t:'ЗВУК ПРИЛОЖЕНИЯ', aud_s:'ОТКУДА ИГРА БЕРЁТ МИКРОФОН И КУДА ИГРАЕТ ЗОНД', aud_mode:'ЗВУК', aud_browser:'БРАУЗЕР', aud_app:'ПРИЛОЖЕНИЕ', aud_mic:'МИКРОФОН', aud_out:'ДИНАМИК', aud_auto:'АВТО', aud_speaker:'ДИНАМИК', aud_earpiece:'РАЗГОВОРНЫЙ', aud_bottom:'НИЗ', aud_top:'ВЕРХ', aud_back:'СЗАДИ', aud_now:'СЕЙЧАС:', aud_active:'ПИШУТ:', aud_idle:'МИКРОФОН ОТКРОЕТСЯ ПРИ ИГРЕ', aud_browser_now:'СЕЙЧАС ЗВУК ЧЕРЕЗ БРАУЗЕР: МИКРОФОН ВЫБИРАЕТ ANDROID', aud_nopos:'ТЕЛЕФОН НЕ СООБЩАЕТ, ГДЕ МИКРОФОНЫ',
   wave_t:'ПОМАШИ ЛАДОНЬЮ', wave_s:'5–10 СМ НАД СТОЛОМ ИЛИ 5–15 СМ ОТ ТОРЦА ТЕЛЕФОНА', wave_ok:'РАЗМАХ ПОЙМАН', other_t:'ПОМАШИ С ДРУГОЙ СТОРОНЫ', other_s:'С ЭТОЙ СТОРОНЫ ТЕЛЕФОН НЕ СЛЫШИТ ЛАДОНЬ', try_s:'КОРАБЛЬ ИДЁТ ЗА ЛАДОНЬЮ — ПРОВЕРЬ ВЕРХ И НИЗ', cm:'СМ',
   ring_wait:'ПРИГОТОВЬСЯ', ring_listen:'СЛУШАЮ', ring_catch:'ЛОВЛЮ РАЗМАХ', ring_ok:'ГОТОВО',
   start:'СТАРТ', over:'ИГРА ОКОНЧЕНА', best:'РЕКОРД', again:'ЕЩЁ РАЗ', menu:'МЕНЮ', logs:'ЖУРНАЛЫ', tilt_test:'ТЕСТОВЫЕ ПРАВИЛА: НЕ В ТАБЛИЦАХ', ftilt:'НАКЛОН КАРТИНКИ', stilt:'НАКЛОН ВЫСТРЕЛОВ', straight:'ПРЯМО', as_nose:'КАК НОС', bounce_off:'ВЫСТРЕЛЫ ОТ КРАЁВ: НЕТ', obs_off:'ТЯЖЁЛЫЙ СКИН: НЕТ', obs_on:'ТЯЖЁЛЫЙ СКИН: ОБСИДИАН', obs_na:'ТЯЖЁЛЫЙ СКИН: НЕТ WEBGL 2', mouse_off:'МЫШЬ ВМЕСТО СОНАРА: НЕТ', mouse_on:'МЫШЬ ВМЕСТО СОНАРА: ДА', obs_ink:'ЧЕРНИЛА НА ВЗРЫВЫ', obs_ring:'КОЛЬЦО: НЕРОВНОСТЬ', obs_wake:'СЛЕД КОРАБЛЯ', obs_rwake:'СЛЕД КАМНЕЙ', obs_det:'ЧЕРНИЛА: ДЕТАЛИ', obs_vsp:'ПРОЖИЛКИ: СКОРОСТЬ', obs_shot:'ВЫСТРЕЛ', obs_shot1:'Л1 КОМЕТА', obs_shot4:'Л4 БУСИНЫ', obs_shot5:'Л5 КРИСТАЛЛ', obs_shot6:'Л6 КАЙМА', obs_shot9:'Л9 ДВЕ ИГЛЫ', obs_shot10:'Л10 ПОЛОСЫ', obs_rstr:'КОЛЬЦО: СИЛА', obs_damp:'ГАШЕНИЕ В ЭКШНЕ', obs_reco:'ПО УМОЛЧАНИЮ', obs_ringon_on:'КОЛЬЦО ОТ ВЗРЫВА: ДА', obs_ringon_off:'КОЛЬЦО ОТ ВЗРЫВА: НЕТ', obs_grim_on:'КРОМКА ПОДАРКА: ДА', obs_grim_off:'КРОМКА ПОДАРКА: НЕТ', bounce_on:'ВЫСТРЕЛЫ ОТ КРАЁВ: ДА', 
@@ -5342,7 +5351,7 @@ function sPHold(){ var c=PG.c; if(!c){ pgWaveStart(); c=PG.c; }
   if(PongCtl.waving(c)&&scrT-PG.seenT>NOHAND_T){ flipSide(); PG.flips++; pgWaveStart(scrT-WAVE_PAUSE); }   // no palm heard: offer the other end
   pgField(v,DT);
   if(PG.done&&PG.resume){ if(scrT-PG.doneT>0.6){ PG.resume=false; pgKeep(); countT=3; go('count-resume'); } titles(L('wave_ok')); return; }
-  if(PG.done&&scrT-PG.doneT>=CAUGHT_SHOW&&PD.on){ var yd=titles(L(PG.auto?'auto_ok':'wave_ok'),L('pg_try_s')); pdMateLine(yd+4); var ti=pdTryItems(), tw=colW(ti), tm=Math.max(8,Math.round(LW*0.04)); column(ti,Math.round(LH*0.47),pdMe()?SAFE.l+tm:LW-SAFE.r-tm-tw); return; }   /* the buttons over the partner's racket — the own one stays in sight */   /* v1.64c: together — «ГОТОВ» instead of «ИГРАТЬ» */
+  if(PG.done&&scrT-PG.doneT>=CAUGHT_SHOW&&PD.on){ var yd=titles(L(PG.auto?'auto_ok':'wave_ok'),L('pg_try_s')); pdMateLine(yd+4); var ti=PD.fix?[['pd_fixed',L('resume'),'primary'],['pg_rehold',L('recal')],['pg_sens',pgSensLabel()]]:pdTryItems(), tw=colW(ti), tm=Math.max(8,Math.round(LW*0.04)); column(ti,Math.round(LH*0.47),pdMe()?SAFE.l+tm:LW-SAFE.r-tm-tw); return; }   /* the buttons over the partner's racket — the own one stays in sight */   /* v1.64c: together — «ГОТОВ» instead of «ИГРАТЬ» */
   if(PG.done&&scrT-PG.doneT>=CAUGHT_SHOW){ titles(L(PG.auto?'auto_ok':'wave_ok'),L('pg_try_s'));
     column([['start',L('play'),'primary'],['pg_rehold',L('recal')],['pg_sens',pgSensLabel()]],Math.round(LH*0.43)); /* under the titles: over the free side's racket only at its top, the other one is always in sight */ say(L(PG.auto?'auto_ok':'wave_ok')+'. '+L('pg_try_s')); return; }
   var st=wt<WAVE_PAUSE?'wait':PG.done?'ok':'catch';
@@ -5381,7 +5390,7 @@ function pgRecStep(f){ var R=PG.rec; if(!R) return; R.hands.push(f);
   (g.fx||[]).forEach(function(x){ if(x.kick!==undefined) R.cur={who:x.kick,n0:g.n};
     if(x.pts&&R.cur){ var b=R.best[R.cur.who]; if(!b||x.pts>b.pts) R.best[R.cur.who]={who:R.cur.who,n0:R.cur.n0,n1:g.n,pts:x.pts,f:x.f}; R.cur=null; } }); }
 var PG_PRE=24, PG_POST=30;   // the clip: 0.4 s before the hit, 0.5 s after the catch
-function pgSnap(q){ return {t:q.t,n:q.n,py:q.py,hw:q.hw,H:q.H,webD:q.webD||0,k:q.k,crk:(q.crk||[]).slice(),ceils:q.ceils,falls:q.falls,score:q.score,series:q.series,ball:q.ball?Object.assign({},q.ball):null,fx:(q.fx||[]).slice(),state:'play'}; }
+function pgSnap(q){ return {t:q.t,n:q.n,py:q.py,pys:q.pys?q.pys.slice():null,hw:q.hw,H:q.H,webD:q.webD||0,k:q.k,crk:(q.crk||[]).slice(),ceils:q.ceils,falls:q.falls,score:q.score,series:q.series,ball:q.ball?Object.assign({},q.ball):null,fx:(q.fx||[]).slice(),state:'play'}; }
 function pgClipsMake(){ var R=PG.rec; PG.clips=null; if(!R) return; var want=R.best.filter(function(b){ return b; }); if(!want.length) return;
   var g2=Pong.create(R.seed,R.ar,R.sens,R.span), M=R.marks, m=0, i, clips=want.map(function(b){ return {who:b.who,pts:b.pts,h:Math.round(b.f*100),a:Math.max(1,b.n0-PG_PRE),z:b.n1+PG_POST,fr:[]}; });
   for(i=0;i<R.hands.length&&g2.state!=='over';i++){ while(m<M.length&&M[m][0]<=g2.n){ if(M[m][1]==='resume') Pong.resume(g2); else if(M[m][1]==='sens'&&Pong.TUNE.SENS[M[m][2]]) g2.H=Pong.TUNE.SENS[M[m][2]]; m++; }
@@ -5393,7 +5402,7 @@ function pgClipsMake(){ var R=PG.rec; PG.clips=null; if(!R) return; var want=R.b
 function pgClipView(c,now){ if(c.t0===null) c.t0=now; var L=c.fr.length/30+0.7, s=((now-c.t0)/1000)%L*30, i=Math.min(c.fr.length-1,Math.floor(s)), j=Math.min(c.fr.length-1,i+1), u=Math.min(1,s-i), A=c.fr[i], B=c.fr[j], v=c.v;
   if(i<c.at){ v._sk=null; v._pgs=null; }   // round again: the drawing starts afresh
   for(var k in A) if(k!=='ball'&&k!=='fx') v[k]=A[k];
-  v.t=A.t+(B.t-A.t)*u; v.py=A.py+(B.py-A.py)*u; v.ball=A.ball?Object.assign({},A.ball):null;
+  v.t=A.t+(B.t-A.t)*u; v.py=A.py+(B.py-A.py)*u; if(A.pys&&B.pys) v.pys=[A.pys[0]+(B.pys[0]-A.pys[0])*u,A.pys[1]+(B.pys[1]-A.pys[1])*u]; v.ball=A.ball?Object.assign({},A.ball):null;
   if(v.ball&&B.ball){ ['x','y','vx','vy'].forEach(function(k){ v.ball[k]=A.ball[k]+(B.ball[k]-A.ball[k])*u; }); }
   v.fx=i!==c.at?A.fx:[]; if(i!==c.at) pgSkFx(v); c.at=i; return v; }
 function pgClipDraw(c,k,x,y,w,h,now){ var v=pgClipView(c,now), fh=Math.max(4,Math.round(h*Math.max(1,uiS)*1.5)), fc=pgSkClip(v,fh,'clip'+k);
@@ -5443,10 +5452,11 @@ function pgEnd(){ g.state='over'; overT=0; Logs.gameStop(); Board.finish(g.score
    «ПОВТОР ЛУЧШИХ ДУГ · 0,5×» and the windows, each signed with its racket, the arc's height and its points; all in the free side, the
    buttons where they always are */
 function pgOverItems(){ return [['again',L('again'),'primary'],['over_cal',L('recal')],['menu',L('menu')],['scores',L('scores')]].concat(diag&&Logs.has()?[['logs',L('logs')]]:[]); }
-function pgOverClips(){ var items=pgOverItems(), bw=colW(items), bx=sideX(bw), m=Math.max(8,Math.round(LW*0.03)), left=bx<LW/2;
+function pgOverClips(){ var duo=!!g.duo, items=duo?pdOverItems():pgOverItems(), bw=colW(items), bx=sideX(bw), m=Math.max(8,Math.round(LW*0.03)), left=bx<LW/2;
   var a0=left?bx+bw+m:SAFE.l+m, a1=left?LW-SAFE.r-m:bx-m, aw=a1-a0, y=topY();
-  var ls=[L('pg_width').replace('{n}',Math.round(Pong.width(g)*100)),L('pg_passes').replace('{n}',g.passes)], bl=boardLine(), hot=null;
-  if(PG.newBest) hot=L('best')+'!'; else if(pgBest()>0) ls.push(L('best')+' '+pgBest());
+  var ls=[L('pg_width').replace('{n}',Math.round(Pong.width(g)*100)),L('pg_passes').replace('{n}',g.passes)], bl=duo?null:boardLine(), hot=null;
+  if(duo) ls.push(pdName()+' + '+pdMate()); else if(PG.newBest) hot=L('best')+'!'; else if(pgBest()>0) ls.push(L('best')+' '+pgBest());   /* v1.64g: together — the two names, the partner's state under them */
+  if(duo) bl=[L('pd_mate_st').replace('{s}',pdMateSt()),PD.pst==='ready'?P.band:P.soft];
   var sub=PF.wrap(ls.join(' · '),aw-16,1), bls=bl?[bl[0]].concat(bl[2]?[bl[2]]:[]):[];
   var ph=24+sub.length*10+bls.length*10; plaque(a0,y-2,a1,y+ph,0.6);
   text(L('over'),a0+8,y+4,P.text); text(String(g.score),a1-8,y,P.band,'right',2); if(hot) text(hot,a1-8-PF.width(String(g.score),2)-10,y+4,P.band,'right'); var yy=y+22;   /* «РЕКОРД!» beside the score */
@@ -5458,11 +5468,11 @@ function pgOverClips(){ var items=pgOverItems(), bw=colW(items), bx=sideX(bw), m
   var x0=n>1?a0+Math.round((aw-(2*w+gap))/2):a0+Math.round((aw-w)/2); text(L('pg_replay'),x0,ly,P.soft);   // the title over the windows, from their edge
   PG.clips.forEach(function(c,i){ var x=x0+i*(w+gap); R(P.bg,x-1,y-1,w+2,h+2); pgClipDraw(c,i,x,y,w,h,now);
     plaque(x,y+h,x+w,y+h+cap,0.85); var rec=Math.floor(clock*2)%2===0; if(rec){ lx.fillStyle='#ec2a17'; lx.beginPath(); lx.arc(x+5,y+h+cap/2,2,0,6.283); lx.fill(); }
-    text(L(c.who?'pg_right':'pg_left')+' · '+c.h+'%',x+10,y+h+3,P.text); text('+'+c.pts,x+w-3,y+h+3,P.band,'right'); });
+    text((duo?(c.who===PD.me?pdName():pdMate()):L(c.who?'pg_right':'pg_left'))+' · '+c.h+'%',x+10,y+h+3,P.text); text('+'+c.pts,x+w-3,y+h+3,P.band,'right'); });
   var vs='V'+VERSION, vr=freeSide()==='left', vx=vr?LW-SAFE.r-8:SAFE.l+8, vy=LH-SAFE.b-12, vw=PF.width(vs);
   text(vs,vx,vy,diag?P.band:P.soft,vr?'right':'left'); var vb0=Math.max(0,(vr?vx-vw:vx)-8), vb1=Math.min(LW,(vr?vx:vx+vw)+8), by0=vy-8; BTN.push({id:'ver',x:vb0,y:by0,w:vb1-vb0,h:Math.min(PF.CAP+16,LH-by0)});
   say(L('over')+' '+g.score+(bl?'. '+bl[0]:'')+'. '+L('pg_replay'));
-  var lb=Board.last(); if(lb&&lb.state==='done'&&lb.listed&&!lb.named&&!nickAsked&&overT>1.5){ nickAsked=true; nickFrom='over'; go('nick'); return; }
+  var lb=Board.last(); if(!duo&&lb&&lb.state==='done'&&lb.listed&&!lb.named&&!nickAsked&&overT>1.5){ nickAsked=true; nickFrom='over'; go('nick'); return; }
   if(overT>0.8) column(items,Math.round(LH*0.52)); }
 function pgDrop(){ if(g&&g.ball!==undefined&&g.state!=='over'){ Logs.gameEv('restarted by the player'); g.state='over'; Logs.gameStop(); Board.finish(g.score); if(g.score>pgBest()){ PG.best=g.score; store.set('sonaroids_pong_best',PG.best); } } }
 function pgOver(){ if(g.duo){ pdOver(); return; } overT+=DT; pgField(g,DT); lx.globalAlpha=0.45; R(P.bg,0,0,LW,LH); lx.globalAlpha=1;
@@ -5478,7 +5488,7 @@ function pgOver(){ if(g.duo){ pdOver(); return; } overT+=DT; pgField(g,DT); lx.g
   say(L('over')+' '+g.score+(bl?'. '+bl[0]:''));
   var lb=Board.last(); if(lb&&lb.state==='done'&&lb.listed&&!lb.named&&!nickAsked&&overT>1.5){ nickAsked=true; nickFrom='over'; go('nick'); return; }   // v1.62b: the first place in a table — the name, once (as SonaFly's)
   if(overT>0.8) column([['again',L('again'),'primary'],['over_cal',L('recal')],['menu',L('menu')],['scores',L('scores')]].concat(diag&&Logs.has()?[['logs',L('logs')]]:[]),Math.round(LH*0.52)); }
-/* ════ SonaLob «ВДВОЁМ» on the screens (v1.64c; v1.64d: each phone its own half of the probe's tones — src/20_sonar.js setParity; stage 4 of claude/SONALOB_DUO.md). The menu: «ИГРАТЬ ОДНОМУ» / «ИГРАТЬ ВДВОЁМ» (Den
+/* ════ SonaLob «ВДВОЁМ» on the screens (v1.64c; v1.64d: each phone its own half of the probe's tones — src/20_sonar.js setParity; v1.64f: the pause for both; stage 4 of claude/SONALOB_DUO.md). The menu: «ИГРАТЬ ОДНОМУ» / «ИГРАТЬ ВДВОЁМ» (Den
    12.10). Together: «РЯДОМ» (one Wi-Fi, both press within 30 s), «СОЗДАТЬ КОД» (4 digits to tell the partner) or «ВВЕСТИ КОД» — the
    room (src/23_link.js). Then «ВЫ ВМЕСТЕ»: who has which racket (the one who opened the room — the left; «ПОМЕНЯТЬСЯ» swaps them on both)
    and what the partner is doing. Each one calibrates as always (the waving or the auto-calibration), and on the try-out presses «ГОТОВ»;
@@ -5489,13 +5499,13 @@ function pgOver(){ if(g.duo){ pdOver(); return; } overT+=DT; pgField(g,DT); lx.g
    drawn in red ink, «ТЫ» over him in the first seconds (М2). The game is over when the partner's palms up to its last step are in (till
    then a guess could still be undone). After it — «ЕЩЁ РАЗ», which starts when both press it ════ */
 var PD={on:false,side:-1,left:0,me:0,peer:false,pst:'',pname:'',psens:1,pspan:0,ready:false,sent:'',sentT:0,msg:'',busy:false,code:null,near:false,t0:null,nearT:0,
-  cfg:null,N:null,inq:[],mine:{},hisAck:0,myAck:0,got:{},shown:{},sentAt:0,overT:0,from:null};
+  cfg:null,N:null,inq:[],mine:{},hisAck:0,myAck:0,got:{},shown:{},sentAt:0,overT:0,from:null,ep:0,eps:{},pz:null,rsT:0,endN:null,heard:0,kaT:0,offT:0,fix:false,mk:[]};
 function pdMe(){ return PD.side===PD.left?0:1; }
 function pdName(){ return Board.nick()||L('pd_you'); }
 function pdMate(){ return PD.pname||L('pd_mate'); }
 function pdSpan(){ var lin=PG.c&&PG.c.lin; return lin?Math.max(30,lin.t-lin.b):0; }
 /* what this phone is doing, as the partner sees it: menu, cal (getting ready), try (the try-out), ready, play, over */
-function pdState(){ if(scr==='pduo2') return 'menu';
+function pdState(){ if(scr==='pduo2') return 'menu'; if(scr==='pdpause') return 'pause';
   if(scr==='play'||scr==='paused'||scr==='count-resume') return 'play';
   if(scr==='count') return 'ready';
   if(scr==='over') return PD.ready?'ready':'over';
@@ -5507,7 +5517,12 @@ function pdSend(m){ if(PD.on) Link.send(m); }
 /* tell the partner the state when it changes, and every 3 s anyway (a message may be lost) */
 function pdTick(){ if(!PD.on) return; var st=pdState(); if(st!=='ready'&&st!=='play'&&scr!=='over') PD.ready=false;
   if(PD.peer&&(st!==PD.sent||clock-PD.sentT>3)){ PD.sent=st; PD.sentT=clock; pdSend({e:'st',st:st,nick:Board.nick()||'',sens:pgSens(),span:pdSpan()}); }
-  pdCheckGo(); }
+  pdCheckGo();
+  if(PD.N&&PD.N.g.state!=='over'&&g===PD.N.g){
+    /* in the pause (and while one calibrates in it) — «I am here» twice a second (in the game the palms say it) */
+    if((PD.pz||scr==='count-resume')&&clock-PD.kaT>0.5){ PD.kaT=clock; pdSend({e:'ka',g:PD.cfg.seed}); }
+    /* the partner's game is over (he ended it, or gave up waiting) — this one ends too */
+    if((PD.pst==='over'||PD.pst==='menu'||(PD.pst==='gone'&&PD.heard<0))&&(scr==='play'||scr==='pdpause'||scr==='count-resume')){ if((PD.offT+=DT)>1){ Logs.gameEv('вдвоём: у напарника партия кончена',PD.pst); pdEnd(); } } else PD.offT=0; } }
 /* ── the room ── */
 function pdOpen(how,code){ if(PD.busy) return; PD.busy=true; PD.msg=''; Link.on(pdGot);
   var p=how==='near'?Link.near():how==='new'?Link.create():Link.join(code);
@@ -5518,7 +5533,7 @@ function pdOpen(how,code){ if(PD.busy) return; PD.busy=true; PD.msg=''; Link.on(
 function pdLeave(){ if(!PD.on) return; Logs.ev('вдвоём: выход'); try{ Link.send({e:'bye'}); }catch(e){} var l=Link; setTimeout(function(){ if(!PD.on) l.close(); },300);
   PD.on=false; PD.peer=false; PD.ready=false; PD.N=null; PD.cfg=null; PD.inq=[]; if(Sonar.setParity('all')) acoustic=false; }   // all the tones again
 /* the partner's messages (from the direct channel or the server) */
-function pdGot(m){ if(!PD.on||!m) return;
+function pdGot(m){ if(!PD.on||!m) return; if(m.e==='bye') PD.heard=-99; else if(m.e!=='gone'&&m.e!=='peer') PD.heard=clock;
   if(m.e==='peer'){ PD.peer=true; PD.sent=''; if(scr==='pduowait') go('pduo2'); return; }
   if(m.e==='gone'||m.e==='bye'){ PD.peer=m.e==='gone'?false:PD.peer; PD.pst='gone'; if(m.e==='bye') PD.peer=false; return; }
   if(m.e==='hi'){ PD.peer=true; PD.sent=''; if(scr==='pduowait') go('pduo2'); return; }
@@ -5527,7 +5542,12 @@ function pdGot(m){ if(!PD.on||!m) return;
   if(m.e==='swap'){ if(PD.side===0){ PD.left=1-PD.left; pdSend({e:'sides',left:PD.left}); } return; }
   if(m.e==='sides'){ PD.left=m.left?1:0; return; }
   if(m.e==='go'){ if(!PD.ready){ PD.sent=''; return; } pdCount(m); return; }
-  if(m.e==='h'){ PD.inq.push(m); return; } }
+  if(m.e==='h'){ PD.inq.push(m); return; }
+  if(!PD.N||m.g!==PD.cfg.seed) return;
+  if(m.e==='pz'){ if(m.ep===PD.ep) pdPauseAt(m.n,'mate'); return; }
+  if(m.e==='rs'){ pdResume(m); return; }
+  if(m.e==='sens'){ if(m.ep===PD.ep&&PD.pz){ PongNet.mark(PD.N,m.n,['sens',m.i,m.v]); PD.mk.push([m.n,'sens',m.i,m.v]); g=PD.N.g; } return; }
+  if(m.e==='end'){ if(m.ep===PD.ep) pdEndAt(m.n); return; } }
 /* ── the start: the side 0 sends it once both are ready ── */
 function pdCheckGo(){ if(PD.side!==0||!PD.peer||!PD.ready||PD.pst!=='ready'||scr==='count'||scr==='play') return;
   var me=pdMe(), s=[0,0], sp=[0,0]; s[me]=pgSens(); s[1-me]=PD.psens>=0&&PD.psens<=3?PD.psens:1; sp[me]=pdSpan(); sp[1-me]=PD.pspan>0?PD.pspan:0;
@@ -5535,15 +5555,19 @@ function pdCheckGo(){ if(PD.side!==0||!PD.peer||!PD.ready||PD.pst!=='ready'||scr
 function pdCount(m){ PD.left=m.left?1:0; PD.cfg={seed:m.seed>>>0,t0:m.t0,sens:m.sens,span:m.span}; PD.inq=PD.inq.filter(function(q){ return q.g===PD.cfg.seed; }); PD.N=null; PD.from=scr;
   pgKeep(); try{ DSP2.set('quarter',1); }catch(e){} countT=Math.max(0,(m.t0-Link.now())/1000); go('count'); }
 /* ── the game ── */
-function pdStart(){ var c=PD.cfg; g=Pong.create2(c.seed,PG_AR,c.sens,c.span); PD.me=pdMe(); PD.N=PongNet.create(g,PD.me); PD.mine={}; PD.his=[]; PD.mineAll=[]; PD.offT=0; PD.hisAck=0; PD.myAck=0; PD.got={}; PD.shown={}; PD.sentAt=0; PD.overT=0;
+function pdStart(){ var c=PD.cfg; g=Pong.create2(c.seed,PG_AR,c.sens,c.span); PD.me=pdMe(); PD.N=PongNet.create(g,PD.me); PD.mine={}; PD.his=[]; PD.mineAll=[]; PD.offT=0; PD.ep=0; PD.eps={}; PD.pz=null; PD.endN=null; PD.mk=[]; PD.heard=clock; PD.fix=false; PD.hisAck=0; PD.myAck=0; PD.got={}; PD.shown={}; PD.sentAt=0; PD.overT=0;
   acc=0; parts=[]; PG.pts=[]; PG.newBest=false; PG.rec=null; PG.clips=null; PG.fps=null; var I=Sonar.info(), cc=PG.c||{};
   Logs.gameStart({core:Pong.TAG2,game:'pong',duo:{code:PD.code,near:PD.near,side:PD.side,me:PD.me,mate:PD.pname||null},auto_cal:!!PG.auto,seed:c.seed,ar:PG_AR,sens:c.sens,span:c.span,t0:c.t0,cal:DSP2.info().cal,tones:Sonar.info().par,lin:cc.lin?{b:+cc.lin.b.toFixed(1),t:+cc.lin.t.toFixed(1)}:null,
     chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),link:Link.state(),started:new Date().toISOString(),app:'sonaroids'});
   Sfx.lob('start'); go('play'); }
 /* the partner's palms that came: into the game (it runs again from the first that differs from the guess) */
 function pdTake(){ var N=PD.N; if(!N||!PD.inq.length) return; var Q=PD.inq; PD.inq=[];
-  Q.forEach(function(m){ if(m.g!==PD.cfg.seed) return; if(typeof m.a==='number') PD.hisAck=Math.max(PD.hisAck,m.a);
-    var list=[]; (m.v||[]).forEach(function(v,j){ var k=m.k+j; if(k<1) return; PD.got[k]=1; PD.his[k-1]=v===undefined?null:v; list.push([k,v===null||v===undefined?null:v/10000]); });
+  Q.forEach(function(m){ if(m.g!==PD.cfg.seed) return; var ep=m.ep||0, lim=Infinity;
+    /* v1.64f: the pauses — a message from before a pause counts only up to the step the game stopped at; one from a resumed game this phone
+       has not resumed yet waits; in the pause nothing after the pause's step */
+    if(ep>PD.ep){ PD.inq.push(m); return; } if(ep<PD.ep) lim=PD.eps[ep]; else if(PD.pz) lim=PD.pz.n;
+    if(typeof m.a==='number') PD.hisAck=Math.max(PD.hisAck,Math.min(m.a,lim));
+    var list=[]; (m.v||[]).forEach(function(v,j){ var k=m.k+j; if(k<1||k>lim) return; PD.got[k]=1; PD.his[k-1]=v===undefined?null:v; list.push([k,v===null||v===undefined?null:v/10000]); });
     while(PD.got[PD.myAck+1]){ delete PD.got[PD.myAck-200]; PD.myAck++; }
     if(!list.length) return; var old=N.g, out=PongNet.remote(N,list);
     if(N.g!==old){ for(var k in old) if(k.charAt(0)==='_') N.g[k]=old[k]; g=N.g; }
@@ -5557,7 +5581,7 @@ function pdReact(n,events,fx){ var was=PD.shown[n]||{e:[],f:[]}, fk=function(f){
 function pdFlush(force){ var N=PD.N; if(!N) return; var k0=PD.hisAck+1, k1=Math.min(N.g.n,k0+39), now=performance.now(); if(k1<k0) return;
   if(!force&&!Link.direct()&&now-PD.sentAt<45) return;   // the server: ~20 messages a second (it takes up to 60)
   var v=[]; for(var k=k0;k<=k1;k++) v.push(PD.mine[k]===undefined?null:PD.mine[k]); PD.sentAt=now;
-  Link.send({e:'h',g:PD.cfg.seed,k:k0,v:v,a:PD.myAck}); for(var d in PD.mine) if(+d<k0-60) delete PD.mine[d]; }
+  Link.send({e:'h',g:PD.cfg.seed,ep:PD.ep,k:k0,v:v,a:PD.myAck}); for(var d in PD.mine) if(+d<k0-60) delete PD.mine[d]; }
 function pdPlay(){ var N=PD.N, DTs=Pong.DT, vs=lastNow;
   var fp=PG.fps||(PG.fps={t:vs,n:0,mx:0,slow:0,last:null,rb:0}); if(fp.last!==null&&vs-fp.last<1000){ var fd=vs-fp.last; fp.n++; if(fd>fp.mx) fp.mx=fd; if(fd>25) fp.slow++; } fp.last=vs;
   if(vs-fp.t>=5000){ var ls=Link.state()||{}; Logs.gameEv('кадры',{n:fp.n,s:+((vs-fp.t)/1000).toFixed(2),max:Math.round(fp.mx),slow:fp.slow,rollbacks:N.rb-fp.rb,rb_max:N.rbMax,lag:N.g.n-PD.myAck,direct:!!ls.direct,rtt_d:ls.rttD?Math.round(ls.rttD):null,rtt_s:ls.rttS?Math.round(ls.rttS):null}); fp.t=vs; fp.n=0; fp.mx=0; fp.slow=0; fp.rb=N.rb; }
@@ -5568,15 +5592,68 @@ function pdPlay(){ var N=PD.N, DTs=Pong.DT, vs=lastNow;
     PongNet.stepLocal(N,f); g=N.g; PD.mine[g.n]=f===null?null:Math.round(f*10000); PD.mineAll[g.n-1]=PD.mine[g.n];
     Logs.step({pong:2,n:g.n,FH:1,ship:{y:g.pys[PD.me]},lives:g.lives,score:g.score,events:g.events},f); pdReact(g.n,g.events,g.fx); }
   if(N.lost){ Logs.gameEv('вдвоём: рассинхрон — партия кончена'); N.g.state='over'; }
-  /* the partner is no longer in this game (he left, his game broke off) — this one ends too (the pause for both and the waiting come next) */
-  if(PD.pst==='play'||PD.pst==='ready') PD.offT=0; else if((PD.offT+=DT)>3&&N.g.state!=='over'){ Logs.gameEv('вдвоём: напарник не в игре — партия кончена',PD.pst); N.lost=true; N.g.state='over'; }
   pdFlush(false);
-  pgField(g,DT); pgHud(); coveredLine(topY()+40); say(L('menu_a'));
+  pgField(g,DT); pgHud(); coveredLine(topY()+40); pgPauseBtn(); say(L('menu_a'));
+  /* v1.64f: nothing from the partner for 2 s (or he left the room) — the pause for both, and the waiting */
+  if(g.state!=='over'&&clock-PD.heard>2){ Logs.gameEv('вдвоём: напарник пропал',{silent:+(clock-PD.heard).toFixed(1),peer:PD.peer}); pdPause('lost'); return; }
   if(g.state==='over'){ PD.overT+=DT; if(PD.myAck>=g.n||PD.overT>5||N.lost) pdEnd(); } }
 function pdEnd(){ g.state='over'; overT=0; PD.ready=false; Logs.gameEv('вдвоём: итог',{score:g.score,n:g.n,confirmed:PD.myAck,rollbacks:PD.N.rb,rb_max:PD.N.rbMax});
   /* both palms (×10000, null — none), the left racket's first: the whole game can be replayed from the log (Pong.replay2) */
   var L0=PD.me===0?PD.mineAll:PD.his, R0=PD.me===0?PD.his:PD.mineAll, nn=g.n, cut=function(a){ var o=[]; for(var i=0;i<nn;i++) o.push(a[i]===undefined?null:a[i]); return o; };
-  Logs.gameEv('вдвоём: ладони',{seed:PD.cfg.seed,sens:PD.cfg.sens,span:PD.cfg.span,n:nn,left:cut(L0),right:cut(R0)}); Logs.gameStop(); pdFlush(true); go('over'); }
+  Logs.gameEv('вдвоём: ладони',{seed:PD.cfg.seed,sens:PD.cfg.sens,span:PD.cfg.span,n:nn,marks:PD.mk,left:cut(L0),right:cut(R0)}); Logs.gameStop(); pdFlush(true);
+  var dq=function(a){ return cut(a).map(function(v){ return v===null?null:v/10000; }); }; pdClipsMake(dq(L0),dq(R0)); go('over'); }
+/* v1.64g: the best arcs together — as the single game's (v1.62c): each racket's best clean pass, found and shown from the game stepped
+   again from its seed with both palms and the marks (the same game — it is what the server will replay); each window signed with the
+   name of the one whose racket it is */
+function pdClipsMake(hL,hR){ PG.clips=null; var c=PD.cfg, M=PD.mk.slice().sort(function(a,b){ return a[0]-b[0]; });
+  var run=function(each){ var g2=Pong.create2(c.seed,PG_AR,c.sens,c.span), m=0; for(var i=0;i<hL.length&&g2.state!=='over';i++){
+      while(m<M.length&&M[m][0]<=g2.n){ if(M[m][1]==='resume') Pong.resume2(g2); else if(M[m][1]==='sens'&&Pong.TUNE.SENS[M[m][3]]) g2.Hs[M[m][2]]=Pong.TUNE.SENS[M[m][3]]; m++; }
+      Pong.step2(g2,hL[i],hR[i]); each(g2); } return g2; };
+  var best=[null,null], cur=null;
+  run(function(q){ (q.fx||[]).forEach(function(x){ if(x.kick!==undefined) cur={who:x.kick,n0:q.n};
+    if(x.pts&&cur){ var b=best[cur.who]; if(!b||x.pts>b.pts) best[cur.who]={who:cur.who,n0:cur.n0,n1:q.n,pts:x.pts,f:x.f}; cur=null; } }); });
+  var clips=best.filter(function(b){ return b; }).map(function(b){ return {who:b.who,pts:b.pts,h:Math.round(b.f*100),a:Math.max(1,b.n0-PG_PRE),z:b.n1+PG_POST,fr:[]}; }); if(!clips.length) return;
+  var g2=run(function(q){ clips.forEach(function(cl){ if(q.n>=cl.a&&q.n<=cl.z) cl.fr.push(pgSnap(q)); }); });
+  clips=clips.filter(function(cl){ return cl.fr.length>PG_PRE; }); clips.forEach(function(cl){ cl.v={}; cl.t0=null; cl.at=-1; });
+  PG.clips=clips.length?clips:null; PG.clipCheck=g2.score; }
+/* ── v1.64f: the pause for both. Whoever pauses stops at his step P and tells the other, who stops there too: a phone that ran ahead goes
+   back to P (the game is cut there — src/16_pong_net.js cut), one behind runs up to it. Two pauses at once — the earlier step wins. In the
+   pause the palms up to P still go both ways, so the two games are the same at P. «ДАЛЬШЕ» (either phone, the partner in the pause too):
+   a moment 3 s ahead by the server's clock; the game goes on from P at that moment on both (a mark — the rules' resume, as after a single
+   game's pause); the sensitivity turned in the pause — a mark at P for that racket on both. «ЗАКОНЧИТЬ ПАРТИЮ» — over at P for both.
+   Nothing heard from the partner for 2 s (a lost link, a phone put away) — the pause with «НАПАРНИК ПРОПАЛ — ЖДЁМ…»: back within 30 s —
+   the pause as any; not — the game ends with what it has. A message from before a pause counts only up to its step (the pause's epoch) ── */
+function pdCut(P){ var N=PD.N, old=N.g; if(!PongNet.cut(N,P)){ Logs.gameEv('вдвоём: пауза дальше, чем помнит игра',{P:P,n:old.n}); return false; }
+  if(N.g!==old){ for(var k in old) if(k.charAt(0)==='_') N.g[k]=old[k]; } g=N.g;
+  var del=function(o){ for(var d in o) if(+d>P) delete o[d]; }; del(PD.mine); del(PD.got); del(PD.shown); if(PD.mineAll.length>P) PD.mineAll.length=P; if(PD.his.length>P) PD.his.length=P;
+  PD.myAck=Math.min(PD.myAck,P); PD.hisAck=Math.min(PD.hisAck,P); return true; }
+function pdPauseAt(P,by){ var N=PD.N; if(!N||N.g.state==='over') return;
+  if(PD.pz){ if(P<PD.pz.n){ PD.pz.n=P; pdCut(P); } if(by==='mate'&&PD.pz.by==='lost') PD.pz.by='mate'; return; }
+  PD.pz={n:P,by:by,t:clock}; if(by==='lost') PD.pz.lt=clock; PD.endN=null; pdCut(P);
+  Logs.gameEv('вдвоём: пауза',{P:P,n:N.g.n,by:by,ep:PD.ep}); if(scr==='play'||scr==='count-resume'||scr==='paused') go('pdpause'); }
+function pdPause(why){ var N=PD.N; if(!N) return; var P=N.g.n; pdPauseAt(P,why); pdSend({e:'pz',g:PD.cfg.seed,ep:PD.ep,n:PD.pz?PD.pz.n:P}); }
+/* «ДАЛЬШЕ»: from either phone; the first one heard for this pause starts the count, a later one (both pressed) only moves the moment on */
+function pdResume(m){ var N=PD.N; if(!N) return;
+  if(m.ep===PD.ep-1){ if(m.t>PD.rsT){ PD.rsT=m.t; PD.cfg.t0=m.t-PD.eps[m.ep]*1000*Pong.DT; } return; }
+  if(m.ep!==PD.ep||!PD.pz) return; var P=Math.min(PD.pz.n,m.n); if(N.g.n>P||PD.pz.n>P){ PD.pz.n=P; pdCut(P); }
+  PongNet.mark(N,P,['resume']); g=N.g; PD.mk.push([P,'resume']); PD.eps[PD.ep]=P; PD.ep++; PD.rsT=m.t; PD.cfg.t0=m.t-P*1000*Pong.DT; PD.pz=null; PD.heard=clock;
+  Logs.gameEv('вдвоём: дальше',{P:P,ep:PD.ep,in_ms:Math.round(m.t-Link.now())}); countT=Math.max(0,(m.t-Link.now())/1000); go('count-resume'); }
+function pdEndAt(P){ var N=PD.N; if(!N||N.g.state==='over') return; if(!PD.pz) pdPauseAt(P,'mate'); else if(P<PD.pz.n){ PD.pz.n=P; pdCut(P); } PD.endN=PD.pz.n; Logs.gameEv('вдвоём: закончить',PD.endN); }
+/* the pause's screen: the field as it stopped; who paused, or how long the partner is still waited for; «ДАЛЬШЕ» once both are in the
+   pause, the sensitivity, «ЗАКОНЧИТЬ ПАРТИЮ» */
+function sPDPause(){ var N=PD.N; if(!N||!PD.pz){ go('title'); return; } var Pn=PD.pz.n;
+  pdTake(); while(N.g.n<Pn&&N.g.state!=='over'){ var c=PG.c, f=c?PongCtl.frac(c,c.present?PongCtl.palm(c):null):null; f=f===null?null:Math.round(f*10000)/10000; PongNet.stepLocal(N,f); g=N.g; PD.mine[g.n]=f===null?null:Math.round(f*10000); PD.mineAll[g.n-1]=PD.mine[g.n]; pdReact(g.n,g.events,g.fx); }
+  pdFlush(false);
+  var here=clock-PD.heard<=2; if(!here&&PD.pz.by!=='lost'&&clock-PD.pz.t>2){ PD.pz.by='lost'; PD.pz.lt=clock; }
+  if(PD.pz.by==='lost'&&here) PD.pz.by='mate';
+  if(PD.pz.by==='lost'&&PD.pz.lt===undefined) PD.pz.lt=clock;
+  var left=PD.pz.by==='lost'?Math.max(0,Math.ceil(30-(clock-PD.pz.lt))):null;
+  if(left===0||(PD.endN!==null&&N.g.n>=PD.endN&&(PD.myAck>=PD.endN||clock-PD.pz.t>5))){ Logs.gameEv(left===0?'вдвоём: не дождались':'вдвоём: закончили',{P:Pn}); pdEnd(); return; }
+  pgField(g,0); lx.globalAlpha=0.5; R(P.bg,0,0,LW,LH); lx.globalAlpha=1;
+  var t1=PD.pz.by==='lost'?L('pd_lost').replace('{s}',left):PD.pz.by==='mate'?L('pd_pz_by').replace('{n}',pdMate()):L('paused'), t2=L('pd_mate_st').replace('{s}',pdMateSt());
+  var y=titles(t1,t2,PD.pz.by==='lost'?P.hit:null);
+  var can=here&&PD.pst==='pause'&&N.g.n>=Pn&&PD.endN===null, items=[['pd_resume',can?L('resume'):L('pd_wait')+'.'.repeat(1+Math.floor(clock*2)%3),can?'primary':''],['pg_sens',pgSensLabel()],['pd_end',L('pd_end')]];
+  column(items,Math.round(LH*0.58)); }
 /* ── the screens ── */
 function pdVeil(a){ pgDemoDraw(); lx.globalAlpha=a; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; }
 function pdCol(items,y0){ var w=colW(items); column(items,y0,Math.round(LW/2-w/2)); }
@@ -5612,13 +5689,17 @@ function pdMateLine(y){ var s=L('pd_mate_st').replace('{s}',pdMateSt()), w=PF.wi
 /* the game over together */
 /* after the game only the partner's confirmations are read (so the last steps stop being sent once he has them) */
 function pdAcks(){ var Q=PD.inq; PD.inq=[]; Q.forEach(function(m){ if(PD.cfg&&m.g===PD.cfg.seed&&typeof m.a==='number') PD.hisAck=Math.max(PD.hisAck,m.a); else if(!PD.cfg||m.g!==PD.cfg.seed) PD.inq.push(m); }); }
+function pdOverItems(){ return [['pd_again',PD.ready?L('pd_wait')+'.'.repeat(1+Math.floor(clock*2)%3):L('again'),'primary'],['pd_recal',L('recal')],['pd_exit',L('pd_exit')]]; }
 function pdOver(){ overT+=DT; pgField(g,DT); lx.globalAlpha=0.45; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; pdAcks(); if(PD.N&&PD.hisAck<g.n) pdFlush(false);
+  if(PG.clips){ pgOverClips(); return; }   /* v1.64g: the best arcs, as alone */
   var cx0=freeSide()==='left'?Math.round(LW*0.6):Math.round(LW*0.4), y=Math.round(LH*0.2);
   var ls=[[L('pg_width').replace('{n}',Math.round(Pong.width(g)*100)),P.text],[L('pg_passes').replace('{n}',g.passes),P.text],[pdName()+' + '+pdMate(),P.soft],[L('pd_mate_st').replace('{s}',pdMateSt()),PD.pst==='ready'?P.band:P.soft]];
   var fw=0; ls.forEach(function(q){ fw=Math.max(fw,PF.width(q[0])); }); fw=Math.max(fw,PF.width(L('over')))+20; plaque(cx0-fw/2,y-2,cx0+fw/2,y+38+ls.length*11,0.6);
   text(L('over'),cx0,y,P.text,'center'); text(String(g.score),cx0,y+13,P.band,'center',2); ls.forEach(function(q,i){ text(q[0],cx0,y+38+i*11,q[1],'center'); });
   say(L('over')+' '+g.score);
-  if(overT>0.8) column([['pd_again',PD.ready?L('pd_wait')+'.'.repeat(1+Math.floor(clock*2)%3):L('again'),'primary'],['pd_recal',L('recal')],['pd_exit',L('pd_exit')]],Math.round(LH*0.52)); }
+  if(overT>0.8) column(pdOverItems(),Math.round(LH*0.52)); }
+/* the sensitivity turned in the pause: a mark at the pause's step for the own racket, on both phones */
+function pdSens(v){ var N=PD.N; if(!N||!PD.pz) return; var P=PD.pz.n; PongNet.mark(N,P,['sens',PD.me,v]); g=N.g; PD.mk.push([P,'sens',PD.me,v]); pdSend({e:'sens',g:PD.cfg.seed,ep:PD.ep,n:P,i:PD.me,v:v}); Logs.gameEv('вдвоём: чувствительность',[P,PD.me,v]); }
 /* the actions */
 var PD_ACT={
   pg_duo:function(){ PD.msg=''; go('pduo'); },
@@ -5631,6 +5712,11 @@ var PD_ACT={
   pd_next:function(){ PD.ready=false; if(pgReady()){ PG.done=true; PG.doneT=-9; PG.w0=-9; PG.resume=false; go('phold'); return; } onboarding=false; direct=false; ensure(toAway); },
   pd_ready:function(){ PD.ready=!PD.ready; PD.sent=''; },
   pd_again:function(){ if(!(booted&&Sonar.healthy())){ PD.ready=false; ensure(toAway); return; } PD.ready=!PD.ready; PD.sent=''; },
+  pd_resume:function(){ var N=PD.N; if(!N||!PD.pz||!(clock-PD.heard<=2&&PD.pst==='pause')||N.g.n<PD.pz.n) return;
+    if(!(booted&&Sonar.healthy())){ PD.fix=true; ensure(toAway); return; }   /* the microphone was taken (the phone put away): the getting ready again, then back to the pause */
+    var m={e:'rs',g:PD.cfg.seed,ep:PD.ep,n:PD.pz.n,t:Math.round(Link.now()+3000)}; pdSend(m); pdResume(m); },
+  pd_end:function(){ var N=PD.N; if(!N||!PD.pz) return; pdSend({e:'end',g:PD.cfg.seed,ep:PD.ep,n:PD.pz.n}); pdEndAt(PD.pz.n); if(clock-PD.heard>2){ pdEnd(); } },
+  pd_fixed:function(){ PD.fix=false; go('pdpause'); },
   pd_recal:function(){ PD.ready=false; if(!(booted&&Sonar.healthy())){ ensure(toAway); return; } PG.resume=false; flipT=-9; go('phold'); pgWaveStart(); }
 };
 /* ════ SONAPONG «НАБРОСОК» in the game (v1.61h; stage 3 of claude/SONAPONG_PORT.md — the maintainer 11 Oct 17:29: «скины — пока два, наши
@@ -8225,7 +8311,7 @@ function quickOr(full,any){ if(mode==='pong'?pgReady():any?readyNow():liveReady(
 function toRoom(b){ roomAgain=false; Sonar.setBand(b); prep=null; silentRetry=false; go('away'); }
 function toWave(){ forceWave=false; autoTry=false; try{ DSP2.set('quarter',0); }catch(e){}   // v1.59: the quarter-frame phase only for SonaPong's rackets
   T=Tune.create(+store.get('sonaroids_field','100')||100,true); caught=false; flips=0; flipT=-9; seenT=0; go('wave'); }
-function pauseGame(){ if(mode==='pong'&&g&&g.duo&&PD.N&&g===PD.N.g) return;   /* v1.64c: together the game goes on (the pause for both comes next) */ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; if(mode==='pong'&&pausedFrom==='play') PG.resumed=true; go('paused'); } }   /* 1.61r: SonaLob's rules are told the game goes on (src/15_pong.js resume) */
+function pauseGame(){ if(mode==='pong'&&g&&g.duo&&PD.N&&g===PD.N.g){ if(scr==='play'||scr==='count-resume') pdPause('me'); return; }   /* v1.64f: together — the pause for both (src/48_pongduo.js) */ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; if(mode==='pong'&&pausedFrom==='play') PG.resumed=true; go('paused'); } }   /* 1.61r: SonaLob's rules are told the game goes on (src/15_pong.js resume) */
 function startCount(){ flyReset(); if(resumeAfterPrep&&g&&g.state!=='over'){ resumeAfterPrep=false; if(mode==='pong') pgKeep(); countT=3; go('count-resume'); return; }
   resumeAfterPrep=false; if(mode==='pong'){ pgCountStart(); return; } countT=3; mixStart(); if(scr!=='wave') shipY=null; lastHand=handFrac()===null?lastHand:handFrac(); /* from the try-out the ship goes on where it is */ Logs.ev('отсчёт',{field:+T.field.toFixed(1),auto:T.auto}); store.set('sonaroids_field',Math.round(T.field));
   // v1.14: a hand calibration's middle (the echo's range) — the auto-calibration plays with it (20_sonar liveMid)
@@ -8262,7 +8348,7 @@ var ACT={
   hub_rocks:function(){ modeSet('fly'); go('title'); }, rskin:function(){ raceSkinStep(1); }, rskin_next:function(){ raceSkinStep(1); }, rskin_prev:function(){ raceSkinStep(-1); }, hub_play:function(){ modeSet('fly'); go('title'); }, hub_race:function(){ modeSet('race'); go('rtitle'); }, hub_pong:function(){ modeSet('pong'); go('ptitle'); },   // v1.59
   pg_hint:function(){ PG.hint=pgHint()===1?2:1; store.set('sonaroids_pong_hint',String(PG.hint)); },   // v1.61j: О1 ↔ О2, until Den picks
   pg_skin:function(){ PG.skin=1-pgSkin(); store.set('sonaroids_pong_skin',String(PG.skin)); },   // v1.61i: light ↔ dark «набросок»
-  pg_sens:function(){ PG.sens=(pgSens()+1)%4; store.set('sonaroids_pong_sens',String(PG.sens)); if(g&&g.ball!==undefined&&g.state==='play'){ g.H=Pong.TUNE.SENS[PG.sens]; Logs.gameEv('sens',[g.n,PG.sens]); Board.mark([g.n,'sens',PG.sens]); pgRecMark([g.n,'sens',PG.sens]); }   /* 1.61p: in the log — a replay needs it; 1.62b: and the server's */ }, pg_rehold:function(){ pgWaveStart(scrT-WAVE_PAUSE+1); }, pg_recal:function(){ var c=PG.c; PG.prevCal=c?{lin:c.lin,mxCal:c.mxCal,mxOff:c.mxOff}:null; if(!(booted&&Sonar.healthy())){ resumeAfterPrep=true; PG.resume=false; ensure(null); return; } PG.resume=true; flipT=-9; go('phold'); pgWaveStart(); },
+  pg_sens:function(){ PG.sens=(pgSens()+1)%4; store.set('sonaroids_pong_sens',String(PG.sens)); if(PD.on&&PD.pz&&PD.N){ pdSens(PG.sens); return; } if(g&&g.ball!==undefined&&g.state==='play'){ g.H=Pong.TUNE.SENS[PG.sens]; Logs.gameEv('sens',[g.n,PG.sens]); Board.mark([g.n,'sens',PG.sens]); pgRecMark([g.n,'sens',PG.sens]); }   /* 1.61p: in the log — a replay needs it; 1.62b: and the server's */ }, pg_rehold:function(){ pgWaveStart(scrT-WAVE_PAUSE+1); }, pg_recal:function(){ var c=PG.c; PG.prevCal=c?{lin:c.lin,mxCal:c.mxCal,mxOff:c.mxOff}:null; if(!(booted&&Sonar.healthy())){ resumeAfterPrep=true; PG.resume=false; ensure(null); return; } PG.resume=true; flipT=-9; go('phold'); pgWaveStart(); },
   /* v1.61l: the pause's «Подстроить ладонь» can be left — the corner's «back» returns to the pause with the calibration as it was (before: only «menu», with the old one already wiped and the game left hanging; the next «play» went on with it) */
   pg_back:function(){ var c=PG.c, q=PG.prevCal; if(c&&q){ c.wave=null; c.lin=q.lin; c.mxCal=q.mxCal; c.mxOff=q.mxOff; c.mxH=null; } PG.resume=false; PG.done=!!(c&&c.lin); pausedFrom='play'; go('paused'); },
   /* v1.58 (Ден, 7.10, после «Жонглёра» в лабе — «лучшее управление, что я вообще пробовал»: «да, сделай переключатель в меню паузы —
@@ -8362,7 +8448,7 @@ window.addEventListener('orientationchange',function(){ setTimeout(resize,250); 
 Sonar.listen(Logs.frame);
 
 /* countdown after a pause: the game itself continues from where it stopped */
-function sCountResume(){ countT-=DT; field(DT,0); var n=Math.max(1,Math.ceil(countT)), cx0=Math.round(LW/2), cy0=Math.round(LH/2);
+function sCountResume(){ if(mode==='pong'&&g&&g.duo&&PD.N){ countT=Math.min(2.999,(PD.rsT-Link.now())/1000); countT+=DT; }   /* v1.64f: together — to the moment both resume at */ countT-=DT; field(DT,0); var n=Math.max(1,Math.ceil(countT)), cx0=Math.round(LW/2), cy0=Math.round(LH/2);
   ring(cx0,cy0,13,1-(countT-Math.floor(countT)),P.band); text(String(n),cx0,cy0-3,P.text,'center');
   if(countT<=0){ acc=0; go('play'); } }
 
@@ -8384,7 +8470,7 @@ function loop(now){ Sfx.setGame(mode);   /* 1.61w: which game's sounds */
   // v0.74: a shapes-only skin with «pixels» — the same canvas at 1 px per game pixel   // v0.72: the HD world canvas under the pixel one
   uiColours(scr!=='hub'); obsTick(); pdTick();   // v1.42: the heavy skin's canvas hidden on a frame that drew no field
   switch(scr){
-    case 'pduo': sPDuo(); break; case 'pduowait': sPDuoWait(); break; case 'pduoin': sPDuoIn(); break; case 'pduo2': sPDuo2(); break;   // v1.64c: SonaLob together (src/48_pongduo.js)
+    case 'pduo': sPDuo(); break; case 'pduowait': sPDuoWait(); break; case 'pduoin': sPDuoIn(); break; case 'pduo2': sPDuo2(); break; case 'pdpause': sPDPause(); break;   // v1.64c: SonaLob together (src/48_pongduo.js)
     case 'lang': sLang(); break; case 'title': sTitle(); break; case 'rtitle': sRTitle(); break; case 'ptitle': sPTitle(); break; case 'phold': sPHold(); break; case 'phowto': sPHow(); break; case 'skins': sSkins(); break; case 'rset': sRSet(); break; case 'hub': sHub(); break;
     case 'sound': sSound(); break;
     case 'phone': sPhone(); break; case 'mic': sMic(); break; case 'probe': sProbe(); break; case 'away': sAway(); break; case 'wave': sWave(); break;
@@ -8455,7 +8541,7 @@ function audAct(id){ var p=id.split(':'), k=p[1], v=p.slice(2).join(':');
   else if(k==='retest') Sonar.audioRetest();
   else if(k==='lab'){ location.href='../lab/sonar_lab3.html'; return; }
   Sonar.restart(); booted=false; acoustic=false; audDev=null; }
-var NO_MENU={hub:1,title:1,rtitle:1,ptitle:1,lang:1,paused:1,restart:1,play:1,over:1},   /* v1.55 (the review's п.14): the game over has its «menu» button */ NO_VER={phold:1,phowto:1,skins:1,rset:1,hub:1,over:1,play:1,count:1,'count-resume':1,paused:1,restart:1};
+var NO_MENU={hub:1,title:1,rtitle:1,ptitle:1,lang:1,paused:1,restart:1,play:1,over:1,pdpause:1,pduowait:1,pduo2:1},   /* v1.64f: SonaLob together — its screens have their own way out */   /* v1.55 (the review's п.14): the game over has its «menu» button */ NO_VER={phold:1,phowto:1,skins:1,rset:1,hub:1,over:1,play:1,count:1,'count-resume':1,paused:1,restart:1,pdpause:1};
 function chrome(){ if(LH>LW) return;
   var s=BH-3, vr=freeSide()!=='left', x=vr?LW-Math.round(SAFE.r*0.5)-10-s:Math.round(SAFE.l*0.5)+10, y=SAFE.t+7;
   if(!NO_MENU[scr]) iconButton(scr==='phold'&&PG.resume?'pg_back':scr==='count'||scr==='count-resume'?'pause':scr==='scores'?'sc_back':scr==='settings'?'set_back':scr==='skins'?'sk_back':scr==='audio'&&audFrom==='settings'?'settings':'menu',x,y);
@@ -8472,9 +8558,9 @@ go('hub');   // v0.70: the games' screen first (always the menu first since 0.44
 requestAnimationFrame(loop);
 /* test hooks: headless tests drive the screens through these (harmless in the game) */
 window.__sonaroids={mixStart:function(){ mixStart(); },setSkin:function(id){ setSkin(id); return SK&&SK.id; },obsProbe:function(k,a,b){ return obsProbe(k,a,b); },obs:function(c){ if(c==='roll') FLY.roll=0; return {ok:OBS.ok,err:OBS.err,vis:OBS.vis,bd:OBS.bd,od:OBS.od,n:OBS.list.length,an:OBS.an.length,f16:OBS.f16,sk:SK.id}; },fxBurst:function(x,y,n,kind){ var BU=SK.bursts(); burst(fx(x),y*K,n,BU[kind]||BU.rock,50*K); },mixNow:function(){ MX.next=MX.t; if(!MX.pend) MX.pend=mixPick(); },mixInfo:function(){ return {on:mixOn(),cur:mixCur(),pend:MX.pend,tr:MX.tr?MX.tr.t:null,hist:MX.hist.slice(),fly:flyMix,race:raceMix}; },noteZones:function(){ return RC.zones?RC.zones.slice():null; },noteRivals:function(v){ RN_RIV=v; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },noteInfra:function(f){ RN_FORCE=f||null; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },raceNote:function(o){ for(var k in o) RN_LOOK[k]=o[k]; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },raceSuper:function(v){ R_SUPER=v; },racePal:function(pud,bub){ if(pud) for(var k in pud) R_PUD[k]=pud[k]; if(bub) for(var j in bub) R_BUB[j]=bub[j]; RC.sp={}; },skinProbe:skinProbe,hdProbe:hdProbe,sizeProbe:sizeProbe,hdIds:hdIds,pixIds:function(){ return SKIN_IDS.filter(function(i){ return !!SKINS[i]; }); },skinIds:function(){ return SKIN_IDS.slice(); },go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },
-  setBooted:function(v){ booted=v; }, pongBot:function(){ var b=PG._bot||(PG._bot=pgDemoBot()); return g&&g.ball!==undefined&&g.state==='play'?b(g):null; },   /* v1.63a: the menu's rally bot over the live game — the readme's pictures (promo/make_lob.js) */ link:Link, pongNet:PongNet, duo:function(){ var N=PD.N; return {on:PD.on,side:PD.side,left:PD.left,me:pdMe(),peer:PD.peer,pst:PD.pst,ready:PD.ready,code:PD.code,near:PD.near,msg:PD.msg,state:pdState(),
+  setBooted:function(v){ booted=v; }, pongBot:function(){ var b=PG._bot||(PG._bot=pgDemoBot()); return g&&g.ball!==undefined&&g.state==='play'?b(g):null; },   /* v1.63a: the menu's rally bot over the live game — the readme's pictures (promo/make_lob.js) */ link:Link, pongNet:PongNet, duo:function(){ var N=PD.N; return {pz:PD.pz?{n:PD.pz.n,by:PD.pz.by}:null,ep:PD.ep,mk:PD.mk.length,on:PD.on,side:PD.side,left:PD.left,me:pdMe(),peer:PD.peer,pst:PD.pst,ready:PD.ready,code:PD.code,near:PD.near,msg:PD.msg,state:pdState(),
     game:N?{n:N.g.n,state:N.g.state,score:N.g.score,passes:N.g.passes,lives:N.g.lives,seed:PD.cfg.seed,myAck:PD.myAck,hisAck:PD.hisAck,rb:N.rb,rbMax:N.rbMax,lost:N.lost,pys:N.g.pys.slice(),behind:(Link.now()-PD.cfg.t0)/1000*60-N.g.n}:null}; }, duoGame:function(){ return PD.N?PD.N.g:null; }, duoReplay:function(){ var c=PD.cfg, nn=PD.N.g.n, a=PD.me===0?PD.mineAll:PD.his, b2=PD.me===0?PD.his:PD.mineAll, f=function(x){ var o=[]; for(var i=0;i<nn;i++) o.push(x[i]===undefined||x[i]===null?null:x[i]/10000); return o; };
-    var r=Pong.replay2(c.seed,PG_AR,c.sens,c.span,f(a),f(b2),[]); return {n:r.n,score:r.score,passes:r.passes,falls:r.falls,state:r.state}; }, pgClips:function(){ return PG.clips?{n:PG.clips.length,check:PG.clipCheck,clips:PG.clips.map(function(c){ return {who:c.who,pts:c.pts,h:c.h,frames:c.fr.length}; })}:null; }, setShake:function(v){ shake=v; },
+    var r=Pong.replay2(c.seed,PG_AR,c.sens,c.span,f(a),f(b2),PD.mk); return {n:r.n,score:r.score,passes:r.passes,falls:r.falls,state:r.state}; }, pgClips:function(){ return PG.clips?{n:PG.clips.length,check:PG.clipCheck,clips:PG.clips.map(function(c){ return {who:c.who,pts:c.pts,h:c.h,frames:c.fr.length}; })}:null; }, setShake:function(v){ shake=v; },
   board:function(){ return {tbl:tblBox,nick:nickEl?{shown:nickEl.style.display!=='none',rect:nickEl.getBoundingClientRect().toJSON()}:null}; },
   side:function(){ return {hand:handSide(),rel:handRel,cam:camEnd(),stored:store.get('sonaroids_rel',''),say:sayLast}; }, wave:function(){ toWave(); },
   fake:function(){ booted=true; prep={res:{ok:true},doneT:-9}; T=Tune.create(100,true); T.ok=true; caught=true;          // a stand-in state for layout checks

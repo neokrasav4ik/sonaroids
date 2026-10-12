@@ -4,7 +4,7 @@
 
 <p align="center"><img src="promo/sonaroids_skins_en.gif" width="640" alt="A phone floating in the air with a palm at its charging end. The palm moves to and from the phone, ultrasound arcs run from the end to it, the ship on the screen follows the palm, and the world around it changes mid-flight by the playlist: space, vector 80s, notebook, neon, retro LCD. Two plates below: «Sonar control — your palm in mid-air instead of buttons» and «Skin playlist — the world changes mid-flight»"></p>
 
-**Games you play with your palm in mid-air.** You never touch the screen: the phone plays an inaudible ultrasonic tone through its own speaker, listens to the echo with its own microphone and works out how far your palm is. That distance becomes the height of your ship or your car. No camera, no extra hardware, nothing to install — it is a web page.
+**Games you play with your palm in mid-air.** You never touch the screen: the phone plays an inaudible ultrasonic tone through its own speaker, listens to the echo with its own microphone and works out how far your palm is. That distance becomes the height of your ship, your car or your rackets. No camera, no extra hardware, nothing to install — it is a web page.
 
 - **Sonar control** — your palm in mid-air instead of buttons.
 - **Skin playlist** — six worlds in SonaFly (a seventh, obsidian, on flagship phones) and three in SonaRace: build a playlist of them and the world changes right during the game.
@@ -15,7 +15,7 @@
 
 ## The games
 
-<p align="center"><img src="promo/games.png" width="640" alt="The games' screen: two cards, SonaFly (a ship among rocks) and SonaRace (a car on a chocolate road)"></p>
+<p align="center"><img src="promo/games.png" width="640" alt="The games' screen: three cards — SonaFly (a ship among rocks), SonaRace (a car on a chocolate road) and SonaLob (two planks drawn in pen, a shuttle under the ceiling)"></p>
 
 ### SonaFly — a space shooter
 
@@ -47,6 +47,21 @@ The car drives itself and slowly speeds up; your palm steers it across the road.
 - **Gifts:** a magnet pulls coins and gifts in, a shield bubble takes one knock. The **super gift** — turbo, magnet and shield at once — comes exactly once in every eight gifts.
 - **Three skins:** the candy land, the notebook and the pirate world — a red speedboat down a river from a tropical lagoon through a Finnish forest to the Viking fjords and back, past rafts, longships, canoes, swan pedalos and galleons — each in HD or in pixels. Steering: along the road (the default — the car keeps its place across the road through the bends) or by height.
 
+### SonaLob — a high-lob rally
+
+<p align="center"><img src="promo/sonalob_light.png" width="49%" alt="SonaLob in the light sketch: two planks drawn in pen on sketchbook paper with little players holding rackets, the shuttle with a red cork near the hatched ceiling, the score and the multiplier written by the same pen"> <img src="promo/sonalob_dark.png" width="49%" alt="SonaLob in the dark sketch: the same planks and players in white ink on dark paper, the shuttle high under the ceiling"></p>
+
+One palm moves both rackets at once: the shuttle flies from one racket to the other, and you keep the rally going. The racket that meets the shuttle hits it with the speed of your palm.
+
+- **Points for the height of the arc:** the higher, the more; the most just under the ceiling. Clean passes in a row add ×0.1 each, up to ×1.5.
+- **The ceiling cracks:** a touch scores nothing and leaves a crack where the shuttle hit; on the fifth crack a spider comes out and takes the shuttle. Five shuttles a game; a shuttle lost any other way takes its cracks with it.
+- **The rackets get shorter** every 30 seconds and the points grow, up to ×2; from the 4th minute the spider draws the ceiling down with its web.
+- **Drawn by hand:** a light or a dark sketch — pen on paper, little players who run under the shuttle, nozzles under the planks that fire when a plank shoots up. Its own wooden and pencil sounds; each clean pass in a row rings a note higher.
+- **After a game:** each racket's best arc again, at half speed, with its height and its points.
+- **Getting ready:** wave as you'll hit, then try the rackets out; «How to play» shows the rules in four drawn pictures. The one setting is the sensitivity — how far the rackets travel for your palm.
+
+<p align="center"><img src="promo/sonalob_over.png" width="640" alt="SonaLob's game over: the score on a plaque, and below it «The best arcs again · 0.5×» — two windows replaying the left and the right racket's best arc, signed with the arc's height in percent and its points"></p>
+
 ## How to play
 
 There are two ways:
@@ -62,9 +77,9 @@ There are two ways:
 
 A game lasts a few minutes: the pace keeps growing, and a hand held in the air gets tired too — that's part of it.
 
-**Skins** in both games: the menu's «◀ ▶» arrows step through the skins, a tap in the middle opens the «Skins» screen. There you leaf through the skins and build a playlist with «+ ADD TO PLAYLIST» / «- REMOVE»; it is shown as a line under the card. One skin in it — you always play in it; several — they change during the game, in turn or at random, after the time you set (15–120 s, or 25–40 s at random). The «All in a row» tick turns them all on; untick it and your playlist comes back.
+**Skins** in SonaFly and SonaRace: the menu's «◀ ▶» arrows step through the skins, a tap in the middle opens the «Skins» screen. There you leaf through the skins and build a playlist with «+ ADD TO PLAYLIST» / «- REMOVE»; it is shown as a line under the card. One skin in it — you always play in it; several — they change during the game, in turn or at random, after the time you set (15–120 s, or 25–40 s at random). The «All in a row» tick turns them all on; untick it and your playlist comes back.
 
-**The pause** in both games: go on, start over (straight away or with a new fit), end the game, exit to the menu. Beside them are the skin, the graphics (HD or pixels) and the sounds "- SOUNDS ▮▮▮▮▮▮▯▯ +": eight levels, a tap in the middle switches them off and on. The skin and the graphics can be changed in the middle of a game. If the game's own sounds get too loud for the microphone, it turns them down by itself.
+**The pause** in SonaFly and SonaRace: go on, start over (straight away or with a new fit), end the game, exit to the menu. Beside them are the skin, the graphics (HD or pixels) and the sounds "- SOUNDS ▮▮▮▮▮▮▯▯ +": eight levels, a tap in the middle switches them off and on. The skin and the graphics can be changed in the middle of a game. If the game's own sounds get too loud for the microphone, it turns them down by itself.
 
 **Settings** (the games' screen): sounds; graphics (chosen in the game, always HD or always pixels); the probe band (chosen before a game, always wide or always normal); auto-calibration; room following (for the manual calibration); advanced probe settings (only in the Android app — the microphone, the speaker, the volume).
 
@@ -92,9 +107,9 @@ With the app and the wide probe a **Mi 9 Lite** (from 2019) plays like an iPhone
 
 Each game has its own tables: today, this week and all time. The first time a game makes a table, it asks for a name (Latin letters, digits, `_`). A transfer code moves your name and scores to another browser or phone.
 
-**Bots play in the tables too** — about 40 players the server plays itself, from beginners to strong ones, so there is always someone to beat. Their games are real — the game's bot, by the same rules — and the strongest stay a little below the best person. A long press on the version number on the scores screen leaves them out — «PEOPLE ONLY» shows over the table; another long press brings everyone back.
+**Bots play in SonaFly's and SonaRace's tables too** — about 40 players the server plays itself, from beginners to strong ones, so there is always someone to beat. Their games are real — the game's bot, by the same rules — and the strongest stay a little below the best person. A long press on the version number on the scores screen leaves them out — «PEOPLE ONLY» shows over the table; another long press brings everyone back.
 
-What goes to the server is not a score but the game itself: the layout number and the palm height at every step, a few KB. Both games are deterministic — even steps 60 times a second, random numbers from a seed, no transcendental functions. So the server replays every game with the very same code (`src/13_core.js` for SonaFly, `src/14_race.js` for SonaRace) and keeps the score only if it repeats.
+What goes to the server is not a score but the game itself: the layout number and the palm height at every step, a few KB. All three games are deterministic — even steps 60 times a second, random numbers from a seed, no transcendental functions. So the server replays every game with the very same code (`src/13_core.js` for SonaFly, `src/14_race.js` for SonaRace, `src/15_pong.js` for SonaLob) and keeps the score only if it repeats.
 
 A player is a random key kept on the phone; the server stores only its hash. With each game goes a short note on the phone: iOS or Android, the browser, the model (on Android), which probe, the volume, how well it heard the probe. That shows where the sonar works. The server stores no user agent string and no IP. It is plain Node + SQLite, in `server/`.
 
@@ -133,8 +148,8 @@ python3 tests/run_par.py --changed   # only what the changes since the last comm
 | `12_tune.js` | fitting the screen to the palm's range |
 | `13_core.js` | SonaFly: the flight and its rules; deterministic, with the rules tag the server checks |
 | `14_race.js` | SonaRace: the road, the cars, the gifts and the rules; deterministic, with its own rules tag |
-| `15_pong.js` | SonaPong (being moved from the lab, not on screen yet): two rackets on one palm, the ball, the serve, the points and the narrowing; deterministic, with its own rules tag; `tests/test_pong.js` checks it plays the lab's game bit for bit |
-| `16_pong_ctl.js` | SonaPong's control (from the lab): the «mix» the rackets follow (the echo's distance + an offset, the phase for quick moves) and the calibration's two holds; `tests/test_pong_ctl.js` |
+| `15_pong.js` | SonaLob: two rackets on one palm, the shuttle, the serve, the points for the arc's height, the series, the cracks and the spider, the narrowing and the web; deterministic, with its own rules tag; `tests/test_pong.js` checks it plays the lab's game bit for bit |
+| `16_pong_ctl.js` | SonaLob's control, one code with the lab: the «mix» the rackets follow (the echo's distance + an offset, the phase for quick moves), the calibration by waving and the auto-calibration; `tests/test_pong_ctl.js` |
 | `17_palmclock.js` | The palm's height in time for SonaFly and SonaRace: where a phone hands the sonar's frames over in bunches (the Mi 9 Lite: two at once every 21 ms), each game step takes the height at its own moment, between two frames; `tests/test_palmclock.js` |
 | `20_sonar.js` | speaker and microphone: the probe, side check, levels and volume, getting ready; the Android app's own sound |
 | `21_log.js` | setup and game logs (WAV + JSON) for the lab's tools |
@@ -144,7 +159,9 @@ python3 tests/run_par.py --changed   # only what the changes since the last comm
 | `40_gfx.js`, `41_sprites.js`, `42_guide.js` | drawing, pixel sprites, the drawn phones of getting ready and the instructions |
 | `42_hands.js` | the hands of those pictures in HD, as pictures — made by `hands/make_hands.py` |
 | `43_skins.js`, `45_hd.js`, `46_vecskins.js`, `47_pixskins.js`, `48_sizes.js`, `48_flight.js` | SonaFly's skins: pixels, HD, shape skins; things drawn the size the game counts them |
-| `48_pong.js` | SonaPong's screens: the card, the menu, the two holds, the game, its HUD, the game over (a stand-in look until its skins); `tests/pong_flow.js` |
+| `39_sketch.js` | SonaLob's «sketch», one code with the lab: the paper, the pen, the planks, the players, the shuttle, the cracks and the spider |
+| `48_pong.js` | SonaLob's screens: the card, the menu, the waving and the try-out, the game, the pause, «How to play», the game over with the best arcs again; `tests/pong_flow.js` |
+| `48_pongsk.js` | feeds SonaLob's game to the sketch; the two skins, the points by the shuttle, the drawn phone of getting ready |
 | `48_racehd.js`, `48_racecandy.js`, `48_racenote.js`, `48_racepirate.js` | SonaRace's candy land, notebook and pirate world, in HD and in pixels |
 | `48_obsidian.js` | obsidian: its own WebGL2 canvas under the main one, the ink, rings, wakes and every object in shaders; lowers its own quality when frames run late |
 | `48_mix.js` | the skins' list: which are on, how often and in what order they change in a game |
@@ -159,9 +176,9 @@ sh tests/run.sh                  # the games and the server (~9 min: the real-ti
 cd lab && sh tools/run_all.sh    # the sonar lab
 ```
 
-Node 22.13+ (the server uses `node:sqlite`) and Python 3. The screen and full-game checks play both games in headless Chromium with a synthetic microphone and a fake high-score server. They need Playwright and are skipped without it. Every check has a time limit (about three times its usual run): one that hangs is stopped and reported «HUNG», the rest go on; while a run is on, `build.py` will not rewrite the game (`tests/.running`). Obsidian is checked on a software graphics chip (SwiftShader) with `?obs=force`: `tests/obsidian_sizes.js` measures its objects against the same bounds as every other skin. To look at skins on a computer, `?mouse=1` (or «MOUSE INSTEAD OF SONAR» on the title's test panel) lets the mouse fly the ship instead of the palm; such games are marked as tests and don't go to the high scores. On every check bots drive over a hundred SonaRace races to keep a race's length and difficulty where they were tuned. GitHub Actions runs the checks on every push to `main` and publishes the site only if they pass.
+Node 22.13+ (the server uses `node:sqlite`) and Python 3. The screen and full-game checks play all three games in headless Chromium with a synthetic microphone and a fake high-score server. They need Playwright and are skipped without it. Every check has a time limit (about three times its usual run): one that hangs is stopped and reported «HUNG», the rest go on; while a run is on, `build.py` will not rewrite the game (`tests/.running`). Obsidian is checked on a software graphics chip (SwiftShader) with `?obs=force`: `tests/obsidian_sizes.js` measures its objects against the same bounds as every other skin. To look at skins on a computer, `?mouse=1` (or «MOUSE INSTEAD OF SONAR» on the title's test panel) lets the mouse fly the ship instead of the palm; such games are marked as tests and don't go to the high scores. On every check bots drive over a hundred SonaRace races to keep a race's length and difficulty where they were tuned. GitHub Actions runs the checks on every push to `main` and publishes the site only if they pass.
 
-The version is in `VERSION`: it shows on the games' screen and goes into the logs. `CHANGELOG.md` says what each version changed and why. When a change alters play, the rules tag in `src/13_core.js` or `src/14_race.js` changes too, and the server is updated together with the site.
+The version is in `VERSION`: it shows on the games' screen and goes into the logs. `CHANGELOG.md` says what each version changed and why. When a change alters play, the rules tag in `src/13_core.js`, `src/14_race.js` or `src/15_pong.js` changes too, and the server is updated together with the site.
 
 ### GIFs and pictures
 
@@ -171,6 +188,7 @@ All taken from the real games in headless Chromium (needs Playwright):
 PROMO=mix NODE_PATH=$(npm root -g) node promo/make_promo.js && PROMO=mix python3 promo/make_promo.py   # the GIF at the top (the skin playlist): promo/sonaroids_skins_en.gif, _ru (+ *_full.gif, 800×450)
 NODE_PATH=$(npm root -g) node promo/make_promo.js && python3 promo/make_promo.py   # the earlier GIF, four games one after another: promo/sonaroids_en.gif, sonaroids_ru.gif
 PROMO=pixel NODE_PATH=$(npm root -g) node promo/make_promo.js && PROMO=pixel python3 promo/make_promo.py   # the same with the games in pixels: promo/sonaroids_pixel_*.gif
+NODE_PATH=$(npm root -g) node promo/make_lob.js                                    # SonaLob's pictures and the games' screen: promo/sonalob_*.png, games.png
 NODE_PATH=$(npm root -g) node promo/make_shots.js                                  # the games' pictures: promo/games.png, sonafly_skins.png, sonarace_*.png
 sh promo/make_all.sh                                                               # the older pixel GIFs (table and hand)
 ```

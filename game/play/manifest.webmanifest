@@ -1,7 +1,7 @@
 {
   "name": "Sonaroids",
   "short_name": "Sonaroids",
-  "description": "A tiny retro space game you steer with your palm, without touching the screen.",
+  "description": "Games you play with your palm in mid-air, without touching the screen: a space shooter, a race and a high-lob rally. The phone hears your hand with ultrasound.",
   "start_url": ".",
   "scope": ".",
   "display": "fullscreen",

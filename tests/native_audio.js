@@ -60,7 +60,7 @@ const APPSTUB=`(function(){ var st={on:false,g:[0,0,0,0],probes:0,iv:null,frames
   const p3=await ctx.newPage(); await p3.addInitScript(()=>{ window.__same=true; localStorage.removeItem('sonaroids_autoaudio'); });
   await p3.goto('file://'+path.join(ROOT,'game','play','index.html')); await p3.waitForTimeout(300);
   await p3.evaluate(()=>__sonaroids.act.play()); await p3.waitForTimeout(400); await p3.evaluate(()=>__sonaroids.act.probe_norm());
-  let same=null; t0=Date.now(); while(Date.now()-t0<25000){ same=await p3.evaluate(()=>Sonar.info().auto_audio); if(same) break; await p3.waitForTimeout(250); }
+  let same=null; t0=Date.now(); while(Date.now()-t0<45000){   /* 1.63a: 45 s — under load the pick took longer than 25 s now and then (12.10) */ same=await p3.evaluate(()=>Sonar.info().auto_audio); if(same) break; await p3.waitForTimeout(250); }
   const sameOk=!!(same&&same.same&&same.pick&&same.pick.mic===3);
   await b.close();
   const autoOk=!!(info.auto&&info.auto.tried.length===2&&info.auto.pick&&info.auto.pick.mic===3&&info.stored&&JSON.parse(info.stored).mic===3);

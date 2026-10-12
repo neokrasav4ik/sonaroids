@@ -152,10 +152,38 @@ function pgCount(){ countT-=DT; var v=pgView(PG.view?PG.view.py:Pong.TUNE.PAD_LO
 function pgCountStart(){ pgKeep(); countT=3; try{ DSP2.set('quarter',1); }catch(e){} go('count'); }
 function pgStart(){ PG.fps=null; PG.resume=false; PG.resumed=false; var seed=newSeed(); var lin=PG.c&&PG.c.lin; g=Pong.create(seed,pgAr(),pgSens(),lin?Math.max(30,lin.t-lin.b):null); var f=PG.c?PongCtl.frac(PG.c,PongCtl.palm(PG.c)):null; if(f!==null) g.py=Pong.padOf(g,f);
   acc=0; parts=[]; PG.pts=[]; PG.newBest=false; nickAsked=false; var I=Sonar.info(), c=PG.c||{};
-  Board.start(seed,null,null,{game:'pong',core:Pong.TAG,ar:g.ar,sens:pgSens(),span:g.span});   /* v1.62b: the game goes to SonaLob's tables (the server replays it) */
+  Board.start(seed,null,null,{game:'pong',core:Pong.TAG,ar:g.ar,sens:pgSens(),span:g.span});
+  PG.rec={seed:seed,ar:g.ar,sens:pgSens(),span:g.span,hands:[],marks:[],cur:null,best:[null,null]}; PG.clips=null;   /* v1.62c: what the best arcs' replay needs */   /* v1.62b: the game goes to SonaLob's tables (the server replays it) */
   Logs.gameStart({core:Pong.TAG,game:'pong',auto_cal:!!PG.auto,seed:seed,ar:+g.ar.toFixed(4),sens:pgSens(),span:g.span,cal:DSP2.info().cal,lin:c.lin?{b:+c.lin.b.toFixed(1),t:+c.lin.t.toFixed(1)}:null,mix_off:c.mxCal===null||c.mxCal===undefined?null:+c.mxCal.toFixed(1),
     chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids'});
   Sfx.lob('start'); go('play'); }
+/* ── v1.62c: the best arcs again (Den 11:19–11:35: «пара самых лучших ударов каждой ракетки после игры.. как типичный реплай» → the
+   sketches «Повтор лучших дуг», C: «размер окон и 0,5× из C2, % высоты как в C1»). Every rules step's palm and the marks are kept; each
+   racket's best clean pass (the most points; a ceiling touch scores none) is remembered by its steps — from the hit to the catch. At the
+   end the game is stepped again from its seed with the same palm (the rules are deterministic — the same game, as the server's replay),
+   and the frames of those two arcs are kept: the game over shows them in two windows, round and round at half speed ── */
+function pgRecMark(m){ if(PG.rec) PG.rec.marks.push(m); }
+function pgRecStep(f){ var R=PG.rec; if(!R) return; R.hands.push(f);
+  (g.fx||[]).forEach(function(x){ if(x.kick!==undefined) R.cur={who:x.kick,n0:g.n};
+    if(x.pts&&R.cur){ var b=R.best[R.cur.who]; if(!b||x.pts>b.pts) R.best[R.cur.who]={who:R.cur.who,n0:R.cur.n0,n1:g.n,pts:x.pts,f:x.f}; R.cur=null; } }); }
+var PG_PRE=24, PG_POST=30;   // the clip: 0.4 s before the hit, 0.5 s after the catch
+function pgSnap(q){ return {t:q.t,n:q.n,py:q.py,hw:q.hw,H:q.H,webD:q.webD||0,k:q.k,crk:(q.crk||[]).slice(),ceils:q.ceils,falls:q.falls,score:q.score,series:q.series,ball:q.ball?Object.assign({},q.ball):null,fx:(q.fx||[]).slice(),state:'play'}; }
+function pgClipsMake(){ var R=PG.rec; PG.clips=null; if(!R) return; var want=R.best.filter(function(b){ return b; }); if(!want.length) return;
+  var g2=Pong.create(R.seed,R.ar,R.sens,R.span), M=R.marks, m=0, i, clips=want.map(function(b){ return {who:b.who,pts:b.pts,h:Math.round(b.f*100),a:Math.max(1,b.n0-PG_PRE),z:b.n1+PG_POST,fr:[]}; });
+  for(i=0;i<R.hands.length&&g2.state!=='over';i++){ while(m<M.length&&M[m][0]<=g2.n){ if(M[m][1]==='resume') Pong.resume(g2); else if(M[m][1]==='sens'&&Pong.TUNE.SENS[M[m][2]]) g2.H=Pong.TUNE.SENS[M[m][2]]; m++; }
+    Pong.step(g2,R.hands[i]); clips.forEach(function(c){ if(g2.n>=c.a&&g2.n<=c.z) c.fr.push(pgSnap(g2)); }); }
+  clips=clips.filter(function(c){ return c.fr.length>PG_PRE; }); clips.sort(function(a,b){ return a.who-b.who; });
+  clips.forEach(function(c){ c.v={}; c.t0=null; c.at=-1; });
+  PG.clips=clips.length?clips:null; PG.clipCheck=g2.score; }   // the stepped-again game ends where the game did (a test checks)
+/* one window: the clip's time → its frame, between two rules steps in proportion (half speed, 30 steps a second, drawn smoothly) */
+function pgClipView(c,now){ if(c.t0===null) c.t0=now; var L=c.fr.length/30+0.7, s=((now-c.t0)/1000)%L*30, i=Math.min(c.fr.length-1,Math.floor(s)), j=Math.min(c.fr.length-1,i+1), u=Math.min(1,s-i), A=c.fr[i], B=c.fr[j], v=c.v;
+  if(i<c.at){ v._sk=null; v._pgs=null; }   // round again: the drawing starts afresh
+  for(var k in A) if(k!=='ball'&&k!=='fx') v[k]=A[k];
+  v.t=A.t+(B.t-A.t)*u; v.py=A.py+(B.py-A.py)*u; v.ball=A.ball?Object.assign({},A.ball):null;
+  if(v.ball&&B.ball){ ['x','y','vx','vy'].forEach(function(k){ v.ball[k]=A.ball[k]+(B.ball[k]-A.ball[k])*u; }); }
+  v.fx=i!==c.at?A.fx:[]; if(i!==c.at) pgSkFx(v); c.at=i; return v; }
+function pgClipDraw(c,k,x,y,w,h,now){ var v=pgClipView(c,now), fh=Math.max(4,Math.round(h*Math.max(1,uiS)*1.5)), fc=pgSkClip(v,fh,'clip'+k);
+  var sm=lx.imageSmoothingEnabled; lx.imageSmoothingEnabled=true; lx.drawImage(fc,x,y,w,h); lx.imageSmoothingEnabled=sm; }
 /* ── the game ── */
 var PG_SND={go:'tap',land:'tap',ceil:'rub',pass:'coin',dull:'syrup',lost:'crash',narrow:'level'};
 /* v1.61t — SonaLob's sounds (src/22_sfx.js Sfx.lob), from the rules' events of one step. The hit (the shuttle leaving a racket) plays the
@@ -190,15 +218,41 @@ function pgPlay(){
   if(now-fp.t>=5000){ Logs.gameEv('кадры',{n:fp.n,s:+((now-fp.t)/1000).toFixed(2),max:Math.round(fp.mx),slow:fp.slow}); fp.t=now; fp.n=0; fp.mx=0; fp.slow=0; }
   while(n<want){ n++; var c=PG.c, f=c?PongCtl.frac(c,c.present?PongCtl.palmAt(c,vs-(want-n)*1000*Pong.DT):null):null;   // 1.59e: the palm at each step's own time (src/16_pong_ctl.js palmAt)
     f=f===null?null:Math.round(f*10000)/10000;   /* 1.61p: the palm rounded to the 4 digits the log keeps, so a replay from the log is the same game (since 1.59g this line sat inside the comment above — the rules got the unrounded palm; the grid was 1/4000, which 4 digits can't hold) */
-    if(PG.resumed){ PG.resumed=false; Pong.resume(g); Logs.gameEv('resume',g.n); Board.mark([g.n,'resume']); }   // 1.61r: the first step after a pause is no swing (pong-8)
-    Pong.step(g,f); Board.step(f); Logs.step({pong:1,n:g.n,FH:1,ship:{y:g.py},lives:g.lives,score:g.score,events:g.events},f); pgReact(); if(g.state==='over') break; }
+    if(PG.resumed){ PG.resumed=false; Pong.resume(g); Logs.gameEv('resume',g.n); Board.mark([g.n,'resume']); pgRecMark([g.n,'resume']); }   // 1.61r: the first step after a pause is no swing (pong-8)
+    Pong.step(g,f); Board.step(f); pgRecStep(f); Logs.step({pong:1,n:g.n,FH:1,ship:{y:g.py},lives:g.lives,score:g.score,events:g.events},f); pgReact(); if(g.state==='over') break; }
   flash=Math.max(0,flash-DT); duckT-=DT; if(duckT<=0&&Sonar.peak()>DUCK_PEAK){ duckT=0.4; if(Sfx.duck()) Logs.gameEv('sounds down',+Sfx.level().toFixed(2)); }
   pgField(g,DT); pgHud(); coveredLine(topY()+40); pgPauseBtn(); say(L('menu_a'));
   if(flash>0&&!pgSkOn()){ lx.globalAlpha=Math.min(0.3,flash); R(P.hit,0,0,LW,LH); lx.globalAlpha=1; }
   if(g.state==='over') endGame(); }
-function pgEnd(){ g.state='over'; overT=0; Logs.gameStop(); Board.finish(g.score); Board.flush(); if(g.score>pgBest()){ PG.best=g.score; PG.newBest=true; store.set('sonaroids_pong_best',PG.best); } go('over'); }
+function pgEnd(){ g.state='over'; overT=0; Logs.gameStop(); Board.finish(g.score); Board.flush(); pgClipsMake(); if(g.score>pgBest()){ PG.best=g.score; PG.newBest=true; store.set('sonaroids_pong_best',PG.best); } go('over'); }
+/* v1.62c: the game over with the best arcs — the result on a compact plaque (the title and the score on one line, the rest below it), then
+   «ПОВТОР ЛУЧШИХ ДУГ · 0,5×» and the windows, each signed with its racket, the arc's height and its points; all in the free side, the
+   buttons where they always are */
+function pgOverItems(){ return [['again',L('again'),'primary'],['over_cal',L('recal')],['menu',L('menu')],['scores',L('scores')]].concat(diag&&Logs.has()?[['logs',L('logs')]]:[]); }
+function pgOverClips(){ var items=pgOverItems(), bw=colW(items), bx=sideX(bw), m=Math.max(8,Math.round(LW*0.03)), left=bx<LW/2;
+  var a0=left?bx+bw+m:SAFE.l+m, a1=left?LW-SAFE.r-m:bx-m, aw=a1-a0, y=topY();
+  var ls=[L('pg_width').replace('{n}',Math.round(Pong.width(g)*100)),L('pg_passes').replace('{n}',g.passes)], bl=boardLine(), hot=null;
+  if(PG.newBest) hot=L('best')+'!'; else if(pgBest()>0) ls.push(L('best')+' '+pgBest());
+  var sub=PF.wrap(ls.join(' · '),aw-16,1), bls=bl?[bl[0]].concat(bl[2]?[bl[2]]:[]):[];
+  var ph=24+sub.length*10+bls.length*10; plaque(a0,y-2,a1,y+ph,0.6);
+  text(L('over'),a0+8,y+4,P.text); text(String(g.score),a1-8,y,P.band,'right',2); if(hot) text(hot,a1-8-PF.width(String(g.score),2)-10,y+4,P.band,'right'); var yy=y+22;   /* «РЕКОРД!» beside the score */
+  sub.forEach(function(l){ text(l,Math.round((a0+a1)/2),yy,P.soft,'center'); yy+=10; });
+  bls.forEach(function(l,i){ text(l,Math.round((a0+a1)/2),yy,i?P.soft:bl[1],'center'); yy+=10; });
+  y+=ph+8; var ly=y; y+=12;
+  var n=PG.clips.length, gap=6, w=Math.floor(n>1?(aw-gap)/2:Math.min(aw,(aw-gap)/2)), h=Math.round(w/PG_AR), cap=12, now=performance.now();
+  var room=LH-SAFE.b-16-y-cap; if(h>room){ h=Math.max(20,room); w=Math.round(h*PG_AR); }
+  var x0=n>1?a0+Math.round((aw-(2*w+gap))/2):a0+Math.round((aw-w)/2); text(L('pg_replay'),x0,ly,P.soft);   // the title over the windows, from their edge
+  PG.clips.forEach(function(c,i){ var x=x0+i*(w+gap); R(P.bg,x-1,y-1,w+2,h+2); pgClipDraw(c,i,x,y,w,h,now);
+    plaque(x,y+h,x+w,y+h+cap,0.85); var rec=Math.floor(clock*2)%2===0; if(rec){ lx.fillStyle='#ec2a17'; lx.beginPath(); lx.arc(x+5,y+h+cap/2,2,0,6.283); lx.fill(); }
+    text(L(c.who?'pg_right':'pg_left')+' · '+c.h+'%',x+10,y+h+3,P.text); text('+'+c.pts,x+w-3,y+h+3,P.band,'right'); });
+  var vs='V'+VERSION, vr=freeSide()==='left', vx=vr?LW-SAFE.r-8:SAFE.l+8, vy=LH-SAFE.b-12, vw=PF.width(vs);
+  text(vs,vx,vy,diag?P.band:P.soft,vr?'right':'left'); var vb0=Math.max(0,(vr?vx-vw:vx)-8), vb1=Math.min(LW,(vr?vx:vx+vw)+8), by0=vy-8; BTN.push({id:'ver',x:vb0,y:by0,w:vb1-vb0,h:Math.min(PF.CAP+16,LH-by0)});
+  say(L('over')+' '+g.score+(bl?'. '+bl[0]:'')+'. '+L('pg_replay'));
+  var lb=Board.last(); if(lb&&lb.state==='done'&&lb.listed&&!lb.named&&!nickAsked&&overT>1.5){ nickAsked=true; nickFrom='over'; go('nick'); return; }
+  if(overT>0.8) column(items,Math.round(LH*0.52)); }
 function pgDrop(){ if(g&&g.ball!==undefined&&g.state!=='over'){ Logs.gameEv('restarted by the player'); g.state='over'; Logs.gameStop(); Board.finish(g.score); if(g.score>pgBest()){ PG.best=g.score; store.set('sonaroids_pong_best',PG.best); } } }
 function pgOver(){ overT+=DT; pgField(g,DT); lx.globalAlpha=0.45; R(P.bg,0,0,LW,LH); lx.globalAlpha=1;
+  if(PG.clips){ pgOverClips(); return; }
   var cx0=freeSide()==='left'?Math.round(LW*0.6):Math.round(LW*0.4), y=Math.round(LH*0.24);
   var ls=[[L('pg_width').replace('{n}',Math.round(Pong.width(g)*100)),P.text],[L('pg_passes').replace('{n}',g.passes),P.text]].concat(PG.newBest?[[L('best')+'!',P.band]]:pgBest()>0?[[L('best')+' '+pgBest(),P.soft]]:[]);
   var bl=boardLine(); if(bl){ ls.push([bl[0],bl[1]]); if(bl[2]) ls.push([bl[2],P.soft]); }   /* v1.62b: the place in SonaLob's tables */

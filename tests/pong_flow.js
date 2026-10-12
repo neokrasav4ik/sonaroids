@@ -51,6 +51,7 @@ const SCEN=`function(t){ if(t<8) return null; return 110-40*Math.cos(2*Math.PI*(
       seen.push('over@'+T().toFixed(1)); over=await p.evaluate(()=>({scr:__sonaroids.scr(),score:__sonaroids.state().g.score,best:+localStorage.getItem('sonaroids_pong_best'),btn:__sonaroids.btn().map(b=>b.id)}));
       /* 1.61p: the game's log replays to the same game — the palm as logged (4 digits, −9 for none) through the rules alone */
       over.lob=await p.evaluate(()=>window.__lob);
+      over.clips=await p.evaluate(()=>({c:__sonaroids.pgClips(),score:__sonaroids.state().g.score,passes:__sonaroids.state().g.passes}));   /* 1.62c: the best arcs' windows */
       over.rep=await p.evaluate(async()=>{ const g=__sonaroids.state().g, bl=Logs.gameBlob(), u8=new Uint8Array(await bl.arrayBuffer()); let i=12; const rd=(o)=>u8[o]|(u8[o+1]<<8)|(u8[o+2]<<16)|(u8[o+3]<<24); let glog=null, meta=null;
         while(i+8<=u8.length){ const id=String.fromCharCode(u8[i],u8[i+1],u8[i+2],u8[i+3]), n=rd(i+4); if(id==='glog') glog=JSON.parse(new TextDecoder().decode(u8.slice(i+8,i+8+n))); if(id==='LIST') meta=JSON.parse(new TextDecoder().decode(u8.slice(i+8+12,i+8+n)).trim()); i+=8+n+(n%2); }
         const G0=meta.game, hands=glog.render.map(r=>r[2]), marks=glog.events.filter(e=>e[1]==='resume'||e[1]==='sens').map(e=>e[1]==='resume'?[e[2],'resume']:[e[2][0],'sens',e[2][1]]);
@@ -84,6 +85,7 @@ const SCEN=`function(t){ if(t<8) return null; return 110-40*Math.cos(2*Math.PI*(
       rs=Pong.replay(pb.seed,pb.ar,pb.sens,hs,pb.span,pb.marks).score; rn=Pong.replay(pb.seed,pb.ar,pb.sens,hs,pb.span,[]).score; }
     check('the game is sent to SonaLob\'s tables and the server\'s replay gives its score, the pause marked (1.62b)',pb&&pb.core===Pong.TAG&&rs===pb.score&&pb.score>0&&pb.marks.some(m=>m[1]==='resume')&&!('FW' in pb),pb?`sent ${pb.score}, replayed ${rs} (without the marks ${rn}), marks ${JSON.stringify(pb.marks)}, ${Math.round(pb.hands.length*0.75)} B`:'nothing sent'); }
   check('the records: from the game over to SonaLob\'s own tables (1.62b)',!!over&&over.btn.includes('scores')&&over.sc==='scores'&&tops.some(u=>/game=pong/.test(u)),over?`${over.sc}; ${tops.slice(-1)[0]||'no table asked'}`:'');
+  { const C=over&&over.clips, c=C&&C.c; check('the game over replays each racket\'s best arc: the game stepped again lands on its score, the arcs have frames, height and points (1.62c)',!!C&&(C.passes===0?c===null:(!!c&&c.check===C.score&&c.n>=1&&c.n<=2&&c.clips.every(x=>x.frames>24&&x.pts>0&&x.h>0&&x.h<=120))),C?`passes ${C.passes}, score ${C.score}; ${c?`stepped again ${c.check}, `+c.clips.map(x=>`${x.who?'right':'left'} +${x.pts} ${x.h}% ${x.frames} frames`).join(', '):'no windows'}`:''); }
   check('no page errors',errors.length===0,errors.slice(0,2).join(' | '));
   out.forEach(x=>console.log(x)); console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;
 })();

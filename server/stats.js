@@ -8,13 +8,13 @@
    nomic — no microphone; lost — the probe went away mid-game; flips — the game suggested the other end of the phone. */
 const path=require('node:path');
 let DatabaseSync; try{ ({DatabaseSync}=require('node:sqlite')); }catch(e){ console.error('Node 22.13 or newer is needed (node:sqlite).'); process.exit(1); }
-const DB=process.env.DB||path.join(__dirname,'sonaroids.db'), days=+(process.argv[2]||30), GAME=process.argv[3]==='race'?'race':'fly';   // v1.01: SonaFly (default) or SonaRace: … stats.js 30 race
+const DB=process.env.DB||path.join(__dirname,'sonaroids.db'), days=+(process.argv[2]||30), GAME=['race','pong'].includes(process.argv[3])?process.argv[3]:'fly';   /* v1.62a: … stats.js 30 pong — SonaLob */   // v1.01: SonaFly (default) or SonaRace: … stats.js 30 race
 let db; try{ db=new DatabaseSync(DB,{readOnly:true}); }catch(e){ db=new DatabaseSync(DB); }
 const cols=db.prepare('PRAGMA table_info(games)').all().map(c=>c.name);
 const hasBots=!!db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='bots'").get();   // v1.31: the server's bots are never counted
 const rows=db.prepare(`SELECT player, score, ${cols.includes('dev')?'dev':'NULL AS dev'}, ${cols.includes('seen')?'seen':'NULL AS seen'} FROM games WHERE created>=?${cols.includes('game')?' AND game=?':''}${hasBots?' AND player NOT IN (SELECT player FROM bots)':''}`)
   .all(...[Date.now()-days*86400000].concat(cols.includes('game')?[GAME]:[]));
-console.log(GAME==='race'?'SonaRace':'SonaFly');
+console.log(GAME==='race'?'SonaRace':GAME==='pong'?'SonaLob':'SonaFly');
 
 const kindOf=d=>d?[d.os||'?',d.br||'?',d.model||''].join(' / ').replace(/ \/ $/,'')+(d.app?(d.audio==='app'?' [app, app sound]':' [app]'):''):'(unknown)';   // v0.55: the Android app apart
 const med=a=>{ a=a.filter(v=>v!==null&&v!==undefined&&isFinite(v)).sort((x,y)=>x-y); return a.length?a[Math.floor((a.length-1)/2)]:null; };

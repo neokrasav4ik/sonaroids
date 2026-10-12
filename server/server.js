@@ -11,7 +11,11 @@
      POST /v1/claim  {pid, code}                                    → {ok, pid, nick}   take over the code's player, joining this one into it
      GET  /v1/top?period=day|week|all&limit=N[&game=race][&bots=0]   (header X-Player: pid, optional) → {period, game, people, entries:[{rank,nick,score,level,t,me}], me}
                      v1.31: bots=0 — people only (without the server's bots, server/bots.js)
-     GET  /v1/health                                                → {ok, core, race}
+     POST /v1/game   {pid, core, game:'pong', seed, ar, sens, span, marks, enc, hands, score[, dev]}   v1.62a: SonaLob — replayed with
+                     src/15_pong.js (Pong.replay) from the palm on every rules step (the game's own 4 digits, as the game's log keeps them), the
+                     field's shape ar, the starting sensitivity, the swing span and the marks (a pause's first step, a sensitivity change); its own
+                     tables, «level» there — the clean passes
+     GET  /v1/health                                                → {ok, core, race, pong}
      /v1/pair/*  v1.56c, СонарЛинк: a room for two phones that relays their messages (server/pair.js; nothing stored)
    pid — a random secret the game keeps on the device; the database stores only its hash.
    Periods are UTC: "day" since midnight, "week" since Monday midnight.
@@ -22,6 +26,7 @@ const http=require('node:http'), zlib=require('node:zlib'), crypto=require('node
 let DatabaseSync; try{ ({DatabaseSync}=require('node:sqlite')); }catch(e){ console.error('Node 22.13 or newer is needed (node:sqlite). This is '+process.version); process.exit(1); }
 const Core=require(path.join(__dirname,'..','src','13_core.js'));
 const Race=require(path.join(__dirname,'..','src','14_race.js'));
+const Pong=require(path.join(__dirname,'..','src','15_pong.js'));   // v1.62a: SonaLob's rules, the file the page runs
 const Pair=require('./pair.js');   // v1.56c: СонарЛинк   // v1.01: SonaRace's core, the same file the page runs
 
 const PORT=+(process.env.PORT||8787);
@@ -51,10 +56,12 @@ CREATE TABLE IF NOT EXISTS bots(player TEXT PRIMARY KEY, born INTEGER NOT NULL, 
   if(!cols.includes('dev')) db.exec('ALTER TABLE games ADD COLUMN dev TEXT'); if(!cols.includes('seen')) db.exec('ALTER TABLE games ADD COLUMN seen REAL');
   /* v1.01: which game — 'fly' (SonaFly; the games from before are that) or 'race' (SonaRace), and the race's steering (height | road) */
   if(!cols.includes('game')){ db.exec("ALTER TABLE games ADD COLUMN game TEXT NOT NULL DEFAULT 'fly'"); } if(!cols.includes('steer')) db.exec('ALTER TABLE games ADD COLUMN steer TEXT');
-  db.exec('CREATE INDEX IF NOT EXISTS games_game ON games(game,created)'); }
-const GAMES=['fly','race'];
+  db.exec('CREATE INDEX IF NOT EXISTS games_game ON games(game,created)');
+  /* v1.62a: what else a game needs to replay — SonaLob's {ar, sens, span, marks} (JSON); NULL for the others */
+  if(!cols.includes('extra')) db.exec('ALTER TABLE games ADD COLUMN extra TEXT'); }
+const GAMES=['fly','race','pong'];
 const q={
-  insGame: db.prepare('INSERT INTO games(player,seed,core,score,level,t,created,fw,y0,replay,dev,seen,game,steer) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)'),
+  insGame: db.prepare('INSERT INTO games(player,seed,core,score,level,t,created,fw,y0,replay,dev,seen,game,steer,extra) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'),
   insSetup: db.prepare('INSERT INTO setups(player,created,result,t,flips,dev) VALUES(?,?,?,?,?,?)'),
   insPlayer: db.prepare('INSERT OR IGNORE INTO players(player,nick,created) VALUES(?,NULL,?)'),
   getPlayer: db.prepare('SELECT nick FROM players WHERE player=?'),
@@ -111,6 +118,20 @@ function decodeHands(enc,b64){ let buf=Buffer.from(String(b64||''),'base64');
   if(buf.length%2) throw new Error('odd'); const n=buf.length/2; if(n<1||n>MAX_STEPS) throw new Error('length');
   const hands=new Array(n); for(let i=0;i<n;i++){ const v=buf.readUInt16LE(i*2); if(v===NONE) hands[i]=-1; else if(v<=Q) hands[i]=v/Q; else throw new Error('value'); }
   return {hands,raw:buf}; }
+/* v1.62a, SonaLob's palm: the share of the calibrated travel the rules take, which the game rounds to 4 digits (k/10000) and which can be
+   below 0 or above 1. It travels as k + PK0 in a Uint16 (65535 — no palm); k is kept within −2000…22000 by the page — past that the
+   racket is at its stop at every sensitivity (Pong.padOf clamps), so the game is the same. Decoded as k/10000 — the very number the game stepped with */
+const PK0=2000, PK1=22000;
+function decodePong(enc,b64){ let buf=Buffer.from(String(b64||''),'base64');
+  if(enc==='deflate') buf=zlib.inflateRawSync(buf,{maxOutputLength:MAX_STEPS*2}); else if(enc!=='raw') throw new Error('enc');
+  if(buf.length%2) throw new Error('odd'); const n=buf.length/2; if(n<1||n>MAX_STEPS) throw new Error('length');
+  const hands=new Array(n); for(let i=0;i<n;i++){ const v=buf.readUInt16LE(i*2); if(v===NONE) hands[i]=null; else if(v<=PK0+PK1) hands[i]=(v-PK0)/10000; else throw new Error('value'); }
+  return {hands,raw:buf}; }
+/* SonaLob's marks: [step, 'resume'] — the first step after a pause; [step, 'sens', 0…3] — the sensitivity changed. Steps ascending, at most 2000 */
+function cleanMarks(m,n){ if(m===undefined||m===null) return []; if(!Array.isArray(m)||m.length>2000) return null; let last=0; const o=[];
+  for(const x of m){ if(!Array.isArray(x)||!Number.isInteger(x[0])||x[0]<last||x[0]>n) return null; last=x[0];
+    if(x[1]==='resume'&&x.length===2) o.push([x[0],'resume']); else if(x[1]==='sens'&&x.length===3&&Number.isInteger(x[2])&&x[2]>=0&&x[2]<=3) o.push([x[0],'sens',x[2]]); else return null; }
+  return o; }
 
 /* the phone, as the page describes it (v0.29): only these keys, only these shapes — anything else is dropped. No user agent string, no IP.
    os, br — coarse kinds; model — Android's own model name when Chrome gives it (e.g. SM-S938B), never on iPhone; pwa — started from the home screen;
@@ -139,8 +160,9 @@ const ip=req=>{ const f=String(req.headers['x-forwarded-for']||'').split(',').ma
 function postGame(b,now){
   if(typeof b.pid!=='string'||!/^[0-9a-f]{32}$/.test(b.pid)) return [400,{ok:false,error:'pid'}];
   const game=b.game===undefined||b.game===null?'fly':b.game; if(!GAMES.includes(game)) return [400,{ok:false,error:'game'}];
-  const race=game==='race', TAG=race?Race.TAG:Core.TAG, FH=race?Race.FH:Core.FH;
+  const race=game==='race', TAG=race?Race.TAG:game==='pong'?Pong.TAG:Core.TAG, FH=race?Race.FH:Core.FH;
   if(b.core!==TAG) return [409,{ok:false,error:'core',core:TAG}];            // an old game version: the rules differ
+  if(game==='pong') return postPong(b,now);
   const seed=b.seed>>>0, FW=+b.FW, y0=(b.y0===null||b.y0===undefined)?null:+b.y0;
   if(seed!==b.seed||!(FW>=100&&FW<=700)||(y0!==null&&!(y0>=0&&y0<=FH))) return [400,{ok:false,error:'args'}];
   /* v1.01, SonaRace: only the game's own rules (the test switches' games are not for the tables) and one of the two ways to steer */
@@ -152,11 +174,29 @@ function postGame(b,now){
   const level=race?Math.floor(g.d/10):g.level;   // a race has no levels: its metres there
   const player=hash(b.pid); q.insPlayer.run(player,now);
   let seen=0; for(const h of d.hands) if(h>=0) seen++; seen=+(seen/d.hands.length).toFixed(4);
-  try{ q.insGame.run(player,seed,TAG,g.score,level,+g.t.toFixed(2),now,FW,y0,zlib.deflateRawSync(d.raw),cleanDev(b.dev),seen,game,steer); }
+  try{ q.insGame.run(player,seed,TAG,g.score,level,+g.t.toFixed(2),now,FW,y0,zlib.deflateRawSync(d.raw),cleanDev(b.dev),seen,game,steer,null); }
   catch(e){ if(/UNIQUE/.test(String(e.message))) return [409,{ok:false,error:'dup'}]; throw e; }
   const ranks={}; let listed=false;
   for(const p of PERIODS){ const best=q.best.get(game,player,since(p,now)).s; ranks[p]=rankOf(game,player,best,p,now); if(ranks[p]<=LISTED&&best===g.score) listed=true; }
   // v0.32: where this very game stands — the players above it, counting the player's own better game (the table shows one game per player)
+  const here={}; for(const p of PERIODS){ const t0=since(p,now), own=q.best.get(game,player,t0).s; here[p]=q.above.get(game,t0,player,g.score).n+(own>g.score?1:0)+1; }
+  const named=!!q.getPlayer.get(player).nick;
+  return [200,{ok:true,score:g.score,level,ranks,here,listed,named}];
+}
+/* v1.62a: a SonaLob game — the same steps as the others': replayed, stored only if the score is the same, then its places */
+function postPong(b,now){
+  const seed=b.seed>>>0, ar=+b.ar, sens=b.sens, span=+b.span;
+  if(seed!==b.seed||!(ar>=1.2&&ar<=3.5)||!Number.isInteger(sens)||sens<0||sens>3||!(span>=30&&span<=200)) return [400,{ok:false,error:'args'}];
+  let d; try{ d=decodePong(b.enc,b.hands); }catch(e){ return [400,{ok:false,error:'hands'}]; }
+  const marks=cleanMarks(b.marks,d.hands.length); if(!marks) return [400,{ok:false,error:'marks'}];
+  const g=Pong.replay(seed,ar,sens,d.hands,span,marks);
+  if(g.score!==b.score) return [422,{ok:false,error:'mismatch',score:g.score}];
+  const game='pong', level=g.passes, player=hash(b.pid); q.insPlayer.run(player,now);
+  let seen=0; for(const h of d.hands) if(h!==null) seen++; seen=+(seen/d.hands.length).toFixed(4);
+  try{ q.insGame.run(player,seed,Pong.TAG,g.score,level,+g.t.toFixed(2),now,ar,null,zlib.deflateRawSync(d.raw),cleanDev(b.dev),seen,game,null,JSON.stringify({ar,sens,span,marks})); }
+  catch(e){ if(/UNIQUE/.test(String(e.message))) return [409,{ok:false,error:'dup'}]; throw e; }
+  const ranks={}; let listed=false;
+  for(const p of PERIODS){ const best=q.best.get(game,player,since(p,now)).s; ranks[p]=rankOf(game,player,best,p,now); if(ranks[p]<=LISTED&&best===g.score) listed=true; }
   const here={}; for(const p of PERIODS){ const t0=since(p,now), own=q.best.get(game,player,t0).s; here[p]=q.above.get(game,t0,player,g.score).n+(own>g.score?1:0)+1; }
   const named=!!q.getPlayer.get(player).nick;
   return [200,{ok:true,score:g.score,level,ranks,here,listed,named}];
@@ -210,7 +250,7 @@ const server=http.createServer(async(req,res)=>{
   if(req.method==='OPTIONS'){ res.writeHead(204,origin?{'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Methods':'GET, POST','Access-Control-Allow-Headers':'Content-Type, X-Player','Access-Control-Max-Age':'86400','Vary':'Origin'}:{}); return res.end(); }
   const url=new URL(req.url,'http://x'), now=Date.now(), who=ip(req);
   try{
-    if(req.method==='GET'&&url.pathname==='/v1/health') return send(res,200,{ok:true,core:Core.TAG,race:Race.TAG},origin);
+    if(req.method==='GET'&&url.pathname==='/v1/health') return send(res,200,{ok:true,core:Core.TAG,race:Race.TAG,pong:Pong.TAG},origin);
     /* v1.56c, СонарЛинк: rooms for two phones (server/pair.js). Opening and joining are limited like the transfer code; messages per room */
     if(url.pathname.startsWith('/v1/pair/')){ const pth=url.pathname.slice(9);
       if(req.method==='GET'&&pth==='sse'){ if(!allow('p:'+who,60)) return send(res,429,{ok:false,error:'slow down'},origin); if(!Pair.getSse(url,req,res,origin,now)) send(res,404,{ok:false,error:'code'},origin); return; }

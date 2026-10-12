@@ -95,6 +95,35 @@ function play(seed,amp,steps){ const hands=[], g=Core.create(seed,380,90); for(l
     check('SonaRace: its own table; the flight\'s table has no races', tr.j.game==='race'&&tr.j.entries.length===1&&tr.j.entries[0].nick==='Racer'&&tr.j.entries[0].score===Math.max(r1.g.score,r2.g.score)&&tr.j.me&&tr.j.me.rank===1&&!tf.j.entries.some(e=>e.nick==='Racer'),
       `race table: ${JSON.stringify(tr.j.entries.map(e=>[e.nick,e.score,e.level]))}; flight table: ${tf.j.entries.length} names`);
     const hl=await get('/v1/health'); check('health names both rules', hl.j.core===Core.TAG&&hl.j.race===Race.TAG, JSON.stringify(hl.j)); }
+  /* v1.62a: SonaLob — the palm as the game steps with it (4 digits, below 0 and above 1 too, none now and then), a pause's first step and a
+     sensitivity change marked; replayed by src/15_pong.js, its own table, «level» — the clean passes */
+  { const Pong=require('../src/15_pong.js');
+    let xk=0; const postP=(u,b)=>post(u,b,{'X-Forwarded-For':'10.9.0.'+(++xk)});   /* each from its own address: the 20-a-minute limit is not what is tested here */
+    const playP=(seed,amp,steps,marks)=>{ const g=Pong.create(seed,2.16,1,75), hands=[], M=marks.slice(); let m=0;
+      for(let i=0;i<steps&&g.state!=='over';i++){ while(m<M.length&&M[m][0]<=g.n){ if(M[m][1]==='resume') Pong.resume(g); else g.H=Pong.TUNE.SENS[M[m][2]]; m++; }
+        let f=0.3+amp*Math.sin(i/23)+0.15*Math.sin(i/7); if(i%400===200) f=null; else f=Math.round(Math.max(-0.2,Math.min(2.2,f))*10000)/10000; hands.push(f); Pong.step(g,f); }
+      const buf=Buffer.alloc(hands.length*2); hands.forEach((h,i)=>buf.writeUInt16LE(h===null?65535:Math.round(h*10000)+2000,i*2));
+      return {g,hands,body:{game:'pong',core:Pong.TAG,seed,ar:2.16,sens:1,span:75,marks,enc:'deflate',hands:zlib.deflateRawSync(buf).toString('base64'),score:g.score}}; };
+    const MK=[[1200,'resume'],[1800,'sens',2]], P=pid(), p1=playP(21,0.55,60*90,MK), p2=playP(22,0.5,60*60,[]);
+    let rp=await postP('/v1/game',Object.assign({pid:P},p1.body));
+    const st=db.prepare("SELECT game,level,extra FROM games WHERE seed=21").get();
+    check('SonaLob: a game is replayed and stored, with its marks', rp.code===200&&rp.j.ok&&rp.j.score===p1.g.score&&p1.g.score>0&&st&&st.game==='pong'&&st.level===p1.g.passes&&JSON.parse(st.extra).marks.length===2,
+      `score ${p1.g.score}, passes ${p1.g.passes}, palm ${Math.min(...p1.hands.filter(h=>h!==null))}…${Math.max(...p1.hands.filter(h=>h!==null))}, ${JSON.stringify(rp.j.ranks)}`);
+    const nm=Pong.replay(21,2.16,1,p1.hands,75,[]).score;
+    rp=await postP('/v1/game',Object.assign({pid:P},p1.body,{seed:23,marks:[]})); const sm=Pong.replay(23,2.16,1,p1.hands,75,[]).score;
+    check('SonaLob: the marks count — without them the same palm is another game', nm!==p1.g.score&&rp.code===422, `with the marks ${p1.g.score}, without ${nm}`);
+    rp=await postP('/v1/game',Object.assign({pid:P},p1.body,{score:p1.g.score+10})); const forged=rp.code===422&&rp.j.error==='mismatch';
+    rp=await postP('/v1/game',Object.assign({pid:P},p1.body)); const dup=rp.code===409&&rp.j.error==='dup';
+    rp=await postP('/v1/game',Object.assign({pid:P},p1.body,{core:'pong-7',seed:24})); const core=rp.code===409&&rp.j.error==='core'&&rp.j.core===Pong.TAG;
+    check('SonaLob: a forged score, the same game twice, other rules — refused', forged&&dup&&core);
+    const bad=[{marks:[[5,'jump']]},{marks:[[50,'sens',1],[10,'resume']]},{marks:[[5,'sens',7]]},{sens:4},{ar:9},{span:5},{hands:Buffer.from([0xff,0xfe]).toString('base64'),enc:'raw'}];
+    const codes=[]; for(const x of bad){ rp=await postP('/v1/game',Object.assign({pid:P},p1.body,{seed:30+codes.length},x)); codes.push(rp.code); }
+    check('SonaLob: broken marks, sensitivity, field, span, palm — refused', codes.every(c=>c===400), codes.join(' '));
+    await postP('/v1/game',Object.assign({pid:P},p2.body)); await postP('/v1/nick',{pid:P,nick:'Lobber'});
+    const tp=await get('/v1/top?period=all&game=pong',{'X-Player':P}), tf=await get('/v1/top?period=all');
+    check('SonaLob: its own table; the others have no SonaLob games', tp.j.game==='pong'&&tp.j.entries.length===1&&tp.j.entries[0].nick==='Lobber'&&tp.j.entries[0].score===Math.max(p1.g.score,p2.g.score)&&tp.j.me&&tp.j.me.rank===1&&!tf.j.entries.some(e=>e.nick==='Lobber'),
+      JSON.stringify(tp.j.entries.map(e=>[e.nick,e.score,e.level])));
+    const hl=await get('/v1/health'); check('health names SonaLob\'s rules too', hl.j.pong===Pong.TAG, JSON.stringify(hl.j)); }
   // v1.31: the bots — real games by the same rules, replayed from what is stored; shown by default, left out with bots=0, never above the best person
   { const Bots=require('../server/bots.js'), RaceC=require('../src/14_race.js'); const humanBest=db.prepare("SELECT MAX(score) AS s FROM games WHERE game='fly'").get().s;
     Bots.init(4,1); const bp=db.prepare('SELECT player FROM bots').all().map(r=>r.player), bn=new Set(db.prepare('SELECT nick FROM players WHERE player IN (SELECT player FROM bots)').all().map(r=>r.nick));
@@ -103,9 +132,10 @@ function play(seed,amp,steps){ const hands=[], g=Core.create(seed,380,90); for(l
       const r=g.game==='race'?RaceC.replay(g.seed,g.fw,hs,null,g.steer,null):Core.replay(g.seed,g.fw,hs,null); if(r.score===g.score) same++; }
     check('bots: their games replay to the stored scores', bp.length>=4&&bg.length>0&&same===bg.length, `${bp.length} bots, ${bg.length} games, ${same} replay the same`);
     check('bots: never above the best person', bg.filter(g=>g.game==='fly').every(g=>g.score<humanBest), `best person ${humanBest}, best bot ${Math.max(0,...bg.filter(g=>g.game==='fly').map(g=>g.score))}`);
-    const tAll=await get('/v1/top?period=week&limit=100',{'X-Player':A}), tPeople=await get('/v1/top?period=week&limit=100&bots=0',{'X-Player':A});
+    /* the bots play «a day back» — on a Monday (UTC) that is last week, and the week's table had none (failed 12.10): the all-time table */
+    const tAll=await get('/v1/top?period=all&limit=100',{'X-Player':A}), tPeople=await get('/v1/top?period=all&limit=100&bots=0',{'X-Player':A});
     // the bots' games are random: now and then they all are races (seen 03.10) — so the race's tables count too
-    const rAll=await get('/v1/top?period=week&limit=100&game=race'), rPeople=await get('/v1/top?period=week&limit=100&game=race&bots=0');
+    const rAll=await get('/v1/top?period=all&limit=100&game=race'), rPeople=await get('/v1/top?period=all&limit=100&game=race&bots=0');
     check('bots: in the table by default, not with bots=0 («people only»); my rank among people', (tAll.j.entries.some(e=>bn.has(e.nick))||rAll.j.entries.some(e=>bn.has(e.nick)))&&!tPeople.j.entries.some(e=>bn.has(e.nick))&&!rPeople.j.entries.some(e=>bn.has(e.nick))&&tPeople.j.people===true&&tPeople.j.me&&tPeople.j.me.rank<=tAll.j.me.rank,
       `${tAll.j.entries.length}+${rAll.j.entries.length} names with bots (fly+race), ${tPeople.j.entries.length}+${rPeople.j.entries.length} people only; my rank ${tAll.j.me&&tAll.j.me.rank} / ${tPeople.j.me&&tPeople.j.me.rank}`);
     const st=require('child_process').spawnSync(process.execPath,['--no-warnings',path.join(__dirname,'..','server','stats.js'),'30'],{env:Object.assign({},process.env,{DB:tmp})});

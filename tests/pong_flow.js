@@ -38,7 +38,7 @@ const SCEN=`function(t){ if(t<8) return null; return 110-40*Math.cos(2*Math.PI*(
     if(s.scr==='play'&&!shots.serve){ shots.serve=1; await p.waitForTimeout(500); await shot('04a_serve'); }
     if(s.scr==='play'&&T()-startAt>14&&!shots.play){ shots.play=1; await shot('04_play'); }
     if(s.scr==='play'&&!shots.field){ shots.field=await p.evaluate(()=>Object.assign(__sonaroids.pongField(),{gar:__sonaroids.state().g.ar})); }
-    if(s.scr==='play'&&T()-startAt>8&&!shots.steps){ shots.steps=await p.evaluate(()=>new Promise(r=>{ const d=[]; let last=null, k=0; (function f(){ const n=__sonaroids.state().g.n; if(last!==null) d.push(n-last); last=n; if(++k<120) requestAnimationFrame(f); else r(d); })(); })); }
+    if(s.scr==='play'&&T()-startAt>8&&!shots.steps){ shots.steps=await p.evaluate(()=>new Promise(r=>{ const d=[]; let last=null, lt=null, k=0; (function f(ts){ const n=__sonaroids.state().g.n; if(last!==null) d.push([n-last,ts-lt]); last=n; lt=ts; if(++k<120) requestAnimationFrame(f); else r(d); })(performance.now()); })); }
     if(s.scr==='play'&&T()-startAt>20&&!paused){ const bp=await p.evaluate(()=>{ const b=__sonaroids.btn().find(q=>q.id==='pause'), m=__sonaroids.S(); return b?{x:(b.x+b.w/2)*m.S/m.DPR,y:(b.y+b.h/2)*m.S/m.DPR}:null; });
       if(bp) await p.mouse.click(bp.x,bp.y); await p.waitForTimeout(300); await shot('05_paused');
       paused=await p.evaluate(()=>({scr:__sonaroids.scr(),btn:__sonaroids.btn().map(b=>b.id)}));
@@ -70,8 +70,10 @@ const SCEN=`function(t){ if(t<8) return null; return 110-40*Math.cos(2*Math.PI*(
   check('the waving the game started with is kept for the auto-calibration (1.61g): the low as the echo\'s range',!!hold&&!!hold.kept&&!!hold.kept.q&&Math.abs(hold.kept.q.r-(hold.lin.b-hold.kept.cal.o)/hold.kept.cal.k)<0.06,hold&&hold.kept&&hold.kept.q?`${hold.kept.q.r} mm`:'nothing kept');
   const fit=follow.length>50?(()=>{ const es=follow.map(([f,py,H])=>Math.abs(Math.max(0.3,Math.min(0.97,0.94-Math.round(f*4000)/4000*H))-py)).sort((a,b)=>a-b), e=es[Math.floor(es.length*0.98)];   /* 1.61i: the 98th of the differences — the palm and the rackets are read a frame apart, and one stalled frame of the headless browser (seen once in 1.61i's run: 0.119, the next runs 0.010–0.012) is not the control */ const lo=Math.min(...follow.map(q=>q[1])), hi=Math.max(...follow.map(q=>q[1])); return {e,lo,hi}; })():null;
   check('the rackets follow the palm in proportion',!!fit&&fit.e<0.05&&fit.hi-fit.lo>0.15,fit?`the difference (98% of the frames within) ${fit.e.toFixed(3)} of the screen (the palm read a frame apart); the rackets went ${fit.lo.toFixed(2)}…${fit.hi.toFixed(2)}`:'no game');
-  { const d=shots.steps||[], one=d.filter(x=>x===1).length;
-    check('one rules step a frame (the ball moves evenly)',d.length>100&&one>=d.length*0.95,`${one} of ${d.length} frames; others: ${d.filter(x=>x!==1).join(' ')||'—'}`); }
+  /* 1.64a: only the frames that came on time (12–21 ms after the one before) count — after a late frame of the headless browser (a busy
+     machine) two steps are right: the game catches up with the time */
+  { const d=(shots.steps||[]).filter(x=>x[1]>=12&&x[1]<=21), one=d.filter(x=>x[0]===1).length, all=(shots.steps||[]).length;
+    check('one rules step a frame (the ball moves evenly)',all>100&&d.length>=all*0.5&&one>=d.length*0.95,`${one} of ${d.length} frames on time (${all} in all); others: ${d.filter(x=>x[0]!==1).map(x=>x[0]+'@'+x[1].toFixed(0)+'ms').join(' ')||'—'}`); }
   { const f=shots.field; check('the field is the lab\'s shape (2.16 screen heights) across the whole screen, not the safe area',!!f&&f.gar===2.16&&f.ar===2.16&&Math.abs(f.x0)<=2&&Math.abs(f.x1-f.LW)<=2&&Math.abs(f.y1-f.y0-f.LH)<=1,f?`ar ${f.gar}; the field ${f.x0.toFixed(1)}…${f.x1.toFixed(1)} of ${f.LW} px`:'no game'); }
   check('SonaLob never shakes the screen (1.61x: SonaFly\'s last crash left its shake behind)',shots.shake===0,'frames moved: '+shots.shake);
   check('pause: resume, hold again, start over, end, menu; then the countdown and the game',!!paused&&paused.scr==='paused'&&['resume','pg_recal','restart','quit','exit'].every(id=>paused.btn.includes(id))&&paused.cr==='count-resume'&&paused.back==='play',paused?`${paused.scr} → ${paused.cr} → ${paused.back}`:'');

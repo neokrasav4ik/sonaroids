@@ -61,6 +61,7 @@ LANE_B = [  # phase 2, beside lane A: the rest
     ('race core: deterministic, rules and length (bot)', f'{H} tests/test_race.js'),
     ("pong core: the lab's SonaPong bit for bit, deterministic, rules (bot)", f'{H} tests/test_pong.js'),
     ("pong control: the lab's mix, the two calibration holds", f'{H} tests/test_pong_ctl.js'),
+    ('SonaLob together: the rules on two palms, one game on two phones over a delayed network', f'{H} tests/test_pong_net.js'),
     ('probe level: up when quiet, down when overloaded or distorting', f'{H} tests/test_level.js'),
     ('palm clock: the palm in time, not in bunches (SonaFly, SonaRace)', f'{H} tests/test_palmclock.js'),
 ]
@@ -83,7 +84,8 @@ MAP = [
     ('src/12_tune.js', 'test_tune flow live_flow'),
     ('src/13_core.js', 'test_core test_rules test_server flow'),
     ('src/14_race.js', 'test_race race_flow test_server'),
-    ('src/15_pong.js', 'test_pong pong_flow'),
+    ('src/15_pong.js', 'test_pong pong_flow test_pong_net'),
+    ('src/16_pong_net.js', 'test_pong_net'),
     ('src/16_pong_ctl.js', 'test_pong_ctl pong_flow pong_live'),
     ('src/17_palmclock.js', 'test_palmclock flow race_flow'),
     ('src/48_pong.js', 'pong_flow pong_live screens'),

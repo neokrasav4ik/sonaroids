@@ -19,8 +19,13 @@ var Board=(function(){
   /* the palm height the game steps with: rounded so that the server can repeat it exactly */
   function q(h){ return h===null||h===undefined?null:Math.round(h*Q)/Q; }
   function start(seed,FW,y0,x){ if(x&&x.test){ cur=null; last={state:'test'}; return; }   /* v1.35: a game by test rules (the shots' tilt) is not for the tables */
-    cur={core:x&&x.core||Core.TAG,seed:seed,FW:FW,y0:y0,q:[],game:x&&x.game||null,steer:x&&x.steer||null}; last=null; }   // v1.01: x — SonaRace: {game:'race', core, steer}
-  function step(h){ if(cur) cur.q.push(h===null?NONE:Math.round(h*Q)); }
+    cur={core:x&&x.core||Core.TAG,seed:seed,FW:FW,y0:y0,q:[],game:x&&x.game||null,steer:x&&x.steer||null}; last=null;   // v1.01: x — SonaRace: {game:'race', core, steer}
+    if(cur.game==='pong'){ cur.ar=x.ar; cur.sens=x.sens; cur.span=x.span; cur.marks=[]; } }   /* v1.62b: SonaLob — {game:'pong', core, ar, sens, span} */
+  /* v1.62b: SonaLob's palm is the share of the travel the rules take, already rounded by the game to 4 digits (k/10000), below 0 and above
+     1 too: it goes as k+2000 (k kept within −2000…22000 — past that the racket is at its stop at every sensitivity, the game the same) */
+  function step(h){ if(!cur) return; if(cur.game==='pong'){ cur.q.push(h===null||h===undefined?NONE:Math.max(-2000,Math.min(22000,Math.round(h*10000)))+2000); return; } cur.q.push(h===null?NONE:Math.round(h*Q)); }
+  /* v1.62b: SonaLob's marks, as its log keeps them: [step, 'resume'] — the first step after a pause; [step, 'sens', 0…3] */
+  function mark(m){ if(cur&&cur.marks) cur.marks.push(m); }
   function b64(u8){ var s='', CH=0x8000; for(var i=0;i<u8.length;i+=CH) s+=String.fromCharCode.apply(null,u8.subarray(i,i+CH)); return btoa(s); }
   function pack(qs){ var u8=new Uint8Array(qs.length*2); for(var i=0;i<qs.length;i++){ u8[2*i]=qs[i]&255; u8[2*i+1]=qs[i]>>8; }
     if(typeof CompressionStream!=='function') return Promise.resolve({enc:'raw',hands:b64(u8)});
@@ -32,6 +37,7 @@ var Board=(function(){
   /* a game is over (or dropped): send it. last — what the game-over screen shows: sending | done | offline | old | error */
   function finish(score){ var c=cur; cur=null; if(!c||!on()||!(score>0)||!c.q.length) return; last={state:'sending',score:score}; var d=dev();
     pack(c.q).then(function(p){ var body={pid:pid(),core:c.core,seed:c.seed,FW:c.FW,y0:c.y0,enc:p.enc,hands:p.hands,score:score,dev:d}; if(c.game){ body.game=c.game; body.steer=c.steer; }
+      if(c.game==='pong'){ delete body.FW; delete body.y0; delete body.steer; body.ar=c.ar; body.sens=c.sens; body.span=c.span; body.marks=c.marks; }
       return post('/v1/game',body).then(function(j){ cache={};
         if(j.ok) last={state:'done',score:j.score,ranks:j.ranks,here:j.here||null,listed:j.listed,named:j.named||!!nick()};
         else if(j.error==='core') last={state:'old'}; else last={state:'error',why:j.error}; },
@@ -53,11 +59,11 @@ var Board=(function(){
       var l=[]; try{ l=JSON.parse(ls('sonaroids_unsent')||'[]'); }catch(e){} l.forEach(function(b){ b.pid=j.pid; }); if(l.length) ls('sonaroids_unsent',JSON.stringify(l));
       ls('sonaroids_pid',j.pid); ls('sonaroids_nick',j.nick||null); cache={}; } return j; }); }
   /* a table: cached for 30 s; state loading | ok | offline */
-  function top(period,game,people){ var key=period+(game==='race'?'|race':'')+(people?'|people':''), c=cache[key];   /* v1.31: people — without the server's bots */ if(c&&(c.state==='loading'||Date.now()-c.at<30000)) return c;   // v1.01: game 'race' — SonaRace's tables
+  function top(period,game,people){ var gq=game==='race'||game==='pong'?'&game='+game:'', key=period+gq+(people?'|people':''), c=cache[key];   /* v1.62b: and SonaLob's */   /* v1.31: people — without the server's bots */ if(c&&(c.state==='loading'||Date.now()-c.at<30000)) return c;   // v1.01: game 'race' — SonaRace's tables
     c=cache[key]={state:'loading',at:Date.now()}; if(!on()){ c.state='offline'; return c; }
-    fetch(API+'/v1/top?period='+period+'&limit=10'+(game==='race'?'&game=race':'')+(people?'&bots=0':''),{headers:{'X-Player':pid()}}).then(function(r){ return r.json(); })
+    fetch(API+'/v1/top?period='+period+'&limit=10'+gq+(people?'&bots=0':''),{headers:{'X-Player':pid()}}).then(function(r){ return r.json(); })
       .then(function(j){ c.state='ok'; c.entries=j.entries||[]; c.me=j.me||null; c.at=Date.now(); },function(){ c.state='offline'; c.at=Date.now(); });
     return c; }
-  return {setup:setup,link:link,claim:claim,devInfo:function(f){ devFn=f; },q:q,start:start,step:step,finish:finish,flush:flush,setNick:setNick,top:top,nick:nick,on:on,
+  return {setup:setup,link:link,claim:claim,devInfo:function(f){ devFn=f; },q:q,start:start,step:step,mark:mark,finish:finish,flush:flush,setNick:setNick,top:top,nick:nick,on:on,
     last:function(){ return last; }, _set:function(p,c){ cache[p]=c; }, _last:function(l){ last=l; }};
 })();

@@ -12,8 +12,9 @@ const SRC=fs.readFileSync(path.join(__dirname,'sim_source.js'),'utf8');
 const SCEN=`function(t){ if(t<8) return null; return 110-40*Math.cos(2*Math.PI*(t-8)/1.6); }`;
 (async()=>{
   const b=await chromium.launch(); const ctx=await b.newContext({viewport:{width:844,height:390},deviceScaleFactor:2,hasTouch:true});   // 1.61n: a phone (touch) — SonaLob at most twice the game's pixels, as on a phone; a computer draws it at full resolution
-  await ctx.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_live','0'); localStorage.setItem('sonaroids_lang','${process.env.LANG2||'ru'}'); ${SRC}; window.makeSimSource=makeSimSource; window.__scen=${SCEN};`);
-  const p=await ctx.newPage(); const errors=[]; p.on('pageerror',e=>errors.push(e.message+(errors.length?'':' '+String(e.stack).split('\n').slice(0,4).join(' < '))));
+  await ctx.addInitScript(`localStorage.setItem('sonaroids_seen','1'); localStorage.setItem('sonaroids_live','0'); localStorage.setItem('sonaroids_lang','${process.env.LANG2||'ru'}'); ${SRC}; window.makeSimSource=makeSimSource; window.__scen=${SCEN}; window.SONAROIDS_API='https://api.test';`);
+  const p=await ctx.newPage(); const sent=[], tops=[]; await p.route('https://api.test/**',r=>{ const u=r.request().url(); if(/\/v1\/game$/.test(u)) try{ sent.push(JSON.parse(r.request().postData())); }catch(e){} if(/\/v1\/top/.test(u)) tops.push(u);   // v1.62b: SonaLob's game as the server gets it
+    r.fulfill({status:200,headers:{'Access-Control-Allow-Origin':'*'},contentType:'application/json',body:'{"ok":true}'}); }); const errors=[]; p.on('pageerror',e=>errors.push(e.message+(errors.length?'':' '+String(e.stack).split('\n').slice(0,4).join(' < '))));
   await p.goto('file://'+path.join(ROOT,'game','play','index.html')); await p.waitForTimeout(600);
   await p.evaluate(()=>{ Sonar.simulate({fs:48000,chan:'right',source:makeSimSource(window.__scen)}); });
   const shot=n=>p.screenshot({path:path.join(OUT,'pong_'+n+'.png')});
@@ -55,6 +56,7 @@ const SCEN=`function(t){ if(t<8) return null; return 110-40*Math.cos(2*Math.PI*(
         const G0=meta.game, hands=glog.render.map(r=>r[2]), marks=glog.events.filter(e=>e[1]==='resume'||e[1]==='sens').map(e=>e[1]==='resume'?[e[2],'resume']:[e[2][0],'sens',e[2][1]]);
         const r=Pong.replay(G0.seed,G0.ar,G0.sens,hands,G0.span,marks), r0=Pong.replay(G0.seed,G0.ar,G0.sens,hands,G0.span);
         return {rows:hands.length,steps:g.n,score:r.score,want:g.score,none:hands.filter(h=>h===-9).length,marks:marks.length,noMarks:r0.score,core:meta.game.core}; });
+      await p.evaluate(()=>__sonaroids.act.scores()); await p.waitForTimeout(800); over.sc=await p.evaluate(()=>__sonaroids.scr()); await shot('07_scores');
       break; }
   }
   await b.close();
@@ -76,6 +78,12 @@ const SCEN=`function(t){ if(t<8) return null; return 110-40*Math.cos(2*Math.PI*(
   check('the game\'s log replays to the same game, the pauses too (1.61p, 1.61r)',!!over&&!!over.rep&&over.rep.rows===over.rep.steps&&over.rep.score===over.rep.want&&over.rep.marks>=1,over&&over.rep?`${over.rep.core}: ${over.rep.rows} steps (${over.rep.none} without the palm, ${over.rep.marks} goes-on after a pause), replayed ${over.rep.score}, played ${over.rep.want} (without the marks ${over.rep.noMarks})`:'');
   check('SonaLob\'s own sounds play: the countdown, the serve, the hits, the landings (1.61t)',!!over&&!!over.lob&&['tick','start','serve','pass','land'].every(k=>over.lob[k]>0),over&&over.lob?Object.keys(over.lob).map(k=>k+' '+over.lob[k]).join(', '):'');
   check('the game over keeps the best',!!over&&over.scr==='over'&&over.best===over.score&&['again','over_cal','menu'].every(id=>over.btn.includes(id)),over?`score ${over.score}, best kept ${over.best}`:'');
+  /* v1.62b: the game went to the server, and the server's replay (src/15_pong.js, the palm decoded as server/server.js does) gives its score */
+  { const zlib=require('zlib'), Pong=require('../src/15_pong.js'), pb=sent.find(x=>x.game==='pong'); let rs=null, rn=null;
+    if(pb){ const buf=pb.enc==='deflate'?zlib.inflateRawSync(Buffer.from(pb.hands,'base64')):Buffer.from(pb.hands,'base64'), hs=[]; for(let i=0;i<buf.length;i+=2){ const v=buf.readUInt16LE(i); hs.push(v===65535?null:(v-2000)/10000); }
+      rs=Pong.replay(pb.seed,pb.ar,pb.sens,hs,pb.span,pb.marks).score; rn=Pong.replay(pb.seed,pb.ar,pb.sens,hs,pb.span,[]).score; }
+    check('the game is sent to SonaLob\'s tables and the server\'s replay gives its score, the pause marked (1.62b)',pb&&pb.core===Pong.TAG&&rs===pb.score&&pb.score>0&&pb.marks.some(m=>m[1]==='resume')&&!('FW' in pb),pb?`sent ${pb.score}, replayed ${rs} (without the marks ${rn}), marks ${JSON.stringify(pb.marks)}, ${Math.round(pb.hands.length*0.75)} B`:'nothing sent'); }
+  check('the records: from the game over to SonaLob\'s own tables (1.62b)',!!over&&over.btn.includes('scores')&&over.sc==='scores'&&tops.some(u=>/game=pong/.test(u)),over?`${over.sc}; ${tops.slice(-1)[0]||'no table asked'}`:'');
   check('no page errors',errors.length===0,errors.slice(0,2).join(' | '));
   out.forEach(x=>console.log(x)); console.log(ok?'RESULT: ok':'RESULT: FAIL'); process.exitCode=ok?0:1;
 })();

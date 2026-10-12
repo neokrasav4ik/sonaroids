@@ -88,9 +88,9 @@ function pgCard(w,h){ var s=Math.min(3,Math.max(1,uiS)*1.5), CW=Math.max(8,Math.
 /* ── the menu: play, how to play, the sensitivity (the only setting), the sounds, all the games ── */
 function pgSensLabel(){ return L('pg_sens')+': '+L('pg_sens'+pgSens()); }
 function sPTitle(){ pgDemoDraw();
-  var items=[['play',L('play'),'primary'],['howto',L('howto')],['pg_sens',pgSensLabel()],['pg_skin',pgSkinLabel()],['sfx','','sound'],['hub',L('all_games')]], w=colW(items);
+  var items=[['play',L('play'),'primary'],['scores',L('scores')],['howto',L('howto')],['pg_sens',pgSensLabel()],['pg_skin',pgSkinLabel()],['sfx','','sound'],['hub',L('all_games')]], w=colW(items);
   var bx0=sideX(w), m=Math.max(8,Math.round(LW*0.04)), band0=freeSide()==='left'?0:bx0-m, band1=freeSide()==='left'?bx0+w+m:LW;
-  bandVeil(band0,band1,0.6); column(items,Math.round(LH*0.52),bx0,8);
+  bandVeil(band0,band1,0.6); column(items,Math.round(LH*0.5),bx0,5);   /* 1.62b: seven rows with «РЕКОРДЫ» — tighter, as SonaRace's menu */
   var a0=freeSide()==='left'?band1:SAFE.l, a1=freeSide()==='left'?LW-SAFE.r:band0, cx0=Math.round((a0+a1)/2), lsc=PF.width('SonaLob',2)<=a1-a0-12?2:1, y=Math.round(LH*0.14);
   var sl=PF.wrap(L('pg_s'),a1-a0-16,1), rw=PF.width('SonaLob',lsc); sl.forEach(function(l){ rw=Math.max(rw,PF.width(l)); }); plaque(cx0-rw/2,y-2,cx0+rw/2,y+lsc*10+6+sl.length*10-3,0.55);
   text('SonaLob',cx0,y,P.band,'center',lsc);   /* v1.61k: the name — SonaLob (Den 19:18: «у нас же теперь не сонапонг — SonaLob»; a lob — the high arc the game is about) */ y+=lsc*10+6; sl.forEach(function(l){ text(l,cx0,y,P.text,'center'); y+=10; });
@@ -152,6 +152,7 @@ function pgCount(){ countT-=DT; var v=pgView(PG.view?PG.view.py:Pong.TUNE.PAD_LO
 function pgCountStart(){ pgKeep(); countT=3; try{ DSP2.set('quarter',1); }catch(e){} go('count'); }
 function pgStart(){ PG.fps=null; PG.resume=false; PG.resumed=false; var seed=newSeed(); var lin=PG.c&&PG.c.lin; g=Pong.create(seed,pgAr(),pgSens(),lin?Math.max(30,lin.t-lin.b):null); var f=PG.c?PongCtl.frac(PG.c,PongCtl.palm(PG.c)):null; if(f!==null) g.py=Pong.padOf(g,f);
   acc=0; parts=[]; PG.pts=[]; PG.newBest=false; nickAsked=false; var I=Sonar.info(), c=PG.c||{};
+  Board.start(seed,null,null,{game:'pong',core:Pong.TAG,ar:g.ar,sens:pgSens(),span:g.span});   /* v1.62b: the game goes to SonaLob's tables (the server replays it) */
   Logs.gameStart({core:Pong.TAG,game:'pong',auto_cal:!!PG.auto,seed:seed,ar:+g.ar.toFixed(4),sens:pgSens(),span:g.span,cal:DSP2.info().cal,lin:c.lin?{b:+c.lin.b.toFixed(1),t:+c.lin.t.toFixed(1)}:null,mix_off:c.mxCal===null||c.mxCal===undefined?null:+c.mxCal.toFixed(1),
     chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),started:new Date().toISOString(),app:'sonaroids'});
   Sfx.lob('start'); go('play'); }
@@ -189,21 +190,23 @@ function pgPlay(){
   if(now-fp.t>=5000){ Logs.gameEv('кадры',{n:fp.n,s:+((now-fp.t)/1000).toFixed(2),max:Math.round(fp.mx),slow:fp.slow}); fp.t=now; fp.n=0; fp.mx=0; fp.slow=0; }
   while(n<want){ n++; var c=PG.c, f=c?PongCtl.frac(c,c.present?PongCtl.palmAt(c,vs-(want-n)*1000*Pong.DT):null):null;   // 1.59e: the palm at each step's own time (src/16_pong_ctl.js palmAt)
     f=f===null?null:Math.round(f*10000)/10000;   /* 1.61p: the palm rounded to the 4 digits the log keeps, so a replay from the log is the same game (since 1.59g this line sat inside the comment above — the rules got the unrounded palm; the grid was 1/4000, which 4 digits can't hold) */
-    if(PG.resumed){ PG.resumed=false; Pong.resume(g); Logs.gameEv('resume',g.n); }   // 1.61r: the first step after a pause is no swing (pong-8)
-    Pong.step(g,f); Logs.step({pong:1,n:g.n,FH:1,ship:{y:g.py},lives:g.lives,score:g.score,events:g.events},f); pgReact(); if(g.state==='over') break; }
+    if(PG.resumed){ PG.resumed=false; Pong.resume(g); Logs.gameEv('resume',g.n); Board.mark([g.n,'resume']); }   // 1.61r: the first step after a pause is no swing (pong-8)
+    Pong.step(g,f); Board.step(f); Logs.step({pong:1,n:g.n,FH:1,ship:{y:g.py},lives:g.lives,score:g.score,events:g.events},f); pgReact(); if(g.state==='over') break; }
   flash=Math.max(0,flash-DT); duckT-=DT; if(duckT<=0&&Sonar.peak()>DUCK_PEAK){ duckT=0.4; if(Sfx.duck()) Logs.gameEv('sounds down',+Sfx.level().toFixed(2)); }
   pgField(g,DT); pgHud(); coveredLine(topY()+40); pgPauseBtn(); say(L('menu_a'));
   if(flash>0&&!pgSkOn()){ lx.globalAlpha=Math.min(0.3,flash); R(P.hit,0,0,LW,LH); lx.globalAlpha=1; }
   if(g.state==='over') endGame(); }
-function pgEnd(){ g.state='over'; overT=0; Logs.gameStop(); if(g.score>pgBest()){ PG.best=g.score; PG.newBest=true; store.set('sonaroids_pong_best',PG.best); } go('over'); }
-function pgDrop(){ if(g&&g.ball!==undefined&&g.state!=='over'){ Logs.gameEv('restarted by the player'); g.state='over'; Logs.gameStop(); if(g.score>pgBest()){ PG.best=g.score; store.set('sonaroids_pong_best',PG.best); } } }
+function pgEnd(){ g.state='over'; overT=0; Logs.gameStop(); Board.finish(g.score); Board.flush(); if(g.score>pgBest()){ PG.best=g.score; PG.newBest=true; store.set('sonaroids_pong_best',PG.best); } go('over'); }
+function pgDrop(){ if(g&&g.ball!==undefined&&g.state!=='over'){ Logs.gameEv('restarted by the player'); g.state='over'; Logs.gameStop(); Board.finish(g.score); if(g.score>pgBest()){ PG.best=g.score; store.set('sonaroids_pong_best',PG.best); } } }
 function pgOver(){ overT+=DT; pgField(g,DT); lx.globalAlpha=0.45; R(P.bg,0,0,LW,LH); lx.globalAlpha=1;
   var cx0=freeSide()==='left'?Math.round(LW*0.6):Math.round(LW*0.4), y=Math.round(LH*0.24);
   var ls=[[L('pg_width').replace('{n}',Math.round(Pong.width(g)*100)),P.text],[L('pg_passes').replace('{n}',g.passes),P.text]].concat(PG.newBest?[[L('best')+'!',P.band]]:pgBest()>0?[[L('best')+' '+pgBest(),P.soft]]:[]);
+  var bl=boardLine(); if(bl){ ls.push([bl[0],bl[1]]); if(bl[2]) ls.push([bl[2],P.soft]); }   /* v1.62b: the place in SonaLob's tables */
   var fw=0; ls.forEach(function(q){ fw=Math.max(fw,PF.width(q[0])); }); fw=Math.max(fw,PF.width(L('over')))+20; plaque(cx0-fw/2,y-2,cx0+fw/2,y+38+ls.length*11,0.6);
   text(L('over'),cx0,y,P.text,'center'); text(String(g.score),cx0,y+13,P.band,'center',2);
   ls.forEach(function(q,i){ text(q[0],cx0,y+38+i*11,q[1],'center'); });
   var vs='V'+VERSION, vr=freeSide()==='left', vx=vr?LW-SAFE.r-8:SAFE.l+8, vy=LH-SAFE.b-12, vw=PF.width(vs);
   text(vs,vx,vy,diag?P.band:P.soft,vr?'right':'left'); var bx0=Math.max(0,(vr?vx-vw:vx)-8), bx1=Math.min(LW,(vr?vx:vx+vw)+8), by0=vy-8; BTN.push({id:'ver',x:bx0,y:by0,w:bx1-bx0,h:Math.min(PF.CAP+16,LH-by0)});
-  say(L('over')+' '+g.score);
-  if(overT>0.8) column([['again',L('again'),'primary'],['over_cal',L('recal')],['menu',L('menu')]].concat(diag&&Logs.has()?[['logs',L('logs')]]:[]),Math.round(LH*0.52)); }
+  say(L('over')+' '+g.score+(bl?'. '+bl[0]:''));
+  var lb=Board.last(); if(lb&&lb.state==='done'&&lb.listed&&!lb.named&&!nickAsked&&overT>1.5){ nickAsked=true; nickFrom='over'; go('nick'); return; }   // v1.62b: the first place in a table — the name, once (as SonaFly's)
+  if(overT>0.8) column([['again',L('again'),'primary'],['over_cal',L('recal')],['menu',L('menu')],['scores',L('scores')]].concat(diag&&Logs.has()?[['logs',L('logs')]]:[]),Math.round(LH*0.52)); }

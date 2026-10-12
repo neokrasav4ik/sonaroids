@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='1.61w';
+var VERSION='1.61x';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -6957,6 +6957,7 @@ var mode='fly';   // v0.84: which game — 'fly' (SonaFly) or 'race' (SonaRace);
 function go(s){ if(mode==='race'&&s==='title') s='rtitle'; if(mode==='pong'&&s==='title') s='ptitle';   // v1.59: SonaPong's menu
   if(scr==='wave'&&s!=='wave'&&!caught&&T&&typeof Board!=='undefined') Board.setup('nocatch',{t:scrT,flips:flips});   // left the wave step without a caught range
   if(s!==scr&&typeof mixPrep==='function') mixPrep(scr,s);
+  if(s==='count') shake=0;   /* 1.61x: a new game starts still (SonaFly's last crash left shake 0.4 behind) */
   if(s!==scr) scrPrev=scr; scr=s; scrT=0; BTN=[]; if(s!=='nick'&&s!=='linkin'&&typeof nickField==='function'&&nickEl) nickField(false); }
 var scrPrev=null, diag=false, flips=0;                        // diag: the "logs" button is shown (a tap on the version on the game-over screen)
 
@@ -7975,7 +7976,7 @@ function loop(now){ Sfx.setGame(mode);   /* 1.61w: which game's sounds */
   }
   skyGLEnd();
   chrome(); pressGlow();
-  present(scr==='play'?shake:0);
+  present(scr==='play'&&mode!=='pong'?shake:0);   /* 1.61x (Den 00:50: «если сначала поиграть в SonaFly, а потом запустить SonaLob — дрожит вся картинка»): SonaFly's crash shake never wore off in SonaLob (nothing there counts it down) — SonaLob doesn't shake */
 }
 /* v0.48 (the maintainer): the menu button in the top corner on every screen but the menus themselves, and the version on every screen but
    the flight — so "logs" (a tap on the version) is there during getting ready too. The corner is the free side's, as in flight (away from
@@ -8054,7 +8055,7 @@ go('hub');   // v0.70: the games' screen first (always the menu first since 0.44
 requestAnimationFrame(loop);
 /* test hooks: headless tests drive the screens through these (harmless in the game) */
 window.__sonaroids={mixStart:function(){ mixStart(); },setSkin:function(id){ setSkin(id); return SK&&SK.id; },obsProbe:function(k,a,b){ return obsProbe(k,a,b); },obs:function(c){ if(c==='roll') FLY.roll=0; return {ok:OBS.ok,err:OBS.err,vis:OBS.vis,bd:OBS.bd,od:OBS.od,n:OBS.list.length,an:OBS.an.length,f16:OBS.f16,sk:SK.id}; },fxBurst:function(x,y,n,kind){ var BU=SK.bursts(); burst(fx(x),y*K,n,BU[kind]||BU.rock,50*K); },mixNow:function(){ MX.next=MX.t; if(!MX.pend) MX.pend=mixPick(); },mixInfo:function(){ return {on:mixOn(),cur:mixCur(),pend:MX.pend,tr:MX.tr?MX.tr.t:null,hist:MX.hist.slice(),fly:flyMix,race:raceMix}; },noteZones:function(){ return RC.zones?RC.zones.slice():null; },noteRivals:function(v){ RN_RIV=v; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },noteInfra:function(f){ RN_FORCE=f||null; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },raceNote:function(o){ for(var k in o) RN_LOOK[k]=o[k]; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },raceSuper:function(v){ R_SUPER=v; },racePal:function(pud,bub){ if(pud) for(var k in pud) R_PUD[k]=pud[k]; if(bub) for(var j in bub) R_BUB[j]=bub[j]; RC.sp={}; },skinProbe:skinProbe,hdProbe:hdProbe,sizeProbe:sizeProbe,hdIds:hdIds,pixIds:function(){ return SKIN_IDS.filter(function(i){ return !!SKINS[i]; }); },skinIds:function(){ return SKIN_IDS.slice(); },go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },
-  setBooted:function(v){ booted=v; },
+  setBooted:function(v){ booted=v; }, setShake:function(v){ shake=v; },
   board:function(){ return {tbl:tblBox,nick:nickEl?{shown:nickEl.style.display!=='none',rect:nickEl.getBoundingClientRect().toJSON()}:null}; },
   side:function(){ return {hand:handSide(),rel:handRel,cam:camEnd(),stored:store.get('sonaroids_rel',''),say:sayLast}; }, wave:function(){ toWave(); },
   fake:function(){ booted=true; prep={res:{ok:true},doneT:-9}; T=Tune.create(100,true); T.ok=true; caught=true;          // a stand-in state for layout checks

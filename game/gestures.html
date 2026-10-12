@@ -3195,82 +3195,111 @@ window.__show=function(id){ show(id); }; window.__arcOpen=function(g){ arcOpen(g
    возврате показываю меню перед игрой; «Играть» откроет звук заново */
 try{ document.addEventListener('visibilitychange',function(){ if(!document.hidden||!ARC||!(ARC.on||ARC.phase==='play'||ARC.phase==='wave'||ARC.phase==='count'||ARC.phase==='prep'||ARC.phase==='empty')) return;
   if(el('arcPlay').classList.contains('hidden')) return; arcEv('hidden'); arcHalt(); if(arcGame==='juggle'||arcGame==='pong') arcOpen(arcGame); else { arcText('Свернули — партия остановлена','Нажми «Ещё раз».'); arcButtons(true); } }); }catch(e){}
-/* ── «СЛОВАРЬ ЖЕСТОВ» (12.10, отдельная страница game/gestures.html; лаба и игра не тронуты) ──
-   Ден 12:47–12:53: проверить на записи, различает ли сонар жесты будущей игры про фигуристку: рывок против быстрого плавного,
-   тряску против двух рывков, подходы к рывку (из замера / после опускания), силу рывка, рывок вниз, «вниз-вверх», высоты замера.
-   Две части по ~2 мин (одна запись — не больше ~30 МБ). Подготовка — как «Ладонь по линейке» (пустая комната → взмахи → отсчёт).
-   По команде на экране и по щелчку человек делает жест; в журнал идут шаги и моменты щелчков:
-     step:номер:вид — начало блока (prep — «Дальше: …»);  cue:вид:n — щелчок «сейчас»;  cue-end:вид:n — конец окна (тряска, высоты);
-     hold:n / dip:n — начало «замри» / «опускай» перед рывком.
-   Разбор — по звуку (обработка как в игре, по четвертям кадра), метки — из журнала. Файлы: sonararc_gest1_*.wav, sonararc_gest2_*.wav */
-ARC_MAX=Math.round(170*48000/512);
-ARC_GAMES.gest1={title:'Словарь жестов — часть 1',file:'gest1',unit:'',
-  intro:'Около 2 минут. По команде на экране и по щелчку делай жест: рывок вверх, быстро-плавно вверх, рывок вполсилы и изо всех сил, тряска. Ладонь — как в игре, у разъёма, 5–15 см. Между жестами возвращай ладонь в середину. В конце нажми «Сохранить запись» и пришли файл.'};
-ARC_GAMES.gest2={title:'Словарь жестов — часть 2',file:'gest2',unit:'',
-  intro:'Около 2 минут. Два рывка подряд, рывок из замера, рывок после медленного опускания, рывок вниз, «вниз и сразу вверх», замер внизу, в середине и вверху. Ладонь — как в игре, у разъёма, 5–15 см. В конце нажми «Сохранить запись» и пришли файл.'};
-var GS_BLOCKS={
-  gest1:[
-    {k:'level',lv:'mid',n:1,gap:4,say:'Держи ладонь в середине',sub:'просто держи, не двигай'},
-    {k:'flick',n:6,gap:2.6,say:'Рывок: резко вверх и обратно',sub:'на каждый щелчок'},
-    {k:'smooth',n:6,gap:2.6,say:'Быстро, но плавно: вверх и обратно',sub:'без рывка, на каждый щелчок'},
-    {k:'flick_soft',n:5,gap:2.6,say:'Рывок вполсилы',sub:'резко, но невысоко — на щелчок'},
-    {k:'flick_hard',n:5,gap:2.6,say:'Рывок изо всех сил',sub:'самый резкий — на щелчок'},
-    {k:'shake',n:4,gap:5.5,win:3,say:'Тряска: мелко и быстро вверх-вниз',sub:'пока горит «тряси», 3 секунды'}],
-  gest2:[
-    {k:'double',n:5,gap:3.2,say:'Два рывка подряд',sub:'на щелчок — раз-два'},
-    {k:'hold_flick',n:5,gap:4.5,pre:2.6,say:'Замри, потом рывок',sub:'держи неподвижно, на щелчок — рывок'},
-    {k:'dip_flick',n:5,gap:4.5,pre:2.6,say:'Медленно опусти, снизу — рывок',sub:'опускай плавно, на щелчок — рывок вверх'},
-    {k:'down',n:5,gap:2.6,say:'Рывок вниз',sub:'резко вниз и обратно — на щелчок'},
-    {k:'down_up',n:5,gap:3,say:'Резко вниз и сразу резко вверх',sub:'на щелчок'},
-    {k:'level',lv:'lo',n:1,gap:3.5,say:'Держи ладонь внизу',sub:'у самого низа, где удобно'},
-    {k:'level',lv:'mid',n:1,gap:3.5,say:'Держи ладонь в середине',sub:''},
-    {k:'level',lv:'hi',n:1,gap:3.5,say:'Держи ладонь вверху',sub:'у самого верха, где удобно'}]
+/* ── «СЛОВАРЬ ЖЕСТОВ» v2 (12.10, отдельная страница game/gestures.html; лаба и игра не тронуты) ──
+   Ден 15:10 о первой версии: «тест для роботов… читать не успевал, делал с запозданием, путался». Теперь — для человека:
+   одна карточка = один жест; он показан анимацией; никакого щелчка-таймера — делай, когда готов, страница сама видит жест
+   и ставит галочку; справа полоска — где ладонь относительно своей зоны (из взмахов). Карточки: рывок вверх ×5, плавно ×5,
+   рывок вниз ×5, тряска ×3, замри внизу / в середине / вверху. Если жест не ловится — через 30 с (замер — 15 с) карточка идёт дальше.
+   Жест ищется по энергии эха (проверено на записях 15:05 и 15:08: пойманы 51 из 51, лишних ~7 за 2 мин — в основном возврат ладони).
+   Журнал: card:i:вид[:высота] · go:i (с этого кадра жесты в счёт) · g:вид:n:длит_мс:зубцы:кадр_начала (жест засчитан) ·
+   x:вид:длит_мс:зубцы:кадр_начала (движение не в счёт: до go, слишком длинное, короткая тряска) · lvl-ok:высота:доля · timeout:i · done
+   Файл: sonararc_gest3_*.wav */
+ARC_MAX=Math.round(180*48000/512);
+ARC_GAMES.gest3={title:'Словарь жестов',file:'gest3',unit:'',
+  intro:'Около 2 минут. Четыре жеста и три замера — по одному на экране. Посмотри, как движется ладонь на картинке, и повтори, когда будешь готов: страница сама увидит жест и поставит галочку. Не спеши. Движения маленькие, как в игре — ладонь не выходит из полосы справа. Между жестами держи ладонь неподвижно. В конце нажми «Сохранить запись» и пришли файл.'};
+var GS3=[
+  {k:'flick',name:'Рывок вверх',how:'резко вверх на 3–4 см — и сразу обратно',need:5,T:30},
+  {k:'smooth',name:'Плавно вверх и вниз',how:'не спеша: секунда вверх, секунда вниз',need:5,T:30},
+  {k:'down',name:'Рывок вниз',how:'резко вниз на 3–4 см — и сразу обратно',need:5,T:30},
+  {k:'shake',name:'Тряска',how:'мелко и часто, 2–3 секунды — потом замри',need:3,T:30},
+  {k:'lvl',lv:'lo',name:'Замри внизу',how:'в нижней части полосы — пока не загорится галочка',need:1,T:15,lo:-0.1,hi:0.3},
+  {k:'lvl',lv:'mid',name:'Замри в середине',how:'посередине полосы',need:1,T:15,lo:0.35,hi:0.65},
+  {k:'lvl',lv:'hi',name:'Замри вверху',how:'в верхней части полосы',need:1,T:15,lo:0.7,hi:1.1}];
+var GS3_INTRO=1.2, GS3_GAP=2.4, GS3_HOLD=2;
+/* поиск жеста по кадру сонара (94 в секунду): «движение» — энергия эха держится высоко (минимум за 0,14 с > −14 дБ) или остаток
+   энергии дёргается (среднее |Δ| за 0,1 с > 1,2). Жест — отрезок движения; кончается после 0,34 с покоя; короче 0,16 с — не в счёт.
+   «Зубцы» — пики энергии внутри жеста (у тряски 70–85 за 3 с, у остальных 5–30). */
+function gsDetNew(){ return {E:[],dR:[],lastR:null,on:false,k:0,k0:0,quiet:0,fr:0,e1:null,e2:null}; }
+function gsDetStep(D,r,cb){ D.k++; if(!r||r.E===undefined||r.E===null) return;
+  var E=r.E, R=r.resE; D.E.push(E); if(D.E.length>13) D.E.shift(); var d=D.lastR===null?0:Math.abs(R-D.lastR); D.lastR=R; D.dR.push(d); if(D.dR.length>9) D.dR.shift();
+  var mn=Math.min.apply(null,D.E), md=D.dR.reduce(function(a,b){return a+b;},0)/D.dR.length, mot=(D.E.length>=13&&mn>-14)||(D.dR.length>=9&&md>1.2);
+  if(D.e2!==null&&D.e1>D.e2&&D.e1>E&&D.e1>-12&&D.on) D.fr++; D.e2=D.e1; D.e1=E;
+  if(mot){ if(!D.on){ D.on=true; D.k0=D.k; D.fr=0; } D.quiet=0; }
+  else if(D.on){ D.quiet++; if(D.quiet>=32){ D.on=false; var n=D.k-D.quiet-D.k0; if(n>=15) cb({k0:D.k0,k1:D.k-D.quiet,dur:n/93.75,fr:D.fr}); } } }
+/* где ладонь: доля своей зоны (0 — низ взмахов, 1 — верх), без обрезки краёв; медиана последних 12 кадров — эхо на рывках прыгает */
+function gs3Frac(){ if(!ARC.T||!ARC.T.ok||!ARC.gsH||ARC.gsH.length<4) return null; var h=ARC.gsH.slice().sort(function(a,b){return a-b;})[ARC.gsH.length>>1];
+  return 0.5+(h-100)/Math.max(30,ARC.T.field); }
+var _arcFrame3=arcFrame; arcFrame=function(f,gap,r){ _arcFrame3(f,gap,r);
+  if(!ARC.on||ARC.game!=='gest3'||!r) return; if(!ARC.gsD) ARC.gsD=gsDetNew();
+  if(r.present&&r.height!==null){ ARC.gsH.push(r.height); if(ARC.gsH.length>12) ARC.gsH.shift(); }
+  gsDetStep(ARC.gsD,r,function(b){ (ARC.gsQ=ARC.gsQ||[]).push({b:b,at:ARC.frames.length,ago:ARC.gsD.k-b.k0}); }); };
+var _arcInit3=arcInit; arcInit=function(){ _arcInit3(); if(ARC.game==='gest3'){ ARC.score=0; ARC.lives=0; ARC.gsD=null; ARC.gsH=[]; ARC.gsQ=[];
+  ARC.gsI=-1; ARC.gsSt=''; ARC.gsT0=0; ARC.gsN=0; ARC.gsOk=-9; ARC.gsMsg=''; ARC.gsMsgT=-9; ARC.gsHold=0; ARC.gsGot={}; ARC.gsOut=0; } };
+function gs3Card(i){ ARC.gsI=i; ARC.gsN=0; ARC.gsHold=0; ARC.gsT0=ARC.t; ARC.gsSt='intro'; var c=GS3[i];
+  arcEv('card:'+i+':'+c.k+(c.lv?':'+c.lv:'')); arcText(c.name,c.how); }
+function gs3Say(m){ ARC.gsMsg=m; ARC.gsMsgT=ARC.t; }
+ARC_STEP.gest3=function(dt){ var t=ARC.t;
+  if(ARC.gsI<0) gs3Card(0);
+  var c=GS3[ARC.gsI], u=t-ARC.gsT0, Q=ARC.gsQ||[]; ARC.gsQ=[];
+  if(ARC.gsSt==='intro'&&u>=GS3_INTRO){ ARC.gsSt='go'; ARC.gsT0=t; u=0; arcEv('go:'+ARC.gsI); }
+  Q.forEach(function(q){ var b=q.b, k0=q.at-q.ago, tag=Math.round(b.dur*1000)+':'+b.fr+':'+k0;
+    var ok=ARC.gsSt==='go'&&c.k!=='lvl'&&(c.k==='shake'?(b.dur>=1.5&&b.fr>=b.dur*15):b.dur<=2.2);
+    if(!ok){ arcEv('x:'+c.k+':'+tag); if(ARC.gsSt==='go'&&c.k==='shake') gs3Say('ещё дольше — 2–3 секунды'); else if(ARC.gsSt==='go'&&c.k!=='lvl'&&b.dur>2.2) gs3Say('слишком долго — один жест и замри'); return; }
+    ARC.gsN++; ARC.gsOk=t; ARC.gsGot[c.k]=(ARC.gsGot[c.k]||0)+1; arcEv('g:'+c.k+':'+ARC.gsN+':'+tag); sfx('jtoss',1); });
+  if(ARC.gsSt==='go'&&c.k==='lvl'){ var fr=gs3Frac(), still=!(ARC.gsD&&ARC.gsD.on);
+    if(fr!==null&&still&&fr>=c.lo&&fr<=c.hi&&ARC.present) ARC.gsHold+=dt; else ARC.gsHold=0;
+    if(ARC.gsHold>=GS3_HOLD){ ARC.gsN=1; ARC.gsOk=t; ARC.gsGot['lvl:'+c.lv]=1; arcEv('lvl-ok:'+c.lv+':'+fr.toFixed(2)); sfx('jtoss',1); } }
+  if(ARC.gsSt==='go'&&(ARC.gsN>=c.need||u>=c.T)){ if(ARC.gsN<c.need) arcEv('timeout:'+ARC.gsI);
+    ARC.gsSt='next'; ARC.gsT0=t; sfx('level'); var nx=GS3[ARC.gsI+1];
+    arcText(ARC.gsN>=c.need?'Готово ✓':'Ладно, дальше',nx?'дальше: '+nx.name.toLowerCase():''); return; }
+  if(ARC.gsSt==='next'&&u>=GS3_GAP){ if(ARC.gsI+1>=GS3.length){ arcEv('done'); ARC.over=true; return; } gs3Card(ARC.gsI+1); }
+  /* подсказка, если ладонь вышла из своей зоны и стоит там */
+  var f=gs3Frac(); if(f!==null&&!(ARC.gsD&&ARC.gsD.on)&&(f>1.2||f<-0.2)){ ARC.gsOut+=dt; if(ARC.gsOut>0.7) gs3Say(f>1.2?'ладонь выше полосы — опусти':'ладонь ниже полосы — подними'); } else ARC.gsOut=0;
 };
-function gsScript(g){ var S=[], t=0; GS_BLOCKS[g].forEach(function(b){ S.push({prep:1,k:b.k,say:'Дальше: '+b.say.charAt(0).toLowerCase()+b.say.slice(1),sub:b.sub,t0:t,t1:t+3}); t+=3;
-    S.push({k:b.k,lv:b.lv,n:b.n,gap:b.gap,win:b.win,pre:b.pre,say:b.say,sub:b.sub,t0:t,t1:t+b.n*b.gap}); t+=b.n*b.gap; }); S.push({k:'end',t0:t,t1:t+1.5,say:'Готово',sub:''}); return S; }
-function gsCueAt(s){ return s.k==='level'?0:s.pre?s.pre:s.k==='shake'?0.8:1.0; }
-var _arcInit=arcInit; arcInit=function(){ _arcInit(); if(/^gest/.test(ARC.game)){ ARC.gs=gsScript(ARC.game); ARC.gsI=-1; ARC.gsN=-1; ARC.gsCue=-9; ARC.score=0; ARC.lives=0; ARC.gsState=''; } };
-ARC_STEP.gest1=ARC_STEP.gest2=function(dt){ var S=ARC.gs, t=ARC.t, i=0; while(i<S.length&&t>=S[i].t1) i++;
-  if(i>=S.length){ arcEv('done'); ARC.over=true; return; }
-  var s=S[i], u=t-s.t0;
-  if(i!==ARC.gsI){ ARC.gsI=i; ARC.gsN=-1; arcEv('step:'+i+':'+(s.prep?'prep':s.k)+(s.lv?':'+s.lv:'')); arcText(s.say,s.sub||''); if(s.prep) sfx('level'); }
-  if(s.prep||s.k==='end'){ ARC.gsState='prep'; return; }
-  var j=Math.floor(u/s.gap), v=u-j*s.gap, cAt=gsCueAt(s);
-  if(j!==ARC.gsN&&j<s.n){ ARC.gsN=j; if(s.k==='hold_flick') arcEv('hold:'+j); if(s.k==='dip_flick') arcEv('dip:'+j); ARC.gsCued=false; ARC.gsEnded=false; }
-  if(!ARC.gsCued&&v>=cAt){ ARC.gsCued=true; ARC.gsCue=t; arcEv('cue:'+s.k+(s.lv?':'+s.lv:'')+':'+j); if(s.k!=='level') sfx('jtoss',1); }
-  var wEnd=s.k==='shake'?cAt+s.win:s.k==='level'?s.gap-0.2:null;
-  if(wEnd!==null&&!ARC.gsEnded&&v>=wEnd){ ARC.gsEnded=true; arcEv('cue-end:'+s.k+(s.lv?':'+s.lv:'')+':'+j); if(s.k==='shake') sfx('level'); }
-  ARC.gsState=s.k==='shake'?(v>=cAt&&v<wEnd?'shake':'wait'):s.k==='level'?'level':s.pre?(v<cAt?(s.k==='hold_flick'?'hold':'dip'):'go'):(v<cAt?'ready':'go');
-  ARC.gsWin=s.k==='shake'?Math.max(0,Math.min(1,(v-cAt)/s.win)):s.pre&&v<cAt?v/cAt:null;
-  el('acSub').textContent=(s.sub?s.sub+' · ':'')+(s.n>1?(j+1)+' из '+s.n:''); };
-function gsDraw(){ var cv=el('acC'); if(!cv||!cv.getContext) return; var c=cv.getContext('2d'), W=cv.width, H=cv.height, dpr=Math.min(2,window.devicePixelRatio||1);
-  if(ARC.phase!=='play'&&ARC.phase!=='over'){ gsMeter(c,W,H,dpr); return; }
-  c.fillStyle='#0f1530'; c.fillRect(0,0,W,H);
-  var st=ARC.phase==='over'?'prep':ARC.gsState, since=ARC.t-ARC.gsCue, cx=W*0.42, cy=H*0.73, R=Math.min(W,H)*0.17;
-  var col=st==='go'&&since<0.6?'#ffd166':st==='shake'?'#ff8a3d':st==='hold'?'#5fe0b8':st==='dip'?'#7fb2ff':st==='level'?'#5fe0b8':'#2c3766';
-  c.fillStyle=col; c.globalAlpha=st==='go'&&since<0.6?1-since/0.8:0.9; c.beginPath(); c.arc(cx,cy,R,0,6.283); c.fill(); c.globalAlpha=1;
-  if(ARC.phase==='play'&&ARC.gsWin!==null&&ARC.gsWin!==undefined){ c.strokeStyle='#E7EDE9'; c.lineWidth=6*dpr; c.beginPath(); c.arc(cx,cy,R+10*dpr,-1.5708,-1.5708+6.283*ARC.gsWin); c.stroke(); }
-  c.fillStyle='#0f1530'; c.font='700 '+Math.round(R*0.36)+'px system-ui,sans-serif'; c.textAlign='center'; c.textBaseline='middle';
-  var word=st==='go'&&since<0.6?'СЕЙЧАС':st==='shake'?'ТРЯСИ':st==='hold'?'замри':st==='dip'?'опускай':st==='level'?'держи':st==='prep'?'':'…';
-  c.fillText(word,cx,cy); c.textBaseline='alphabetic'; gsMeter(c,W,H,dpr); }
-function gsMeter(c,W,H,dpr){ var x=W*0.86, y0=H*0.18, y1=H*0.9; c.strokeStyle='#5b6aa8'; c.lineWidth=3*dpr; c.beginPath(); c.moveTo(x,y0); c.lineTo(x,y1); c.stroke();
-  c.fillStyle='#8f9cc0'; c.font=Math.round(12*dpr)+'px system-ui,sans-serif'; c.textAlign='center'; c.fillText('верх',x,y0-8*dpr); c.fillText('низ',x,y1+16*dpr);
-  if(ARC.frac!==null&&ARC.frac!==undefined&&ARC.present){ var y=y1-(y1-y0)*Math.max(0,Math.min(1,ARC.frac)); c.fillStyle='#ff8a3d'; c.beginPath(); c.arc(x,y,9*dpr,0,6.283); c.fill(); } }
-var _arcDraw=arcDraw; arcDraw=function(){ _arcDraw(); if(/^gest/.test(ARC.game||'')) gsDraw(); };   // поверх общего фона и завесы
-var _arcSummary=arcSummary; arcSummary=function(){ return /^gest/.test(ARC.game)?'запись готова — нажми «Сохранить запись» и пришли файл':_arcSummary(); };
-var _arcText=arcText; arcText=function(a,b){ if(/^gest/.test(arcGame)){ if(a==='Помаши ладонью') b='К разъёму и от него, 5–15 см, как в игре. Секунд пять.'; if(a==='Финиш') b=arcSummary(); } _arcText(a,b); };
-/* своя первая страница вместо лабы: две большие кнопки; «Назад»/«В начало» возвращают сюда */
+/* картинка: слева — как двигать (ладонь над торцом телефона, повтор по кругу); посередине — галочки; справа — где ладонь */
+function gs3Demo(k,lv,s){ var p=(s%2.6)/2.6, b=function(a,b2){ return p<a||p>b2?0:Math.pow(Math.sin(Math.PI*(p-a)/(b2-a)),2); };
+  if(k==='flick') return 0.5+0.35*b(0.35,0.47); if(k==='down') return 0.5-0.35*b(0.35,0.47);
+  if(k==='smooth') return 0.5+0.35*b(0.1,0.9); if(k==='shake') return p>0.15&&p<0.8?0.5+0.07*Math.sin(2*Math.PI*p*2.6*7):0.5;
+  return lv==='lo'?0.15:lv==='hi'?0.85:0.5; }
+function gs3Draw(){ var cv=el('acC'); if(!cv||!cv.getContext) return; var c=cv.getContext('2d'), W=cv.width, H=cv.height, dpr=Math.min(2,window.devicePixelRatio||1);
+  var mx=W*0.88, my0=H*0.2, my1=H*0.88, fy=function(f){ return my1-(my1-my0)*(0.2+0.6*f); };   // доля зоны 0..1 → середина полосы (поля по 20% сверху и снизу)
+  if(ARC.phase==='play'||ARC.phase==='over'){ c.fillStyle='#0f1530'; c.fillRect(0,0,W,H); }
+  if(ARC.T&&ARC.T.ok){ c.fillStyle='rgba(95,224,184,.14)'; c.fillRect(mx-16*dpr,fy(1),32*dpr,fy(0)-fy(1)); c.strokeStyle='#5b6aa8'; c.lineWidth=2*dpr; c.strokeRect(mx-16*dpr,my0,32*dpr,my1-my0);
+    var cd=ARC.phase==='play'?GS3[ARC.gsI]:null; if(cd&&cd.k==='lvl'){ c.fillStyle='rgba(255,209,102,.3)'; c.fillRect(mx-16*dpr,fy(Math.min(1.25,cd.hi)),32*dpr,fy(Math.max(-0.25,cd.lo))-fy(Math.min(1.25,cd.hi))); }
+    var f=gs3Frac(); if(f!==null&&ARC.present){ var y=fy(Math.max(-0.33,Math.min(1.33,f))); c.fillStyle=f>1.05||f<-0.05?'#ff7a8a':'#ff8a3d'; c.beginPath(); c.arc(mx,y,10*dpr,0,6.283); c.fill(); }
+    c.fillStyle='#8f9cc0'; c.font=Math.round(11*dpr)+'px system-ui,sans-serif'; c.textAlign='center'; c.fillText('твоя зона',mx,my0-8*dpr); }
+  if(ARC.phase!=='play'&&ARC.phase!=='over') return;
+  var cd2=GS3[ARC.gsI]; if(!cd2||ARC.phase==='over') return;
+  /* как двигать */
+  var dx=W*0.2, dy0=H*0.5, dy1=H*0.92, py=dy1-(dy1-dy0)*(0.15+0.7*gs3Demo(cd2.k,cd2.lv,ARC.t));
+  c.fillStyle='#2c3766'; c.fillRect(dx-36*dpr,dy1,72*dpr,7*dpr); c.fillStyle='#ffd166'; c.beginPath(); c.ellipse(dx,py,26*dpr,9*dpr,0,0,6.283); c.fill();
+  c.fillStyle='#8f9cc0'; c.font=Math.round(12*dpr)+'px system-ui,sans-serif'; c.textAlign='center'; c.fillText('вот так',dx,dy0-12*dpr); c.fillText('телефон',dx,dy1+20*dpr);
+  /* галочки */
+  var n=cd2.need, gx=W*0.52, gy=H*0.74, sp=34*dpr, x0=gx-(n-1)*sp/2, since=ARC.t-ARC.gsOk;
+  for(var i=0;i<n;i++){ var on=i<ARC.gsN; c.beginPath(); c.arc(x0+i*sp,gy,12*dpr,0,6.283); c.fillStyle=on?'#5fe0b8':'#2c3766'; c.fill();
+    if(on){ c.strokeStyle='#0f1530'; c.lineWidth=3*dpr; c.beginPath(); c.moveTo(x0+i*sp-5*dpr,gy); c.lineTo(x0+i*sp-1*dpr,gy+4*dpr); c.lineTo(x0+i*sp+6*dpr,gy-5*dpr); c.stroke(); } }
+  if(since<0.7){ c.globalAlpha=1-since/0.7; c.fillStyle='#5fe0b8'; c.font='700 '+Math.round(26*dpr)+'px system-ui,sans-serif'; c.fillText('увидел ✓',gx,gy-30*dpr); c.globalAlpha=1; }
+  else if(ARC.gsSt==='intro'){ c.fillStyle='#8f9cc0'; c.font=Math.round(15*dpr)+'px system-ui,sans-serif'; c.fillText('посмотри…',gx,gy-30*dpr); }
+  else if(ARC.gsSt==='go'&&ARC.gsD&&ARC.gsD.on){ c.fillStyle='#ffd166'; c.font=Math.round(15*dpr)+'px system-ui,sans-serif'; c.fillText('вижу движение…',gx,gy-30*dpr); }
+  else if(ARC.gsSt==='go'&&ARC.t-ARC.gsMsgT<2.2){ c.fillStyle='#ff9a7a'; c.font=Math.round(15*dpr)+'px system-ui,sans-serif'; c.fillText(ARC.gsMsg,gx,gy-30*dpr); }
+  else if(ARC.gsSt==='go'){ c.fillStyle='#8f9cc0'; c.font=Math.round(15*dpr)+'px system-ui,sans-serif'; c.fillText(cd2.k==='lvl'?'держи ладонь в жёлтом':'твоя очередь',gx,gy-30*dpr); }
+  c.fillStyle='#5b6aa8'; c.font=Math.round(12*dpr)+'px system-ui,sans-serif'; c.fillText((ARC.gsI+1)+' из '+GS3.length,gx,H-10*dpr); }
+var _arcDraw3=arcDraw; arcDraw=function(){ _arcDraw3(); if(ARC.game==='gest3') gs3Draw(); };
+var _arcSummary3=arcSummary; arcSummary=function(){ if(ARC.game!=='gest3') return _arcSummary3(); var g=ARC.gsGot||{}, f=function(k){ return g[k]||0; };
+  return 'увидел: рывков вверх '+f('flick')+', плавных '+f('smooth')+', рывков вниз '+f('down')+', тряску '+f('shake')+', замеров '+(f('lvl:lo')+f('lvl:mid')+f('lvl:hi'))+' из 3. Сохрани запись и пришли'; };
+var _arcText3=arcText; arcText=function(a,b){ if(arcGame==='gest3'){ if(a==='Помаши ладонью') b='К разъёму и от него, как в игре. Так страница узнает твою зону. Секунд пять.'; if(a==='Финиш') b=arcSummary(); } _arcText3(a,b); };
+/* своя первая страница вместо лабы; «Назад»/«В начало» возвращают сюда */
 (function(){ var ov=document.createElement('div'); ov.id='gsHome';
   ov.setAttribute('style','position:fixed;inset:0;z-index:1000;background:#0f1530;color:#E7EDE9;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:14px;padding:16px;text-align:center;font-family:system-ui,sans-serif');
   ov.innerHTML='<h1 style="margin:0;font-size:26px">Словарь жестов</h1>'+
-    '<p style="max-width:560px;margin:0;line-height:1.4;opacity:.85">Запись для будущей игры про фигуристку: различает ли сонар жесты ладони. Телефон горизонтально, разъёмом к ладони, как в игре; громкость 40–60% на iPhone, 20–30% на Android. Две части по 2 минуты — каждую сохрани и пришли.</p>'+
-    '<div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center"><button id="gsP1" class="big">Часть 1</button><button id="gsP2" class="big">Часть 2</button></div>'+
-    '<p id="gsErr" style="margin:0;color:#ff7a8a;display:none"></p><p style="margin:0;font-size:13px;opacity:.6">Часть 1: рывки, быстро-плавно, сила рывка, тряска. Часть 2: два рывка, подходы, рывок вниз, высоты.</p>';
+    '<p style="max-width:580px;margin:0;line-height:1.4;opacity:.85">Проверяем, какие жесты ладони различает сонар — для будущей игры про фигуристку. Около 2 минут, без спешки: жест показан на картинке, повторяешь, когда готов, — страница сама ставит галочку.</p>'+
+    '<p style="max-width:580px;margin:0;line-height:1.4;opacity:.7;font-size:14px">Телефон горизонтально, разъёмом к ладони, как в игре; громкость 40–60% на iPhone, 20–30% на Android.</p>'+
+    '<button id="gsP1" class="big">Начать</button><p id="gsErr" style="margin:0;color:#ff7a8a;display:none"></p>';
   document.body.appendChild(ov);
   function go(g){ el('gsErr').style.display='none'; boot().then(function(){ ov.style.display='none'; lastRec='arc'; arcGame=g; viaOrient('arcIntro'); }).catch(fail); }
-  el('gsP1').addEventListener('click',function(){ go('gest1'); }); el('gsP2').addEventListener('click',function(){ go('gest2'); });
+  el('gsP1').addEventListener('click',function(){ go('gest3'); });
   var _fail=fail; fail=function(e){ _fail(e); var m=el('gsErr'); m.textContent='Не вышло: '+((e&&e.message)||e); m.style.display='block'; };
-  var _open=arcOpen; arcOpen=function(g){ _open(g); if(/^gest/.test(g)) el('acTitle').textContent=ARC_GAMES[g].title; };
+  var _open=arcOpen; arcOpen=function(g){ _open(g); if(g==='gest3') el('acTitle').textContent=ARC_GAMES[g].title; };
   var _show=show; show=function(id){ if(id==='home'){ ov.style.display='flex'; return; } _show(id); };
   document.title='Словарь жестов';
 })();

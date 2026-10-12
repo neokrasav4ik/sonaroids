@@ -234,7 +234,7 @@ function pgOverClips(){ var duo=!!g.duo, items=duo?pdOverItems():pgOverItems(), 
   var a0=left?bx+bw+m:SAFE.l+m, a1=left?LW-SAFE.r-m:bx-m, aw=a1-a0, y=topY();
   var ls=[L('pg_width').replace('{n}',Math.round(Pong.width(g)*100)),L('pg_passes').replace('{n}',g.passes)], bl=duo?null:boardLine(), hot=null;
   if(duo) ls.push(pdName()+' + '+pdMate()); else if(PG.newBest) hot=L('best')+'!'; else if(pgBest()>0) ls.push(L('best')+' '+pgBest());   /* v1.64g: together — the two names, the partner's state under them */
-  if(duo) bl=[L('pd_mate_st').replace('{s}',pdMateSt()),PD.pst==='ready'?P.band:P.soft];
+  if(duo){ var bd=boardLine(); bl=[L('pd_mate_st').replace('{s}',pdMateSt()),PD.pst==='ready'?P.band:P.soft,bd?bd[0]:null]; }   /* v1.64h: and the pair's place in the table */
   var sub=PF.wrap(ls.join(' · '),aw-16,1), bls=bl?[bl[0]].concat(bl[2]?[bl[2]]:[]):[];
   var ph=24+sub.length*10+bls.length*10; plaque(a0,y-2,a1,y+ph,0.6);
   text(L('over'),a0+8,y+4,P.text); text(String(g.score),a1-8,y,P.band,'right',2); if(hot) text(hot,a1-8-PF.width(String(g.score),2)-10,y+4,P.band,'right'); var yy=y+22;   /* «РЕКОРД!» beside the score */

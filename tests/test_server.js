@@ -123,7 +123,31 @@ function play(seed,amp,steps){ const hands=[], g=Core.create(seed,380,90); for(l
     const tp=await get('/v1/top?period=all&game=pong',{'X-Player':P}), tf=await get('/v1/top?period=all');
     check('SonaLob: its own table; the others have no SonaLob games', tp.j.game==='pong'&&tp.j.entries.length===1&&tp.j.entries[0].nick==='Lobber'&&tp.j.entries[0].score===Math.max(p1.g.score,p2.g.score)&&tp.j.me&&tp.j.me.rank===1&&!tf.j.entries.some(e=>e.nick==='Lobber'),
       JSON.stringify(tp.j.entries.map(e=>[e.nick,e.score,e.level])));
-    const hl=await get('/v1/health'); check('health names SonaLob\'s rules too', hl.j.pong===Pong.TAG, JSON.stringify(hl.j)); }
+    const hl=await get('/v1/health'); check('health names SonaLob\'s rules too', hl.j.pong===Pong.TAG&&hl.j.pong2===Pong.TAG2, JSON.stringify(hl.j));
+    /* v1.64h: SonaLob «вдвоём» — a pair's game, sent by each phone with its own key (both palms, which racket is its own, the partner's
+       name); replayed by Pong.replay2; the pair is one line of SonaLob's table, «A + B», among the players alone */
+    const duoP=(seed,steps,marks)=>{ const g=Pong.create2(seed,2.16,[1,2],[75,0]), hL=[], hR=[], M=marks.slice(); let m=0;
+      for(let i=0;i<steps&&g.state!=='over';i++){ while(m<M.length&&M[m][0]<=g.n){ if(M[m][1]==='resume') Pong.resume2(g); else g.Hs[M[m][2]]=Pong.TUNE.SENS[M[m][3]]; m++; }
+        const a=Math.round(Math.max(-0.15,0.3+0.55*Math.sin(i/23)+0.15*Math.sin(i/7))*10000)/10000, b=i%500===250?null:Math.round((0.35+0.5*Math.sin(i/19+1))*10000)/10000; hL.push(a); hR.push(b); Pong.step2(g,a,b); }
+      const enc=h=>{ const buf=Buffer.alloc(h.length*2); h.forEach((v,i)=>buf.writeUInt16LE(v===null?65535:Math.round(v*10000)+2000,i*2)); return zlib.deflateRawSync(buf).toString('base64'); };
+      return {g,body:{game:'pong',duo:1,core:Pong.TAG2,seed,ar:2.16,sens:[1,2],span:[75,0],marks,enc:'deflate',hands:enc(hL),hands2:enc(hR),score:g.score}}; };
+    const DA=pid(), DB=pid(), d1=duoP(41,60*80,[[900,'resume'],[900,'sens',1,3]]);
+    let ra=await postP('/v1/game',Object.assign({pid:DA,me:0,mate:'Annie'},d1.body));
+    const sd=db.prepare("SELECT game,level,extra FROM games WHERE seed=41").get();
+    check('SonaLob together: a pair\'s game is replayed from both palms and stored, with its marks',ra.code===200&&ra.j.ok&&ra.j.score===d1.g.score&&d1.g.score>0&&sd&&sd.game==='pong2'&&sd.level===d1.g.passes&&JSON.parse(sd.extra).marks.length===2,`score ${d1.g.score}, passes ${d1.g.passes}`);
+    await postP('/v1/nick',{pid:DA,nick:'Denny'}); let tq=await get('/v1/top?period=all&game=pong',{'X-Player':DA});
+    const one=tq.j.entries.find(e=>e.duo);
+    check('SonaLob together: sent by one phone only — the pair is in the table, the other name as he gave it',!!one&&one.nick==='Denny + Annie'&&one.me&&tq.j.me&&tq.j.me.duo,JSON.stringify(tq.j.entries.map(e=>[e.nick,e.score])));
+    let rb=await postP('/v1/game',Object.assign({pid:DB,me:1,mate:'Denny'},d1.body)); await postP('/v1/nick',{pid:DB,nick:'Anya'});
+    tq=await get('/v1/top?period=all&game=pong',{'X-Player':DB}); const pairs=tq.j.entries.filter(e=>e.duo);
+    const order=tq.j.entries.map(e=>e.score).every((v,i,a)=>!i||a[i-1]>=v);
+    check('SonaLob together: both sent it — one line «A + B» with their own names, among the players alone, in order of score',rb.code===200&&pairs.length===1&&pairs[0].nick==='Denny + Anya'&&pairs[0].score===d1.g.score&&pairs[0].me&&tq.j.entries.some(e=>!e.duo)&&order,JSON.stringify(tq.j.entries.map(e=>[e.nick,e.score])));
+    const d2=duoP(42,60*40,[]); await postP('/v1/game',Object.assign({pid:DA,me:0},d2.body)); await postP('/v1/game',Object.assign({pid:DB,me:1},d2.body));
+    tq=await get('/v1/top?period=all&game=pong'); const pp=tq.j.entries.filter(e=>e.duo);
+    check('SonaLob together: a pair keeps its best game, as a player alone',pp.length===1&&pp[0].score===Math.max(d1.g.score,d2.g.score),JSON.stringify(pp.map(e=>[e.nick,e.score])));
+    const badD=[{score:d1.g.score+5},{marks:[[900,'sens',2,1]]},{marks:[[900,'sens',1]]},{me:2},{sens:[1]},{span:[75,5]},{hands2:d2.body.hands2},{core:Pong.TAG}];
+    const cd=[]; for(const x of badD){ const r=await postP('/v1/game',Object.assign({pid:pid(),me:0},d1.body,{seed:x.score||x.core?41:60+cd.length},x)); cd.push(r.code); }
+    check('SonaLob together: a forged score, broken marks, racket, sensitivity, range, palms, the single game\'s rules — refused',cd[0]===422&&cd.slice(1,7).every(c=>c===400||c===422)&&cd[7]===409,cd.join(' ')); }
   // v1.31: the bots — real games by the same rules, replayed from what is stored; shown by default, left out with bots=0, never above the best person
   { const Bots=require('../server/bots.js'), RaceC=require('../src/14_race.js'); const humanBest=db.prepare("SELECT MAX(score) AS s FROM games WHERE game='fly'").get().s;
     Bots.init(4,1); const bp=db.prepare('SELECT player FROM bots').all().map(r=>r.player), bn=new Set(db.prepare('SELECT nick FROM players WHERE player IN (SELECT player FROM bots)').all().map(r=>r.nick));

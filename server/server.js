@@ -160,8 +160,9 @@ const ip=req=>{ const f=String(req.headers['x-forwarded-for']||'').split(',').ma
 function postGame(b,now){
   if(typeof b.pid!=='string'||!/^[0-9a-f]{32}$/.test(b.pid)) return [400,{ok:false,error:'pid'}];
   const game=b.game===undefined||b.game===null?'fly':b.game; if(!GAMES.includes(game)) return [400,{ok:false,error:'game'}];
-  const race=game==='race', TAG=race?Race.TAG:game==='pong'?Pong.TAG:Core.TAG, FH=race?Race.FH:Core.FH;
+  const race=game==='race', duo=game==='pong'&&b.duo===1, TAG=race?Race.TAG:game==='pong'?(duo?Pong.TAG2:Pong.TAG):Core.TAG, FH=race?Race.FH:Core.FH;
   if(b.core!==TAG) return [409,{ok:false,error:'core',core:TAG}];            // an old game version: the rules differ
+  if(duo) return postPongDuo(b,now);
   if(game==='pong') return postPong(b,now);
   const seed=b.seed>>>0, FW=+b.FW, y0=(b.y0===null||b.y0===undefined)?null:+b.y0;
   if(seed!==b.seed||!(FW>=100&&FW<=700)||(y0!==null&&!(y0>=0&&y0<=FH))) return [400,{ok:false,error:'args'}];
@@ -195,12 +196,53 @@ function postPong(b,now){
   let seen=0; for(const h of d.hands) if(h!==null) seen++; seen=+(seen/d.hands.length).toFixed(4);
   try{ q.insGame.run(player,seed,Pong.TAG,g.score,level,+g.t.toFixed(2),now,ar,null,zlib.deflateRawSync(d.raw),cleanDev(b.dev),seen,game,null,JSON.stringify({ar,sens,span,marks})); }
   catch(e){ if(/UNIQUE/.test(String(e.message))) return [409,{ok:false,error:'dup'}]; throw e; }
-  const ranks={}; let listed=false;
-  for(const p of PERIODS){ const best=q.best.get(game,player,since(p,now)).s; ranks[p]=rankOf(game,player,best,p,now); if(ranks[p]<=LISTED&&best===g.score) listed=true; }
-  const here={}; for(const p of PERIODS){ const t0=since(p,now), own=q.best.get(game,player,t0).s; here[p]=q.above.get(game,t0,player,g.score).n+(own>g.score?1:0)+1; }
-  const named=!!q.getPlayer.get(player).nick;
-  return [200,{ok:true,score:g.score,level,ranks,here,listed,named}];
+  return [200,pongPlaces(player,g.score,level,now)];
 }
+/* v1.64h — SonaLob «Вдвоём»: a pair's game. Each phone sends it (with its own key): both palms, both players' sensitivity and range, the
+   marks (a pause's resume, a racket's sensitivity), which racket is this phone's, the partner's name. Replayed by Pong.replay2 — stored
+   only if the score is the same — as game 'pong2' (not a table of its own: the pairs go into SonaLob's table, see pongBoard) */
+function cleanMarks2(m,n){ if(m===undefined||m===null) return []; if(!Array.isArray(m)||m.length>2000) return null; let last=0; const o=[];
+  for(const x of m){ if(!Array.isArray(x)||!Number.isInteger(x[0])||x[0]<last||x[0]>n) return null; last=x[0];
+    if(x[1]==='resume'&&x.length===2) o.push([x[0],'resume']); else if(x[1]==='sens'&&x.length===4&&(x[2]===0||x[2]===1)&&Number.isInteger(x[3])&&x[3]>=0&&x[3]<=3) o.push([x[0],'sens',x[2],x[3]]); else return null; }
+  return o; }
+function postPongDuo(b,now){
+  const seed=b.seed>>>0, ar=+b.ar, sens=b.sens, span=b.span, me=b.me;
+  const okSens=Array.isArray(sens)&&sens.length===2&&sens.every(v=>Number.isInteger(v)&&v>=0&&v<=3), okSpan=Array.isArray(span)&&span.length===2&&span.every(v=>v===0||(v>=30&&v<=200));
+  if(seed!==b.seed||!(ar>=1.2&&ar<=3.5)||!okSens||!okSpan||(me!==0&&me!==1)) return [400,{ok:false,error:'args'}];
+  let d, d2; try{ d=decodePong(b.enc,b.hands); d2=decodePong(b.enc,b.hands2); }catch(e){ return [400,{ok:false,error:'hands'}]; }
+  if(d.hands.length!==d2.hands.length) return [400,{ok:false,error:'hands'}];
+  const marks=cleanMarks2(b.marks,d.hands.length); if(!marks) return [400,{ok:false,error:'marks'}];
+  const g=Pong.replay2(seed,ar,sens,span.map(Number),d.hands,d2.hands,marks);
+  if(g.score!==b.score) return [422,{ok:false,error:'mismatch',score:g.score}];
+  const level=g.passes, player=hash(b.pid), mate=b.mate===undefined||b.mate===null||b.mate===''?null:cleanNick(b.mate); q.insPlayer.run(player,now);
+  const own=me===0?d.hands:d2.hands; let seen=0; for(const h of own) if(h!==null) seen++; seen=+(seen/own.length).toFixed(4);
+  try{ q.insGame.run(player,seed,Pong.TAG2,g.score,level,+g.t.toFixed(2),now,ar,null,zlib.deflateRawSync(Buffer.concat([d.raw,d2.raw])),cleanDev(b.dev),seen,'pong2',null,JSON.stringify({ar,sens,span,marks,me,mate})); }
+  catch(e){ if(/UNIQUE/.test(String(e.message))) return [409,{ok:false,error:'dup'}]; throw e; }
+  return [200,pongPlaces(player,g.score,level,now)];
+}
+/* v1.64h: SonaLob's table — each named player's best game alone, and each pair's best game together, in one list («DEN + ANN»). A pair is
+   the two who sent the same game (its seed); if only one of them sent it, the other is the name he gave (or «?»). A pair is listed when at
+   least one of the two has a name. Small enough to put together in memory */
+q.pairRows=db.prepare(`SELECT g.player AS player, p.nick AS nick, g.seed AS seed, g.score AS score, g.level AS level, g.t AS t, g.created AS created, g.extra AS extra
+    FROM games g JOIN players p ON p.player=g.player WHERE g.game='pong2' AND g.created>=?`);
+function pongBoard(t0,people){ const out=[];
+  for(const r of (people?q.topH:q.top).all('pong',t0,t0,100000)) out.push({key:r.player,players:[r.player],nick:r.nick,score:r.score,level:r.level,t:r.t,created:r.created,duo:false});
+  const bySeed=new Map(); for(const r of q.pairRows.all(t0)){ let x={}; try{ x=JSON.parse(r.extra)||{}; }catch(e){} r.me=x.me; r.mate=x.mate||null; const k=r.seed+':'+r.score; if(!bySeed.has(k)) bySeed.set(k,[]); bySeed.get(k).push(r); }
+  const best=new Map();
+  for(const rows of bySeed.values()){ const side=[null,null], name=[null,null];
+    for(const r of rows){ if(r.me===0||r.me===1){ side[r.me]=r.player; name[r.me]=r.nick||name[r.me]; if(!name[1-r.me]&&r.mate) name[1-r.me]=r.mate; } }
+    if(!name[0]&&!name[1]) continue; const pl=side.filter(Boolean), key=side.map((p,i)=>p||('?'+(name[i]||''))).sort().join('|'), r0=rows[0];
+    const e={key,players:pl,nick:(name[0]||'?')+' + '+(name[1]||'?'),score:r0.score,level:r0.level,t:r0.t,created:Math.min(...rows.map(r=>r.created)),duo:true};
+    const o=best.get(key); if(!o||e.score>o.score||(e.score===o.score&&e.created<o.created)) best.set(key,e); }
+  for(const e of best.values()) out.push(e);
+  out.sort((a,b)=>b.score-a.score||a.created-b.created); return out; }
+/* a player's place in SonaLob's table: his best line there — alone or in a pair */
+function pongMine(list,player){ for(let i=0;i<list.length;i++) if(list[i].players.includes(player)) return {rank:i+1,e:list[i]}; return null; }
+function pongPlaces(player,score,level,now){ const ranks={}, here={}; let listed=false;
+  for(const p of PERIODS){ const list=pongBoard(since(p,now),false), m=pongMine(list,player);
+    ranks[p]=m?m.rank:null; if(m&&m.rank<=LISTED&&m.e.score===score) listed=true;
+    here[p]=list.filter(e=>e.score>score).length+1; }
+  const named=!!q.getPlayer.get(player).nick; return {ok:true,score,level,ranks,here,listed,named}; }
 /* v0.29: how getting ready went — from every player, also those who never get to play; for server/stats.js only */
 const SETUP_RE=/^(caught|nocatch|quiet|loud|noprobe|error|nomic|noaudio|lost)$/;
 function postSetup(b,now){
@@ -239,6 +281,11 @@ function getTop(url,req,now){
   const game=GAMES.includes(url.searchParams.get('game'))?url.searchParams.get('game'):'fly';
   const limit=Math.max(1,Math.min(LISTED,+url.searchParams.get('limit')||20)), t0=since(period,now);
   const pid=String(req.headers['x-player']||''), me=/^[0-9a-f]{32}$/.test(pid)?hash(pid):null, people=url.searchParams.get('bots')==='0';
+  if(game==='pong'){ const list=pongBoard(t0,people), m=me?pongMine(list,me):null;   /* v1.64h: alone and in pairs, one list */
+    const entries=list.slice(0,limit).map((e,i)=>({rank:i+1,nick:e.nick,score:e.score,level:e.level,t:e.t,me:!!me&&e.players.includes(me),duo:e.duo}));
+    let mine=null; if(m){ const p=q.getPlayer.get(me); mine={rank:m.rank,score:m.e.score,nick:m.e.duo?m.e.nick:(p?p.nick:null),duo:m.e.duo}; }
+    else if(me){ const best=q.best.get('pong',me,t0).s; if(best!==null&&best!==undefined) mine={rank:list.filter(e=>e.score>best).length+1,score:best,nick:null}; }
+    return [200,{period,game,people,entries,me:mine}]; }
   const rows=(people?q.topH:q.top).all(game,t0,t0,limit);
   const entries=rows.map((r,i)=>({rank:i+1,nick:r.nick,score:r.score,level:r.level,t:r.t,me:r.player===me}));
   let mine=null; if(me){ const best=q.best.get(game,me,t0).s; if(best!==null&&best!==undefined){ const p=q.getPlayer.get(me); mine={rank:rankOf(game,me,best,period,now,people),score:best,nick:p?p.nick:null}; } }
@@ -250,7 +297,7 @@ const server=http.createServer(async(req,res)=>{
   if(req.method==='OPTIONS'){ res.writeHead(204,origin?{'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Methods':'GET, POST','Access-Control-Allow-Headers':'Content-Type, X-Player','Access-Control-Max-Age':'86400','Vary':'Origin'}:{}); return res.end(); }
   const url=new URL(req.url,'http://x'), now=Date.now(), who=ip(req);
   try{
-    if(req.method==='GET'&&url.pathname==='/v1/health') return send(res,200,{ok:true,core:Core.TAG,race:Race.TAG,pong:Pong.TAG},origin);
+    if(req.method==='GET'&&url.pathname==='/v1/health') return send(res,200,{ok:true,core:Core.TAG,race:Race.TAG,pong:Pong.TAG,pong2:Pong.TAG2},origin);
     /* v1.56c, СонарЛинк: rooms for two phones (server/pair.js). Opening and joining are limited like the transfer code; messages per room */
     if(url.pathname.startsWith('/v1/pair/')){ const pth=url.pathname.slice(9);
       if(req.method==='GET'&&pth==='sse'){ if(!allow('p:'+who,60)) return send(res,429,{ok:false,error:'slow down'},origin); if(!Pair.getSse(url,req,res,origin,now)) send(res,404,{ok:false,error:'code'},origin); return; }

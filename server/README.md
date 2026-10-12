@@ -4,7 +4,7 @@ Plain Node, no npm packages: `node:http`, `node:sqlite`, `node:zlib`, `node:cryp
 Every game the page sends is **replayed with the game's own rules** (`src/13_core.js`, the same file the browser runs);
 only a score the replay reproduces is stored. **SonaRace** (v1.01): a race comes with `game:'race'` and its steering (`height` | `road`) and is
 replayed with `src/14_race.js` by the race's own rules (a race played with the test switches is refused); it has its own tables
-(`/v1/top?…&game=race`), its metres stand in the level column. The `game` and `steer` columns are added to an existing database on start. **SonaLob** (v1.62a): `game:'pong'` with the field's shape `ar`, the starting sensitivity `sens`, the swing `span` and the `marks` (a pause's first step, a sensitivity change); replayed with `src/15_pong.js`; its own tables (`&game=pong`), the clean passes in the level column; what it needs to replay is kept in the `extra` column. Russian step-by-step guide: `docs/ru/server.md`.
+(`/v1/top?…&game=race`), its metres stand in the level column. The `game` and `steer` columns are added to an existing database on start. **SonaLob** (v1.62a): `game:'pong'` with the field's shape `ar`, the starting sensitivity `sens`, the swing `span` and the `marks` (a pause's first step, a sensitivity change); replayed with `src/15_pong.js`; its own tables (`&game=pong`), the clean passes in the level column; what it needs to replay is kept in the `extra` column. **SonaLob together** (v1.64h): `game:'pong', duo:1, core:'pong2-1'` with both palms (`hands` — the left racket's, `hands2` — the right one's), `sens` and `span` for both, `me` (which racket is the sender's), the `marks` (`[step,'resume']`, `[step,'sens',racket,0…3]`) and `mate` (the partner's name); each phone sends it with its own key; replayed with `Pong.replay2`, stored as `game='pong2'`. SonaLob's table puts each player's best game alone and each pair's best game together in one list — a pair is the two who sent the same seed, shown «A + B» (`duo:true` in the entry). Russian step-by-step guide: `docs/ru/server.md`.
 
 | file | what it is |
 |---|---|
@@ -47,7 +47,7 @@ sudo git clone https://github.com/neokrasav4ik/sonaroids.git /opt/sonaroids
 
 sudo cp /opt/sonaroids/server/sonaroids-api.service /etc/systemd/system/
 sudo systemctl daemon-reload && sudo systemctl enable --now sonaroids-api
-curl http://127.0.0.1:8787/v1/health              # {"ok":true,"core":"rules-3","race":"race-12","pong":"pong-8"}
+curl http://127.0.0.1:8787/v1/health              # {"ok":true,"core":"rules-3","race":"race-12","pong":"pong-8","pong2":"pong2-1"}
 
 sudo cp /opt/sonaroids/server/Caddyfile /etc/caddy/Caddyfile && sudo systemctl reload caddy   # or add the block to an existing Caddyfile
 sudo ufw allow 80,443/tcp                          # only if ufw is on

@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='1.64g';
+var VERSION='1.64h';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -1917,6 +1917,16 @@ var Board=(function(){
         if(j.ok) last={state:'done',score:j.score,ranks:j.ranks,here:j.here||null,listed:j.listed,named:j.named||!!nick()};
         else if(j.error==='core') last={state:'old'}; else last={state:'error',why:j.error}; },
       function(){ keep(body); last={state:'offline'}; }); }); }
+  /* v1.64h: SonaLob «вдвоём» — a pair's game, sent by each phone with its own key: both palms (×10000 as the game stepped, null — none),
+     both players' sensitivity and range, the marks, which racket is this phone's (me), the partner's name; the server replays it
+     (Pong.replay2) and puts the pair into SonaLob's table. last — as finish's */
+  function duo(o){ last=null; if(!on()||!(o.score>0)||!o.left.length) return; last={state:'sending',score:o.score}; var d=dev(), enc=function(a){ return a.map(function(v){ return v===null||v===undefined?NONE:Math.max(-2000,Math.min(22000,v))+2000; }); };
+    pack(enc(o.left)).then(function(p){ return pack(enc(o.right)).then(function(p2){
+      var body={pid:pid(),game:'pong',duo:1,core:o.core,seed:o.seed,ar:o.ar,sens:o.sens,span:o.span,me:o.me,marks:o.marks,mate:o.mate||null,enc:p.enc,hands:p.hands,hands2:p2.hands,score:o.score,dev:d};
+      return post('/v1/game',body).then(function(j){ cache={};
+        if(j.ok) last={state:'done',score:j.score,ranks:j.ranks,here:j.here||null,listed:j.listed,named:j.named||!!nick(),duo:true};
+        else if(j.error==='core') last={state:'old'}; else last={state:'error',why:j.error}; },
+      function(){ keep(body); last={state:'offline'}; }); }); }); }
   /* v0.29: how getting ready went, from every player — also those who never get to play (no microphone, the probe not heard, the palm
      never caught). Sent once and forgotten: result caught | nocatch | quiet | noprobe | error | nomic | noaudio | lost; t — seconds on the wave step,
      flips — how many times the game suggested the other end of the phone. */
@@ -1939,7 +1949,7 @@ var Board=(function(){
     fetch(API+'/v1/top?period='+period+'&limit=10'+gq+(people?'&bots=0':''),{headers:{'X-Player':pid()}}).then(function(r){ return r.json(); })
       .then(function(j){ c.state='ok'; c.entries=j.entries||[]; c.me=j.me||null; c.at=Date.now(); },function(){ c.state='offline'; c.at=Date.now(); });
     return c; }
-  return {setup:setup,link:link,claim:claim,devInfo:function(f){ devFn=f; },q:q,start:start,step:step,mark:mark,finish:finish,flush:flush,setNick:setNick,top:top,nick:nick,on:on,
+  return {setup:setup,link:link,claim:claim,devInfo:function(f){ devFn=f; },q:q,start:start,step:step,mark:mark,finish:finish,duo:duo,flush:flush,setNick:setNick,top:top,nick:nick,on:on,
     last:function(){ return last; }, _set:function(p,c){ cache[p]=c; }, _last:function(l){ last=l; }};
 })();
 /* ── UI strings, English. All caps: the game's pixel font is drawn in capitals on screen. ── */
@@ -5456,7 +5466,7 @@ function pgOverClips(){ var duo=!!g.duo, items=duo?pdOverItems():pgOverItems(), 
   var a0=left?bx+bw+m:SAFE.l+m, a1=left?LW-SAFE.r-m:bx-m, aw=a1-a0, y=topY();
   var ls=[L('pg_width').replace('{n}',Math.round(Pong.width(g)*100)),L('pg_passes').replace('{n}',g.passes)], bl=duo?null:boardLine(), hot=null;
   if(duo) ls.push(pdName()+' + '+pdMate()); else if(PG.newBest) hot=L('best')+'!'; else if(pgBest()>0) ls.push(L('best')+' '+pgBest());   /* v1.64g: together — the two names, the partner's state under them */
-  if(duo) bl=[L('pd_mate_st').replace('{s}',pdMateSt()),PD.pst==='ready'?P.band:P.soft];
+  if(duo){ var bd=boardLine(); bl=[L('pd_mate_st').replace('{s}',pdMateSt()),PD.pst==='ready'?P.band:P.soft,bd?bd[0]:null]; }   /* v1.64h: and the pair's place in the table */
   var sub=PF.wrap(ls.join(' · '),aw-16,1), bls=bl?[bl[0]].concat(bl[2]?[bl[2]]:[]):[];
   var ph=24+sub.length*10+bls.length*10; plaque(a0,y-2,a1,y+ph,0.6);
   text(L('over'),a0+8,y+4,P.text); text(String(g.score),a1-8,y,P.band,'right',2); if(hot) text(hot,a1-8-PF.width(String(g.score),2)-10,y+4,P.band,'right'); var yy=y+22;   /* «РЕКОРД!» beside the score */
@@ -5601,7 +5611,10 @@ function pdEnd(){ g.state='over'; overT=0; PD.ready=false; Logs.gameEv('вдво
   /* both palms (×10000, null — none), the left racket's first: the whole game can be replayed from the log (Pong.replay2) */
   var L0=PD.me===0?PD.mineAll:PD.his, R0=PD.me===0?PD.his:PD.mineAll, nn=g.n, cut=function(a){ var o=[]; for(var i=0;i<nn;i++) o.push(a[i]===undefined?null:a[i]); return o; };
   Logs.gameEv('вдвоём: ладони',{seed:PD.cfg.seed,sens:PD.cfg.sens,span:PD.cfg.span,n:nn,marks:PD.mk,left:cut(L0),right:cut(R0)}); Logs.gameStop(); pdFlush(true);
-  var dq=function(a){ return cut(a).map(function(v){ return v===null?null:v/10000; }); }; pdClipsMake(dq(L0),dq(R0)); go('over'); }
+  var dq=function(a){ return cut(a).map(function(v){ return v===null?null:v/10000; }); }; pdClipsMake(dq(L0),dq(R0));
+  /* v1.64h: the pair's records — each phone sends the game with its own key (the server replays it from both palms) */
+  Board.duo({core:Pong.TAG2,seed:PD.cfg.seed,ar:PG_AR,sens:PD.cfg.sens,span:PD.cfg.span,me:PD.me,marks:PD.mk.slice().sort(function(a,b){ return a[0]-b[0]; }),mate:PD.pname||null,left:cut(L0),right:cut(R0),score:g.score}); Board.flush();
+  go('over'); }
 /* v1.64g: the best arcs together — as the single game's (v1.62c): each racket's best clean pass, found and shown from the game stepped
    again from its seed with both palms and the marks (the same game — it is what the server will replay); each window signed with the
    name of the one whose racket it is */

@@ -42,6 +42,16 @@ var Board=(function(){
         if(j.ok) last={state:'done',score:j.score,ranks:j.ranks,here:j.here||null,listed:j.listed,named:j.named||!!nick()};
         else if(j.error==='core') last={state:'old'}; else last={state:'error',why:j.error}; },
       function(){ keep(body); last={state:'offline'}; }); }); }
+  /* v1.64h: SonaLob «вдвоём» — a pair's game, sent by each phone with its own key: both palms (×10000 as the game stepped, null — none),
+     both players' sensitivity and range, the marks, which racket is this phone's (me), the partner's name; the server replays it
+     (Pong.replay2) and puts the pair into SonaLob's table. last — as finish's */
+  function duo(o){ last=null; if(!on()||!(o.score>0)||!o.left.length) return; last={state:'sending',score:o.score}; var d=dev(), enc=function(a){ return a.map(function(v){ return v===null||v===undefined?NONE:Math.max(-2000,Math.min(22000,v))+2000; }); };
+    pack(enc(o.left)).then(function(p){ return pack(enc(o.right)).then(function(p2){
+      var body={pid:pid(),game:'pong',duo:1,core:o.core,seed:o.seed,ar:o.ar,sens:o.sens,span:o.span,me:o.me,marks:o.marks,mate:o.mate||null,enc:p.enc,hands:p.hands,hands2:p2.hands,score:o.score,dev:d};
+      return post('/v1/game',body).then(function(j){ cache={};
+        if(j.ok) last={state:'done',score:j.score,ranks:j.ranks,here:j.here||null,listed:j.listed,named:j.named||!!nick(),duo:true};
+        else if(j.error==='core') last={state:'old'}; else last={state:'error',why:j.error}; },
+      function(){ keep(body); last={state:'offline'}; }); }); }); }
   /* v0.29: how getting ready went, from every player — also those who never get to play (no microphone, the probe not heard, the palm
      never caught). Sent once and forgotten: result caught | nocatch | quiet | noprobe | error | nomic | noaudio | lost; t — seconds on the wave step,
      flips — how many times the game suggested the other end of the phone. */
@@ -64,6 +74,6 @@ var Board=(function(){
     fetch(API+'/v1/top?period='+period+'&limit=10'+gq+(people?'&bots=0':''),{headers:{'X-Player':pid()}}).then(function(r){ return r.json(); })
       .then(function(j){ c.state='ok'; c.entries=j.entries||[]; c.me=j.me||null; c.at=Date.now(); },function(){ c.state='offline'; c.at=Date.now(); });
     return c; }
-  return {setup:setup,link:link,claim:claim,devInfo:function(f){ devFn=f; },q:q,start:start,step:step,mark:mark,finish:finish,flush:flush,setNick:setNick,top:top,nick:nick,on:on,
+  return {setup:setup,link:link,claim:claim,devInfo:function(f){ devFn=f; },q:q,start:start,step:step,mark:mark,finish:finish,duo:duo,flush:flush,setNick:setNick,top:top,nick:nick,on:on,
     last:function(){ return last; }, _set:function(p,c){ cache[p]=c; }, _last:function(l){ last=l; }};
 })();

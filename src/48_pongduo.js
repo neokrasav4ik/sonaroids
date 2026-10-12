@@ -111,7 +111,10 @@ function pdEnd(){ g.state='over'; overT=0; PD.ready=false; Logs.gameEv('вдво
   /* both palms (×10000, null — none), the left racket's first: the whole game can be replayed from the log (Pong.replay2) */
   var L0=PD.me===0?PD.mineAll:PD.his, R0=PD.me===0?PD.his:PD.mineAll, nn=g.n, cut=function(a){ var o=[]; for(var i=0;i<nn;i++) o.push(a[i]===undefined?null:a[i]); return o; };
   Logs.gameEv('вдвоём: ладони',{seed:PD.cfg.seed,sens:PD.cfg.sens,span:PD.cfg.span,n:nn,marks:PD.mk,left:cut(L0),right:cut(R0)}); Logs.gameStop(); pdFlush(true);
-  var dq=function(a){ return cut(a).map(function(v){ return v===null?null:v/10000; }); }; pdClipsMake(dq(L0),dq(R0)); go('over'); }
+  var dq=function(a){ return cut(a).map(function(v){ return v===null?null:v/10000; }); }; pdClipsMake(dq(L0),dq(R0));
+  /* v1.64h: the pair's records — each phone sends the game with its own key (the server replays it from both palms) */
+  Board.duo({core:Pong.TAG2,seed:PD.cfg.seed,ar:PG_AR,sens:PD.cfg.sens,span:PD.cfg.span,me:PD.me,marks:PD.mk.slice().sort(function(a,b){ return a[0]-b[0]; }),mate:PD.pname||null,left:cut(L0),right:cut(R0),score:g.score}); Board.flush();
+  go('over'); }
 /* v1.64g: the best arcs together — as the single game's (v1.62c): each racket's best clean pass, found and shown from the game stepped
    again from its seed with both palms and the marks (the same game — it is what the server will replay); each window signed with the
    name of the one whose racket it is */

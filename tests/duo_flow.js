@@ -89,6 +89,10 @@ const SCEN=[`function(t){ if(t<8) return null; return 110-40*Math.cos(2*Math.PI*
   const ca=await A.evaluate(()=>__sonaroids.pgClips()), cb=await B.evaluate(()=>__sonaroids.pgClips()); await A.waitForTimeout(1500); await shot(A,'10b_over_clips_A');
   const cs=c=>c?JSON.stringify(c.clips.map(x=>[x.who,x.pts,x.h])):'none';
   check('the best arcs together: each racket\'s best pass, the same on both phones, from the game stepped again',!!ca&&ca.check===ea.score&&cs(ca)===cs(cb),`A ${cs(ca)} | B ${cs(cb)}; stepped again to ${ca&&ca.check}`);
+  /* v1.64h: both phones sent the game; the server replayed it — the pair is one line of SonaLob's table */
+  let tb=null; for(let k=0;k<30;k++){ await A.waitForTimeout(200); tb=await (await fetch(base+'/v1/top?period=all&game=pong')).json(); if(tb.entries&&tb.entries.some(e=>e.duo)) break; }
+  const pe=tb&&tb.entries.find(e=>e.duo), sent=server&&require('../server/server.js').db.prepare("SELECT COUNT(*) AS n FROM games WHERE game='pong2'").get().n;
+  check('the pair\'s game reaches the records: sent by both, replayed by the server, one line «DEN + ANN»',!!pe&&pe.nick==='DEN + ANN'&&pe.score===ea.score&&sent===2,pe?`${pe.nick} ${pe.score}, ${sent} sent`:JSON.stringify(tb));
   const rp=await A.evaluate(()=>__sonaroids.duoReplay()), rpb=await B.evaluate(()=>__sonaroids.duoReplay());
   check('the game replays from the two palms kept (as the server will — Pong.replay2), on either phone',rp.n===ea.n&&rp.score===ea.score&&rp.passes===ea.passes&&JSON.stringify(rp)===JSON.stringify(rpb),`${JSON.stringify(rp)}`);
   await act(A,'pd_again'); await A.waitForTimeout(500); const one=await scr(A); await act(B,'pd_again');

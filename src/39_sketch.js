@@ -324,6 +324,8 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
   else if(who===3) plat=REST+OFF0;
   if(who) plat=Math.max(py+5/390,Math.min(who===3?9:py+105/390,plat));
   if(who===4) plat=py;
+  /* v1.64c: SonaLob «вдвоём» — each plank at its own palm (ARC.pys); one palm — both at plat, as always */
+  var plats=ARC.pys&&!who?[ARC.pys[0],ARC.pys[1]]:[plat,plat], pyI=function(i){ return ARC.pys?ARC.pys[i]:py; };
   /* 1.60k (Ден 10:06–10:51: «приделать к платформам снизу двигатели или пропеллеры.. когда платформа поднимается — работают, чем
      резче, тем больше; когда опускается — наоборот» → эскизы М1–М3 → «сопла снизу (без верхних) или пропеллеры — решу в игре»).
      Скорость доски — по её же рисованному месту, сглажено за 0,06 с; «резко» — 2,5 высоты экрана в секунду и быстрее */
@@ -333,8 +335,10 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
        уже и медленнее, и до 2,5 высоты экрана в секунду, где моторы на полной, взмах не дотягивал). Теперь «резко» — относительно своих же
        ударов: опорная скорость — самый быстрый подъём доски за последние ~6 с (медленно забывается, не ниже 0,8 высоты/с); удар на 85%
        от неё — моторы на полной. При любой чувствительности и на любом телефоне сильный удар — полный огонь или диск */
-    PGS.mRef=Math.max(0.8,Math.max(Math.abs(PGS.mV),(PGS.mRef||1.5)*Math.exp(-dt/6))); }
-  var tops=[0,1].map(function(i){ var xc=ar*(i?1-PG_XC:PG_XC), tp=[]; for(var j=0;j<=48;j++){ var x=xc-hw+2*hw*j/48; tp.push([F(x),F(pgSurf(i,x,plat,ar,A).y)]); } if(who===4) pgsTent(c,i,tp,xc,hw,ar,A,hand,t); else { if(MOT) pgsMotors(c,i,tp,MOT,PGS.mV*2.5/(0.85*(PGS.mRef||1.5)),t,dt); pgsPlatform(pgsPen(c,201+100*i),tp); } return {xc:xc,tp:tp}; });
+    PGS.mRef=Math.max(0.8,Math.max(Math.abs(PGS.mV),(PGS.mRef||1.5)*Math.exp(-dt/6)));
+    if(ARC.pys){ if(!PGS.mPls){ PGS.mPls=plats.slice(); PGS.mVs=[0,0]; PGS.mRefs=[1.5,1.5]; }   /* v1.64c: together — each plank's motors by its own speed */
+      for(var mi=0;mi<2;mi++){ var vR=dt>0?-(plats[mi]-PGS.mPls[mi])/dt:0; PGS.mPls[mi]=plats[mi]; PGS.mVs[mi]+=(vR-PGS.mVs[mi])*(1-Math.exp(-dt/0.06)); PGS.mRefs[mi]=Math.max(0.8,Math.max(Math.abs(PGS.mVs[mi]),PGS.mRefs[mi]*Math.exp(-dt/6))); } } }
+  var tops=[0,1].map(function(i){ var xc=ar*(i?1-PG_XC:PG_XC), tp=[]; for(var j=0;j<=48;j++){ var x=xc-hw+2*hw*j/48; tp.push([F(x),F(pgSurf(i,x,plats[i],ar,A).y)]); } if(who===4) pgsTent(c,i,tp,xc,hw,ar,A,hand,t); else { if(MOT) pgsMotors(c,i,tp,MOT,ARC.pys&&PGS.mVs?PGS.mVs[i]*2.5/(0.85*PGS.mRefs[i]):PGS.mV*2.5/(0.85*(PGS.mRef||1.5)),t,dt); pgsPlatform(pgsPen(c,201+100*i),tp); } return {xc:xc,tp:tp}; });
   /* 1.59v (Ден 01:01–01:02: «больше жизни на доске и в воздухе — глаз в основном смотрит на волан.. но зритель геймплея будет смотреть на
      всё»): события игры (удар, потолок, потерянный мяч, сужение) оживляют и волан, и доски, и человечков. Всё — только рисунок */
   var LF=PGS.life; if(!LF||t<LF.lastT-0.5){ LF=PGS.life={ceils:ARC.ceils||0,falls:ARC.falls||0,nk:ARC.narrowK||1,kt:[null,null],fx:[],feathers:[],act:[null,null],flipT:-9,hitA:0.5,spinT:-9,prevVy:0,hang:-9,lastT:t}; }
@@ -348,14 +352,14 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
   /* the particles: feathers glide down and stay on a plank, stars blink, dust puffs, sawn-off bits of plank fall */
   var pfx=pgsPen(c,881); LF.fx.forEach(function(f){ f.t+=dt;
     if(f.k==='feather'&&f.glide){ f.vy=Math.min(f.vy+70*dt,f.y>F(0.75)?120:55); f.x+=(f.vx+Math.sin(f.t*3.2)*26)*dt; f.y+=f.vy*dt; f.a=Math.sin(f.t*3.2)*0.6;
-      for(var pi=0;pi<2;pi++){ var xc0=ar*(pi?1-PG_XC:PG_XC); if(Math.abs(f.x/390-xc0)<=hw){ var yy=F(pgSurf(pi,f.x/390,plat,ar,A).y); if(f.y>=yy-2){ LF.feathers.push({i:pi,u:(f.x/390-xc0),a:rnd(-0.2,0.2)}); if(LF.feathers.length>14) LF.feathers.shift(); f.t=f.life; } } } }
+      for(var pi=0;pi<2;pi++){ var xc0=ar*(pi?1-PG_XC:PG_XC); if(Math.abs(f.x/390-xc0)<=hw){ var yy=F(pgSurf(pi,f.x/390,plats[pi],ar,A).y); if(f.y>=yy-2){ LF.feathers.push({i:pi,u:(f.x/390-xc0),a:rnd(-0.2,0.2)}); if(LF.feathers.length>14) LF.feathers.shift(); f.t=f.life; } } } }
     else if(f.k==='piece'||f.k==='fall'){ f.vy+=700*dt; f.x+=f.vx*dt; f.y+=f.vy*dt; f.a+=(f.spin||0)*dt; }
     else if(f.k==='dust'){ f.x+=f.vx*dt; f.y+=f.vy*dt; } });
   LF.fx=LF.fx.filter(function(f){ return f.t<f.life&&f.y<420; });
-  LF.feathers=LF.feathers.filter(function(fe){ var xc0=ar*(fe.i?1-PG_XC:PG_XC); if(Math.abs(fe.u)>hw){ LF.fx.push({k:'fall',x:F(xc0+fe.u),y:F(pgSurf(fe.i,xc0+Math.sign(fe.u)*hw,plat,ar,A).y),vx:0,vy:0,t:0,life:2,a:fe.a,spin:3,feather:true}); return false; } return true; });
+  LF.feathers=LF.feathers.filter(function(fe){ var xc0=ar*(fe.i?1-PG_XC:PG_XC); if(Math.abs(fe.u)>hw){ LF.fx.push({k:'fall',x:F(xc0+fe.u),y:F(pgSurf(fe.i,xc0+Math.sign(fe.u)*hw,plats[fe.i],ar,A).y),vx:0,vy:0,t:0,life:2,a:fe.a,spin:3,feather:true}); return false; } return true; });
   /* 1.60j, этап 2 — воздух: у каждой частицы и пёрышка своё постоянное перо (раньше перо бралось по номеру в списке — когда одно
      исчезало, все следующие перерисовывались заново и «мигали»); звёздочки пульсируют плавно, а не мигают; всё гаснет, а не пропадает */
-  LF.feathers.forEach(function(fe,j){ if(fe.sd===undefined) fe.sd=LF.sid=(LF.sid||0)+1; var xc0=ar*(fe.i?1-PG_XC:PG_XC), x=xc0+fe.u; pgsFeather(pgsPen(c,890+fe.sd%997),F(x),F(pgSurf(fe.i,x,plat,ar,A).y)-2,fe.a,1); });
+  LF.feathers.forEach(function(fe,j){ if(fe.sd===undefined) fe.sd=LF.sid=(LF.sid||0)+1; var xc0=ar*(fe.i?1-PG_XC:PG_XC), x=xc0+fe.u; pgsFeather(pgsPen(c,890+fe.sd%997),F(x),F(pgSurf(fe.i,x,plats[fe.i],ar,A).y)-2,fe.a,1); });
   LF.fx.forEach(function(f,j){ var al=Math.max(0,1-f.t/f.life); if(f.sd===undefined) f.sd=LF.sid=(LF.sid||0)+1; var fin=Math.min(1,(f.life-f.t)/0.25);
     if(f.k==='feather'||(f.k==='fall'&&f.feather)) pgsFeather(pgsPen(c,1900+f.sd%997),f.x,f.y,f.a,Math.max(0.2,Math.min(1,fin*1.2)));
     else if(f.k==='star'){ var sr=4*(0.65+0.35*Math.cos(f.t*14))*Math.min(1,f.t/0.08)*fin; if(sr>0.4) pgsStar(pgsPen(c,2900+f.sd%997),f.x,f.y,sr); }
@@ -379,10 +383,10 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
     if(PGS.tgt[i]!==null){ var L=PGS.tgt[i], sb=L-d*off; P.side=(sb>=lo&&sb<=hi)?d:-d; want=L-P.side*off; }
     var tx=Math.max(lo,Math.min(hi,want));
     P.x=Math.max(lo,Math.min(hi,P.x)); var dx=tx-P.x, far=Math.abs(dx)>0.08, v=Math.sign(dx)*Math.min(Math.abs(dx),Math.max(2*dt,Math.abs(dx)*(1-Math.exp(-dt/0.06)))); P.x+=v; var moving=Math.abs(dx)>0.004;
-    var kk=ARC.kick&&ARC.kick[i], hit=kk&&t-kk.t0<0.3, fy=F(pgSurf(i,P.x,plat,ar,A).y);
+    var kk=ARC.kick&&ARC.kick[i], hit=kk&&t-kk.t0<0.3, fy=F(pgSurf(i,P.x,plats[i],ar,A).y);
     if(!who){ var fc=P.side, R0=PGS_REACH*1.15/390, bb=b0&&!(b0.wait>0)?b0:null, riding=bb&&bb.on&&bb.onI===i, tc=null;
-      if(riding){ var rx0=Math.max(lo,Math.min(hi,bb.x-fc*R0)); P.x+=(rx0-P.x)*(1-Math.exp(-dt/0.05)); fy=F(pgSurf(i,P.x,plat,ar,A).y); }   /* 1.60i: не скачком к волану */
-      if(bb&&PGS.tgt[i]!==null&&bb.vy>0){ var sY=pgSurf(i,Math.max(xc-hw,Math.min(xc+hw,bb.x)),py,ar,A).y; tc=Math.max(0,(sY-bb.r-bb.y)/Math.max(0.05,bb.vy)); }
+      if(riding){ var rx0=Math.max(lo,Math.min(hi,bb.x-fc*R0)); P.x+=(rx0-P.x)*(1-Math.exp(-dt/0.05)); fy=F(pgSurf(i,P.x,plats[i],ar,A).y); }   /* 1.60i: не скачком к волану */
+      if(bb&&PGS.tgt[i]!==null&&bb.vy>0){ var sY=pgSurf(i,Math.max(xc-hw,Math.min(xc+hw,bb.x)),pyI(i),ar,A).y; tc=Math.max(0,(sY-bb.r-bb.y)/Math.max(0.05,bb.vy)); }
       /* 1.60i (Ден 10:16: «добавь кадров и плавности всей жизни мира — на платформах и в воздухе»), этап 1 — человечки. Было: бег — два
          кадра, сменявшиеся 9 раз в секунду; позы (бег, стойка, присед, выпад, радость…) переключались скачком; поворот — мгновенным
          отражением. Теперь: шаг — непрерывный цикл (ноги перетекают из одного положения в другое, темп от скорости бега); переход
@@ -401,11 +405,12 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
       if(J===PP.joy||(act&&act.kind==='joy')) fy-=6*Math.sin(Math.min(1,(t-(act?act.t0:t))/0.7)*Math.PI);
       var tauJ=kk&&t-kk.t0<0.15?0.025:0.06; P.jd=P.jd?pgsMix(P.jd,J,1-Math.exp(-dt/tauJ)):J; if(extra.shake) P.jd.head=J.head.slice();
       P.fcS+=(fc-P.fcS)*(1-Math.exp(-dt/0.05)); var fcD=Math.abs(P.fcS)<0.12?(P.fcS<0?-0.12:0.12):P.fcS;
-      pgsFig(pgsPen(c,301+10*i),F(P.x),fy,fcD,P.jd,{hair:!i,cap:!!i,arcs:arcs,shake:extra.shake,stars:extra.stars}); return; }
+      var inkK=PGS_ST.ink; if(ARC.me===i) PGS_ST.ink=I.accent;   /* v1.64c (М2): together — the own player in red ink */
+      pgsFig(pgsPen(c,301+10*i),F(P.x),fy,fcD,P.jd,{hair:!i,cap:!!i,arcs:arcs,shake:extra.shake,stars:extra.stars}); PGS_ST.ink=inkK; if(ARC.me===i) ARC.meXY=[P.x,fy/390]; return; }
     var xr=Math.max(xc-hw,Math.min(xc+hw,P.x+P.side*REACH));
     /* the last moment: the shuttle close above this plank (or riding it) — the racket reaches for it, so they always meet */
-    var bm=b0&&!(b0.wait>0)?b0:null; if(bm&&(PGS.tgt[i]!==null||(bm.on&&bm.onI===i))&&Math.abs(bm.x-xc)<=hw+0.05){ var gap=pgSurf(i,Math.max(xc-hw,Math.min(xc+hw,bm.x)),py,ar,A).y-bm.y, wv=Math.max(0,Math.min(1,1-gap/0.14)); xr=Math.max(xc-hw,Math.min(xc+hw,xr+(bm.x-xr)*wv)); }
-    var S=pgSurf(i,xr,py,ar,A), sl=S.s*Ap/hw*S.f;
+    var bm=b0&&!(b0.wait>0)?b0:null; if(bm&&(PGS.tgt[i]!==null||(bm.on&&bm.onI===i))&&Math.abs(bm.x-xc)<=hw+0.05){ var gap=pgSurf(i,Math.max(xc-hw,Math.min(xc+hw,bm.x)),pyI(i),ar,A).y-bm.y, wv=Math.max(0,Math.min(1,1-gap/0.14)); xr=Math.max(xc-hw,Math.min(xc+hw,xr+(bm.x-xr)*wv)); }
+    var S=pgSurf(i,xr,pyI(i),ar,A), sl=S.s*Ap/hw*S.f;
     pgsReach(pgsPen(c,301+10*i),F(P.x),fy,d,F(xr),F(S.y),Math.atan(sl),{hair:!i,cap:!!i,moving:moving,far:far,hit:hit,step:Math.floor(t*9)%2}); });
   /* the shuttle and its dashed trail (since the last hit) */
   (ARC.balls||[]).forEach(function(b,bi){ if(bi===0){ var hk=(b.from===null||b.from===undefined?'s':b.from)+':'+(b.wait>0?'w':'f'); if(hk!==PGS.hb){ PGS.hb=hk; PGS.hid++; PGS.hist=[]; }

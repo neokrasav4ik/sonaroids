@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='1.64b';
+var VERSION='1.64d';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -1160,7 +1160,7 @@ var Sonar=(function(){
     for(n=0;n<N;n++){ var s=0; for(q=0;q<M;q++) s+=Math.cos(2*Math.PI*ks[q]*n/N+Math.PI*q*q/M); x[n]=s; if(Math.abs(s)>mx) mx=Math.abs(s); }
     var d=new Float32Array(N); for(n=0;n<N;n++) d[n]=x[n]/mx*0.9; return d;
   }
-  function natProbes(){ NATA.audioProbe('all',f32b64(probeData('all'))); NATA.audioProbe('even',f32b64(probeData(0))); NATA.audioProbe('odd',f32b64(probeData(1))); }
+  function natProbes(){ NATA.audioProbe('all',f32b64(probeData(PAR))); NATA.audioProbe('even',f32b64(probeData(0))); NATA.audioProbe('odd',f32b64(probeData(1))); }
   /* a message: "<seq>:<base64 of int16 LE>", two frames (interleaved if stereo — the first channel is used) */
   function natMsg(e){ var d=e.data; if(typeof d!=='string') return; var c=d.indexOf(':'); if(c<0) return;
     var seq=+d.slice(0,c), bin=atob(d.slice(c+1)), ch=natCfg&&natCfg.ch===2?2:1, n=bin.length>>1, nf=Math.floor(n/ch/N), f, i, j, v;
@@ -1329,7 +1329,7 @@ var Sonar=(function(){
       return ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([WORKLET],{type:'application/javascript'}))); })
     .then(function(){
       fs=ctx.sampleRate; var df=fs/N; kLo=Math.ceil(F_LO/df); kHi=Math.floor(F_HI/df); kc=Math.floor((kLo+kHi)/2);
-      var mg=ctx.createChannelMerger(2); sS=loopSrc(makeProbe('all')); sL=loopSrc(makeProbe(0)); sR=loopSrc(makeProbe(1));
+      var mg=ctx.createChannelMerger(2); sS=loopSrc(makeProbe(PAR)); sL=loopSrc(makeProbe(0)); sR=loopSrc(makeProbe(1));
       gSL=ctx.createGain(); gSR=ctx.createGain(); gL=ctx.createGain(); gR=ctx.createGain();
       [gSL,gSR,gL,gR].forEach(function(g){ g.gain.value=0; });
       sS.connect(gSL); sS.connect(gSR); sL.connect(gL); sR.connect(gR);
@@ -1346,7 +1346,16 @@ var Sonar=(function(){
   function setBand(b){ band=b==='wide'?'wide':'normal'; F_LO=BANDS[band]; if(!fs) return; var df=fs/N; kLo=Math.ceil(F_LO/df); kHi=Math.floor(F_HI/df); kc=Math.floor((kLo+kHi)/2);
     if(natOn){ natProbes(); return; }
     if(!ctx||!sS) return; [sS,sL,sR].forEach(function(s){ try{ s.stop(); s.disconnect(); }catch(e){} });
-    sS=loopSrc(makeProbe('all')); sL=loopSrc(makeProbe(0)); sR=loopSrc(makeProbe(1)); sS.connect(gSL); sS.connect(gSR); sL.connect(gL); sR.connect(gR); sS.start(); sL.start(); sR.start(); }
+    sS=loopSrc(makeProbe(PAR)); sL=loopSrc(makeProbe(0)); sR=loopSrc(makeProbe(1)); sS.connect(gSL); sS.connect(gSR); sL.connect(gL); sR.connect(gR); sS.start(); sL.start(); sR.start(); }
+  /* v1.64d — SonaLob «вдвоём»: the probe's tones. Two phones side by side hear each other's probe — with the same tones the neighbour's
+     reads as a palm that won't go away (the lab's СонарЛинк 1.56a/b: Den's recordings 06.10 — «рука видна» 71% of the time with the
+     hand away, against 30–34%; claude/SONARLINK.md). So together one phone plays the even tones and the other the odd ones, and each listens
+     to its own (DSP2.init(fs, parity), as the lab). The cost: the probe ~7 dB nearer the noise, the view 1.8 → 0.9 m; the range as precise.
+     'all' — every tone, as always. The room and the calibration are taken anew after a change (the caller's job) */
+  var PAR='all';
+  function setParity(p){ p=(p===0||p===1)?p:'all'; if(p===PAR) return false; PAR=p; if(!fs) return true;
+    if(natOn){ try{ natProbes(); }catch(e){} return true; }
+    if(ctx&&sS){ try{ sS.stop(); sS.disconnect(); }catch(e){} sS=loopSrc(makeProbe(PAR)); sS.connect(gSL); sS.connect(gSR); sS.start(); } return true; }
   function curCal(){ return band==='wide'?WIDE_CAL:PHYS_CAL; }
   function setProbe(w){                        // 'off' | 'dual' | 'single-left' | 'single-right'
     if(natOn){ try{ NATA.audioGains(w==='single-left'?PROBE_G:0,w==='single-right'?PROBE_G:0,w==='dual'?0.25:0,w==='dual'?0.25:0); }catch(e){} return; }
@@ -1374,7 +1383,7 @@ var Sonar=(function(){
       var w=2*Math.PI*b/N8, c=1, s=0, cw=Math.cos(w), sw=Math.sin(w), re=0, im=0;
       for(i=0;i<N8;i++){ re+=x[i]*c; im-=x[i]*s; var t=c*cw-s*sw; s=s*cw+c*sw; c=t; }
       var p=re*re+im*im, r=b%P;
-      if(r===0){ sig+=p; nl++; } else if(r>=2&&r<=P-2){ nz+=p; nn++; }
+      if(r===0){ if(PAR==='all'||(b/P)%2===PAR){ sig+=p; nl++; } } else if(r>=2&&r<=P-2){ nz+=p; nn++; }   /* v1.64d: only the own tones (the neighbour's are neither probe nor noise) */
     }
     var noisePerBin=nz/(nn||1), probe=sig-noisePerBin*nl, noiseBand=noisePerBin*(b1-b0+1);
     return {snr:10*Math.log10(Math.max(probe,1e-30)/Math.max(noiseBand,1e-30)), line:10*Math.log10(Math.max(probe,1e-30)/(nl||1))};
@@ -1470,7 +1479,7 @@ var Sonar=(function(){
       if(!vol&&PROBE_LVL>LOUD_LVL+lvlAdj){ setProbe('off'); return {ok:false,why:'loud',snr:L.snr,level:PROBE_LVL}; }
       // v0.67: in the app, the empty room is learnt only once the probe at the microphone holds still (settle)
       return (natOn?settle():Promise.resolve()).then(function(){
-      DSP2.set('flo',band==='wide'?F_LO:null); DSP2.set('live',liveOn()||roomOn()?1:0); DSP2.init(fs,'all');
+      DSP2.set('flo',band==='wide'?F_LO:null); DSP2.set('live',liveOn()||roomOn()?1:0); DSP2.init(fs,PAR);
       /* v1.14, auto-calibration plays with the player's own last hand calibration: its middle (by the echo's range) and its field, nothing
          changed in flight (1.10–1.13 fitted the screen to the palm while playing, and each made it worse — the maintainer's iPhone, 1.13:
          «Внизу чувствительность очень высокая, а вверху наоборот»); no hand calibration yet — the middle at 8.2 cm (1.13) */
@@ -1483,7 +1492,7 @@ var Sonar=(function(){
   var sim=null;
   function simulate(o){ sim=o; fs=o.fs||48000; var df=fs/N; kLo=Math.ceil(F_LO/df); kHi=Math.floor(F_HI/df); kc=Math.floor((kLo+kHi)/2); }
   function simBoot(){ if(booted) return Promise.resolve(); booted=true; var i=0, t0=performance.now(); lastSeq=-1;
-    simIv=setInterval(function(){ var due=Math.floor((performance.now()-t0)/1000*fs/N); if(simStalled){ i=due; return; } while(i<due){ onFrame({data:{f:sim.source(i,PROBE_G),s:i}}); i++; } },10);
+    simIv=setInterval(function(){ var due=Math.floor((performance.now()-t0)/1000*fs/N); if(simStalled){ i=due; return; } while(i<due){ onFrame({data:{f:sim.source(i,PROBE_G,PAR),s:i}}); i++; } },10);
     return Promise.resolve(); }
   /* v1.57 (the maintainer, 7 Oct: after the app was minimised and opened again the probe was gone, on the iPhone and on Android, until the
      app was restarted): frames could still come while the probe was dead, so healthy() said yes and «again» / «try again» kept the dead
@@ -1511,7 +1520,7 @@ var Sonar=(function(){
     if(simIv){ clearInterval(simIv); simIv=null; } simStalled=false;     // in simulation a re-opened microphone works again
     ctx=null; stream=null; node=null; an=null; booted=false; active=false; collector=null; lastSeq=-1; last=null; lost=false; lastFrameAt=0; wasHidden=false;
   }
-  return {live:liveOn,room:roomOn,savedMid:savedMid,boot:boot,prepare:prepare,setBand:setBand,band:function(){ return band; },simulate:simulate,healthy:healthy,restart:restart,simStall:function(v){ simStalled=!!v; },setProbe:setProbe,pause:pause,resume:resume,probeSNR:probeSNR,
+  return {setParity:setParity,parity:function(){ return PAR; },live:liveOn,room:roomOn,savedMid:savedMid,boot:boot,prepare:prepare,setBand:setBand,band:function(){ return band; },simulate:simulate,healthy:healthy,restart:restart,simStall:function(v){ simStalled=!!v; },setProbe:setProbe,pause:pause,resume:resume,probeSNR:probeSNR,
     listen:function(f){ listeners.push(f); },
     state:function(){ return last; }, lost:function(){ return lost; }, clearLost:function(){ lost=false; },
     shift:function(d){ DSP2.shift(d); },
@@ -1519,7 +1528,7 @@ var Sonar=(function(){
     /* what the browser really gave for the microphone: on Android the echo/noise/gain processing may stay on despite our request */
     micSettings:function(){ if(natOn){ try{ var st=JSON.parse(NATA.audioStatus()); return {audio:'app',probe_end:lsGet('sonaroids_probe_end','auto'),src:st.src,usage:st.usage,fx:st.fx,mic_wanted:st.mic_wanted,out_wanted:st.out_wanted,in:st.in,out:st.out,active:st.active}; }catch(e){ return {audio:'app'}; } }
       try{ var t=stream&&stream.getAudioTracks()[0]; if(!t) return null; var s=t.getSettings(), o={}; ['autoGainControl','echoCancellation','noiseSuppression','sampleRate','channelCount','latency','deviceId'].forEach(function(k){ if(s[k]!==undefined) o[k]=k==='deviceId'?String(s[k]).slice(0,8):s[k]; }); o.label=t.label; return o; }catch(e){ return null; } },
-    info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,probe_level:PROBE_LVL,vol_fit:volLog.slice(),level_fit:levelLog.slice(),f_lo:F_LO,band:band,cal:curCal(),gaps:gaps,booted:booted,audio:natOn?'app':'browser',auto_audio:autoLog,routes:routeLog.slice(),route:routeKey,settle:settleLog}; },
+    info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,par:PAR,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,probe_level:PROBE_LVL,vol_fit:volLog.slice(),level_fit:levelLog.slice(),f_lo:F_LO,band:band,cal:curCal(),gaps:gaps,booted:booted,audio:natOn?'app':'browser',auto_audio:autoLog,routes:routeLog.slice(),route:routeKey,settle:settleLog}; },
     audioRetest:function(){ autoRetest=true; try{ localStorage.removeItem('sonaroids_autoaudio'); }catch(e){} },
     native:function(){ return natOn; }, nativeAvail:natAvail,
     chan:function(){ return chan; }, ctx:function(){ return ctx; }};
@@ -1945,7 +1954,13 @@ STR.en={
   probe_t:'CHOOSE THE PROBE', probe_s:'WITH THIS SOUND THE PHONE HEARS YOUR HAND', probe_wide:'WIDE', probe_wide1:'CLEANER CONTROL', probe_wide2:'CHILDREN AND PETS MAY HEAR IT',
   probe_norm:'NORMAL', probe_norm1:'INAUDIBLE', probe_norm2:'SLIGHTLY ROUGHER CONTROL',
   away_t:'TAKE YOUR HAND AWAY', away_s:'LISTENING TO THE EMPTY ROOM', away_ok:'THE ROOM IS QUIET',
-  aud_fx:'PHONE PROCESSING:', aud_src:'SOURCE', aud_usage:'PROBE AS', aud_end:'PROBE FROM', turn_t:'TURN THE PHONE ROUND', hub_s:'GAMES YOU PLAY WITH YOUR PALM IN MID-AIR', soon:'SOON', pg_s:'ONE PALM — TWO RACKETS. TOSS THE SHUTTLE HIGHER, DON\'T TOUCH THE CEILING', pg_sens:'SENSITIVITY', pg_sens0:'LOW', pg_sens1:'BELOW MID', pg_sens2:'MEDIUM', pg_sens3:'HIGH', pg_low_t:'LOWER YOUR PALM', pg_low_s:'TO WHERE YOUR HIT STARTS FROM BELOW. THE RACKETS ARE DOWN ALREADY. HOLD', pg_top_t:'NOW RAISE IT', pg_top_s:'TO A COMFORTABLE HEIGHT — WHERE YOU WILL HIT FROM ABOVE. HOLD', pg_wave_s:'AS YOU WILL HIT: FROM THE HIT\'S LOW TO THE TOP AND BACK, 2–3 TIMES', pg_try_s:'THE RACKETS FOLLOW YOUR PALM — CHECK THE TOP AND THE LOW', pg_sk0:'LIGHT SKETCH', pg_sk1:'DARK SKETCH', pg_hint:'POINTS', pg_h1:'O1, A TAG', pg_h2:'O2, AT THE TOP', ph_t1:'LOB IT HIGHER', ph_s1:'ONE PALM MOVES BOTH RACKETS. POINTS FOR THE ARC\'S HEIGHT: THE HIGHER, THE MORE. THE MOST — JUST UNDER THE CEILING', ph_t2:'THE SERIES', ph_s2:'CLEAN PASSES IN A ROW ADD ×0.1 TO THE POINTS — UP TO ×1.5, AND EACH SOUNDS A NOTE HIGHER. TOUCH THE CEILING — THE SERIES STARTS AGAIN', ph_t3:'THE CEILING CRACKS', ph_s3:'TOUCH THE CEILING — A PASS WITHOUT POINTS AND A CRACK. ON THE FIFTH CRACK THE SPIDER TAKES THE SHUTTLE. YOU HAVE FIVE SHUTTLES', ph_t4:'THE RACKETS NARROW', ph_s4:'EVERY 30 SECONDS THE RACKETS GET SHORTER AND THE POINTS DEARER — UP TO ×2. FROM THE 4TH MINUTE THE SPIDER LOWERS THE CEILING WITH WEB', pg_ok_t:'GOT IT', pg_ok_s:'THE RACKETS FOLLOW YOUR PALM, FROM THE LOW TO THE TOP', pg_recal:'TUNE THE PALM AGAIN', pg_width:'RACKETS DOWN TO {n}%', pg_passes:'PASSES: {n}', pg_replay:'THE BEST ARCS AGAIN · 0.5×', pg_left:'LEFT', pg_right:'RIGHT', all_games:'← ALL GAMES', skin:'SKIN', gfx:'GRAPHICS', gfx_pixel:'PIXELS', smooth:'SMOOTHING', s_on:'ON', s_off:'OFF', skin_space:'SPACE', skin_vector:'VECTOR 80S', skin_neon:'NEON', skin_note:'NOTEBOOK', skin_lcd:'RETRO LCD', skin_obsidian:'OBSIDIAN', skin_fairy:'FAIRY TALE', turn_s:'BY 180° IF YOU PLAY', turn_s2:'WITH YOUR RIGHT HAND', turn_h:'ROUND LIKE A WHEEL — DON\'T FLIP IT FACE DOWN', lefty:'I PLAY LEFT-HANDED', aud_vol:'VOLUME', aud_keep:'LEAVE AS IS', aud_cam:'CAMERA END', aud_port:'PORT END', aud_media:'MEDIA', aud_game:'GAME', aud_autotest:'AUTO PICK', aud_notyet:'NOT DONE YET', aud_retest:'TEST AGAIN', aud_lab:'LAB', aud_nextgame:'WITH THE NEXT GAME', aud_on:'ON', aud_off:'OFF', aud_t2:'SOUND', aud_s2:'TRIALS OF THE ECHO PROCESSING', settings:'SETTINGS', settings_t:'SETTINGS', set_gfx:'GRAPHICS', set_gfx_menu:'ASK IN GAME', set_gfx_hd:'ALWAYS HD', set_gfx_px:'ALWAYS PIXELS', set_band:'PROBE BAND', set_band_ask:'ASK EVERY GAME', set_band_w:'ALWAYS WIDE', set_band_n:'ALWAYS NORMAL', set_live:'AUTO-CALIBRATION', set_on:'ON', set_off:'OFF', set_live_on_s:'NO WAVING: THE GAME TAKES YOUR LAST MANUAL CALIBRATION AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', set_live_on_d:'NO WAVING: THE GAME TAKES YOUR MANUAL CALIBRATION OF {d} AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', auto_ok:'CALIBRATION FROM YOUR LAST GAME', set_room:'ROOM ADAPTATION', set_live_new_s:'NO MANUAL CALIBRATION YET: SWITCH THIS OFF, PLAY ONE GAME WAVING YOUR PALM, SWITCH IT ON AGAIN — AUTO-CALIBRATION WILL TAKE IT', set_live_off_s:'BEFORE EVERY GAME: TAKE YOUR HAND AWAY, WAVE YOUR PALM, TAP "PLAY". A GOOD SETUP CAN THEN BE KEPT WITH AUTO-CALIBRATION', set_expert:'ADVANCED PROBE SETTINGS', aud_link:'SOUND', aud_t:'APP SOUND', aud_s:'WHERE THE GAME TAKES THE MICROPHONE FROM AND WHERE THE PROBE PLAYS', aud_mode:'SOUND', aud_browser:'BROWSER', aud_app:'APP', aud_mic:'MICROPHONE', aud_out:'SPEAKER', aud_auto:'AUTO', aud_speaker:'SPEAKER', aud_earpiece:'EARPIECE', aud_bottom:'BOTTOM', aud_top:'TOP', aud_back:'BACK', aud_now:'NOW:', aud_active:'RECORDING:', aud_idle:'THE MICROPHONE OPENS WITH THE GAME', aud_browser_now:'NOW THE SOUND GOES THROUGH THE BROWSER: ANDROID PICKS THE MICROPHONE', aud_nopos:'THE PHONE DOES NOT TELL WHERE ITS MICROPHONES ARE',
+  aud_fx:'PHONE PROCESSING:', aud_src:'SOURCE', aud_usage:'PROBE AS', aud_end:'PROBE FROM', turn_t:'TURN THE PHONE ROUND', hub_s:'GAMES YOU PLAY WITH YOUR PALM IN MID-AIR', soon:'SOON', pg_s:'ONE PALM — TWO RACKETS. TOSS THE SHUTTLE HIGHER, DON\'T TOUCH THE CEILING', pg_sens:'SENSITIVITY', pg_sens0:'LOW', pg_sens1:'BELOW MID', pg_sens2:'MEDIUM', pg_sens3:'HIGH', pg_low_t:'LOWER YOUR PALM', pg_low_s:'TO WHERE YOUR HIT STARTS FROM BELOW. THE RACKETS ARE DOWN ALREADY. HOLD', pg_top_t:'NOW RAISE IT', pg_top_s:'TO A COMFORTABLE HEIGHT — WHERE YOU WILL HIT FROM ABOVE. HOLD', pg_wave_s:'AS YOU WILL HIT: FROM THE HIT\'S LOW TO THE TOP AND BACK, 2–3 TIMES', pg_try_s:'THE RACKETS FOLLOW YOUR PALM — CHECK THE TOP AND THE LOW', pg_sk0:'LIGHT SKETCH', pg_sk1:'DARK SKETCH', pg_hint:'POINTS', pg_h1:'O1, A TAG', pg_h2:'O2, AT THE TOP', ph_t1:'LOB IT HIGHER', ph_s1:'ONE PALM MOVES BOTH RACKETS. POINTS FOR THE ARC\'S HEIGHT: THE HIGHER, THE MORE. THE MOST — JUST UNDER THE CEILING', ph_t2:'THE SERIES', ph_s2:'CLEAN PASSES IN A ROW ADD ×0.1 TO THE POINTS — UP TO ×1.5, AND EACH SOUNDS A NOTE HIGHER. TOUCH THE CEILING — THE SERIES STARTS AGAIN', ph_t3:'THE CEILING CRACKS', ph_s3:'TOUCH THE CEILING — A PASS WITHOUT POINTS AND A CRACK. ON THE FIFTH CRACK THE SPIDER TAKES THE SHUTTLE. YOU HAVE FIVE SHUTTLES', ph_t4:'THE RACKETS NARROW', ph_s4:'EVERY 30 SECONDS THE RACKETS GET SHORTER AND THE POINTS DEARER — UP TO ×2. FROM THE 4TH MINUTE THE SPIDER LOWERS THE CEILING WITH WEB', pg_ok_t:'GOT IT', pg_ok_s:'THE RACKETS FOLLOW YOUR PALM, FROM THE LOW TO THE TOP', pg_recal:'TUNE THE PALM AGAIN', pg_width:'RACKETS DOWN TO {n}%', pg_passes:'PASSES: {n}', pg_replay:'THE BEST ARCS AGAIN · 0.5×', pg_left:'LEFT', pg_right:'RIGHT',
+  pg_solo:'PLAY ALONE', pg_duo:'PLAY TOGETHER', pd_t:'TOGETHER', pd_s:'ONE GAME ON TWO PHONES, ONE SCORE. «NEARBY» — BOTH PRESS WITHIN 30 SECONDS',
+  pd_near:'NEARBY (ONE WI-FI)', pd_new:'MAKE A CODE', pd_in:'ENTER A CODE', pd_code_t:'THE CODE FOR YOUR PARTNER', pd_code_s:'LET THEM OPEN SONALOB → PLAY TOGETHER → ENTER A CODE',
+  pd_near_t:'LOOKING FOR A PARTNER NEARBY', pd_near_s:'LET THEM PRESS «NEARBY» TOO — ON THE SAME WI-FI', pd_wait:'WAITING FOR THE PARTNER', pd_cancel:'CANCEL',
+  pd_in_t:'THE PARTNER\'S CODE', pd_in_s:'4 DIGITS — THEIR PHONE SHOWS THEM: PLAY TOGETHER → MAKE A CODE', pd_bad:'NO SUCH CODE', pd_full:'THERE ARE TWO ALREADY', pd_off:'NO LINK TO THE SERVER', pd_none:'NOBODY NEARBY — TRY A CODE',
+  pd_tog:'YOU ARE TOGETHER', pd_lr0:'LEFT RACKET', pd_lr1:'RIGHT RACKET', pd_you:'YOU', pd_mate:'PARTNER', pd_next:'TO CALIBRATION', pd_swap:'SWAP', pd_exit:'LEAVE', pd_ready:'READY',
+  pd_st_menu:'HERE', pd_st_cal:'CALIBRATING', pd_st_try:'TRYING THE RACKET', pd_st_ready:'READY', pd_st_play:'PLAYING', pd_st_over:'LOOKING AT THE RESULT', pd_st_gone:'LEFT', pd_mate_st:'PARTNER: {s}', all_games:'← ALL GAMES', skin:'SKIN', gfx:'GRAPHICS', gfx_pixel:'PIXELS', smooth:'SMOOTHING', s_on:'ON', s_off:'OFF', skin_space:'SPACE', skin_vector:'VECTOR 80S', skin_neon:'NEON', skin_note:'NOTEBOOK', skin_lcd:'RETRO LCD', skin_obsidian:'OBSIDIAN', skin_fairy:'FAIRY TALE', turn_s:'BY 180° IF YOU PLAY', turn_s2:'WITH YOUR RIGHT HAND', turn_h:'ROUND LIKE A WHEEL — DON\'T FLIP IT FACE DOWN', lefty:'I PLAY LEFT-HANDED', aud_vol:'VOLUME', aud_keep:'LEAVE AS IS', aud_cam:'CAMERA END', aud_port:'PORT END', aud_media:'MEDIA', aud_game:'GAME', aud_autotest:'AUTO PICK', aud_notyet:'NOT DONE YET', aud_retest:'TEST AGAIN', aud_lab:'LAB', aud_nextgame:'WITH THE NEXT GAME', aud_on:'ON', aud_off:'OFF', aud_t2:'SOUND', aud_s2:'TRIALS OF THE ECHO PROCESSING', settings:'SETTINGS', settings_t:'SETTINGS', set_gfx:'GRAPHICS', set_gfx_menu:'ASK IN GAME', set_gfx_hd:'ALWAYS HD', set_gfx_px:'ALWAYS PIXELS', set_band:'PROBE BAND', set_band_ask:'ASK EVERY GAME', set_band_w:'ALWAYS WIDE', set_band_n:'ALWAYS NORMAL', set_live:'AUTO-CALIBRATION', set_on:'ON', set_off:'OFF', set_live_on_s:'NO WAVING: THE GAME TAKES YOUR LAST MANUAL CALIBRATION AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', set_live_on_d:'NO WAVING: THE GAME TAKES YOUR MANUAL CALIBRATION OF {d} AND FOLLOWS THE ROOM\'S SOUNDS BY ITSELF. CONTROLS FEEL WORSE? SWITCH IT OFF, PLAY WITH THE MANUAL ONE, SWITCH IT ON AGAIN', auto_ok:'CALIBRATION FROM YOUR LAST GAME', set_room:'ROOM ADAPTATION', set_live_new_s:'NO MANUAL CALIBRATION YET: SWITCH THIS OFF, PLAY ONE GAME WAVING YOUR PALM, SWITCH IT ON AGAIN — AUTO-CALIBRATION WILL TAKE IT', set_live_off_s:'BEFORE EVERY GAME: TAKE YOUR HAND AWAY, WAVE YOUR PALM, TAP "PLAY". A GOOD SETUP CAN THEN BE KEPT WITH AUTO-CALIBRATION', set_expert:'ADVANCED PROBE SETTINGS', aud_link:'SOUND', aud_t:'APP SOUND', aud_s:'WHERE THE GAME TAKES THE MICROPHONE FROM AND WHERE THE PROBE PLAYS', aud_mode:'SOUND', aud_browser:'BROWSER', aud_app:'APP', aud_mic:'MICROPHONE', aud_out:'SPEAKER', aud_auto:'AUTO', aud_speaker:'SPEAKER', aud_earpiece:'EARPIECE', aud_bottom:'BOTTOM', aud_top:'TOP', aud_back:'BACK', aud_now:'NOW:', aud_active:'RECORDING:', aud_idle:'THE MICROPHONE OPENS WITH THE GAME', aud_browser_now:'NOW THE SOUND GOES THROUGH THE BROWSER: ANDROID PICKS THE MICROPHONE', aud_nopos:'THE PHONE DOES NOT TELL WHERE ITS MICROPHONES ARE',
   wave_t:'WAVE YOUR PALM', wave_s:'5–10 CM ABOVE THE TABLE OR 5–15 CM FROM THE PHONE\'S END', wave_ok:'GOT YOUR RANGE', other_t:'WAVE ON THE OTHER SIDE', other_s:'THE PHONE DOES NOT HEAR THE PALM ON THIS SIDE', try_s:'THE SHIP FOLLOWS YOUR PALM — TRY THE TOP AND THE BOTTOM', cm:'CM',
   ring_wait:'GET READY', ring_listen:'LISTENING', ring_catch:'CATCHING THE RANGE', ring_ok:'DONE',
   start:'START', over:'GAME OVER', best:'BEST', again:'AGAIN', menu:'MENU', logs:'LOGS', tilt_test:'TEST RULES: NOT FOR THE TABLES', ftilt:'PICTURE TILT', stilt:'SHOT TILT', straight:'STRAIGHT', as_nose:'AS THE NOSE', bounce_off:'SHOTS OFF THE EDGES: NO', obs_off:'HEAVY SKIN: OFF', obs_on:'HEAVY SKIN: OBSIDIAN', obs_na:'HEAVY SKIN: NO WEBGL 2', mouse_off:'MOUSE INSTEAD OF SONAR: NO', mouse_on:'MOUSE INSTEAD OF SONAR: YES', obs_ink:'INK ON HITS', obs_ring:'RING: UNEVEN', obs_wake:'SHIP WAKE', obs_rwake:'ROCK WAKES', obs_det:'INK DETAIL', obs_vsp:'VEINS SPEED', obs_shot:'SHOT', obs_shot1:'L1 COMET', obs_shot4:'L4 BEADS', obs_shot5:'L5 CRYSTAL', obs_shot6:'L6 FRINGE', obs_shot9:'L9 TWIN NEEDLES', obs_shot10:'L10 BANDS', obs_rstr:'RING: STRENGTH', obs_damp:'CALMER IN ACTION', obs_reco:'DEFAULTS', obs_ringon_on:'HIT RING: YES', obs_ringon_off:'HIT RING: NO', obs_grim_on:'POWER-UP RIM: YES', obs_grim_off:'POWER-UP RIM: NO', bounce_on:'SHOTS OFF THE EDGES: YES', 
@@ -1980,7 +1995,13 @@ STR.ru={
   probe_t:'ВЫБЕРИ ЗОНД', probe_s:'ЭТИМ ЗВУКОМ ТЕЛЕФОН СЛЫШИТ ТВОЮ РУКУ', probe_wide:'ШИРОКИЙ', probe_wide1:'УПРАВЛЕНИЕ ЧИЩЕ', probe_wide2:'МОГУТ СЛЫШАТЬ ДЕТИ И ЖИВОТНЫЕ',
   probe_norm:'ОБЫЧНЫЙ', probe_norm1:'НЕ СЛЫШЕН', probe_norm2:'УПРАВЛЕНИЕ ЧУТЬ ГРУБЕЕ',
   away_t:'УБЕРИ РУКУ', away_s:'СЛУШАЮ ПУСТУЮ КОМНАТУ', away_ok:'КОМНАТА ТИХАЯ',
-  aud_fx:'ОБРАБОТКА ТЕЛЕФОНА:', aud_src:'ИСТОЧНИК', aud_usage:'ЗОНД КАК', aud_end:'ЗОНД ИЗ', turn_t:'РАЗВЕРНИ ТЕЛЕФОН', hub_s:'ИГРЫ, КОТОРЫМИ УПРАВЛЯЕТ ЛАДОНЬ В ВОЗДУХЕ', soon:'СКОРО', pg_s:'ОДНА ЛАДОНЬ — ДВЕ РАКЕТКИ. ПОДКИДЫВАЙ ВОЛАН ВЫШЕ, НЕ ЗАДЕВАЯ ПОТОЛОК', pg_sens:'ЧУВСТВИТЕЛЬНОСТЬ', pg_sens0:'НИЗКАЯ', pg_sens1:'НИЖЕ СРЕДНЕЙ', pg_sens2:'СРЕДНЯЯ', pg_sens3:'ВЫСОКАЯ', pg_low_t:'ОПУСТИ ЛАДОНЬ', pg_low_s:'В НИЖНЮЮ ТОЧКУ УДАРА — ОТКУДА НАЧИНАЕШЬ БИТЬ СНИЗУ. РАКЕТКИ УЖЕ ВНИЗУ. ДЕРЖИ', pg_top_t:'ТЕПЕРЬ ПОДНИМИ', pg_top_s:'НА УДОБНУЮ ВЫСОТУ — ГДЕ БУДЕШЬ БИТЬ СВЕРХУ. ДЕРЖИ', pg_wave_s:'КАК БУДЕШЬ БИТЬ: ОТ НИЗА УДАРА ДО ВЕРХА И ОБРАТНО, 2–3 РАЗА', pg_try_s:'РАКЕТКИ ИДУТ ЗА ЛАДОНЬЮ — ПРОВЕРЬ ВЕРХ И НИЗ', pg_sk0:'СВЕТЛЫЙ НАБРОСОК', pg_sk1:'ТЁМНЫЙ НАБРОСОК', pg_hint:'ОЧКИ У ВОЛАНА', pg_h1:'О1, ЯРЛЫК', pg_h2:'О2, НА ВЕРШИНЕ', ph_t1:'ПОДКИДЫВАЙ ВЫШЕ', ph_s1:'ОДНА ЛАДОНЬ ВОДИТ ОБЕ РАКЕТКИ. ОЧКИ — ЗА ВЫСОТУ ДУГИ: ЧЕМ ВЫШЕ, ТЕМ БОЛЬШЕ. БОЛЬШЕ ВСЕГО — ПОЧТИ ПОД ПОТОЛКОМ', ph_t2:'СЕРИЯ', ph_s2:'ЧИСТЫЕ ПАСЫ ПОДРЯД ПРИБАВЛЯЮТ К ОЧКАМ ПО ×0,1 — ДО ×1,5, И КАЖДЫЙ ЗВУЧИТ НОТОЙ ВЫШЕ. ЗАДЕЛ ПОТОЛОК — СЕРИЯ С НАЧАЛА', ph_t3:'ПОТОЛОК ТРЕСКАЕТСЯ', ph_s3:'КОСНУЛСЯ ПОТОЛКА — ПАС БЕЗ ОЧКОВ И ТРЕЩИНА. НА ПЯТОЙ ТРЕЩИНЕ ПАУК ЗАБИРАЕТ ВОЛАН. ВОЛАНОВ — ПЯТЬ', ph_t4:'РАКЕТКИ СУЖАЮТСЯ', ph_s4:'КАЖДЫЕ 30 СЕКУНД РАКЕТКИ КОРОЧЕ, А ОЧКИ ДОРОЖЕ — ДО ×2. С 4-Й МИНУТЫ ПАУК ОПУСКАЕТ ПОТОЛОК ПАУТИНОЙ', pg_ok_t:'ПОЙМАЛ', pg_ok_s:'РАКЕТКИ ХОДЯТ ЗА ЛАДОНЬЮ — ОТ НИЗА ДО ВЕРХА', pg_recal:'ПОДСТРОИТЬ ЛАДОНЬ', pg_width:'РАКЕТКИ ДО {n}%', pg_passes:'ПАСОВ: {n}', pg_replay:'ПОВТОР ЛУЧШИХ ДУГ · 0,5×', pg_left:'ЛЕВАЯ', pg_right:'ПРАВАЯ', all_games:'← ВСЕ ИГРЫ', skin:'СКИН', gfx:'ГРАФИКА', gfx_pixel:'ПИКСЕЛИ', smooth:'ПЛАВНОСТЬ', s_on:'ВКЛ', s_off:'ВЫКЛ', skin_space:'КОСМОС', skin_vector:'ВЕКТОР 80-Х', skin_neon:'НЕОН', skin_note:'ТЕТРАДКА', skin_lcd:'РЕТРО LCD', skin_obsidian:'ОБСИДИАН', skin_fairy:'СКАЗКА', turn_s:'НА 180°, ЕСЛИ ИГРАЕШЬ', turn_s2:'ПРАВОЙ РУКОЙ', turn_h:'ПО КРУГУ, КАК РУЛЬ — НЕ ПЕРЕВОРАЧИВАЙ ЭКРАНОМ ВНИЗ', lefty:'ИГРАЮ ЛЕВОЙ РУКОЙ', aud_vol:'ГРОМКОСТЬ', aud_keep:'НЕ ТРОГАТЬ', aud_cam:'У КАМЕРЫ', aud_port:'У РАЗЪЁМА', aud_media:'МЕДИА', aud_game:'ИГРА', aud_autotest:'АВТОВЫБОР', aud_notyet:'ЕЩЁ НЕ ДЕЛАЛСЯ', aud_retest:'ПЕРЕПРОВЕРИТЬ', aud_lab:'ЛАБА', aud_nextgame:'БУДЕТ ПРИ СЛЕДУЮЩЕЙ ИГРЕ', aud_on:'ВКЛ', aud_off:'ВЫКЛ', aud_t2:'ЗВУК', aud_s2:'ОПЫТЫ С ОБРАБОТКОЙ ЭХА', settings:'НАСТРОЙКИ', settings_t:'НАСТРОЙКИ', set_gfx:'ГРАФИКА', set_gfx_menu:'ВЫБОР В ИГРЕ', set_gfx_hd:'ВСЕГДА HD', set_gfx_px:'ВСЕГДА ПИКСЕЛИ', set_band:'ПОЛОСА ЗОНДА', set_band_ask:'ВЫБОР ПЕРЕД ИГРОЙ', set_band_w:'ВСЕГДА ШИРОКАЯ', set_band_n:'ВСЕГДА ОБЫЧНАЯ', set_live:'АВТОКАЛИБРОВКА', set_on:'ВКЛ', set_off:'ВЫКЛ', set_live_on_s:'БЕЗ ВЗМАХОВ: ИГРА БЕРЁТ ТВОЮ ПОСЛЕДНЮЮ РУЧНУЮ КАЛИБРОВКУ И САМА ПОДСТРАИВАЕТСЯ ПОД ЗВУКИ КОМНАТЫ. УПРАВЛЯЕТСЯ ХУЖЕ? ВЫКЛЮЧИ, СЫГРАЙ С РУЧНОЙ И ВКЛЮЧИ СНОВА', set_live_on_d:'БЕЗ ВЗМАХОВ: ИГРА БЕРЁТ ТВОЮ РУЧНУЮ КАЛИБРОВКУ ОТ {d} И САМА ПОДСТРАИВАЕТСЯ ПОД ЗВУКИ КОМНАТЫ. УПРАВЛЯЕТСЯ ХУЖЕ? ВЫКЛЮЧИ, СЫГРАЙ С РУЧНОЙ И ВКЛЮЧИ СНОВА', auto_ok:'КАЛИБРОВКА ИЗ ПРОШЛОЙ ИГРЫ', set_room:'ПОДСТРОЙКА ПОД КОМНАТУ', set_live_new_s:'РУЧНОЙ КАЛИБРОВКИ ЕЩЁ НЕ БЫЛО: ВЫКЛЮЧИ, СЫГРАЙ ОДНУ ИГРУ С ВЗМАХАМИ И ВКЛЮЧИ СНОВА — АВТОКАЛИБРОВКА ВОЗЬМЁТ ЕЁ', set_live_off_s:'ПЕРЕД КАЖДОЙ ИГРОЙ: УБРАТЬ РУКУ, ПОМАХАТЬ ЛАДОНЬЮ, НАЖАТЬ «ИГРАТЬ». УДАЧНУЮ НАСТРОЙКУ ПОТОМ МОЖНО ОСТАВИТЬ АВТОКАЛИБРОВКОЙ', set_expert:'РАСШИРЕННЫЕ НАСТРОЙКИ ЗОНДА', aud_link:'ЗВУК', aud_t:'ЗВУК ПРИЛОЖЕНИЯ', aud_s:'ОТКУДА ИГРА БЕРЁТ МИКРОФОН И КУДА ИГРАЕТ ЗОНД', aud_mode:'ЗВУК', aud_browser:'БРАУЗЕР', aud_app:'ПРИЛОЖЕНИЕ', aud_mic:'МИКРОФОН', aud_out:'ДИНАМИК', aud_auto:'АВТО', aud_speaker:'ДИНАМИК', aud_earpiece:'РАЗГОВОРНЫЙ', aud_bottom:'НИЗ', aud_top:'ВЕРХ', aud_back:'СЗАДИ', aud_now:'СЕЙЧАС:', aud_active:'ПИШУТ:', aud_idle:'МИКРОФОН ОТКРОЕТСЯ ПРИ ИГРЕ', aud_browser_now:'СЕЙЧАС ЗВУК ЧЕРЕЗ БРАУЗЕР: МИКРОФОН ВЫБИРАЕТ ANDROID', aud_nopos:'ТЕЛЕФОН НЕ СООБЩАЕТ, ГДЕ МИКРОФОНЫ',
+  aud_fx:'ОБРАБОТКА ТЕЛЕФОНА:', aud_src:'ИСТОЧНИК', aud_usage:'ЗОНД КАК', aud_end:'ЗОНД ИЗ', turn_t:'РАЗВЕРНИ ТЕЛЕФОН', hub_s:'ИГРЫ, КОТОРЫМИ УПРАВЛЯЕТ ЛАДОНЬ В ВОЗДУХЕ', soon:'СКОРО', pg_s:'ОДНА ЛАДОНЬ — ДВЕ РАКЕТКИ. ПОДКИДЫВАЙ ВОЛАН ВЫШЕ, НЕ ЗАДЕВАЯ ПОТОЛОК', pg_sens:'ЧУВСТВИТЕЛЬНОСТЬ', pg_sens0:'НИЗКАЯ', pg_sens1:'НИЖЕ СРЕДНЕЙ', pg_sens2:'СРЕДНЯЯ', pg_sens3:'ВЫСОКАЯ', pg_low_t:'ОПУСТИ ЛАДОНЬ', pg_low_s:'В НИЖНЮЮ ТОЧКУ УДАРА — ОТКУДА НАЧИНАЕШЬ БИТЬ СНИЗУ. РАКЕТКИ УЖЕ ВНИЗУ. ДЕРЖИ', pg_top_t:'ТЕПЕРЬ ПОДНИМИ', pg_top_s:'НА УДОБНУЮ ВЫСОТУ — ГДЕ БУДЕШЬ БИТЬ СВЕРХУ. ДЕРЖИ', pg_wave_s:'КАК БУДЕШЬ БИТЬ: ОТ НИЗА УДАРА ДО ВЕРХА И ОБРАТНО, 2–3 РАЗА', pg_try_s:'РАКЕТКИ ИДУТ ЗА ЛАДОНЬЮ — ПРОВЕРЬ ВЕРХ И НИЗ', pg_sk0:'СВЕТЛЫЙ НАБРОСОК', pg_sk1:'ТЁМНЫЙ НАБРОСОК', pg_hint:'ОЧКИ У ВОЛАНА', pg_h1:'О1, ЯРЛЫК', pg_h2:'О2, НА ВЕРШИНЕ', ph_t1:'ПОДКИДЫВАЙ ВЫШЕ', ph_s1:'ОДНА ЛАДОНЬ ВОДИТ ОБЕ РАКЕТКИ. ОЧКИ — ЗА ВЫСОТУ ДУГИ: ЧЕМ ВЫШЕ, ТЕМ БОЛЬШЕ. БОЛЬШЕ ВСЕГО — ПОЧТИ ПОД ПОТОЛКОМ', ph_t2:'СЕРИЯ', ph_s2:'ЧИСТЫЕ ПАСЫ ПОДРЯД ПРИБАВЛЯЮТ К ОЧКАМ ПО ×0,1 — ДО ×1,5, И КАЖДЫЙ ЗВУЧИТ НОТОЙ ВЫШЕ. ЗАДЕЛ ПОТОЛОК — СЕРИЯ С НАЧАЛА', ph_t3:'ПОТОЛОК ТРЕСКАЕТСЯ', ph_s3:'КОСНУЛСЯ ПОТОЛКА — ПАС БЕЗ ОЧКОВ И ТРЕЩИНА. НА ПЯТОЙ ТРЕЩИНЕ ПАУК ЗАБИРАЕТ ВОЛАН. ВОЛАНОВ — ПЯТЬ', ph_t4:'РАКЕТКИ СУЖАЮТСЯ', ph_s4:'КАЖДЫЕ 30 СЕКУНД РАКЕТКИ КОРОЧЕ, А ОЧКИ ДОРОЖЕ — ДО ×2. С 4-Й МИНУТЫ ПАУК ОПУСКАЕТ ПОТОЛОК ПАУТИНОЙ', pg_ok_t:'ПОЙМАЛ', pg_ok_s:'РАКЕТКИ ХОДЯТ ЗА ЛАДОНЬЮ — ОТ НИЗА ДО ВЕРХА', pg_recal:'ПОДСТРОИТЬ ЛАДОНЬ', pg_width:'РАКЕТКИ ДО {n}%', pg_passes:'ПАСОВ: {n}', pg_replay:'ПОВТОР ЛУЧШИХ ДУГ · 0,5×', pg_left:'ЛЕВАЯ', pg_right:'ПРАВАЯ',
+  pg_solo:'ИГРАТЬ ОДНОМУ', pg_duo:'ИГРАТЬ ВДВОЁМ', pd_t:'ВДВОЁМ', pd_s:'ОДНА ПАРТИЯ НА ДВА ТЕЛЕФОНА, ОБЩИЙ СЧЁТ. «РЯДОМ» — ОБА НАЖИМАЮТ В ТЕЧЕНИЕ 30 СЕКУНД',
+  pd_near:'РЯДОМ (ОДНА WI-FI)', pd_new:'СОЗДАТЬ КОД', pd_in:'ВВЕСТИ КОД', pd_code_t:'КОД ДЛЯ НАПАРНИКА', pd_code_s:'ПУСТЬ ОТКРОЕТ SONALOB → ИГРАТЬ ВДВОЁМ → ВВЕСТИ КОД',
+  pd_near_t:'ИЩЕМ НАПАРНИКА РЯДОМ', pd_near_s:'ПУСТЬ ОН ТОЖЕ НАЖМЁТ «РЯДОМ» — В ТОЙ ЖЕ WI-FI', pd_wait:'ЖДЁМ НАПАРНИКА', pd_cancel:'ОТМЕНА',
+  pd_in_t:'КОД НАПАРНИКА', pd_in_s:'4 ЦИФРЫ — ИХ ПОКАЖЕТ ЕГО ТЕЛЕФОН: ИГРАТЬ ВДВОЁМ → СОЗДАТЬ КОД', pd_bad:'НЕТ ТАКОГО КОДА', pd_full:'ТАМ УЖЕ ДВОЕ', pd_off:'НЕТ СВЯЗИ С СЕРВЕРОМ', pd_none:'РЯДОМ НИКОГО НЕ НАШЛИ — ПОПРОБУЙ ПО КОДУ',
+  pd_tog:'ВЫ ВМЕСТЕ', pd_lr0:'ЛЕВАЯ РАКЕТКА', pd_lr1:'ПРАВАЯ РАКЕТКА', pd_you:'ТЫ', pd_mate:'НАПАРНИК', pd_next:'К КАЛИБРОВКЕ', pd_swap:'ПОМЕНЯТЬСЯ', pd_exit:'ВЫЙТИ', pd_ready:'ГОТОВ',
+  pd_st_menu:'ЗДЕСЬ', pd_st_cal:'КАЛИБРУЕТСЯ', pd_st_try:'ПРОБУЕТ РАКЕТКУ', pd_st_ready:'ГОТОВ', pd_st_play:'ИГРАЕТ', pd_st_over:'СМОТРИТ ИТОГ', pd_st_gone:'УШЁЛ', pd_mate_st:'НАПАРНИК: {s}', all_games:'← ВСЕ ИГРЫ', skin:'СКИН', gfx:'ГРАФИКА', gfx_pixel:'ПИКСЕЛИ', smooth:'ПЛАВНОСТЬ', s_on:'ВКЛ', s_off:'ВЫКЛ', skin_space:'КОСМОС', skin_vector:'ВЕКТОР 80-Х', skin_neon:'НЕОН', skin_note:'ТЕТРАДКА', skin_lcd:'РЕТРО LCD', skin_obsidian:'ОБСИДИАН', skin_fairy:'СКАЗКА', turn_s:'НА 180°, ЕСЛИ ИГРАЕШЬ', turn_s2:'ПРАВОЙ РУКОЙ', turn_h:'ПО КРУГУ, КАК РУЛЬ — НЕ ПЕРЕВОРАЧИВАЙ ЭКРАНОМ ВНИЗ', lefty:'ИГРАЮ ЛЕВОЙ РУКОЙ', aud_vol:'ГРОМКОСТЬ', aud_keep:'НЕ ТРОГАТЬ', aud_cam:'У КАМЕРЫ', aud_port:'У РАЗЪЁМА', aud_media:'МЕДИА', aud_game:'ИГРА', aud_autotest:'АВТОВЫБОР', aud_notyet:'ЕЩЁ НЕ ДЕЛАЛСЯ', aud_retest:'ПЕРЕПРОВЕРИТЬ', aud_lab:'ЛАБА', aud_nextgame:'БУДЕТ ПРИ СЛЕДУЮЩЕЙ ИГРЕ', aud_on:'ВКЛ', aud_off:'ВЫКЛ', aud_t2:'ЗВУК', aud_s2:'ОПЫТЫ С ОБРАБОТКОЙ ЭХА', settings:'НАСТРОЙКИ', settings_t:'НАСТРОЙКИ', set_gfx:'ГРАФИКА', set_gfx_menu:'ВЫБОР В ИГРЕ', set_gfx_hd:'ВСЕГДА HD', set_gfx_px:'ВСЕГДА ПИКСЕЛИ', set_band:'ПОЛОСА ЗОНДА', set_band_ask:'ВЫБОР ПЕРЕД ИГРОЙ', set_band_w:'ВСЕГДА ШИРОКАЯ', set_band_n:'ВСЕГДА ОБЫЧНАЯ', set_live:'АВТОКАЛИБРОВКА', set_on:'ВКЛ', set_off:'ВЫКЛ', set_live_on_s:'БЕЗ ВЗМАХОВ: ИГРА БЕРЁТ ТВОЮ ПОСЛЕДНЮЮ РУЧНУЮ КАЛИБРОВКУ И САМА ПОДСТРАИВАЕТСЯ ПОД ЗВУКИ КОМНАТЫ. УПРАВЛЯЕТСЯ ХУЖЕ? ВЫКЛЮЧИ, СЫГРАЙ С РУЧНОЙ И ВКЛЮЧИ СНОВА', set_live_on_d:'БЕЗ ВЗМАХОВ: ИГРА БЕРЁТ ТВОЮ РУЧНУЮ КАЛИБРОВКУ ОТ {d} И САМА ПОДСТРАИВАЕТСЯ ПОД ЗВУКИ КОМНАТЫ. УПРАВЛЯЕТСЯ ХУЖЕ? ВЫКЛЮЧИ, СЫГРАЙ С РУЧНОЙ И ВКЛЮЧИ СНОВА', auto_ok:'КАЛИБРОВКА ИЗ ПРОШЛОЙ ИГРЫ', set_room:'ПОДСТРОЙКА ПОД КОМНАТУ', set_live_new_s:'РУЧНОЙ КАЛИБРОВКИ ЕЩЁ НЕ БЫЛО: ВЫКЛЮЧИ, СЫГРАЙ ОДНУ ИГРУ С ВЗМАХАМИ И ВКЛЮЧИ СНОВА — АВТОКАЛИБРОВКА ВОЗЬМЁТ ЕЁ', set_live_off_s:'ПЕРЕД КАЖДОЙ ИГРОЙ: УБРАТЬ РУКУ, ПОМАХАТЬ ЛАДОНЬЮ, НАЖАТЬ «ИГРАТЬ». УДАЧНУЮ НАСТРОЙКУ ПОТОМ МОЖНО ОСТАВИТЬ АВТОКАЛИБРОВКОЙ', set_expert:'РАСШИРЕННЫЕ НАСТРОЙКИ ЗОНДА', aud_link:'ЗВУК', aud_t:'ЗВУК ПРИЛОЖЕНИЯ', aud_s:'ОТКУДА ИГРА БЕРЁТ МИКРОФОН И КУДА ИГРАЕТ ЗОНД', aud_mode:'ЗВУК', aud_browser:'БРАУЗЕР', aud_app:'ПРИЛОЖЕНИЕ', aud_mic:'МИКРОФОН', aud_out:'ДИНАМИК', aud_auto:'АВТО', aud_speaker:'ДИНАМИК', aud_earpiece:'РАЗГОВОРНЫЙ', aud_bottom:'НИЗ', aud_top:'ВЕРХ', aud_back:'СЗАДИ', aud_now:'СЕЙЧАС:', aud_active:'ПИШУТ:', aud_idle:'МИКРОФОН ОТКРОЕТСЯ ПРИ ИГРЕ', aud_browser_now:'СЕЙЧАС ЗВУК ЧЕРЕЗ БРАУЗЕР: МИКРОФОН ВЫБИРАЕТ ANDROID', aud_nopos:'ТЕЛЕФОН НЕ СООБЩАЕТ, ГДЕ МИКРОФОНЫ',
   wave_t:'ПОМАШИ ЛАДОНЬЮ', wave_s:'5–10 СМ НАД СТОЛОМ ИЛИ 5–15 СМ ОТ ТОРЦА ТЕЛЕФОНА', wave_ok:'РАЗМАХ ПОЙМАН', other_t:'ПОМАШИ С ДРУГОЙ СТОРОНЫ', other_s:'С ЭТОЙ СТОРОНЫ ТЕЛЕФОН НЕ СЛЫШИТ ЛАДОНЬ', try_s:'КОРАБЛЬ ИДЁТ ЗА ЛАДОНЬЮ — ПРОВЕРЬ ВЕРХ И НИЗ', cm:'СМ',
   ring_wait:'ПРИГОТОВЬСЯ', ring_listen:'СЛУШАЮ', ring_catch:'ЛОВЛЮ РАЗМАХ', ring_ok:'ГОТОВО',
   start:'СТАРТ', over:'ИГРА ОКОНЧЕНА', best:'РЕКОРД', again:'ЕЩЁ РАЗ', menu:'МЕНЮ', logs:'ЖУРНАЛЫ', tilt_test:'ТЕСТОВЫЕ ПРАВИЛА: НЕ В ТАБЛИЦАХ', ftilt:'НАКЛОН КАРТИНКИ', stilt:'НАКЛОН ВЫСТРЕЛОВ', straight:'ПРЯМО', as_nose:'КАК НОС', bounce_off:'ВЫСТРЕЛЫ ОТ КРАЁВ: НЕТ', obs_off:'ТЯЖЁЛЫЙ СКИН: НЕТ', obs_on:'ТЯЖЁЛЫЙ СКИН: ОБСИДИАН', obs_na:'ТЯЖЁЛЫЙ СКИН: НЕТ WEBGL 2', mouse_off:'МЫШЬ ВМЕСТО СОНАРА: НЕТ', mouse_on:'МЫШЬ ВМЕСТО СОНАРА: ДА', obs_ink:'ЧЕРНИЛА НА ВЗРЫВЫ', obs_ring:'КОЛЬЦО: НЕРОВНОСТЬ', obs_wake:'СЛЕД КОРАБЛЯ', obs_rwake:'СЛЕД КАМНЕЙ', obs_det:'ЧЕРНИЛА: ДЕТАЛИ', obs_vsp:'ПРОЖИЛКИ: СКОРОСТЬ', obs_shot:'ВЫСТРЕЛ', obs_shot1:'Л1 КОМЕТА', obs_shot4:'Л4 БУСИНЫ', obs_shot5:'Л5 КРИСТАЛЛ', obs_shot6:'Л6 КАЙМА', obs_shot9:'Л9 ДВЕ ИГЛЫ', obs_shot10:'Л10 ПОЛОСЫ', obs_rstr:'КОЛЬЦО: СИЛА', obs_damp:'ГАШЕНИЕ В ЭКШНЕ', obs_reco:'ПО УМОЛЧАНИЮ', obs_ringon_on:'КОЛЬЦО ОТ ВЗРЫВА: ДА', obs_ringon_off:'КОЛЬЦО ОТ ВЗРЫВА: НЕТ', obs_grim_on:'КРОМКА ПОДАРКА: ДА', obs_grim_off:'КРОМКА ПОДАРКА: НЕТ', bounce_on:'ВЫСТРЕЛЫ ОТ КРАЁВ: ДА', 
@@ -2323,6 +2344,8 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
   else if(who===3) plat=REST+OFF0;
   if(who) plat=Math.max(py+5/390,Math.min(who===3?9:py+105/390,plat));
   if(who===4) plat=py;
+  /* v1.64c: SonaLob «вдвоём» — each plank at its own palm (ARC.pys); one palm — both at plat, as always */
+  var plats=ARC.pys&&!who?[ARC.pys[0],ARC.pys[1]]:[plat,plat], pyI=function(i){ return ARC.pys?ARC.pys[i]:py; };
   /* 1.60k (Ден 10:06–10:51: «приделать к платформам снизу двигатели или пропеллеры.. когда платформа поднимается — работают, чем
      резче, тем больше; когда опускается — наоборот» → эскизы М1–М3 → «сопла снизу (без верхних) или пропеллеры — решу в игре»).
      Скорость доски — по её же рисованному месту, сглажено за 0,06 с; «резко» — 2,5 высоты экрана в секунду и быстрее */
@@ -2332,8 +2355,10 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
        уже и медленнее, и до 2,5 высоты экрана в секунду, где моторы на полной, взмах не дотягивал). Теперь «резко» — относительно своих же
        ударов: опорная скорость — самый быстрый подъём доски за последние ~6 с (медленно забывается, не ниже 0,8 высоты/с); удар на 85%
        от неё — моторы на полной. При любой чувствительности и на любом телефоне сильный удар — полный огонь или диск */
-    PGS.mRef=Math.max(0.8,Math.max(Math.abs(PGS.mV),(PGS.mRef||1.5)*Math.exp(-dt/6))); }
-  var tops=[0,1].map(function(i){ var xc=ar*(i?1-PG_XC:PG_XC), tp=[]; for(var j=0;j<=48;j++){ var x=xc-hw+2*hw*j/48; tp.push([F(x),F(pgSurf(i,x,plat,ar,A).y)]); } if(who===4) pgsTent(c,i,tp,xc,hw,ar,A,hand,t); else { if(MOT) pgsMotors(c,i,tp,MOT,PGS.mV*2.5/(0.85*(PGS.mRef||1.5)),t,dt); pgsPlatform(pgsPen(c,201+100*i),tp); } return {xc:xc,tp:tp}; });
+    PGS.mRef=Math.max(0.8,Math.max(Math.abs(PGS.mV),(PGS.mRef||1.5)*Math.exp(-dt/6)));
+    if(ARC.pys){ if(!PGS.mPls){ PGS.mPls=plats.slice(); PGS.mVs=[0,0]; PGS.mRefs=[1.5,1.5]; }   /* v1.64c: together — each plank's motors by its own speed */
+      for(var mi=0;mi<2;mi++){ var vR=dt>0?-(plats[mi]-PGS.mPls[mi])/dt:0; PGS.mPls[mi]=plats[mi]; PGS.mVs[mi]+=(vR-PGS.mVs[mi])*(1-Math.exp(-dt/0.06)); PGS.mRefs[mi]=Math.max(0.8,Math.max(Math.abs(PGS.mVs[mi]),PGS.mRefs[mi]*Math.exp(-dt/6))); } } }
+  var tops=[0,1].map(function(i){ var xc=ar*(i?1-PG_XC:PG_XC), tp=[]; for(var j=0;j<=48;j++){ var x=xc-hw+2*hw*j/48; tp.push([F(x),F(pgSurf(i,x,plats[i],ar,A).y)]); } if(who===4) pgsTent(c,i,tp,xc,hw,ar,A,hand,t); else { if(MOT) pgsMotors(c,i,tp,MOT,ARC.pys&&PGS.mVs?PGS.mVs[i]*2.5/(0.85*PGS.mRefs[i]):PGS.mV*2.5/(0.85*(PGS.mRef||1.5)),t,dt); pgsPlatform(pgsPen(c,201+100*i),tp); } return {xc:xc,tp:tp}; });
   /* 1.59v (Ден 01:01–01:02: «больше жизни на доске и в воздухе — глаз в основном смотрит на волан.. но зритель геймплея будет смотреть на
      всё»): события игры (удар, потолок, потерянный мяч, сужение) оживляют и волан, и доски, и человечков. Всё — только рисунок */
   var LF=PGS.life; if(!LF||t<LF.lastT-0.5){ LF=PGS.life={ceils:ARC.ceils||0,falls:ARC.falls||0,nk:ARC.narrowK||1,kt:[null,null],fx:[],feathers:[],act:[null,null],flipT:-9,hitA:0.5,spinT:-9,prevVy:0,hang:-9,lastT:t}; }
@@ -2347,14 +2372,14 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
   /* the particles: feathers glide down and stay on a plank, stars blink, dust puffs, sawn-off bits of plank fall */
   var pfx=pgsPen(c,881); LF.fx.forEach(function(f){ f.t+=dt;
     if(f.k==='feather'&&f.glide){ f.vy=Math.min(f.vy+70*dt,f.y>F(0.75)?120:55); f.x+=(f.vx+Math.sin(f.t*3.2)*26)*dt; f.y+=f.vy*dt; f.a=Math.sin(f.t*3.2)*0.6;
-      for(var pi=0;pi<2;pi++){ var xc0=ar*(pi?1-PG_XC:PG_XC); if(Math.abs(f.x/390-xc0)<=hw){ var yy=F(pgSurf(pi,f.x/390,plat,ar,A).y); if(f.y>=yy-2){ LF.feathers.push({i:pi,u:(f.x/390-xc0),a:rnd(-0.2,0.2)}); if(LF.feathers.length>14) LF.feathers.shift(); f.t=f.life; } } } }
+      for(var pi=0;pi<2;pi++){ var xc0=ar*(pi?1-PG_XC:PG_XC); if(Math.abs(f.x/390-xc0)<=hw){ var yy=F(pgSurf(pi,f.x/390,plats[pi],ar,A).y); if(f.y>=yy-2){ LF.feathers.push({i:pi,u:(f.x/390-xc0),a:rnd(-0.2,0.2)}); if(LF.feathers.length>14) LF.feathers.shift(); f.t=f.life; } } } }
     else if(f.k==='piece'||f.k==='fall'){ f.vy+=700*dt; f.x+=f.vx*dt; f.y+=f.vy*dt; f.a+=(f.spin||0)*dt; }
     else if(f.k==='dust'){ f.x+=f.vx*dt; f.y+=f.vy*dt; } });
   LF.fx=LF.fx.filter(function(f){ return f.t<f.life&&f.y<420; });
-  LF.feathers=LF.feathers.filter(function(fe){ var xc0=ar*(fe.i?1-PG_XC:PG_XC); if(Math.abs(fe.u)>hw){ LF.fx.push({k:'fall',x:F(xc0+fe.u),y:F(pgSurf(fe.i,xc0+Math.sign(fe.u)*hw,plat,ar,A).y),vx:0,vy:0,t:0,life:2,a:fe.a,spin:3,feather:true}); return false; } return true; });
+  LF.feathers=LF.feathers.filter(function(fe){ var xc0=ar*(fe.i?1-PG_XC:PG_XC); if(Math.abs(fe.u)>hw){ LF.fx.push({k:'fall',x:F(xc0+fe.u),y:F(pgSurf(fe.i,xc0+Math.sign(fe.u)*hw,plats[fe.i],ar,A).y),vx:0,vy:0,t:0,life:2,a:fe.a,spin:3,feather:true}); return false; } return true; });
   /* 1.60j, этап 2 — воздух: у каждой частицы и пёрышка своё постоянное перо (раньше перо бралось по номеру в списке — когда одно
      исчезало, все следующие перерисовывались заново и «мигали»); звёздочки пульсируют плавно, а не мигают; всё гаснет, а не пропадает */
-  LF.feathers.forEach(function(fe,j){ if(fe.sd===undefined) fe.sd=LF.sid=(LF.sid||0)+1; var xc0=ar*(fe.i?1-PG_XC:PG_XC), x=xc0+fe.u; pgsFeather(pgsPen(c,890+fe.sd%997),F(x),F(pgSurf(fe.i,x,plat,ar,A).y)-2,fe.a,1); });
+  LF.feathers.forEach(function(fe,j){ if(fe.sd===undefined) fe.sd=LF.sid=(LF.sid||0)+1; var xc0=ar*(fe.i?1-PG_XC:PG_XC), x=xc0+fe.u; pgsFeather(pgsPen(c,890+fe.sd%997),F(x),F(pgSurf(fe.i,x,plats[fe.i],ar,A).y)-2,fe.a,1); });
   LF.fx.forEach(function(f,j){ var al=Math.max(0,1-f.t/f.life); if(f.sd===undefined) f.sd=LF.sid=(LF.sid||0)+1; var fin=Math.min(1,(f.life-f.t)/0.25);
     if(f.k==='feather'||(f.k==='fall'&&f.feather)) pgsFeather(pgsPen(c,1900+f.sd%997),f.x,f.y,f.a,Math.max(0.2,Math.min(1,fin*1.2)));
     else if(f.k==='star'){ var sr=4*(0.65+0.35*Math.cos(f.t*14))*Math.min(1,f.t/0.08)*fin; if(sr>0.4) pgsStar(pgsPen(c,2900+f.sd%997),f.x,f.y,sr); }
@@ -2378,10 +2403,10 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
     if(PGS.tgt[i]!==null){ var L=PGS.tgt[i], sb=L-d*off; P.side=(sb>=lo&&sb<=hi)?d:-d; want=L-P.side*off; }
     var tx=Math.max(lo,Math.min(hi,want));
     P.x=Math.max(lo,Math.min(hi,P.x)); var dx=tx-P.x, far=Math.abs(dx)>0.08, v=Math.sign(dx)*Math.min(Math.abs(dx),Math.max(2*dt,Math.abs(dx)*(1-Math.exp(-dt/0.06)))); P.x+=v; var moving=Math.abs(dx)>0.004;
-    var kk=ARC.kick&&ARC.kick[i], hit=kk&&t-kk.t0<0.3, fy=F(pgSurf(i,P.x,plat,ar,A).y);
+    var kk=ARC.kick&&ARC.kick[i], hit=kk&&t-kk.t0<0.3, fy=F(pgSurf(i,P.x,plats[i],ar,A).y);
     if(!who){ var fc=P.side, R0=PGS_REACH*1.15/390, bb=b0&&!(b0.wait>0)?b0:null, riding=bb&&bb.on&&bb.onI===i, tc=null;
-      if(riding){ var rx0=Math.max(lo,Math.min(hi,bb.x-fc*R0)); P.x+=(rx0-P.x)*(1-Math.exp(-dt/0.05)); fy=F(pgSurf(i,P.x,plat,ar,A).y); }   /* 1.60i: не скачком к волану */
-      if(bb&&PGS.tgt[i]!==null&&bb.vy>0){ var sY=pgSurf(i,Math.max(xc-hw,Math.min(xc+hw,bb.x)),py,ar,A).y; tc=Math.max(0,(sY-bb.r-bb.y)/Math.max(0.05,bb.vy)); }
+      if(riding){ var rx0=Math.max(lo,Math.min(hi,bb.x-fc*R0)); P.x+=(rx0-P.x)*(1-Math.exp(-dt/0.05)); fy=F(pgSurf(i,P.x,plats[i],ar,A).y); }   /* 1.60i: не скачком к волану */
+      if(bb&&PGS.tgt[i]!==null&&bb.vy>0){ var sY=pgSurf(i,Math.max(xc-hw,Math.min(xc+hw,bb.x)),pyI(i),ar,A).y; tc=Math.max(0,(sY-bb.r-bb.y)/Math.max(0.05,bb.vy)); }
       /* 1.60i (Ден 10:16: «добавь кадров и плавности всей жизни мира — на платформах и в воздухе»), этап 1 — человечки. Было: бег — два
          кадра, сменявшиеся 9 раз в секунду; позы (бег, стойка, присед, выпад, радость…) переключались скачком; поворот — мгновенным
          отражением. Теперь: шаг — непрерывный цикл (ноги перетекают из одного положения в другое, темп от скорости бега); переход
@@ -2400,11 +2425,12 @@ function pgSketch(c,W,H,dpr){ var U=H/390, ar=W/H, FW=ar*390, F=function(v){ ret
       if(J===PP.joy||(act&&act.kind==='joy')) fy-=6*Math.sin(Math.min(1,(t-(act?act.t0:t))/0.7)*Math.PI);
       var tauJ=kk&&t-kk.t0<0.15?0.025:0.06; P.jd=P.jd?pgsMix(P.jd,J,1-Math.exp(-dt/tauJ)):J; if(extra.shake) P.jd.head=J.head.slice();
       P.fcS+=(fc-P.fcS)*(1-Math.exp(-dt/0.05)); var fcD=Math.abs(P.fcS)<0.12?(P.fcS<0?-0.12:0.12):P.fcS;
-      pgsFig(pgsPen(c,301+10*i),F(P.x),fy,fcD,P.jd,{hair:!i,cap:!!i,arcs:arcs,shake:extra.shake,stars:extra.stars}); return; }
+      var inkK=PGS_ST.ink; if(ARC.me===i) PGS_ST.ink=I.accent;   /* v1.64c (М2): together — the own player in red ink */
+      pgsFig(pgsPen(c,301+10*i),F(P.x),fy,fcD,P.jd,{hair:!i,cap:!!i,arcs:arcs,shake:extra.shake,stars:extra.stars}); PGS_ST.ink=inkK; if(ARC.me===i) ARC.meXY=[P.x,fy/390]; return; }
     var xr=Math.max(xc-hw,Math.min(xc+hw,P.x+P.side*REACH));
     /* the last moment: the shuttle close above this plank (or riding it) — the racket reaches for it, so they always meet */
-    var bm=b0&&!(b0.wait>0)?b0:null; if(bm&&(PGS.tgt[i]!==null||(bm.on&&bm.onI===i))&&Math.abs(bm.x-xc)<=hw+0.05){ var gap=pgSurf(i,Math.max(xc-hw,Math.min(xc+hw,bm.x)),py,ar,A).y-bm.y, wv=Math.max(0,Math.min(1,1-gap/0.14)); xr=Math.max(xc-hw,Math.min(xc+hw,xr+(bm.x-xr)*wv)); }
-    var S=pgSurf(i,xr,py,ar,A), sl=S.s*Ap/hw*S.f;
+    var bm=b0&&!(b0.wait>0)?b0:null; if(bm&&(PGS.tgt[i]!==null||(bm.on&&bm.onI===i))&&Math.abs(bm.x-xc)<=hw+0.05){ var gap=pgSurf(i,Math.max(xc-hw,Math.min(xc+hw,bm.x)),pyI(i),ar,A).y-bm.y, wv=Math.max(0,Math.min(1,1-gap/0.14)); xr=Math.max(xc-hw,Math.min(xc+hw,xr+(bm.x-xr)*wv)); }
+    var S=pgSurf(i,xr,pyI(i),ar,A), sl=S.s*Ap/hw*S.f;
     pgsReach(pgsPen(c,301+10*i),F(P.x),fy,d,F(xr),F(S.y),Math.atan(sl),{hair:!i,cap:!!i,moving:moving,far:far,hit:hit,step:Math.floor(t*9)%2}); });
   /* the shuttle and its dashed trail (since the last hit) */
   (ARC.balls||[]).forEach(function(b,bi){ if(bi===0){ var hk=(b.from===null||b.from===undefined?'s':b.from)+':'+(b.wait>0?'w':'f'); if(hk!==PGS.hb){ PGS.hb=hk; PGS.hid++; PGS.hist=[]; }
@@ -5206,7 +5232,7 @@ function pgY(y){ var u=pgU(); return (LH-u)/2+y*u; }
 Sonar.listen(function(f,r){ if(mode!=='pong'||!PG.c||!r) return; PongCtl.frame(PG.c,r,512,PG.fs,(DSP2.info().cal||{}).s,scr==='count'&&PG.c.mxCal===null,performance.now()); });
 /* a view of the rules' field for drawing outside a game (the menu, the holds, the countdown): the rackets at a place, no ball */
 function pgView(py){ var v=PG.view; if(!v||v.ar!==pgAr()||v.H!==Pong.TUNE.SENS[pgSens()]){ v=PG.view=Pong.create(1,pgAr(),pgSens()); }
-  v.py=py; v.k=1; v.hw=Pong.hwOf(v); return v; }
+  v.py=py; v.pys=null; v.k=1; v.hw=Pong.hwOf(v); return v; }
 function pgPalmPad(v){ var c=PG.c, f=c?PongCtl.frac(c,PongCtl.palmAt(c,lastNow)):null; return f===null?v.py:Pong.padOf(v,f); }
 /* ── drawing (a stand-in look) ── */
 var PG_COL={bg:'#0d1024',ceil:'#3a4370',rack:'#7ee0ff',rack2:'#3b8fb0',ball:'#ffd166',gap:'#1a2040'};
@@ -5275,7 +5301,7 @@ function pgCard(w,h){ var s=Math.min(3,Math.max(1,uiS)*1.5), CW=Math.max(8,Math.
 /* ── the menu: play, how to play, the sensitivity (the only setting), the sounds, all the games ── */
 function pgSensLabel(){ return L('pg_sens')+': '+L('pg_sens'+pgSens()); }
 function sPTitle(){ pgDemoDraw();
-  var items=[['play',L('play'),'primary'],['scores',L('scores')],['howto',L('howto')],['pg_sens',pgSensLabel()],['pg_skin',pgSkinLabel()],['sfx','','sound'],['hub',L('all_games')]], w=colW(items);
+  var items=[['','','pair',[['play',L('pg_solo'),'primary'],['pg_duo',L('pg_duo')]]],   /* v1.64c: «ИГРАТЬ ОДНОМУ» · «ИГРАТЬ ВДВОЁМ» side by side (Den 12.10) — eight rows don't fit a phone's height */['scores',L('scores')],['howto',L('howto')],['pg_sens',pgSensLabel()],['pg_skin',pgSkinLabel()],['sfx','','sound'],['hub',L('all_games')]], w=colW(items);
   var bx0=sideX(w), m=Math.max(8,Math.round(LW*0.04)), band0=freeSide()==='left'?0:bx0-m, band1=freeSide()==='left'?bx0+w+m:LW;
   bandVeil(band0,band1,0.6); column(items,Math.round(LH*0.5),bx0,5);   /* 1.62b: seven rows with «РЕКОРДЫ» — tighter, as SonaRace's menu */
   var a0=freeSide()==='left'?band1:SAFE.l, a1=freeSide()==='left'?LW-SAFE.r:band0, cx0=Math.round((a0+a1)/2), lsc=PF.width('SonaLob',2)<=a1-a0-12?2:1, y=Math.round(LH*0.14);
@@ -5311,11 +5337,12 @@ function sPHold(){ var c=PG.c; if(!c){ pgWaveStart(); c=PG.c; }
   if(PongCtl.waving(c)&&wt>=WAVE_PAUSE){ var cal=DSP2.info().cal||{}, r=PongCtl.wave(c,clock,{recenter:function(){ return DSP2.recenter(); },shift:function(d){ DSP2.shift(d); },k:cal.k||1.4,centered:!!DSP2.info().centered}); if(r.retie) Logs.ev('взмахи: шкала привязалась — собираю заново'); PG.wk=r.k;
     if(r.done){ PG.done=true; PG.doneT=scrT; PG.auto=false; PG.fresh=true; Sfx.play('ok'); store.set('sonaroids_seen','1'); handSaved=handSide(); store.set('sonaroids_hand',handSaved);
       Logs.ev('размах',{swing:Math.round(r.span0),span:r.span,lift:Math.round(r.lift),low_r:r.low_r===null?null:Math.round(r.low_r),tie:+r.tie.toFixed(1),low:+c.lin.b.toFixed(1),top:+c.lin.t.toFixed(1)}); } }
-  if(c.lin) v.py=pgPalmPad(v);                                                           // the rackets follow what is caught so far
+  if(c.lin) v.py=pgPalmPad(v); if(PD.on) pdPys(v);                                                           // the rackets follow what is caught so far
   if(c.present||wt<WAVE_PAUSE) PG.seenT=scrT;
   if(PongCtl.waving(c)&&scrT-PG.seenT>NOHAND_T){ flipSide(); PG.flips++; pgWaveStart(scrT-WAVE_PAUSE); }   // no palm heard: offer the other end
   pgField(v,DT);
   if(PG.done&&PG.resume){ if(scrT-PG.doneT>0.6){ PG.resume=false; pgKeep(); countT=3; go('count-resume'); } titles(L('wave_ok')); return; }
+  if(PG.done&&scrT-PG.doneT>=CAUGHT_SHOW&&PD.on){ var yd=titles(L(PG.auto?'auto_ok':'wave_ok'),L('pg_try_s')); pdMateLine(yd+4); var ti=pdTryItems(), tw=colW(ti), tm=Math.max(8,Math.round(LW*0.04)); column(ti,Math.round(LH*0.47),pdMe()?SAFE.l+tm:LW-SAFE.r-tm-tw); return; }   /* the buttons over the partner's racket — the own one stays in sight */   /* v1.64c: together — «ГОТОВ» instead of «ИГРАТЬ» */
   if(PG.done&&scrT-PG.doneT>=CAUGHT_SHOW){ titles(L(PG.auto?'auto_ok':'wave_ok'),L('pg_try_s'));
     column([['start',L('play'),'primary'],['pg_rehold',L('recal')],['pg_sens',pgSensLabel()]],Math.round(LH*0.43)); /* under the titles: over the free side's racket only at its top, the other one is always in sight */ say(L(PG.auto?'auto_ok':'wave_ok')+'. '+L('pg_try_s')); return; }
   var st=wt<WAVE_PAUSE?'wait':PG.done?'ok':'catch';
@@ -5331,13 +5358,13 @@ function sPHow(){ var st=PG.how||0; pgHowDraw(st,scrT);
   else button('ph_next',L('next'),cx-Math.round(bw/2),y,bw,BH,'primary',Math.floor(clock*2)%2===0);
   var dx=cx+gap/2+bw+14; for(var d=0;d<4;d++) R(d<=st?P.band:P.line,dx+d*9,y+Math.round(BH/2)-3,6,6); }
 /* ── the countdown: the rackets at the palm, then the game ── */
-function pgCount(){ countT-=DT; var v=pgView(PG.view?PG.view.py:Pong.TUNE.PAD_LO-0.5*Pong.TUNE.SENS[pgSens()]); v.py=pgPalmPad(v); pgField(v,DT);
+function pgCount(){ if(PD.on&&PD.cfg){ countT=(PD.cfg.t0-Link.now())/1000; if(countT>2.999) countT=2.999; } else countT-=DT; var v=pgView(PG.view?PG.view.py:Pong.TUNE.PAD_LO-0.5*Pong.TUNE.SENS[pgSens()]); v.py=pgPalmPad(v); if(PD.on) pdPys(v); pgField(v,DT);
   var n=Math.max(1,Math.ceil(countT)), cx0=Math.round(LW/2), cy0=Math.round(LH/2), fr=countT-Math.floor(countT), cs=3, pu=1+0.18*Math.max(0,fr-0.75)/0.25;
   ring(cx0,cy0,13*cs,1-fr,P.band); lx.save(); lx.translate(cx0,cy0); lx.scale(pu,pu); lx.translate(-cx0,-cy0); text(String(n),cx0,cy0-Math.round(3.5*cs),P.text,'center',cs); lx.restore(); say(String(n));
   if(Math.ceil(countT)<Math.ceil(countT+DT)&&countT>0) Sfx.lob('tick');   // 1.61t: SonaLob's own
-  if(countT<=0) startGame(); }
+  if(countT<=0) startGame(); }   /* v1.64c: together — to the moment the start named, by the server's clock */
 function pgCountStart(){ pgKeep(); countT=3; try{ DSP2.set('quarter',1); }catch(e){} go('count'); }
-function pgStart(){ PG.fps=null; PG.resume=false; PG.resumed=false; var seed=newSeed(); var lin=PG.c&&PG.c.lin; g=Pong.create(seed,pgAr(),pgSens(),lin?Math.max(30,lin.t-lin.b):null); var f=PG.c?PongCtl.frac(PG.c,PongCtl.palm(PG.c)):null; if(f!==null) g.py=Pong.padOf(g,f);
+function pgStart(){ if(PD.on&&PD.cfg){ pdStart(); return; } PG.fps=null; PG.resume=false; PG.resumed=false; var seed=newSeed(); var lin=PG.c&&PG.c.lin; g=Pong.create(seed,pgAr(),pgSens(),lin?Math.max(30,lin.t-lin.b):null); var f=PG.c?PongCtl.frac(PG.c,PongCtl.palm(PG.c)):null; if(f!==null) g.py=Pong.padOf(g,f);
   acc=0; parts=[]; PG.pts=[]; PG.newBest=false; nickAsked=false; var I=Sonar.info(), c=PG.c||{};
   Board.start(seed,null,null,{game:'pong',core:Pong.TAG,ar:g.ar,sens:pgSens(),span:g.span});
   PG.rec={seed:seed,ar:g.ar,sens:pgSens(),span:g.span,hands:[],marks:[],cur:null,best:[null,null]}; PG.clips=null;   /* v1.62c: what the best arcs' replay needs */   /* v1.62b: the game goes to SonaLob's tables (the server replays it) */
@@ -5394,7 +5421,7 @@ function pgReact(){ pgSkFx(g); if(pgSkOn()){ pgSound(g); (g.fx||[]).forEach(func
   (g.fx||[]).forEach(function(f){ if(f.pts) PG.pts.push({n:f.pts,x:f.x,y:f.y,t:1.2}); if(f.lost!==undefined){ flash=0.25; burst(pgX(Math.max(0,Math.min(g.ar,f.lost))),f.cave?pgY(Pong.TUNE.TOP)+4:Math.min(LH,pgY(1))-6,20,[PG_COL.ball,'#ffffff',P.hit],60*K); }
     if(Array.isArray(f.cave)) f.cave.forEach(function(x){ burst(pgX(x),pgY(Pong.TUNE.TOP)+3,8,[PG_COL.ceil,'#ff8c78','#8f9cc0'],40*K); });   // v1.61d: the ceiling comes down
     if(f.mend) PG.mend=(PG.mend||[]).concat([{xs:f.mend,t:0.6}]); }); }
-function pgPlay(){
+function pgPlay(){ if(g.duo&&PD.N&&g===PD.N.g){ pdPlay(); return; }   // v1.64c: together (src/48_pongduo.js)
   /* 1.59c: the steps a frame — the nearest whole number, not «while a whole step has gathered»: at 60 frames a second the gathered time
      hovers right at one step, and a hair's difference either way gave a frame with no step and the next with two — the ball jerked
      (Den 19:26: «мяч дёргается в полёте»). Now it is one step a frame; the time left over (under half a step either way) carries on */
@@ -5438,7 +5465,7 @@ function pgOverClips(){ var items=pgOverItems(), bw=colW(items), bx=sideX(bw), m
   var lb=Board.last(); if(lb&&lb.state==='done'&&lb.listed&&!lb.named&&!nickAsked&&overT>1.5){ nickAsked=true; nickFrom='over'; go('nick'); return; }
   if(overT>0.8) column(items,Math.round(LH*0.52)); }
 function pgDrop(){ if(g&&g.ball!==undefined&&g.state!=='over'){ Logs.gameEv('restarted by the player'); g.state='over'; Logs.gameStop(); Board.finish(g.score); if(g.score>pgBest()){ PG.best=g.score; store.set('sonaroids_pong_best',PG.best); } } }
-function pgOver(){ overT+=DT; pgField(g,DT); lx.globalAlpha=0.45; R(P.bg,0,0,LW,LH); lx.globalAlpha=1;
+function pgOver(){ if(g.duo){ pdOver(); return; } overT+=DT; pgField(g,DT); lx.globalAlpha=0.45; R(P.bg,0,0,LW,LH); lx.globalAlpha=1;
   if(PG.clips){ pgOverClips(); return; }
   var cx0=freeSide()==='left'?Math.round(LW*0.6):Math.round(LW*0.4), y=Math.round(LH*0.24);
   var ls=[[L('pg_width').replace('{n}',Math.round(Pong.width(g)*100)),P.text],[L('pg_passes').replace('{n}',g.passes),P.text]].concat(PG.newBest?[[L('best')+'!',P.band]]:pgBest()>0?[[L('best')+' '+pgBest(),P.soft]]:[]);
@@ -5451,6 +5478,161 @@ function pgOver(){ overT+=DT; pgField(g,DT); lx.globalAlpha=0.45; R(P.bg,0,0,LW,
   say(L('over')+' '+g.score+(bl?'. '+bl[0]:''));
   var lb=Board.last(); if(lb&&lb.state==='done'&&lb.listed&&!lb.named&&!nickAsked&&overT>1.5){ nickAsked=true; nickFrom='over'; go('nick'); return; }   // v1.62b: the first place in a table — the name, once (as SonaFly's)
   if(overT>0.8) column([['again',L('again'),'primary'],['over_cal',L('recal')],['menu',L('menu')],['scores',L('scores')]].concat(diag&&Logs.has()?[['logs',L('logs')]]:[]),Math.round(LH*0.52)); }
+/* ════ SonaLob «ВДВОЁМ» on the screens (v1.64c; v1.64d: each phone its own half of the probe's tones — src/20_sonar.js setParity; stage 4 of claude/SONALOB_DUO.md). The menu: «ИГРАТЬ ОДНОМУ» / «ИГРАТЬ ВДВОЁМ» (Den
+   12.10). Together: «РЯДОМ» (one Wi-Fi, both press within 30 s), «СОЗДАТЬ КОД» (4 digits to tell the partner) or «ВВЕСТИ КОД» — the
+   room (src/23_link.js). Then «ВЫ ВМЕСТЕ»: who has which racket (the one who opened the room — the left; «ПОМЕНЯТЬСЯ» swaps them on both)
+   and what the partner is doing. Each one calibrates as always (the waving or the auto-calibration), and on the try-out presses «ГОТОВ»;
+   when both are ready the side 0 sends the start — the seed, the moment by the server's clock and both players' sensitivity and range —
+   and both count down to that same moment. The game: both phones run the whole game on both palms (src/16_pong_net.js) — the steps go by
+   the server's clock (the step at a moment is the same on both), the own palm is sent at once (the direct channel every frame, the server
+   every ~3 steps), each message carries everything the partner has not confirmed yet, so a lost one costs nothing. The own player is
+   drawn in red ink, «ТЫ» over him in the first seconds (М2). The game is over when the partner's palms up to its last step are in (till
+   then a guess could still be undone). After it — «ЕЩЁ РАЗ», which starts when both press it ════ */
+var PD={on:false,side:-1,left:0,me:0,peer:false,pst:'',pname:'',psens:1,pspan:0,ready:false,sent:'',sentT:0,msg:'',busy:false,code:null,near:false,t0:null,nearT:0,
+  cfg:null,N:null,inq:[],mine:{},hisAck:0,myAck:0,got:{},shown:{},sentAt:0,overT:0,from:null};
+function pdMe(){ return PD.side===PD.left?0:1; }
+function pdName(){ return Board.nick()||L('pd_you'); }
+function pdMate(){ return PD.pname||L('pd_mate'); }
+function pdSpan(){ var lin=PG.c&&PG.c.lin; return lin?Math.max(30,lin.t-lin.b):0; }
+/* what this phone is doing, as the partner sees it: menu, cal (getting ready), try (the try-out), ready, play, over */
+function pdState(){ if(scr==='pduo2') return 'menu';
+  if(scr==='play'||scr==='paused'||scr==='count-resume') return 'play';
+  if(scr==='count') return 'ready';
+  if(scr==='over') return PD.ready?'ready':'over';
+  if(scr==='phold'&&PG.done&&!PongCtl.waving(PG.c||{})&&scrT-PG.doneT>=CAUGHT_SHOW) return PD.ready?'ready':'try';
+  return 'cal'; }
+/* a view of the field together: the own racket where the palm is, the partner's at rest */
+function pdPys(v){ var r=Pong.TUNE.PAD_LO-0.5*v.H; v.pys=[r,r]; v.pys[pdMe()]=v.py; }
+function pdSend(m){ if(PD.on) Link.send(m); }
+/* tell the partner the state when it changes, and every 3 s anyway (a message may be lost) */
+function pdTick(){ if(!PD.on) return; var st=pdState(); if(st!=='ready'&&st!=='play'&&scr!=='over') PD.ready=false;
+  if(PD.peer&&(st!==PD.sent||clock-PD.sentT>3)){ PD.sent=st; PD.sentT=clock; pdSend({e:'st',st:st,nick:Board.nick()||'',sens:pgSens(),span:pdSpan()}); }
+  pdCheckGo(); }
+/* ── the room ── */
+function pdOpen(how,code){ if(PD.busy) return; PD.busy=true; PD.msg=''; Link.on(pdGot);
+  var p=how==='near'?Link.near():how==='new'?Link.create():Link.join(code);
+  p.then(function(j){ PD.busy=false; if(!j||!j.ok){ PD.msg=L(j&&j.error==='code'?'pd_bad':j&&j.error==='full'?'pd_full':'pd_off'); if(scr!=='pduoin') go('pduo'); return; }
+    PD.on=true; PD.side=j.side; PD.left=0; PD.code=j.code; PD.near=!!j.near; PD.peer=false; PD.pst=''; PD.pname=''; PD.ready=false; PD.sent=''; PD.nearT=clock;
+    if(Sonar.setParity(j.side)) acoustic=false;   /* v1.64d: the probe's own half of the tones (the side 0 — the even ones); the room and the calibration anew */
+    Logs.ev('вдвоём: комната',{code:j.code,side:j.side,near:PD.near,tones:j.side?'odd':'even'}); if(nickEl) nickField(false); go('pduowait'); }); }
+function pdLeave(){ if(!PD.on) return; Logs.ev('вдвоём: выход'); try{ Link.send({e:'bye'}); }catch(e){} var l=Link; setTimeout(function(){ if(!PD.on) l.close(); },300);
+  PD.on=false; PD.peer=false; PD.ready=false; PD.N=null; PD.cfg=null; PD.inq=[]; if(Sonar.setParity('all')) acoustic=false; }   // all the tones again
+/* the partner's messages (from the direct channel or the server) */
+function pdGot(m){ if(!PD.on||!m) return;
+  if(m.e==='peer'){ PD.peer=true; PD.sent=''; if(scr==='pduowait') go('pduo2'); return; }
+  if(m.e==='gone'||m.e==='bye'){ PD.peer=m.e==='gone'?false:PD.peer; PD.pst='gone'; if(m.e==='bye') PD.peer=false; return; }
+  if(m.e==='hi'){ PD.peer=true; PD.sent=''; if(scr==='pduowait') go('pduo2'); return; }
+  if(m.e==='st'){ PD.peer=true; PD.pst=m.st; PD.pname=String(m.nick||'').slice(0,16); PD.psens=m.sens; PD.pspan=m.span; if(scr==='pduowait') go('pduo2');
+    if(scr==='count'&&m.st!=='ready'&&m.st!=='play'&&PD.cfg&&!PD.N){ Logs.ev('вдвоём: напарник не готов — без старта'); PD.cfg=null; go(PD.from||'pduo2'); } return; }
+  if(m.e==='swap'){ if(PD.side===0){ PD.left=1-PD.left; pdSend({e:'sides',left:PD.left}); } return; }
+  if(m.e==='sides'){ PD.left=m.left?1:0; return; }
+  if(m.e==='go'){ if(!PD.ready){ PD.sent=''; return; } pdCount(m); return; }
+  if(m.e==='h'){ PD.inq.push(m); return; } }
+/* ── the start: the side 0 sends it once both are ready ── */
+function pdCheckGo(){ if(PD.side!==0||!PD.peer||!PD.ready||PD.pst!=='ready'||scr==='count'||scr==='play') return;
+  var me=pdMe(), s=[0,0], sp=[0,0]; s[me]=pgSens(); s[1-me]=PD.psens>=0&&PD.psens<=3?PD.psens:1; sp[me]=pdSpan(); sp[1-me]=PD.pspan>0?PD.pspan:0;
+  var m={e:'go',seed:newSeed(),t0:Math.round(Link.now()+3700),left:PD.left,sens:s,span:sp}; pdSend(m); pdCount(m); }
+function pdCount(m){ PD.left=m.left?1:0; PD.cfg={seed:m.seed>>>0,t0:m.t0,sens:m.sens,span:m.span}; PD.inq=PD.inq.filter(function(q){ return q.g===PD.cfg.seed; }); PD.N=null; PD.from=scr;
+  pgKeep(); try{ DSP2.set('quarter',1); }catch(e){} countT=Math.max(0,(m.t0-Link.now())/1000); go('count'); }
+/* ── the game ── */
+function pdStart(){ var c=PD.cfg; g=Pong.create2(c.seed,PG_AR,c.sens,c.span); PD.me=pdMe(); PD.N=PongNet.create(g,PD.me); PD.mine={}; PD.his=[]; PD.mineAll=[]; PD.offT=0; PD.hisAck=0; PD.myAck=0; PD.got={}; PD.shown={}; PD.sentAt=0; PD.overT=0;
+  acc=0; parts=[]; PG.pts=[]; PG.newBest=false; PG.rec=null; PG.clips=null; PG.fps=null; var I=Sonar.info(), cc=PG.c||{};
+  Logs.gameStart({core:Pong.TAG2,game:'pong',duo:{code:PD.code,near:PD.near,side:PD.side,me:PD.me,mate:PD.pname||null},auto_cal:!!PG.auto,seed:c.seed,ar:PG_AR,sens:c.sens,span:c.span,t0:c.t0,cal:DSP2.info().cal,tones:Sonar.info().par,lin:cc.lin?{b:+cc.lin.b.toFixed(1),t:+cc.lin.t.toFixed(1)}:null,
+    chan:I.chan,hand:handSide(),probe_gain:I.probe_gain,probe_snr:I.probe_snr,f_lo:I.f_lo,W:LW,H:LH,sfx:Sfx.state(),link:Link.state(),started:new Date().toISOString(),app:'sonaroids'});
+  Sfx.lob('start'); go('play'); }
+/* the partner's palms that came: into the game (it runs again from the first that differs from the guess) */
+function pdTake(){ var N=PD.N; if(!N||!PD.inq.length) return; var Q=PD.inq; PD.inq=[];
+  Q.forEach(function(m){ if(m.g!==PD.cfg.seed) return; if(typeof m.a==='number') PD.hisAck=Math.max(PD.hisAck,m.a);
+    var list=[]; (m.v||[]).forEach(function(v,j){ var k=m.k+j; if(k<1) return; PD.got[k]=1; PD.his[k-1]=v===undefined?null:v; list.push([k,v===null||v===undefined?null:v/10000]); });
+    while(PD.got[PD.myAck+1]){ delete PD.got[PD.myAck-200]; PD.myAck++; }
+    if(!list.length) return; var old=N.g, out=PongNet.remote(N,list);
+    if(N.g!==old){ for(var k in old) if(k.charAt(0)==='_') N.g[k]=old[k]; g=N.g; }
+    (out||[]).forEach(function(s){ pdReact(s.n,s.events,s.fx); }); }); }
+/* a step's events → the sounds and the drawing, each once (a step run again shows only what it did not show before) */
+function pdReact(n,events,fx){ var was=PD.shown[n]||{e:[],f:[]}, fk=function(f){ return Object.keys(f).join(','); };
+  var ev=events.filter(function(e){ return was.e.indexOf(e)<0; }), fxs=(fx||[]).filter(function(f){ return was.f.indexOf(fk(f))<0; });
+  PD.shown[n]={e:was.e.concat(ev),f:was.f.concat(fxs.map(fk))}; delete PD.shown[n-400]; if(!ev.length&&!fxs.length) return;
+  var q={events:ev,fx:fxs,n:n,t:n*Pong.DT,series:g.series,crk:g.crk,_sk:g._sk,_dullN:g._dullN}; pgSkFx(q); pgSound(q); g._dullN=q._dullN; g._sk=q._sk; }
+/* this phone's palms the partner has not confirmed yet: at once on the direct channel, every ~3 steps through the server */
+function pdFlush(force){ var N=PD.N; if(!N) return; var k0=PD.hisAck+1, k1=Math.min(N.g.n,k0+39), now=performance.now(); if(k1<k0) return;
+  if(!force&&!Link.direct()&&now-PD.sentAt<45) return;   // the server: ~20 messages a second (it takes up to 60)
+  var v=[]; for(var k=k0;k<=k1;k++) v.push(PD.mine[k]===undefined?null:PD.mine[k]); PD.sentAt=now;
+  Link.send({e:'h',g:PD.cfg.seed,k:k0,v:v,a:PD.myAck}); for(var d in PD.mine) if(+d<k0-60) delete PD.mine[d]; }
+function pdPlay(){ var N=PD.N, DTs=Pong.DT, vs=lastNow;
+  var fp=PG.fps||(PG.fps={t:vs,n:0,mx:0,slow:0,last:null,rb:0}); if(fp.last!==null&&vs-fp.last<1000){ var fd=vs-fp.last; fp.n++; if(fd>fp.mx) fp.mx=fd; if(fd>25) fp.slow++; } fp.last=vs;
+  if(vs-fp.t>=5000){ var ls=Link.state()||{}; Logs.gameEv('кадры',{n:fp.n,s:+((vs-fp.t)/1000).toFixed(2),max:Math.round(fp.mx),slow:fp.slow,rollbacks:N.rb-fp.rb,rb_max:N.rbMax,lag:N.g.n-PD.myAck,direct:!!ls.direct,rtt_d:ls.rttD?Math.round(ls.rttD):null,rtt_s:ls.rttS?Math.round(ls.rttS):null}); fp.t=vs; fp.n=0; fp.mx=0; fp.slow=0; fp.rb=N.rb; }
+  pdTake();
+  /* the steps: as many as the server's clock says (one a frame; two or none only when a whole step ahead or behind — as frameSteps) */
+  var want=(Link.now()-PD.cfg.t0)/1000, e=want-(N.g.n+1)*DTs, n=1; if(e>0.75*DTs) n=1+Math.min(14,Math.round(e/DTs)); else if(e<-0.75*DTs) n=0;
+  for(var i=0;i<n&&N.g.state!=='over';i++){ var c=PG.c, f=c?PongCtl.frac(c,c.present?PongCtl.palmAt(c,vs-(n-1-i)*1000*DTs):null):null; f=f===null?null:Math.round(f*10000)/10000;
+    PongNet.stepLocal(N,f); g=N.g; PD.mine[g.n]=f===null?null:Math.round(f*10000); PD.mineAll[g.n-1]=PD.mine[g.n];
+    Logs.step({pong:2,n:g.n,FH:1,ship:{y:g.pys[PD.me]},lives:g.lives,score:g.score,events:g.events},f); pdReact(g.n,g.events,g.fx); }
+  if(N.lost){ Logs.gameEv('вдвоём: рассинхрон — партия кончена'); N.g.state='over'; }
+  /* the partner is no longer in this game (he left, his game broke off) — this one ends too (the pause for both and the waiting come next) */
+  if(PD.pst==='play'||PD.pst==='ready') PD.offT=0; else if((PD.offT+=DT)>3&&N.g.state!=='over'){ Logs.gameEv('вдвоём: напарник не в игре — партия кончена',PD.pst); N.lost=true; N.g.state='over'; }
+  pdFlush(false);
+  pgField(g,DT); pgHud(); coveredLine(topY()+40); say(L('menu_a'));
+  if(g.state==='over'){ PD.overT+=DT; if(PD.myAck>=g.n||PD.overT>5||N.lost) pdEnd(); } }
+function pdEnd(){ g.state='over'; overT=0; PD.ready=false; Logs.gameEv('вдвоём: итог',{score:g.score,n:g.n,confirmed:PD.myAck,rollbacks:PD.N.rb,rb_max:PD.N.rbMax});
+  /* both palms (×10000, null — none), the left racket's first: the whole game can be replayed from the log (Pong.replay2) */
+  var L0=PD.me===0?PD.mineAll:PD.his, R0=PD.me===0?PD.his:PD.mineAll, nn=g.n, cut=function(a){ var o=[]; for(var i=0;i<nn;i++) o.push(a[i]===undefined?null:a[i]); return o; };
+  Logs.gameEv('вдвоём: ладони',{seed:PD.cfg.seed,sens:PD.cfg.sens,span:PD.cfg.span,n:nn,left:cut(L0),right:cut(R0)}); Logs.gameStop(); pdFlush(true); go('over'); }
+/* ── the screens ── */
+function pdVeil(a){ pgDemoDraw(); lx.globalAlpha=a; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; }
+function pdCol(items,y0){ var w=colW(items); column(items,y0,Math.round(LW/2-w/2)); }
+function sPDuo(){ pdVeil(0.35); var y=titles(L('pd_t'),L('pd_s'));
+  if(PD.msg) text(PD.msg,Math.round(LW/2),y+4,P.hit,'center');
+  pdCol([['pd_near',PD.busy?L('loading'):L('pd_near'),'primary'],['pd_new',L('pd_new')],['pd_in',L('pd_in')],['pd_back',L('back')]],Math.round(LH*0.62)); }
+function sPDuoWait(){ pdVeil(0.45); var cx0=Math.round(LW/2), dots='.'.repeat(1+Math.floor(clock*2)%3);
+  if(PD.near){ titles(L('pd_near_t'),L('pd_near_s')); var left=Math.max(0,Math.ceil(30-(clock-PD.nearT))); text(L('pd_wait')+dots+' '+left,cx0,Math.round(LH*0.42),P.text,'center');
+    if(left<=0){ pdLeave(); PD.msg=L('pd_none'); go('pduo'); return; } }
+  else { titles(L('pd_code_t')); var cs=PD.code?PD.code.split('').join(' '):''; plaque(cx0-PF.width(cs,4)/2,Math.round(LH*0.24)-2,cx0+PF.width(cs,4)/2,Math.round(LH*0.24)+4*PF.CAP+2,0.6);
+    text(cs,cx0,Math.round(LH*0.24),P.band,'center',4); para(L('pd_code_s'),cx0,Math.round(LH*0.24)+4*PF.CAP+14,LW-SAFE.l-SAFE.r-40,P.text);
+    text(L('pd_wait')+dots,cx0,Math.round(LH*0.6),P.soft,'center'); say(L('pd_code_t')+' '+(PD.code||'').split('').join(' ')); }
+  var w=btnW([L('pd_cancel')]); button('pd_cancel',L('pd_cancel'),Math.round(cx0-w/2),Math.round(LH*0.74),w,BH,''); }
+function sPDuoIn(){ pdVeil(0.45); titles(L('pd_in_t'),L('pd_in_s')); nickField(true);
+  if(PD.msg) text(PD.msg,Math.round(LW/2),Math.round(LH*0.34)-10,P.hit,'center');
+  var items=[['pd_ok',PD.busy?L('loading'):L('done'),'primary'],['pd_back2',L('back')]], w=btnW(items.map(function(q){ return q[1]; })), gap=10, y0=Math.round(LH*0.66), x=Math.round(LW/2-w-gap/2);
+  button(items[0][0],items[0][1],x,y0,w,BH,'primary',true); button(items[1][0],items[1][1],x+w+gap,y0,w,BH,'',false); }
+/* the partner's line: his state in words */
+function pdMateSt(){ if(!PD.peer||PD.pst==='gone') return L('pd_st_gone'); return PD.pst?L('pd_st_'+PD.pst)+(PD.pst==='cal'?'.'.repeat(1+Math.floor(clock*2)%3):''):L('pd_wait')+'…'; }
+/* «ВЫ ВМЕСТЕ»: the field with the rackets at rest, the own player in red; who has which racket and what the partner does */
+function sPDuo2(){ var v=pgView(Pong.TUNE.PAD_LO-0.5*Pong.TUNE.SENS[pgSens()]); v.pys=null; pgField(v,DT);
+  var cx0=Math.round(LW/2), y=topY(), cw=Math.round(Math.min(LW*0.22,170)), me=pdMe();
+  plaque(cx0-cw-20,y-2,cx0+cw+20,y+64,0.75); text(L('pd_tog'),cx0,y+2,P.band,'center'); say(L('pd_tog'));
+  [0,1].forEach(function(i){ var x=cx0+(i?1:-1)*Math.round(cw/2+10), mine=i===me;
+    text(L('pd_lr'+i),x,y+18,P.soft,'center'); text(mine?pdName():pdMate(),x,y+30,mine?'#ec2a17':P.text,'center',2);
+    text(mine?L('pd_st_menu'):pdMateSt(),x,y+50,mine||PD.pst==='ready'?P.band:P.soft,'center'); });
+  var items=[['pd_next',L('pd_next'),'primary'],['pd_swap',L('pd_swap')],['pd_exit',L('pd_exit')]], w=btnW(items.map(function(q){ return q[1]; })), gap=8, x0=Math.round(LW/2-(3*w+2*gap)/2), by=LH-SAFE.b-BH-10;
+  items.forEach(function(q,i){ button(q[0],q[1],x0+i*(w+gap),by,w,BH,q[2]||'',q[2]?Math.floor(clock*2)%2===0:false); }); }
+/* the try-out's buttons together: «ГОТОВ» (then «ЖДЁМ НАПАРНИКА…» — pressing it takes the «ready» back), the waving again, the sensitivity;
+   the partner's state over them */
+function pdTryItems(){ return [['pd_ready',PD.ready?L('pd_wait')+'.'.repeat(1+Math.floor(clock*2)%3):L('pd_ready'),'primary'],['pg_rehold',L('recal')],['pg_sens',pgSensLabel()]]; }
+function pdMateLine(y){ var s=L('pd_mate_st').replace('{s}',pdMateSt()), w=PF.width(s); plaque(LW/2-w/2,y-2,LW/2+w/2,y+PF.CAP+1,0.6); text(s,Math.round(LW/2),y,PD.pst==='ready'?P.band:P.text,'center'); }
+/* the game over together */
+/* after the game only the partner's confirmations are read (so the last steps stop being sent once he has them) */
+function pdAcks(){ var Q=PD.inq; PD.inq=[]; Q.forEach(function(m){ if(PD.cfg&&m.g===PD.cfg.seed&&typeof m.a==='number') PD.hisAck=Math.max(PD.hisAck,m.a); else if(!PD.cfg||m.g!==PD.cfg.seed) PD.inq.push(m); }); }
+function pdOver(){ overT+=DT; pgField(g,DT); lx.globalAlpha=0.45; R(P.bg,0,0,LW,LH); lx.globalAlpha=1; pdAcks(); if(PD.N&&PD.hisAck<g.n) pdFlush(false);
+  var cx0=freeSide()==='left'?Math.round(LW*0.6):Math.round(LW*0.4), y=Math.round(LH*0.2);
+  var ls=[[L('pg_width').replace('{n}',Math.round(Pong.width(g)*100)),P.text],[L('pg_passes').replace('{n}',g.passes),P.text],[pdName()+' + '+pdMate(),P.soft],[L('pd_mate_st').replace('{s}',pdMateSt()),PD.pst==='ready'?P.band:P.soft]];
+  var fw=0; ls.forEach(function(q){ fw=Math.max(fw,PF.width(q[0])); }); fw=Math.max(fw,PF.width(L('over')))+20; plaque(cx0-fw/2,y-2,cx0+fw/2,y+38+ls.length*11,0.6);
+  text(L('over'),cx0,y,P.text,'center'); text(String(g.score),cx0,y+13,P.band,'center',2); ls.forEach(function(q,i){ text(q[0],cx0,y+38+i*11,q[1],'center'); });
+  say(L('over')+' '+g.score);
+  if(overT>0.8) column([['pd_again',PD.ready?L('pd_wait')+'.'.repeat(1+Math.floor(clock*2)%3):L('again'),'primary'],['pd_recal',L('recal')],['pd_exit',L('pd_exit')]],Math.round(LH*0.52)); }
+/* the actions */
+var PD_ACT={
+  pg_duo:function(){ PD.msg=''; go('pduo'); },
+  pd_near:function(){ pdOpen('near'); }, pd_new:function(){ pdOpen('new'); }, pd_in:function(){ PD.msg=''; go('pduoin'); },
+  pd_ok:function(){ if(PD.busy||!nickEl) return; var v=nickEl.value.replace(/\D/g,''); if(v.length!==4){ PD.msg=L('pd_bad'); return; } pdOpen('join',v); },
+  pd_back:function(){ PD.msg=''; go('ptitle'); }, pd_back2:function(){ PD.msg=''; go('pduo'); },
+  pd_cancel:function(){ pdLeave(); go('pduo'); },
+  pd_exit:function(){ pdLeave(); go('ptitle'); },
+  pd_swap:function(){ if(PD.side===0){ PD.left=1-PD.left; pdSend({e:'sides',left:PD.left}); } else pdSend({e:'swap'}); },
+  pd_next:function(){ PD.ready=false; if(pgReady()){ PG.done=true; PG.doneT=-9; PG.w0=-9; PG.resume=false; go('phold'); return; } onboarding=false; direct=false; ensure(toAway); },
+  pd_ready:function(){ PD.ready=!PD.ready; PD.sent=''; },
+  pd_again:function(){ if(!(booted&&Sonar.healthy())){ PD.ready=false; ensure(toAway); return; } PD.ready=!PD.ready; PD.sent=''; },
+  pd_recal:function(){ PD.ready=false; if(!(booted&&Sonar.healthy())){ ensure(toAway); return; } PG.resume=false; flipT=-9; go('phold'); pgWaveStart(); }
+};
 /* ════ SONAPONG «НАБРОСОК» in the game (v1.61h; stage 3 of claude/SONAPONG_PORT.md — the maintainer 11 Oct 17:29: «скины — пока два, наши
    тёмный и светлый, оба „набросок“»; 16:50: «с соплами вместо пропеллеров картинка смотрится поинтереснее»). The lab's drawing as it is:
    src/39_sketch.js (pgSketch) is one file for the lab and the game. It reads the lab's names — ARC (the game's state), PG_V (the options),
@@ -5473,7 +5655,7 @@ var PGK={cv:null,src:null,v:{ar:PG_AR,hw:0.2},q:{prev:0}};
   G.pgTime=function(){ return 0; };
   G.pgNarrowP=function(){ return T.NARROW_T; };
   /* where the shuttle will land on the racket it flies to — for the little player who runs there (the lab's pgMeatPath, only what the drawing uses) */
-  G.pgMeatPath=function(b,pad,ar){ var i=b.from===null||b.from===undefined?b.to:1-b.from; if(i!==0&&i!==1) return null;
+  G.pgMeatPath=function(b,pad,ar){ var i=b.from===null||b.from===undefined?b.to:1-b.from; if(i!==0&&i!==1) return null; if(ARC.pys) pad=ARC.pys[i];   // v1.64c: together — each racket at its own place
     var x=b.x, y=b.y, vx=b.vx, vy=b.vy, h=1/240, S=null, k;
     for(k=0;k<1200;k++){ vy+=T.G*h; x+=vx*h; y+=vy*h; if(vy>0){ S=Pong.surf(PGK.v,i,x,pad); if(Math.abs(S.u)<=1&&y>=S.y-b.r) break; S=null; } if(y>1.1) return null; }
     return S?{i:i,P:[x,S.y-b.r]}:null; };
@@ -5509,6 +5691,8 @@ function pgSkDraw(q,dt,playing,cardH,ckey){ var u=pgU(), fw=Math.max(1,Math.roun
   PG_V.dark=pgSkin(); PG_V.phint=pgHint(); PG_V.hudL=handSide()==='left'; PG_V.skw=cardH?Math.min(4,Math.max(2.2,1.7*390/fh)):undefined;   /* 1.61s: on the small card the pen thicker — the lines stay at least ~1.5 dots */ PGK.v.ar=PG_AR; PGK.v.hw=q.hw; PGK.v.H=q.H; K.lastT=Math.max(0,K.lastT-dq); K.flash=Math.max(0,K.flash-dq);
   var A=window.ARC; A.ar=PG_AR; A.t=q.t; A.py=q.py; A.padSoft=null; A.balls=q.ball?[q.ball]:[]; A.webD=q.webD||0; A.crk=K.crk; A.crkB=K.crkB; A.crkM=K.crkM;
   A.ceils=q.ceils||0; A.falls=q.falls||0; A.narrowK=q.k||1; A.score=q.score||0; A.series=q.series||0; A.kick=K.kick; A.phase=playing?'play':'menu'; A.lastPts=K.lastPts; A.lastT=K.lastT; A.pf=[]; A.flash=K.flash; A.clean=0;
+  /* v1.64c: together — each racket at its own palm (q.pys), the own player in red ink, «ТЫ» over him (always before the game, the first 3 s in it) */
+  A.pys=q.pys||null; A.me=PD.on&&!cardH&&!ckey&&q!==PG.demo?pdMe():null; A.youA=q.duo?Math.max(0,Math.min(1,4-q.t)):scr==='pduo2'?0:1;
   var t0=performance.now(), c=cv0.getContext('2d'); c.setTransform(1,0,0,1,0,0);
   pgSketch(c,fw,fh,Math.max(1,uiS*DPR/S));
   /* 1.61m: the slow-phone steps only in the game itself (the menu and the getting ready run at 30 frames a second on purpose — they read
@@ -5516,7 +5700,12 @@ function pgSkDraw(q,dt,playing,cardH,ckey){ var u=pgU(), fw=Math.max(1,Math.roun
   if(cardH) return cv0;
   if(scr==='play'&&PGK.q.prev&&t0-PGK.q.prev<100) pgSkQual(t0-PGK.q.prev); PGK.q.prev=scr==='play'?t0:0;
   lx.fillStyle=PG_V.dark?'#1d1b18':'#f6f1e6'; lx.fillRect(0,0,LW,LH); var sm=lx.imageSmoothingEnabled; lx.imageSmoothingEnabled=true;
-  lx.drawImage(cv0,pgX(0),pgY(0),PG_AR*u,u); lx.imageSmoothingEnabled=sm; }
+  lx.drawImage(cv0,pgX(0),pgY(0),PG_AR*u,u); lx.imageSmoothingEnabled=sm;
+  if(A.me!==null&&A.meXY&&A.youA>0) pdYou(pgX(A.meXY[0]),pgY(A.meXY[1]),A.youA); A.meXY=null; }
+/* v1.64c (М2): «ТЫ» and an arrow over the own player, in red */
+function pdYou(x,y,a){ var red=pgSkin()?'#ff4b36':'#ec2a17', s=L('pd_you'), top=y-Math.round(pgU()*0.25); lx.globalAlpha=a;
+  text(s,Math.round(x),top-PF.CAP*2-12,red,'center',2,true); R(red,Math.round(x)-1,top-8,2,8); for(var k=1;k<=4;k++) R(red,Math.round(x)-1-k,top+4-k,2*k+2,1);
+  lx.globalAlpha=1; }
 /* v1.62c: a replay window — a view of one of the game's arcs drawn at the window's own size on its own canvas (ckey), with its own drawing
    state: the players, the shuttle's turn, the trail (PGS) are kept on the view and swapped in for its drawing, so two windows side by side
    don't start each other's afresh every frame */
@@ -7179,11 +7368,12 @@ var prep=null, T=null, caught=false, g=null, acc=0, countT=0, overT=0, shake=0, 
 var DUCK_PEAK=0.05;
 var lastHand=null, shipY=null, sayLast='', pausedFrom=null, livesT=0, duckT=0;
 var mode='fly';   // v0.84: which game — 'fly' (SonaFly) or 'race' (SonaRace); the getting ready is the same, «menu» is the game's own; v1.59: 'pong' (SonaPong, src/48_pong.js)
-function go(s){ if(mode==='race'&&s==='title') s='rtitle'; if(mode==='pong'&&s==='title') s='ptitle';   // v1.59: SonaPong's menu
+function go(s){ if(mode==='race'&&s==='title') s='rtitle'; if(mode==='pong'&&s==='title') s=PD.on?'pduo2':'ptitle';   // v1.59: SonaPong's menu; v1.64c: together — «ВЫ ВМЕСТЕ» (the room stays)
+  if(s==='hub'&&PD.on) pdLeave();
   if(scr==='wave'&&s!=='wave'&&!caught&&T&&typeof Board!=='undefined') Board.setup('nocatch',{t:scrT,flips:flips});   // left the wave step without a caught range
   if(s!==scr&&typeof mixPrep==='function') mixPrep(scr,s);
   if(s==='count') shake=0;   /* 1.61x: a new game starts still (SonaFly's last crash left shake 0.4 behind) */
-  if(s!==scr) scrPrev=scr; scr=s; scrT=0; BTN=[]; if(s!=='nick'&&s!=='linkin'&&typeof nickField==='function'&&nickEl) nickField(false); }
+  if(s!==scr) scrPrev=scr; scr=s; scrT=0; BTN=[]; if(s!=='nick'&&s!=='linkin'&&s!=='pduoin'&&typeof nickField==='function'&&nickEl) nickField(false); }
 var scrPrev=null, diag=false, flips=0;                        // diag: the "logs" button is shown (a tap on the version on the game-over screen)
 
 /* ── which side the playing hand is on ──
@@ -7244,12 +7434,14 @@ function sideX(w){ return freeSide()==='left'?SAFE.l+Math.max(8,Math.round(LW*0.
 function colW(items){ var w=btnW(items.filter(function(b){ return b[2]!=='sound'&&b[2]!=='skin'; }).map(function(b){ return b[1]; }));
   if(items.some(function(b){ return b[2]==='skin'; })) w=Math.max(w,skinW());
   if(items.some(function(b){ return b[2]==='rskin'; })) w=Math.max(w,rskinW());
+  items.forEach(function(b){ if(b[2]==='pair') b[3].forEach(function(q){ w=Math.max(w,2*(PF.width(q[1])+18)+6); }); });
   return items.some(function(b){ return b[2]==='sound'; })?Math.max(w,soundW()):w; }
 /* the «◀ skin: … ▶» row's width: the longest skin name between the arrows */
 function rskinW(){ var lw=PF.width(L('r_skin')+': '+L('r_sk_'+RACE_SKINS.concat(['mix']).reduce(function(a,k){ return PF.width(L('r_sk_'+k))>PF.width(L('r_sk_'+a))?k:a; }))); return R_SKIN_ROW==='A'?lw+2*Math.round(BH*0.9)+24:lw+20; }
 function skinW(){ return PF.width(L('skin')+': '+L('skin_'+SKIN_IDS.concat(['mix']).reduce(function(a,k){ return PF.width(L('skin_'+k))>PF.width(L('skin_'+a))?k:a; })))+2*Math.round(BH*0.9)+24; }
 function column(items,y0,x0,gap){ var w=colW(items), h=BH; gap=gap===undefined?10:gap; var y=Math.round(y0-(items.length*(h+gap)-gap)/2), x=x0===undefined?sideX(w):x0;
-  items.forEach(function(b){ if(b[2]==='sound') soundRow(x,y,w,h); else if(b[2]==='skin') skinRow(x,y,w,h,gap); else if(b[2]==='rskin') rskinRow(x,y,w,h,gap); else button(b[0],b[1],x,y,w,h,b[2]||'',Math.floor(clock*2)%2===0); y+=h+gap; }); }
+  items.forEach(function(b){ if(b[2]==='pair'){ var hw2=Math.floor((w-6)/2); b[3].forEach(function(q,j){ button(q[0],q[1],x+j*(w-hw2),y,hw2,h,q[2]||'',Math.floor(clock*2)%2===0); }); y+=h+gap; return; }   /* v1.64c: two buttons in one row (SonaLob's «ИГРАТЬ ОДНОМУ» · «ИГРАТЬ ВДВОЁМ») */
+    if(b[2]==='sound') soundRow(x,y,w,h); else if(b[2]==='skin') skinRow(x,y,w,h,gap); else if(b[2]==='rskin') rskinRow(x,y,w,h,gap); else button(b[0],b[1],x,y,w,h,b[2]||'',Math.floor(clock*2)%2===0); y+=h+gap; }); }
 /* v0.36: the sound row in the menu and the pause — [ - | SOUNDS ▮▮▮▮▮▯▯▯ | + ]; the middle switches the sounds on and off */
 function soundW(){ return PF.width(L('sfx_off'))+6+Sfx.steps*4+2*Math.round(BH*0.9)+12; }
 function soundRow(x,y,w,h){ var on=Sfx.on(), n=Sfx.steps, lv=Sfx.lvl(), s=Math.round(h*0.9), ty=y+Math.round((h-7)/2);
@@ -7707,14 +7899,14 @@ function sScores(){ var rc=mode==='race', pg=mode==='pong'; if(rc){ raceDemoTick
 var NICK_RE=/^[A-Za-z0-9_]{1,16}$/;                     // Latin letters, digits and _ only (25 Sep); the server checks the same
 function nickField(show){ if(!nickEl){ nickEl=document.createElement('input'); nickEl.type='text'; nickEl.maxLength=16; nickEl.autocomplete='off'; nickEl.spellcheck=false; nickEl.setAttribute('autocapitalize','off'); nickEl.setAttribute('aria-label','nickname');
     nickEl.style.cssText='position:fixed;z-index:5;display:none;font:18px/1.2 ui-monospace,Menlo,monospace;text-align:center;padding:6px 8px;border:2px solid '+P.band+';background:'+P.bg+';color:'+P.text+';border-radius:0;outline:none;-webkit-appearance:none';
-    nickEl.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); if(scr==='linkin') ACT.code_ok(); else ACT.nick_ok(); } }); document.body.appendChild(nickEl); }
+    nickEl.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); if(scr==='linkin') ACT.code_ok(); else if(scr==='pduoin') ACT.pd_ok(); else ACT.nick_ok(); } }); document.body.appendChild(nickEl); }
   if(!show){ if(nickEl.style.display!=='none'){ nickEl.style.display='none'; nickEl.blur(); } return; }
   var m=S/DPR, w=Math.round(LW*0.42), x=Math.round((LW-w)/2), y=Math.round(LH*0.34);
   nickEl.style.left=Math.round(x*m)+'px'; nickEl.style.top=Math.round(y*m)+'px'; nickEl.style.width=Math.round(w*m)+'px';
-  var mode=scr==='linkin'?'code':'nick';
-  if(nickEl.style.display==='none'||nickEl.getAttribute('data-mode')!==mode){ nickEl.setAttribute('data-mode',mode); nickEl.maxLength=mode==='code'?8:16;
-    nickEl.setAttribute('autocapitalize',mode==='code'?'characters':'off'); nickEl.setAttribute('aria-label',mode==='code'?'code':'nickname');
-    nickEl.value=mode==='code'?'':(Board.nick()||''); nickEl.style.display='block'; } }
+  var mode=scr==='linkin'?'code':scr==='pduoin'?'pcode':'nick';   /* v1.64c: and SonaLob's pair code — 4 digits, the digits' keyboard */
+  if(nickEl.style.display==='none'||nickEl.getAttribute('data-mode')!==mode){ nickEl.setAttribute('data-mode',mode); nickEl.maxLength=mode==='code'?8:mode==='pcode'?4:16;
+    nickEl.setAttribute('autocapitalize',mode==='code'?'characters':'off'); nickEl.setAttribute('aria-label',mode==='nick'?'nickname':'code'); nickEl.setAttribute('inputmode',mode==='pcode'?'numeric':'text');
+    nickEl.value=mode==='nick'?(Board.nick()||''):''; nickEl.style.display='block'; } }
 function sNick(){ sky(DT,0.3); titles(L(nickFrom==='over'?'nick_t':'nick_t2'),L('nick_s')); nickField(true);
   if(nickMsg) text(nickMsg,Math.round(LW/2),Math.round(LH*0.34)-10,P.hit,'center');
   var items=[['nick_ok',nickBusy?L('loading'):L('done'),'primary'],['nick_later',L(nickFrom==='over'?'later':'back')]], w=btnW(items.map(function(q){ return q[1]; })), gap=10, y0=Math.round(LH*0.66), x=Math.round(LW/2-w-gap/2);
@@ -8035,7 +8227,7 @@ function quickOr(full,any){ if(mode==='pong'?pgReady():any?readyNow():liveReady(
 function toRoom(b){ roomAgain=false; Sonar.setBand(b); prep=null; silentRetry=false; go('away'); }
 function toWave(){ forceWave=false; autoTry=false; try{ DSP2.set('quarter',0); }catch(e){}   // v1.59: the quarter-frame phase only for SonaPong's rackets
   T=Tune.create(+store.get('sonaroids_field','100')||100,true); caught=false; flips=0; flipT=-9; seenT=0; go('wave'); }
-function pauseGame(){ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; if(mode==='pong'&&pausedFrom==='play') PG.resumed=true; go('paused'); } }   /* 1.61r: SonaLob's rules are told the game goes on (src/15_pong.js resume) */
+function pauseGame(){ if(mode==='pong'&&g&&g.duo&&PD.N&&g===PD.N.g) return;   /* v1.64c: together the game goes on (the pause for both comes next) */ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; if(mode==='pong'&&pausedFrom==='play') PG.resumed=true; go('paused'); } }   /* 1.61r: SonaLob's rules are told the game goes on (src/15_pong.js resume) */
 function startCount(){ flyReset(); if(resumeAfterPrep&&g&&g.state!=='over'){ resumeAfterPrep=false; if(mode==='pong') pgKeep(); countT=3; go('count-resume'); return; }
   resumeAfterPrep=false; if(mode==='pong'){ pgCountStart(); return; } countT=3; mixStart(); if(scr!=='wave') shipY=null; lastHand=handFrac()===null?lastHand:handFrac(); /* from the try-out the ship goes on where it is */ Logs.ev('отсчёт',{field:+T.field.toFixed(1),auto:T.auto}); store.set('sonaroids_field',Math.round(T.field));
   // v1.14: a hand calibration's middle (the echo's range) — the auto-calibration plays with it (20_sonar liveMid)
@@ -8133,6 +8325,7 @@ var ACT={
   resume:function(){ if(pausedFrom==='play'){ if(booted&&Sonar.healthy()){ countT=3; go('count-resume'); } else { resumeAfterPrep=true; ensure(null); } } else ensure(startCount); }
 };
 RSET.forEach(function(q){ ACT[q[0]]=function(){ q[2](); raceOptSave(); }; });
+for(var pdk in PD_ACT) ACT[pdk]=PD_ACT[pdk];   // v1.64c: SonaLob together
 R_PRESETS.forEach(function(q){ ACT[q[0]]=function(){ raceOpt=Race.optOf(JSON.parse(JSON.stringify(q[2]))); raceOptSave(); }; });   // v0.92: the test switches
 /* buttons act when the finger lifts (on the same button it went down on): iPhone lets a page share files or open the microphone
    only from a finished tap — acting on touch-down made "logs" work only on the second tap (v0.12) */
@@ -8191,8 +8384,9 @@ function loop(now){ Sfx.setGame(mode);   /* 1.61w: which game's sounds */
   // v0.91: while a game runs (and in its pause) the sonar keeps the empty room's level as the getting ready left it (see src/11_dsp.js)
   var gameOn=!!(g&&g.state!=='over'&&(scr==='play'||scr==='count-resume'||scr==='paused'||scr==='restart')); if(gameOn!==floorHeld){ floorHeld=gameOn; try{ DSP2.set('holdfloor',gameOn); }catch(e){} }
   // v0.74: a shapes-only skin with «pixels» — the same canvas at 1 px per game pixel   // v0.72: the HD world canvas under the pixel one
-  uiColours(scr!=='hub'); obsTick();   // v1.42: the heavy skin's canvas hidden on a frame that drew no field
+  uiColours(scr!=='hub'); obsTick(); pdTick();   // v1.42: the heavy skin's canvas hidden on a frame that drew no field
   switch(scr){
+    case 'pduo': sPDuo(); break; case 'pduowait': sPDuoWait(); break; case 'pduoin': sPDuoIn(); break; case 'pduo2': sPDuo2(); break;   // v1.64c: SonaLob together (src/48_pongduo.js)
     case 'lang': sLang(); break; case 'title': sTitle(); break; case 'rtitle': sRTitle(); break; case 'ptitle': sPTitle(); break; case 'phold': sPHold(); break; case 'phowto': sPHow(); break; case 'skins': sSkins(); break; case 'rset': sRSet(); break; case 'hub': sHub(); break;
     case 'sound': sSound(); break;
     case 'phone': sPhone(); break; case 'mic': sMic(); break; case 'probe': sProbe(); break; case 'away': sAway(); break; case 'wave': sWave(); break;
@@ -8280,7 +8474,9 @@ go('hub');   // v0.70: the games' screen first (always the menu first since 0.44
 requestAnimationFrame(loop);
 /* test hooks: headless tests drive the screens through these (harmless in the game) */
 window.__sonaroids={mixStart:function(){ mixStart(); },setSkin:function(id){ setSkin(id); return SK&&SK.id; },obsProbe:function(k,a,b){ return obsProbe(k,a,b); },obs:function(c){ if(c==='roll') FLY.roll=0; return {ok:OBS.ok,err:OBS.err,vis:OBS.vis,bd:OBS.bd,od:OBS.od,n:OBS.list.length,an:OBS.an.length,f16:OBS.f16,sk:SK.id}; },fxBurst:function(x,y,n,kind){ var BU=SK.bursts(); burst(fx(x),y*K,n,BU[kind]||BU.rock,50*K); },mixNow:function(){ MX.next=MX.t; if(!MX.pend) MX.pend=mixPick(); },mixInfo:function(){ return {on:mixOn(),cur:mixCur(),pend:MX.pend,tr:MX.tr?MX.tr.t:null,hist:MX.hist.slice(),fly:flyMix,race:raceMix}; },noteZones:function(){ return RC.zones?RC.zones.slice():null; },noteRivals:function(v){ RN_RIV=v; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },noteInfra:function(f){ RN_FORCE=f||null; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },raceNote:function(o){ for(var k in o) RN_LOOK[k]=o[k]; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },raceSuper:function(v){ R_SUPER=v; },racePal:function(pud,bub){ if(pud) for(var k in pud) R_PUD[k]=pud[k]; if(bub) for(var j in bub) R_BUB[j]=bub[j]; RC.sp={}; },skinProbe:skinProbe,hdProbe:hdProbe,sizeProbe:sizeProbe,hdIds:hdIds,pixIds:function(){ return SKIN_IDS.filter(function(i){ return !!SKINS[i]; }); },skinIds:function(){ return SKIN_IDS.slice(); },go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },
-  setBooted:function(v){ booted=v; }, pongBot:function(){ var b=PG._bot||(PG._bot=pgDemoBot()); return g&&g.ball!==undefined&&g.state==='play'?b(g):null; },   /* v1.63a: the menu's rally bot over the live game — the readme's pictures (promo/make_lob.js) */ link:Link, pongNet:PongNet, pgClips:function(){ return PG.clips?{n:PG.clips.length,check:PG.clipCheck,clips:PG.clips.map(function(c){ return {who:c.who,pts:c.pts,h:c.h,frames:c.fr.length}; })}:null; }, setShake:function(v){ shake=v; },
+  setBooted:function(v){ booted=v; }, pongBot:function(){ var b=PG._bot||(PG._bot=pgDemoBot()); return g&&g.ball!==undefined&&g.state==='play'?b(g):null; },   /* v1.63a: the menu's rally bot over the live game — the readme's pictures (promo/make_lob.js) */ link:Link, pongNet:PongNet, duo:function(){ var N=PD.N; return {on:PD.on,side:PD.side,left:PD.left,me:pdMe(),peer:PD.peer,pst:PD.pst,ready:PD.ready,code:PD.code,near:PD.near,msg:PD.msg,state:pdState(),
+    game:N?{n:N.g.n,state:N.g.state,score:N.g.score,passes:N.g.passes,lives:N.g.lives,seed:PD.cfg.seed,myAck:PD.myAck,hisAck:PD.hisAck,rb:N.rb,rbMax:N.rbMax,lost:N.lost,pys:N.g.pys.slice(),behind:(Link.now()-PD.cfg.t0)/1000*60-N.g.n}:null}; }, duoGame:function(){ return PD.N?PD.N.g:null; }, duoReplay:function(){ var c=PD.cfg, nn=PD.N.g.n, a=PD.me===0?PD.mineAll:PD.his, b2=PD.me===0?PD.his:PD.mineAll, f=function(x){ var o=[]; for(var i=0;i<nn;i++) o.push(x[i]===undefined||x[i]===null?null:x[i]/10000); return o; };
+    var r=Pong.replay2(c.seed,PG_AR,c.sens,c.span,f(a),f(b2),[]); return {n:r.n,score:r.score,passes:r.passes,falls:r.falls,state:r.state}; }, pgClips:function(){ return PG.clips?{n:PG.clips.length,check:PG.clipCheck,clips:PG.clips.map(function(c){ return {who:c.who,pts:c.pts,h:c.h,frames:c.fr.length}; })}:null; }, setShake:function(v){ shake=v; },
   board:function(){ return {tbl:tblBox,nick:nickEl?{shown:nickEl.style.display!=='none',rect:nickEl.getBoundingClientRect().toJSON()}:null}; },
   side:function(){ return {hand:handSide(),rel:handRel,cam:camEnd(),stored:store.get('sonaroids_rel',''),say:sayLast}; }, wave:function(){ toWave(); },
   fake:function(){ booted=true; prep={res:{ok:true},doneT:-9}; T=Tune.create(100,true); T.ok=true; caught=true;          // a stand-in state for layout checks

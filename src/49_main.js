@@ -15,11 +15,12 @@ var prep=null, T=null, caught=false, g=null, acc=0, countT=0, overT=0, shake=0, 
 var DUCK_PEAK=0.05;
 var lastHand=null, shipY=null, sayLast='', pausedFrom=null, livesT=0, duckT=0;
 var mode='fly';   // v0.84: which game — 'fly' (SonaFly) or 'race' (SonaRace); the getting ready is the same, «menu» is the game's own; v1.59: 'pong' (SonaPong, src/48_pong.js)
-function go(s){ if(mode==='race'&&s==='title') s='rtitle'; if(mode==='pong'&&s==='title') s='ptitle';   // v1.59: SonaPong's menu
+function go(s){ if(mode==='race'&&s==='title') s='rtitle'; if(mode==='pong'&&s==='title') s=PD.on?'pduo2':'ptitle';   // v1.59: SonaPong's menu; v1.64c: together — «ВЫ ВМЕСТЕ» (the room stays)
+  if(s==='hub'&&PD.on) pdLeave();
   if(scr==='wave'&&s!=='wave'&&!caught&&T&&typeof Board!=='undefined') Board.setup('nocatch',{t:scrT,flips:flips});   // left the wave step without a caught range
   if(s!==scr&&typeof mixPrep==='function') mixPrep(scr,s);
   if(s==='count') shake=0;   /* 1.61x: a new game starts still (SonaFly's last crash left shake 0.4 behind) */
-  if(s!==scr) scrPrev=scr; scr=s; scrT=0; BTN=[]; if(s!=='nick'&&s!=='linkin'&&typeof nickField==='function'&&nickEl) nickField(false); }
+  if(s!==scr) scrPrev=scr; scr=s; scrT=0; BTN=[]; if(s!=='nick'&&s!=='linkin'&&s!=='pduoin'&&typeof nickField==='function'&&nickEl) nickField(false); }
 var scrPrev=null, diag=false, flips=0;                        // diag: the "logs" button is shown (a tap on the version on the game-over screen)
 
 /* ── which side the playing hand is on ──
@@ -80,12 +81,14 @@ function sideX(w){ return freeSide()==='left'?SAFE.l+Math.max(8,Math.round(LW*0.
 function colW(items){ var w=btnW(items.filter(function(b){ return b[2]!=='sound'&&b[2]!=='skin'; }).map(function(b){ return b[1]; }));
   if(items.some(function(b){ return b[2]==='skin'; })) w=Math.max(w,skinW());
   if(items.some(function(b){ return b[2]==='rskin'; })) w=Math.max(w,rskinW());
+  items.forEach(function(b){ if(b[2]==='pair') b[3].forEach(function(q){ w=Math.max(w,2*(PF.width(q[1])+18)+6); }); });
   return items.some(function(b){ return b[2]==='sound'; })?Math.max(w,soundW()):w; }
 /* the «◀ skin: … ▶» row's width: the longest skin name between the arrows */
 function rskinW(){ var lw=PF.width(L('r_skin')+': '+L('r_sk_'+RACE_SKINS.concat(['mix']).reduce(function(a,k){ return PF.width(L('r_sk_'+k))>PF.width(L('r_sk_'+a))?k:a; }))); return R_SKIN_ROW==='A'?lw+2*Math.round(BH*0.9)+24:lw+20; }
 function skinW(){ return PF.width(L('skin')+': '+L('skin_'+SKIN_IDS.concat(['mix']).reduce(function(a,k){ return PF.width(L('skin_'+k))>PF.width(L('skin_'+a))?k:a; })))+2*Math.round(BH*0.9)+24; }
 function column(items,y0,x0,gap){ var w=colW(items), h=BH; gap=gap===undefined?10:gap; var y=Math.round(y0-(items.length*(h+gap)-gap)/2), x=x0===undefined?sideX(w):x0;
-  items.forEach(function(b){ if(b[2]==='sound') soundRow(x,y,w,h); else if(b[2]==='skin') skinRow(x,y,w,h,gap); else if(b[2]==='rskin') rskinRow(x,y,w,h,gap); else button(b[0],b[1],x,y,w,h,b[2]||'',Math.floor(clock*2)%2===0); y+=h+gap; }); }
+  items.forEach(function(b){ if(b[2]==='pair'){ var hw2=Math.floor((w-6)/2); b[3].forEach(function(q,j){ button(q[0],q[1],x+j*(w-hw2),y,hw2,h,q[2]||'',Math.floor(clock*2)%2===0); }); y+=h+gap; return; }   /* v1.64c: two buttons in one row (SonaLob's «ИГРАТЬ ОДНОМУ» · «ИГРАТЬ ВДВОЁМ») */
+    if(b[2]==='sound') soundRow(x,y,w,h); else if(b[2]==='skin') skinRow(x,y,w,h,gap); else if(b[2]==='rskin') rskinRow(x,y,w,h,gap); else button(b[0],b[1],x,y,w,h,b[2]||'',Math.floor(clock*2)%2===0); y+=h+gap; }); }
 /* v0.36: the sound row in the menu and the pause — [ - | SOUNDS ▮▮▮▮▮▯▯▯ | + ]; the middle switches the sounds on and off */
 function soundW(){ return PF.width(L('sfx_off'))+6+Sfx.steps*4+2*Math.round(BH*0.9)+12; }
 function soundRow(x,y,w,h){ var on=Sfx.on(), n=Sfx.steps, lv=Sfx.lvl(), s=Math.round(h*0.9), ty=y+Math.round((h-7)/2);
@@ -543,14 +546,14 @@ function sScores(){ var rc=mode==='race', pg=mode==='pong'; if(rc){ raceDemoTick
 var NICK_RE=/^[A-Za-z0-9_]{1,16}$/;                     // Latin letters, digits and _ only (25 Sep); the server checks the same
 function nickField(show){ if(!nickEl){ nickEl=document.createElement('input'); nickEl.type='text'; nickEl.maxLength=16; nickEl.autocomplete='off'; nickEl.spellcheck=false; nickEl.setAttribute('autocapitalize','off'); nickEl.setAttribute('aria-label','nickname');
     nickEl.style.cssText='position:fixed;z-index:5;display:none;font:18px/1.2 ui-monospace,Menlo,monospace;text-align:center;padding:6px 8px;border:2px solid '+P.band+';background:'+P.bg+';color:'+P.text+';border-radius:0;outline:none;-webkit-appearance:none';
-    nickEl.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); if(scr==='linkin') ACT.code_ok(); else ACT.nick_ok(); } }); document.body.appendChild(nickEl); }
+    nickEl.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); if(scr==='linkin') ACT.code_ok(); else if(scr==='pduoin') ACT.pd_ok(); else ACT.nick_ok(); } }); document.body.appendChild(nickEl); }
   if(!show){ if(nickEl.style.display!=='none'){ nickEl.style.display='none'; nickEl.blur(); } return; }
   var m=S/DPR, w=Math.round(LW*0.42), x=Math.round((LW-w)/2), y=Math.round(LH*0.34);
   nickEl.style.left=Math.round(x*m)+'px'; nickEl.style.top=Math.round(y*m)+'px'; nickEl.style.width=Math.round(w*m)+'px';
-  var mode=scr==='linkin'?'code':'nick';
-  if(nickEl.style.display==='none'||nickEl.getAttribute('data-mode')!==mode){ nickEl.setAttribute('data-mode',mode); nickEl.maxLength=mode==='code'?8:16;
-    nickEl.setAttribute('autocapitalize',mode==='code'?'characters':'off'); nickEl.setAttribute('aria-label',mode==='code'?'code':'nickname');
-    nickEl.value=mode==='code'?'':(Board.nick()||''); nickEl.style.display='block'; } }
+  var mode=scr==='linkin'?'code':scr==='pduoin'?'pcode':'nick';   /* v1.64c: and SonaLob's pair code — 4 digits, the digits' keyboard */
+  if(nickEl.style.display==='none'||nickEl.getAttribute('data-mode')!==mode){ nickEl.setAttribute('data-mode',mode); nickEl.maxLength=mode==='code'?8:mode==='pcode'?4:16;
+    nickEl.setAttribute('autocapitalize',mode==='code'?'characters':'off'); nickEl.setAttribute('aria-label',mode==='nick'?'nickname':'code'); nickEl.setAttribute('inputmode',mode==='pcode'?'numeric':'text');
+    nickEl.value=mode==='nick'?(Board.nick()||''):''; nickEl.style.display='block'; } }
 function sNick(){ sky(DT,0.3); titles(L(nickFrom==='over'?'nick_t':'nick_t2'),L('nick_s')); nickField(true);
   if(nickMsg) text(nickMsg,Math.round(LW/2),Math.round(LH*0.34)-10,P.hit,'center');
   var items=[['nick_ok',nickBusy?L('loading'):L('done'),'primary'],['nick_later',L(nickFrom==='over'?'later':'back')]], w=btnW(items.map(function(q){ return q[1]; })), gap=10, y0=Math.round(LH*0.66), x=Math.round(LW/2-w-gap/2);
@@ -871,7 +874,7 @@ function quickOr(full,any){ if(mode==='pong'?pgReady():any?readyNow():liveReady(
 function toRoom(b){ roomAgain=false; Sonar.setBand(b); prep=null; silentRetry=false; go('away'); }
 function toWave(){ forceWave=false; autoTry=false; try{ DSP2.set('quarter',0); }catch(e){}   // v1.59: the quarter-frame phase only for SonaPong's rackets
   T=Tune.create(+store.get('sonaroids_field','100')||100,true); caught=false; flips=0; flipT=-9; seenT=0; go('wave'); }
-function pauseGame(){ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; if(mode==='pong'&&pausedFrom==='play') PG.resumed=true; go('paused'); } }   /* 1.61r: SonaLob's rules are told the game goes on (src/15_pong.js resume) */
+function pauseGame(){ if(mode==='pong'&&g&&g.duo&&PD.N&&g===PD.N.g) return;   /* v1.64c: together the game goes on (the pause for both comes next) */ if(scr==='play'||scr==='count'||scr==='count-resume'){ pausedFrom=scr==='count-resume'?'play':scr; if(mode==='pong'&&pausedFrom==='play') PG.resumed=true; go('paused'); } }   /* 1.61r: SonaLob's rules are told the game goes on (src/15_pong.js resume) */
 function startCount(){ flyReset(); if(resumeAfterPrep&&g&&g.state!=='over'){ resumeAfterPrep=false; if(mode==='pong') pgKeep(); countT=3; go('count-resume'); return; }
   resumeAfterPrep=false; if(mode==='pong'){ pgCountStart(); return; } countT=3; mixStart(); if(scr!=='wave') shipY=null; lastHand=handFrac()===null?lastHand:handFrac(); /* from the try-out the ship goes on where it is */ Logs.ev('отсчёт',{field:+T.field.toFixed(1),auto:T.auto}); store.set('sonaroids_field',Math.round(T.field));
   // v1.14: a hand calibration's middle (the echo's range) — the auto-calibration plays with it (20_sonar liveMid)
@@ -969,6 +972,7 @@ var ACT={
   resume:function(){ if(pausedFrom==='play'){ if(booted&&Sonar.healthy()){ countT=3; go('count-resume'); } else { resumeAfterPrep=true; ensure(null); } } else ensure(startCount); }
 };
 RSET.forEach(function(q){ ACT[q[0]]=function(){ q[2](); raceOptSave(); }; });
+for(var pdk in PD_ACT) ACT[pdk]=PD_ACT[pdk];   // v1.64c: SonaLob together
 R_PRESETS.forEach(function(q){ ACT[q[0]]=function(){ raceOpt=Race.optOf(JSON.parse(JSON.stringify(q[2]))); raceOptSave(); }; });   // v0.92: the test switches
 /* buttons act when the finger lifts (on the same button it went down on): iPhone lets a page share files or open the microphone
    only from a finished tap — acting on touch-down made "logs" work only on the second tap (v0.12) */
@@ -1027,8 +1031,9 @@ function loop(now){ Sfx.setGame(mode);   /* 1.61w: which game's sounds */
   // v0.91: while a game runs (and in its pause) the sonar keeps the empty room's level as the getting ready left it (see src/11_dsp.js)
   var gameOn=!!(g&&g.state!=='over'&&(scr==='play'||scr==='count-resume'||scr==='paused'||scr==='restart')); if(gameOn!==floorHeld){ floorHeld=gameOn; try{ DSP2.set('holdfloor',gameOn); }catch(e){} }
   // v0.74: a shapes-only skin with «pixels» — the same canvas at 1 px per game pixel   // v0.72: the HD world canvas under the pixel one
-  uiColours(scr!=='hub'); obsTick();   // v1.42: the heavy skin's canvas hidden on a frame that drew no field
+  uiColours(scr!=='hub'); obsTick(); pdTick();   // v1.42: the heavy skin's canvas hidden on a frame that drew no field
   switch(scr){
+    case 'pduo': sPDuo(); break; case 'pduowait': sPDuoWait(); break; case 'pduoin': sPDuoIn(); break; case 'pduo2': sPDuo2(); break;   // v1.64c: SonaLob together (src/48_pongduo.js)
     case 'lang': sLang(); break; case 'title': sTitle(); break; case 'rtitle': sRTitle(); break; case 'ptitle': sPTitle(); break; case 'phold': sPHold(); break; case 'phowto': sPHow(); break; case 'skins': sSkins(); break; case 'rset': sRSet(); break; case 'hub': sHub(); break;
     case 'sound': sSound(); break;
     case 'phone': sPhone(); break; case 'mic': sMic(); break; case 'probe': sProbe(); break; case 'away': sAway(); break; case 'wave': sWave(); break;
@@ -1116,7 +1121,9 @@ go('hub');   // v0.70: the games' screen first (always the menu first since 0.44
 requestAnimationFrame(loop);
 /* test hooks: headless tests drive the screens through these (harmless in the game) */
 window.__sonaroids={mixStart:function(){ mixStart(); },setSkin:function(id){ setSkin(id); return SK&&SK.id; },obsProbe:function(k,a,b){ return obsProbe(k,a,b); },obs:function(c){ if(c==='roll') FLY.roll=0; return {ok:OBS.ok,err:OBS.err,vis:OBS.vis,bd:OBS.bd,od:OBS.od,n:OBS.list.length,an:OBS.an.length,f16:OBS.f16,sk:SK.id}; },fxBurst:function(x,y,n,kind){ var BU=SK.bursts(); burst(fx(x),y*K,n,BU[kind]||BU.rock,50*K); },mixNow:function(){ MX.next=MX.t; if(!MX.pend) MX.pend=mixPick(); },mixInfo:function(){ return {on:mixOn(),cur:mixCur(),pend:MX.pend,tr:MX.tr?MX.tr.t:null,hist:MX.hist.slice(),fly:flyMix,race:raceMix}; },noteZones:function(){ return RC.zones?RC.zones.slice():null; },noteRivals:function(v){ RN_RIV=v; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },noteInfra:function(f){ RN_FORCE=f||null; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },raceNote:function(o){ for(var k in o) RN_LOOK[k]=o[k]; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },raceSuper:function(v){ R_SUPER=v; },racePal:function(pud,bub){ if(pud) for(var k in pud) R_PUD[k]=pud[k]; if(bub) for(var j in bub) R_BUB[j]=bub[j]; RC.sp={}; },skinProbe:skinProbe,hdProbe:hdProbe,sizeProbe:sizeProbe,hdIds:hdIds,pixIds:function(){ return SKIN_IDS.filter(function(i){ return !!SKINS[i]; }); },skinIds:function(){ return SKIN_IDS.slice(); },go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },
-  setBooted:function(v){ booted=v; }, pongBot:function(){ var b=PG._bot||(PG._bot=pgDemoBot()); return g&&g.ball!==undefined&&g.state==='play'?b(g):null; },   /* v1.63a: the menu's rally bot over the live game — the readme's pictures (promo/make_lob.js) */ link:Link, pongNet:PongNet, pgClips:function(){ return PG.clips?{n:PG.clips.length,check:PG.clipCheck,clips:PG.clips.map(function(c){ return {who:c.who,pts:c.pts,h:c.h,frames:c.fr.length}; })}:null; }, setShake:function(v){ shake=v; },
+  setBooted:function(v){ booted=v; }, pongBot:function(){ var b=PG._bot||(PG._bot=pgDemoBot()); return g&&g.ball!==undefined&&g.state==='play'?b(g):null; },   /* v1.63a: the menu's rally bot over the live game — the readme's pictures (promo/make_lob.js) */ link:Link, pongNet:PongNet, duo:function(){ var N=PD.N; return {on:PD.on,side:PD.side,left:PD.left,me:pdMe(),peer:PD.peer,pst:PD.pst,ready:PD.ready,code:PD.code,near:PD.near,msg:PD.msg,state:pdState(),
+    game:N?{n:N.g.n,state:N.g.state,score:N.g.score,passes:N.g.passes,lives:N.g.lives,seed:PD.cfg.seed,myAck:PD.myAck,hisAck:PD.hisAck,rb:N.rb,rbMax:N.rbMax,lost:N.lost,pys:N.g.pys.slice(),behind:(Link.now()-PD.cfg.t0)/1000*60-N.g.n}:null}; }, duoGame:function(){ return PD.N?PD.N.g:null; }, duoReplay:function(){ var c=PD.cfg, nn=PD.N.g.n, a=PD.me===0?PD.mineAll:PD.his, b2=PD.me===0?PD.his:PD.mineAll, f=function(x){ var o=[]; for(var i=0;i<nn;i++) o.push(x[i]===undefined||x[i]===null?null:x[i]/10000); return o; };
+    var r=Pong.replay2(c.seed,PG_AR,c.sens,c.span,f(a),f(b2),[]); return {n:r.n,score:r.score,passes:r.passes,falls:r.falls,state:r.state}; }, pgClips:function(){ return PG.clips?{n:PG.clips.length,check:PG.clipCheck,clips:PG.clips.map(function(c){ return {who:c.who,pts:c.pts,h:c.h,frames:c.fr.length}; })}:null; }, setShake:function(v){ shake=v; },
   board:function(){ return {tbl:tblBox,nick:nickEl?{shown:nickEl.style.display!=='none',rect:nickEl.getBoundingClientRect().toJSON()}:null}; },
   side:function(){ return {hand:handSide(),rel:handRel,cam:camEnd(),stored:store.get('sonaroids_rel',''),say:sayLast}; }, wave:function(){ toWave(); },
   fake:function(){ booted=true; prep={res:{ok:true},doneT:-9}; T=Tune.create(100,true); T.ok=true; caught=true;          // a stand-in state for layout checks

@@ -20,7 +20,7 @@ var PGK={cv:null,src:null,v:{ar:PG_AR,hw:0.2},q:{prev:0}};
   G.pgTime=function(){ return 0; };
   G.pgNarrowP=function(){ return T.NARROW_T; };
   /* where the shuttle will land on the racket it flies to — for the little player who runs there (the lab's pgMeatPath, only what the drawing uses) */
-  G.pgMeatPath=function(b,pad,ar){ var i=b.from===null||b.from===undefined?b.to:1-b.from; if(i!==0&&i!==1) return null;
+  G.pgMeatPath=function(b,pad,ar){ var i=b.from===null||b.from===undefined?b.to:1-b.from; if(i!==0&&i!==1) return null; if(ARC.pys) pad=ARC.pys[i];   // v1.64c: together — each racket at its own place
     var x=b.x, y=b.y, vx=b.vx, vy=b.vy, h=1/240, S=null, k;
     for(k=0;k<1200;k++){ vy+=T.G*h; x+=vx*h; y+=vy*h; if(vy>0){ S=Pong.surf(PGK.v,i,x,pad); if(Math.abs(S.u)<=1&&y>=S.y-b.r) break; S=null; } if(y>1.1) return null; }
     return S?{i:i,P:[x,S.y-b.r]}:null; };
@@ -56,6 +56,8 @@ function pgSkDraw(q,dt,playing,cardH,ckey){ var u=pgU(), fw=Math.max(1,Math.roun
   PG_V.dark=pgSkin(); PG_V.phint=pgHint(); PG_V.hudL=handSide()==='left'; PG_V.skw=cardH?Math.min(4,Math.max(2.2,1.7*390/fh)):undefined;   /* 1.61s: on the small card the pen thicker — the lines stay at least ~1.5 dots */ PGK.v.ar=PG_AR; PGK.v.hw=q.hw; PGK.v.H=q.H; K.lastT=Math.max(0,K.lastT-dq); K.flash=Math.max(0,K.flash-dq);
   var A=window.ARC; A.ar=PG_AR; A.t=q.t; A.py=q.py; A.padSoft=null; A.balls=q.ball?[q.ball]:[]; A.webD=q.webD||0; A.crk=K.crk; A.crkB=K.crkB; A.crkM=K.crkM;
   A.ceils=q.ceils||0; A.falls=q.falls||0; A.narrowK=q.k||1; A.score=q.score||0; A.series=q.series||0; A.kick=K.kick; A.phase=playing?'play':'menu'; A.lastPts=K.lastPts; A.lastT=K.lastT; A.pf=[]; A.flash=K.flash; A.clean=0;
+  /* v1.64c: together — each racket at its own palm (q.pys), the own player in red ink, «ТЫ» over him (always before the game, the first 3 s in it) */
+  A.pys=q.pys||null; A.me=PD.on&&!cardH&&!ckey&&q!==PG.demo?pdMe():null; A.youA=q.duo?Math.max(0,Math.min(1,4-q.t)):scr==='pduo2'?0:1;
   var t0=performance.now(), c=cv0.getContext('2d'); c.setTransform(1,0,0,1,0,0);
   pgSketch(c,fw,fh,Math.max(1,uiS*DPR/S));
   /* 1.61m: the slow-phone steps only in the game itself (the menu and the getting ready run at 30 frames a second on purpose — they read
@@ -63,7 +65,12 @@ function pgSkDraw(q,dt,playing,cardH,ckey){ var u=pgU(), fw=Math.max(1,Math.roun
   if(cardH) return cv0;
   if(scr==='play'&&PGK.q.prev&&t0-PGK.q.prev<100) pgSkQual(t0-PGK.q.prev); PGK.q.prev=scr==='play'?t0:0;
   lx.fillStyle=PG_V.dark?'#1d1b18':'#f6f1e6'; lx.fillRect(0,0,LW,LH); var sm=lx.imageSmoothingEnabled; lx.imageSmoothingEnabled=true;
-  lx.drawImage(cv0,pgX(0),pgY(0),PG_AR*u,u); lx.imageSmoothingEnabled=sm; }
+  lx.drawImage(cv0,pgX(0),pgY(0),PG_AR*u,u); lx.imageSmoothingEnabled=sm;
+  if(A.me!==null&&A.meXY&&A.youA>0) pdYou(pgX(A.meXY[0]),pgY(A.meXY[1]),A.youA); A.meXY=null; }
+/* v1.64c (М2): «ТЫ» and an arrow over the own player, in red */
+function pdYou(x,y,a){ var red=pgSkin()?'#ff4b36':'#ec2a17', s=L('pd_you'), top=y-Math.round(pgU()*0.25); lx.globalAlpha=a;
+  text(s,Math.round(x),top-PF.CAP*2-12,red,'center',2,true); R(red,Math.round(x)-1,top-8,2,8); for(var k=1;k<=4;k++) R(red,Math.round(x)-1-k,top+4-k,2*k+2,1);
+  lx.globalAlpha=1; }
 /* v1.62c: a replay window — a view of one of the game's arcs drawn at the window's own size on its own canvas (ckey), with its own drawing
    state: the players, the shuttle's turn, the trail (PGS) are kept on the view and swapped in for its drawing, so two windows side by side
    don't start each other's afresh every frame */

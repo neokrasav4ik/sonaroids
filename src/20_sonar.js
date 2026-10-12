@@ -29,7 +29,7 @@ var Sonar=(function(){
     for(n=0;n<N;n++){ var s=0; for(q=0;q<M;q++) s+=Math.cos(2*Math.PI*ks[q]*n/N+Math.PI*q*q/M); x[n]=s; if(Math.abs(s)>mx) mx=Math.abs(s); }
     var d=new Float32Array(N); for(n=0;n<N;n++) d[n]=x[n]/mx*0.9; return d;
   }
-  function natProbes(){ NATA.audioProbe('all',f32b64(probeData('all'))); NATA.audioProbe('even',f32b64(probeData(0))); NATA.audioProbe('odd',f32b64(probeData(1))); }
+  function natProbes(){ NATA.audioProbe('all',f32b64(probeData(PAR))); NATA.audioProbe('even',f32b64(probeData(0))); NATA.audioProbe('odd',f32b64(probeData(1))); }
   /* a message: "<seq>:<base64 of int16 LE>", two frames (interleaved if stereo — the first channel is used) */
   function natMsg(e){ var d=e.data; if(typeof d!=='string') return; var c=d.indexOf(':'); if(c<0) return;
     var seq=+d.slice(0,c), bin=atob(d.slice(c+1)), ch=natCfg&&natCfg.ch===2?2:1, n=bin.length>>1, nf=Math.floor(n/ch/N), f, i, j, v;
@@ -198,7 +198,7 @@ var Sonar=(function(){
       return ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([WORKLET],{type:'application/javascript'}))); })
     .then(function(){
       fs=ctx.sampleRate; var df=fs/N; kLo=Math.ceil(F_LO/df); kHi=Math.floor(F_HI/df); kc=Math.floor((kLo+kHi)/2);
-      var mg=ctx.createChannelMerger(2); sS=loopSrc(makeProbe('all')); sL=loopSrc(makeProbe(0)); sR=loopSrc(makeProbe(1));
+      var mg=ctx.createChannelMerger(2); sS=loopSrc(makeProbe(PAR)); sL=loopSrc(makeProbe(0)); sR=loopSrc(makeProbe(1));
       gSL=ctx.createGain(); gSR=ctx.createGain(); gL=ctx.createGain(); gR=ctx.createGain();
       [gSL,gSR,gL,gR].forEach(function(g){ g.gain.value=0; });
       sS.connect(gSL); sS.connect(gSR); sL.connect(gL); sR.connect(gR);
@@ -215,7 +215,16 @@ var Sonar=(function(){
   function setBand(b){ band=b==='wide'?'wide':'normal'; F_LO=BANDS[band]; if(!fs) return; var df=fs/N; kLo=Math.ceil(F_LO/df); kHi=Math.floor(F_HI/df); kc=Math.floor((kLo+kHi)/2);
     if(natOn){ natProbes(); return; }
     if(!ctx||!sS) return; [sS,sL,sR].forEach(function(s){ try{ s.stop(); s.disconnect(); }catch(e){} });
-    sS=loopSrc(makeProbe('all')); sL=loopSrc(makeProbe(0)); sR=loopSrc(makeProbe(1)); sS.connect(gSL); sS.connect(gSR); sL.connect(gL); sR.connect(gR); sS.start(); sL.start(); sR.start(); }
+    sS=loopSrc(makeProbe(PAR)); sL=loopSrc(makeProbe(0)); sR=loopSrc(makeProbe(1)); sS.connect(gSL); sS.connect(gSR); sL.connect(gL); sR.connect(gR); sS.start(); sL.start(); sR.start(); }
+  /* v1.64d — SonaLob «вдвоём»: the probe's tones. Two phones side by side hear each other's probe — with the same tones the neighbour's
+     reads as a palm that won't go away (the lab's СонарЛинк 1.56a/b: Den's recordings 06.10 — «рука видна» 71% of the time with the
+     hand away, against 30–34%; claude/SONARLINK.md). So together one phone plays the even tones and the other the odd ones, and each listens
+     to its own (DSP2.init(fs, parity), as the lab). The cost: the probe ~7 dB nearer the noise, the view 1.8 → 0.9 m; the range as precise.
+     'all' — every tone, as always. The room and the calibration are taken anew after a change (the caller's job) */
+  var PAR='all';
+  function setParity(p){ p=(p===0||p===1)?p:'all'; if(p===PAR) return false; PAR=p; if(!fs) return true;
+    if(natOn){ try{ natProbes(); }catch(e){} return true; }
+    if(ctx&&sS){ try{ sS.stop(); sS.disconnect(); }catch(e){} sS=loopSrc(makeProbe(PAR)); sS.connect(gSL); sS.connect(gSR); sS.start(); } return true; }
   function curCal(){ return band==='wide'?WIDE_CAL:PHYS_CAL; }
   function setProbe(w){                        // 'off' | 'dual' | 'single-left' | 'single-right'
     if(natOn){ try{ NATA.audioGains(w==='single-left'?PROBE_G:0,w==='single-right'?PROBE_G:0,w==='dual'?0.25:0,w==='dual'?0.25:0); }catch(e){} return; }
@@ -243,7 +252,7 @@ var Sonar=(function(){
       var w=2*Math.PI*b/N8, c=1, s=0, cw=Math.cos(w), sw=Math.sin(w), re=0, im=0;
       for(i=0;i<N8;i++){ re+=x[i]*c; im-=x[i]*s; var t=c*cw-s*sw; s=s*cw+c*sw; c=t; }
       var p=re*re+im*im, r=b%P;
-      if(r===0){ sig+=p; nl++; } else if(r>=2&&r<=P-2){ nz+=p; nn++; }
+      if(r===0){ if(PAR==='all'||(b/P)%2===PAR){ sig+=p; nl++; } } else if(r>=2&&r<=P-2){ nz+=p; nn++; }   /* v1.64d: only the own tones (the neighbour's are neither probe nor noise) */
     }
     var noisePerBin=nz/(nn||1), probe=sig-noisePerBin*nl, noiseBand=noisePerBin*(b1-b0+1);
     return {snr:10*Math.log10(Math.max(probe,1e-30)/Math.max(noiseBand,1e-30)), line:10*Math.log10(Math.max(probe,1e-30)/(nl||1))};
@@ -339,7 +348,7 @@ var Sonar=(function(){
       if(!vol&&PROBE_LVL>LOUD_LVL+lvlAdj){ setProbe('off'); return {ok:false,why:'loud',snr:L.snr,level:PROBE_LVL}; }
       // v0.67: in the app, the empty room is learnt only once the probe at the microphone holds still (settle)
       return (natOn?settle():Promise.resolve()).then(function(){
-      DSP2.set('flo',band==='wide'?F_LO:null); DSP2.set('live',liveOn()||roomOn()?1:0); DSP2.init(fs,'all');
+      DSP2.set('flo',band==='wide'?F_LO:null); DSP2.set('live',liveOn()||roomOn()?1:0); DSP2.init(fs,PAR);
       /* v1.14, auto-calibration plays with the player's own last hand calibration: its middle (by the echo's range) and its field, nothing
          changed in flight (1.10–1.13 fitted the screen to the palm while playing, and each made it worse — the maintainer's iPhone, 1.13:
          «Внизу чувствительность очень высокая, а вверху наоборот»); no hand calibration yet — the middle at 8.2 cm (1.13) */
@@ -352,7 +361,7 @@ var Sonar=(function(){
   var sim=null;
   function simulate(o){ sim=o; fs=o.fs||48000; var df=fs/N; kLo=Math.ceil(F_LO/df); kHi=Math.floor(F_HI/df); kc=Math.floor((kLo+kHi)/2); }
   function simBoot(){ if(booted) return Promise.resolve(); booted=true; var i=0, t0=performance.now(); lastSeq=-1;
-    simIv=setInterval(function(){ var due=Math.floor((performance.now()-t0)/1000*fs/N); if(simStalled){ i=due; return; } while(i<due){ onFrame({data:{f:sim.source(i,PROBE_G),s:i}}); i++; } },10);
+    simIv=setInterval(function(){ var due=Math.floor((performance.now()-t0)/1000*fs/N); if(simStalled){ i=due; return; } while(i<due){ onFrame({data:{f:sim.source(i,PROBE_G,PAR),s:i}}); i++; } },10);
     return Promise.resolve(); }
   /* v1.57 (the maintainer, 7 Oct: after the app was minimised and opened again the probe was gone, on the iPhone and on Android, until the
      app was restarted): frames could still come while the probe was dead, so healthy() said yes and «again» / «try again» kept the dead
@@ -380,7 +389,7 @@ var Sonar=(function(){
     if(simIv){ clearInterval(simIv); simIv=null; } simStalled=false;     // in simulation a re-opened microphone works again
     ctx=null; stream=null; node=null; an=null; booted=false; active=false; collector=null; lastSeq=-1; last=null; lost=false; lastFrameAt=0; wasHidden=false;
   }
-  return {live:liveOn,room:roomOn,savedMid:savedMid,boot:boot,prepare:prepare,setBand:setBand,band:function(){ return band; },simulate:simulate,healthy:healthy,restart:restart,simStall:function(v){ simStalled=!!v; },setProbe:setProbe,pause:pause,resume:resume,probeSNR:probeSNR,
+  return {setParity:setParity,parity:function(){ return PAR; },live:liveOn,room:roomOn,savedMid:savedMid,boot:boot,prepare:prepare,setBand:setBand,band:function(){ return band; },simulate:simulate,healthy:healthy,restart:restart,simStall:function(v){ simStalled=!!v; },setProbe:setProbe,pause:pause,resume:resume,probeSNR:probeSNR,
     listen:function(f){ listeners.push(f); },
     state:function(){ return last; }, lost:function(){ return lost; }, clearLost:function(){ lost=false; },
     shift:function(d){ DSP2.shift(d); },
@@ -388,7 +397,7 @@ var Sonar=(function(){
     /* what the browser really gave for the microphone: on Android the echo/noise/gain processing may stay on despite our request */
     micSettings:function(){ if(natOn){ try{ var st=JSON.parse(NATA.audioStatus()); return {audio:'app',probe_end:lsGet('sonaroids_probe_end','auto'),src:st.src,usage:st.usage,fx:st.fx,mic_wanted:st.mic_wanted,out_wanted:st.out_wanted,in:st.in,out:st.out,active:st.active}; }catch(e){ return {audio:'app'}; } }
       try{ var t=stream&&stream.getAudioTracks()[0]; if(!t) return null; var s=t.getSettings(), o={}; ['autoGainControl','echoCancellation','noiseSuppression','sampleRate','channelCount','latency','deviceId'].forEach(function(k){ if(s[k]!==undefined) o[k]=k==='deviceId'?String(s[k]).slice(0,8):s[k]; }); o.label=t.label; return o; }catch(e){ return null; } },
-    info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,probe_level:PROBE_LVL,vol_fit:volLog.slice(),level_fit:levelLog.slice(),f_lo:F_LO,band:band,cal:curCal(),gaps:gaps,booted:booted,audio:natOn?'app':'browser',auto_audio:autoLog,routes:routeLog.slice(),route:routeKey,settle:settleLog}; },
+    info:function(){ return {fs:fs,N:N,kLo:kLo,kHi:kHi,par:PAR,chan:chan,probe_gain:PROBE_G,probe_snr:PROBE_SNR,probe_level:PROBE_LVL,vol_fit:volLog.slice(),level_fit:levelLog.slice(),f_lo:F_LO,band:band,cal:curCal(),gaps:gaps,booted:booted,audio:natOn?'app':'browser',auto_audio:autoLog,routes:routeLog.slice(),route:routeKey,settle:settleLog}; },
     audioRetest:function(){ autoRetest=true; try{ localStorage.removeItem('sonaroids_autoaudio'); }catch(e){} },
     native:function(){ return natOn; }, nativeAvail:natAvail,
     chan:function(){ return chan; }, ctx:function(){ return ctx; }};

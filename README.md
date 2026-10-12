@@ -58,7 +58,10 @@ One palm moves both rackets at once: the shuttle flies from one racket to the ot
 - **The rackets get shorter** every 30 seconds and the points grow, up to ×2; from the 4th minute the spider draws the ceiling down with its web.
 - **Drawn by hand:** a light or a dark sketch — pen on paper, little players who run under the shuttle, nozzles under the planks that fire when a plank shoots up. Its own wooden and pencil sounds; each clean pass in a row rings a note higher.
 - **After a game:** each racket's best arc again, at half speed, with its height and its points.
-- **Getting ready:** wave as you'll hit, then try the rackets out; «How to play» shows the rules in four drawn pictures. The one setting is the sensitivity — how far the rackets travel for your palm.
+- **Getting ready:** wave as you'll hit, then try the rackets out; «How to play» shows the rules in four drawn pictures. The one setting is the sensitivity — how far the rackets travel for your palm; it is on the try-out after the calibration and in the pause.
+- **Together:** «PLAY TOGETHER» — one game on two phones and one score; each player has their own racket and their own sensitivity, and your own little player is drawn in red ink. Connect «NEARBY» (both phones on one Wi-Fi, both press within 30 seconds) or with a 4-digit code — then from different cities, too. A pause pauses both; if the partner drops out, the game waits for them 30 seconds. A pair's record goes into SonaLob's own table as one line, «DEN + ANN». Phones side by side play different probe tones, so the other's probe hardly matters, but each sonar also sees the other player's hand: sit apart (a metre or more) or put a screen between the phones — a sheet of cardboard will do.
+
+<p align="center"><img src="promo/sonalob_duo.png" width="100%" alt="SonaLob together: two phones in one game, side by side. Each shows the whole field — two planks, the little players and the shuttle high in flight; on the left phone its own player is the left one, drawn in red, on the right phone the right one. The score, the multiplier and the shuttles are the same"></p>
 
 <p align="center"><img src="promo/sonalob_over.png" width="640" alt="SonaLob's game over: the score on a plaque, and below it «The best arcs again · 0.5×» — two windows replaying the left and the right racket's best arc, signed with the arc's height in percent and its points"></p>
 
@@ -70,7 +73,7 @@ There are two ways:
 |---|---|
 | The phone lies sideways, screen up; your palm moves up and down **5–10 cm above the table** beside it | The phone is in one hand; the other palm, edge down, moves **5–15 cm from the end with the charging port** |
 
-1. Set the **media volume** to 20–30% (40–60% on iPhone). If the game says the phone can't hear its own sound, turn off silent mode — it can mute the game.
+1. Set the **media volume** to 20–30% (40–60% on iPhone). If the game says the phone can't hear its own sound, turn off silent mode — it can mute the game. If the phone has a case, play with it on — the sonar does noticeably better (see «Phones»).
 2. Pick the probe. **Wide** gives cleaner control, but children and pets may hear it. **Normal** is silent but slightly rougher. The game asks before every game.
 3. Allow the microphone and take your hand away for a moment: the game learns how the empty room sounds.
 4. Wave your palm. Nearer the phone — the ship goes lower; farther — higher. Don't cover the speaker or the microphone. The game fits the screen to your range, then shows the real ship (or car) following your palm. Check the top and the bottom, and play.
@@ -101,15 +104,15 @@ On **Android** a lot depends on the phone itself: how well its speaker and micro
 - it switches off the phone's noise suppression, gain control and echo cancelling;
 - it updates itself.
 
-With the app and the wide probe a **Mi 9 Lite** (from 2019) plays like an iPhone. The notes games send to the server show the palm heard on Galaxy S25, Pixel 8 Pro, Nothing Phone (3a), realme GT Neo 5 and Honor 600 Lite. A OnePlus 13 is poor on the table but almost as good as an iPhone in the hand. A Redmi Note 10S hears the palm reliably only within about 10 cm. A OnePlus 9 Pro is too quiet. The game works out which end of the phone your hand should be at, and says so if it can't hear the palm. Details: `docs/design.md`, section 2.
+With the app and the wide probe a **Mi 9 Lite** (from 2019) plays like an iPhone. **A case helps the sonar:** without its case a Mi 9 Lite hears its own probe 4 dB quieter and the palm's distance jumps twice as much (12–14 mm against 6–8) — the calibration catches only now and then; in its case it plays as usual. The notes games send to the server show the palm heard on Galaxy S25, Pixel 8 Pro, Nothing Phone (3a), realme GT Neo 5 and Honor 600 Lite. A OnePlus 13 is poor on the table but almost as good as an iPhone in the hand. A Redmi Note 10S hears the palm reliably only within about 10 cm. A OnePlus 9 Pro is too quiet. The game works out which end of the phone your hand should be at, and says so if it can't hear the palm. Details: `docs/design.md`, section 2.
 
 ## High scores and fair play
 
-Each game has its own tables: today, this week and all time. The first time a game makes a table, it asks for a name (Latin letters, digits, `_`). A transfer code moves your name and scores to another browser or phone.
+Each game has its own tables: today, this week and all time. SonaLob's table has pairs too — a game together is one line with two names among the players alone; your own place is your best line, alone or in a pair. The first time a game makes a table, it asks for a name (Latin letters, digits, `_`). A transfer code moves your name and scores to another browser or phone.
 
 **Bots play in SonaFly's and SonaRace's tables too** — about 40 players the server plays itself, from beginners to strong ones, so there is always someone to beat. Their games are real — the game's bot, by the same rules — and the strongest stay a little below the best person. A long press on the version number on the scores screen leaves them out — «PEOPLE ONLY» shows over the table; another long press brings everyone back.
 
-What goes to the server is not a score but the game itself: the layout number and the palm height at every step, a few KB. All three games are deterministic — even steps 60 times a second, random numbers from a seed, no transcendental functions. So the server replays every game with the very same code (`src/13_core.js` for SonaFly, `src/14_race.js` for SonaRace, `src/15_pong.js` for SonaLob) and keeps the score only if it repeats.
+What goes to the server is not a score but the game itself: the layout number and the palm height at every step, a few KB. All three games are deterministic — even steps 60 times a second, random numbers from a seed, no transcendental functions. So the server replays every game with the very same code (`src/13_core.js` for SonaFly, `src/14_race.js` for SonaRace, `src/15_pong.js` for SonaLob) and keeps the score only if it repeats. A game together is sent by both phones, each with its own key and both players' palms; the server replays it from the two palms.
 
 A player is a random key kept on the phone; the server stores only its hash. With each game goes a short note on the phone: iOS or Android, the browser, the model (on Android), which probe, the volume, how well it heard the probe. That shows where the sonar works. The server stores no user agent string and no IP. It is plain Node + SQLite, in `server/`.
 
@@ -129,7 +132,7 @@ A player is a random key kept on the phone; the server stores only its hash. Wit
 |---|---|
 | `src/` | the games' source in numbered parts; `build.py` joins them into one file, `game/play/index.html` |
 | `game/` | the site: `index.html` sends visitors into the games, `play/` is the games (built file, icons, manifest, service worker), `font.js`, `robots.txt`; `bench/` — a graphics test bench, not a game: four scenes on the graphics chip (WebGL 2 and WebGPU) to see what a flagship phone can carry |
-| `server/` | the high-score server (api.sonaroids.app): `server.js`, the bots (`bots.js`, `botplay.js`), backups, stats, systemd unit, Caddy and nginx configs. Install: `server/README.md`, in Russian `docs/ru/server.md` |
+| `server/` | the high-score server (api.sonaroids.app): `server.js`, rooms for two phones (`pair.js`), the bots (`bots.js`, `botplay.js`), backups, stats, systemd unit, Caddy and nginx configs. Install: `server/README.md`, in Russian `docs/ru/server.md` |
 | `android/` | the Android app: a WebView over sonaroids.app/play/ with its own sound, volume, file saving and self-update. Built on GitHub Actions into the latest release (`android/README.md`, in Russian) |
 | `tests/` | the games' and the server's checks: `sh tests/run.sh` | — before an upload
 python3 tests/run_par.py --changed   # only what the changes since the last commit can break (usually 1–2 min; the screens at two sizes)
@@ -149,12 +152,14 @@ python3 tests/run_par.py --changed   # only what the changes since the last comm
 | `13_core.js` | SonaFly: the flight and its rules; deterministic, with the rules tag the server checks |
 | `14_race.js` | SonaRace: the road, the cars, the gifts and the rules; deterministic, with its own rules tag |
 | `15_pong.js` | SonaLob: two rackets on one palm, the shuttle, the serve, the points for the arc's height, the series, the cracks and the spider, the narrowing and the web; deterministic, with its own rules tag; `tests/test_pong.js` checks it plays the lab's game bit for bit |
+| `16_pong_net.js` | SonaLob together: both phones run the whole game on both palms; the partner's palm comes over the network a little later, is guessed till then, and when it comes the game is run again from that step (rollback, as in networked fighting games); a pause stops both at the same step; `tests/test_pong_net.js` |
 | `16_pong_ctl.js` | SonaLob's control, one code with the lab: the «mix» the rackets follow (the echo's distance + an offset, the phase for quick moves), the calibration by waving and the auto-calibration; `tests/test_pong_ctl.js` |
 | `17_palmclock.js` | The palm's height in time for SonaFly and SonaRace: where a phone hands the sonar's frames over in bunches (the Mi 9 Lite: two at once every 21 ms), each game step takes the height at its own moment, between two frames; `tests/test_palmclock.js` |
 | `20_sonar.js` | speaker and microphone: the probe, side check, levels and volume, getting ready; the Android app's own sound |
 | `21_log.js` | setup and game logs (WAV + JSON) for the lab's tools |
 | `22_sfx.js` | the game's sounds — all below 6 kHz, out of the probe's way |
 | `23_net.js` | the high-score client: sends a game and the name, reads the tables |
+| `23_link.js` | the link between two phones for SonaLob together: a room on the server («nearby» or by code), a direct channel between the phones (WebRTC, a few ms on one Wi-Fi), a shared clock from the server; `tests/duo_link.js` |
 | `30_lang_en.js`, `31_lang_ru.js` | interface texts |
 | `40_gfx.js`, `41_sprites.js`, `42_guide.js` | drawing, pixel sprites, the drawn phones of getting ready and the instructions |
 | `42_hands.js` | the hands of those pictures in HD, as pictures — made by `hands/make_hands.py` |
@@ -162,6 +167,7 @@ python3 tests/run_par.py --changed   # only what the changes since the last comm
 | `39_sketch.js` | SonaLob's «sketch», one code with the lab: the paper, the pen, the planks, the players, the shuttle, the cracks and the spider |
 | `48_pong.js` | SonaLob's screens: the card, the menu, the waving and the try-out, the game, the pause, «How to play», the game over with the best arcs again; `tests/pong_flow.js` |
 | `48_pongsk.js` | feeds SonaLob's game to the sketch; the two skins, the points by the shuttle, the drawn phone of getting ready |
+| `48_pongduo.js` | SonaLob together's screens: connecting, «YOU ARE TOGETHER», «READY» and the shared start, the game, the pause for both, waiting for a lost partner, the game over with the best arcs and the pair's record; `tests/duo_flow.js` plays a game on two pages |
 | `48_racehd.js`, `48_racecandy.js`, `48_racenote.js`, `48_racepirate.js` | SonaRace's candy land, notebook and pirate world, in HD and in pixels |
 | `48_obsidian.js` | obsidian: its own WebGL2 canvas under the main one, the ink, rings, wakes and every object in shaders; lowers its own quality when frames run late |
 | `48_mix.js` | the skins' list: which are on, how often and in what order they change in a game |
@@ -189,6 +195,7 @@ PROMO=mix NODE_PATH=$(npm root -g) node promo/make_promo.js && PROMO=mix python3
 NODE_PATH=$(npm root -g) node promo/make_promo.js && python3 promo/make_promo.py   # the earlier GIF, four games one after another: promo/sonaroids_en.gif, sonaroids_ru.gif
 PROMO=pixel NODE_PATH=$(npm root -g) node promo/make_promo.js && PROMO=pixel python3 promo/make_promo.py   # the same with the games in pixels: promo/sonaroids_pixel_*.gif
 NODE_PATH=$(npm root -g) node promo/make_lob.js                                    # SonaLob's pictures and the games' screen: promo/sonalob_*.png, games.png
+NODE_PATH=$(npm root -g) node promo/make_lob_duo.js                                # SonaLob together, two phones side by side: promo/sonalob_duo.png (a records server with pair rooms on a temporary database)
 NODE_PATH=$(npm root -g) node promo/make_shots.js                                  # the games' pictures: promo/games.png, sonafly_skins.png, sonarace_*.png
 sh promo/make_all.sh                                                               # the older pixel GIFs (table and hand)
 ```

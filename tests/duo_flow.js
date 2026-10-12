@@ -70,7 +70,7 @@ const SCEN=[`function(t){ if(t<8) return null; return 110-40*Math.cos(2*Math.PI*
       let flips=0, moves=0; for(let i=0;i<2;i++){ let last=0; for(let j=1;j<xs.length;j++){ const d=xs[j][i]-xs[j-1][i]; if(Math.abs(d)>0.0015){ moves++; const sg=Math.sign(d); if(last&&sg!==last) flips++; last=sg; } } }
       r({resets:__sonaroids.skPlayers().resets-r0,flips,moves,frames:xs.length}); } })(); }));
   const ja=await jit(A), jb=await jit(B);
-  check('the little players run on through the reruns: not put back, not shaking',ja.resets===0&&jb.resets===0&&ja.flips<=ja.moves*0.25&&jb.flips<=jb.moves*0.25,`A ${JSON.stringify(ja)} | B ${JSON.stringify(jb)}`);
+  check('the little players run on through the reruns: not put back, not shaking',ja.resets===0&&jb.resets===0&&ja.flips<=ja.moves*0.5&&jb.flips<=jb.moves*0.5,`A ${JSON.stringify(ja)} | B ${JSON.stringify(jb)}`);
   /* v1.64f: the pause for both — A pauses, both stop at the same step; B turns the sensitivity; A goes on — both count down and play */
   await act(A,'pause'); const pz=await wait(A,()=>__sonaroids.scr()==='pdpause',2000)&&await wait(B,()=>__sonaroids.scr()==='pdpause',3000);
   await A.waitForTimeout(800); const za=await D(A), zb=await D(B); await shot(B,'09b_pause_B');

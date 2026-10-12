@@ -62,6 +62,7 @@ LANE_B = [  # phase 2, beside lane A: the rest
     ("pong core: the lab's SonaPong bit for bit, deterministic, rules (bot)", f'{H} tests/test_pong.js'),
     ("pong control: the lab's mix, the two calibration holds", f'{H} tests/test_pong_ctl.js'),
     ('SonaLob together: the rules on two palms, one game on two phones over a delayed network', f'{H} tests/test_pong_net.js'),
+    ('SonaLob together: the link — a room by code and «nearby», both ways, the clock, the direct channel (Chromium)', f'{H} tests/duo_link.js'),
     ('probe level: up when quiet, down when overloaded or distorting', f'{H} tests/test_level.js'),
     ('palm clock: the palm in time, not in bunches (SonaFly, SonaRace)', f'{H} tests/test_palmclock.js'),
 ]
@@ -92,7 +93,8 @@ MAP = [
     ('src/20_sonar.js', 'flow native_audio silent volume side live_flow test_eq'),
     ('src/21_log.js', 'flow'),
     ('src/22_sfx.js', 'flow native_audio sfx_check'),
-    ('src/23_net.js server/*', 'test_server test_pair flow'),
+    ('src/23_net.js server/*', 'test_server test_pair flow duo_link'),
+    ('src/23_link.js', 'duo_link'),
     ('src/3?_lang_*.js font/* game/font.js', 'test_text screens first_open'),
     ('src/00_head.html src/99_end.html src/40_gfx.js src/41_sprites.js src/42_*.js src/44_thumbs.js', 'screens first_open press settings'),
     ('src/43_skins.js src/45_hd.js src/46_vecskins.js src/47_pixskins.js src/48_flight.js src/48_sizes.js',

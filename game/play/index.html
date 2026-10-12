@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='1.61x';
+var VERSION='1.61y';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -1570,6 +1570,10 @@ var Sfx=(function(){
       mg.gain.setValueAtTime(f*0.9,s); mg.gain.exponentialRampToValueAtTime(f*0.04,s+len*0.6); m.connect(mg); mg.connect(c.frequency); env(g,s,0.004,v,len); c.connect(g); out(g,sp); c.start(s); m.start(s); c.stop(s+len+0.05); m.stop(s+len+0.05); }
     function glock(f,s,v,len){ len=len||0.5; osc(f,s,v,len,{a:0.002}); osc(f*2.76,s,v*0.35,len*0.35,{a:0.002}); osc(f*5.4,s,v*0.12,len*0.12,{a:0.001}); }
     function thump(s,v,f0,f1,len){ osc(f0,s,v,len,{to:f1,a:0.002}); osc(f0*2,s,v*0.45,len*0.6,{to:f1*2,a:0.002}); }
+    /* 1.61y: SonaFly «стрелялка» (Den 09:39) — a laser through a filter, a boom with a low body, crunchy grains */
+    function zap(f0,f1,s,v,len,o){ o=o||{}; osc(f0,s,v,len,{to:f1,type:o.type||'square',lp:o.lp||2400,q:1.2,a:0.002,sp:o.sp}); }
+    function boom(s,v,len,o){ o=o||{}; nz(s,len,'lowpass',o.f||2600,0.9,v,{to:o.to||180,sp:o.sp}); thump(s,v*1.1,o.b||120,o.b1||38,len*0.7); }
+    function crackle(s,v,len,k,f){ for(var i=0;i<k;i++) nz(s+len*Math.random(),0.012+Math.random()*0.02,'bandpass',(f||1800)*(0.6+Math.random()*0.9),2.5,v*(0.5+Math.random()*0.6)); }
     var st=function(S,k){ return S[Math.max(0,Math.min(S.length-1,k||0))]*(1+(Math.random()-0.5)*0.012); };
     if(game==='race'&&RACE[kind]){
       if(kind==='coin') glock(st(PR,n),t,0.11,0.3);
@@ -1590,20 +1594,20 @@ var Sfx=(function(){
       else if(kind==='over'){ glock(783.99,t,0.1,0.6); glock(1046.5,t+0.3,0.1,0.9); }
       return true; }
     if(game==='fly'&&FLY[kind]){
-      if(kind==='fire') osc(1180*rp(),t,0.055,0.03,{to:880});
-      else if(kind==='break'){ var fb=st(PF,n); osc(fb,t,0.2,0.12,{to:fb*1.5,gl:0.06,sp:true}); }   // a drop, climbing with the combo
+      if(kind==='fire'){ nz(t,0.03,'bandpass',1600*rp(),1.6,0.06,{to:700}); osc(200*rp(),t,0.08,0.04,{to:90,a:0.001}); }   // 1.61y: a blaster
+      else if(kind==='break'){ crackle(t,0.16,0.09,6,1200+Math.min(8,n||0)*250); thump(t,0.28,140*rp(),45,0.12); }   // 1.61y: a rock crumbling, brighter with the combo
       else if(kind==='shield') osc(300*rp(),t,0.22,0.22,{to:620,vib:18,vd:0.04});
-      else if(kind==='hit'){ thump(t,0.4,130,48,0.25); nz(t,0.3,'lowpass',900,0.7,0.22,{to:300}); osc(330,t+0.03,0.12,0.4,{to:196,type:'triangle',sp:true}); }
+      else if(kind==='hit'){ crackle(t,0.2,0.35,12,2200); osc(700,t,0.1,0.5,{to:90,type:'sawtooth',lp:1400}); thump(t,0.3,110,40,0.2); }   // 1.61y: a short circuit
       else if(kind==='pick') [587.3,740,880].forEach(function(f,i){ bell(f,t+i*0.07,0.13,0.4,true); });
       else if(kind==='level') [293.7,440,587.3,740].forEach(function(f){ osc(f,t,0.05,1.1,{a:0.38,type:'triangle',lp:1800,sp:true}); osc(f*1.004,t,0.03,1.1,{a:0.38,sp:true}); });
       else if(kind==='ufo') osc(600,t,0.12,0.8,{to:820,gl:0.8,vib:6,vd:0.025,a:0.15,sp:true});
-      else if(kind==='ufo_fire') osc(1400*rp(),t,0.08,0.07,{to:420});
+      else if(kind==='ufo_fire') zap(900*rp(),180,t,0.08,0.1,{type:'sawtooth',lp:1800});   // 1.61y: lower and meaner than ours
       else if(kind==='ufo_dodge'){}   // silent: it is seen
-      else if(kind==='ufo_hit') bell(980*rp(),t,0.14,0.25,true,2.73);
-      else if(kind==='ufo_die'){ for(var k=0;k<6;k++) bell(1760-k*180,t+k*0.05,0.06,0.3,true,3.1); }   // stars, scattering down
-      else if(kind==='tick') osc(880,t,0.1,0.08);
-      else if(kind==='start') [293.7,440,587.3].forEach(function(f,i){ bell(f,t+i*0.03,0.12,0.8,true); });
-      else if(kind==='over') [293.7,440,587.3].forEach(function(f){ osc(f,t,0.07,1.6,{to:f*0.75,gl:1.6,a:0.1,type:'triangle',lp:1500,sp:true}); });
+      else if(kind==='ufo_hit'){ bell(620*rp(),t,0.14,0.3,true,2.73); nz(t,0.02,'bandpass',2200,2,0.14); thump(t,0.2,180,90,0.08); }   // 1.61y: on the armour
+      else if(kind==='ufo_die'){ boom(t,0.32,0.4,{f:2800,to:180,sp:true}); [587.3,740,880,1174.7].forEach(function(f,i){ zap(f,f,t+0.25+i*0.06,0.06,i===3?0.25:0.06,{lp:2800,sp:true}); }); }   // 1.61y: a boom, then the reward
+      else if(kind==='tick') zap(660,660,t,0.07,0.1,{lp:2000});   // 1.61y: beep, beep…
+      else if(kind==='start') zap(1320,1320,t,0.08,0.45,{lp:2600});   // …BEEEP
+      else if(kind==='over'){ osc(400,t,0.12,1.3,{to:40,type:'sawtooth',lp:1200,a:0.02}); crackle(t+0.2,0.08,0.9,8,1500); }   // 1.61y: the systems power down
       return true; }
     if(UI[kind]){
       if(kind==='tap') osc(900,t,0.08,0.05,{to:1300});

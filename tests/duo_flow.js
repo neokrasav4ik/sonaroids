@@ -64,6 +64,13 @@ const SCEN=[`function(t){ if(t<8) return null; return 110-40*Math.cos(2*Math.PI*
   const lagA=fol.map(q=>q[0].behind).sort((x,y)=>x-y)[6], lagB=fol.map(q=>q[1].behind).sort((x,y)=>x-y)[6], dn=Math.max(Math.abs(lagA),Math.abs(lagB));
   check('each phone\'s own racket follows its palm',spreadA>0.05&&spreadB>0.05,`A left ${spreadA.toFixed(2)}, B right ${spreadB.toFixed(2)}`);
   check('the two phones step together (each by the server\'s clock)',dn<=8,`behind the clock: A ${lagA.toFixed(1)}, B ${lagB.toFixed(1)} steps (the middle of 12 readings)`);
+  /* v1.64j: the little players run on through the reruns (Den 22:46: «дёргается как застрявший в стене») — the drawing keeps its state:
+     no restart of the players during play, and they don't shake back and forth */
+  const jit=async p=>p.evaluate(()=>new Promise(r=>{ const r0=__sonaroids.skPlayers().resets, xs=[]; let k=0; (function f(){ const sp=__sonaroids.skPlayers(); if(sp.x) xs.push(sp.x); if(++k<180) requestAnimationFrame(f); else {
+      let flips=0, moves=0; for(let i=0;i<2;i++){ let last=0; for(let j=1;j<xs.length;j++){ const d=xs[j][i]-xs[j-1][i]; if(Math.abs(d)>0.0015){ moves++; const sg=Math.sign(d); if(last&&sg!==last) flips++; last=sg; } } }
+      r({resets:__sonaroids.skPlayers().resets-r0,flips,moves,frames:xs.length}); } })(); }));
+  const ja=await jit(A), jb=await jit(B);
+  check('the little players run on through the reruns: not put back, not shaking',ja.resets===0&&jb.resets===0&&ja.flips<=ja.moves*0.25&&jb.flips<=jb.moves*0.25,`A ${JSON.stringify(ja)} | B ${JSON.stringify(jb)}`);
   /* v1.64f: the pause for both — A pauses, both stop at the same step; B turns the sensitivity; A goes on — both count down and play */
   await act(A,'pause'); const pz=await wait(A,()=>__sonaroids.scr()==='pdpause',2000)&&await wait(B,()=>__sonaroids.scr()==='pdpause',3000);
   await A.waitForTimeout(800); const za=await D(A), zb=await D(B); await shot(B,'09b_pause_B');

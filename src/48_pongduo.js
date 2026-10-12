@@ -56,7 +56,7 @@ function pdGot(m){ if(!PD.on||!m) return; if(m.e==='bye') PD.heard=-99; else if(
   if(!PD.N||m.g!==PD.cfg.seed) return;
   if(m.e==='pz'){ if(m.ep===PD.ep) pdPauseAt(m.n,'mate'); return; }
   if(m.e==='rs'){ pdResume(m); return; }
-  if(m.e==='sens'){ if(m.ep===PD.ep&&PD.pz){ PongNet.mark(PD.N,m.n,['sens',m.i,m.v]); PD.mk.push([m.n,'sens',m.i,m.v]); g=PD.N.g; } return; }
+  if(m.e==='sens'){ if(m.ep===PD.ep&&PD.pz){ var o1=PD.N.g; PongNet.mark(PD.N,m.n,['sens',m.i,m.v]); pdAdopt(o1); PD.mk.push([m.n,'sens',m.i,m.v]); } return; }
   if(m.e==='end'){ if(m.ep===PD.ep) pdEndAt(m.n); return; } }
 /* ── the start: the side 0 sends it once both are ready ── */
 function pdCheckGo(){ if(PD.side!==0||!PD.peer||!PD.ready||PD.pst!=='ready'||scr==='count'||scr==='play') return;
@@ -80,8 +80,13 @@ function pdTake(){ var N=PD.N; if(!N||!PD.inq.length) return; var Q=PD.inq; PD.i
     var list=[]; (m.v||[]).forEach(function(v,j){ var k=m.k+j; if(k<1||k>lim) return; PD.got[k]=1; PD.his[k-1]=v===undefined?null:v; list.push([k,v===null||v===undefined?null:v/10000]); });
     while(PD.got[PD.myAck+1]){ delete PD.got[PD.myAck-200]; PD.myAck++; }
     if(!list.length) return; var old=N.g, out=PongNet.remote(N,list);
-    if(N.g!==old){ for(var k in old) if(k.charAt(0)==='_') N.g[k]=old[k]; g=N.g; }
+    pdAdopt(old);
     (out||[]).forEach(function(s){ pdReact(s.n,s.events,s.fx); }); }); }
+/* the game run again from a copy is a new object: it takes over what the screen keeps on the old one (the drawing's state, '_' keys) and
+   stays «the same game» for the drawing — v1.64j (Den 22:46, Mi 9 together: «человечек дёргается как застрявший в стене и не успевает к
+   месту отбития»): every rerun (tens a second together) looked to the drawing like another game, and it put the little players back to
+   their start each time */
+function pdAdopt(old){ var N=PD.N; if(N.g!==old){ for(var k in old) if(k.charAt(0)==='_') N.g[k]=old[k]; if(PGK.src===old) PGK.src=N.g; } g=N.g; }
 /* a step's events → the sounds and the drawing, each once (a step run again shows only what it did not show before) */
 function pdReact(n,events,fx){ var was=PD.shown[n]||{e:[],f:[]}, fk=function(f){ return Object.keys(f).join(','); };
   var ev=events.filter(function(e){ return was.e.indexOf(e)<0; }), fxs=(fx||[]).filter(function(f){ return was.f.indexOf(fk(f))<0; });
@@ -137,7 +142,7 @@ function pdClipsMake(hL,hR){ PG.clips=null; var c=PD.cfg, M=PD.mk.slice().sort(f
    Nothing heard from the partner for 2 s (a lost link, a phone put away) — the pause with «НАПАРНИК ПРОПАЛ — ЖДЁМ…»: back within 30 s —
    the pause as any; not — the game ends with what it has. A message from before a pause counts only up to its step (the pause's epoch) ── */
 function pdCut(P){ var N=PD.N, old=N.g; if(!PongNet.cut(N,P)){ Logs.gameEv('вдвоём: пауза дальше, чем помнит игра',{P:P,n:old.n}); return false; }
-  if(N.g!==old){ for(var k in old) if(k.charAt(0)==='_') N.g[k]=old[k]; } g=N.g;
+  pdAdopt(old);
   var del=function(o){ for(var d in o) if(+d>P) delete o[d]; }; del(PD.mine); del(PD.got); del(PD.shown); if(PD.mineAll.length>P) PD.mineAll.length=P; if(PD.his.length>P) PD.his.length=P;
   PD.myAck=Math.min(PD.myAck,P); PD.hisAck=Math.min(PD.hisAck,P); return true; }
 function pdPauseAt(P,by){ var N=PD.N; if(!N||N.g.state==='over') return;
@@ -149,7 +154,7 @@ function pdPause(why){ var N=PD.N; if(!N) return; var P=N.g.n; pdPauseAt(P,why);
 function pdResume(m){ var N=PD.N; if(!N) return;
   if(m.ep===PD.ep-1){ if(m.t>PD.rsT){ PD.rsT=m.t; PD.cfg.t0=m.t-PD.eps[m.ep]*1000*Pong.DT; } return; }
   if(m.ep!==PD.ep||!PD.pz) return; var P=Math.min(PD.pz.n,m.n); if(N.g.n>P||PD.pz.n>P){ PD.pz.n=P; pdCut(P); }
-  PongNet.mark(N,P,['resume']); g=N.g; PD.mk.push([P,'resume']); PD.eps[PD.ep]=P; PD.ep++; PD.rsT=m.t; PD.cfg.t0=m.t-P*1000*Pong.DT; PD.pz=null; PD.heard=clock;
+  var o2=N.g; PongNet.mark(N,P,['resume']); pdAdopt(o2); PD.mk.push([P,'resume']); PD.eps[PD.ep]=P; PD.ep++; PD.rsT=m.t; PD.cfg.t0=m.t-P*1000*Pong.DT; PD.pz=null; PD.heard=clock;
   Logs.gameEv('вдвоём: дальше',{P:P,ep:PD.ep,in_ms:Math.round(m.t-Link.now())}); countT=Math.max(0,(m.t-Link.now())/1000); go('count-resume'); }
 function pdEndAt(P){ var N=PD.N; if(!N||N.g.state==='over') return; if(!PD.pz) pdPauseAt(P,'mate'); else if(P<PD.pz.n){ PD.pz.n=P; pdCut(P); } PD.endN=PD.pz.n; Logs.gameEv('вдвоём: закончить',PD.endN); }
 /* the pause's screen: the field as it stopped; who paused, or how long the partner is still waited for; «ДАЛЬШЕ» once both are in the
@@ -212,7 +217,7 @@ function pdOver(){ overT+=DT; pgField(g,DT); lx.globalAlpha=0.45; R(P.bg,0,0,LW,
   say(L('over')+' '+g.score);
   if(overT>0.8) column(pdOverItems(),Math.round(LH*0.52)); }
 /* the sensitivity turned in the pause: a mark at the pause's step for the own racket, on both phones */
-function pdSens(v){ var N=PD.N; if(!N||!PD.pz) return; var P=PD.pz.n; PongNet.mark(N,P,['sens',PD.me,v]); g=N.g; PD.mk.push([P,'sens',PD.me,v]); pdSend({e:'sens',g:PD.cfg.seed,ep:PD.ep,n:P,i:PD.me,v:v}); Logs.gameEv('вдвоём: чувствительность',[P,PD.me,v]); }
+function pdSens(v){ var N=PD.N; if(!N||!PD.pz) return; var P=PD.pz.n, o3=N.g; PongNet.mark(N,P,['sens',PD.me,v]); pdAdopt(o3); PD.mk.push([P,'sens',PD.me,v]); pdSend({e:'sens',g:PD.cfg.seed,ep:PD.ep,n:P,i:PD.me,v:v}); Logs.gameEv('вдвоём: чувствительность',[P,PD.me,v]); }
 /* the actions */
 var PD_ACT={
   pg_duo:function(){ PD.msg=''; go('pduo'); },

@@ -50,7 +50,7 @@ var PF=(function(){
   return {draw:draw,width:width,wrap:wrap,has:function(c){ return c===' '||!!G[c]; },CAP:7,LINE:12};
 })();
 if(typeof module!=='undefined') module.exports=PF;
-var VERSION='1.64i';
+var VERSION='1.64j';
 /* ── AudioWorklet: the microphone stream in whole 512-sample frames, numbered so gaps are visible (from the lab, unchanged) ── */
 var WORKLET=`
 class Cap extends AudioWorkletProcessor{
@@ -5556,7 +5556,7 @@ function pdGot(m){ if(!PD.on||!m) return; if(m.e==='bye') PD.heard=-99; else if(
   if(!PD.N||m.g!==PD.cfg.seed) return;
   if(m.e==='pz'){ if(m.ep===PD.ep) pdPauseAt(m.n,'mate'); return; }
   if(m.e==='rs'){ pdResume(m); return; }
-  if(m.e==='sens'){ if(m.ep===PD.ep&&PD.pz){ PongNet.mark(PD.N,m.n,['sens',m.i,m.v]); PD.mk.push([m.n,'sens',m.i,m.v]); g=PD.N.g; } return; }
+  if(m.e==='sens'){ if(m.ep===PD.ep&&PD.pz){ var o1=PD.N.g; PongNet.mark(PD.N,m.n,['sens',m.i,m.v]); pdAdopt(o1); PD.mk.push([m.n,'sens',m.i,m.v]); } return; }
   if(m.e==='end'){ if(m.ep===PD.ep) pdEndAt(m.n); return; } }
 /* ── the start: the side 0 sends it once both are ready ── */
 function pdCheckGo(){ if(PD.side!==0||!PD.peer||!PD.ready||PD.pst!=='ready'||scr==='count'||scr==='play') return;
@@ -5580,8 +5580,13 @@ function pdTake(){ var N=PD.N; if(!N||!PD.inq.length) return; var Q=PD.inq; PD.i
     var list=[]; (m.v||[]).forEach(function(v,j){ var k=m.k+j; if(k<1||k>lim) return; PD.got[k]=1; PD.his[k-1]=v===undefined?null:v; list.push([k,v===null||v===undefined?null:v/10000]); });
     while(PD.got[PD.myAck+1]){ delete PD.got[PD.myAck-200]; PD.myAck++; }
     if(!list.length) return; var old=N.g, out=PongNet.remote(N,list);
-    if(N.g!==old){ for(var k in old) if(k.charAt(0)==='_') N.g[k]=old[k]; g=N.g; }
+    pdAdopt(old);
     (out||[]).forEach(function(s){ pdReact(s.n,s.events,s.fx); }); }); }
+/* the game run again from a copy is a new object: it takes over what the screen keeps on the old one (the drawing's state, '_' keys) and
+   stays «the same game» for the drawing — v1.64j (Den 22:46, Mi 9 together: «человечек дёргается как застрявший в стене и не успевает к
+   месту отбития»): every rerun (tens a second together) looked to the drawing like another game, and it put the little players back to
+   their start each time */
+function pdAdopt(old){ var N=PD.N; if(N.g!==old){ for(var k in old) if(k.charAt(0)==='_') N.g[k]=old[k]; if(PGK.src===old) PGK.src=N.g; } g=N.g; }
 /* a step's events → the sounds and the drawing, each once (a step run again shows only what it did not show before) */
 function pdReact(n,events,fx){ var was=PD.shown[n]||{e:[],f:[]}, fk=function(f){ return Object.keys(f).join(','); };
   var ev=events.filter(function(e){ return was.e.indexOf(e)<0; }), fxs=(fx||[]).filter(function(f){ return was.f.indexOf(fk(f))<0; });
@@ -5637,7 +5642,7 @@ function pdClipsMake(hL,hR){ PG.clips=null; var c=PD.cfg, M=PD.mk.slice().sort(f
    Nothing heard from the partner for 2 s (a lost link, a phone put away) — the pause with «НАПАРНИК ПРОПАЛ — ЖДЁМ…»: back within 30 s —
    the pause as any; not — the game ends with what it has. A message from before a pause counts only up to its step (the pause's epoch) ── */
 function pdCut(P){ var N=PD.N, old=N.g; if(!PongNet.cut(N,P)){ Logs.gameEv('вдвоём: пауза дальше, чем помнит игра',{P:P,n:old.n}); return false; }
-  if(N.g!==old){ for(var k in old) if(k.charAt(0)==='_') N.g[k]=old[k]; } g=N.g;
+  pdAdopt(old);
   var del=function(o){ for(var d in o) if(+d>P) delete o[d]; }; del(PD.mine); del(PD.got); del(PD.shown); if(PD.mineAll.length>P) PD.mineAll.length=P; if(PD.his.length>P) PD.his.length=P;
   PD.myAck=Math.min(PD.myAck,P); PD.hisAck=Math.min(PD.hisAck,P); return true; }
 function pdPauseAt(P,by){ var N=PD.N; if(!N||N.g.state==='over') return;
@@ -5649,7 +5654,7 @@ function pdPause(why){ var N=PD.N; if(!N) return; var P=N.g.n; pdPauseAt(P,why);
 function pdResume(m){ var N=PD.N; if(!N) return;
   if(m.ep===PD.ep-1){ if(m.t>PD.rsT){ PD.rsT=m.t; PD.cfg.t0=m.t-PD.eps[m.ep]*1000*Pong.DT; } return; }
   if(m.ep!==PD.ep||!PD.pz) return; var P=Math.min(PD.pz.n,m.n); if(N.g.n>P||PD.pz.n>P){ PD.pz.n=P; pdCut(P); }
-  PongNet.mark(N,P,['resume']); g=N.g; PD.mk.push([P,'resume']); PD.eps[PD.ep]=P; PD.ep++; PD.rsT=m.t; PD.cfg.t0=m.t-P*1000*Pong.DT; PD.pz=null; PD.heard=clock;
+  var o2=N.g; PongNet.mark(N,P,['resume']); pdAdopt(o2); PD.mk.push([P,'resume']); PD.eps[PD.ep]=P; PD.ep++; PD.rsT=m.t; PD.cfg.t0=m.t-P*1000*Pong.DT; PD.pz=null; PD.heard=clock;
   Logs.gameEv('вдвоём: дальше',{P:P,ep:PD.ep,in_ms:Math.round(m.t-Link.now())}); countT=Math.max(0,(m.t-Link.now())/1000); go('count-resume'); }
 function pdEndAt(P){ var N=PD.N; if(!N||N.g.state==='over') return; if(!PD.pz) pdPauseAt(P,'mate'); else if(P<PD.pz.n){ PD.pz.n=P; pdCut(P); } PD.endN=PD.pz.n; Logs.gameEv('вдвоём: закончить',PD.endN); }
 /* the pause's screen: the field as it stopped; who paused, or how long the partner is still waited for; «ДАЛЬШЕ» once both are in the
@@ -5712,7 +5717,7 @@ function pdOver(){ overT+=DT; pgField(g,DT); lx.globalAlpha=0.45; R(P.bg,0,0,LW,
   say(L('over')+' '+g.score);
   if(overT>0.8) column(pdOverItems(),Math.round(LH*0.52)); }
 /* the sensitivity turned in the pause: a mark at the pause's step for the own racket, on both phones */
-function pdSens(v){ var N=PD.N; if(!N||!PD.pz) return; var P=PD.pz.n; PongNet.mark(N,P,['sens',PD.me,v]); g=N.g; PD.mk.push([P,'sens',PD.me,v]); pdSend({e:'sens',g:PD.cfg.seed,ep:PD.ep,n:P,i:PD.me,v:v}); Logs.gameEv('вдвоём: чувствительность',[P,PD.me,v]); }
+function pdSens(v){ var N=PD.N; if(!N||!PD.pz) return; var P=PD.pz.n, o3=N.g; PongNet.mark(N,P,['sens',PD.me,v]); pdAdopt(o3); PD.mk.push([P,'sens',PD.me,v]); pdSend({e:'sens',g:PD.cfg.seed,ep:PD.ep,n:P,i:PD.me,v:v}); Logs.gameEv('вдвоём: чувствительность',[P,PD.me,v]); }
 /* the actions */
 var PD_ACT={
   pg_duo:function(){ PD.msg=''; go('pduo'); },
@@ -5786,7 +5791,7 @@ function pgSkDraw(q,dt,playing,cardH,ckey){ var u=pgU(), fw=Math.max(1,Math.roun
   if(cardH){ fh=Math.max(1,Math.round(cardH)); fw=Math.round(fh*PG_AR); }   // 1.61s: the games' screen card — its own size
   var key=ckey||(cardH?'cc':'cv'); if(!PGK[key]) PGK[key]=document.createElement('canvas'); var cv0=PGK[key]; if(cv0.width!==fw||cv0.height!==fh){ cv0.width=fw; cv0.height=fh; PGS.key=''; }
   var K=pgSkSt(q), dq=Math.max(0,Math.min(0.1,q.t-K.t)); K.t=q.t;   // 1.61m: the flash and the «+N» fade by the game's own time (the menu's rally was drawn with dt 0 — its red veil never faded)
-  if(PGK.src!==q){ PGK.src=q; PGS.life=null; PGS.pl=null; PGS.sh=null; PGS.hist=[]; PGS.mPl=null; PGS.mV=0; PGS.mRef=undefined; PGS.tLast=null; PGS.slow=null; PGS.pth=null; }   // another game on the screen: the players, the shuttle's turn, the motors start afresh
+  if(PGK.src!==q){ PGK.src=q; PGK.resets=(PGK.resets||0)+1; PGS.life=null; PGS.pl=null; PGS.sh=null; PGS.hist=[]; PGS.mPl=null; PGS.mV=0; PGS.mRef=undefined; PGS.tLast=null; PGS.slow=null; PGS.pth=null; }   // another game on the screen: the players, the shuttle's turn, the motors start afresh
   PG_V.dark=pgSkin(); PG_V.phint=pgHint(); PG_V.hudL=handSide()==='left'; PG_V.skw=cardH?Math.min(4,Math.max(2.2,1.7*390/fh)):undefined;   /* 1.61s: on the small card the pen thicker — the lines stay at least ~1.5 dots */ PGK.v.ar=PG_AR; PGK.v.hw=q.hw; PGK.v.H=q.H; K.lastT=Math.max(0,K.lastT-dq); K.flash=Math.max(0,K.flash-dq);
   var A=window.ARC; A.ar=PG_AR; A.t=q.t; A.py=q.py; A.padSoft=null; A.balls=q.ball?[q.ball]:[]; A.webD=q.webD||0; A.crk=K.crk; A.crkB=K.crkB; A.crkM=K.crkM;
   A.ceils=q.ceils||0; A.falls=q.falls||0; A.narrowK=q.k||1; A.score=q.score||0; A.series=q.series||0; A.kick=K.kick; A.phase=playing?'play':'menu'; A.lastPts=K.lastPts; A.lastT=K.lastT; A.pf=[]; A.flash=K.flash; A.clean=0;
@@ -8583,7 +8588,7 @@ requestAnimationFrame(loop);
 /* test hooks: headless tests drive the screens through these (harmless in the game) */
 window.__sonaroids={mixStart:function(){ mixStart(); },setSkin:function(id){ setSkin(id); return SK&&SK.id; },obsProbe:function(k,a,b){ return obsProbe(k,a,b); },obs:function(c){ if(c==='roll') FLY.roll=0; return {ok:OBS.ok,err:OBS.err,vis:OBS.vis,bd:OBS.bd,od:OBS.od,n:OBS.list.length,an:OBS.an.length,f16:OBS.f16,sk:SK.id}; },fxBurst:function(x,y,n,kind){ var BU=SK.bursts(); burst(fx(x),y*K,n,BU[kind]||BU.rock,50*K); },mixNow:function(){ MX.next=MX.t; if(!MX.pend) MX.pend=mixPick(); },mixInfo:function(){ return {on:mixOn(),cur:mixCur(),pend:MX.pend,tr:MX.tr?MX.tr.t:null,hist:MX.hist.slice(),fly:flyMix,race:raceMix}; },noteZones:function(){ return RC.zones?RC.zones.slice():null; },noteRivals:function(v){ RN_RIV=v; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },noteInfra:function(f){ RN_FORCE=f||null; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },raceNote:function(o){ for(var k in o) RN_LOOK[k]=o[k]; RCS={}; RCN=[]; RC={seed:-1,ch:{},zones:null,sp:{},key:''}; },raceSuper:function(v){ R_SUPER=v; },racePal:function(pud,bub){ if(pud) for(var k in pud) R_PUD[k]=pud[k]; if(bub) for(var j in bub) R_BUB[j]=bub[j]; RC.sp={}; },skinProbe:skinProbe,hdProbe:hdProbe,sizeProbe:sizeProbe,hdIds:hdIds,pixIds:function(){ return SKIN_IDS.filter(function(i){ return !!SKINS[i]; }); },skinIds:function(){ return SKIN_IDS.slice(); },go:go,act:ACT,scr:function(){ return scr; },btn:function(){ return BTN.slice(); },S:function(){ return {S:S,LW:LW,LH:LH,DPR:DPR,shipLane:Math.round(fx(Core.SHIP_X))+16}; },
   setBooted:function(v){ booted=v; }, pongBot:function(){ var b=PG._bot||(PG._bot=pgDemoBot()); return g&&g.ball!==undefined&&g.state==='play'?b(g):null; },   /* v1.63a: the menu's rally bot over the live game — the readme's pictures (promo/make_lob.js) */ link:Link, pongNet:PongNet, duo:function(){ var N=PD.N; return {pz:PD.pz?{n:PD.pz.n,by:PD.pz.by}:null,ep:PD.ep,mk:PD.mk.length,on:PD.on,side:PD.side,left:PD.left,me:pdMe(),peer:PD.peer,pst:PD.pst,ready:PD.ready,code:PD.code,near:PD.near,msg:PD.msg,state:pdState(),
-    game:N?{n:N.g.n,state:N.g.state,score:N.g.score,passes:N.g.passes,lives:N.g.lives,seed:PD.cfg.seed,myAck:PD.myAck,hisAck:PD.hisAck,rb:N.rb,rbMax:N.rbMax,lost:N.lost,pys:N.g.pys.slice(),behind:(Link.now()-PD.cfg.t0)/1000*60-N.g.n}:null}; }, duoGame:function(){ return PD.N?PD.N.g:null; }, duoReplay:function(){ var c=PD.cfg, nn=PD.N.g.n, a=PD.me===0?PD.mineAll:PD.his, b2=PD.me===0?PD.his:PD.mineAll, f=function(x){ var o=[]; for(var i=0;i<nn;i++) o.push(x[i]===undefined||x[i]===null?null:x[i]/10000); return o; };
+    game:N?{n:N.g.n,state:N.g.state,score:N.g.score,passes:N.g.passes,lives:N.g.lives,seed:PD.cfg.seed,myAck:PD.myAck,hisAck:PD.hisAck,rb:N.rb,rbMax:N.rbMax,lost:N.lost,pys:N.g.pys.slice(),behind:(Link.now()-PD.cfg.t0)/1000*60-N.g.n}:null}; }, duoGame:function(){ return PD.N?PD.N.g:null; }, skPlayers:function(){ return {resets:PGK.resets||0,x:PGS.pl?PGS.pl.map(function(q){ return q.x; }):null}; }, duoReplay:function(){ var c=PD.cfg, nn=PD.N.g.n, a=PD.me===0?PD.mineAll:PD.his, b2=PD.me===0?PD.his:PD.mineAll, f=function(x){ var o=[]; for(var i=0;i<nn;i++) o.push(x[i]===undefined||x[i]===null?null:x[i]/10000); return o; };
     var r=Pong.replay2(c.seed,PG_AR,c.sens,c.span,f(a),f(b2),PD.mk); return {n:r.n,score:r.score,passes:r.passes,falls:r.falls,state:r.state}; }, pgClips:function(){ return PG.clips?{n:PG.clips.length,check:PG.clipCheck,clips:PG.clips.map(function(c){ return {who:c.who,pts:c.pts,h:c.h,frames:c.fr.length}; })}:null; }, setShake:function(v){ shake=v; },
   board:function(){ return {tbl:tblBox,nick:nickEl?{shown:nickEl.style.display!=='none',rect:nickEl.getBoundingClientRect().toJSON()}:null}; },
   side:function(){ return {hand:handSide(),rel:handRel,cam:camEnd(),stored:store.get('sonaroids_rel',''),say:sayLast}; }, wave:function(){ toWave(); },

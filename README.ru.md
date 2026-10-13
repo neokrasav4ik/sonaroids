@@ -196,6 +196,7 @@ NODE_PATH=$(npm root -g) node promo/make_promo.js && python3 promo/make_promo.py
 PROMO=pixel NODE_PATH=$(npm root -g) node promo/make_promo.js && PROMO=pixel python3 promo/make_promo.py   # то же с играми в пикселях: promo/sonaroids_pixel_*.gif
 NODE_PATH=$(npm root -g) node promo/make_lob.js                                    # картинки SonaLob и экран игр: promo/sonalob_*.png, games.png
 NODE_PATH=$(npm root -g) node promo/make_lob_duo.js                                # SonaLob вдвоём, два телефона рядом: promo/sonalob_duo.png (сервер рекордов с комнатами на временной базе)
+NODE_PATH=$(npm root -g) node promo/make_duo_gif.js && python3 promo/make_duo_gif.py   # гифка SonaLob вдвоём (два телефона, левая и правая ладони, картонка между ними): promo/sonalob_duo_en|ru_480|640|800.gif
 NODE_PATH=$(npm root -g) node promo/make_shots.js                                  # картинки игр: promo/games.png, sonafly_skins.png, sonarace_*.png
 sh promo/make_all.sh                                                               # старые пиксельные гифки (стол и рука)
 ```

@@ -196,6 +196,7 @@ NODE_PATH=$(npm root -g) node promo/make_promo.js && python3 promo/make_promo.py
 PROMO=pixel NODE_PATH=$(npm root -g) node promo/make_promo.js && PROMO=pixel python3 promo/make_promo.py   # the same with the games in pixels: promo/sonaroids_pixel_*.gif
 NODE_PATH=$(npm root -g) node promo/make_lob.js                                    # SonaLob's pictures and the games' screen: promo/sonalob_*.png, games.png
 NODE_PATH=$(npm root -g) node promo/make_lob_duo.js                                # SonaLob together, two phones side by side: promo/sonalob_duo.png (a records server with pair rooms on a temporary database)
+NODE_PATH=$(npm root -g) node promo/make_duo_gif.js && python3 promo/make_duo_gif.py   # the SonaLob together GIF (two phones, the left and the right palm, a cardboard between): promo/sonalob_duo_en|ru_480|640|800.gif
 NODE_PATH=$(npm root -g) node promo/make_shots.js                                  # the games' pictures: promo/games.png, sonafly_skins.png, sonarace_*.png
 sh promo/make_all.sh                                                               # the older pixel GIFs (table and hand)
 ```

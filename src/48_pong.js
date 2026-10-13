@@ -1,4 +1,4 @@
-/* ════ SONAPONG on the games' screen (v1.59, step 4 of claude/SONAPONG_PORT.md): the card, the menu, the getting ready with the two
+/* ════ SONAPONG on the games' screen (v1.59, step 4 of the port plan; now claude/SONALOB.md): the card, the menu, the getting ready with the two
    holds, the countdown, the game, the pause's «re-hold», the game over. The rules are src/15_pong.js, the palm → the rackets
    src/16_pong_ctl.js; the getting ready before the holds (the probe, the empty room) is SonaFly's. The look is a plain stand-in until
    the skins (step 5: «paper» and «neon/vector»); the sounds — the game's existing ones until step 6. No tables yet: the best game is
@@ -34,7 +34,7 @@ function pgField(q,dt){ if(pgSkOn()){ if(q===PG.view) q.t=clock; pgSkDraw(q,dt||
   var b=q.ball; if(b&&!(b.wait>0&&Math.floor(clock*6)%2)){ lx.fillStyle=PG_COL.ball; lx.beginPath(); lx.arc(pgX(b.x),pgY(b.y),Math.max(2,b.r*pgU()),0,6.2832); lx.fill(); }
   drawParts(dt||0); }
 /* v1.61d: the ceiling's cracks (the rules' g.crk) as jagged lines down from it, the next one to break trembling; mended ones fade (a stand-in
-   until the skins and the spider, stage 3 of claude/SONAPONG_PORT.md) */
+   until the skins and the spider, stage 3 of the port plan, claude/SONALOB.md) */
 function pgCrack(x,n,a,wob){ var u=pgU(), x0=pgX(x)+wob, y0=pgY(Pong.TUNE.TOP), L=(0.025+0.012*n)*u, s=((x*997)|0)%7-3;
   lx.globalAlpha=a; lx.strokeStyle='#ff8c78'; lx.lineWidth=1.6; lx.beginPath(); lx.moveTo(x0,y0); lx.lineTo(x0+s*0.6,y0+L*0.4); lx.lineTo(x0-s*0.4,y0+L*0.7); lx.lineTo(x0+s*0.3,y0+L);
   lx.moveTo(x0+s*0.6,y0+L*0.4); lx.lineTo(x0+s*1.8+4,y0+L*0.6); lx.stroke(); lx.globalAlpha=1; }

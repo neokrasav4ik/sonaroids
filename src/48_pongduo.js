@@ -1,4 +1,4 @@
-/* ════ SonaLob «ВДВОЁМ» on the screens (v1.64c; v1.64d: each phone its own half of the probe's tones — src/20_sonar.js setParity; v1.64f: the pause for both; stage 4 of claude/SONALOB_DUO.md). The menu: «ИГРАТЬ ОДНОМУ» / «ИГРАТЬ ВДВОЁМ» (Den
+/* ════ SonaLob «ВДВОЁМ» on the screens (v1.64c; v1.64d: each phone its own half of the probe's tones — src/20_sonar.js setParity; v1.64f: the pause for both; stage 4 of claude/SONALOB.md). The menu: «ИГРАТЬ ОДНОМУ» / «ИГРАТЬ ВДВОЁМ» (Den
    12.10). Together: «РЯДОМ» (one Wi-Fi, both press within 30 s), «СОЗДАТЬ КОД» (4 digits to tell the partner) or «ВВЕСТИ КОД» — the
    room (src/23_link.js). Then «ВЫ ВМЕСТЕ»: who has which racket (the one who opened the room — the left; «ПОМЕНЯТЬСЯ» swaps them on both)
    and what the partner is doing. Each one calibrates as always (the waving or the auto-calibration), and on the try-out presses «ГОТОВ»;

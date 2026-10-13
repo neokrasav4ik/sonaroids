@@ -155,6 +155,7 @@ python3 tests/run_par.py --changed   # only what the changes since the last comm
 | `16_pong_net.js` | SonaLob together: both phones run the whole game on both palms; the partner's palm comes over the network a little later, is guessed till then, and when it comes the game is run again from that step (rollback, as in networked fighting games); a pause stops both at the same step; `tests/test_pong_net.js` |
 | `16_pong_ctl.js` | SonaLob's control, one code with the lab: the «mix» the rackets follow (the echo's distance + an offset, the phase for quick moves), the calibration by waving and the auto-calibration; `tests/test_pong_ctl.js` |
 | `17_palmclock.js` | The palm's height in time for SonaFly and SonaRace: where a phone hands the sonar's frames over in bunches (the Mi 9 Lite: two at once every 21 ms), each game step takes the height at its own moment, between two frames; `tests/test_palmclock.js` |
+| `18_level.js` | The probe's level fit, one rule for the game and the lab: from what was measured so far, which gain to try next or keep — down as well as up (a phone at 100% media volume) |
 | `20_sonar.js` | speaker and microphone: the probe, side check, levels and volume, getting ready; the Android app's own sound |
 | `21_log.js` | setup and game logs (WAV + JSON) for the lab's tools |
 | `22_sfx.js` | the game's sounds — all below 6 kHz, out of the probe's way |

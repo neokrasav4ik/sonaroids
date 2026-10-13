@@ -1,4 +1,4 @@
-/* ════ SONAPONG «НАБРОСОК» in the game (v1.61h; stage 3 of claude/SONAPONG_PORT.md — the maintainer 11 Oct 17:29: «скины — пока два, наши
+/* ════ SONAPONG «НАБРОСОК» in the game (v1.61h; stage 3 of the port plan, claude/SONALOB.md — the maintainer 11 Oct 17:29: «скины — пока два, наши
    тёмный и светлый, оба „набросок“»; 16:50: «с соплами вместо пропеллеров картинка смотрится поинтереснее»). The lab's drawing as it is:
    src/39_sketch.js (pgSketch) is one file for the lab and the game. It reads the lab's names — ARC (the game's state), PG_V (the options),
    pgSurf, JG_TOP… — so here they are made from the game's own: the rules' state (src/15_pong.js) and its world (Pong.TUNE). The lab's

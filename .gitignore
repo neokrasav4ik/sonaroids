@@ -156,3 +156,7 @@ game/play/__promo.html
 
 # a test run in progress (tests/run_par.py)
 tests/.running
+
+# a records database the tests or a require() without DB leave behind
+server/*.db
+server/*.db-*

@@ -3195,24 +3195,21 @@ window.__show=function(id){ show(id); }; window.__arcOpen=function(g){ arcOpen(g
    возврате показываю меню перед игрой; «Играть» откроет звук заново */
 try{ document.addEventListener('visibilitychange',function(){ if(!document.hidden||!ARC||!(ARC.on||ARC.phase==='play'||ARC.phase==='wave'||ARC.phase==='count'||ARC.phase==='prep'||ARC.phase==='empty')) return;
   if(el('arcPlay').classList.contains('hidden')) return; arcEv('hidden'); arcHalt(); if(arcGame==='juggle'||arcGame==='pong') arcOpen(arcGame); else { arcText('Свернули — партия остановлена','Нажми «Ещё раз».'); arcButtons(true); } }); }catch(e){}
-/* ── «СЛОВАРЬ ЖЕСТОВ» v3 (13.10, отдельная страница game/gestures.html; лаба и игра не тронуты) ──
-   Ден 13.10 15:32: «в каждой игре мы по-разному решали отслеживание ладони… твой тест не использует много наработок». v2 брала высоту
-   как SonaFly и искала жест по энергии эха — склеивала жесты. v3 стоит на управлении SonaLob:
-   - сонар с четвертями кадра (DSP2 quarter, фаза верна до ~1,6 м/с), ладонь — смесь PongCtl.frame (быстрое от фазы, медленное от эха,
-     поправка — двойная экспонента τ 3 с), калибровка — взмахами PongCtl.wave, как в SonaLob (низ взмахов → 100 мм, ход 75 мм,
-     «низ подальше от стола»);
-   - жест ищется по скорости смеси: движение — пока |v| > 50 мм/с (выход ниже 30 на 0,12 с); движения с паузами < 0,35 с — один жест;
-   - тряска — по энергии эха (как v2: ≥ 1,5 с и ≥ 15 «зубцов» в секунду); на тряске фаза убегает (записи 13.10) — точка на полосе
-     стоит, пока трясёшь;
-   - страница называет, что увидела («рывок вверх, сила 32»), и засчитывает только нужное — человек сразу видит, как его читают.
-   Разбор записей 13.10 15:27/15:30 по этой смеси: рывок вверх 15 из 15, плавно 39 из 40, рывок вниз 8 из 11, рывок ≥ 220 мм/с против
-   плавного ≤ 160.
-   Часть 1 «сила и высоты»: рывок ×4, вполсилы ×4, изо всех сил ×4, плавно ×4, замри: низ, верх, середина, низ, середина, верх.
-   Часть 2 «связки и вращения»: два рывка ×4, замри→рывок ×4, опусти→рывок ×4, рывок вниз ×4, вниз-вверх ×4, тряска внизу ×2, вверху ×2.
-   Журнал: card:i:вид · go:i · grp:ярлык:подход:vmax:vmin:уск:вверх:вниз:длит_мс:пиков:кадр (каждый жест) · g:вид:n:ярлык:vmax:кадр
-   (засчитан) · sh:длит_мс:зубцы:кадр:смесь:эхо (тряска) · lvl-ok:высота:доля:смесь · timeout:i · done. Файлы sonararc_gest4a/4b_*.wav */
-/* живой поиск жестов по кадру сонара (94 в секунду): «движение» = энергия эха держится высоко (минимум за 0,14 с > −14 дБ)
-   или остаток энергии дёргается (среднее |Δ| за 0,1 с > 1,2). Жест — отрезок движения; кончается после 0,34 с покоя; короче 0,16 с — не в счёт. */
+/* ── SonaSkate: распознавание жестов ладони (ядро, без экрана) — v5, 13.10 ──
+   Один и тот же код — в странице «Словарь жестов» и в разборе записей (gs5_val.js). Вход — кадр сонара DSP2 (с четвертями кадра).
+   Ладонь — смесь SonaLob (PongCtl.frame: быстрое от фазы, медленное от эха, двойная экспонента τ 3 с). Что поправлено после записей
+   Дена 16:07/16:10 («уже лучше.. но далёк от отличного»):
+   - «стоит» — как удержание калибровки SonaLob: 10–90% смеси за последние 1,2 с в полосе 14 мм (смесь дрожит на 3–5 мм между
+     кадрами — по скорости «стоит» не ловилось почти никогда: замер внизу 0 из 2, «замри→рывок» 0 из 4);
+   - подход к рывку: «замер» — полоса ≤ 10 мм за 0,6 с перед ним; «опускание» — смесь упала ≥ 15 мм за последнюю 1 с (важнее замера); иначе «с ходу»
+     (возврат после прошлого рывка больше не мешает замеру, если ладонь успела постоять);
+   - замах вниз (< 15 мм) перед рывком вверх — подход, а не «рывок вниз»; вниз-вверх — спуск ≥ 15 мм и подъём выше начала хотя бы на
+     10 мм и на 0,4 спуска; второй пик «двух рывков» — ≥ 120 мм/с после спада ≥ 8 мм;
+   - тряска засчитывается через 2 с (двойные рывки дают такой же всплеск энергии, но короче — 1,2–2,2 с) (раньше — только когда кончится, Ден тряс 12 с).
+   События (S.ev): {t:'g', lab, appr, vmax, vmin, acc, up, dn, dur, peaks, k0} — жест; {t:'sh', k0, dur, fr} — тряска (засчитана на ходу),
+   {t:'she', …} — тряска кончилась. S.still / S.stillMed — ладонь стоит и где. S.show — ладонь для экрана (на тряске стоит). */
+var GS5={PK_DROP:20,DSC:15,DU_OVER:12,DIP_T:0.45,UP:150,UP2:150,DN:120,ACC:4000,IN:50,OUT:30,QF:11,JOIN:42,JOIN_DU:28,WIN:113,TOL:14,PRE_W:56,PRE_TOL:10,DIP:15,SH_T:2,SH_FR:15};
+/* поиск тряски по энергии эха (как v2, записи 12–13.10: 51 из 51 жеста, тряска — 70–85 «зубцов» за 3 с) */
 function gsDetNew(){ return {E:[],dR:[],lastR:null,on:false,k:0,k0:0,quiet:0,fr:0,e1:null,e2:null}; }
 function gsDetStep(D,r,cb){ D.k++; if(!r||r.E===undefined||r.E===null) return;
   var E=r.E, R=r.resE; D.E.push(E); if(D.E.length>13) D.E.shift(); var d=D.lastR===null?0:Math.abs(R-D.lastR); D.lastR=R; D.dR.push(d); if(D.dR.length>9) D.dR.shift();
@@ -3220,11 +3217,75 @@ function gsDetStep(D,r,cb){ D.k++; if(!r||r.E===undefined||r.E===null) return;
   if(D.e2!==null&&D.e1>D.e2&&D.e1>E&&D.e1>-12&&D.on) D.fr++; D.e2=D.e1; D.e1=E;
   if(mot){ if(!D.on){ D.on=true; D.k0=D.k; D.fr=0; } D.quiet=0; }
   else if(D.on){ D.quiet++; if(D.quiet>=32){ D.on=false; var n=D.k-D.quiet-D.k0; if(n>=15) cb({k0:D.k0,k1:D.k-D.quiet,dur:n/93.75,fr:D.fr}); } } }
+function gs5New(PC){ return {PC:PC,pc:PC.create(),det:gsDetNew(),mix:[],vs:[],k:0,v:0,seg:null,pend:null,ev:[],show:null,shOn:false,shLive:false,still:false,stillMed:null,tied:false}; }
+/* после калибровки взмахами: смесь и высота сведены (как в SonaLob) */
+function gs5Tie(S){ S.pc.mxCal=0; S.pc.mxOff=0; S.pc.mxH=null; S.tied=true; }
+function gs5Pct(a,p){ return a[Math.min(a.length-1,Math.max(0,Math.floor(p*(a.length-1))))]; }
+function gs5Band(S,n){ var w=[], i; for(i=Math.max(0,S.mix.length-n);i<S.mix.length;i++) if(S.mix[i]!==null&&S.mix[i]!==undefined) w.push(S.mix[i]);
+  if(w.length<n*0.8) return null; w.sort(function(a,b){ return a-b; }); return {spread:gs5Pct(w,0.9)-gs5Pct(w,0.1),med:w[w.length>>1]}; }
+/* один кадр сонара. N, fs, calS — как у PongCtl.frame; at — номер кадра записи (для журнала) */
+function gs5Step(S,r,N,fs,calS,at){ S.k++; S.at=at;
+  S.PC.frame(S.pc,r,N,fs,calS||1,false); var m=r&&r.present?S.pc.mix:null; S.mix.push(m); if(S.mix.length>400) S.mix.shift();
+  gsDetStep(S.det,r,function(b){ S.ev.push({t:'she',k0:at-(S.det.k-b.k0),dur:b.dur,fr:b.fr,rev:S.rev||0,at:at}); S.shLive=false; });
+  /* развороты ладони внутри всплеска энергии (по смеси, с порогом ±40 мм/с): у тряски их много, у двух рывков — 3–4 */
+  var vv=S.vs.length?S.vs[S.vs.length-1]:0, sg=vv>40?1:vv<-40?-1:0; if(!S.det.on){ S.rev=0; S.rsg=0; } else if(sg&&sg!==S.rsg){ if(S.rsg) S.rev++; S.rsg=sg; }
+  var dk=S.det.k-S.det.k0, shNow=S.det.on&&dk>50&&S.det.fr>=GS5.SH_FR*dk/93.75; S.shOn=shNow;
+  if(shNow&&!S.shLive&&dk>=GS5.SH_T*93.75){ S.shLive=true; S.ev.push({t:'sh',k0:at-dk,dur:dk/93.75,fr:S.det.fr,rev:S.rev||0,at:at}); }
+  if(!S.det.on) S.shLive=false;
+  if(!S.shOn&&m!==null) S.show=m;
+  var n=S.mix.length, a=S.mix[n-5], v=(m!==null&&a!==null&&a!==undefined)?(m-a)*93.75/4:0; S.v=v; S.vs.push(v); if(S.vs.length>200) S.vs.shift();
+  var B=gs5Band(S,GS5.WIN); S.still=!!(B&&B.spread<=GS5.TOL&&!S.shOn); S.stillMed=B?B.med:null;
+  gs5Seg(S,m,v,at); }
+function gs5Seg(S,m,v,at){ var av=Math.abs(v), G=S.seg;
+  if(!G&&av>GS5.IN&&m!==null){ var h0=S.mix[S.mix.length-6]; G=S.seg={k0:S.k-5,at0:at-5,h0:h0===null||h0===undefined?m:h0,hi:-1e9,lo:1e9,loUp:1e9,vmax:0,vmin:0,acc:0,first:0,peaks:0,pk:0,top:0,dnAt:null,upAt:null,q:0,pre:gs5Pre(S)}; }
+  if(G&&m!==null){ G.hi=Math.max(G.hi,m); G.lo=Math.min(G.lo,m); if(G.upAt===null&&m<G.loUp){ G.loUp=m; G.kLo=S.k; } if(!G.first&&Math.abs(m-G.h0)>10) G.first=m>G.h0?1:-1;
+    if(v>G.vmax) G.vmax=v; if(-v>G.vmin) G.vmin=-v; var pv=S.vs[S.vs.length-2]; if(pv!==undefined) G.acc=Math.max(G.acc,Math.abs(v-pv)*93.75);
+    if(v>GS5.UP2&&!G.pk){ G.pk=1; G.peaks++; G.top=m; } if(G.pk){ G.top=Math.max(G.top,m); if(m<G.top-GS5.PK_DROP) G.pk=0; }   /* второй пик «двух рывков» — только после спуска ладони ≥ 12 мм (скорость смеси дрожит: провалы скорости без спуска дают ложные «два рывка» у одиночных) */
+    if(v>GS5.UP&&G.upAt===null) G.upAt=S.k; if(-v>GS5.DN&&G.dnAt===null) G.dnAt=S.k; }
+  if(G){ if(av<GS5.OUT){ G.q++; if(G.q>=GS5.QF){ G.k1=S.k-G.q; G.hEnd=m; G.at1=at-G.q; S.seg=null; G.lab=gs5Label(G); gs5Join(S,G); } } else G.q=0; }
+  if(S.pend&&!S.seg&&S.k-S.pend.k1>GS5.JOIN){ var P=S.pend; S.pend=null; gs5Emit(S,P); } }
+/* что было перед жестом */
+function gs5Pre(S){ var mx=-1e9, i, cur=S.mix[S.mix.length-6]; for(i=Math.max(0,S.mix.length-6-GS5.DIP_W);i<S.mix.length-6;i++) if(S.mix[i]!==null&&S.mix[i]!==undefined) mx=Math.max(mx,S.mix[i]);
+  if(cur!==null&&cur!==undefined&&mx-cur>=GS5.DIP) return 'dip';   /* опускание за последнюю 1 с — важнее замера: медленный спуск к концу почти стоит */
+  var B=gs5Band({mix:S.mix.slice(0,Math.max(0,S.mix.length-5))},GS5.PRE_W); if(B&&B.spread<=GS5.PRE_TOL) return 'hold';
+  return 'go'; }
+function gs5Label(G){ var amp=G.hi-G.lo, desc=G.h0-G.loUp, over=G.hi-G.h0, rise=G.hi-G.loUp, tD=G.kLo?(G.kLo-G.k0)/93.75:0;
+  /* направление — куда ладонь ушла сначала (≥ 10 мм). Записи 16:10: «опусти→рывок» — спуск 0,6–0,8 с, «рывок вниз» и «вниз-вверх» —
+     0,2–0,45 с; рывок вниз Ден возвращал быстро (на 3–22 мм выше начала), вниз-вверх — 14–43 мм выше начала */
+  if(G.first>0){ if(G.vmax>=GS5.UP&&G.acc>=GS5.ACC) return G.peaks>=2?'double':'up'; return amp<15?'small':'sup'; }
+  if(G.first<0){
+    if(G.vmax>=GS5.UP&&G.acc>=GS5.ACC&&rise>=20){
+      if(tD>=GS5.DIP_T||desc<GS5.DSC){ G.windup=desc<GS5.DSC; G.slowDip=tD>=GS5.DIP_T; return G.peaks>=2?'double':'up'; }
+      return over>=GS5.DU_OVER?'downup':'down'; }
+    if(G.vmin>=GS5.DN&&G.acc>=GS5.ACC&&desc>=GS5.DSC) return 'down';
+    return amp<15?'small':'sdn'; }
+  return 'small'; }
+/* склейка соседних: рывок + рывок (≤ 0,45 с) → два рывка; рывок вниз + рывок вверх (≤ 0,3 с, подъём выше начала) → вниз-вверх */
+function gs5Join(S,G){ var P=S.pend;
+  if(P&&G.k0-P.k1<=GS5.JOIN&&P.lab==='up'&&(G.lab==='up'||G.lab==='double')){ P.lab='double'; P.peaks+=G.peaks; gs5Merge(P,G); S.pend=null; gs5Emit(S,P); return; }
+  if(P&&G.k0-P.k1<=GS5.JOIN_DU&&P.lab==='down'&&G.lab==='up'&&G.hi-P.h0>=10){ P.lab='downup'; gs5Merge(P,G); S.pend=null; gs5Emit(S,P); return; }
+  if(P){ S.pend=null; gs5Emit(S,P); }
+  if(G.lab==='up'||G.lab==='down') S.pend=G; else gs5Emit(S,G); }
+function gs5Merge(P,G){ P.k1=G.k1; P.at1=G.at1; P.vmax=Math.max(P.vmax,G.vmax); P.vmin=Math.max(P.vmin,G.vmin); P.hi=Math.max(P.hi,G.hi); P.lo=Math.min(P.lo,G.lo); P.acc=Math.max(P.acc,G.acc); }
+function gs5Emit(S,G){ var appr=G.pre; if((G.lab==='up'||G.lab==='double')&&G.slowDip) appr='dip';   /* медленное опускание вошло в тот же жест */
+  S.ev.push({t:'g',lab:G.lab,appr:appr,vmax:Math.round(G.vmax),vmin:Math.round(G.vmin),acc:Math.round(G.acc),up:Math.round(G.hi-G.h0),dn:Math.round(G.h0-G.lo),dur:(G.k1-G.k0)/93.75,peaks:G.peaks,k0:G.at0,wind:!!G.windup,at:S.at}); }
+if(typeof module!=='undefined') module.exports={GS5:GS5,gs5New:gs5New,gs5Tie:gs5Tie,gs5Step:gs5Step,gsDetNew:gsDetNew,gsDetStep:gsDetStep};
+/* ── «СЛОВАРЬ ЖЕСТОВ» v5 — страница (13.10, game/gestures.html; лаба и игры не тронуты) ──
+   Распознавание — ядро SonaSkate gs5_core.js (вставлено выше, тот же код, что в разборе записей gs5_val.js). Ден 16:22: «сонаскейт —
+   новая игра со своей лабой и своим сонаром, который мы сначала построим на предыдущих опытах и затем усовершенствуем; всё, что работает
+   в других играх, не трогаем». Ядро стоит на управлении SonaLob (четверти кадра + смесь PongCtl + калибровка взмахами), свои правила
+   жестов. Проверка ядра на 4 записях Дена (12–13.10): замеры 10/12 (было 3/6 на v3), замри→рывок 4/4 (было 0/4), опусти→рывок 4/4,
+   вниз-вверх 4/4, тряска засчитывается на 2-й секунде.
+   Поменялось на карточках: «рывок вниз — и замри внизу» (Ден возвращал ладонь быстро и выше начала — это читалось как «вниз-вверх»),
+   «два рывка: вверх, чуть вниз, снова вверх» (одним подъёмом в два толчка сонар их не разделяет), тряска показывает, сколько уже трясёшь.
+   Журнал: card:i:вид · go:i · grp:ярлык:подход:vmax:vmin:уск:вверх:вниз:длит_мс:пиков:кадр[:замах] · g:вид:n:ярлык:сила:кадр ·
+   sh:длит_мс:зубцы:развороты:кадр (засчитанная тряска) · she:… (тряска кончилась) · still-ok:высота:доля:смесь · timeout:i · done.
+   Файлы sonararc_gest5a/5b_*.wav */
 ARC_MAX=Math.round(190*48000/512);
-ARC_GAMES.gest4a={title:'Словарь жестов — часть 1',file:'gest4a',unit:'',intro:'Сила и высоты, около 2 минут. Сначала помаши ладонью, как в SonaLob. Потом по одной карточке: посмотри, как движется ладонь на картинке, и повтори, когда готов, — страница скажет, что увидела. В конце нажми «Сохранить запись» и пришли файл.'};
-ARC_GAMES.gest4b={title:'Словарь жестов — часть 2',file:'gest4b',unit:'',intro:'Связки и вращения, около 2,5 минут. Сначала помаши ладонью, как в SonaLob. Потом по одной карточке: посмотри картинку и повтори, когда готов. В конце нажми «Сохранить запись» и пришли файл.'};
-var GS4={
-  gest4a:[
+ARC_GAMES.gest5a={title:'Словарь жестов — часть 1',file:'gest5a',unit:'',intro:'Сила и высоты, около 2 минут. Сначала помаши ладонью, как в SonaLob. Потом по одной карточке: посмотри, как движется ладонь на картинке, и повтори, когда готов, — страница скажет, что увидела. В конце нажми «Сохранить запись» и пришли файл.'};
+ARC_GAMES.gest5b={title:'Словарь жестов — часть 2',file:'gest5b',unit:'',intro:'Связки и вращения, около 2,5 минут. Сначала помаши ладонью, как в SonaLob. Потом по одной карточке: посмотри картинку и повтори, когда готов. В конце нажми «Сохранить запись» и пришли файл.'};
+var GS5C={
+  gest5a:[
     {k:'flick',name:'Рывок вверх',how:'резко вверх на 4–5 см — и спокойно вниз',need:4,want:'up'},
     {k:'soft',name:'Рывок вполсилы',how:'резко, но легко — невысоко',need:4,want:'up',bar:1},
     {k:'hard',name:'Рывок изо всех сил',how:'самый резкий, какой удобно',need:4,want:'up',bar:1},
@@ -3235,130 +3296,98 @@ var GS4={
     {k:'lvl',lv:'lo',name:'Замри внизу',how:'ещё раз',lo:-0.25,hi:0.2},
     {k:'lvl',lv:'mid',name:'Замри в середине',how:'ещё раз',lo:0.35,hi:0.65},
     {k:'lvl',lv:'hi',name:'Замри вверху',how:'ещё раз',lo:0.8,hi:1.3}],
-  gest4b:[
-    {k:'double',name:'Два рывка подряд',how:'раз-два, быстро, без паузы',need:4,want:'double'},
+  gest5b:[
+    {k:'double',name:'Два рывка',how:'вверх, чуть вниз — и снова вверх, быстро',need:4,want:'double'},
     {k:'hold',name:'Замри — и рывок',how:'секунду не двигайся, потом рывок вверх',need:4,want:'up',appr:'hold'},
-    {k:'dip',name:'Опусти — и рывок',how:'медленно опусти на 2–3 см, снизу рывок вверх',need:4,want:'up',appr:'dip'},
-    {k:'down',name:'Рывок вниз',how:'резко вниз на 3–4 см — и спокойно обратно',need:4,want:'down'},
-    {k:'downup',name:'Вниз — и сразу вверх',how:'резко вниз и тут же резко вверх',need:4,want:'downup'},
-    {k:'shake',lv:'lo',name:'Тряска внизу',how:'опусти ладонь и тряси мелко 2–3 секунды',need:2,want:'shake'},
-    {k:'shake',lv:'hi',name:'Тряска вверху',how:'подними ладонь и тряси мелко 2–3 секунды',need:2,want:'shake'}]};
-var GS4_T=30, GS4_LT=12, GS4_INTRO=1.2, GS4_GAP=2.2, GS4_HOLD=1.5, GS4_UP=150, GS4_DN=120, GS4_ACC=4000;
-var GS4_SAY={up:'рывок вверх',down:'рывок вниз',downup:'вниз-вверх',double:'два рывка',sup:'плавно вверх',sdn:'плавно вниз',shake:'тряска',small:'маленькое движение'};
-function gs4Is(g){ return g==='gest4a'||g==='gest4b'; }
-/* ладонь: смесь SonaLob по каждому кадру сонара; скорость — по 4 кадрам (≈ 43 мс) */
-function gs4Z(h){ var L=ARC.T&&ARC.T.lin; return L&&h!==null&&h!==undefined?(h-L.b)/Math.max(30,L.t-L.b):null; }
-var _arcFrame4=arcFrame; arcFrame=function(f,gap,r){ _arcFrame4(f,gap,r); if(!ARC.on||!gs4Is(ARC.game)) return; var S=ARC.g4;
-  if(!S.q&&typeof DSP2!=='undefined'){ DSP2.set('quarter',1); S.q=1; }
-  if(!r) return; S.k++;
-  if(ARC.T&&ARC.T.ok&&!S.tied){ S.tied=1; S.pc.mxCal=0; S.pc.mxOff=0; S.pc.mxH=null; }   /* как SonaLob после взмахов: смесь и высота сведены привязкой */
-  PongCtl.frame(S.pc,r,N,fs,DSP2.info().cal.s||1,false); var m=r.present?S.pc.mix:null; S.mix.push(m); if(S.mix.length>400) S.mix.shift();
-  gsDetStep(S.det,r,function(b){ if(b.dur>=1.5&&b.fr>=15*b.dur) S.shQ.push({b:b,at:ARC.frames.length,ago:S.det.k-b.k0}); });
-  S.shOn=S.det.on&&(S.det.k-S.det.k0)>50&&S.det.fr>=15*(S.det.k-S.det.k0)/93.75;
-  if(!S.shOn&&m!==null) S.show=m;
-  var n=S.mix.length, a=S.mix[n-5], v=(m!==null&&a!==null&&a!==undefined)?(m-a)*93.75/4:0; S.v=v; S.vs.push(v); if(S.vs.length>200) S.vs.shift();
-  gs4Seg(S,m,v,r); };
-/* отрезки движения: начало — |v| > 50 мм/с, конец — 0,12 с ниже 30. Каждый отрезок получает ярлык; рывок вверх ждёт 0,45 с —
-   не будет ли второго (два рывка), рывок вниз — не придёт ли сразу рывок вверх (вниз-вверх). Подход к рывку — по тому, что было до него */
-function gs4Seg(S,m,v,r){ var av=Math.abs(v), G=S.seg;
-  if(!G&&av>50&&m!==null){ var h0=S.mix[S.mix.length-6]; G=S.seg={k0:S.k-5,at0:ARC.frames.length-5,h0:h0===null||h0===undefined?m:h0,hi:-1e9,lo:1e9,vmax:0,vmin:0,acc:0,first:0,peaks:0,pk:0,dnAt:null,upAt:null,q:0,pre:gs4Pre(S)}; }
-  if(G&&m!==null){ G.hi=Math.max(G.hi,m); G.lo=Math.min(G.lo,m); if(!G.first&&Math.abs(m-G.h0)>10) G.first=m>G.h0?1:-1;
-    if(v>G.vmax) G.vmax=v; if(-v>G.vmin) G.vmin=-v; var pv=S.vs[S.vs.length-2]; if(pv!==undefined) G.acc=Math.max(G.acc,Math.abs(v-pv)*93.75);
-    if(v>GS4_UP&&!G.pk){ G.pk=1; G.peaks++; G.top=m; if(G.upAt===null) G.upAt=S.k; } if(G.pk){ G.top=Math.max(G.top,m); if(m<G.top-15) G.pk=0; }   /* второй пик — только после спуска ≥ 15 мм */
-    if(-v>GS4_DN&&G.dnAt===null) G.dnAt=S.k; }
-  if(G){ if(av<30){ G.q++; if(G.q>=11){ G.k1=S.k-G.q; S.seg=null; S.last=G; G.lab=gs4Label(G); gs4Join(S,G); } } else G.q=0; }
-  if(S.pend&&!S.seg&&S.k-S.pend.k1>42){ var P=S.pend; S.pend=null; gs4Done(S,P); } }
-/* склейка: рывок + рывок (второй начался ≤ 0,45 с после конца первого) → два рывка; рывок вниз + рывок вверх (≤ 0,3 с) → вниз-вверх */
-function gs4Join(S,G){ var P=S.pend;
-  if(P&&G.k0-P.k1<=42&&P.lab==='up'&&G.lab==='up'){ P.lab='double'; P.peaks+=G.peaks; P.k1=G.k1; P.vmax=Math.max(P.vmax,G.vmax); P.hi=Math.max(P.hi,G.hi); P.acc=Math.max(P.acc,G.acc); S.pend=null; gs4Done(S,P); return; }
-  if(P&&G.k0-P.k1<=28&&P.lab==='down'&&G.lab==='up'){ P.lab='downup'; P.k1=G.k1; P.vmax=Math.max(P.vmax,G.vmax); P.hi=Math.max(P.hi,G.hi); P.acc=Math.max(P.acc,G.acc); S.pend=null; gs4Done(S,P); return; }
-  if(P){ S.pend=null; gs4Done(S,P); }
-  if(G.lab==='up'||G.lab==='down') S.pend=G; else gs4Done(S,G); }
-/* что было перед жестом: замер (≤ 30 мм/с за 0,8 с) или опускание (смесь упала ≥ 15 мм за 1,5 с) */
-function gs4Pre(S){ var n=S.vs.length, still=true, i; for(i=Math.max(0,n-80);i<n-6;i++) if(Math.abs(S.vs[i])>30){ still=false; break; }
-  var mx=-1e9, cur=S.mix[S.mix.length-6]; for(i=Math.max(0,S.mix.length-146);i<S.mix.length-6;i++) if(S.mix[i]!==null&&S.mix[i]!==undefined) mx=Math.max(mx,S.mix[i]);
-  return (cur!==null&&cur!==undefined&&mx-cur>=15)?'dip':still?'hold':'go'; }
-function gs4Label(G){ var amp=G.hi-G.lo;
-  if(G.dnAt!==null&&G.upAt!==null&&G.upAt>G.dnAt&&G.upAt-G.dnAt<70&&G.hi-G.h0>=25&&G.acc>=GS4_ACC) return 'downup';
-  if(G.peaks>=2) return 'double';
-  if(G.upAt!==null&&(G.dnAt===null||G.dnAt>G.upAt)&&G.acc>=GS4_ACC) return 'up';
-  if(G.dnAt!==null&&G.acc>=GS4_ACC) return 'down';
-  if(amp<15) return 'small'; return G.first<0?'sdn':'sup'; }
-function gs4Done(S,G){ var lab=G.lab, appr=G.pre, c=S.cards[S.i]; if(lab==='up'&&G.first<0) appr='dip';   /* медленное опускание вошло в тот же жест */
-  var tag=lab+':'+appr+':'+Math.round(G.vmax)+':'+Math.round(G.vmin)+':'+Math.round(G.acc)+':'+Math.round(G.hi-G.h0)+':'+Math.round(G.h0-G.lo)+':'+Math.round((G.k1-G.k0)/0.09375)+':'+G.peaks+':'+G.at0;
-  arcEv('grp:'+tag); if(S.st!=='go'||!c||c.k==='lvl'||c.want==='shake'){ return; }
-  var ok=lab===c.want&&(!c.appr||c.appr===appr), say=GS4_SAY[lab]||lab;
-  if(lab==='up'||lab==='double') say+=', сила '+Math.round(G.vmax/10); if(lab==='down') say+=', сила '+Math.round(G.vmin/10);
-  if(c.appr&&lab===c.want&&!ok) say+=c.appr==='hold'?' — но без замера перед ним':' — но без опускания перед ним';
-  if(ok){ S.n++; S.okT=ARC.t; S.got[c.k]=(S.got[c.k]||0)+1; arcEv('g:'+c.k+':'+S.n+':'+lab+':'+Math.round(lab==='down'?G.vmin:G.vmax)+':'+G.at0); sfx('jtoss',1); }
-  if(lab==='small'&&!ok) return;   /* мелочь не комментируем */
-  S.saw=(ok?'✓ ':'')+say; S.sawOk=ok; S.sawT=ARC.t; if(c.bar) S.bars.push(Math.round(G.vmax/10)); }
-var _arcInit4=arcInit; arcInit=function(){ _arcInit4(); if(gs4Is(ARC.game)){ ARC.score=0; ARC.lives=0;
-  ARC.g4={pc:PongCtl.create(),det:gsDetNew(),mix:[],vs:[],k:0,v:0,seg:null,pend:null,last:null,shQ:[],shOn:false,show:null,cards:GS4[ARC.game],i:-1,st:'',t0:0,n:0,okT:-9,saw:'',sawOk:false,sawT:-9,got:{},hold:0,bars:[],tied:0,q:0}; } };
-function gs4Card(i){ var S=ARC.g4, c=S.cards[i]; S.i=i; S.n=0; S.hold=0; S.t0=ARC.t; S.st='intro'; S.bars=[]; S.saw=''; arcEv('card:'+i+':'+c.k+(c.lv?':'+c.lv:'')); arcText(c.name,c.how); }
-ARC_STEP.gest4a=ARC_STEP.gest4b=function(dt){ var S=ARC.g4, t=ARC.t; if(S.i<0) gs4Card(0);
-  var c=S.cards[S.i], u=t-S.t0;
-  if(S.st==='intro'&&u>=GS4_INTRO){ S.st='go'; S.t0=t; u=0; arcEv('go:'+S.i); }
-  var Q=S.shQ; S.shQ=[]; Q.forEach(function(q){ var b=q.b, k0=q.at-q.ago, m=S.show, ab=ARC.absH; arcEv('sh:'+Math.round(b.dur*1000)+':'+b.fr+':'+k0+':'+(m===null?'-':Math.round(m))+':'+(ab===null||ab===undefined?'-':Math.round(ab)));
-    if(S.st==='go'&&c.want==='shake'){ S.n++; S.okT=t; S.got[c.k+(c.lv||'')]=(S.got[c.k+(c.lv||'')]||0)+1; arcEv('g:'+c.k+':'+S.n+':shake:'+Math.round(b.dur*1000)+':'+k0); sfx('jtoss',1); S.saw='✓ тряска, '+b.dur.toFixed(1).replace('.',',')+' с'; S.sawOk=true; S.sawT=t; } });
-  if(S.st==='go'&&c.k==='lvl'){ var z=gs4Z(S.show); if(z!==null&&Math.abs(S.v)<25&&!S.seg&&z>=c.lo&&z<=c.hi&&ARC.present) S.hold+=dt; else S.hold=0;
-    if(S.hold>=GS4_HOLD){ S.n=1; S.okT=t; S.got.lvl=(S.got.lvl||0)+1; arcEv('lvl-ok:'+c.lv+':'+z.toFixed(2)+':'+Math.round(S.show)); sfx('jtoss',1); } }
+    {k:'dip',name:'Опусти — и рывок',how:'секунду медленно опускай, снизу рывок вверх',need:4,want:'up',appr:'dip'},
+    {k:'down',name:'Рывок вниз',how:'резко вниз на 3–4 см — и замри внизу',need:4,want:'down'},
+    {k:'downup',name:'Вниз — и сразу вверх',how:'резко вниз и тут же вверх — выше, чем был',need:4,want:'downup'},
+    {k:'shake',lv:'lo',name:'Тряска внизу',how:'опусти ладонь и тряси мелко, пока не засчитает',need:2,want:'shake'},
+    {k:'shake',lv:'hi',name:'Тряска вверху',how:'подними ладонь и тряси мелко, пока не засчитает',need:2,want:'shake'}]};
+var GS5_T=30, GS5_LT=12, GS5_INTRO=1.2, GS5_GAP=2.2, GS5_STILL=0.3;
+var GS5_SAY={up:'рывок вверх',down:'рывок вниз',downup:'вниз-вверх',double:'два рывка',sup:'плавно вверх',sdn:'плавно вниз',small:'маленькое движение'};
+function gs5Is(g){ return g==='gest5a'||g==='gest5b'; }
+function gs5Z(h){ var L=ARC.T&&ARC.T.lin; return L&&h!==null&&h!==undefined?(h-L.b)/Math.max(30,L.t-L.b):null; }
+var _arcFrame5=arcFrame; arcFrame=function(f,gap,r){ _arcFrame5(f,gap,r); if(!ARC.on||!gs5Is(ARC.game)) return; var U=ARC.g5;
+  if(!U.q&&typeof DSP2!=='undefined'){ DSP2.set('quarter',1); U.q=1; }
+  if(!r) return; if(ARC.T&&ARC.T.ok&&!U.core.tied) gs5Tie(U.core);
+  gs5Step(U.core,r,N,fs,DSP2.info().cal.s||1,ARC.frames.length); };
+var _arcInit5=arcInit; arcInit=function(){ _arcInit5(); if(gs5Is(ARC.game)){ ARC.score=0; ARC.lives=0;
+  ARC.g5={core:gs5New(PongCtl),cards:GS5C[ARC.game],i:-1,st:'',t0:0,n:0,okT:-9,saw:'',sawOk:false,sawT:-9,got:{},still:0,bars:[],q:0}; } };
+function gs5Card(i){ var U=ARC.g5, c=U.cards[i]; U.i=i; U.n=0; U.still=0; U.t0=ARC.t; U.st='intro'; U.bars=[]; U.saw=''; arcEv('card:'+i+':'+c.k+(c.lv?':'+c.lv:'')); arcText(c.name,c.how); }
+function gs5Ok(U,c,key,txt){ U.n++; U.okT=ARC.t; U.got[key]=(U.got[key]||0)+1; sfx('jtoss',1); U.saw='✓ '+txt; U.sawOk=true; U.sawT=ARC.t; }
+ARC_STEP.gest5a=ARC_STEP.gest5b=function(dt){ var U=ARC.g5, S=U.core, t=ARC.t; if(U.i<0) gs5Card(0);
+  var c=U.cards[U.i], u=t-U.t0;
+  if(U.st==='intro'&&u>=GS5_INTRO){ U.st='go'; U.t0=t; u=0; arcEv('go:'+U.i); }
+  var Q=S.ev; S.ev=[]; Q.forEach(function(e){
+    if(e.t==='sh'||e.t==='she'){ arcEv(e.t+':'+Math.round(e.dur*1000)+':'+e.fr+':'+e.rev+':'+e.k0);
+      if(e.t==='sh'&&U.st==='go'&&c.want==='shake'){ arcEv('g:'+c.k+':'+(U.n+1)+':shake:'+Math.round(e.dur*1000)+':'+e.k0); gs5Ok(U,c,c.k+(c.lv||''),'тряска'); } return; }
+    arcEv('grp:'+e.lab+':'+e.appr+':'+e.vmax+':'+e.vmin+':'+e.acc+':'+e.up+':'+e.dn+':'+Math.round(e.dur*1000)+':'+e.peaks+':'+e.k0+(e.wind?':замах':''));
+    if(U.st!=='go'||c.k==='lvl'||c.want==='shake') return;
+    var ok=e.lab===c.want&&(!c.appr||c.appr===e.appr), say=GS5_SAY[e.lab]||e.lab, sp=e.lab==='down'?e.vmin:e.vmax;
+    if(e.lab==='up'||e.lab==='double'||e.lab==='down'||e.lab==='downup') say+=', сила '+Math.round(sp/10);
+    if(c.appr&&e.lab===c.want&&!ok) say+=c.appr==='hold'?' — но без замера перед ним':' — но без опускания перед ним';
+    if(c.bar&&(e.lab==='up'||e.lab==='double')) U.bars.push(Math.round(e.vmax/10));
+    if(ok){ arcEv('g:'+c.k+':'+(U.n+1)+':'+e.lab+':'+sp+':'+e.k0); gs5Ok(U,c,c.k,say); return; }
+    if(e.lab==='small') return; U.saw=say; U.sawOk=false; U.sawT=t; });
+  if(U.st==='go'&&c.k==='lvl'){ var z=gs5Z(S.stillMed); if(S.still&&z!==null&&z>=c.lo&&z<=c.hi&&ARC.present) U.still+=dt; else U.still=0;
+    if(U.still>=GS5_STILL){ arcEv('still-ok:'+c.lv+':'+z.toFixed(2)+':'+Math.round(S.stillMed)); gs5Ok(U,c,'lvl','стоишь'); } }
   var need=c.k==='lvl'?1:c.need;
-  if(S.st==='go'&&(S.n>=need||u>=(c.k==='lvl'?GS4_LT:GS4_T))){ if(S.n<need) arcEv('timeout:'+S.i); S.st='next'; S.t0=t; sfx('level'); var nx=S.cards[S.i+1];
-    arcText(S.n>=need?'Готово ✓':'Ладно, дальше',nx?'дальше: '+nx.name.toLowerCase():''); return; }
-  if(S.st==='next'&&u>=GS4_GAP){ if(S.i+1>=S.cards.length){ arcEv('done'); ARC.over=true; return; } gs4Card(S.i+1); } };
+  if(U.st==='go'&&(U.n>=need||u>=(c.k==='lvl'?GS5_LT:GS5_T))){ if(U.n<need) arcEv('timeout:'+U.i); U.st='next'; U.t0=t; sfx('level'); var nx=U.cards[U.i+1];
+    arcText(U.n>=need?'Готово ✓':'Ладно, дальше',nx?'дальше: '+nx.name.toLowerCase():''); return; }
+  if(U.st==='next'&&u>=GS5_GAP){ if(U.i+1>=U.cards.length){ arcEv('done'); ARC.over=true; return; } gs5Card(U.i+1); } };
 /* картинка */
-function gs4Demo(c,s){ var p=(s%2.8)/2.8, b=function(a,e){ return p<a||p>e?0:Math.pow(Math.sin(Math.PI*(p-a)/(e-a)),2); }, k=c.k;
+function gs5Demo(c,s){ var p=(s%2.8)/2.8, b=function(a,e){ return p<a||p>e?0:Math.pow(Math.sin(Math.PI*(p-a)/(e-a)),2); }, ramp=function(a,e){ return p<a?0:p>e?1:Math.pow(Math.sin(Math.PI/2*(p-a)/(e-a)),2); }, k=c.k;
   if(k==='flick'||k==='hold') return 0.45+0.45*b(0.4,0.55); if(k==='soft') return 0.45+0.22*b(0.4,0.55); if(k==='hard') return 0.4+0.55*b(0.4,0.5);
-  if(k==='smooth') return 0.25+0.55*(p<0.1?0:p<0.4?Math.pow(Math.sin(Math.PI/2*(p-0.1)/0.3),2):p<0.55?1:p<0.85?1-Math.pow(Math.sin(Math.PI/2*(p-0.55)/0.3),2):0);
-  if(k==='double') return 0.4+0.4*b(0.35,0.47)+0.4*b(0.5,0.62);
-  if(k==='dip') return p<0.45?0.6-0.3*Math.min(1,p/0.4):0.3+0.55*b(0.45,0.6);
-  if(k==='down') return 0.6-0.4*b(0.4,0.55); if(k==='downup') return 0.55-0.3*b(0.35,0.45)+0.4*b(0.45,0.58);
-  if(k==='shake') return (c.lv==='lo'?0.2:0.8)+(p>0.15&&p<0.8?0.06*Math.sin(2*Math.PI*p*2.8*7):0);
+  if(k==='smooth') return 0.25+0.55*(ramp(0.1,0.4)-ramp(0.55,0.85));
+  if(k==='double') return 0.35+0.35*ramp(0.3,0.38)-0.18*ramp(0.4,0.47)+0.33*ramp(0.49,0.56)-0.5*ramp(0.7,0.95);
+  if(k==='dip') return 0.6-0.32*ramp(0.05,0.45)+0.55*b(0.47,0.62);
+  if(k==='down') return 0.65-0.4*ramp(0.3,0.36)+0.4*ramp(0.75,0.95); if(k==='downup') return 0.5-0.28*ramp(0.3,0.36)+0.6*ramp(0.37,0.45)-0.32*ramp(0.65,0.9);
+  if(k==='shake') return (c.lv==='lo'?0.2:0.8)+(p>0.1&&p<0.9?0.06*Math.sin(2*Math.PI*p*2.8*7):0);
   return c.lv==='lo'?0.05:c.lv==='hi'?0.95:0.5; }
-function gs4Draw(){ var cv=el('acC'); if(!cv||!cv.getContext) return; var c=cv.getContext('2d'), W=cv.width, H=cv.height, dpr=Math.min(2,window.devicePixelRatio||1), S=ARC.g4; if(!S) return;
+function gs5Draw(){ var cv=el('acC'); if(!cv||!cv.getContext) return; var c=cv.getContext('2d'), W=cv.width, H=cv.height, dpr=Math.min(2,window.devicePixelRatio||1), U=ARC.g5; if(!U) return; var S=U.core;
   if(ARC.phase==='wave'&&ARC.c2){ var kk=Math.max(0,ARC.c2.k||0); el('acSub').textContent='От низа до верха и обратно, несколько раз — как в SonaLob. '+(kk>0?'●'.repeat(kk)+'○'.repeat(5-kk):''); }
   var mx=W*0.88, my0=H*0.16, my1=H*0.9, fy=function(z){ return my1-(my1-my0)*(0.2+0.6*z); };
   if(ARC.phase==='play'||ARC.phase==='over'){ c.fillStyle='#0f1530'; c.fillRect(0,0,W,H); }
   if(ARC.T&&ARC.T.ok&&ARC.T.lin){ c.fillStyle='rgba(95,224,184,.14)'; c.fillRect(mx-16*dpr,fy(1),32*dpr,fy(0)-fy(1)); c.strokeStyle='#5b6aa8'; c.lineWidth=2*dpr; c.strokeRect(mx-16*dpr,my0,32*dpr,my1-my0);
-    var cd=ARC.phase==='play'?S.cards[S.i]:null; if(cd&&cd.k==='lvl'){ var zl=Math.max(-0.33,cd.lo), zh=Math.min(1.33,cd.hi); c.fillStyle='rgba(255,209,102,.35)'; c.fillRect(mx-16*dpr,fy(zh),32*dpr,fy(zl)-fy(zh)); }
-    var z=gs4Z(S.show); if(z!==null&&ARC.present){ c.fillStyle=S.shOn?'#8f9cc0':'#ff8a3d'; c.beginPath(); c.arc(mx,fy(Math.max(-0.33,Math.min(1.33,z))),10*dpr,0,6.283); c.fill(); }
+    var cd=ARC.phase==='play'?U.cards[U.i]:null; if(cd&&cd.k==='lvl'){ var zl=Math.max(-0.33,cd.lo), zh=Math.min(1.33,cd.hi); c.fillStyle='rgba(255,209,102,.35)'; c.fillRect(mx-16*dpr,fy(zh),32*dpr,fy(zl)-fy(zh)); }
+    var z=gs5Z(S.show); if(z!==null&&ARC.present){ c.fillStyle=S.shOn?'#8f9cc0':S.still?'#5fe0b8':'#ff8a3d'; c.beginPath(); c.arc(mx,fy(Math.max(-0.33,Math.min(1.33,z))),10*dpr,0,6.283); c.fill(); }
     c.fillStyle='#8f9cc0'; c.font=Math.round(11*dpr)+'px system-ui,sans-serif'; c.textAlign='center'; c.fillText('твои взмахи',mx,my0-8*dpr); }
-  if(ARC.phase!=='play') return; var cd2=S.cards[S.i]; if(!cd2) return;
-  var dx=W*0.2, dy0=H*0.48, dy1=H*0.9, py=dy1-(dy1-dy0)*(0.1+0.8*gs4Demo(cd2,ARC.t));
+  if(ARC.phase!=='play') return; var cd2=U.cards[U.i]; if(!cd2) return;
+  var dx=W*0.2, dy0=H*0.48, dy1=H*0.9, py=dy1-(dy1-dy0)*(0.1+0.8*gs5Demo(cd2,ARC.t));
   c.fillStyle='#2c3766'; c.fillRect(dx-36*dpr,dy1,72*dpr,7*dpr); c.fillStyle='#ffd166'; c.beginPath(); c.ellipse(dx,py,26*dpr,9*dpr,0,0,6.283); c.fill();
   c.fillStyle='#8f9cc0'; c.font=Math.round(12*dpr)+'px system-ui,sans-serif'; c.textAlign='center'; c.fillText('вот так',dx,dy0-12*dpr); c.fillText('телефон',dx,dy1+20*dpr);
   var n=cd2.k==='lvl'?1:cd2.need, gx=W*0.52, gy=H*0.78, sp=34*dpr, x0=gx-(n-1)*sp/2, i;
-  for(i=0;i<n;i++){ var on=i<S.n; c.beginPath(); c.arc(x0+i*sp,gy,12*dpr,0,6.283); c.fillStyle=on?'#5fe0b8':'#2c3766'; c.fill();
+  for(i=0;i<n;i++){ var on=i<U.n; c.beginPath(); c.arc(x0+i*sp,gy,12*dpr,0,6.283); c.fillStyle=on?'#5fe0b8':'#2c3766'; c.fill();
     if(on){ c.strokeStyle='#0f1530'; c.lineWidth=3*dpr; c.beginPath(); c.moveTo(x0+i*sp-5*dpr,gy); c.lineTo(x0+i*sp-1*dpr,gy+4*dpr); c.lineTo(x0+i*sp+6*dpr,gy-5*dpr); c.stroke(); } }
-  var since=ARC.t-S.sawT, ty=gy-32*dpr; c.font=Math.round(17*dpr)+'px system-ui,sans-serif';
-  if(S.st==='intro'){ c.fillStyle='#8f9cc0'; c.fillText('посмотри…',gx,ty); }
-  else if(S.st==='go'&&S.shOn){ c.fillStyle='#ffd166'; c.fillText('тряска…',gx,ty); }
-  else if(S.st==='go'&&since<2.5&&S.saw){ c.globalAlpha=Math.min(1,2.5-since); c.fillStyle=S.sawOk?'#5fe0b8':'#ff9a7a'; var ln=((S.sawOk?'':'увидел: ')+S.saw).split(' — '); c.fillText(ln[0],gx,ty-(ln.length>1?20*dpr:0)); if(ln[1]) c.fillText(ln[1],gx,ty); c.globalAlpha=1; }
-  else if(S.st==='go'){ c.fillStyle='#8f9cc0'; c.fillText(cd2.k==='lvl'?'держи ладонь в жёлтом':'твоя очередь',gx,ty); }
-  if(cd2.bar&&S.bars.length){ c.fillStyle='#5b6aa8'; c.font=Math.round(12*dpr)+'px system-ui,sans-serif'; c.fillText('сила: '+S.bars.join(' · '),gx,gy+30*dpr); }
-  c.fillStyle='#5b6aa8'; c.font=Math.round(12*dpr)+'px system-ui,sans-serif'; c.fillText((S.i+1)+' из '+S.cards.length,gx,H-8*dpr); }
-var _arcDraw4=arcDraw; arcDraw=function(){ _arcDraw4(); if(gs4Is(ARC.game)) gs4Draw(); };
-var _arcSummary4=arcSummary; arcSummary=function(){ if(!gs4Is(ARC.game)) return _arcSummary4(); var S=ARC.g4, n=0, need=0;
-  S.cards.forEach(function(c){ need+=c.k==='lvl'?1:c.need; }); Object.keys(S.got).forEach(function(k){ n+=S.got[k]; });
+  var since=ARC.t-U.sawT, ty=gy-32*dpr, shT=S.det.on?(S.det.k-S.det.k0)/93.75:0; c.font=Math.round(17*dpr)+'px system-ui,sans-serif';
+  if(U.st==='intro'){ c.fillStyle='#8f9cc0'; c.fillText('посмотри…',gx,ty); }
+  else if(U.st==='go'&&cd2.want==='shake'&&S.shOn&&!S.shLive){ c.fillStyle='#ffd166'; c.fillText('трясёшь '+shT.toFixed(1).replace('.',',')+' с — до 2 с',gx,ty); }
+  else if(U.st==='go'&&since<2.5&&U.saw){ c.globalAlpha=Math.min(1,2.5-since); c.fillStyle=U.sawOk?'#5fe0b8':'#ff9a7a'; var ln=((U.sawOk?'':'увидел: ')+U.saw).split(' — '); c.fillText(ln[0],gx,ty-(ln.length>1?20*dpr:0)); if(ln[1]) c.fillText(ln[1],gx,ty); c.globalAlpha=1; }
+  else if(U.st==='go'){ c.fillStyle='#8f9cc0'; c.fillText(cd2.k==='lvl'?(S.still?'стоишь — держи в жёлтом':'держи ладонь в жёлтом'):'твоя очередь',gx,ty); }
+  if(cd2.bar&&U.bars.length){ c.fillStyle='#5b6aa8'; c.font=Math.round(12*dpr)+'px system-ui,sans-serif'; c.fillText('сила: '+U.bars.join(' · '),gx,gy+30*dpr); }
+  c.fillStyle='#5b6aa8'; c.font=Math.round(12*dpr)+'px system-ui,sans-serif'; c.fillText((U.i+1)+' из '+U.cards.length,gx,H-8*dpr); }
+var _arcDraw5=arcDraw; arcDraw=function(){ _arcDraw5(); if(gs5Is(ARC.game)) gs5Draw(); };
+var _arcSummary5=arcSummary; arcSummary=function(){ if(!gs5Is(ARC.game)) return _arcSummary5(); var U=ARC.g5, n=0, need=0;
+  U.cards.forEach(function(c){ need+=c.k==='lvl'?1:c.need; }); Object.keys(U.got).forEach(function(k){ n+=U.got[k]; });
   return 'засчитано '+n+' из '+need+'. Сохрани запись и пришли'; };
-var _arcText4=arcText; arcText=function(a,b){ if(gs4Is(arcGame)){
+var _arcText5=arcText; arcText=function(a,b){ if(gs5Is(arcGame)){
     if(a==='Помаши ладонью'){ PG_V.span=75; PG_V.lowr=1; ARC.c2={wave:true,buf:[],k:-1}; ARC.T=Tune.create(100,true); ARC.T.ok=false; b='От низа до верха и обратно, несколько раз — как в SonaLob.'; }
     if(a==='Финиш') b=arcSummary(); }
-  _arcText4(a,b); };
+  _arcText5(a,b); };
 /* первая страница: две части */
 (function(){ var ov=document.createElement('div'); ov.id='gsHome';
   ov.setAttribute('style','position:fixed;inset:0;z-index:1000;background:#0f1530;color:#E7EDE9;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:12px;padding:16px;text-align:center;font-family:system-ui,sans-serif');
   ov.innerHTML='<h1 style="margin:0;font-size:26px">Словарь жестов</h1>'+
-    '<p style="max-width:600px;margin:0;line-height:1.4;opacity:.85">Для будущей SonaSkate: какие жесты ладони различает сонар. Управление — как в SonaLob. Жест показан на картинке, повторяешь, когда готов; страница говорит, что увидела, и засчитывает нужное.</p>'+
+    '<p style="max-width:600px;margin:0;line-height:1.4;opacity:.85">Для будущей SonaSkate: какие жесты ладони различает сонар. Жест показан на картинке, повторяешь, когда готов; страница говорит, что увидела, и засчитывает нужное. Между жестами — короткая пауза.</p>'+
     '<p style="max-width:600px;margin:0;line-height:1.4;opacity:.7;font-size:14px">Телефон горизонтально, разъёмом к ладони, как в игре; громкость 40–60% на iPhone, 20–30% на Android.</p>'+
     '<div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center"><button id="gsP1" class="big">Часть 1: сила и высоты</button><button id="gsP2" class="big">Часть 2: связки и вращения</button></div>'+
     '<p id="gsErr" style="margin:0;color:#ff7a8a;display:none"></p>';
   document.body.appendChild(ov);
   function go(g){ el('gsErr').style.display='none'; boot().then(function(){ ov.style.display='none'; lastRec='arc'; arcGame=g; viaOrient('arcIntro'); }).catch(fail); }
-  el('gsP1').addEventListener('click',function(){ go('gest4a'); }); el('gsP2').addEventListener('click',function(){ go('gest4b'); });
+  el('gsP1').addEventListener('click',function(){ go('gest5a'); }); el('gsP2').addEventListener('click',function(){ go('gest5b'); });
   var _fail=fail; fail=function(e){ _fail(e); var m=el('gsErr'); m.textContent='Не вышло: '+((e&&e.message)||e); m.style.display='block'; };
-  var _open=arcOpen; arcOpen=function(g){ _open(g); if(gs4Is(g)) el('acTitle').textContent=ARC_GAMES[g].title; };
+  var _open=arcOpen; arcOpen=function(g){ _open(g); if(gs5Is(g)) el('acTitle').textContent=ARC_GAMES[g].title; };
   var _show=show; show=function(id){ if(id==='home'){ ov.style.display='flex'; return; } _show(id); };
   document.title='Словарь жестов';
 })();

@@ -3391,6 +3391,76 @@ var _arcText5=arcText; arcText=function(a,b){ if(gs5Is(arcGame)){
   var _show=show; show=function(id){ if(id==='home'){ ov.style.display='flex'; return; } _show(id); };
   document.title='Словарь жестов';
 })();
+/* ── «ЖЕСТЫ ПО ЛИНЕЙКЕ» (14.10, страница game/gestures.html, третья кнопка; лаба и игры не тронуты) ──
+   Зачем: на записях жестов не известно, где ладонь была на самом деле, — «рывок вниз» и «вниз-вверх» нельзя проверить. Здесь каждый
+   жест — между отметками линейки (5, 10, 15 см): ладонь стоит на одной отметке, жест, ладонь стоит на другой. Правда — отметки.
+   Ден 19:48: «я не робот.. может не получиться точно и с той плавностью/резкостью, которую ты ждёшь» — и не надо: скорость любая, какая
+   получится; точными нужны только остановки на отметках (±1 см — нормально). Страница сама ждёт, пока ладонь встанет (как замер:
+   полоса 14 мм за 1,2 с), потом пикает «давай», ждёт жест и новую остановку. Не торопит; через 20 с без жеста идёт дальше.
+   Журнал: card:i:вид:откуда:куда · at:i:n:кадр:смесь:эхо (стоит на старте) · go:i:n · mv:i:n:кадр (начал) · end:i:n:кадр:смесь:эхо
+   (встал на конце) · grp:… (что увидело распознавание, как в v5) · skip:i:n · done. Файл sonararc_gest6_*.wav */
+ARC_GAMES.gest6={title:'Жесты по линейке',file:'gest6',unit:'',intro:'Линейка стоймя у разъёма, ноль на столе — как 7 октября. Около 3 минут. Сначала помаши ладонью, как в SonaLob. Потом каждый жест — между отметками: поставь ладонь на отметку и замри, после писка — жест, и замри на другой отметке. Скорость любая, как получится; важно только стоять на отметках. В конце нажми «Сохранить запись» и пришли файл.'};
+var GS6=[
+  {k:'down',name:'Резко вниз и замри',a:10,b:5,how:'с 10 см резко вниз до 5 — и замри там'},
+  {k:'downup',name:'Вниз и сразу вверх',a:10,b:15,how:'с 10 резко вниз до 5 и сразу вверх до 15 — замри'},
+  {k:'flick',name:'Рывок и обратно',a:5,b:5,how:'с 5 рывок до 15 и обратно на 5 — замри'},
+  {k:'up',name:'Рывок вверх и замри',a:10,b:15,how:'с 10 резко вверх до 15 — и замри там'},
+  {k:'dret',name:'Вниз и обратно',a:15,b:15,how:'с 15 резко вниз до 5 и обратно на 15 — замри'},
+  {k:'slow',name:'Плавно',a:5,b:15,how:'с 5 плавно, за секунду, до 15 — замри'}];
+var GS6_N=4, GS6_WAIT=20;
+function gs6Is(g){ return g==='gest6'; }
+var _arcFrame6=arcFrame; arcFrame=function(f,gap,r){ _arcFrame6(f,gap,r); if(!ARC.on||!gs6Is(ARC.game)) return; var U=ARC.g6;
+  if(!U.q&&typeof DSP2!=='undefined'){ DSP2.set('quarter',1); U.q=1; }
+  if(!r) return; if(ARC.T&&ARC.T.ok&&!U.core.tied) gs5Tie(U.core);
+  gs5Step(U.core,r,N,fs,DSP2.info().cal.s||1,ARC.frames.length); };
+var _arcInit6=arcInit; arcInit=function(){ _arcInit6(); if(gs6Is(ARC.game)){ ARC.score=0; ARC.lives=0;
+  ARC.g6={core:gs5New(PongCtl),i:-1,n:0,st:'',t0:0,still:0,okT:-9,done:0,q:0}; } };
+function gs6Card(i){ var U=ARC.g6, c=GS6[i]; U.i=i; U.n=0; U.st='at'; U.t0=ARC.t; U.still=0; arcEv('card:'+i+':'+c.k+':'+c.a+':'+c.b); arcText(c.name,c.how); }
+function gs6Mark(tag){ var U=ARC.g6, S=U.core; arcEv(tag+':'+U.i+':'+U.n+':'+ARC.frames.length+':'+(S.stillMed===null?'-':Math.round(S.stillMed))+':'+(ARC.absH===null||ARC.absH===undefined?'-':Math.round(ARC.absH))); }
+ARC_STEP.gest6=function(dt){ var U=ARC.g6, S=U.core, t=ARC.t; if(U.i<0) gs6Card(0); var c=GS6[U.i], u=t-U.t0;
+  var Q=S.ev; S.ev=[]; Q.forEach(function(e){ if(e.t==='g') arcEv('grp:'+e.lab+':'+e.appr+':'+e.vmax+':'+e.vmin+':'+e.acc+':'+e.up+':'+e.dn+':'+Math.round(e.dur*1000)+':'+e.peaks+':'+e.k0+(e.wind?':замах':'')); });
+  if(S.still) U.still+=dt; else U.still=0;
+  if(U.st==='at'){ if(U.need&&S.seg) U.need=false; if(!U.need&&U.still>=0.8){ gs6Mark('at'); U.st='go'; U.t0=t; sfx('level'); arcEv('go:'+U.i+':'+U.n); } return; }
+  if(U.st==='go'){ if(S.seg||!S.still){ U.st='mv'; U.t0=t; arcEv('mv:'+U.i+':'+U.n+':'+ARC.frames.length); return; }
+    if(u>GS6_WAIT){ arcEv('skip:'+U.i+':'+U.n); gs6Next(); } return; }
+  if(U.st==='mv'){ if(!S.seg&&U.still>=0.8&&u>0.4){ gs6Mark('end'); U.done++; U.okT=t; sfx('jtoss',1); gs6Next(); return; }
+    if(u>GS6_WAIT){ arcEv('skip:'+U.i+':'+U.n); gs6Next(); } return; }
+  if(U.st==='next'&&u>=2){ if(U.i+1>=GS6.length){ arcEv('done'); ARC.over=true; return; } gs6Card(U.i+1); } };
+function gs6Next(){ var U=ARC.g6; U.n++; U.still=0; U.t0=ARC.t;
+  if(U.n>=GS6_N){ U.st='next'; var nx=GS6[U.i+1]; arcText('Готово ✓',nx?'дальше: '+nx.name.toLowerCase():''); sfx('level'); return; }
+  U.need=GS6[U.i].a!==GS6[U.i].b; U.st='at'; }
+function gs6Demo(c,s){ var p=(s%3.2)/3.2, cm=function(v){ return (v-5)/10; }, ramp=function(a,e){ return p<a?0:p>e?1:Math.pow(Math.sin(Math.PI/2*(p-a)/(e-a)),2); }, A=cm(c.a), B=cm(c.b);
+  if(c.k==='downup'||c.k==='dret'||c.k==='flick'){ var mid=c.k==='flick'?1:0; return A+(mid-A)*ramp(0.3,0.4)+(B-mid)*ramp(0.42,0.55)-(B-A)*ramp(0.85,0.98); }
+  if(c.k==='slow') return A+(B-A)*ramp(0.25,0.6)-(B-A)*ramp(0.85,0.98);
+  return A+(B-A)*ramp(0.3,0.4)-(B-A)*ramp(0.85,0.98); }
+function gs6Draw(){ var cv=el('acC'); if(!cv||!cv.getContext) return; var c=cv.getContext('2d'), W=cv.width, H=cv.height, dpr=Math.min(2,window.devicePixelRatio||1), U=ARC.g6; if(!U) return; var S=U.core;
+  if(ARC.phase==='wave'&&ARC.c2){ var kk=Math.max(0,ARC.c2.k||0); el('acSub').textContent='От 5 до 15 см и обратно, несколько раз — как в SonaLob. '+(kk>0?'●'.repeat(kk)+'○'.repeat(5-kk):''); }
+  if(ARC.phase==='play'||ARC.phase==='over'){ c.fillStyle='#0f1530'; c.fillRect(0,0,W,H); }
+  if(ARC.phase!=='play') return; var cd=GS6[U.i]; if(!cd) return;
+  /* линейка с отметками и ладонь «вот так» */
+  var rx=W*0.2, y0=H*0.9, y1=H*0.42, fy=function(v){ return y0-(y0-y1)*(v-5)/10; };
+  c.strokeStyle='#d9c27a'; c.lineWidth=10*dpr; c.beginPath(); c.moveTo(rx,y0+12*dpr); c.lineTo(rx,y1-14*dpr); c.stroke();
+  c.fillStyle='#8f9cc0'; c.font=Math.round(13*dpr)+'px system-ui,sans-serif'; c.textAlign='right';
+  [5,10,15].forEach(function(v){ var y=fy(v); c.strokeStyle=v===cd.a?'#ffd166':v===cd.b?'#5fe0b8':'#5b6aa8'; c.lineWidth=3*dpr; c.beginPath(); c.moveTo(rx-16*dpr,y); c.lineTo(rx+16*dpr,y); c.stroke(); c.fillText(v+' см',rx-22*dpr,y+4*dpr); });
+  var py=fy(5+10*gs6Demo(cd,ARC.t)); c.fillStyle='#ffd166'; c.beginPath(); c.ellipse(rx+44*dpr,py,26*dpr,9*dpr,0,0,6.283); c.fill();
+  /* что сейчас */
+  var gx=W*0.56, gy=H*0.78, n=GS6_N, sp=34*dpr, x0=gx-(n-1)*sp/2, i; c.textAlign='center';
+  for(i=0;i<n;i++){ var on=i<U.n; c.beginPath(); c.arc(x0+i*sp,gy,12*dpr,0,6.283); c.fillStyle=on?'#5fe0b8':'#2c3766'; c.fill(); }
+  c.font=Math.round(18*dpr)+'px system-ui,sans-serif';
+  var txt=U.st==='at'?(U.need?'верни ладонь на '+cd.a+' см':S.still?'стоишь на '+cd.a+'… держи':'поставь ладонь на '+cd.a+' см и замри'):U.st==='go'?'давай!':U.st==='mv'?'замри на '+cd.b+' см, пока не пикнет':'';
+  c.fillStyle=U.st==='go'?'#ffd166':'#E7EDE9'; c.fillText(txt,gx,gy-34*dpr);
+  c.fillStyle='#5b6aa8'; c.font=Math.round(12*dpr)+'px system-ui,sans-serif'; c.fillText((U.i+1)+' из '+GS6.length,gx,H-8*dpr); }
+var _arcDraw6=arcDraw; arcDraw=function(){ _arcDraw6(); if(gs6Is(ARC.game)) gs6Draw(); };
+var _arcSummary6=arcSummary; arcSummary=function(){ if(!gs6Is(ARC.game)) return _arcSummary6(); return 'жестов '+ARC.g6.done+' из '+(GS6.length*GS6_N)+'. Сохрани запись и пришли'; };
+var _arcText6=arcText; arcText=function(a,b){ if(gs6Is(arcGame)){
+    if(a==='Помаши ладонью'){ PG_V.span=75; PG_V.lowr=1; ARC.c2={wave:true,buf:[],k:-1}; ARC.T=Tune.create(100,true); ARC.T.ok=false; b='От 5 до 15 см и обратно, несколько раз — как в SonaLob.'; }
+    if(a==='Финиш') b=arcSummary(); }
+  _arcText6(a,b); };
+/* третья кнопка на первой странице */
+(function(){ var box=el('gsP2'); if(!box||!box.parentNode) return; var bt=document.createElement('button'); bt.id='gsP3'; bt.className='big'; bt.textContent='Жесты по линейке'; box.parentNode.appendChild(bt);
+  bt.addEventListener('click',function(){ el('gsErr').style.display='none'; boot().then(function(){ el('gsHome').style.display='none'; lastRec='arc'; arcGame='gest6'; viaOrient('arcIntro'); }).catch(fail); });
+})();
+var _open6=arcOpen; arcOpen=function(g){ _open6(g); if(gs6Is(g)) el('acTitle').textContent=ARC_GAMES[g].title; };
 /* ── v1.61h: the «набросок» renderer is shared — the lab's SonaPong (lab/build.py takes it from here; it was lab/src/0871_sketch.js) and the
    game's (src/48_pongsk.js feeds it the game's state through the names it reads: ARC, PG_V, pgSurf…). One drawing for both. ── */
 /* ── 1.59q: SonaPong «набросок» (Ден 10.10 19:40: «графика — в стиле наброска от руки.. фон — светлая чуть текстурированная мягкая
